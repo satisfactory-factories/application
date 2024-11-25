@@ -33,8 +33,10 @@
 
     if (shareId) {
       loadedFactoryData.value = await getDataFromShare(shareId)
+      // Change the title of the tab to denote it's the shared one
 
       if (loadedFactoryData.value) {
+        loadedFactoryData.value.name = `${loadedFactoryData.value.name} (shared)`
         appStore.addTab(loadedFactoryData.value)
       }
     }

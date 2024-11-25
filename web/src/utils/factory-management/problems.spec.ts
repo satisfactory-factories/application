@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from '@jest/globals'
+import { beforeEach, describe, expect, test } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { newFactory } from '@/utils/factory-management/factory'
