@@ -128,8 +128,10 @@ app.post('/register', async (req: TypedRequestBody<{ username: string; password:
       return res.status(400).json({ message: 'User already exists.' });
     }
 
+
     const user = new User({ username, password: hashedPassword });
     await user.save();
+    console.log(`Successfully registered new user ${username}!`);
     res.status(201).json({ message: 'User registered successfully!' });
   } catch (error) {
     res.status(400).json({ message: 'Registration failed.', error });
@@ -149,7 +151,7 @@ app.post('/login', async (req: TypedRequestBody<{ username: string; password: st
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     const secret = process.env.JWT_SECRET ?? 'secret';
-    const token = jwt.sign({ id: user._id, username: user.username }, secret, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user._id, username: user.username }, secret, { expiresIn: '30d' });
 
     console.log(`Successfully signed in user ${username}`);
     res.json({ token });

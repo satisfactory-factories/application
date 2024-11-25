@@ -13,7 +13,7 @@
     <!--        :factories="factories"-->
     <!--        :total-factories="factories.length"-->
     <!--        @create-factory="createFactory"-->
-    <!--        @update-factories="updateFactories"-->
+    <!--        @update-factories="updateFactoriesList"-->
     <!--      />-->
     <!--      <planner-global-actions-->
     <!--        class="py-4"-->
@@ -33,7 +33,7 @@
             :factories="factories"
             :total-factories="factories.length"
             @create-factory="createFactory"
-            @update-factories="updateFactories"
+            @update-factories="updateFactoriesList"
           />
           <v-divider color="#ccc" thickness="2px" />
           <planner-global-actions
@@ -190,7 +190,7 @@
     return findFac(factoryId, appStore.getFactories())
   }
 
-  const updateFactories = (newFactories: Factory[]) => {
+  const updateFactoriesList = (newFactories: Factory[]) => {
     appStore.setFactories(newFactories)
     forceSort()
     console.log('Factories updated and re-sorted')

@@ -9,6 +9,7 @@ import { calculateExports } from '@/utils/factory-management/exports'
 import { configureExportCalculator } from '@/utils/factory-management/exportCalculator'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
+import eventBus from '@/utils/eventBus'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -114,6 +115,9 @@ export const calculateFactory = (
 
   // Finally, go through all factories and check if they have any problems.
   calculateHasProblem(allFactories)
+
+  // Emit an event that the data has been updated so it can be synced
+  eventBus.emit('factoryUpdated')
 
   return factory
 }

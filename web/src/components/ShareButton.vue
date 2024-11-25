@@ -16,12 +16,14 @@
   import { config } from '@/config/config'
   import { storeToRefs } from 'pinia'
   import { useAppStore } from '@/stores/app-store'
+  import { useAuthStore } from '@/stores/auth-store'
   import { FactoryTab } from '@/interfaces/planner/FactoryInterface'
   import { ShareDataCreationResponse } from '@/interfaces/ShareDataInterface'
 
   // Get user auth stuff from the app store
   const appStore = useAppStore()
-  const { token, currentFactoryTab } = storeToRefs(appStore)
+  const authStore = useAuthStore()
+  const { currentFactoryTab } = storeToRefs(appStore)
 
   const apiUrl = config.apiUrl
   const toast = ref(false)
@@ -38,12 +40,13 @@
 
   const handleCreation = async (factoryTabData: FactoryTab) => {
     creating.value = true
+    const token = authStore.getToken()
     try {
       const response = await fetch(`${apiUrl}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token.value}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(factoryTabData),
       })

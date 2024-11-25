@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import {
@@ -83,7 +83,7 @@ describe('dependencies', () => {
     })
 
     it('should prevent adding dependencies from invalid input data', () => {
-      factories.find = jest.fn() as jest.MockedFunction<typeof factories.find>
+      factories.find = vi.fn()
       const input = {
         factoryId: 0,
         outputPart: '',

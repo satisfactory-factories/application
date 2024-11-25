@@ -18,12 +18,4 @@ module.exports = {
     'vue/multi-word-component-names': 'off',
     'vue/no-mutating-props': 'off',
   },
-  overrides: [
-    {
-      files: ['**/*.spec.ts'],
-      env: {
-        jest: true,
-      },
-    },
-  ],
 }
