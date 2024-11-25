@@ -50,7 +50,7 @@
       <!-- Main Content Area -->
       <v-col class="border-s-md pa-3 main-content">
         <notice />
-        <planner-world-resources
+        <planner-world-statistics
           :help-text="helpText"
           :world-raw-resources="worldRawResources"
         />

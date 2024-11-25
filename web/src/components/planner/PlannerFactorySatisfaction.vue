@@ -93,12 +93,13 @@
           </v-card-text>
         </v-card>
       </v-col>
+      <br><br>
       <v-col cols="12" md="5">
         <v-card class="sub-card border-md">
           <v-card-title>
             <h2 class="text-h6">
               <i class="fas fa-building" />
-              <span class="ml-3">Buildings & Power</span>
+              <span class="ml-3">Factory Buildings</span>
             </h2>
           </v-card-title>
           <v-card-text class="text-body-1 pb-2">
@@ -120,6 +121,16 @@
                 </span>
               </v-chip>
             </div>
+          </v-card-text>
+        </v-card>
+        <v-card class="sub-card border-md">
+          <v-card-title>
+            <h2 class="text-h6">
+              <i class="fas fa-plug" />
+              <span class="ml-3">Factory Power</span>
+            </h2>
+          </v-card-title>
+          <v-card-text class="text-body-1 pb-2">
             <v-chip
               class="sf-chip yellow"
               variant="tonal"
