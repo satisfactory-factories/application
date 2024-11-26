@@ -1,4 +1,5 @@
 import { useGameDataStore } from '@/stores/game-data-store'
+import { Factory } from "@/interfaces/planner/FactoryInterface";
 
 const gameDataStore = useGameDataStore()
 const gameData = gameDataStore.getGameData()
@@ -15,3 +16,13 @@ export const getPartDisplayName = (part: string | number | null): string => {
     gameData.items.parts[part]?.name ||
     `UNKNOWN PART ${part}!`
 }
+export const hasMetricsForPart = (factory: Factory, part: string) => {
+  return factory.dependencies.metrics && factory.dependencies.metrics[part];
+};
+
+export const differenceClass = (difference: number) => {
+  return {
+    "text-green": difference > 0,
+    "text-red": difference < 0,
+  };
+};

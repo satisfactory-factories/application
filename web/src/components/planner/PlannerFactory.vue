@@ -172,7 +172,7 @@
   import { defineProps, inject } from 'vue'
   import { Factory, FactoryDependencyMetrics, FactoryItem } from '@/interfaces/planner/FactoryInterface'
   import { DataInterface } from '@/interfaces/DataInterface'
-  import { getPartDisplayName } from '@/utils/helpers'
+  import { getPartDisplayName, hasMetricsForPart, differenceClass } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
@@ -199,17 +199,6 @@
 
   const confirmDelete = (message = 'Are you sure you want to delete this factory?') => {
     return confirm(message)
-  }
-
-  const differenceClass = (difference: number) => {
-    return {
-      'text-green': difference > 0,
-      'text-red': difference < 0,
-    }
-  }
-
-  const hasMetricsForPart = (factory: Factory, part: string) => {
-    return factory.dependencies.metrics && factory.dependencies.metrics[part]
   }
 
   const hasExports = (factory: Factory) => {
