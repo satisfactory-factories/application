@@ -1,8 +1,9 @@
 import {Building, Recipe} from "./interfaces/Recipe";
 import {blacklist,isFluid,isFicsmas} from "./common";
+import { PartDataInterface, Part } from "./interfaces/Part";
 
 // If you can read this, you are a wizard. ChatGPT made this, it works, so I won't question it!
-function getRecipes(
+function getProductionRecipes(
     data: any[],
     producingBuildings: { [key: string]: number }
 ): Recipe[] {
@@ -152,22 +153,136 @@ function getRecipes(
         displayName: "Uranium Waste",
         ingredients: [{ part: 'NuclearFuelRod', amount: 1, perMin: 0.2 }, { part: 'Water', amount: 1200, perMin: 240 }],
         products: [{ part: "NuclearWaste", amount: 1, perMin: 10 }],
-        building: { name: "nuclearpowerplant", power: 0 },
+        building: { name: "nuclearpowerplant", power: 2500 },
         isAlternate: false,
-        isFicsmas: false
+        isFicsmas: false,
+        isPowerGenerator: true
     });
     recipes.push({
         id: "PlutoniumWaste",
         displayName: "Plutonium Waste",
         ingredients: [{ part: 'PlutoniumFuelRod', amount: 1, perMin: 0.1 }, { part: 'Water', amount: 2400, perMin: 240 }],
         products: [{ part: "PlutoniumWaste", amount: 1, perMin: 1 }],
-        building: { name: "nuclearpowerplant", power: 0 },
+        building: { name: "nuclearpowerplant", power: 2500 },
         isAlternate: false,
-        isFicsmas: false
+        isFicsmas: false,
+        isPowerGenerator: true
     });
 
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+function getPowerGeneratingRecipes(
+    data: any[],
+    parts: PartDataInterface
+): Recipe[] {
+
+    const recipes: any[] = [];
+
+    data
+        .filter((entry: any) => entry.Classes)
+        .flatMap((entry: any) => entry.Classes)
+        .filter((recipe: any) => {
+            
+            // Filter out recipes that don't have a fuel component
+            if (!recipe.mFuel)  { 
+                return false; 
+            } else {
+                return true;
+            }
+
+        })
+        .forEach((recipe: any) => {
+            //console.log(recipe.ClassName); 
+             
+            let building : Building = {
+                name: recipe.mDisplayName.replace(/ /g, ''), // Use the first valid building, or empty string if none
+                power: Math.round(recipe.mPowerProduction), // generated power - can be rounded to the nearest whole number (all energy numbers are whole numbers) 
+            };   
+            const powerMJ = (recipe.mPowerProduction / 60) / (1/3600)
+
+            // const ingredients = <any>[];
+            const fuels = recipe.mFuel       
+            fuels.forEach((fuel: any) => {
+                const primaryFuel = fuel.mFuelClass;
+                const supplementalResource = fuel.mSupplementalResourceClass;
+                const byProduct = fuel.mByproduct;
+                const byProductAmount: number = Number(fuel.mByproductAmount);
+
+                //Find the part for the primary fuel
+                //console.log(primaryFuel);
+                const match = primaryFuel.match(/Desc_(.*?)_C/);
+                const extractedPartText = match ? match[1] : null;
+                if (extractedPartText !== "LiquidTurboFuel") {
+                    //console.log('extractedPartText:'+extractedPartText);
+
+                    const primaryFuelPart: Part = parts.parts[extractedPartText];
+                    if (primaryFuelPart) {
+                        //console.log('primaryFuelPart: ' + primaryFuelPart.name);
+                    } else {
+                        console.log('fail: ' + extractedPartText);
+                        console.log(parts.parts);
+                        console.log('fail: ' + extractedPartText);
+                    }
+                    //console.log(primaryFuelPart);
+                    let primaryPerMin: number = 0; 
+                    if (primaryFuelPart.energyGeneratedInMJ) {
+                        //console.log('extractedPartText: ' + extractedPartText);
+                        primaryPerMin = powerMJ / primaryFuelPart.energyGeneratedInMJ;
+                    }
+                    let primaryAmount : number = 0;
+                    if (primaryPerMin > 0) {
+                        primaryAmount = primaryPerMin / 60;
+
+                        const ingredients = <any>[];
+                        ingredients.push(
+                            { 
+                                part: primaryFuel,
+                                amount: primaryAmount,
+                                perMin: primaryPerMin
+                            }
+                        )
+                        if (supplementalResource) {
+                            ingredients.push(
+                                { 
+                                    part: supplementalResource,
+                                    amount: 0,
+                                    perMin: 0
+                                }
+                            )
+                        }
+                        //console.log(ingredients);
+                        
+                        const products = <any>[];
+                        if (byProduct) {
+                            products.push(
+                                {
+                                    part: byProduct,
+                                    amount: 0,
+                                    perMin: byProductAmount,
+                                    isByProduct: true
+                                }
+                            );
+                        }
+
+                        recipes.push({
+                            id: recipe.ClassName.replace("Build_", "").replace(/_C$/, "") +'_'+ primaryFuelPart.name,
+                            displayName: recipe.mDisplayName + ' (' + primaryFuelPart.name + ')',
+                            ingredients,
+                            products,
+                            building,
+                            isAlternate: false,
+                            isFicsmas: false,
+                            isPowerGenerator: true
+                        });  
+                    }
+                }
+            });
+        
+        });
+
+    return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
 // Export getRecipes for use
-export {getRecipes}
+export {getProductionRecipes,getPowerGeneratingRecipes}

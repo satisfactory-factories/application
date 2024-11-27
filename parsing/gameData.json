@@ -19,1009 +19,1177 @@
                 "name": "Alien DNA Capsule",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AlienPowerFuel": {
                 "name": "Alien Power Matrix",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AlienProtein": {
                 "name": "Alien Protein",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminaSolution": {
                 "name": "Alumina Solution",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminumCasing": {
                 "name": "Aluminum Casing",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminumIngot": {
                 "name": "Aluminum Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminumPlate": {
                 "name": "Alclad Aluminum Sheet",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminumPlateReinforced": {
                 "name": "Heat Sink",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "AluminumScrap": {
                 "name": "Aluminum Scrap",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Battery": {
                 "name": "Battery",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 6000
             },
             "Biofuel": {
                 "name": "Solid Biofuel",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 450
             },
             "Cable": {
                 "name": "Cable",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CandyCane": {
                 "name": "Candy Cane",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "CartridgeChaos": {
                 "name": "Turbo Rifle Ammo",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CartridgeSmartProjectile": {
                 "name": "Homing Rifle Ammo",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CartridgeStandard": {
                 "name": "Rifle Ammo",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Cement": {
                 "name": "Concrete",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CircuitBoard": {
                 "name": "Circuit Board",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CircuitBoardHighSpeed": {
                 "name": "AI Limiter",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Coal": {
                 "name": "Coal",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 300
             },
             "CompactedCoal": {
                 "name": "Compacted Coal",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 630
             },
             "Computer": {
                 "name": "Computer",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "ComputerSuper": {
                 "name": "Supercomputer",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CoolingSystem": {
                 "name": "Cooling System",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CopperDust": {
                 "name": "Copper Powder",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CopperIngot": {
                 "name": "Copper Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CopperSheet": {
                 "name": "Copper Sheet",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Crystal": {
                 "name": "Blue Power Slug",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CrystalOscillator": {
                 "name": "Crystal Oscillator",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "CrystalShard": {
                 "name": "Power Shard",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Crystal_mk2": {
                 "name": "Yellow Power Slug",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Crystal_mk3": {
                 "name": "Purple Power Slug",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "DarkEnergy": {
                 "name": "Dark Matter Residue",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "DarkMatter": {
                 "name": "Dark Matter Crystal",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Diamond": {
                 "name": "Diamonds",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "DissolvedSilica": {
                 "name": "Dissolved Silica",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "ElectromagneticControlRod": {
                 "name": "Electromagnetic Control Rod",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Fabric": {
                 "name": "Fabric",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "FicsiteIngot": {
                 "name": "Ficsite Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "FicsiteMesh": {
                 "name": "Ficsite Trigon",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Ficsonium": {
                 "name": "Ficsonium",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "FicsoniumFuelRod": {
                 "name": "Ficsonium Fuel Rod",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 150000
             },
             "Filter": {
                 "name": "Gas Filter",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Fireworks_Projectile_01": {
                 "name": "Sweet Fireworks",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "Fireworks_Projectile_02": {
                 "name": "Fancy Fireworks",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "Fireworks_Projectile_03": {
                 "name": "Sparkly Fireworks",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "FluidCanister": {
                 "name": "Empty Canister",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Fuel": {
                 "name": "Packaged Fuel",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 750
             },
             "GasTank": {
                 "name": "Empty Fluid Tank",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "GenericBiomass": {
                 "name": "Biomass",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 180
             },
             "Gift": {
                 "name": "Gift",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "GoldIngot": {
                 "name": "Caterium Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Gunpowder": {
                 "name": "Black Powder",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "GunpowderMK2": {
                 "name": "Smokeless Powder",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "HatcherParts": {
                 "name": "Hatcher Remains",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 250
             },
             "HazmatFilter": {
                 "name": "Iodine-Infused Filter",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "HeavyOilResidue": {
                 "name": "Heavy Oil Residue",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "HighSpeedConnector": {
                 "name": "High-Speed Connector",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "HighSpeedWire": {
                 "name": "Quickwire",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "HogParts": {
                 "name": "Hog Remains",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 250
             },
             "IonizedFuel": {
                 "name": "Ionized Fuel",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 5
             },
             "IronIngot": {
                 "name": "Iron Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "IronPlate": {
                 "name": "Iron Plate",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "IronPlateReinforced": {
                 "name": "Reinforced Iron Plate",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "IronRod": {
                 "name": "Iron Rod",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "IronScrew": {
                 "name": "Screw",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Leaves": {
                 "name": "Leaves",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 15
             },
             "LiquidBiofuel": {
                 "name": "Liquid Biofuel",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 1
             },
             "LiquidFuel": {
                 "name": "Fuel",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 1
             },
             "LiquidOil": {
                 "name": "Liquid Oil",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "LiquidTurboFuel": {
                 "name": "Turbofuel",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 2000
             },
             "ModularFrame": {
                 "name": "Modular Frame",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "ModularFrameFused": {
                 "name": "Fused Modular Frame",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "ModularFrameHeavy": {
                 "name": "Heavy Modular Frame",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "ModularFrameLightweight": {
                 "name": "Radio Control Unit",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Motor": {
                 "name": "Motor",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "MotorLightweight": {
                 "name": "Turbo Motor",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Mycelia": {
                 "name": "Mycelia",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 20
             },
             "NitricAcid": {
                 "name": "Nitric Acid",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NitrogenGas": {
                 "name": "Nitrogen Gas",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NobeliskCluster": {
                 "name": "Cluster Nobelisk",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NobeliskExplosive": {
                 "name": "Nobelisk",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NobeliskGas": {
                 "name": "Gas Nobelisk",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NobeliskNuke": {
                 "name": "Nuke Nobelisk",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NobeliskShockwave": {
                 "name": "Pulse Nobelisk",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NonFissibleUranium": {
                 "name": "Non-Fissile Uranium",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "NuclearFuelRod": {
                 "name": "Uranium Fuel Rod",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 750000
             },
             "NuclearWaste": {
                 "name": "Uranium Waste",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "OreBauxite": {
                 "name": "Bauxite",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "OreCopper": {
                 "name": "Copper Ore",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "OreGold": {
                 "name": "Caterium Ore",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "OreIron": {
                 "name": "Iron Ore",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "OreUranium": {
                 "name": "Uranium Ore",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PackagedAlumina": {
                 "name": "Packaged Alumina Solution",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PackagedBiofuel": {
                 "name": "Packaged Liquid Biofuel",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 750
             },
             "PackagedIonizedFuel": {
                 "name": "Packaged Ionized Fuel",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 10000
             },
             "PackagedNitricAcid": {
                 "name": "Packaged Nitric Acid",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PackagedNitrogenGas": {
                 "name": "Packaged Nitrogen Gas",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PackagedOil": {
                 "name": "Packaged Oil",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 320
             },
             "PackagedOilResidue": {
                 "name": "Packaged Heavy Oil Residue",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 400
             },
             "PackagedRocketFuel": {
                 "name": "Packaged Rocket Fuel",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 7200
             },
             "PackagedSulfuricAcid": {
                 "name": "Packaged Sulfuric Acid",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PackagedTurboFuel": {
                 "name": "Packaged Turbofuel",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 2000
             },
             "PackagedWater": {
                 "name": "Packaged Water",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PetroleumCoke": {
                 "name": "Petroleum Coke",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 180
             },
             "Plastic": {
                 "name": "Plastic",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PlutoniumCell": {
                 "name": "Encased Plutonium Cell",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PlutoniumFuelRod": {
                 "name": "Plutonium Fuel Rod",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 1500000
             },
             "PlutoniumPellet": {
                 "name": "Plutonium Pellet",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PlutoniumWaste": {
                 "name": "Plutonium Waste",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PolymerResin": {
                 "name": "Polymer Resin",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PortableMiner": {
                 "name": "Portable Miner",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "PressureConversionCube": {
                 "name": "Pressure Conversion Cube",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "QuantumEnergy": {
                 "name": "Excited Photonic Matter",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "QuantumOscillator": {
                 "name": "Superposition Oscillator",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "QuartzCrystal": {
                 "name": "Quartz Crystal",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "RawQuartz": {
                 "name": "Raw Quartz",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Rebar_Explosive": {
                 "name": "Explosive Rebar",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Rebar_Spreadshot": {
                 "name": "Shatter Rebar",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Rebar_Stunshot": {
                 "name": "Stun Rebar",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "RocketFuel": {
                 "name": "Rocket Fuel",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 4
             },
             "Rotor": {
                 "name": "Rotor",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Rubber": {
                 "name": "Rubber",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SAM": {
                 "name": "SAM",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SAMFluctuator": {
                 "name": "SAM Fluctuator",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SAMIngot": {
                 "name": "Reanimated SAM",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Silica": {
                 "name": "Silica",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SingularityCell": {
                 "name": "Singularity Cell",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Snow": {
                 "name": "Snow",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "SnowballProjectile": {
                 "name": "Snowball",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_1": {
                 "name": "Smart Plating",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_10": {
                 "name": "Biochemical Sculptor",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_11": {
                 "name": "Ballistic Warp Drive",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_12": {
                 "name": "AI Expansion Server",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_2": {
                 "name": "Versatile Framework",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_3": {
                 "name": "Automated Wiring",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_4": {
                 "name": "Modular Engine",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_5": {
                 "name": "Adaptive Control Unit",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_6": {
                 "name": "Magnetic Field Generator",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_7": {
                 "name": "Assembly Director System",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_8": {
                 "name": "Thermal Propulsion Rocket",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpaceElevatorPart_9": {
                 "name": "Nuclear Pasta",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpikedRebar": {
                 "name": "Iron Rebar",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SpitterParts": {
                 "name": "Spitter Remains",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 250
             },
             "Stator": {
                 "name": "Stator",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SteelIngot": {
                 "name": "Steel Ingot",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SteelPipe": {
                 "name": "Steel Pipe",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SteelPlate": {
                 "name": "Steel Beam",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SteelPlateReinforced": {
                 "name": "Encased Industrial Beam",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "StingerParts": {
                 "name": "Stinger Remains",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 250
             },
             "Stone": {
                 "name": "Limestone",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Sulfur": {
                 "name": "Sulfur",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "SulfuricAcid": {
                 "name": "Sulfuric Acid",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "TemporalProcessor": {
                 "name": "Neural-Quantum Processor",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "TimeCrystal": {
                 "name": "Time Crystal",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "UraniumCell": {
                 "name": "Encased Uranium Cell",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Water": {
                 "name": "Water",
                 "stackSize": 0,
                 "isFluid": true,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Wire": {
                 "name": "Wire",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
             },
             "Wood": {
                 "name": "Wood",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": false
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 100
             },
             "XmasBall1": {
                 "name": "Red FICSMAS Ornament",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBall2": {
                 "name": "Blue FICSMAS Ornament",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBall3": {
                 "name": "Copper FICSMAS Ornament",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBall4": {
                 "name": "Iron FICSMAS Ornament",
                 "stackSize": 200,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBallCluster": {
                 "name": "FICSMAS Ornament Bundle",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBow": {
                 "name": "FICSMAS Bow",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasBranch": {
                 "name": "FICSMAS Tree Branch",
                 "stackSize": 500,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasStar": {
                 "name": "FICSMAS Wonder Star",
                 "stackSize": 50,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             },
             "XmasWreath": {
                 "name": "FICSMAS Decoration",
                 "stackSize": 100,
                 "isFluid": false,
-                "isFicsmas": true
+                "isFicsmas": true,
+                "energyGeneratedInMJ": 0
             }
         },
         "collectables": {
@@ -8167,10 +8335,11 @@
             ],
             "building": {
                 "name": "nuclearpowerplant",
-                "power": 0
+                "power": 2500
             },
             "isAlternate": false,
-            "isFicsmas": false
+            "isFicsmas": false,
+            "isPowerGenerator": true
         },
         {
             "id": "PowerCrystalShard_1",
@@ -10163,10 +10332,11 @@
             ],
             "building": {
                 "name": "nuclearpowerplant",
-                "power": 0
+                "power": 2500
             },
             "isAlternate": false,
-            "isFicsmas": false
+            "isFicsmas": false,
+            "isPowerGenerator": true
         },
         {
             "id": "SpaceElevatorPart_2",
@@ -10222,6 +10392,356 @@
             },
             "isAlternate": false,
             "isFicsmas": false
+        }
+    ],
+    "powerGenerationRecipes": [
+        {
+            "id": "GeneratorBiomass_Automated_Biomass",
+            "displayName": "Biomass Burner (Biomass)",
+            "ingredients": [
+                {
+                    "part": "Desc_GenericBiomass_C",
+                    "amount": 0.16666666666666666,
+                    "perMin": 10
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorBiomass_Automated_Leaves",
+            "displayName": "Biomass Burner (Leaves)",
+            "ingredients": [
+                {
+                    "part": "Desc_Leaves_C",
+                    "amount": 2,
+                    "perMin": 120
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorBiomass_Automated_Mycelia",
+            "displayName": "Biomass Burner (Mycelia)",
+            "ingredients": [
+                {
+                    "part": "Desc_Mycelia_C",
+                    "amount": 1.5,
+                    "perMin": 90
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorBiomass_Automated_Packaged Liquid Biofuel",
+            "displayName": "Biomass Burner (Packaged Liquid Biofuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_PackagedBiofuel_C",
+                    "amount": 0.04,
+                    "perMin": 2.4
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorBiomass_Automated_Solid Biofuel",
+            "displayName": "Biomass Burner (Solid Biofuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_Biofuel_C",
+                    "amount": 0.06666666666666667,
+                    "perMin": 4
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorBiomass_Automated_Wood",
+            "displayName": "Biomass Burner (Wood)",
+            "ingredients": [
+                {
+                    "part": "Desc_Wood_C",
+                    "amount": 0.3,
+                    "perMin": 18
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "BiomassBurner",
+                "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorCoal_Coal",
+            "displayName": "Coal-Powered Generator (Coal)",
+            "ingredients": [
+                {
+                    "part": "Desc_Coal_C",
+                    "amount": 0.25,
+                    "perMin": 15
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Coal-PoweredGenerator",
+                "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorCoal_Compacted Coal",
+            "displayName": "Coal-Powered Generator (Compacted Coal)",
+            "ingredients": [
+                {
+                    "part": "Desc_CompactedCoal_C",
+                    "amount": 0.11904761904761905,
+                    "perMin": 7.142857142857143
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Coal-PoweredGenerator",
+                "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorCoal_Petroleum Coke",
+            "displayName": "Coal-Powered Generator (Petroleum Coke)",
+            "ingredients": [
+                {
+                    "part": "Desc_PetroleumCoke_C",
+                    "amount": 0.4166666666666667,
+                    "perMin": 25
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Coal-PoweredGenerator",
+                "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorFuel_Fuel",
+            "displayName": "Fuel-Powered Generator (Fuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_LiquidFuel_C",
+                    "amount": 250.00000000000003,
+                    "perMin": 15000.000000000002
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Fuel-PoweredGenerator",
+                "power": 250
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorFuel_Ionized Fuel",
+            "displayName": "Fuel-Powered Generator (Ionized Fuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_IonizedFuel_C",
+                    "amount": 50.00000000000001,
+                    "perMin": 3000.0000000000005
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Fuel-PoweredGenerator",
+                "power": 250
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorFuel_Liquid Biofuel",
+            "displayName": "Fuel-Powered Generator (Liquid Biofuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_LiquidBiofuel_C",
+                    "amount": 250.00000000000003,
+                    "perMin": 15000.000000000002
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Fuel-PoweredGenerator",
+                "power": 250
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorFuel_Rocket Fuel",
+            "displayName": "Fuel-Powered Generator (Rocket Fuel)",
+            "ingredients": [
+                {
+                    "part": "Desc_RocketFuel_C",
+                    "amount": 62.50000000000001,
+                    "perMin": 3750.0000000000005
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "Fuel-PoweredGenerator",
+                "power": 250
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorNuclear_Ficsonium Fuel Rod",
+            "displayName": "Nuclear Power Plant (Ficsonium Fuel Rod)",
+            "ingredients": [
+                {
+                    "part": "Desc_FicsoniumFuelRod_C",
+                    "amount": 0.016666666666666666,
+                    "perMin": 1
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [],
+            "building": {
+                "name": "NuclearPowerPlant",
+                "power": 2500
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorNuclear_Plutonium Fuel Rod",
+            "displayName": "Nuclear Power Plant (Plutonium Fuel Rod)",
+            "ingredients": [
+                {
+                    "part": "Desc_PlutoniumFuelRod_C",
+                    "amount": 0.0016666666666666668,
+                    "perMin": 0.1
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [
+                {
+                    "part": "Desc_PlutoniumWaste_C",
+                    "amount": 0,
+                    "perMin": 10,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "NuclearPowerPlant",
+                "power": 2500
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
+        },
+        {
+            "id": "GeneratorNuclear_Uranium Fuel Rod",
+            "displayName": "Nuclear Power Plant (Uranium Fuel Rod)",
+            "ingredients": [
+                {
+                    "part": "Desc_NuclearFuelRod_C",
+                    "amount": 0.0033333333333333335,
+                    "perMin": 0.2
+                },
+                {
+                    "part": "Desc_Water_C",
+                    "amount": 0,
+                    "perMin": 0
+                }
+            ],
+            "products": [
+                {
+                    "part": "Desc_NuclearWaste_C",
+                    "amount": 0,
+                    "perMin": 50,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "NuclearPowerPlant",
+                "power": 2500
+            },
+            "isAlternate": false,
+            "isFicsmas": false,
+            "isPowerGenerator": true
         }
     ]
 }
