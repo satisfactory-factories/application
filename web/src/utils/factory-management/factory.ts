@@ -69,6 +69,8 @@ export const newFactory = (name = 'A new factory'): Factory => {
     inSync: null,
     syncState: {},
     displayOrder: -1, // this will get set by the planner
+    tasks: [],
+    notes: '',
   }
 }
 

@@ -30,9 +30,7 @@
         :model-value="showSatisfactionBreakdowns"
         @change="changeSatisfactionBreakdowns"
       />
-
     </div>
-
     <v-row v-if="hasParts">
       <v-col class="pb-1" cols="12">
         <planner-factory-satisfaction-items
@@ -47,11 +45,7 @@
         />
       </v-col>
     </v-row>
-    <p
-      v-else
-      class="
-          text-body-1"
-    >Awaiting product selection or requirements outside of Raw Resources.</p>
+    <p v-else class="text-body-1">Awaiting product selection or requirements outside of Raw Resources.</p>
   </div>
 </template>
 

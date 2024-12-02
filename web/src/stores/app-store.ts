@@ -93,6 +93,14 @@ export const useAppStore = defineStore('app', () => {
           needsCalculation = true
         }
       })
+
+      // Patch for #250
+      if (factory.tasks === undefined) {
+        factory.tasks = []
+      }
+      if (factory.notes === undefined) {
+        factory.notes = ''
+      }
     })
 
     if (needsCalculation) {

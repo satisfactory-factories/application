@@ -15,7 +15,6 @@ import {FactoryData} from "./models/FactoyDataSchema";
 import {User} from "./models/UsersSchema";
 import {Share, ShareDataSchema} from "./models/ShareSchema";
 
-
 dotenv.config();
 
 const PORT = 3001;
@@ -185,6 +184,23 @@ app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestB
     const { username } = req.user as jwt.JwtPayload & { username: string };
     const userData = req.body;
 
+    console.log(userData);
+
+    // Check users are not doing naughty things with the notes and task fields
+    if (userData.notes) {
+      // Make sure it doesn't exceed a certain character limit
+      userData.notes = userData.notes.substring(0, 2000);
+    }
+
+    if (userData.tasks) {
+      // Make sure it doesn't exceed a certain character limit
+      userData.tasks = userData.tasks.map((task: string) => task.substring(0, 500));
+
+      // Make sure they can't take the piss with hundreds of tasks
+      if (userData.tasks.length > 50) {
+        userData.tasks = userData.tasks.slice(0, 50);
+      }
+    }
 
     await FactoryData.findOneAndUpdate(
       { user: username },
