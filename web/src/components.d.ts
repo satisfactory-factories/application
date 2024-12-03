@@ -38,6 +38,8 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ShareButton: typeof import('./components/ShareButton.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
+    Statistics: typeof import('./components/planner/Statistics.vue')['default']
+    Summary: typeof import('./components/planner/Summary.vue')['default']
     Sync: typeof import('./components/Sync.vue')['default']
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']
