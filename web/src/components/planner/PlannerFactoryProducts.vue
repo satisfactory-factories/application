@@ -12,6 +12,7 @@
       Export (and the Screws as a end product).<br>
       An <v-chip color="green">Internal</v-chip> product is one that is used to produce other products. The surplus of which can also be used as an export.
     </p>
+    <!-- PRODUCTS -->
     <div
       v-for="(product, productIndex) in factory.products"
       :key="productIndex"
@@ -193,6 +194,16 @@
         </div>
       </v-row>
     </div>
+    <!-- END PRODUCTS -->
+    <!-- POWER PRODUCERS -->
+    <div
+      v-for="(producer, producerIndex) in factory.powerProducers"
+      :key="producerIndex"
+      class="px-4 my-2 border-md rounded sub-card"
+    >
+      Power Producer
+
+    </div>
     <div class="mt-2">
       <v-btn
         color="primary mr-2"
@@ -203,12 +214,22 @@
       >
         Add Product
       </v-btn>
+      <v-btn
+        color="yellow mr-2"
+        prepend-icon="fas fa-bolt"
+        ripple
+        variant="flat"
+        @click="addEmptyPowerProducer(factory)"
+      >
+        Add Power Generator
+      </v-btn>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
   import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
   import {
+    addPowerProducer,
     addProductToFactory,
     shouldShowNotInDemand,
     shouldShowTrim,
@@ -238,6 +259,14 @@
     addProductToFactory(factory, {
       id: '',
       amount: 1,
+    })
+  }
+
+  const addEmptyPowerProducer = (factory: Factory) => {
+    addPowerProducer(factory, {
+      building: '',
+      powerAmount: 0,
+      fuelRecipe: '',
     })
   }
 

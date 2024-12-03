@@ -1,3 +1,4 @@
+// noinspection DuplicatedCode - Duplicated by the backend
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production
@@ -98,6 +99,13 @@ export interface FactoryTask {
   completed: boolean
 }
 
+export interface FactoryPowerProducer {
+  building: string;
+  powerAmount: number; // Amount of energy to produce in MW
+  fuelRecipe: string;
+  byproduct: { part: string, amount: number } | null; // E.g. uranium waste, which is added as a product back into the factory.parts to be dealt with via export or re-use.
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -105,6 +113,7 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   internalProducts: { [key: string]: FactoryInternalProduct };
+  powerProducers: FactoryPowerProducer[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;

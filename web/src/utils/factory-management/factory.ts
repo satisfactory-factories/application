@@ -51,6 +51,7 @@ export const newFactory = (name = 'A new factory'): Factory => {
     products: [],
     byProducts: [],
     internalProducts: {},
+    powerProducers: [],
     inputs: [],
     parts: {},
     buildingRequirements: {} as { [p: string]: BuildingRequirement },

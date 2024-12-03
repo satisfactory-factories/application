@@ -4,7 +4,8 @@ import { createNewPart, getRecipe } from '@/utils/factory-management/common'
 import { calculatePartMetrics } from '@/utils/factory-management/satisfaction'
 
 export const addProductToFactory = (
-  factory: Factory, options: {
+  factory: Factory,
+  options: {
     id?: string,
     amount?: number,
     recipe?: string,
@@ -22,6 +23,22 @@ export const addProductToFactory = (
 
   // Also add the part record to the factory
   createNewPart(factory, options.id ?? '')
+}
+
+export const addPowerProducer = (
+  factory: Factory,
+  options: {
+    building?: string,
+    powerAmount?: number,
+    fuelRecipe?: string;
+  }
+) => {
+  factory.powerProducers.push({
+    building: options.building ?? '',
+    powerAmount: options.powerAmount ?? 0,
+    fuelRecipe: options.fuelRecipe ?? '',
+    byproduct: null,
+  })
 }
 
 // Loops through all products and figures out what they produce and what they require, then adds it to the factory.parts object.

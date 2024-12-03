@@ -101,6 +101,11 @@ export const useAppStore = defineStore('app', () => {
       if (factory.notes === undefined) {
         factory.notes = ''
       }
+
+      // Patch for #180
+      if (factory.powerProducers === undefined) {
+        factory.powerProducers = []
+      }
     })
 
     if (needsCalculation) {
