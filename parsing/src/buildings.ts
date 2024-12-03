@@ -31,8 +31,30 @@ function getProducingBuildings(data: any[]): string[] {
     return Array.from(producingBuildingsSet);  // Convert Set to an array
 }
 
-// Function to extract the power consumption for each producing building
-function getPowerConsumptionForBuildings(data: any[], producingBuildings: string[]): { [key: string]: number } {
+// For now this is just the 'Sink', but we may add more in the future
+function getConsumingBuildings(data: any[]): string[] {
+    const consumingBuildingsSet = new Set<string>();
+
+    data
+        .filter((entry: any) => entry.Classes)
+        .flatMap((entry: any) => entry.Classes)
+        .forEach((building: any) => {
+            if (building.ClassName && building.ClassName === "Build_ResourceSink_C") {
+                //This is just to make sure that it still exists, but we may grab more data from it in the future
+
+                // Normalize the building name by removing "_C" and lowercasing it
+                let buildingName: string = building.ClassName.replace(/_C$/, '').toLowerCase();
+                buildingName = buildingName.startsWith('build_') ? buildingName.replace('build_', '') : buildingName;
+
+                consumingBuildingsSet.add(buildingName)
+            }
+        });
+
+    return Array.from(consumingBuildingsSet);  // Convert Set to an array
+}
+
+// Function to extract the power consumption for each building
+function getPowerConsumptionForBuildings(data: any[], buildings: string[]): { [key: string]: number } {
     const buildingsPowerMap: { [key: string]: number } = {};
 
     data
@@ -45,7 +67,7 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
                 buildingName = buildingName.startsWith('build_') ? buildingName.replace('build_', '') : buildingName;
 
                 // Only include power data if the building is in the producingBuildings list
-                if (producingBuildings.includes(buildingName)) {
+                if (buildings.includes(buildingName)) {
                     buildingsPowerMap[buildingName] = parseFloat(building.mPowerConsumption) || 0;
                 }
             }
@@ -63,4 +85,6 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
     return sortedMap;
 }
 
-export { getProducingBuildings, getPowerConsumptionForBuildings };
+
+
+export { getProducingBuildings, getConsumingBuildings, getPowerConsumptionForBuildings };

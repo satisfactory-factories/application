@@ -49,7 +49,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+  <script setup lang="ts">
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
@@ -76,4 +76,4 @@
   // Reactive factory parts check
   const hasParts = computed(() => Object.keys(props.factory.parts).length > 0)
 
-</script>
+  </script>

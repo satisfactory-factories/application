@@ -264,6 +264,7 @@
       ['smeltermk1', 'Smelter'],
       ['waterExtractor', 'Water Extractor'],
       ['nuclearpowerplant', 'Nuclear Power Plant'],
+      ['resourcesink', 'Resource Sink'],
     ])
 
     return buildingFriendly.get(building) || `UNKNOWN BUILDING: ${building}`
