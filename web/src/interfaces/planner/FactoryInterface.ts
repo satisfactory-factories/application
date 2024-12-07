@@ -1,7 +1,11 @@
+// noinspection DuplicatedCode - Duplicated by the backend
+import { PowerItem } from '@/interfaces/Recipes'
+
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
+  amountRequiredPower: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaProduction: number; // This is the amount supplied by internal products
@@ -13,8 +17,8 @@ export interface PartMetrics {
 export interface BuildingRequirement {
   name: string;
   amount: number;
-  powerPerBuilding: number;
-  totalPower: number;
+  powerConsumed?: number;
+  powerProduced?: number;
 }
 
 export interface ByProductItem {
@@ -98,6 +102,26 @@ export interface FactoryTask {
   completed: boolean
 }
 
+export interface FactoryPowerProducer {
+  building: string;
+  buildingAmount: number;
+  ingredients: PowerItem[],
+  ingredientAmount: number; // Enables the user to specify the quantity of fuel to use.
+  byproduct: { part: string, amount: number } | null; // E.g. uranium waste, which is added as a product back into the factory.parts to be dealt with via export or re-use.
+  powerAmount: number; // Amount of energy user is requesting to be generated.
+  powerProduced: number; // Amount of energy actually produced calculated from requested ingredientAmount and powerAmount.
+  recipe: string;
+  buildingCount: number;
+  displayOrder: number;
+  updated: string | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
+}
+
+export interface FactoryPower {
+  consumed: number;
+  produced: number;
+  difference: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -105,14 +129,15 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   internalProducts: { [key: string]: FactoryInternalProduct };
+  powerProducers: FactoryPowerProducer[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;
-  totalPower: number;
   exports: { [key: string]: FactoryExportItem };
   exportCalculator: { [key: string]: ExportCalculatorSettings };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
+  power: FactoryPower;
   usingRawResourcesOnly: boolean;
   hidden: boolean; // Whether to hide the card or not
   hasProblem: boolean

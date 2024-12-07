@@ -16,12 +16,12 @@ let computersFac: Factory
 describe('Complex Plan', () => {
   beforeEach(() => {
     factories = complexDemoPlan().getFactories()
+    calculateFactories(factories, gameData)
     oilFac = findFacByName('Oil Processing', factories)
     copperIngotsFac = findFacByName('Copper Ingots', factories)
     copperBasicsFac = findFacByName('Copper Basics', factories)
     circuitBoardsFac = findFacByName('Circuit Boards', factories)
     computersFac = findFacByName('Computers (end product)', factories)
-    calculateFactories(factories, gameData)
   })
 
   it('should have factories', () => {
@@ -37,6 +37,23 @@ describe('Complex Plan', () => {
       expect(oilFac.products[0].amount).toBe(640)
       expect(oilFac.products[1].id).toBe('LiquidFuel')
       expect(oilFac.products[1].amount).toBe(40)
+      expect(oilFac.powerProducers[0]).toStrictEqual({
+        building: 'generatorfuel',
+        buildingCount: 2,
+        buildingAmount: 2,
+        powerProduced: 500,
+        powerAmount: 500,
+        ingredientAmount: 40,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        byproduct: null,
+        displayOrder: 0,
+        updated: 'power',
+        ingredients: [{
+          part: 'LiquidFuel',
+          perMin: 40,
+          mwPerItem: 12.5,
+        }],
+      })
     })
     it('should have product requirements calculated correctly', () => {
       expect(oilFac.products[0].requirements).toStrictEqual({ LiquidOil: { amount: 960 } })
@@ -61,6 +78,7 @@ describe('Complex Plan', () => {
         amountRequired: 960,
         amountRequiredExports: 0,
         amountRequiredProduction: 960,
+        amountRequiredPower: 0,
         amountSupplied: 960,
         amountSuppliedViaInput: 960,
         amountSuppliedViaProduction: 0,
@@ -69,13 +87,14 @@ describe('Complex Plan', () => {
         isRaw: true,
       })
       expect(oilFac.parts.LiquidFuel).toStrictEqual({
-        amountRequired: 0,
+        amountRequired: 40,
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
+        amountRequiredPower: 40,
         amountSupplied: 40,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 40,
-        amountRemaining: 40,
+        amountRemaining: 0,
         satisfied: true,
         isRaw: false,
       })
@@ -83,6 +102,7 @@ describe('Complex Plan', () => {
         amountRequired: 60,
         amountRequiredExports: 0,
         amountRequiredProduction: 60,
+        amountRequiredPower: 0,
         amountSupplied: 320,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 320,
@@ -96,6 +116,7 @@ describe('Complex Plan', () => {
         amountRequired: 640,
         amountRequiredExports: 640,
         amountRequiredProduction: 0,
+        amountRequiredPower: 0,
         amountSupplied: 640,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 640,
@@ -137,16 +158,20 @@ describe('Complex Plan', () => {
 
     it('should have the correct amount of power calculated', () => {
       // Should be 33 buildings * 30 power per building = 990
-      expect(oilFac.totalPower).toBe(990)
+      expect(oilFac.power.consumed).toBe(990)
     })
 
     it('should have the correct number of buildings calculated along with their power', () => {
       expect(oilFac.buildingRequirements).toStrictEqual({
+        generatorfuel: {
+          amount: 2,
+          name: 'generatorfuel',
+          powerProduced: 500,
+        },
         oilrefinery: {
-          name: 'oilrefinery',
           amount: 33,
-          powerPerBuilding: 30,
-          totalPower: 990,
+          name: 'oilrefinery',
+          powerConsumed: 990,
         },
       })
     })

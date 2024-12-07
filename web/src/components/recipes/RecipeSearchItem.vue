@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
   import RecipeItem from './RecipeItem.vue'
-  import { Recipe } from '@/interfaces/Recipe'
+  import { Recipe } from '@/interfaces/Recipes'
 
   defineProps<{
     recipe: Recipe;

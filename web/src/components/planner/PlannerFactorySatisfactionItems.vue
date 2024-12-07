@@ -91,7 +91,7 @@
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Internal Consumption</span>
-                <span class="align-self-end text-right">-{{ formatNumber(part.amountRequiredProduction ) }}/min</span>
+                <span class="align-self-end text-right">-{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min</span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
@@ -166,7 +166,7 @@
   import { addProductToFactory } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getRequestsForFactoryByProduct } from '@/utils/factory-management/exports'
-  import { formatNumber } from '../../utils/numberFormatter'
+  import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
 
   const getProduct = inject('getProduct') as (factory: Factory, productId: string) => FactoryItem | undefined
@@ -203,7 +203,7 @@
   const addProduct = (factory: Factory, part: string, amount: number): void => {
     addProductToFactory(factory, {
       id: part,
-      amount,
+      amount: Math.abs(amount),
       recipe: getDefaultRecipeForPart(part),
     })
 

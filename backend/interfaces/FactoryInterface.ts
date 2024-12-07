@@ -1,3 +1,4 @@
+// noinspection DuplicatedCode - Duplicated by web
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production

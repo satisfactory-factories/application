@@ -1,7 +1,7 @@
-import { BuildingRequirement, Factory, FactoryDependency } from '@/interfaces/planner/FactoryInterface'
+import { BuildingRequirement, Factory, FactoryDependency, FactoryPower } from '@/interfaces/planner/FactoryInterface'
 import { calculateInputs } from '@/utils/factory-management/inputs'
 import { calculateByProducts, calculateInternalProducts, calculateProducts } from '@/utils/factory-management/products'
-import { calculateBuildingRequirements, calculateBuildingsAndPower } from '@/utils/factory-management/buildings'
+import { calculateFactoryBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateRawSupply, calculateUsingRawResourcesOnly } from '@/utils/factory-management/supply'
 import { calculateFactorySatisfaction } from '@/utils/factory-management/satisfaction'
 import {
@@ -15,6 +15,7 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
+import { calculatePowerProducers } from '@/utils/factory-management/power'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -51,10 +52,10 @@ export const newFactory = (name = 'A new factory'): Factory => {
     products: [],
     byProducts: [],
     internalProducts: {},
+    powerProducers: [],
     inputs: [],
     parts: {},
     buildingRequirements: {} as { [p: string]: BuildingRequirement },
-    totalPower: 0,
     dependencies: {
       requests: {},
       metrics: {},
@@ -62,6 +63,7 @@ export const newFactory = (name = 'A new factory'): Factory => {
     exportCalculator: {},
     rawResources: {},
     exports: {},
+    power: {} as FactoryPower,
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
     hidden: false,
@@ -95,9 +97,6 @@ export const calculateFactory = (
   // Calculate if there have been any changes the player needs to enact.
   calculateSyncState(factory)
 
-  // Calculate building requirements for each product based on the selected recipe and product amount.
-  calculateBuildingRequirements(factory, gameData)
-
   // Calculate if we have products satisfied by raw resources.
   calculateRawSupply(factory, gameData)
 
@@ -107,8 +106,11 @@ export const calculateFactory = (
   // Calculate if we have any internal products that can be used to satisfy requirements.
   calculateInternalProducts(factory, gameData)
 
-  // We then calculate the building and power demands to make the factory.
-  calculateBuildingsAndPower(factory)
+  // Calculate the generation of power for the factory
+  calculatePowerProducers(factory, gameData)
+
+  // Calculate the amount of buildings and power required to make the factory and any power generation.
+  calculateFactoryBuildingsAndPower(factory, gameData)
 
   // Check all other factories to see if they are affected by this factory change.
   constructDependencies(allFactories)

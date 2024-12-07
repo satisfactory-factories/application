@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, defineProps, provide, reactive, ref, watch } from 'vue'
+  import { computed, provide, reactive, ref, watch } from 'vue'
 
   import PlannerGlobalActions from '@/components/planner/PlannerGlobalActions.vue'
   import {
@@ -87,15 +87,11 @@
   import { calculateFactories, calculateFactory, findFac, newFactory } from '@/utils/factory-management/factory'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useDisplay } from 'vuetify'
+  import { useGameDataStore } from '@/stores/game-data-store'
 
-  const props = defineProps<{ gameData: DataInterface | null }>()
   const { mdAndDown } = useDisplay()
-
-  const gameData = props.gameData
-  if (!gameData) {
-    console.error('No game data provided to Planner!')
-    throw new Error('No game data provided to Planner!')
-  }
+  const { getGameData } = useGameDataStore()
+  const gameData = getGameData()
 
   const appStore = useAppStore()
   const { factories } = storeToRefs(appStore)
@@ -257,13 +253,16 @@
       ['converter', 'Converter'],
       ['foundrymk1', 'Foundry'],
       ['hadroncollider', 'Particle Accelerator'],
+      ['generatorbiomass', 'Biomass Burner'],
+      ['generatorcoal', 'Coal-Powered Generator'],
+      ['generatorfuel', 'Fuel-Powered Generator'],
+      ['generatornuclear', 'Nuclear Power Plant'],
       ['manufacturermk1', 'Manufacturer'],
       ['oilrefinery', 'Oil Refinery'],
       ['packager', 'Packager'],
       ['quantumencoder', 'Quantum Encoder'],
       ['smeltermk1', 'Smelter'],
       ['waterExtractor', 'Water Extractor'],
-      ['nuclearpowerplant', 'Nuclear Power Plant'],
     ])
 
     return buildingFriendly.get(building) || `UNKNOWN BUILDING: ${building}`

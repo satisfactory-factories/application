@@ -11,28 +11,30 @@
       </v-card-title>
       <v-card-text>
         <p class="mb-4">
-          Clicking on a button below will load a template plan into the planner. <b>This will overwrite any existing plan WITHOUT warning.</b> You may wish to save your plan first by creating a share link.
+          Clicking on a button below will load a template plan into the planner. <span class="text-red font-weight-bold">This will overwrite any existing plan WITHOUT warning.</span> You may wish to save your plan first by creating a share link.
         </p>
-        <div
-          v-for="template in templates"
-          :key="template.name"
-          class="mb-2 pb-2 border-b d-flex align-center"
-        >
-          <v-btn
-            class="mr-2"
-            color="primary"
-            @click="loadTemplate(template)"
-          >
-            {{ template.name }}
-          </v-btn>
-          {{ template.description }}
-        </div>
+        <v-table>
+          <thead>
+            <th class="text-body-1 font-weight-bold">Name</th>
+            <th class="text-body-1 font-weight-bold">Description</th>
+          </thead>
+          <tbody>
+            <tr v-for="template in templates" :key="template.name">
+              <td class="text-center">
+                <v-btn
+                  class="mr-2"
+                  color="green"
+                  @click="loadTemplate(template)"
+                >
+                  {{ template.name }}
+                </v-btn></td>
+              <td>{{ template.description }}</td>
+            </tr>
+          </tbody>
+        </v-table>
       </v-card-text>
       <v-card-actions>
-        <v-spacer />
-        <v-btn color="blue darken-1" @click="dialog = false">
-          Close
-        </v-btn>
+        <v-btn color="blue darken-1" variant="elevated" @click="dialog = false">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog></template>
@@ -55,7 +57,7 @@
   const templates = [
     {
       name: 'Demo',
-      description: 'The demo template containing 5 factories with a mix of fluids, solids and multiple dependencies. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature.',
+      description: 'Contains 6 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
       data: complexDemoPlan().getFactories(),
     },
     {

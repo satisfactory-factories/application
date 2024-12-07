@@ -29,7 +29,7 @@ export const calculatePartMetrics = (factory: Factory, part: string) => {
   })
 
   // Sum up requirements
-  partData.amountRequired = partData.amountRequiredProduction + partData.amountRequiredExports
+  partData.amountRequired = partData.amountRequiredProduction + partData.amountRequiredExports + partData.amountRequiredPower
 
   // Sum up remaining amount
   partData.amountRemaining = partData.amountSupplied - partData.amountRequired

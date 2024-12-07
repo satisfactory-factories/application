@@ -5,9 +5,11 @@
         "constructormk1": 4,
         "converter": 0.1,
         "foundrymk1": 16,
+        "generatorcoal": 0,
+        "generatorfuel": 0,
+        "generatornuclear": 0,
         "hadroncollider": 0.1,
         "manufacturermk1": 55,
-        "nuclearpowerplant": 0,
         "oilrefinery": 30,
         "packager": 10,
         "quantumencoder": 0.1,
@@ -412,7 +414,7 @@
                 "stackSize": 0,
                 "isFluid": true,
                 "isFicsmas": false,
-                "energyGeneratedInMJ": 0
+                "energyGeneratedInMJ": 400
             },
             "HighSpeedConnector": {
                 "name": "High-Speed Connector",
@@ -440,7 +442,7 @@
                 "stackSize": 0,
                 "isFluid": true,
                 "isFicsmas": false,
-                "energyGeneratedInMJ": 5
+                "energyGeneratedInMJ": 5000
             },
             "IronIngot": {
                 "name": "Iron Ingot",
@@ -489,14 +491,14 @@
                 "stackSize": 0,
                 "isFluid": true,
                 "isFicsmas": false,
-                "energyGeneratedInMJ": 1
+                "energyGeneratedInMJ": 750
             },
             "LiquidFuel": {
                 "name": "Fuel",
                 "stackSize": 0,
                 "isFluid": true,
                 "isFicsmas": false,
-                "energyGeneratedInMJ": 1
+                "energyGeneratedInMJ": 750
             },
             "LiquidOil": {
                 "name": "Liquid Oil",
@@ -860,7 +862,7 @@
                 "stackSize": 0,
                 "isFluid": true,
                 "isFicsmas": false,
-                "energyGeneratedInMJ": 4
+                "energyGeneratedInMJ": 3600
             },
             "Rotor": {
                 "name": "Rotor",
@@ -10353,13 +10355,13 @@
             "ingredients": [
                 {
                     "part": "GenericBiomass",
-                    "amount": 0.16666666666666666,
-                    "perMin": 10
+                    "perMin": 10,
+                    "mwPerItem": 3
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10369,13 +10371,13 @@
             "ingredients": [
                 {
                     "part": "Leaves",
-                    "amount": 2,
-                    "perMin": 120
+                    "perMin": 120,
+                    "mwPerItem": 0.25
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10385,13 +10387,13 @@
             "ingredients": [
                 {
                     "part": "Mycelia",
-                    "amount": 1.5,
-                    "perMin": 90
+                    "perMin": 90,
+                    "mwPerItem": 0.3333333333333333
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10401,13 +10403,13 @@
             "ingredients": [
                 {
                     "part": "PackagedBiofuel",
-                    "amount": 0.04,
-                    "perMin": 2.4
+                    "perMin": 2.4,
+                    "mwPerItem": 12.5
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10417,13 +10419,13 @@
             "ingredients": [
                 {
                     "part": "Biofuel",
-                    "amount": 0.06666666666666667,
-                    "perMin": 4
+                    "perMin": 4,
+                    "mwPerItem": 7.5
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10433,13 +10435,13 @@
             "ingredients": [
                 {
                     "part": "Wood",
-                    "amount": 0.3,
-                    "perMin": 18
+                    "perMin": 18,
+                    "mwPerItem": 1.6666666666666667
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "BiomassBurner",
+                "name": "generatorbiomass",
                 "power": 30
             }
         },
@@ -10449,18 +10451,18 @@
             "ingredients": [
                 {
                     "part": "Coal",
-                    "amount": 0.25,
-                    "perMin": 15
+                    "perMin": 15,
+                    "mwPerItem": 5
                 },
                 {
                     "part": "Water",
-                    "amount": 0.75,
-                    "perMin": 45
+                    "perMin": 45,
+                    "supplementalRatio": 0.6
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Coal-PoweredGenerator",
+                "name": "generatorcoal",
                 "power": 75
             }
         },
@@ -10470,18 +10472,18 @@
             "ingredients": [
                 {
                     "part": "CompactedCoal",
-                    "amount": 0.11904833333333334,
-                    "perMin": 7.1429
+                    "perMin": 7.14286,
+                    "mwPerItem": 10.499995800001681
                 },
                 {
                     "part": "Water",
-                    "amount": 0.75,
-                    "perMin": 45
+                    "perMin": 45,
+                    "supplementalRatio": 0.6
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Coal-PoweredGenerator",
+                "name": "generatorcoal",
                 "power": 75
             }
         },
@@ -10491,18 +10493,18 @@
             "ingredients": [
                 {
                     "part": "PetroleumCoke",
-                    "amount": 0.4166666666666667,
-                    "perMin": 25
+                    "perMin": 25,
+                    "mwPerItem": 3
                 },
                 {
                     "part": "Water",
-                    "amount": 0.75,
-                    "perMin": 45
+                    "perMin": 45,
+                    "supplementalRatio": 0.6
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Coal-PoweredGenerator",
+                "name": "generatorcoal",
                 "power": 75
             }
         },
@@ -10512,13 +10514,13 @@
             "ingredients": [
                 {
                     "part": "LiquidFuel",
-                    "amount": 250,
-                    "perMin": 15000
+                    "perMin": 20,
+                    "mwPerItem": 12.5
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Fuel-PoweredGenerator",
+                "name": "generatorfuel",
                 "power": 250
             }
         },
@@ -10528,13 +10530,13 @@
             "ingredients": [
                 {
                     "part": "IonizedFuel",
-                    "amount": 50,
-                    "perMin": 3000
+                    "perMin": 3,
+                    "mwPerItem": 83.33333333333333
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Fuel-PoweredGenerator",
+                "name": "generatorfuel",
                 "power": 250
             }
         },
@@ -10544,13 +10546,13 @@
             "ingredients": [
                 {
                     "part": "LiquidBiofuel",
-                    "amount": 250,
-                    "perMin": 15000
+                    "perMin": 20,
+                    "mwPerItem": 12.5
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Fuel-PoweredGenerator",
+                "name": "generatorfuel",
                 "power": 250
             }
         },
@@ -10560,13 +10562,13 @@
             "ingredients": [
                 {
                     "part": "RocketFuel",
-                    "amount": 62.5,
-                    "perMin": 3750
+                    "perMin": 4.16667,
+                    "mwPerItem": 59.999952000038405
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Fuel-PoweredGenerator",
+                "name": "generatorfuel",
                 "power": 250
             }
         },
@@ -10576,13 +10578,13 @@
             "ingredients": [
                 {
                     "part": "LiquidTurboFuel",
-                    "amount": 0.125,
-                    "perMin": 7.5
+                    "perMin": 7.5,
+                    "mwPerItem": 33.333333333333336
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "Fuel-PoweredGenerator",
+                "name": "generatorfuel",
                 "power": 250
             }
         },
@@ -10592,18 +10594,18 @@
             "ingredients": [
                 {
                     "part": "FicsoniumFuelRod",
-                    "amount": 0.016666666666666666,
-                    "perMin": 1
+                    "perMin": 1,
+                    "mwPerItem": 2500
                 },
                 {
                     "part": "Water",
-                    "amount": 4,
-                    "perMin": 240
+                    "perMin": 240,
+                    "supplementalRatio": 0.096
                 }
             ],
-            "products": [],
+            "byproduct": null,
             "building": {
-                "name": "NuclearPowerPlant",
+                "name": "generatornuclear",
                 "power": 2500
             }
         },
@@ -10613,25 +10615,21 @@
             "ingredients": [
                 {
                     "part": "PlutoniumFuelRod",
-                    "amount": 0.0016666666666666668,
-                    "perMin": 0.1
+                    "perMin": 0.1,
+                    "mwPerItem": 25000
                 },
                 {
                     "part": "Water",
-                    "amount": 4,
-                    "perMin": 240
+                    "perMin": 240,
+                    "supplementalRatio": 0.096
                 }
             ],
-            "products": [
-                {
-                    "part": "PlutoniumWaste",
-                    "amount": 0.16666666666666666,
-                    "perMin": 10,
-                    "isByProduct": true
-                }
-            ],
+            "byproduct": {
+                "part": "PlutoniumWaste",
+                "perMin": 1
+            },
             "building": {
-                "name": "NuclearPowerPlant",
+                "name": "generatornuclear",
                 "power": 2500
             }
         },
@@ -10641,25 +10639,21 @@
             "ingredients": [
                 {
                     "part": "NuclearFuelRod",
-                    "amount": 0.0033333333333333335,
-                    "perMin": 0.2
+                    "perMin": 0.2,
+                    "mwPerItem": 12500
                 },
                 {
                     "part": "Water",
-                    "amount": 4,
-                    "perMin": 240
+                    "perMin": 240,
+                    "supplementalRatio": 0.096
                 }
             ],
-            "products": [
-                {
-                    "part": "NuclearWaste",
-                    "amount": 0.8333333333333334,
-                    "perMin": 50,
-                    "isByProduct": true
-                }
-            ],
+            "byproduct": {
+                "part": "NuclearWaste",
+                "perMin": 10
+            },
             "building": {
-                "name": "NuclearPowerPlant",
+                "name": "generatornuclear",
                 "power": 2500
             }
         }

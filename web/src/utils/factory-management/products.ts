@@ -4,10 +4,12 @@ import { createNewPart, getRecipe } from '@/utils/factory-management/common'
 import { calculatePartMetrics } from '@/utils/factory-management/satisfaction'
 
 export const addProductToFactory = (
-  factory: Factory, options: {
+  factory: Factory,
+  options: {
     id?: string,
     amount?: number,
     recipe?: string,
+    requirements?: { [key: string]: { amount: number } },
   }
 ) => {
   factory.products.push({
@@ -15,13 +17,40 @@ export const addProductToFactory = (
     amount: options.amount ?? 1,
     recipe: options.recipe ?? '',
     displayOrder: factory.products.length,
-    requirements: {},
+    requirements: options.requirements ?? {},
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
   })
 
   // Also add the part record to the factory
   createNewPart(factory, options.id ?? '')
+}
+
+// For internal testing use
+export const addPowerProducerToFactory = (
+  factory: Factory,
+  options: {
+    building?: string,
+    buildingAmount?: number,
+    powerAmount?: number,
+    ingredientAmount?: number,
+    recipe: string;
+    updated: string // Supply one of 'power', 'ingredient', 'building', needed so the power generation can be recalculated.
+  },
+) => {
+  factory.powerProducers.push({
+    building: options.building ?? '',
+    buildingAmount: options.buildingAmount ?? 0,
+    buildingCount: 0, // Calculated later
+    ingredients: [], // Calculated later
+    ingredientAmount: options.ingredientAmount ?? 0,
+    powerAmount: options.powerAmount ?? 0,
+    powerProduced: 0, // Calculated later
+    recipe: options.recipe,
+    byproduct: null,
+    displayOrder: factory.powerProducers.length,
+    updated: options.updated,
+  })
 }
 
 // Loops through all products and figures out what they produce and what they require, then adds it to the factory.parts object.
@@ -35,12 +64,6 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       return
     }
     const recipePart = recipe.products[0].part
-
-    if (product.amount === 0 || !product.amount) {
-      // If the product amount is 0, we don't need to calculate anything, because the user might be entering a new number.
-      // I tried forcing this to be 1, but it causes a lot of frustration for the user, so it's better to just simply do nothing.
-      return
-    }
 
     if (product.amount < 0) {
       // If the product amount is negative, this causes issues with calculations, so force it to 0.
@@ -81,10 +104,9 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
           }
         }
 
-        factory.rawResources[ingredient.part].amount += ingredientRequired
-
         // Mark the part as raw which will eventually be marked as fully satisfied.
         factory.parts[ingredient.part].isRaw = true
+        factory.rawResources[ingredient.part].amount += ingredientRequired
       }
 
       // Set the amount that the individual products need for display purposes.

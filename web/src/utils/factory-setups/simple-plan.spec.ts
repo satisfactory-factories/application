@@ -40,6 +40,7 @@ describe('Simple factory plan', () => {
       amountRequired: 100,
       amountRequiredExports: 100,
       amountRequiredProduction: 0,
+      amountRequiredPower: 0,
       amountSupplied: 100,
       amountSuppliedViaInput: 0,
       amountSuppliedViaProduction: 100,
@@ -51,6 +52,7 @@ describe('Simple factory plan', () => {
       amountRequired: 100,
       amountRequiredExports: 0,
       amountRequiredProduction: 100,
+      amountRequiredPower: 0,
       amountSupplied: 100,
       amountSuppliedViaInput: 100,
       amountSuppliedViaProduction: 0,
@@ -60,12 +62,16 @@ describe('Simple factory plan', () => {
     })
   })
   it('should have correctly calculated building requirements', () => {
+    expect(factory.products[0].buildingRequirements).toStrictEqual({
+      name: 'smeltermk1',
+      amount: 3.3333333333333335, // Not rounded on purpose so the user can see 3.333x knowing they need a smelter at 33.333% clock speed
+      powerConsumed: 12.936138367958613, // Gets rounded eventually
+    })
     expect(factory.buildingRequirements).toStrictEqual({
       smeltermk1: {
         name: 'smeltermk1',
-        amount: 3.3333333333333335, // I hate this so much
-        powerPerBuilding: 4,
-        totalPower: 12.936138367958613,
+        amount: 4, // Rounded up to the nearest whole number
+        powerConsumed: 12.936,
       },
     })
   })
@@ -75,7 +81,7 @@ describe('Simple factory plan', () => {
     expect(factory.usingRawResourcesOnly).toBe(true)
   })
   it('should have the correct total power', () => {
-    expect(factory.totalPower).toBe(12.936138367958613)
+    expect(factory.power.consumed).toBe(12.936)
   })
   it('should have a single dependency', () => {
     const ironPlateFac = findFacByName('Iron Plates', factories)

@@ -19,7 +19,7 @@
     <div>
       <span class="font-weight-bold mr-2">Products:</span>
       <v-chip
-        v-for="product in recipe.products"
+        v-for="product in recipe.byproduct"
         :key="product.part"
         class="sf-chip"
       >
@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Recipe } from '@/interfaces/Recipe'
+  import { Recipe } from '@/interfaces/Recipes'
   import { getPartDisplayName } from '@/utils/helpers'
 
   defineProps<{
