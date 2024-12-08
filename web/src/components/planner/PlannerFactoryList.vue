@@ -7,12 +7,43 @@
           style="box-shadow: none !important;"
           @click="navigateToFactory(element.id)"
         >
-          <v-row class="d-flex ma-0">
-            <v-col class="text-body-1 align-content-center pa-2" cols="11">
+          <v-row class="d-flex flex-nowrap ma-0">
+            <v-spacer class="text-body-1 align-content-center pa-2">
               <i class="fas fa-bars text-grey-darken-1 mr-2" />
               <i class="fas fa-industry mr-2" />
               <span>{{ truncateFactoryName(element.name) }}</span>
-            </v-col>
+            </v-spacer>
+            <v-tooltip right>
+              <template #activator="{ props }">
+                <v-col
+                  v-if="countIncompleteTasks(element as Factory)"
+                  class="text-body-1 align-content-center text-center py-0 px-1 bg-orange-darken-2"
+                  cols="auto"
+                  v-bind="props"
+                  @click="navigateToFactory(element.id, `${element.id}-tasks`)"
+                  @click.stop
+                >
+                  <i class="d-inline fas fa-tasks mr-1" />
+                  <span>{{ countIncompleteTasks(element as Factory) }}</span>
+                </v-col>
+              </template>
+              <span>{{ countIncompleteTasks(element as Factory) }} tasks</span>
+            </v-tooltip>
+            <v-tooltip right>
+              <template #activator="{ props }">
+                <v-col
+                  v-if="element.notes"
+                  class="text-body-1 align-content-center text-center py-0 px-1 bg-orange-darken-2"
+                  cols="1"
+                  v-bind="props"
+                  @click="navigateToFactory(element.id, `${element.id}-notes`)"
+                  @click.stop
+                >
+                  <i class="d-inline fas fa-sticky-note" />
+                </v-col>
+              </template>
+              <span>See notes</span>
+            </v-tooltip>
             <v-tooltip right>
               <template #activator="{ props }">
                 <v-col
@@ -63,9 +94,10 @@
 <script setup lang="ts">
   import { defineEmits, defineProps, inject, ref, watch } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { countIncompleteTasks } from '@/utils/factory-management/factory'
   import draggable from 'vuedraggable'
 
-  const navigateToFactory = inject('navigateToFactory') as (id: number) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
 
   // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{

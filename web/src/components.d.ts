@@ -28,7 +28,7 @@ declare module 'vue' {
     PlannerFactorySatisfaction: typeof import('./components/planner/PlannerFactorySatisfaction.vue')['default']
     PlannerFactorySatisfactionBuildings: typeof import('./components/planner/PlannerFactorySatisfactionBuildings.vue')['default']
     PlannerFactorySatisfactionItems: typeof import('./components/planner/PlannerFactorySatisfactionItems.vue')['default']
-    PlannerFactoryTodos: typeof import('./components/planner/PlannerFactoryTodos.vue')['default']
+    PlannerFactoryTasks: typeof import('./components/planner/PlannerFactoryTasks.vue')['default']
     PlannerGlobalActions: typeof import('./components/planner/PlannerGlobalActions.vue')['default']
     PlannerStatistics: typeof import('./components/planner/PlannerStatistics.vue')['default']
     RecipeItem: typeof import('./components/recipes/RecipeItem.vue')['default']

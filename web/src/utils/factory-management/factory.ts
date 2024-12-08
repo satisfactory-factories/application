@@ -146,3 +146,7 @@ export const calculateFactories = (factories: Factory[], gameData: DataInterface
 
   return factories
 }
+
+export const countIncompleteTasks = (factory: Factory) => {
+  return factory.tasks.filter(task => !task.completed).length
+}
