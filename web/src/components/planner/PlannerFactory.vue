@@ -12,7 +12,23 @@
                 placeholder="Factory Name"
               >
             </div>
+            <!-- chips bar -->
             <div class="d-flex align-center">
+              <!-- tasks chip -->
+              <div v-if="countIncompleteTasks(factory)" class="mr-2">
+                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-todos`)">
+                  <i class="fas fa-tasks" />
+                  <span class="ml-2">{{ countIncompleteTasks(factory) }} todos</span>
+                </v-chip>
+              </div>
+              <!-- notes chip -->
+              <div v-if="factory.notes" class="mr-2">
+                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                  <i class="fas fa-sticky-note" />
+                  <span class="ml-2">See notes</span>
+                </v-chip>
+              </div>
+              <!-- sync status chip -->
               <div v-if="factory.inSync">
                 <v-chip class="sf-chip small green no-margin" @click="setSync(factory)">
                   <i class="fas fa-check-square" />
@@ -31,6 +47,7 @@
                   <span class="ml-2">Mark as in sync with game</span>
                 </v-chip>
               </div>
+              <!-- sync status tooltip -->
               <v-tooltip right>
                 <template #activator="{ props }">
                   <div class="ml-2 text-grey" v-bind="props">
@@ -122,12 +139,14 @@
           <v-row>
             <v-col cols="12" md="6">
               <planner-factory-todos
+                :id="`${factory.id}-todos`"
                 :factory="factory"
                 :help-text="helpText"
               />
             </v-col>
             <v-col cols="12" md="6">
               <planner-factory-notes
+                :id="`${factory.id}-notes`"
                 :factory="factory"
                 :help-text="helpText"
               />
@@ -267,6 +286,7 @@
   import { Factory, FactoryDependencyMetrics, FactoryItem } from '@/interfaces/planner/FactoryInterface'
   import { DataInterface } from '@/interfaces/DataInterface'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { countIncompleteTasks } from '@/utils/factory-management/factory'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
 
@@ -275,7 +295,7 @@
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
   const getProduct = inject('getProduct') as (factory: Factory, productId: string) => FactoryItem
 
   defineProps<{

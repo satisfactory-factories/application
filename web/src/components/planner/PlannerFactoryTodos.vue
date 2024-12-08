@@ -1,6 +1,9 @@
 <template>
   <v-card class="factory-card sub-card">
-    <v-card-title>Todos</v-card-title>
+    <v-card-title>
+      <i class="fas fa-tasks" />
+      <span class="ml-3">Todos</span>
+    </v-card-title>
     <v-card-text>
       <v-text-field
         v-model="newTask"

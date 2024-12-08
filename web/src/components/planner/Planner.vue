@@ -277,7 +277,7 @@
     helpText.value = !helpText.value
   }
 
-  const navigateToFactory = (factoryId: number | string) => {
+  const navigateToFactory = (factoryId: number | string, subsection?: string) => {
     const facId = parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, appStore.getFactories())
     if (!factory) {
@@ -290,7 +290,7 @@
     // Wait a bit for the factory to unhide fully. Hack but works well.
     setTimeout(() => {
       // Navigate to it
-      const factoryElement = document.getElementById(`${factoryId}`)
+      const factoryElement = document.getElementById(subsection ?? `${factoryId}`)
       if (factoryElement) {
         factoryElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }

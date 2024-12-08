@@ -1,6 +1,9 @@
 <template>
   <v-card class="factory-card sub-card">
-    <v-card-title>Notes</v-card-title>
+    <v-card-title>
+      <i class="fas fa-sticky-note" />
+      <span class="ml-3">Notes</span>
+    </v-card-title>
     <v-card-text>
       <v-textarea
         v-model="factory.notes"
