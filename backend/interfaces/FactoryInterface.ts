@@ -1,3 +1,4 @@
+// noinspection DuplicatedCode - Duplicated by web
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production
@@ -109,7 +110,6 @@ export interface Factory {
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;
   totalPower: number;
-  exports: { [key: string]: FactoryExportItem };
   exportCalculator: { [key: string]: ExportCalculatorSettings };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };

@@ -5,8 +5,8 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 
-describe('satisfaction', () => {
-  describe('calculateFactorySatisfaction', () => {
+describe('parts', () => {
+  describe('calculateParts', () => {
     let mockFactory: Factory
 
     beforeEach(() => {

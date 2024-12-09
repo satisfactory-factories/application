@@ -1,5 +1,5 @@
-import {Recipe} from "./interfaces/Recipe";
-import {Part, PartDataInterface, RawResource} from "./interfaces/Part";
+import { ParserRecipe } from "./interfaces/ParserRecipe";
+import { ParserPart, ParserItemDataInterface, ParserRawResource } from "./interfaces/ParserPart";
 import {
   blacklist,
   whitelist,
@@ -9,8 +9,8 @@ import {
   getFriendlyName
 } from "./common";
 
-function getItems(data: any[]): PartDataInterface {
-    const parts: { [key: string]: Part } = {};
+function getItems(data: any[]): ParserItemDataInterface {
+    const parts: { [key: string]: ParserPart } = {};
     const collectables: { [key: string]: string } = {};
     const rawResources = getRawResources(data);
 
@@ -213,7 +213,13 @@ function getItems(data: any[]): PartDataInterface {
                 // Extract stack size
                 const stackSize: number = stackSizeConvert(classDescriptor?.mStackSize || "SS_UNKNOWN")
                 // Extract the energy value
-                const energyValue: number = classDescriptor.mEnergyValue ?? 0;
+
+                let energyValue = classDescriptor.mEnergyValue ?? 0;
+
+                // If the part is a fluid, the energy value is multiplied by 1000, cos the game loves to store everything as 0.0001 values...
+                if (isFluid(partName)) {
+                    energyValue *= 1000;
+                }
 
                 // Check if the part is a collectable (e.g., Power Slug)
                 if (isCollectable(entry.mIngredients)) {
@@ -235,7 +241,7 @@ function getItems(data: any[]): PartDataInterface {
     return {
         parts: Object.keys(parts)
             .sort()
-            .reduce((sortedObj: { [key: string]: Part }, key: string) => {
+            .reduce((sortedObj: { [key: string]: ParserPart }, key: string) => {
                 sortedObj[key] = parts[key];
                 return sortedObj;
             }, {}),
@@ -276,8 +282,8 @@ function stackSizeConvert(stackSize: string): number {
 }
 
 // Function to extract raw resources from the game data
-function getRawResources(data: any[]): { [key: string]: RawResource } {
-    const rawResources: { [key: string]: RawResource } = {};
+function getRawResources(data: any[]): { [key: string]: ParserRawResource } {
+    const rawResources: { [key: string]: ParserRawResource } = {};
     const limits: { [key: string]: number } = {
         "Coal": 42300,
         "LiquidOil": 12600,
@@ -330,7 +336,7 @@ function getRawResources(data: any[]): { [key: string]: RawResource } {
     return rawResources;
 }
 
-function fixItemNames(items: PartDataInterface): void {
+function fixItemNames(items: ParserItemDataInterface): void {
     // Go through the item names and do some manual fixes, e.g. renaming "Residual Plastic" to "Plastic"
     const fixItems: Record<string, string> = {
         "AlienProtein": "Alien Protein",
@@ -352,7 +358,7 @@ function fixItemNames(items: PartDataInterface): void {
     }
 }
 
-function fixTurbofuel(items: PartDataInterface, recipes: Recipe[]): void {
+function fixTurbofuel(items: ParserItemDataInterface, recipes: ParserRecipe[]): void {
     // Rename the current "Turbofuel" which is actually "Packaged Turbofuel"
     items.parts["PackagedTurboFuel"] = items.parts["TurboFuel"];
 

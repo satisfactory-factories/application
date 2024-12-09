@@ -1,9 +1,9 @@
 // Calculates what buildings are required to produce the products.
 import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getRecipe } from '@/utils/factory-management/common'
+import { getPowerRecipeById, getRecipe } from '@/utils/factory-management/common'
 
-export const calculateBuildingRequirements = (factory: Factory, gameData: DataInterface) => {
+export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
     if (product.recipe) {
       const recipe = getRecipe(product.recipe, gameData)
@@ -31,40 +31,76 @@ export const calculateBuildingRequirements = (factory: Factory, gameData: DataIn
       product.buildingRequirements = {
         name: buildingData.name,
         amount: buildingCount,
-        powerPerBuilding: buildingData.power,
-        totalPower: (buildingData.power * wholeBuildingCount) + (buildingData.power * Math.pow(fractionalBuildingCount, 1.321928)), // Power usage = initial power usage x (clock speed / 100)1.321928
+        powerConsumed: (buildingData.power * wholeBuildingCount) + (buildingData.power * Math.pow(fractionalBuildingCount, 1.321928)), // Power usage = initial power usage x (clock speed / 100)1.321928
       }
+
+      // Add it to the factory building requirements
+      if (!factory.buildingRequirements[buildingData.name]) {
+        factory.buildingRequirements[buildingData.name] = {
+          name: buildingData.name,
+          amount: 0,
+          powerConsumed: 0,
+        }
+      }
+
+      const facBuilding = factory.buildingRequirements[buildingData.name]
+      const powerConsumed = (facBuilding.powerConsumed ?? 0) + (product.buildingRequirements.powerConsumed ?? 0)
+      facBuilding.amount += Math.ceil(buildingCount)
+      facBuilding.powerConsumed = Number(powerConsumed.toFixed(3)) // Fucky wuky floating point numbers
     } else {
       product.buildingRequirements = {} as BuildingRequirement
     }
   })
 }
 
-export const calculateBuildingsAndPower = (factory: Factory) => {
-  factory.totalPower = 0
-  factory.buildingRequirements = {} as {[key: string]: BuildingRequirement }
+export const calculatePowerProducerBuildings = (factory: Factory, gameData: DataInterface) => {
+  // Loop through each power producer and add up the buildings
+  factory.powerProducers.forEach(producer => {
+    const recipe = getPowerRecipeById(producer.recipe, gameData)
 
-  // Loop through each product and sum the power requirements based off the metrics already there.
-  factory.products.forEach(product => {
-    const building = product.buildingRequirements
+    if (!recipe) {
+      console.warn(`calculatePowerProducerBuildingRequirements: Recipe with ID ${producer.recipe} not found. It could be the user has not yet selected one.`)
+      return
+    }
 
-    if (Object.keys(building).length === 0) return
-
-    if (!factory.buildingRequirements[building.name]) {
-      factory.buildingRequirements[building.name] = {
-        name: building.name,
+    if (!factory.buildingRequirements[producer.building]) {
+      factory.buildingRequirements[producer.building] = {
+        name: producer.building,
         amount: 0,
-        powerPerBuilding: building.powerPerBuilding,
-        totalPower: 0,
+        powerProduced: 0,
       }
     }
 
-    const facBuilding = factory.buildingRequirements[building.name]
+    const facBuilding = factory.buildingRequirements[producer.building]
+    const wholeBuildingCount = Math.floor(producer.buildingCount)
+    const fractionalBuildingCount = producer.buildingCount - wholeBuildingCount
 
-    facBuilding.amount = facBuilding.amount + building.amount
-    facBuilding.totalPower = factory.totalPower + building.totalPower
+    const powerProduced = ((recipe.building.power ?? 0) * wholeBuildingCount) + (recipe.building.power * Math.pow(fractionalBuildingCount, 1.321928)) // Power usage = initial power usage x (clock speed / 100)1.321928
 
-    // Sum the total power.
-    factory.totalPower = factory.totalPower + building.totalPower
+    facBuilding.amount = facBuilding.amount + Math.ceil(producer.buildingCount) // Total buildings regardless of clocks
+    facBuilding.powerProduced = Number(powerProduced.toFixed(3)) // Fucky wuky floating point numbers
   })
+}
+
+// Sums up all of the building data to create an aggregate value of power and building requirements
+export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: DataInterface) => {
+  factory.buildingRequirements = {}
+  // First tot up all building and power requirements for products and power generators
+  calculateProductBuildings(factory, gameData)
+  calculatePowerProducerBuildings(factory, gameData)
+
+  factory.power = {
+    consumed: 0,
+    produced: 0,
+    difference: 0,
+  }
+
+  // Then sum up the total power
+  Object.keys(factory.buildingRequirements).forEach(key => {
+    const building = factory.buildingRequirements[key]
+    factory.power.consumed += building.powerConsumed ?? 0
+    factory.power.produced += building.powerProduced ?? 0
+  })
+
+  factory.power.difference = factory.power.produced - factory.power.consumed
 }

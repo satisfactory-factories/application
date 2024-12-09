@@ -13,7 +13,16 @@
       >
         <i class="fas fa-bolt" />
         <span class="ml-2">
-          {{ formatNumber(factory.totalPower) }} MW
+          Consumes: {{ formatNumber(factory.power.consumed) }} MW
+        </span>
+      </v-chip>
+      <v-chip
+        class="sf-chip green"
+        variant="tonal"
+      >
+        <i class="fas fa-solar-panel" />
+        <span class="ml-2">
+          Produces: {{ formatNumber(factory.power.produced) }} MW
         </span>
       </v-chip>
       <div

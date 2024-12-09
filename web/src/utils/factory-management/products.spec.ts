@@ -27,7 +27,6 @@ describe('products', () => {
 
   beforeEach(() => {
     mockFactory = newFactory('Iron Ingots')
-    mockFactory.totalPower = 32.382
   })
 
   describe('addProductToFactory', () => {
@@ -70,7 +69,7 @@ describe('products', () => {
     it('should calculate the products and produce the correct part info', () => {
       addProductToFactory(mockFactory, mockIngotIron)
       addProductToFactory(mockFactory, mockIngotCopper)
-      calculateProducts(mockFactory, gameData)
+      calculateFactories([mockFactory], gameData)
 
       // Expect the parts to exist
       expect(mockFactory.parts.IronIngot).toBeDefined()
@@ -81,7 +80,7 @@ describe('products', () => {
       expect(mockFactory.parts.IronIngot.amountSupplied).toBe(123)
       expect(mockFactory.parts.IronIngot.amountRemaining).toBe(123)
       expect(mockFactory.parts.IronIngot.satisfied).toBe(true)
-      expect(mockFactory.totalPower).toBe(32.382) // 4.1x iron ingot smelters + 4.1x copper ingot smelters
+      expect(mockFactory.power.consumed).toBe(32.382) // 4.1x iron ingot smelters + 4.1x copper ingot smelters
 
       // Expect the raw resources to exist
       expect(mockFactory.rawResources.OreIron).toBeDefined()

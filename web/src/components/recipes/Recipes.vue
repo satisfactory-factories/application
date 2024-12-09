@@ -30,7 +30,7 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import RecipeSearchItem from './RecipeSearchItem.vue'
-  import { Recipe } from '@/interfaces/Recipe'
+  import { Recipe } from '@/interfaces/Recipes'
   import { DataInterface } from '@/interfaces/DataInterface'
   import Todo from '@/components/recipes/Todo.vue'
 
