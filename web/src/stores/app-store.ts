@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, watch } from 'vue'
 import { calculateFactories } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -39,9 +39,6 @@ export const useAppStore = defineStore('app', () => {
   )
   const gameDataStore = useGameDataStore()
 
-  console.log(localStorage.getItem('showSatisfactionBreakdowns'))
-  console.log(Boolean(localStorage.getItem('showSatisfactionBreakdowns')))
-
   // Watch the factories array for changes
   watch(factoryTabs.value, () => {
     localStorage.setItem('factoryTabs', JSON.stringify(factoryTabs.value))
@@ -67,11 +64,6 @@ export const useAppStore = defineStore('app', () => {
     let needsCalculation = false
 
     factories.value.forEach(factory => {
-      // Patch for old data pre #116
-      if (!factory.exports) {
-        factory.exports = {}
-      }
-
       // Patch for #222
       if (factory.inSync === undefined) {
         factory.inSync = null
@@ -80,16 +72,30 @@ export const useAppStore = defineStore('app', () => {
         factory.syncState = {}
       }
 
-      // Patch for #244
+      // Patch for #244 and #180
       // Detect if the factory.parts[part].amountRequiredExports is missing and calculate it.
       Object.keys(factory.parts).forEach(part => {
+        // For #244
         if (factory.parts[part].amountRequiredExports === undefined) {
           factory.parts[part].amountRequiredExports = 0
           needsCalculation = true
         }
-        // Same for amountRequiredProduction
         if (factory.parts[part].amountRequiredProduction === undefined) {
           factory.parts[part].amountRequiredProduction = 0
+          needsCalculation = true
+        }
+
+        // For #180
+        if (factory.parts[part].amountRequiredPower === undefined) {
+          factory.parts[part].amountRequiredPower = 0
+          needsCalculation = true
+        }
+        if (factory.parts[part].amountSuppliedViaRaw === undefined) {
+          factory.parts[part].amountSuppliedViaRaw = 0
+          needsCalculation = true
+        }
+        if (factory.parts[part].exportable === undefined) {
+          factory.parts[part].exportable = true
           needsCalculation = true
         }
       })
@@ -101,6 +107,19 @@ export const useAppStore = defineStore('app', () => {
       if (factory.notes === undefined) {
         factory.notes = ''
       }
+
+      // Patch for #180
+      if (factory.powerProducers === undefined) {
+        factory.powerProducers = []
+        needsCalculation = true
+      }
+      if (factory.power === undefined) {
+        factory.power = {} as FactoryPower
+        needsCalculation = true
+      }
+      if (factory.previousInputs === undefined) {
+        factory.previousInputs = []
+      }
     })
 
     if (needsCalculation) {
@@ -111,7 +130,7 @@ export const useAppStore = defineStore('app', () => {
     return factories.value
   }
 
-  const setFactories = (newFactories: Factory[]) => {
+  const setFactories = (newFactories: Factory[], loadMode = false) => {
     console.log('Setting factories', newFactories)
     const gameData = gameDataStore.getGameData()
     if (!gameData) {
@@ -119,9 +138,15 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    factories.value = newFactories
     // Trigger calculations
-    calculateFactories(factories.value, gameData)
+    calculateFactories(newFactories, gameData, loadMode)
+
+    // For each factory, set the previous inputs to the current inputs.
+    newFactories.forEach(factory => {
+      factory.previousInputs = factory.inputs
+    })
+
+    factories.value = newFactories
     // Will also call the watcher.
   }
 

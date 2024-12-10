@@ -52,22 +52,23 @@
             <p class="text-body-1">
               Exporting:
             </p>
-            <div
-              v-for="(product, part) in data.factory.exports"
-              :key="`${data.factory.id}-${part}`"
-              class="position-relative"
-            >
-              <v-chip class="sf-chip">
-                <game-asset :subject="part.toString() ?? 'unknown'" type="item" />
-                <span class="ml-2">{{ getPartDisplayName(part) }}: {{ formatNumber(product.surplus) }}/min</span>
-              </v-chip>
-              <Handle
-                :id="`${data.factory.id}-${part}`"
-                class="handle handle-source"
-                :position="props.sourcePosition"
-                type="source"
-              />
-            </div>
+            <!-- Requires reconstruction, out of scope of PR -->
+            <!--            <div-->
+            <!--              v-for="(product, part) in data.factory.exports"-->
+            <!--              :key="`${data.factory.id}-${part}`"-->
+            <!--              class="position-relative"-->
+            <!--            >-->
+            <!--              <v-chip class="sf-chip">-->
+            <!--                <game-asset :subject="part.toString() ?? 'unknown'" type="item" />-->
+            <!--                <span class="ml-2">{{ getPartDisplayName(part) }}: {{ formatNumber(product.surplus) }}/min</span>-->
+            <!--              </v-chip>-->
+            <!--              <Handle-->
+            <!--                :id="`${data.factory.id}-${part}`"-->
+            <!--                class="handle handle-source"-->
+            <!--                :position="props.sourcePosition"-->
+            <!--                type="source"-->
+            <!--              />-->
+            <!--            </div>-->
           </v-col>
         </v-row>
       </v-card-text>

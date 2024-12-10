@@ -1,4 +1,4 @@
-export interface Part {
+export interface ParserPart {
     name: string;
     stackSize: number;
     isFluid: boolean;
@@ -6,13 +6,13 @@ export interface Part {
     energyGeneratedInMJ: number;
 }
 
-export interface PartDataInterface {
-    parts: { [key: string]: Part };
+export interface ParserItemDataInterface {
+    parts: { [key: string]: ParserPart };
     collectables: { [key: string]: string };
-    rawResources: { [key: string]: RawResource };
+    rawResources: { [key: string]: ParserRawResource };
 }
 
-export interface RawResource {
+export interface ParserRawResource {
     name: string;
     limit: number;
 }

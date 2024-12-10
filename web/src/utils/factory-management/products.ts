@@ -1,13 +1,14 @@
 import { BuildingRequirement, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { createNewPart, getRecipe } from '@/utils/factory-management/common'
-import { calculatePartMetrics } from '@/utils/factory-management/satisfaction'
+import { getRecipe } from '@/utils/factory-management/common'
 
 export const addProductToFactory = (
-  factory: Factory, options: {
+  factory: Factory,
+  options: {
     id?: string,
     amount?: number,
     recipe?: string,
+    requirements?: { [key: string]: { amount: number } },
   }
 ) => {
   factory.products.push({
@@ -15,13 +16,10 @@ export const addProductToFactory = (
     amount: options.amount ?? 1,
     recipe: options.recipe ?? '',
     displayOrder: factory.products.length,
-    requirements: {},
+    requirements: options.requirements ?? {},
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
   })
-
-  // Also add the part record to the factory
-  createNewPart(factory, options.id ?? '')
 }
 
 // Loops through all products and figures out what they produce and what they require, then adds it to the factory.parts object.
@@ -34,13 +32,6 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       console.warn(`calculateProductRequirements: Recipe with ID ${product.recipe} not found. It could be the user has not yet selected one.`)
       return
     }
-    const recipePart = recipe.products[0].part
-
-    if (product.amount === 0 || !product.amount) {
-      // If the product amount is 0, we don't need to calculate anything, because the user might be entering a new number.
-      // I tried forcing this to be 1, but it causes a lot of frustration for the user, so it's better to just simply do nothing.
-      return
-    }
 
     if (product.amount < 0) {
       // If the product amount is negative, this causes issues with calculations, so force it to 0.
@@ -48,17 +39,10 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       return // Nothing else to do
     }
 
-    // Get the recipe of the product, as the product ID can no longer be used when there's multiple recipes involved for the same part.
-
-    // Add the output of the product to the parts array
-    createNewPart(factory, recipePart)
-    factory.parts[recipePart].amountSuppliedViaProduction += product.amount
-    calculatePartMetrics(factory, recipePart)
-
     // Calculate the ingredients needed to make this product.
     recipe.ingredients.forEach(ingredient => {
       if (isNaN(ingredient.amount)) {
-        console.warn(`Invalid ingredient amount for ingredient "${ingredient.part}". Skipping.`)
+        console.error(`Invalid ingredient amount for ingredient "${ingredient.part}". Skipping.`)
         return
       }
 
@@ -68,25 +52,6 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       ingredientRequired = Math.round(ingredientRequired * 1000) / 1000
 
       // Handle the ingredients
-      createNewPart(factory, ingredient.part)
-      factory.parts[ingredient.part].amountRequired += ingredientRequired
-
-      // Raw resource handling
-      if (gameData.items.rawResources[ingredient.part]) {
-        if (!factory.rawResources[ingredient.part]) {
-          factory.rawResources[ingredient.part] = {
-            id: ingredient.part,
-            name: gameData.items.rawResources[ingredient.part].name,
-            amount: 0,
-          }
-        }
-
-        factory.rawResources[ingredient.part].amount += ingredientRequired
-
-        // Mark the part as raw which will eventually be marked as fully satisfied.
-        factory.parts[ingredient.part].isRaw = true
-      }
-
       // Set the amount that the individual products need for display purposes.
       if (!product.requirements[ingredient.part]) {
         product.requirements[ingredient.part] = {
@@ -95,11 +60,11 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       }
 
       product.requirements[ingredient.part].amount += ingredientRequired
-
-      // Finally calculate the part metrics now we have the details for the ingredient.
-      calculatePartMetrics(factory, ingredient.part)
     })
   })
+
+  // Now calculate byproducts
+  calculateByProducts(factory, gameData)
 }
 
 export const calculateByProducts = (factory: Factory, gameData: DataInterface): void => {
@@ -150,37 +115,6 @@ export const calculateByProducts = (factory: Factory, gameData: DataInterface): 
       } else {
         byProductExists.amount += byProductAmount
       }
-
-      // Now also add the part that the Byproduct creates to the parts list
-      createNewPart(factory, byProduct.part)
-      factory.parts[byProduct.part].amountSuppliedViaProduction += byProductAmount
-      calculatePartMetrics(factory, byProduct.part)
-    })
-  })
-}
-
-// Loop through each product, and check if the parts produced by a recipe match a product requirement. If so, we mark that as an internal product and recalculate the remainder.
-export const calculateInternalProducts = (factory: Factory, gameData: DataInterface) => {
-  factory.internalProducts = {}
-
-  factory.products.forEach(product => {
-    const recipe = getRecipe(product.recipe, gameData)
-    if (!recipe) {
-      console.warn(`calculateFactoryInternalSupply: Recipe with ID ${product.recipe} not found. It could be the user has not yet selected one.`)
-      return
-    }
-
-    // Calculate the ingredients needed to make this product.
-    recipe.ingredients.forEach(ingredient => {
-      // If the part is a requirement, mark it as an internal product.
-      const foundProduct = factory.products.find(p => p.id === ingredient.part)
-
-      if (foundProduct) {
-        factory.internalProducts[ingredient.part] = {
-          id: foundProduct.id,
-          amount: foundProduct.amount,
-        }
-      }
     })
   })
 }
@@ -224,6 +158,13 @@ export const trimProduct = (product: FactoryItem, factory: Factory) => {
 
   // Trim the product
   product.amount = partData.amountRequired
+}
+
+export const shouldShowInternal = (product: FactoryItem, factory: Factory) => {
+  if (!factory.parts[product.id]) {
+    return false
+  }
+  return factory.parts[product.id].amountRequiredProduction > 0 || factory.parts[product.id].amountRequiredPower > 0
 }
 
 export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) => {

@@ -1,5 +1,7 @@
 
 // Function to extract all buildings that produce something
+import {getPowerProducerBuildingName} from "./common";
+
 function getProducingBuildings(data: any[]): string[] {
     const producingBuildingsSet = new Set<string>();
 
@@ -23,8 +25,14 @@ function getProducingBuildings(data: any[]): string[] {
                 if (producedInBuildings) {
                     producedInBuildings.forEach((buildingName: string) => producingBuildingsSet.add(buildingName));
                 }
-            } else if (entry.ClassName === "Desc_NuclearWaste_C") { // manually add nuclear power plant, as it produces nuclear waste
-                producingBuildingsSet.add("nuclearpowerplant");
+            }
+            // If a power generator
+            if (entry.mFuel) {
+                const name = getPowerProducerBuildingName(entry.ClassName)
+                if (!name) {
+                    throw new Error(`Could not extract building name for Power Recipe from ${entry.ClassName}`);
+                }
+                producingBuildingsSet.add(name)
             }
         });
 
@@ -50,9 +58,6 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
                 }
             }
         });
-
-        //Manually add nuclear power plant
-        buildingsPowerMap["nuclearpowerplant"] = 0;
 
     // Finally sort the map by key
     const sortedMap: { [key: string]: number } = {};

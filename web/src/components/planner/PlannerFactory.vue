@@ -121,7 +121,7 @@
           </v-col>
         </v-row>
         <v-card-text v-show="!factory.hidden">
-          <planner-factory-products
+          <ProductsAndPower
             :factory="factory"
             :help-text="helpText"
           />
@@ -289,6 +289,7 @@
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
+  import ProductsAndPower from '@/components/planner/products/ProductsAndPower.vue'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const updateFactory = inject('updateFactory') as (factory: Factory) => void

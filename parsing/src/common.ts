@@ -65,6 +65,19 @@ function getFriendlyName(name: string): string {
     return name.replace(/\s*\(.*?\)/g, '');
 }
 
+// Example: Build_GeneratorBiomass_Automated_C
+// Change into "generatorbiomas"
+function getPowerProducerBuildingName(className: string): string | null {
+    const match = RegExp(/Build_(\w+)_/).exec(className);
+    if (match) {
+        const buildingName = match[1].toLowerCase();
+        // If contains _automated, remove it
+        return buildingName.replace('_automated', '');
+    }
+
+    return null
+}
+
 // Export various items for use
 export {
   blacklist,
@@ -73,5 +86,6 @@ export {
   isFicsmas,
   getRecipeName,
   getPartName,
-  getFriendlyName
+  getFriendlyName,
+  getPowerProducerBuildingName
 }

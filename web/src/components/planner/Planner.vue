@@ -3,8 +3,8 @@
   <div class="planner-container">
     <Teleport v-if="mdAndDown" defer to="#navigationDrawer">
       <planner-factory-list
-        :factories="factories"
-        :total-factories="factories.length"
+        :factories="getFactories()"
+        :total-factories="getFactories().length"
         @create-factory="createFactory"
         @update-factories="updateFactoriesList"
       />
@@ -23,8 +23,8 @@
       <v-col class="d-none d-lg-flex sticky-sidebar">
         <v-container class="pa-0">
           <planner-factory-list
-            :factories="factories"
-            :total-factories="factories.length"
+            :factories="getFactories()"
+            :total-factories="getFactories().length"
             @create-factory="createFactory"
             @update-factories="updateFactoriesList"
           />
@@ -48,12 +48,12 @@
           :world-raw-resources="worldRawResources"
         />
         <planner-factory
-          v-for="(factory) in factories"
+          v-for="(factory) in getFactories()"
           :key="factory.id"
           :factory="factory"
           :game-data="gameData"
           :help-text="helpText"
-          :total-factories="factories.length"
+          :total-factories="getFactories().length"
         />
         <div class="mt-4 text-center">
           <v-btn
@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, defineProps, provide, reactive, ref, watch } from 'vue'
+  import { provide, reactive, ref, watch } from 'vue'
 
   import PlannerGlobalActions from '@/components/planner/PlannerGlobalActions.vue'
   import {
@@ -80,25 +80,19 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useAppStore } from '@/stores/app-store'
-  import { storeToRefs } from 'pinia'
   import {
     removeFactoryDependants,
   } from '@/utils/factory-management/dependencies'
   import { calculateFactories, calculateFactory, findFac, newFactory } from '@/utils/factory-management/factory'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useDisplay } from 'vuetify'
+  import { useGameDataStore } from '@/stores/game-data-store'
 
-  const props = defineProps<{ gameData: DataInterface | null }>()
   const { mdAndDown } = useDisplay()
+  const { getGameData } = useGameDataStore()
+  const gameData = getGameData()
 
-  const gameData = props.gameData
-  if (!gameData) {
-    console.error('No game data provided to Planner!')
-    throw new Error('No game data provided to Planner!')
-  }
-
-  const appStore = useAppStore()
-  const { factories } = storeToRefs(appStore)
+  const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -110,24 +104,19 @@
 
   const createFactory = () => {
     const factory = newFactory()
-    factory.displayOrder = appStore.getFactories().length
-    appStore.addFactory(factory)
+    factory.displayOrder = getFactories().length
+    addFactory(factory)
     navigateToFactory(factory.id)
   }
 
-  const factoriesWithExports = computed(() => {
-    // Loop through all factories and see if any have any surplus
-    return appStore.getFactories().filter(factory => Object.keys(factory.exports).length > 0)
-  })
-
   // This function calculates the world resources available after each group has consumed Raw Resources.
-  // This is done here globally as it loops all appStore.getFactories(). It is not appropriate to be done on group updates.
+  // This is done here globally as it loops all factories. It is not appropriate to be done on group updates.
   const updateWorldRawResources = (gameData: DataInterface): void => {
     // Generate fresh world resources as a baseline for calculation.
     Object.assign(worldRawResources, generateRawResources(gameData))
 
     // Loop through each group's products to calculate usage of raw resources.
-    appStore.getFactories().forEach(factory => {
+    getFactories().forEach(factory => {
       factory.products.forEach(product => {
         const recipe = gameData.recipes.find(r => r.id === product.recipe)
         if (!recipe) {
@@ -181,18 +170,18 @@
   }
 
   const findFactory = (factoryId: string | number): Factory | null => {
-    return findFac(factoryId, appStore.getFactories())
+    return findFac(factoryId, getFactories())
   }
 
   const updateFactoriesList = (newFactories: Factory[]) => {
-    appStore.setFactories(newFactories)
+    setFactories(newFactories)
     forceSort()
     console.log('Factories updated and re-sorted')
   }
 
-  // Proxy method so we don't have to pass the gameData and appStore.getFactories() around to every single subcomponent
+  // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
   const updateFactory = (factory: Factory) => {
-    calculateFactory(factory, appStore.getFactories(), gameData)
+    calculateFactory(factory, getFactories(), gameData)
   }
 
   const copyFactory = (originalFactory: Factory) => {
@@ -204,7 +193,7 @@
       name: `${originalFactory.name} (copy)`,
       displayOrder: originalFactory.displayOrder + 1,
     }
-    appStore.getFactories().push(newFactory)
+    getFactories().push(newFactory)
 
     // Update the display order of the other factory
     if (newFactory.displayOrder > originalFactory.displayOrder && newFactory.id !== newId) {
@@ -212,7 +201,7 @@
     }
 
     // Now call calculateFactories in case the clone's imports cause a deficit
-    calculateFactories(appStore.getFactories(), gameData)
+    calculateFactories(getFactories(), gameData)
 
     regenerateSortOrders()
     navigateToFactory(newId)
@@ -220,16 +209,16 @@
 
   const deleteFactory = (factory: Factory) => {
     // Find the index of the factory to delete
-    const index = appStore.getFactories().findIndex(fac => fac.id === factory.id)
+    const index = getFactories().findIndex(fac => fac.id === factory.id)
 
     if (index !== -1) {
-      removeFactoryDependants(factory, appStore.getFactories())
+      removeFactoryDependants(factory, getFactories())
 
-      appStore.getFactories().splice(index, 1) // Remove the factory at the found index
+      getFactories().splice(index, 1) // Remove the factory at the found index
       updateWorldRawResources(gameData) // Recalculate the world resources
 
       // After deleting the factory, loop through all factories and update them as inputs / exports have likely changed.
-      calculateFactories(appStore.getFactories(), gameData)
+      calculateFactories(getFactories(), gameData)
 
       // Regenerate the sort orders
       regenerateSortOrders()
@@ -239,7 +228,7 @@
   }
 
   const clearAll = () => {
-    appStore.clearFactories()
+    clearFactories()
     updateWorldRawResources(gameData)
   }
 
@@ -257,20 +246,23 @@
       ['converter', 'Converter'],
       ['foundrymk1', 'Foundry'],
       ['hadroncollider', 'Particle Accelerator'],
+      ['generatorbiomass', 'Biomass Burner'],
+      ['generatorcoal', 'Coal-Powered Generator'],
+      ['generatorfuel', 'Fuel-Powered Generator'],
+      ['generatornuclear', 'Nuclear Power Plant'],
       ['manufacturermk1', 'Manufacturer'],
       ['oilrefinery', 'Oil Refinery'],
       ['packager', 'Packager'],
       ['quantumencoder', 'Quantum Encoder'],
       ['smeltermk1', 'Smelter'],
       ['waterExtractor', 'Water Extractor'],
-      ['nuclearpowerplant', 'Nuclear Power Plant'],
     ])
 
     return buildingFriendly.get(building) || `UNKNOWN BUILDING: ${building}`
   }
 
   const showHideAll = (mode: 'show' | 'hide') => {
-    appStore.getFactories().forEach(factory => factory.hidden = mode === 'hide')
+    getFactories().forEach(factory => factory.hidden = mode === 'hide')
   }
 
   const toggleHelp = () => {
@@ -279,7 +271,7 @@
 
   const navigateToFactory = (factoryId: number | string, subsection?: string) => {
     const facId = parseInt(factoryId.toString(), 10)
-    const factory = findFac(facId, appStore.getFactories())
+    const factory = findFac(facId, getFactories())
     if (!factory) {
       console.error(`navigateToFactory: Factory ${factoryId} not found!`)
       return
@@ -303,14 +295,14 @@
 
     if (direction === 'up' && currentOrder > 0) {
       targetOrder = currentOrder - 1
-    } else if (direction === 'down' && currentOrder < appStore.getFactories().length - 1) {
+    } else if (direction === 'down' && currentOrder < getFactories().length - 1) {
       targetOrder = currentOrder + 1
     } else {
       return // Invalid move
     }
 
     // Find the target factory and swap display orders
-    const targetFactory = appStore.getFactories().find(fac => fac.displayOrder === targetOrder)
+    const targetFactory = getFactories().find(fac => fac.displayOrder === targetOrder)
     if (targetFactory) {
       targetFactory.displayOrder = currentOrder
       factory.displayOrder = targetOrder
@@ -321,20 +313,20 @@
 
   const regenerateSortOrders = () => {
     // Sort now, which may have sorted them weirdly
-    appStore.setFactories(appStore.getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
+    setFactories(getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
 
     // Ensure that the display order is correct
-    appStore.getFactories().forEach((factory, index) => {
+    getFactories().forEach((factory, index) => {
       factory.displayOrder = index
     })
 
     // Now re-sort
-    appStore.setFactories(appStore.getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
+    setFactories(getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
   }
 
   const forceSort = () => {
     // Forcefully regenerate the displayOrder counting upwards.
-    appStore.getFactories().forEach((factory, index) => {
+    getFactories().forEach((factory, index) => {
       factory.displayOrder = index
     })
   }
@@ -351,7 +343,6 @@
   // Initialize during setup
   initializeFactories()
 
-  provide('factoriesWithExports', factoriesWithExports)
   provide('findFactory', findFactory)
   provide('updateFactory', updateFactory)
   provide('copyFactory', copyFactory)
@@ -368,14 +359,14 @@
 
   const setupDemo = () => {
     closeIntro()
-    if (appStore.getFactories().length > 0) {
+    if (getFactories().length > 0) {
       if (confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
         console.log('Replacing factories with Demo')
-        appStore.setFactories(complexDemoPlan().getFactories())
+        setFactories(complexDemoPlan().getFactories(), true)
       }
     } else {
       console.log('Adding demo factories')
-      appStore.setFactories(complexDemoPlan().getFactories())
+      setFactories(complexDemoPlan().getFactories())
     }
   }
 

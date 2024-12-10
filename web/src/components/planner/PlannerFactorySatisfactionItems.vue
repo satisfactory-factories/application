@@ -83,19 +83,33 @@
             <div v-if="satisfactionBreakdowns">
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Production</span>
-                <span class="align-self-end text-right">+{{ formatNumber(part.amountSuppliedViaProduction) }}/min</span>
+                <span class="align-self-end text-right">
+                  +{{ formatNumber(part.amountSuppliedViaProduction) }}/min
+                </span>
               </div>
               <div class="text-green d-flex justify-space-between align-center">
-                <span>Imports</span>
-                <span class="align-self-end text-right">+{{ formatNumber(part.amountSuppliedViaInput ) }}/min</span>
+                <span>Supply from Imports</span>
+                <span class="align-self-end text-right">
+                  +{{ formatNumber(part.amountSuppliedViaInput ) }}/min
+                </span>
+              </div>
+              <div class="text-green d-flex justify-space-between align-center">
+                <span>Supply from Raw</span>
+                <span class="align-self-end text-right">
+                  +{{ formatNumber(part.amountSuppliedViaRaw ) }}/min
+                </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Internal Consumption</span>
-                <span class="align-self-end text-right">-{{ formatNumber(part.amountRequiredProduction ) }}/min</span>
+                <span class="align-self-end text-right">
+                  -{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min
+                </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
-                <span class="align-self-end text-right">-{{ formatNumber(part.amountRequiredExports ) }}/min</span>
+                <span class="align-self-end text-right">
+                  -{{ formatNumber(part.amountRequiredExports ) }}/min
+                </span>
               </div>
               <v-divider class="my-2" color="#ccc" />
             </div>
@@ -109,13 +123,13 @@
             </div>
           </td>
           <td :class="satisfactionShading(part)">
-            <p v-if="getRequestsForFactoryByProduct(factory, partId.toString()).length === 0" class="text-center">
+            <p v-if="getRequestsForFactoryByPart(factory, partId.toString()).length === 0" class="text-center">
               -
             </p>
             <div v-else>
               <div>
                 <v-chip
-                  v-for="(request) in getRequestsForFactoryByProduct(factory, partId.toString())"
+                  v-for="(request) in getRequestsForFactoryByPart(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="sf-chip small"
                   :color="isRequestSelected(factory, request.requestingFactoryId, partId.toString()) ? 'primary' : ''"
@@ -123,7 +137,9 @@
                   @click="changeCalculatorSelection(factory, request.requestingFactoryId, partId.toString())"
                 >
                   <i class="fas fa-industry" />
-                  <span class="ml-2"><b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min</span>
+                  <span class="ml-2">
+                    <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
+                  </span>
                 </v-chip>
               </div>
               <!--              <div class="text-center mt-2">-->
@@ -140,7 +156,7 @@
           </td>
         </tr>
         <tr
-          v-if="getRequestsForFactoryByProduct(factory, partId.toString()).length > 0"
+          v-if="getRequestsForFactoryByPart(factory, partId.toString()).length > 0"
         >
           <td class="calculator-row" colspan="5" style="height: auto">
             <div class="calculator" :class="{ open: openedCalculator === partId }">
@@ -165,8 +181,8 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { getRequestsForFactoryByProduct } from '@/utils/factory-management/exports'
-  import { formatNumber } from '../../utils/numberFormatter'
+  import { getRequestsForFactoryByPart } from '@/utils/factory-management/exports'
+  import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
 
   const getProduct = inject('getProduct') as (factory: Factory, productId: string) => FactoryItem | undefined
@@ -203,7 +219,7 @@
   const addProduct = (factory: Factory, part: string, amount: number): void => {
     addProductToFactory(factory, {
       id: part,
-      amount,
+      amount: Math.abs(amount),
       recipe: getDefaultRecipeForPart(part),
     })
 
@@ -235,7 +251,7 @@
 
   const isRequestSelected = (factory: Factory, factoryId: number, part: string) => {
     if (!factory.exportCalculator[part]) {
-      console.error(`Could not find export calculator settings for part ${part}`)
+      // console.error(`Could not find export calculator settings for part ${part}`)
       return false
     }
     return factory.exportCalculator[part]?.selected === factoryId.toString()

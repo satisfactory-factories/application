@@ -42,7 +42,7 @@
 
   const charLimit = 1000
 
-  watch(() => props.factory.notes, newValue => {
+  watch(() => props.factory.notes, () => {
     eventBus.emit('factoryUpdated') // Tell sync there's something changed
   })
 </script>

@@ -1,20 +1,28 @@
-import {Building, Recipe, Ingredient, Product, PowerGenerationRecipe, Fuel} from "./interfaces/Recipe";
 import {
-    blacklist, 
-    isFluid, 
-    isFicsmas, 
-    getRecipeName, 
-    getPartName, 
-    getFriendlyName
+    ParserBuilding,
+    ParserRecipe,
+} from "./interfaces/ParserRecipe";
+import {
+    ParserFuel,
+    ParserPowerItem,
+    ParserPowerRecipe
+} from "./interfaces/ParserPowerRecipe";
+import {
+    blacklist,
+    isFluid,
+    isFicsmas,
+    getRecipeName,
+    getPartName,
+    getPowerProducerBuildingName
 } from "./common";
-import {PartDataInterface, Part} from "./interfaces/Part";
+import {ParserItemDataInterface} from "./interfaces/ParserPart";
 
 // If you can read this, you are a wizard. ChatGPT made this, it works, so I won't question it!
 function getProductionRecipes(
     data: any[],
     producingBuildings: { [key: string]: number }
-): Recipe[] {
-    const recipes: Recipe[] = [];
+): ParserRecipe[] {
+    const recipes: ParserRecipe[] = [];
 
     data
         .filter((entry: any) => entry.Classes)
@@ -129,7 +137,7 @@ function getProductionRecipes(
             }
 
             // Create building object with the selected building and calculated power
-            const building : Building = {
+            const building : ParserBuilding = {
                 name: selectedBuilding || '', // Use the first valid building, or empty string if none
                 power: powerPerBuilding || 0, // Use calculated power or 0
             };
@@ -175,8 +183,8 @@ function getProductionRecipes(
 
 function getPowerGeneratingRecipes(
     data: any[],
-    parts: PartDataInterface
-): PowerGenerationRecipe[] {
+    parts: ParserItemDataInterface
+): ParserPowerRecipe[] {
 
     const recipes: any[] = [];
 
@@ -184,92 +192,83 @@ function getPowerGeneratingRecipes(
         .filter((entry: any) => entry.Classes)
         .flatMap((entry: any) => entry.Classes)
         .filter((recipe: any) => {
-            
             // Filter out recipes that don't have a fuel component
-            if (!recipe.mFuel)  { 
-                return false; 
-            } else {
-                return true;
-            }
+            return recipe.mFuel;
 
         })
         .forEach((recipe: any) => {
-             
-            const building : Building = {
-                name: recipe.mDisplayName.replace(/ /g, ''), // Use the first valid building, or empty string if none
+            const building : ParserBuilding = {
+                name: getPowerProducerBuildingName(recipe.ClassName) ?? 'UNKNOWN',
                 power: Math.round(recipe.mPowerProduction), // generated power - can be rounded to the nearest whole number (all energy numbers are whole numbers) 
             };   
             const supplementalRatio = Number(recipe.mSupplementalToPowerRatio);
             // 1. Generator MW generated. This is an hourly value.
             // 2. Divide by 60, to get the minute value
             // 3. Now calculate the MJ, using the MJ->MW constant (1/3600), (https://en.wikipedia.org/wiki/Joule#Conversions) 
-            // 4. Now divide this number by the part energy to calculate how many pieces per min
-            const powerMJ: number = (recipe.mPowerProduction / 60) / (1/3600);
+            // 4. Now divide this number by the part energy to calculate how many MJ we burn in 1 minute. e.g. For nuclear reactors this is 150,000MJ / minute.
+            const burnRateMJ = (recipe.mPowerProduction / 60) / (1/3600);
 
-            const fuels: Fuel[] = Array.isArray(recipe.mFuel) ? recipe.mFuel as Fuel[] : [];       
+            const fuels: ParserFuel[] = Array.isArray(recipe.mFuel) ? recipe.mFuel as ParserFuel[] : [];
+
+            // The game data does not seem to contain the duration of the burning of the fuel. So we have to calculate it from the megajuoles of the fuel.
+            // We know that the burn rate is 150,000MJ / minute, so we can figure out the durations from that.
+
             fuels.forEach((fuel: any) => {
-                const fuelItem: Fuel = {
-                    primaryFuel: getPartName(fuel.mFuelClass),
+                const primaryFuel = getPartName(fuel.mFuelClass);
+                const primaryFuelPart = parts.parts[primaryFuel];
+
+                const burnDurationInMins = primaryFuelPart.energyGeneratedInMJ / burnRateMJ;
+                const burnDuration = burnDurationInMins * 60; // Convert to seconds
+
+                const fuelItem: ParserFuel = {
+                    primaryFuel,
                     supplementalResource: fuel.mSupplementalResourceClass ? getPartName(fuel.mSupplementalResourceClass) : "",
                     byProduct: fuel.mByproduct ? getPartName(fuel.mByproduct) : "",
-                    byProductAmount: fuel.mByproductAmount ? Number(fuel.mByproductAmount) : 0
+                    byProductAmount: Number(fuel.mByproductAmount),
+                    byProductPerMin: Number(fuel.mByproductAmount) / burnDurationInMins,
+                    duration: burnDuration
                 };
 
                 //Find the part for the primary fuel
-                const extractedPartText = getPartName(fuelItem.primaryFuel);
-                const primaryFuelPart = parts.parts[extractedPartText];
-                let primaryPerMin = 0; 
+                let primaryPerMin = 0;
                 if (primaryFuelPart.energyGeneratedInMJ > 0) {
                     // The rounding here is important to remove floating point errors that appear with some types 
                     // (this is step 4 from above)
-                    primaryPerMin = parseFloat((powerMJ / primaryFuelPart.energyGeneratedInMJ).toFixed(4))
+                    primaryPerMin = parseFloat((burnRateMJ / primaryFuelPart.energyGeneratedInMJ).toFixed(5))
                 }
-                let primaryAmount = 0;
-                if (primaryPerMin > 0) {                        
-                    primaryAmount = primaryPerMin / 60;
-
-                    const ingredients: Ingredient[] = [];
-                    ingredients.push(
-                        { 
-                            part: fuelItem.primaryFuel,
-                            amount: primaryAmount,
-                            perMin: primaryPerMin
-                        }
-                    )
-                    if (fuelItem.supplementalResource && supplementalRatio > 0) {
-                        ingredients.push(
-                            { 
-                                part: fuelItem.supplementalResource,
-                                amount: (3 / 50) * supplementalRatio * building.power / 60,
-                                perMin: (3 / 50) * supplementalRatio * building.power // Calculate the ratio of the supplemental resource to the primary fuel
-                            }
-                        )
-                    }
-                    
-                    const products: Product[] = [];
-                    if (fuelItem.byProduct) {
-                        products.push(
-                            {
-                                part: fuelItem.byProduct,
-                                amount: fuelItem.byProductAmount/60,
-                                perMin: fuelItem.byProductAmount,
-                                isByProduct: true
-                            }
-                        );
-                    }
-
-                    recipes.push({
-                        id: getRecipeName(recipe.ClassName) +'_'+ fuelItem.primaryFuel,
-                        displayName: recipe.mDisplayName + ' (' + primaryFuelPart.name + ')',
-                        ingredients,
-                        products,
-                        building
-                    });  
+                const ingredients: ParserPowerItem[] = [];
+                ingredients.push({
+                    part: fuelItem.primaryFuel,
+                    perMin: primaryPerMin,
+                    mwPerItem: building.power / primaryPerMin,
+                })
+                if (fuelItem.supplementalResource && supplementalRatio > 0) {
+                    const perMin = (3 / 50) * supplementalRatio * building.power;
+                    const supplementalFuelRatio = (3 / 50) * supplementalRatio;
+                    ingredients.push({
+                        part: fuelItem.supplementalResource,
+                        perMin: perMin, // Calculate the ratio of the supplemental resource to the primary fuel
+                        supplementalRatio: supplementalFuelRatio,
+                    })
                 }
+
+                let byproduct: ParserPowerItem | null = null;
+                if (fuelItem.byProduct) {
+                    byproduct = {
+                        part: fuelItem.byProduct,
+                        perMin: fuelItem.byProductPerMin,
+                    }
+                }
+
+                recipes.push({
+                    id: getRecipeName(recipe.ClassName) +'_'+ fuelItem.primaryFuel,
+                    displayName: recipe.mDisplayName + ' (' + primaryFuelPart.name + ')',
+                    ingredients,
+                    byproduct,
+                    building
+                });
             });
-        
         });
-
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 

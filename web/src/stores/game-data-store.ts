@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { config } from '@/config/config'
-import { Recipe } from '@/interfaces/Recipe'
+import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 
 export const useGameDataStore = defineStore('game-data', () => {
   const gameData = ref<DataInterface | null>(JSON.parse(<string>localStorage.getItem('gameData') ?? 'null'))
@@ -42,8 +42,13 @@ export const useGameDataStore = defineStore('game-data', () => {
 
   const getGameData = (): DataInterface => {
     if (!gameData.value) {
-      alert('Game data is somehow empty! Please reload!')
-      throw new Error('Game data is empty!')
+      loadGameData()
+      alert('Could not load the game data! Please refresh!')
+    }
+
+    if (!gameData.value) {
+      alert('Could not load the game data! Please report this on Discord!')
+      throw new Error('Game data not loaded even after attempting to re-load it!')
     }
     return gameData.value
   }
@@ -56,6 +61,14 @@ export const useGameDataStore = defineStore('game-data', () => {
     return gameData.value.recipes.find(recipe => recipe.id === id) ?? null
   }
 
+  const getPowerRecipeById = (id: string): PowerRecipe | null => {
+    if (!gameData.value || !id) {
+      return null
+    }
+
+    return gameData.value.powerGenerationRecipes.find(recipe => recipe.id === id) ?? null
+  }
+
   const getRecipesForPart = (part: string) => {
     if (!gameData.value || !part) {
       return []
@@ -64,6 +77,18 @@ export const useGameDataStore = defineStore('game-data', () => {
     return gameData.value.recipes.filter(recipe => {
       // Filter the recipe product array to return only the recipes that produce the part
       return recipe.products.filter(product => product.part === part).length > 0
+    })
+  }
+
+  const getRecipesForPowerProducer = (building: string): PowerRecipe[] | [] => {
+    if (!gameData.value || !building) {
+      console.error('getRecipesForPowerProducer: No game data or building provided!')
+      return []
+    }
+
+    return gameData.value.powerGenerationRecipes.filter(recipe => {
+      // Filter the recipe product array to return only the recipes that produce the part
+      return recipe.building.name === building
     })
   }
 
@@ -86,12 +111,27 @@ export const useGameDataStore = defineStore('game-data', () => {
     return ''
   }
 
+  const getDefaultRecipeForPowerProducer = (building: string): PowerRecipe => {
+    const recipes = getRecipesForPowerProducer(building)
+
+    if (!recipes || recipes.length === 0) {
+      console.error(`No recipes found for power producer ${building}`)
+    }
+
+    // There is no current means to determine the default recipe, so just return the first one for now.
+
+    return recipes[0]
+  }
+
   return {
     gameData,
     getGameData,
     loadGameData,
     getRecipeById,
+    getPowerRecipeById,
     getRecipesForPart,
+    getRecipesForPowerProducer,
     getDefaultRecipeForPart,
+    getDefaultRecipeForPowerProducer,
   }
 })
