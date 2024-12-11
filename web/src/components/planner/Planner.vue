@@ -51,7 +51,6 @@
           v-for="(factory) in getFactories()"
           :key="factory.id"
           :factory="factory"
-          :game-data="gameData"
           :help-text="helpText"
           :total-factories="getFactories().length"
         />

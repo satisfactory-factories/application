@@ -28,6 +28,7 @@ export const useAppStore = defineStore('app', () => {
     },
     set (value) {
       currentFactoryTab.value.factories = value
+      getFactories()
     },
   })
 
@@ -225,7 +226,7 @@ export const useAppStore = defineStore('app', () => {
     getLastEdit,
     setLastSave,
     setLastEdit,
-    getFactories,
+    getFactories: () => factories.value,
     setFactories,
     addFactory,
     removeFactory,
