@@ -51,7 +51,6 @@
 
 <script setup lang="ts">
   import { useDisplay } from 'vuetify'
-
   const { mdAndDown } = useDisplay()
 
   const toolbarDensity = computed(() => mdAndDown.value ? 'compact' : undefined)
