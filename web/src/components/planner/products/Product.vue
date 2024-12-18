@@ -58,18 +58,11 @@
       </div>
       <div class="input-row d-flex align-center">
         <v-btn
-          v-if="!factory.parts[product.id]?.satisfied"
+          v-if="!isProductionSatisfied(factory, product.id) || !isExportSatisfied(factory, product.id)"
           class="rounded mr-2"
           color="green"
-          @click="fixProduction(factory, product.id)"
-        ><i class="fas fa-wrench" /><span class="ml-1">Fix Production</span>
-        </v-btn>
-        <v-btn
-          v-if="factory.dependencies.metrics[product.id]?.difference < 0"
-          class="rounded mr-2"
-          color="green"
-          @click="fixExport(factory, product.id)"
-        ><i class="fas fa-wrench" /><span class="ml-1">Fix Production</span>
+          @click="onClickFixProduction(factory, product.id)"
+        ><i class="fas fa-wrench" /><span class="ml-1">Fix</span>
         </v-btn>
         <v-btn
           v-show="shouldShowTrim(product, factory)"
@@ -367,6 +360,19 @@
   const doTrimProduct = (product: FactoryItem, factory: Factory) => {
     trimProduct(product, factory)
     updateFactory(factory)
+  }
+
+  const isProductionSatisfied = (factory: Factory, id: string) => factory.parts[id]?.satisfied
+  const isExportSatisfied = (factory: Factory, id: string) => factory.dependencies.metrics[id]?.difference >= 0
+
+  const onClickFixProduction = (factory: Factory, id: string) => {
+    if (!isProductionSatisfied(factory, id)) {
+      fixProduction(factory, id)
+    }
+
+    if (!isExportSatisfied(factory, id)) {
+      fixExport(factory, id)
+    }
   }
 
   const autocompletePartItemsGenerator = () => {
