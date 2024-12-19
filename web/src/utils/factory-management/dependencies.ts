@@ -46,7 +46,7 @@ export const updateDependency = (
 
 // Scans for invalid dependency requests and removes the request and the input from the erroneous factory.
 export const flushInvalidRequests = (factories: Factory[]): void => {
-  console.log('dependencies: flushInvalidRequests')
+  // console.log('dependencies: flushInvalidRequests')
   factories.forEach(factory => {
     // If there's no requests, nothing to do.
     if (!factory.dependencies?.requests || Object.keys(factory.dependencies.requests).length === 0) {
@@ -59,9 +59,11 @@ export const flushInvalidRequests = (factories: Factory[]): void => {
 
       const dependantFactory = findFac(requestedFactoryId, factories)
       // If the factory doesn't exist, somehow this data corrupted, clean it up now.
-      if (!dependantFactory) {
+      if (!dependantFactory?.id || !dependantFactory?.inputs) {
         console.error(`flushInvalidRequests: Requested factory ${requestedFactoryId} not found!`)
         delete factory.dependencies.requests[requestedFactoryId]
+        alert(`The factory ${factory.name} has corrupted data and has been cleaned up. Please refresh the page.`)
+        return // Nothing to do as the factory doesn't exist.
       }
 
       requests.forEach(request => {
@@ -191,7 +193,7 @@ export const calculateFactoryDependencies = (
     providersToRecalculate.add(provider.id)
   })
 
-  console.log('dependencies: providersToRecalculate', providersToRecalculate)
+  // console.log('dependencies: providersToRecalculate', providersToRecalculate)
 
   // For any providers affected we now need to recalculate their metrics.
   providersToRecalculate.forEach(providerId => {
@@ -221,7 +223,7 @@ export const removeDependency = (factory: Factory, dependantFactory: Factory, pa
 
 // Calculate the dependency metrics for the factory.
 export const calculateDependencyMetrics = (factory: Factory) => {
-  console.log('dependencies: calculateDependencyMetrics: ' + factory.name)
+  // console.log('dependencies: calculateDependencyMetrics: ' + factory.name)
   // Reset the metrics for the factory
   factory.dependencies.metrics = {}
 

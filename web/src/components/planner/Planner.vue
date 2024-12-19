@@ -42,7 +42,7 @@
         </v-container>
       </v-col>
       <!-- Main Content Area -->
-      <v-col class="border-s-lg pa-3 main-content">
+      <v-col v-if="loadingCompleted" class="border-s-lg pa-3 main-content">
         <notice />
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
@@ -85,15 +85,31 @@
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import eventBus from '@/utils/eventBus'
 
   const { mdAndDown } = useDisplay()
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
+  const { getFactories, setFactories, clearFactories, addFactory, startLoad } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
+
+  const loadingCompleted = ref(false)
+
+  // Watch for the event that's emitted when appStore has loaded the data
+  eventBus.on('loadingCompleted', () => {
+    console.log('Planner: Got loadingCompleted event')
+    loadingCompleted.value = true
+    console.log('Planner: Factories loaded:', getFactories())
+  })
+
+  // When we are starting a new load we need to unload all the DOM elements
+  eventBus.on('showLoading', () => {
+    console.log('Planner: Received showLoading event, marking as unloaded')
+    loadingCompleted.value = false
+  })
 
   // ==== WATCHES
   watch(helpText, newValue => {
@@ -332,14 +348,20 @@
   const initializeFactories = () => {
     Object.assign(worldRawResources, generateRawResources(gameData))
     updateWorldRawResources(gameData)
+
+    // Once we're fully loaded, hide the loading screen
+    eventBus.emit('hideLoading')
   }
 
   const isItemRawResource = (item: string): boolean => {
     return !!gameData.items.rawResources[item]
   }
 
-  // Initialize during setup
-  initializeFactories()
+  // When everything is loaded and ready to go, then we are ready to start loading things.
+  eventBus.on('loadingCompleted', () => {
+    console.log('Planner: Received loadingCompleted event, initializing factories...')
+    initializeFactories()
+  })
 
   provide('findFactory', findFactory)
   provide('updateFactory', updateFactory)
@@ -355,17 +377,17 @@
   // If they have, don't show it again.
   const introShow = ref<boolean>(!localStorage.getItem('dismissed-introduction'))
 
+  let factoriesToLoad: Factory[] = []
+
   const setupDemo = () => {
-    closeIntro()
     if (getFactories().length > 0) {
-      if (confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
-        console.log('Replacing factories with Demo')
-        setFactories(complexDemoPlan().getFactories(), true)
+      if (!confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
+        return // User cancelled
       }
-    } else {
-      console.log('Adding demo factories')
-      setFactories(complexDemoPlan().getFactories(), true)
     }
+    closeIntro()
+    factoriesToLoad = complexDemoPlan().getFactories()
+    startLoad(factoriesToLoad)
   }
 
   const closeIntro = () => {

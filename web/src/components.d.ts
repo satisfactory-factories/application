@@ -16,6 +16,7 @@ declare module 'vue' {
     Introduction: typeof import('./components/planner/Introduction.vue')['default']
     JoinDiscord: typeof import('./components/JoinDiscord.vue')['default']
     KoFi: typeof import('./components/ko-fi.vue')['default']
+    Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     Notice: typeof import('./components/planner/Notice.vue')['default']
     Planner: typeof import('./components/planner/Planner.vue')['default']

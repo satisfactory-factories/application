@@ -51,7 +51,7 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
 
-  const { setFactories, isDebugMode } = useAppStore()
+  const { startLoad, isDebugMode } = useAppStore()
 
   const dialog = ref(false)
 
@@ -95,8 +95,7 @@
   ]
 
   const loadTemplate = (template: Template) => {
-    console.log('Loading template', template)
-    setFactories(template.data, true)
     dialog.value = false
+    startLoad(template.data, true)
   }
 </script>

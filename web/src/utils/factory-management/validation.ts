@@ -42,6 +42,6 @@ export const validateFactories = (factories: Factory[]) => {
   })
 
   if (hasErrors) {
-    alert('There were errors loading your factory data. Please check the browser console for more details. Firefox: Control + Shift + K, Chrome: Control + Shift + J. Look for "VALIDATION ERROR:".')
+    throw new Error('There were errors loading your factory data. Please check the browser console for more details. Firefox: Control + Shift + K, Chrome: Control + Shift + J. Look for "VALIDATION ERROR:".')
   }
 }

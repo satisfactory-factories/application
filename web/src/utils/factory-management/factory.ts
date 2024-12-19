@@ -23,7 +23,10 @@ export const findFac = (factoryId: string | number, factories: Factory[]): Facto
   // Ensure factoryId is parsed to a number to match factories array ids
   const factory = factories.find(fac => fac.id === parseInt(factoryId.toString(), 10))
   if (!factory) {
-    throw new Error(`Factory ${factoryId} not found!`)
+    console.error('Factory not found:', factoryId)
+    return {} as Factory
+
+    // throw new Error(`Factory ${factoryId} not found!`)
   }
   return factory
 }
