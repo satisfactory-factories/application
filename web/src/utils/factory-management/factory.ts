@@ -120,12 +120,18 @@ export const calculateFactory = (
   calculateHasProblem(allFactoriesCopy)
 
   // Reassign the data.
-  Object.assign(factory, factoryCopy)
-  Object.assign(allFactories, allFactoriesCopy)
+
+  // Update the reactive object with the values from the raw copy
+  Object.keys(factoryCopy).forEach(key => {
+    factory[key] = factoryCopy[key] // Update individual properties
+  })
+
+  // If you need to handle nested objects/arrays:
+  allFactories.forEach((factory, index) => {
+    Object.assign(factory, allFactoriesCopy[index])
+  })
 
   console.log('Factory calculations complete:', factory.name)
-
-  return factory
 }
 
 export const calculateFactories = (factories: Factory[], gameData: DataInterface): void => {
@@ -187,17 +193,11 @@ export const reorderFactory = (factory: Factory, direction: string, allFactories
 }
 
 export const regenerateSortOrders = (factories: Factory[]) => {
-  // Shallow copy the factories to ensure we don't cause a reactivity storm.
-  const factoriesCopy = toRaw(factories)
-
   // Sort the factories by their display order should they for some reason be out of sync in the object.
-  factoriesCopy.sort((a, b) => a.displayOrder - b.displayOrder)
+  factories.sort((a, b) => a.displayOrder - b.displayOrder)
 
   // Ensure that the display order is in the correct order numerically.
-  factoriesCopy.forEach((factory, index) => {
+  factories.forEach((factory, index) => {
     factory.displayOrder = index + 1
   })
-
-  // Reassign the factories to the store
-  Object.assign(factories, factoriesCopy)
 }

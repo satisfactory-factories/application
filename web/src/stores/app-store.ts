@@ -453,7 +453,8 @@ export const useAppStore = defineStore('app', () => {
     return plannerState.value.userOptions
   }
   const setUserOptions = (options: PlannerUserOptions) => {
-    plannerState.value.userOptions = options
+    console.log('appStore: setUserOptions', options)
+    Object.assign(plannerState.value.userOptions, options)
   }
 
   // ==== END STATE MANAGEMENT
@@ -473,7 +474,7 @@ export const useAppStore = defineStore('app', () => {
   eventBus.on('factoryUpdated', () => {
     console.log('appStore: factoryUpdated: Factory updated, setting last edited')
     setLastEdited()
-    console.log(currentTab.value)
+    console.log('updated factory result', currentTab.value)
   })
 
   return {

@@ -28,8 +28,9 @@
         hide-details
         label="Show Satisfaction Breakdowns"
         :model-value="showSatisfactionBreakdowns"
-        @change="!!showSatisfactionBreakdowns"
+        @change="updateSatisfactionBreakdowns()"
       />
+      {{ showSatisfactionBreakdowns }}
     </div>
     <v-row v-if="hasParts">
       <v-col class="pb-1" cols="12">
@@ -61,7 +62,12 @@
 
   const appStore = useAppStore()
 
-  const showSatisfactionBreakdowns = appStore.getUserOptions().satisfactionBreakdowns
+  const showSatisfactionBreakdowns = ref(appStore.getUserOptions().satisfactionBreakdowns)
+
+  const updateSatisfactionBreakdowns = () => {
+    const userOptions = appStore.getUserOptions()
+    userOptions.satisfactionBreakdowns = !userOptions.satisfactionBreakdowns
+  }
 
   const props = defineProps<{
     factory: Factory;
