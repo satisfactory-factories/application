@@ -29,20 +29,20 @@ export const useAppStore = defineStore('app', () => {
 
   const inited = ref(false)
   let loadedCount = 0
-  let plannerState = reactive<PlannerState>(JSON.parse(<string>localStorage.getItem('plannerState') ?? '{}') as PlannerState)
+  const plannerState = ref<PlannerState>(JSON.parse(<string>localStorage.getItem('plannerState') ?? '{}') as PlannerState)
   const oldState = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[] | null
 
   // If the new state doesn't exist and the old one does, migrate it.
-  if (!plannerState.tabs && oldState && oldState.length > 0) {
+  if (!plannerState.value.tabs && oldState && oldState.length > 0) {
     console.log('appStore: INIT: Found old factory state, migrating.')
 
-    plannerState = migrateFactoryTabsToState(oldState)
+    plannerState.value = migrateFactoryTabsToState(oldState)
 
     // Don't delete the factoryTab data just yet to ensure people have a revert option.
     // This will be removed in a future update.
     // localStorage.removeItem('factoryTabs')
     localStorage.removeItem('currentFactoryTabIndex')
-    localStorage.setItem('plannerState', JSON.stringify(plannerState))
+    localStorage.setItem('plannerState.value', JSON.stringify(plannerState.value))
     eventBus.emit('toast', {
       message: 'Your planner data has just been migrated to the new format. You will need to re-log in if you were backing up your data with an account.\n\nPlease report any issues with missing data etc to Discord, where we can help you restore any lost data.',
       type: 'success',
@@ -50,16 +50,16 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // If the state is not set, create a new one now
-  if (!plannerState.tabs) {
-    console.log('appStore: INIT: plannerState not found, creating new state.')
-    plannerState = newState({})
+  if (!plannerState.value.tabs) {
+    console.log('appStore: INIT: plannerState.value not found, creating new state.')
+    plannerState.value = newState({})
   }
 
   // The current tab is the actual data we'll be working with.
   // The displayedTab is changed as and when the loader deems it ready to be changed.
   // Otherwise, if we are dependent on the currentTabId, we'll be swapping the data before the loader is ready due to reactivity.
-  const currentTabId = ref(plannerState.currentTabId)
-  let currentTab = reactive(getTab(plannerState, currentTabId.value))
+  const currentTabId = ref(plannerState.value.currentTabId)
+  let currentTab = reactive(getTab(plannerState.value, currentTabId.value))
   const pendingTabId = ref('')
 
   const displayedFactories = computed({
@@ -88,9 +88,9 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Watch the state and save changes to local storage
-  watch(plannerState, () => {
+  watch(plannerState.value, () => {
     console.log('appStore: plannerState changed, saving to local storage.')
-    localStorage.setItem('plannerState', JSON.stringify(plannerState))
+    localStorage.setItem('plannerState', JSON.stringify(plannerState.value))
     setLastEdited() // Update last edit time whenever the data changes, from any source.
   }, { deep: true })
 
@@ -181,7 +181,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const loadingCompleted = () => {
-    console.log('appStore: ============= LOADING COMPLETED =============', plannerState)
+    console.log('appStore: ============= LOADING COMPLETED =============', plannerState.value)
     eventBus.emit('loadingCompleted')
     isLoaded.value = true
 
@@ -313,8 +313,8 @@ export const useAppStore = defineStore('app', () => {
     if (pendingTabId.value) {
       console.log('appStore: setFactories: Setting new tabId:', pendingTabId.value)
       currentTabId.value = pendingTabId.value
-      plannerState.currentTabId = pendingTabId.value
-      currentTab = getCurrentTab(plannerState)
+      plannerState.value.currentTabId = pendingTabId.value
+      currentTab = getCurrentTab(plannerState.value)
       // This therefore should change the current tab as it's referenced
       pendingTabId.value = ''
     } else {
@@ -371,7 +371,7 @@ export const useAppStore = defineStore('app', () => {
     factories = [],
   } = {} as Partial<FactoryTab>) => {
     const newTabData = newTab({ id, name, factories })
-    addTab(plannerState, newTabData)
+    addTab(plannerState.value, newTabData)
     currentTabId.value = newTabData.id
 
     // Tell Tab Navigation of the new tab and to switch to it
@@ -380,16 +380,16 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const removeCurrentTab = () => {
-    if (getTabsCount(plannerState) === 1) return
+    if (getTabsCount(plannerState.value) === 1) return
 
     console.log('appStore: removeCurrentTab: Removing current tab:', currentTab.id)
 
-    deleteTab(plannerState, currentTab)
+    deleteTab(plannerState.value, currentTab)
     // Get the new tab index by looking at the last tab in the list
-    currentTabId.value = plannerState.currentTabId
+    currentTabId.value = plannerState.value.currentTabId
 
     // Swap to the last tab remaining
-    const switchToTabId = getCurrentTab(plannerState).id
+    const switchToTabId = getCurrentTab(plannerState.value).id
     console.log('appStore: removeCurrentTab: Tab removed, switching tab to:', switchToTabId)
     eventBus.emit('switchTab', switchToTabId)
   }
@@ -397,29 +397,29 @@ export const useAppStore = defineStore('app', () => {
 
   // ==== STATE MANAGEMENT
   const getState = () => {
-    return plannerState
+    return plannerState.value
   }
   const setState = (state: PlannerState) => {
     console.log('appStore: setState', state)
-    plannerState = state
+    plannerState.value = state
   }
 
   const getTabs = () => {
-    return plannerState.tabs
+    return plannerState.value.tabs
   }
 
   const setTabs = (tabs: { [key: string]: FactoryTab }) => {
-    plannerState.tabs = tabs
+    plannerState.value.tabs = tabs
     // Get the first tab in the list
-    const firstTab = Object.keys(plannerState.tabs)[0]
-    currentTabId.value = plannerState.tabs[firstTab].id
+    const firstTab = Object.keys(plannerState.value.tabs)[0]
+    currentTabId.value = plannerState.value.tabs[firstTab].id
   }
 
   const changeCurrentTab = async (tabId: string) => {
     console.log('appStore: === CHANGING TAB ===:', tabId)
     pendingTabId.value = tabId
 
-    const factories = getTab(plannerState, tabId).factories
+    const factories = getTab(plannerState.value, tabId).factories
     await prepareLoader(factories)
   }
 
@@ -450,11 +450,11 @@ export const useAppStore = defineStore('app', () => {
     localStorage.setItem('plannerLastSaved', value)
   }
   const getUserOptions = () => {
-    return plannerState.userOptions
+    return plannerState.value.userOptions
   }
   const setUserOptions = (options: PlannerUserOptions) => {
     console.log('appStore: setUserOptions', options)
-    Object.assign(plannerState.userOptions, options)
+    Object.assign(plannerState.value.userOptions, options)
   }
 
   // ==== END STATE MANAGEMENT
