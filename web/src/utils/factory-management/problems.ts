@@ -7,6 +7,7 @@ export const calculateHasProblem = (factories: Factory[]) => {
 
     if (!factory.requirementsSatisfied) {
       factory.hasProblem = true
+      factory.updated = new Date().toISOString()
       return // Nothing else to do, if the requirements are unsatisfied the exports will be unsatisfied as well.
     }
 
@@ -15,6 +16,7 @@ export const calculateHasProblem = (factories: Factory[]) => {
     // We need to have !hasProblem because we don't want to overwrite the hasProblem flag if it's already set.
       if (!factory.dependencies.metrics[part].isRequestSatisfied) {
         factory.hasProblem = true
+        factory.updated = new Date().toISOString()
       }
     })
   })

@@ -120,7 +120,7 @@ export const calculateFactory = (
   // Check if the factory has any problems.
   calculateHasProblem(allFactoriesCopy)
 
-  // Reassign the data.
+  // Reassign the data
   Object.assign(factory, factoryCopy)
 
   allFactories.forEach((factory, index) => {
@@ -128,6 +128,7 @@ export const calculateFactory = (
   })
 
   // Set the updated property so the UI knows when the factory was last updated.
+  // This is required as we've purposefully broken reactivity and need to now inform the DOM things have changed.
   factory.updated = new Date().toISOString()
 
   console.log('Factory calculations complete:', factory.name)
