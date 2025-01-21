@@ -132,6 +132,7 @@
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
+            :key="factory.id + factory.updated"
             :factory="factory"
             :help-text="helpText"
           />
@@ -140,6 +141,7 @@
             <v-col cols="12" md="6">
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
+                :key="factory.id + factory.updated"
                 :factory="factory"
                 :help-text="helpText"
               />
@@ -147,6 +149,7 @@
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
+                :key="factory.id + factory.updated"
                 :factory="factory"
                 :help-text="helpText"
               />

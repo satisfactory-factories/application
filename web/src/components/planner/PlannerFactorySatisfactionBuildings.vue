@@ -38,6 +38,7 @@
         >
           <game-asset
             :subject="buildingData.name"
+            transition="none"
             type="building"
           />
           <span class="ml-2">

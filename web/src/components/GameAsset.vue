@@ -8,6 +8,7 @@
     :min-height="heightPx"
     :min-width="widthPx"
     :src="imgUrl"
+    :transition="transition"
   />
   <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
   <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
@@ -31,6 +32,7 @@
     height?: string | number | undefined
     width?: string | number | undefined
     type: 'building' | 'item',
+    transition?: string | undefined
   }>()
 
   const sluggify = (subject: string): string => {

@@ -73,6 +73,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     tasks: [],
     notes: '',
     dataVersion: '2025-01-03',
+    updated: new Date().toISOString(),
   }
 }
 
@@ -120,16 +121,14 @@ export const calculateFactory = (
   calculateHasProblem(allFactoriesCopy)
 
   // Reassign the data.
+  Object.assign(factory, factoryCopy)
 
-  // Update the reactive object with the values from the raw copy
-  Object.keys(factoryCopy).forEach(key => {
-    factory[key] = factoryCopy[key] // Update individual properties
-  })
-
-  // If you need to handle nested objects/arrays:
   allFactories.forEach((factory, index) => {
     Object.assign(factory, allFactoriesCopy[index])
   })
+
+  // Set the updated property so the UI knows when the factory was last updated.
+  factory.updated = new Date().toISOString()
 
   console.log('Factory calculations complete:', factory.name)
 }

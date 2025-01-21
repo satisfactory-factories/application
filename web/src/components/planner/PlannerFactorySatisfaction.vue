@@ -74,6 +74,8 @@
     helpText: boolean;
   }>()
 
+  const { factory } = toRefs(props)
+
   // Reactive factory parts check
   const hasParts = computed(() => Object.keys(props.factory.parts).length > 0)
 

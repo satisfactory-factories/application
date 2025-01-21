@@ -141,6 +141,7 @@ export interface Factory {
   tasks: FactoryTask[]
   notes: string
   dataVersion: string
+  updated: string
 }
 
 export interface FactoryTab {

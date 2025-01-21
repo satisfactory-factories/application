@@ -34,6 +34,7 @@
                 <game-asset
                   height="48"
                   :subject="partId.toString()"
+                  transition="none"
                   type="item"
                   width="48"
                 />
