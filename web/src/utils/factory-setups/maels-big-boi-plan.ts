@@ -85,6 +85,7 @@ const bigBoiPlan: Factory[] = [{
   displayOrder: 0,
   inSync: true,
   syncState: { Cement: { amount: 3840, recipe: 'Alternate_WetConcrete' } },
+  syncStatePower: {},
   tasks: [{ title: 'Choose location', completed: true }, { title: 'Place Foundations', completed: true }, {
     title: 'Build',
     completed: true,
@@ -96,7 +97,7 @@ const bigBoiPlan: Factory[] = [{
   powerProducers: [],
   power: { consumed: 1440, produced: 0, difference: -1440 },
   previousInputs: [],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
 }, {
   id: 8489,
   name: 'Iron Ingots MegaFac',
@@ -178,6 +179,7 @@ const bigBoiPlan: Factory[] = [{
   hasProblem: false,
   inSync: true,
   syncState: { IronIngot: { amount: 4680, recipe: 'Alternate_PureIronIngot' } },
+  syncStatePower: {},
   displayOrder: 1,
   tasks: [{ title: 'Build', completed: true }, {
     title: 'Reconfigure trains',
@@ -190,7 +192,7 @@ const bigBoiPlan: Factory[] = [{
     completed: true,
   }, { title: 'Check power breaker', completed: false }],
   notes: 'Requires 12 water extractors\n3k Iron ore available nearby, using 2520 (4 belts @630)\nAll eastern nodes used, western pure left untapped for future expansion\n4x pipes 360, 3 extractors per pipe\n\n4 refinery groups (18 each, 72/4)\nOre: 2520 / 4 = 630 iron ore each group\nWater: 360\n\nOutputs need to be 8 belts (which fits nicely into a station) of 9 refs each (585 per belt) due to mk5 limits (would need 1170/m) \n\nStation supply capacity of 6240 (not calculated for delays)',
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
 }, {
   id: 7869,
   name: 'Copper Ingots MegaFac',
@@ -279,6 +281,7 @@ const bigBoiPlan: Factory[] = [{
   hasProblem: false,
   inSync: true,
   syncState: { CopperIngot: { amount: 6300, recipe: 'Alternate_PureCopperIngot' } },
+  syncStatePower: {},
   displayOrder: 2,
   tasks: [{ title: 'Establish foundations', completed: true }, {
     title: 'Build Water',
@@ -297,7 +300,7 @@ const bigBoiPlan: Factory[] = [{
     completed: true,
   }, { title: 'Add power breaker', completed: false }],
   notes: 'Miners: \n  - Group 1: 2100/min\n  - Group 2: 900/min\n  - Total: 3300/min\nRefs: 8 groups of 21= 168\nWater: 18 (20) water extractors (1800/min)\n  - 4 pipes with 4.5x (5) extractors each split into 2',
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
 }, {
   id: 2533,
   name: 'Caterium Processing',
@@ -413,12 +416,13 @@ const bigBoiPlan: Factory[] = [{
   displayOrder: 3,
   inSync: false,
   syncState: { GoldIngot: { amount: 450, recipe: 'IngotCaterium' }, HighSpeedWire: { amount: 1922, recipe: 'Quickwire' } },
+  syncStatePower: {},
   tasks: [{ title: 'Pick location', completed: false }],
   notes: '6x constructor arrays',
   powerProducers: [],
   power: { consumed: 4006, produced: 0, difference: -4006 },
   previousInputs: [],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
 }, {
   id: 7110,
   name: 'Copper MegaFac',
@@ -661,6 +665,7 @@ const bigBoiPlan: Factory[] = [{
     Wire: { amount: 3360, recipe: 'Wire' },
     Cable: { amount: 960, recipe: 'Cable' },
   },
+  syncStatePower: {},
   tasks: [{ title: 'Choose location', completed: true }, {
     title: 'Lay foundations for new location',
     completed: true,
@@ -673,7 +678,7 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'GoldIngot',
     amount: 180,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
 }, {
   id: 1023,
   name: 'Oil MegaFac',
@@ -890,7 +895,8 @@ const bigBoiPlan: Factory[] = [{
   }],
   power: { consumed: 5232.34, produced: 10000, difference: 4767.66 },
   previousInputs: [],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 422,
   name: 'Iron Plates',
@@ -1019,7 +1025,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'Wire',
     amount: 1350,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 5233,
   name: 'Black Powder',
@@ -1148,7 +1155,8 @@ const bigBoiPlan: Factory[] = [{
   powerProducers: [],
   power: { consumed: 60, produced: 0, difference: -60 },
   previousInputs: [{ factoryId: 1023, outputPart: 'HeavyOilResidue', amount: 10 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 5445,
   name: 'Quartz Processing',
@@ -1330,7 +1338,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'IronPlateReinforced',
     amount: 60,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 2657,
   name: 'Rods & Screws MegaFac',
@@ -1429,7 +1438,8 @@ const bigBoiPlan: Factory[] = [{
   powerProducers: [],
   power: { consumed: 312, produced: 0, difference: -312 },
   previousInputs: [{ factoryId: 8489, outputPart: 'IronIngot', amount: 1070 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 6471,
   name: 'Steel MegaFac',
@@ -1592,7 +1602,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'IronIngot',
     amount: 2160,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 6620,
   name: 'Motors MegaFac',
@@ -1742,7 +1753,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'Wire',
     amount: 2220,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 2959,
   name: 'E.I.Bs',
@@ -1839,7 +1851,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'Cement',
     amount: 864,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 5750,
   name: 'Frames MegaFac',
@@ -2090,7 +2103,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'IronPlateReinforced',
     amount: 126,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 5706,
   name: 'Electronics',
@@ -2343,7 +2357,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'HighSpeedWire',
     amount: 3228,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 4295,
   name: 'Phase 3',
@@ -2726,7 +2741,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'SteelPlate',
     amount: 90,
   }, { factoryId: 422, outputPart: 'IronPlateReinforced', amount: 10 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 4042,
   name: 'SAM Processing',
@@ -2886,7 +2902,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'SteelPipe',
     amount: 60,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 3685,
   name: 'Aluminium Processing',
@@ -3183,7 +3200,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'CopperSheet',
     amount: 270,
   }, { factoryId: 7869, outputPart: 'CopperIngot', amount: 240 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 4341,
   name: 'Military',
@@ -3389,7 +3407,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'LiquidTurboFuel',
     amount: 15,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 3816,
   name: 'Acids',
@@ -3538,7 +3557,8 @@ const bigBoiPlan: Factory[] = [{
   powerProducers: [],
   power: { consumed: 810, produced: 0, difference: -810 },
   previousInputs: [{ factoryId: 422, outputPart: 'IronPlate', amount: 60 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 184,
   name: 'Rocket Fuel Power',
@@ -3762,7 +3782,8 @@ const bigBoiPlan: Factory[] = [{
   }],
   power: { consumed: 1307.7759999999998, produced: 29999.968, difference: 28692.192000000003 },
   previousInputs: [{ factoryId: 3816, outputPart: 'NitricAcid', amount: 50 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 5623,
   name: 'Phase 4 Intermediates',
@@ -4071,7 +4092,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'Motor',
     amount: 8,
   }, { factoryId: 5445, outputPart: 'CrystalOscillator', amount: 4 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 3911,
   name: 'Phase 4',
@@ -4418,7 +4440,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'CopperDust',
     amount: 400,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 2929,
   name: 'Uranium Power',
@@ -4666,10 +4689,14 @@ const bigBoiPlan: Factory[] = [{
   },
   requirementsSatisfied: true,
   usingRawResourcesOnly: false,
-  hidden: true,
+  hidden: false,
   hasProblem: false,
-  inSync: null,
-  syncState: {},
+  inSync: true,
+  syncState: {
+    ElectromagneticControlRod: { amount: 64, recipe: 'ElectromagneticControlRod' },
+    UraniumCell: { amount: 400, recipe: 'UraniumCell' },
+    NuclearFuelRod: { amount: 8, recipe: 'NuclearFuelRod' },
+  },
   displayOrder: 23,
   tasks: [],
   notes: '',
@@ -4700,7 +4727,15 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'SteelPlateReinforced',
     amount: 24,
   }, { factoryId: 3816, outputPart: 'SulfuricAcid', amount: 480 }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {
+    generatornuclear: {
+      powerAmount: 100000,
+      buildingAmount: 40,
+      recipe: 'GeneratorNuclear_NuclearFuelRod',
+      ingredientAmount: 8,
+    },
+  },
 }, {
   id: 4555,
   name: 'Plutonium Power',
@@ -4987,10 +5022,15 @@ const bigBoiPlan: Factory[] = [{
   rawResources: { Water: { id: 'Water', name: 'Water', amount: 4800 } },
   requirementsSatisfied: true,
   usingRawResourcesOnly: false,
-  hidden: true,
+  hidden: false,
   hasProblem: false,
-  inSync: null,
-  syncState: {},
+  inSync: true,
+  syncState: {
+    NonFissibleUranium: { amount: 400, recipe: 'NonFissileUranium' },
+    PlutoniumPellet: { amount: 120, recipe: 'Plutonium' },
+    PlutoniumCell: { amount: 60, recipe: 'PlutoniumCell' },
+    PlutoniumFuelRod: { amount: 2, recipe: 'PlutoniumFuelRod' },
+  },
   displayOrder: 24,
   tasks: [],
   notes: '',
@@ -5029,7 +5069,15 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'NuclearWaste',
     amount: 400,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {
+    generatornuclear: {
+      powerAmount: 50000,
+      buildingAmount: 20,
+      recipe: 'GeneratorNuclear_PlutoniumFuelRod',
+      ingredientAmount: 2,
+    },
+  },
 }, {
   id: 216,
   name: 'Diamonds',
@@ -5130,7 +5178,8 @@ const bigBoiPlan: Factory[] = [{
   powerProducers: [],
   power: { consumed: 5350, produced: 0, difference: -5350 },
   previousInputs: [],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 440,
   name: 'Ficsite',
@@ -5249,7 +5298,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'AluminumIngot',
     amount: 480,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 9960,
   name: 'Phase 5 Intermediates',
@@ -5706,7 +5756,8 @@ const bigBoiPlan: Factory[] = [{
     outputPart: 'QuartzCrystal',
     amount: 144,
   }],
-  dataVersion: '2025-01-03',
+  dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }, {
   id: 1404,
   name: 'Phase 5',
@@ -6004,4 +6055,5 @@ const bigBoiPlan: Factory[] = [{
     amount: 4,
   }, { factoryId: 9960, outputPart: 'QuantumEnergy', amount: 100 }],
   dataVersion: '2025-01-03.2',
+  syncStatePower: {},
 }]
