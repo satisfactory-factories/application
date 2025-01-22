@@ -579,13 +579,17 @@ describe('products', () => {
   describe('Update product via byproduct / requirement amounts', () => {
     let factory: Factory
     let product: FactoryItem
-    const eventSpy = vi.spyOn(eventBus, 'emit')
     beforeEach(() => {
+      vi.spyOn(eventBus, 'emit')
+
       const factories = create341Scenario().getFactories()
       factory = factories[0]
       product = factory.products[0] // Non-Fissile Uranium, note has byproduct of water
 
       calculateFactories(factories, gameData)
+    })
+    afterEach(() => {
+      vi.resetAllMocks()
     })
 
     describe('updateProductAmountViaByproduct', () => {
@@ -616,7 +620,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -631,7 +635,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -664,7 +668,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -680,7 +684,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)

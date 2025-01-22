@@ -60,12 +60,15 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
       }
 
       // Ensure all the product requirements have parts in the factory
-      Object.keys(product.requirements).forEach(part => {
-        if (!factory.parts[part]) {
-          console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has a product with a requirement for part "${part}" which does not exist in the factory's part list. Adding the part now.`)
-          createNewPart(factory, part)
-        }
-      })
+      if (product?.requirements) {
+        Object.keys(product.requirements).forEach(part => {
+          if (!factory.parts[part]) {
+            console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has a product with a requirement for part "${part}" which does not exist in the factory's part list. Adding the part now.`)
+            createNewPart(factory, part)
+            hasErrors = true
+          }
+        })
+      }
 
       if (needsRecalc) {
         console.warn(`validation: Recalculating Factory "${factory.name}" (${factory.id}) due to product validation errors.`)
