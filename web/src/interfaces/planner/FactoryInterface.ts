@@ -92,6 +92,13 @@ export interface FactorySyncState {
   recipe: string
 }
 
+export interface FactoryPowerSyncState {
+  buildingAmount: number
+  powerAmount: number
+  recipe: string // And also the fuel used
+  ingredientAmount: number
+}
+
 export interface FactoryTask {
   title: string
   completed: boolean
@@ -137,6 +144,7 @@ export interface Factory {
   hasProblem: boolean
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
+  syncStatePower: { [key: string]: FactoryPowerSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string

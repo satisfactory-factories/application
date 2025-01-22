@@ -278,6 +278,11 @@ export const useAppStore = defineStore('app', () => {
         factory.previousInputs = []
       }
 
+      // Patch for #270
+      if (factory.syncStatePower === undefined) {
+        factory.syncStatePower = {}
+      }
+
       // Delete keys that no longer exist
       // @ts-ignore
       if (factory.internalProducts) delete factory.internalProducts
@@ -289,7 +294,7 @@ export const useAppStore = defineStore('app', () => {
       if (factory.exports) delete factory.exports
 
       // Update data version
-      factory.dataVersion = '2025-01-03.2'
+      factory.dataVersion = '2025-01-22'
     })
 
     if (needsCalculation) {
