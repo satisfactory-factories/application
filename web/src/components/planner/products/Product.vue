@@ -51,6 +51,7 @@
           label="Qty /min"
           :max-width="smAndDown ? undefined : '130px'"
           :min-width="smAndDown ? undefined : '130px'"
+          :name="`${product.id}.amount`"
           variant="outlined"
           @update:model-value="updateFactory(factory)"
         />
