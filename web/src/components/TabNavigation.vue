@@ -7,7 +7,7 @@
           color="deep-orange"
         >
           <v-tab
-            v-for="(item, index) in appStore.factoryTabs"
+            v-for="(item, index) in appStore.getTabs()"
             :key="item.id"
             class="text-none"
             :ripple="!isCurrentTab(index)"

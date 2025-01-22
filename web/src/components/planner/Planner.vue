@@ -1,5 +1,5 @@
 <template>
-  <introduction :intro-show="introShow" @close-intro="closeIntro" @show-demo="setupDemo" />
+  <introduction />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
   <div class="planner-container">
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -16,7 +16,6 @@
         @clear-all="clearAll"
         @hide-all="showHideAll('hide')"
         @show-all="showHideAll('show')"
-        @show-intro="showIntro"
         @toggle-help-text="toggleHelp()"
       />
     </Teleport>
@@ -38,16 +37,15 @@
             @clear-all="clearAll"
             @hide-all="showHideAll('hide')"
             @show-all="showHideAll('show')"
-            @show-intro="showIntro"
             @toggle-help-text="toggleHelp()"
           />
         </v-container>
       </v-col>
       <!-- Main Content Area -->
-      <v-col v-if="!loadingCompleted" class="border-s-lg pa-3 main-content">
+      <v-col v-if="!planVisible" class="border-s-lg pa-3 main-content">
         <planner-factory-placeholder-list />
       </v-col>
-      <v-col v-if="loadingCompleted" class="border-s-lg pa-3 main-content">
+      <v-col v-if="planVisible" class="border-s-lg pa-3 main-content">
         <notice />
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
@@ -84,32 +82,42 @@
   import {
     removeFactoryDependants,
   } from '@/utils/factory-management/dependencies'
-  import { calculateFactories, calculateFactory, findFac, newFactory } from '@/utils/factory-management/factory'
-  import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+  import {
+    calculateFactories,
+    calculateFactory,
+    findFac,
+    newFactory,
+    regenerateSortOrders, reorderFactory,
+  } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory, prepareLoader } = useAppStore()
+  const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
 
-  const loadingCompleted = ref(false)
+  const planVisible = ref(false)
+  const navigationReady = ref(false)
 
   // When we are starting a new load we need to unload all the DOM elements
-  eventBus.on('prepareForLoad', () => {
-    loadingCompleted.value = false
-    console.log('Planner: Received prepareForLoad event, marked as unloaded, showing placeholders')
+  eventBus.on('plannerShow', (show: boolean) => {
+    if (!show) {
+      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      hidePlan()
+    } else {
+      console.log('Planner: Received plannerShow(true) event, showing content')
+      showPlan()
+    }
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
   eventBus.on('loadingCompleted', () => {
-    console.log('Planner: Received loadingCompleted event, initializing factories...')
-    loadingCompleted.value = true
-    initializeFactories()
+    console.log('Planner: Received loadingCompleted event, booting planner')
+    showPlan()
   })
 
   // ==== WATCHES
@@ -117,7 +125,14 @@
     localStorage.setItem('helpText', JSON.stringify(newValue))
   })
 
-  const navigationReady = ref(false)
+  const showPlan = () => {
+    resyncWorldResources()
+    planVisible.value = true
+  }
+
+  const hidePlan = () => {
+    planVisible.value = false
+  }
 
   eventBus.on('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
@@ -225,7 +240,7 @@
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
-    regenerateSortOrders()
+    regenerateSortOrders(getFactories())
     navigateToFactory(newId)
   }
 
@@ -243,7 +258,7 @@
       calculateFactories(getFactories(), gameData)
 
       // Regenerate the sort orders
-      regenerateSortOrders()
+      regenerateSortOrders(getFactories())
     } else {
       console.error('Factory not found to delete?!')
     }
@@ -283,38 +298,7 @@
   }
 
   const moveFactory = (factory: Factory, direction: string) => {
-    const currentOrder = factory.displayOrder
-    let targetOrder
-
-    if (direction === 'up' && currentOrder > 0) {
-      targetOrder = currentOrder - 1
-    } else if (direction === 'down' && currentOrder < getFactories().length - 1) {
-      targetOrder = currentOrder + 1
-    } else {
-      return // Invalid move
-    }
-
-    // Find the target factory and swap display orders
-    const targetFactory = getFactories().find(fac => fac.displayOrder === targetOrder)
-    if (targetFactory) {
-      targetFactory.displayOrder = currentOrder
-      factory.displayOrder = targetOrder
-    }
-
-    regenerateSortOrders()
-  }
-
-  const regenerateSortOrders = () => {
-    // Sort now, which may have sorted them weirdly
-    setFactories(getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
-
-    // Ensure that the display order is correct
-    getFactories().forEach((factory, index) => {
-      factory.displayOrder = index
-    })
-
-    // Now re-sort
-    setFactories(getFactories().sort((a, b) => a.displayOrder - b.displayOrder))
+    reorderFactory(factory, direction, getFactories())
   }
 
   const forceSort = () => {
@@ -324,7 +308,7 @@
     })
   }
 
-  const initializeFactories = () => {
+  const resyncWorldResources = () => {
     Object.assign(worldRawResources, generateRawResources(gameData))
     updateWorldRawResources(gameData)
   }
@@ -336,33 +320,6 @@
   provide('navigateToFactory', navigateToFactory)
   provide('moveFactory', moveFactory)
 
-  // Grab from local storage if the user has already dismissed this popup
-  // If they have, don't show it again.
-  const introShow = ref<boolean>(!localStorage.getItem('dismissed-introduction'))
-
-  let factoriesToLoad: Factory[] = []
-
-  const setupDemo = () => {
-    if (getFactories().length > 0) {
-      if (!confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
-        return // User cancelled
-      }
-    }
-    closeIntro()
-    factoriesToLoad = complexDemoPlan().getFactories()
-    prepareLoader(factoriesToLoad)
-  }
-
-  const closeIntro = () => {
-    console.log('closing intro')
-    introShow.value = false
-    localStorage.setItem('dismissed-introduction', 'true')
-  }
-
-  const showIntro = () => {
-    console.log('showing intro')
-    introShow.value = true
-  }
 </script>
 
 <style scoped lang="scss">
