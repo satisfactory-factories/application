@@ -61,22 +61,12 @@
 </template>
 <script setup lang="ts">
   import { defineEmits } from 'vue'
+  import eventBus from '@/utils/eventBus'
 
-  const props = defineProps<{
-    introShow: boolean
-  }>()
-
+  // Grab from local storage if the user has already dismissed this popup
+  // If they have, don't show it again.
+  const introShow = ref<boolean>(!localStorage.getItem('dismissed-introduction'))
   const showDialog = ref<boolean>(false)
-
-  onMounted(() => {
-    console.log('Intro show:', props.introShow)
-    showDialog.value = props.introShow
-  })
-
-  // Set up a watcher to close the dialog when the prop changes
-  watch(() => props.introShow, value => {
-    showDialog.value = value
-  })
 
   // Set up a watcher if the dialogue is changed to closed, we emit the event by calling close()
   watch(() => showDialog.value, value => {
@@ -98,10 +88,24 @@
     close()
   }
 
+  const open = () => {
+    console.log('Introduction: Opening introduction')
+    showDialog.value = true
+    localStorage.setItem('dismissed-introduction', 'false')
+  }
   const close = () => {
-    console.log('Closing introduction')
-    emit('closeIntro')
+    console.log('Introduction: Closing introduction')
     showDialog.value = false
+    localStorage.setItem('dismissed-introduction', 'true')
+  }
+
+  eventBus.on('introShow', (show: boolean) => {
+    console.log('Introduction: Got introShow event', show)
+    show ? open() : close()
+  })
+
+  if (introShow.value) {
+    open()
   }
 </script>
 <style lang="scss" scoped>

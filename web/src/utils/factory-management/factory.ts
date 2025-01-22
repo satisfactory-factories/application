@@ -141,3 +141,35 @@ export const calculateFactories = (factories: Factory[], gameData: DataInterface
 export const countActiveTasks = (factory: Factory) => {
   return factory.tasks.filter(task => !task.completed).length
 }
+
+export const reorderFactory = (factory: Factory, direction: string, allFactories: Factory[]) => {
+  const currentOrder = factory.displayOrder
+  let targetOrder
+
+  if (direction === 'up' && currentOrder > 0) {
+    targetOrder = currentOrder - 1
+  } else if (direction === 'down' && currentOrder < allFactories.length - 1) {
+    targetOrder = currentOrder + 1
+  } else {
+    return // Invalid move
+  }
+
+  // Find the target factory and swap display orders
+  const targetFactory = allFactories.find(fac => fac.displayOrder === targetOrder)
+  if (targetFactory) {
+    targetFactory.displayOrder = currentOrder
+    factory.displayOrder = targetOrder
+  }
+
+  regenerateSortOrders(allFactories)
+}
+
+export const regenerateSortOrders = (factories: Factory[]) => {
+  // Sort the factories by their display order should they for some reason be out of sync in the object.
+  factories.sort((a, b) => a.displayOrder - b.displayOrder)
+
+  // Ensure that the display order is in the correct order numerically.
+  factories.forEach((factory, index) => {
+    factory.displayOrder = index
+  })
+}

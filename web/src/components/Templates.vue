@@ -179,7 +179,7 @@
 
     // This is a workaround for the templating bug where the data was passed as a reference, and would refuse to load the same template until the page is refreshed.
     const data = JSON.parse(template.data) as Factory[]
-    prepareLoader(data)
+    prepareLoader(data, true)
     dialog.value = false
   }
 </script>

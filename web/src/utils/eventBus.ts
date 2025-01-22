@@ -12,6 +12,10 @@ type Events = {
   prepareForLoad: { count: number, shown: number };
   readyForData: undefined;
   plannerShowContent: undefined
+  plannerHideContent: undefined
+
+  // Intro
+  introShow: boolean;
 
   navigationReady: undefined;
 };
