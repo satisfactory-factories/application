@@ -29,7 +29,7 @@ describe('269 Scenario Plan', () => {
       expect(fuelFac.buildingRequirements.generatorfuel).toEqual({
         name: 'generatorfuel',
         amount: 8,
-        powerProduced: 2000,
+        powerProduced: 2000, // #269 meant it was 1000, not 2000.
       })
       expect(Object.keys(fuelFac.buildingRequirements).length).toBe(1)
     })
