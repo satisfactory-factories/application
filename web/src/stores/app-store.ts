@@ -119,7 +119,7 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: prepareLoader', factoriesToLoad)
 
     // Tell planner to hide to remove all rendered content
-    eventBus.emit('plannerHideContent')
+    eventBus.emit('plannerShow', false)
 
     // Wait a bit for the planner to comply
     await new Promise(resolve => setTimeout(resolve, 50))

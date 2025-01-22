@@ -44,10 +44,10 @@
         </v-container>
       </v-col>
       <!-- Main Content Area -->
-      <v-col v-if="!loadingCompleted" class="border-s-lg pa-3 main-content">
+      <v-col v-if="!planVisible" class="border-s-lg pa-3 main-content">
         <planner-factory-placeholder-list />
       </v-col>
-      <v-col v-if="loadingCompleted" class="border-s-lg pa-3 main-content">
+      <v-col v-if="planVisible" class="border-s-lg pa-3 main-content">
         <notice />
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
@@ -103,24 +103,24 @@
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
 
-  const loadingCompleted = ref(false)
+  const planVisible = ref(false)
+  const navigationReady = ref(false)
 
   // When we are starting a new load we need to unload all the DOM elements
-  eventBus.on('plannerHideContent', () => {
-    console.log('Planner: Received prepareForLoad event, marked as unloaded, showing placeholders')
-    loadingCompleted.value = false
+  eventBus.on('plannerShow', (show: boolean) => {
+    if (!show) {
+      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      hidePlan()
+    } else {
+      console.log('Planner: Received plannerShow(true) event, showing content')
+      showPlan()
+    }
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
   eventBus.on('loadingCompleted', () => {
-    console.log('Planner: Received loadingCompleted event, initializing factories...')
-    loadingCompleted.value = true
-    initializeFactories()
-  })
-
-  eventBus.on('plannerHideContent', () => {
-    console.log('Planner: Received plannerHideContent event, marked as unloaded, showing placeholders')
-    loadingCompleted.value = false
+    console.log('Planner: Received loadingCompleted event, booting planner')
+    showPlan()
   })
 
   // ==== WATCHES
@@ -128,7 +128,14 @@
     localStorage.setItem('helpText', JSON.stringify(newValue))
   })
 
-  const navigationReady = ref(false)
+  const showPlan = () => {
+    resyncWorldResources()
+    planVisible.value = true
+  }
+
+  const hidePlan = () => {
+    planVisible.value = false
+  }
 
   eventBus.on('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
@@ -304,7 +311,7 @@
     })
   }
 
-  const initializeFactories = () => {
+  const resyncWorldResources = () => {
     Object.assign(worldRawResources, generateRawResources(gameData))
     updateWorldRawResources(gameData)
   }

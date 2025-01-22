@@ -190,9 +190,9 @@ describe('app-store', () => {
         expect(appStore.isLoaded).toBe(false)
       })
 
-      it('should emit the plannerHideContent event', async () => {
+      it('should emit the plannerShow,false event', async () => {
         await appStore.prepareLoader()
-        expect(eventBus.emit).toHaveBeenCalledWith('plannerHideContent')
+        expect(eventBus.emit).toHaveBeenCalledWith('plannerShow', false)
       })
 
       it('should set the factories as expected if supplied', async () => {

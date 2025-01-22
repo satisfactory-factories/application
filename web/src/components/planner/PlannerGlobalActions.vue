@@ -73,13 +73,26 @@
         Paste plan
       </v-btn>
       <v-btn
+        v-if="isDebugMode && !disableRecalc"
         class="ma-1"
         color="amber"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-calculator-alt"
         variant="tonal"
         @click="forceRecalc"
       >
-        Force Recalc
+        Recalculate
+      </v-btn>
+      <v-btn
+        v-if="isDebugMode && disableRecalc"
+        class="ma-1"
+        color="amber"
+        :disabled="disableRecalc"
+        prepend-icon="fas fa-sync fa-spin"
+        variant="tonal"
+        @click="forceRecalc"
+      >
+        Recalculate
       </v-btn>
     </v-col>
   </v-row>
@@ -91,7 +104,9 @@
   import eventBus from '@/utils/eventBus'
   import { confirmDialog } from '@/utils/helpers'
 
-  const { getFactories, prepareLoader, forceCalculation } = useAppStore()
+  const { getFactories, prepareLoader, forceCalculation, isDebugMode } = useAppStore()
+
+  const disableRecalc = ref(false)
 
   defineProps<{ helpTextShown: boolean }>()
   // eslint-disable-next-line func-call-spacing
@@ -148,10 +163,18 @@
   }
 
   const forceRecalc = async () => {
-    eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while.', type: 'warning' })
+    eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while for large plans. Expect lag.', type: 'warning' })
+
+    // Wait for planner to comply
     await new Promise(resolve => setTimeout(resolve, 250))
+
+    disableRecalc.value = true
     forceCalculation()
   }
+
+  eventBus.on('calculationsCompleted', () => {
+    disableRecalc.value = false
+  })
 </script>
 
 <style lang="scss" scoped>
