@@ -2,6 +2,7 @@
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
+import { createNewPart } from '@/utils/factory-management/common'
 
 export const validateFactories = (factories: Factory[], gameData: DataInterface) => {
   let hasErrors = false
@@ -52,11 +53,19 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
 
       if (product && product.amount <= 0) {
         hasErrors = true
-        console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has a product with an amount of 0 or less. Setting to 1.`)
+        console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has a product with an amount of 0 or less. Setting to 0.1.`)
 
         product.amount = 0.1
         needsRecalc = true
       }
+
+      // Ensure all the product requirements have parts in the factory
+      Object.keys(product.requirements).forEach(part => {
+        if (!factory.parts[part]) {
+          console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has a product with a requirement for part "${part}" which does not exist in the factory's part list. Adding the part now.`)
+          createNewPart(factory, part)
+        }
+      })
 
       if (needsRecalc) {
         console.warn(`validation: Recalculating Factory "${factory.name}" (${factory.id}) due to product validation errors.`)
