@@ -52,7 +52,7 @@
           :max-width="smAndDown ? undefined : '130px'"
           :min-width="smAndDown ? undefined : '130px'"
           variant="outlined"
-          @input="updateFactory(factory)"
+          @update:model-value="updateFactory(factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
