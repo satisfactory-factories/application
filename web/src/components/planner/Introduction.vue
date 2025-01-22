@@ -52,7 +52,7 @@
         <v-btn color="blue" @click="close">
           <i class="fas fa-file" /><span class="ml-2">Start with an empty plan</span>
         </v-btn>
-        <v-btn color="green" variant="elevated" @click="showDemo">
+        <v-btn color="green" variant="elevated" @click="setupDemo">
           <i class="fas fa-list" /><span class="ml-2">Start with a demo plan</span>
         </v-btn>
       </v-card-actions>
@@ -60,8 +60,10 @@
   </v-dialog>
 </template>
 <script setup lang="ts">
-  import { defineEmits } from 'vue'
   import eventBus from '@/utils/eventBus'
+  import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+  import { useAppStore } from '@/stores/app-store'
+  const { getFactories, prepareLoader } = useAppStore()
 
   // Grab from local storage if the user has already dismissed this popup
   // If they have, don't show it again.
@@ -76,17 +78,10 @@
     }
   })
 
-  // eslint-disable-next-line func-call-spacing
-  const emit = defineEmits<{
-    (event: 'showDemo'): void;
-    (event: 'closeIntro'): void;
-  }>()
-
-  const showDemo = () => {
-    console.log('Showing demo')
-    emit('showDemo')
-    close()
-  }
+  eventBus.on('introToggle', (show: boolean) => {
+    console.log('Introduction: Got introToggle event', show)
+    show ? open() : close()
+  })
 
   const open = () => {
     console.log('Introduction: Opening introduction')
@@ -99,10 +94,15 @@
     localStorage.setItem('dismissed-introduction', 'true')
   }
 
-  eventBus.on('introShow', (show: boolean) => {
-    console.log('Introduction: Got introShow event', show)
-    show ? open() : close()
-  })
+  const setupDemo = () => {
+    if (getFactories().length > 0) {
+      if (!confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
+        return // User cancelled
+      }
+    }
+    close()
+    prepareLoader(complexDemoPlan().getFactories(), true)
+  }
 
   if (introShow.value) {
     open()

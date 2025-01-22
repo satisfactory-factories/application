@@ -15,7 +15,7 @@ type Events = {
   calculationsCompleted: undefined
 
   // Intro
-  introShow: boolean;
+  introToggle: boolean;
 
   navigationReady: undefined;
 };

@@ -38,7 +38,7 @@
         prepend-icon="fas fa-users-class"
         ripple
         variant="tonal"
-        @click="emit('show-intro')"
+        @click="eventBus.emit('introToggle', true)"
       >
         Show Intro
       </v-btn>
@@ -111,7 +111,6 @@
   defineProps<{ helpTextShown: boolean }>()
   // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{
-    (event: 'show-intro'): void;
     (event: 'hide-all'): void;
     (event: 'show-all'): void;
     (event: 'toggle-help-text'): void;

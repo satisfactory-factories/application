@@ -1,5 +1,5 @@
 <template>
-  <introduction :intro-show="introShow" @close-intro="closeIntro" @show-demo="setupDemo" />
+  <introduction />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
   <div class="planner-container">
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -16,7 +16,6 @@
         @clear-all="clearAll"
         @hide-all="showHideAll('hide')"
         @show-all="showHideAll('show')"
-        @show-intro="showIntro"
         @toggle-help-text="toggleHelp()"
       />
     </Teleport>
@@ -38,7 +37,6 @@
             @clear-all="clearAll"
             @hide-all="showHideAll('hide')"
             @show-all="showHideAll('show')"
-            @show-intro="showIntro"
             @toggle-help-text="toggleHelp()"
           />
         </v-container>
@@ -91,14 +89,13 @@
     newFactory,
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
-  import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory, prepareLoader } = useAppStore()
+  const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -322,32 +319,6 @@
   provide('deleteFactory', deleteFactory)
   provide('navigateToFactory', navigateToFactory)
   provide('moveFactory', moveFactory)
-
-  // Grab from local storage if the user has already dismissed this popup
-  // If they have, don't show it again.
-  const introShow = ref<boolean>(!localStorage.getItem('dismissed-introduction'))
-
-  let factoriesToLoad: Factory[] = []
-
-  const setupDemo = () => {
-    if (getFactories().length > 0) {
-      if (!confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
-        return // User cancelled
-      }
-    }
-    closeIntro()
-    factoriesToLoad = complexDemoPlan().getFactories()
-    prepareLoader(factoriesToLoad, true)
-  }
-
-  const closeIntro = () => {
-    console.log('Planner: Closing intro')
-    eventBus.emit('introShow', false)
-  }
-  const showIntro = () => {
-    console.log('Planner: Showing intro')
-    eventBus.emit('introShow', true)
-  }
 
 </script>
 
