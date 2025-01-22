@@ -4,7 +4,9 @@
       <v-btn
         class="ma-1"
         color="blue"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-compress-alt"
+
         variant="tonal"
         @click="emit('hide-all')"
       >
@@ -13,7 +15,9 @@
       <v-btn
         class="ma-1"
         color="blue"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-expand-alt"
+
         variant="tonal"
         @click="expandAll"
       >
@@ -41,6 +45,7 @@
       <v-btn
         class="ma-1"
         color="red"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-trash"
         variant="tonal"
         @click="confirmDelete('Are you really sure? This will delete literally everything!') && emit('clear-all')"
@@ -48,10 +53,10 @@
         Clear
       </v-btn>
       <templates />
-
       <v-btn
         class="ma-1 mb-0"
         color="secondary"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-copy"
         variant="tonal"
         @click="copyPlanToClipboard"
@@ -67,6 +72,15 @@
       >
         Paste plan
       </v-btn>
+      <v-btn
+        class="ma-1"
+        color="amber"
+        prepend-icon="fas fa-calculator-alt"
+        variant="tonal"
+        @click="forceRecalc"
+      >
+        Force Recalc
+      </v-btn>
     </v-col>
   </v-row>
 </template>
@@ -77,7 +91,7 @@
   import eventBus from '@/utils/eventBus'
   import { confirmDialog } from '@/utils/helpers'
 
-  const { getFactories, prepareLoader } = useAppStore()
+  const { getFactories, prepareLoader, forceCalculation } = useAppStore()
 
   defineProps<{ helpTextShown: boolean }>()
   // eslint-disable-next-line func-call-spacing
@@ -131,6 +145,12 @@
         }
       }
     })
+  }
+
+  const forceRecalc = async () => {
+    eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while.', type: 'warning' })
+    await new Promise(resolve => setTimeout(resolve, 250))
+    forceCalculation()
   }
 </script>
 
