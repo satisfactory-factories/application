@@ -71,14 +71,18 @@ export const calculatePowerProducerBuildings = (factory: Factory, gameData: Data
       }
     }
 
-    const facBuilding = factory.buildingRequirements[producer.building]
-    const wholeBuildingCount = Math.floor(producer.buildingCount)
+    const buildingData = factory.buildingRequirements[producer.building]
+    // Update the building count so the math works
+    buildingData.amount += Math.ceil(producer.buildingAmount)
+    // Satisfy typescript even though it's defined...
+    if (!buildingData.powerProduced) buildingData.powerProduced = 0
+
+    const wholeBuildingCount = Math.floor(producer.buildingAmount)
     const fractionalBuildingCount = producer.buildingCount - wholeBuildingCount
 
     const powerProduced = ((recipe.building.power ?? 0) * wholeBuildingCount) + (recipe.building.power * Math.pow(fractionalBuildingCount, 1.321928)) // Power usage = initial power usage x (clock speed / 100)1.321928
 
-    facBuilding.amount = facBuilding.amount + Math.ceil(producer.buildingCount) // Total buildings regardless of clocks
-    facBuilding.powerProduced = Number(powerProduced.toFixed(3)) // Fucky wuky floating point numbers
+    buildingData.powerProduced += Number(powerProduced.toFixed(3)) // Fucky wuky floating point numbers
   })
 }
 

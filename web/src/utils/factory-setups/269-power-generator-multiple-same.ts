@@ -1,0 +1,29 @@
+import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { newFactory } from '@/utils/factory-management/factory'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+
+export const create269Scenraio = (): { getFactories: () => Factory[] } => {
+  // Local variables to ensure a fresh instance on every call
+  const fuelFac = newFactory('Fuel Power', 0)
+
+  // Store factories in an array
+  const factories = [fuelFac]
+
+  addPowerProducerToFactory(fuelFac, {
+    building: 'generatorfuel',
+    powerAmount: 1000,
+    recipe: 'GeneratorFuel_LiquidFuel',
+    updated: 'power',
+  })
+  addPowerProducerToFactory(fuelFac, {
+    building: 'generatorfuel',
+    powerAmount: 1000,
+    recipe: 'GeneratorFuel_LiquidFuel',
+    updated: 'power',
+  })
+
+  // Return an object with a method to access the factories
+  return {
+    getFactories: () => factories, // Expose factories as a method
+  }
+}
