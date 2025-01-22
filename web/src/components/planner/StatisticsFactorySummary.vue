@@ -229,7 +229,7 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
-      problem: factory.hasProblem,
+      problem: factory.flags.problems.hasProblem,
     }
   }
 

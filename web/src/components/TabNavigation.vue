@@ -71,20 +71,20 @@
   const selectedTab = ref(JSON.parse(JSON.stringify(appStore.currentTabId)))
 
   const isEditingName = ref(false)
-  const currentTabName = ref(appStore.currentTab.name)
+  const currentTabName = ref(appStore.currentTab().name)
 
   const isCurrentTab = (tab: FactoryTab) => tab.id === appStore.currentTabId
 
   const onClickEditTabName = () => {
     isEditingName.value = !isEditingName.value
     if (!isEditingName.value) {
-      appStore.currentTab.name = currentTabName.value
+      appStore.currentTab().name = currentTabName.value
     }
   }
 
   watch(() => appStore.currentTabId, () => {
     isEditingName.value = false
-    currentTabName.value = appStore.currentTab.name
+    currentTabName.value = appStore.currentTab().name
   })
 
   watch(() => selectedTab.value, () => {

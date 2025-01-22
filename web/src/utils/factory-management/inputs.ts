@@ -202,7 +202,7 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
     return 'noProductsOrProducers'
   }
 
-  if (factory.usingRawResourcesOnly) {
+  if (factory.flags.usingRawResourcesOnly) {
     return 'rawOnly'
   }
 

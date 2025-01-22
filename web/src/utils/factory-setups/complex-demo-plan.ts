@@ -57,7 +57,7 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
         recipe: 'ResidualFuel',
       },
     }
-    oilFac.inSync = true
+    oilFac.flags.inSync = true
     // =================
 
     // === COPPER INGOTS FAC ===
@@ -72,7 +72,7 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
         recipe: 'IngotCopper',
       },
     }
-    copperIngotsFac.inSync = true
+    copperIngotsFac.flags.inSync = true
     // =================
 
     // === COPPER BASICS FAC ===

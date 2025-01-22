@@ -1,4 +1,5 @@
 <template>
+  <planner-deleting-overlay :show="showDeleting" />
   <introduction @show-demo="setupDemo" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
   <div class="planner-container">
@@ -51,9 +52,10 @@
         <notice />
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
+        {{ getState().userOptions }}
         <planner-factory
           v-for="(factory) in getFactories()"
-          :key="factory.id"
+          :key="factoryKey(factory)"
           :factory="factory"
           :help-text="helpText"
           :total-factories="getFactories().length"
@@ -95,16 +97,32 @@
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
+  import PlannerDeletingOverlay from '@/components/planner/PlannerDeletingOverlay.vue'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory, prepareLoader } = useAppStore()
+  const { getState, getFactories, setFactories, clearFactories, addFactory, prepareLoader } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
 
   const loadingCompleted = ref(false)
+  const showDeleting = ref(false)
+
+  const factoryKey = (factory: Factory) => {
+    return factory.id + JSON.stringify(getState().userOptions)
+  }
+
+  getFactories().forEach(factory => {
+    console.log('getFactories factory', factory)
+  })
+
+  console.log('Planner factories', getFactories())
+  console.log('Planner factories[0]', getFactories()[0])
+  console.log('planner factories isReactive', isReactive(getFactories()))
+  console.log('planner factories isRef', isRef(getFactories()))
+  console.log('Planner state', getState())
 
   eventBus.on('plannerHideContent', () => {
     loadingCompleted.value = false
@@ -212,7 +230,7 @@
     calculateFactory(factory, getFactories(), gameData)
 
     // Emit an event that the data has been updated so it can be synced
-    eventBus.emit('factoryUpdated')
+    eventBus.emit('planUpdated')
   }
 
   const copyFactory = (originalFactory: Factory) => {
@@ -238,7 +256,11 @@
     navigateToFactory(newId)
   }
 
-  const deleteFactory = (factory: Factory) => {
+  const deleteFactory = async (factory: Factory) => {
+    showDeleting.value = true
+
+    await new Promise(resolve => setTimeout(resolve, 250))
+
     // Find the index of the factory to delete
     const index = getFactories().findIndex(fac => fac.id === factory.id)
 
@@ -253,9 +275,14 @@
 
       // Regenerate the sort orders
       regenerateSortOrders(getFactories())
+
+      // Emit an event that the data has been updated so it can be synced
+      eventBus.emit('planUpdated')
     } else {
       console.error('Factory not found to delete?!')
     }
+
+    showDeleting.value = false
   }
 
   const clearAll = () => {
@@ -264,7 +291,7 @@
   }
 
   const showHideAll = (mode: 'show' | 'hide') => {
-    getFactories().forEach(factory => factory.hidden = mode === 'hide')
+    getFactories().forEach(factory => factory.flags.hidden = mode === 'hide')
   }
 
   const toggleHelp = () => {
@@ -279,7 +306,7 @@
       return
     }
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
-    factory.hidden = false
+    factory.flags.hidden = false
 
     // Wait a bit for the factory to unhide fully. Hack but works well.
     setTimeout(() => {

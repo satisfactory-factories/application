@@ -1,7 +1,7 @@
 import mitt from 'mitt'
 
 type Events = {
-  factoryUpdated: undefined; // No payload for this event
+  planUpdated: undefined; // No payload for this event
   loggedIn: undefined;
   sessionExpired: undefined;
   dataSynced: undefined;

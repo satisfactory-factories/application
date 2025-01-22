@@ -113,7 +113,7 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
     await handleDataLoad()
   }
 
-  eventBus.on('factoryUpdated', detectedChange)
+  eventBus.on('planUpdated', detectedChange)
   eventBus.on('loggedIn', handleLoggedInEvent)
   console.log('syncStore: Listening for changes...')
 

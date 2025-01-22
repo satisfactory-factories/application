@@ -117,29 +117,38 @@ export interface FactoryPower {
   difference: number;
 }
 
+export interface FactoryProblems {
+  hasProblem: boolean;
+  requirementsSatisfied: boolean;
+}
+
+export interface FactoryFlags {
+  usingRawResourcesOnly: boolean;
+  inSync: boolean | null;
+  hidden: boolean;
+  needsRedraw: boolean;
+  problems: FactoryProblems;
+}
+
 export interface Factory {
   id: number;
   name: string;
-  inputs: FactoryInput[];
+  inputs: FactoryInput[]
   previousInputs: FactoryInput[] // Since we can't use the previous state in the store, we need to store it here then update it.
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
-  requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
-  usingRawResourcesOnly: boolean;
-  hidden: boolean; // Whether to hide the card or not
-  hasProblem: boolean
-  inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  flags: FactoryFlags;
   dataVersion: string
   updated: string
 }
@@ -149,16 +158,4 @@ export interface FactoryTab {
   name: string;
   factories: Factory[];
   displayOrder: number;
-}
-
-export interface PlannerUserOptions {
-  satisfactionBreakdowns: boolean
-}
-
-export interface PlannerState {
-  user: string | null;
-  currentTabId: string;
-  lastSaved: Date | null;
-  userOptions: PlannerUserOptions;
-  tabs: { [ key: string ]: FactoryTab };
 }

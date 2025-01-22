@@ -207,8 +207,7 @@ export const calculateFactoryDependencies = (
     calculateParts(provider, gameData)
     calculateDependencyMetricsSupply(provider)
 
-    // Inform the DOM that the factory was updated
-    provider.updated = new Date().toISOString()
+    provider.flags.needsRedraw = true
   })
 }
 

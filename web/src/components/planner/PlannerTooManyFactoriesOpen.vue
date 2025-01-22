@@ -24,7 +24,7 @@
   const inputs = computed(() => {
     let count = 0
     props.factories.forEach(factory => {
-      if (factory.hidden) return
+      if (factory.flags.hidden) return
       count += factory.inputs.length
     })
     return count
@@ -32,7 +32,7 @@
   const openFactories = computed(() => {
     let count = 0
     props.factories.forEach(factory => {
-      if (!factory.hidden) count++
+      if (!factory.flags.hidden) count++
     })
     return count
   })

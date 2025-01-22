@@ -50,7 +50,7 @@ describe('useSyncStore', () => {
     expect(syncStore.dataSavePending.value).toBe(false)
     expect(syncStore.dataLastSaved.value).toBeNull()
     expect(syncStore.stopSyncing.value).toBe(false)
-    expect(eventBus.on).toHaveBeenCalledWith('factoryUpdated', expect.any(Function))
+    expect(eventBus.on).toHaveBeenCalledWith('planUpdated', expect.any(Function))
   })
 
   // describe('setupTick', () => {

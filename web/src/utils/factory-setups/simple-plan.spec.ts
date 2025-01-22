@@ -81,9 +81,9 @@ describe('Simple factory plan', () => {
       })
     })
     it('should have the correct flags', () => {
-      expect(ingotFac.requirementsSatisfied).toBe(true)
-      expect(ingotFac.hasProblem).toBe(false)
-      expect(ingotFac.usingRawResourcesOnly).toBe(true)
+      expect(ingotFac.flags.problems.requirementsSatisfied).toBe(true)
+      expect(ingotFac.flags.problems.hasProblem).toBe(false)
+      expect(ingotFac.flags.usingRawResourcesOnly).toBe(true)
     })
     it('should have the correct total power', () => {
       expect(ingotFac.power.consumed).toBe(12.936)
@@ -158,7 +158,7 @@ describe('Simple factory plan', () => {
       })
     })
     it('should be marked as not using only raw resources', () => {
-      expect(ironPlateFac.usingRawResourcesOnly).toBe(false)
+      expect(ironPlateFac.flags.usingRawResourcesOnly).toBe(false)
     })
   })
 
@@ -240,8 +240,8 @@ describe('Simple factory plan', () => {
       // In the plan iron plates fac is importing ingots from Iron Ingots, we need to detect if the hasProblem is true in the other factory.
 
       // Ingots should not have a problem at the start, Iron Plate should
-      expect(ingotFac.hasProblem).toBe(false)
-      expect(ironPlateFac.hasProblem).toBe(true)
+      expect(ingotFac.flags.problems.hasProblem).toBe(false)
+      expect(ironPlateFac.flags.problems.hasProblem).toBe(true)
 
       // Increase the demand upon IngotFac
       ironPlateFac.inputs[0].amount = 150 // Satisfies Iron Plate
@@ -250,11 +250,11 @@ describe('Simple factory plan', () => {
       calculateFactory(ironPlateFac, factories, gameData)
 
       // Check that the Iron Ingot factory now has a problem
-      expect(ingotFac.hasProblem).toBe(true)
-      expect(ingotFac.requirementsSatisfied).toBe(false)
+      expect(ingotFac.flags.problems.hasProblem).toBe(true)
+      expect(ingotFac.flags.problems.requirementsSatisfied).toBe(false)
       // And that Iron Plate does not have a problem anymore
-      expect(ironPlateFac.hasProblem).toBe(false)
-      expect(ironPlateFac.requirementsSatisfied).toBe(true)
+      expect(ironPlateFac.flags.problems.hasProblem).toBe(false)
+      expect(ironPlateFac.flags.problems.requirementsSatisfied).toBe(true)
     })
   })
 })

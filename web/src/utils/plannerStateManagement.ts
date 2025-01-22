@@ -1,4 +1,5 @@
-import { Factory, FactoryTab, PlannerState, PlannerUserOptions } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { PlannerState, PlannerUserOptions } from '@/interfaces/planner/PlannerState'
 
 interface PlannerStateOptions {
   user?: string,
@@ -51,6 +52,7 @@ export const getCurrentTab = (state: PlannerState): FactoryTab => {
 
 export const getTab = (state: PlannerState, tabId: string): FactoryTab => {
   const tab = state.tabs[tabId]
+
   if (!tab) {
     throw new Error(`Tab with id ${tabId} not found`)
   }

@@ -138,9 +138,9 @@ describe('Complex Demo Plan', () => {
       })
     })
     it('should have satisfaction calculated correctly', () => {
-      expect(oilFac.requirementsSatisfied).toBe(true)
-      expect(oilFac.usingRawResourcesOnly).toBe(false)
-      expect(oilFac.hasProblem).toBe(false)
+      expect(oilFac.flags.problems.requirementsSatisfied).toBe(true)
+      expect(oilFac.flags.usingRawResourcesOnly).toBe(false)
+      expect(oilFac.flags.problems.hasProblem).toBe(false)
     })
     it('should have dependencies calculated correctly', () => {
       expect(Object.keys(oilFac.dependencies.requests)).toHaveLength(2)

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FactoryTab, PlannerState } from '@/interfaces/planner/FactoryInterface'
+import { FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import {
   addTab, deleteTab,
@@ -11,6 +11,7 @@ import {
   newTab,
   regenerateTabOrders,
 } from '@/utils/plannerStateManagement'
+import { PlannerState } from '@/interfaces/planner/PlannerState'
 
 describe('plannerStateManagement', () => {
   describe('newState', () => {
@@ -20,7 +21,7 @@ describe('plannerStateManagement', () => {
 
       expect(result).toEqual({
         user: null,
-        currentTabId: firstTab.id,
+        currentid: firstTab.id,
         lastSaved: null,
         userOptions: {
           satisfactionBreakdowns: false,
@@ -55,7 +56,7 @@ describe('plannerStateManagement', () => {
 
       expect(result).toEqual({
         user: 'test',
-        currentTabId: '1234',
+        currentid: '1234',
         lastSaved: null,
         userOptions: {
           satisfactionBreakdowns: false,
@@ -86,7 +87,7 @@ describe('plannerStateManagement', () => {
 
     it('should create a new tab using custom values', () => {
       const result = newTab({
-        tabId: '12345',
+        id: '12345',
         name: 'Test Tab',
         displayOrder: 0,
         factories: [],
@@ -120,7 +121,7 @@ describe('plannerStateManagement', () => {
   describe('getCurrentTab', () => {
     const state = newState({})
     const tab1 = state.tabs[Object.keys(state.tabs)[0]]
-    addTab(state, newTab({ tabId: '1' }))
+    addTab(state, newTab({ id: '1' }))
 
     it('should select the original tab', () => {
       const selectedTab = getCurrentTab(state)
@@ -131,7 +132,7 @@ describe('plannerStateManagement', () => {
   describe('getTab', () => {
     const state = newState({})
     const tab1 = state.tabs[Object.keys(state.tabs)[0]]
-    addTab(state, newTab({ tabId: '1' }))
+    addTab(state, newTab({ id: '1' }))
 
     it('should return the expected tab', () => {
       const result = getTab(state, tab1.id)
@@ -151,7 +152,7 @@ describe('plannerStateManagement', () => {
     beforeEach(() => {
       state = newState({})
       tab1 = state.tabs[Object.keys(state.tabs)[0]]
-      tab2 = newTab({ tabId: '1337' })
+      tab2 = newTab({ id: '1337' })
       addTab(state, tab2)
     })
 
@@ -164,7 +165,7 @@ describe('plannerStateManagement', () => {
 
     it('should re-order the display order of the tabs correctly', () => {
       // Add another tab for good measure
-      addTab(state, newTab({ tabId: 'foo' }))
+      addTab(state, newTab({ id: 'foo' }))
       const tab3 = getTab(state, 'foo')
       deleteTab(state, tab2)
 
@@ -187,9 +188,9 @@ describe('plannerStateManagement', () => {
     it('should regenerate the tab display orders correctly', () => {
       const state = newState({})
       const tab1 = getTabAtIndex(state, 0)
-      const tab2 = newTab({ tabId: '1234545' })
+      const tab2 = newTab({ id: '1234545' })
       addTab(state, tab2)
-      const tab3 = newTab({ tabId: 'foo' })
+      const tab3 = newTab({ id: 'foo' })
       addTab(state, tab3)
 
       regenerateTabOrders(state)
@@ -225,7 +226,7 @@ describe('plannerStateManagement', () => {
 
       expect(newState).toEqual({
         user: null,
-        currentTabId: 'foobar1',
+        currentid: 'foobar1',
         lastSaved: null,
         userOptions: {
           satisfactionBreakdowns: false,

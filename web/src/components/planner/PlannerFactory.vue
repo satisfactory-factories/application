@@ -29,19 +29,19 @@
                 </v-chip>
               </div>
               <!-- sync status chip -->
-              <div v-if="factory.inSync">
+              <div v-if="factory.flags.inSync">
                 <v-chip class="sf-chip small green no-margin" @click="setSync(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                 </v-chip>
               </div>
-              <div v-if="factory.inSync === false">
+              <div v-if="factory.flags.inSync === false">
                 <v-chip class="sf-chip small orange no-margin" @click="setSync(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                 </v-chip>
               </div>
-              <div v-if="factory.inSync === null">
+              <div v-if="factory.flags.inSync === null">
                 <v-chip class="border border-gray border-dashed" :disabled="!factory.products[0]?.id" @click="setSync(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
@@ -82,24 +82,24 @@
               @click="moveFactory(factory, 'down')"
             />
             <v-btn
-              v-show="!factory.hidden"
+              v-show="!factory.flags.hidden"
               class="mr-2 rounded"
               color="secondary"
               icon="fas fa-compress-alt"
               size="small"
               title="Collapse Factory"
               variant="outlined"
-              @click="factory.hidden = true"
+              @click="factory.flags.hidden = true"
             />
             <v-btn
-              v-show="factory.hidden"
+              v-show="factory.flags.hidden"
               class="mr-2 rounded"
               color="secondary"
               icon="fas fa-expand-alt"
               size="small"
               title="Expand Factory"
               variant="outlined"
-              @click="factory.hidden = false"
+              @click="factory.flags.hidden = false"
             />
             <v-btn
               class="mr-2"
@@ -120,7 +120,7 @@
             />
           </v-col>
         </v-row>
-        <v-card-text v-if="!factory.hidden">
+        <v-card-text v-if="!factory.flags.hidden">
           <ProductsAndPower
             :factory="factory"
             :help-text="helpText"
@@ -132,7 +132,6 @@
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
-            :key="factory.id + factory.updated"
             :factory="factory"
             :help-text="helpText"
           />
@@ -141,7 +140,6 @@
             <v-col cols="12" md="6">
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
-                :key="factory.id + factory.updated"
                 :factory="factory"
                 :help-text="helpText"
               />
@@ -149,7 +147,6 @@
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
-                :key="factory.id + factory.updated"
                 :factory="factory"
                 :help-text="helpText"
               />
@@ -157,7 +154,7 @@
           </v-row>
         </v-card-text>
         <!-- Hidden factory collapse -->
-        <v-card-text v-show="factory.hidden" class="pa-0">
+        <v-card-text v-show="factory.flags.hidden" class="pa-0">
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
             class="text-body-1 py-2 px-4 pb-1"
@@ -310,8 +307,8 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync !== null ? !factory.inSync : false,
+      problem: factory.flags.problems.hasProblem,
+      needsSync: !factory.flags.problems.hasProblem && factory.flags.inSync !== null ? !factory.flags.inSync : false,
     }
   }
 
@@ -325,10 +322,10 @@
   }
 
   const setSync = (factory: Factory) => {
-    factory.inSync = !factory.inSync
+    factory.flags.inSync = !factory.flags.inSync
 
     // Record what the sync'ed state is
-    if (factory.inSync) {
+    if (factory.flags.inSync) {
       factory.syncState = {}
 
       // Get the current products of the factory and set them

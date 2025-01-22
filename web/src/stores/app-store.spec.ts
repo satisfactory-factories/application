@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryTab, PlannerState } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryManager from '@/utils/factory-management/factory'
 import { useAppStore } from '@/stores/app-store'
@@ -8,6 +8,7 @@ import { gameData } from '@/utils/gameData'
 import { getCurrentTab, getTab, newState } from '@/utils/plannerStateManagement'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
+import { PlannerState } from '@/interfaces/planner/PlannerState'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -274,7 +275,7 @@ describe('app-store', () => {
       it('should emit the prepareForLoad event with the correct info', async () => {
         const factory = newFactory('Foo')
         const factory2 = newFactory('Foo2')
-        factory2.hidden = true
+        factory2.flags.hidden = true
 
         await appStore.prepareLoader([factory, factory2])
 
@@ -526,15 +527,15 @@ describe('app-store', () => {
       })
       it('#222: should initialize factories with missing sync data', () => {
       // @ts-ignore
-        delete factory.inSync
+        delete factory.flags.inSync
         // @ts-ignore
         delete factory.syncState
-        expect(factory.inSync).not.toBeDefined()
+        expect(factory.flags.inSync).not.toBeDefined()
         expect(factory.syncState).not.toBeDefined()
 
         appStore.initFactories(factories)
 
-        expect(factory.inSync).toBe(null)
+        expect(factory.flags.inSync).toBe(null)
         expect(factory.syncState).toBeDefined()
       })
 

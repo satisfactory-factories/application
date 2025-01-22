@@ -244,7 +244,6 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getRequestsForFactoryByPart } from '@/utils/factory-management/exports'
   import { formatNumber } from '@/utils/numberFormatter'
-  import { useAppStore } from '@/stores/app-store'
   import {
     showByProductChip,
     showImportedChip, showInternalChip,
@@ -252,20 +251,19 @@
     showSatisfactionItemButton,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
+  import { useAppStore } from '@/stores/app-store'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
 
-  const appStore = useAppStore()
-
-  const { getDefaultRecipeForPart } = useGameDataStore()
-  const openedCalculator = ref('')
-  const satisfactionBreakdowns = appStore.getUserOptions().satisfactionBreakdowns
-
-  defineProps<{
+  const props = defineProps<{
     factory: Factory;
     helpText: boolean;
   }>()
+
+  const { getDefaultRecipeForPart } = useGameDataStore()
+  const openedCalculator = ref('')
+  const satisfactionBreakdowns = useAppStore().getState().userOptions.satisfactionBreakdowns
 
   const classes = (part: PartMetrics) => {
     return {

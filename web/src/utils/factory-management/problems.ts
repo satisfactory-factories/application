@@ -3,11 +3,10 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 export const calculateHasProblem = (factories: Factory[]) => {
   // Loop all factories to detect if they have problems
   factories.forEach(factory => {
-    factory.hasProblem = false
+    factory.flags.problems.hasProblem = false
 
-    if (!factory.requirementsSatisfied) {
-      factory.hasProblem = true
-      factory.updated = new Date().toISOString()
+    if (!factory.flags.problems.requirementsSatisfied) {
+      factory.flags.problems.hasProblem = true
       return // Nothing else to do, if the requirements are unsatisfied the exports will be unsatisfied as well.
     }
 
@@ -15,8 +14,7 @@ export const calculateHasProblem = (factories: Factory[]) => {
     Object.keys(factory.dependencies.metrics).forEach(part => {
     // We need to have !hasProblem because we don't want to overwrite the hasProblem flag if it's already set.
       if (!factory.dependencies.metrics[part].isRequestSatisfied) {
-        factory.hasProblem = true
-        factory.updated = new Date().toISOString()
+        factory.flags.problems.hasProblem = true
       }
     })
   })

@@ -21,7 +21,6 @@
 
 <script setup lang="ts">
   import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import eventBus from '@/utils/eventBus'
 
   const props = defineProps <{
     factory: Factory;
@@ -41,8 +40,4 @@
   }
 
   const charLimit = 1000
-
-  watch(() => props.factory.notes, () => {
-    eventBus.emit('factoryUpdated') // Tell sync there's something changed
-  })
 </script>

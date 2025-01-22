@@ -38,13 +38,13 @@ describe('parts', () => {
       calculateFactories([mockFactory], gameData)
       expect(mockFactory.parts.CompactedCoal.satisfied).toBe(false)
       expect(mockFactory.parts.CompactedCoal.amountRemaining).toBe(-30)
-      expect(mockFactory.requirementsSatisfied).toBe(false)
+      expect(mockFactory.flags.problems.requirementsSatisfied).toBe(false)
     })
 
     it('should mark factory as satisfied if there are no products', () => {
       mockFactory.products = []
       calculateFactories([mockFactory], gameData)
-      expect(mockFactory.requirementsSatisfied).toBe(true)
+      expect(mockFactory.flags.problems.requirementsSatisfied).toBe(true)
     })
 
     it('should calculate fluid ingredients when there is raw resource fluid ingredient', () => {

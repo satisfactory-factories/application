@@ -2,21 +2,21 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 export const calculateSyncState = (factory: Factory) => {
   // If factory has not been marked as in any form of sync, skip.
-  if (factory.inSync === null) {
+  if (factory.flags.inSync === null) {
     return
   }
 
   // Scan the products and determine if they are in sync with the syncState.
   // If there are no products, mark the factory out of sync, if already in sync.
   if (!factory.products.length) {
-    if (factory.inSync) {
-      factory.inSync = false
+    if (factory.flags.inSync) {
+      factory.flags.inSync = false
     }
   }
 
   // If the number of products is different from the syncState, mark the factory as out of sync.
   if (factory.products.length !== Object.keys(factory.syncState).length) {
-    factory.inSync = false
+    factory.flags.inSync = false
   }
 
   factory.products.forEach(product => {
@@ -30,12 +30,12 @@ export const calculateSyncState = (factory: Factory) => {
 
     // If the sync state does not match the product amount, mark the factory as out of sync.
     if (syncState.amount !== product.amount) {
-      factory.inSync = false
+      factory.flags.inSync = false
     }
 
     // If the recipe has changed
     if (syncState.recipe !== product.recipe) {
-      factory.inSync = false
+      factory.flags.inSync = false
     }
   })
 }

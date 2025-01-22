@@ -58,21 +58,21 @@
                   cols="1"
                   v-bind="props"
                 >
-                  <div v-if="element.inSync" class="d-inline">
+                  <div v-if="element.flags.inSync" class="d-inline">
                     <i class="fas fa-check" />
                   </div>
-                  <div v-if="element.inSync === false" class="d-inline">
+                  <div v-if="element.flags.inSync === false" class="d-inline">
                     <i class="fas fa-times" />
                   </div>
-                  <div v-if="element.inSync === null" class="d-inline">
+                  <div v-if="element.flags.inSync === null" class="d-inline">
                     <i class="fas fa-question" />
                   </div>
                 </v-col>
               </template>
               <span>
-                {{ element.inSync === true
+                {{ element.flags.inSync === true
                   ? 'In sync with game'
-                  : element.inSync === false
+                  : element.flags.inSync === false
                     ? 'Out of sync with game'
                     : 'Game sync unknown'
                 }}
@@ -136,8 +136,8 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync === false,
+      problem: factory.flags.problems.hasProblem,
+      needsSync: !factory.flags.problems.hasProblem && factory.flags.inSync === false,
     }
   }
 
@@ -155,9 +155,9 @@
 
   const syncStateClass = (factory: Factory) => {
     return {
-      'bg-green-darken-2': factory.inSync,
-      'bg-orange-darken-2': factory.inSync === false,
-      'bg-grey-darken-2': factory.inSync === null,
+      'bg-green-darken-2': factory.flags.inSync,
+      'bg-orange-darken-2': factory.flags.inSync === false,
+      'bg-grey-darken-2': factory.flags.inSync === null,
     }
   }
 </script>

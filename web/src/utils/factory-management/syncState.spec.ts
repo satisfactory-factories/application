@@ -22,28 +22,28 @@ describe('syncState', () => {
       },
     }
 
-    mockFactory.inSync = true
+    mockFactory.flags.inSync = true
   })
 
   describe('calculateSyncState', () => {
     it('should not make changes to a synced factory', () => {
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(true)
+      expect(mockFactory.flags.inSync).toBe(true)
     })
 
     it('should detect a de-synced factory', () => {
       mockFactory.syncState.IronIngot.amount = 50
 
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
 
     it('should not affect a factory with no sync state', () => {
-      mockFactory.inSync = null
+      mockFactory.flags.inSync = null
       mockFactory.syncState = {}
 
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(null)
+      expect(mockFactory.flags.inSync).toBe(null)
     })
 
     it('should detect a desynced factory across multiple products', () => {
@@ -56,7 +56,7 @@ describe('syncState', () => {
       mockFactory.syncState.CopperIngot = { amount: 50, recipe: 'CopperIngot' }
 
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
 
     it('should maintain a synced factory across multiple products', () => {
@@ -65,29 +65,29 @@ describe('syncState', () => {
         amount: 100,
         recipe: 'CopperIngot',
       })
-      mockFactory.inSync = true
+      mockFactory.flags.inSync = true
       mockFactory.syncState.IronIngot.amount = 100
       mockFactory.syncState.CopperIngot = { amount: 100, recipe: 'CopperIngot' }
 
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(true)
+      expect(mockFactory.flags.inSync).toBe(true)
     })
 
     it('should drop factory out of sync when there are no products', () => {
       mockFactory.products = []
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
 
     it('should mark a factory as out of sync when there are no products', () => {
       mockFactory.products = []
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
 
     it('should mark a factory as out of sync when new products are added', () => {
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(true)
+      expect(mockFactory.flags.inSync).toBe(true)
 
       addProductToFactory(mockFactory, {
         id: 'CopperIngot',
@@ -95,16 +95,16 @@ describe('syncState', () => {
         recipe: 'CopperIngot',
       })
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
 
     it('should mark a factory as out of sync when the recipe of a product is changed', () => {
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(true)
+      expect(mockFactory.flags.inSync).toBe(true)
 
       mockFactory.products[0].recipe = 'Alternate_IronIngot_Basic'
       calculateSyncState(mockFactory)
-      expect(mockFactory.inSync).toBe(false)
+      expect(mockFactory.flags.inSync).toBe(false)
     })
   })
 })

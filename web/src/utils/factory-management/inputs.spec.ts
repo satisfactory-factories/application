@@ -368,7 +368,7 @@ describe('inputs', () => {
           amount: 1000,
           recipe: 'IngotIron',
         })
-        ingotFactory.usingRawResourcesOnly = false
+        ingotFactory.flags.usingRawResourcesOnly = false
 
         fuelFactory = newFactory('Fuel Factory', 1, 2)
         fuelGenFactory = newFactory('Fuel Gens', 2, 3)
@@ -391,7 +391,7 @@ describe('inputs', () => {
         expect(result).toBe('noProductsOrProducers')
       })
       it('should return rawOnly if the factory is only using raw resources', () => {
-        ingotFactory.usingRawResourcesOnly = true
+        ingotFactory.flags.usingRawResourcesOnly = true
         const result = calculateAbleToImport(ingotFactory, [])
         expect(result).toBe('rawOnly')
       })
