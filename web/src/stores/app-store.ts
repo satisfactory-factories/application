@@ -403,6 +403,16 @@ export const useAppStore = defineStore('app', () => {
     return inited.value ? factories.value : initFactories(currentFactoryTab.value.factories)
   }
 
+  const forceCalculation = () => {
+    const gameData = gameDataStore.getGameData()
+    if (!gameData) {
+      console.error('Unable to load game data!')
+      return
+    }
+
+    calculateFactories(factories.value, gameData)
+  }
+
   return {
     currentFactoryTab,
     currentFactoryTabIndex,
@@ -426,5 +436,6 @@ export const useAppStore = defineStore('app', () => {
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
     prepareLoader,
+    forceCalculation,
   }
 })

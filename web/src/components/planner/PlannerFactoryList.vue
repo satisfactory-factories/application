@@ -84,7 +84,7 @@
     </template>
   </draggable>
   <v-row class="pa-0 ma-0">
-    <v-col class="text-center">
+    <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
         prepend-icon="fas fa-plus"
@@ -180,5 +180,9 @@
   &:hover {
     color: white;
   }
+}
+
+.pt-n1 {
+  margin-top: -0.25rem !important;
 }
 </style>
