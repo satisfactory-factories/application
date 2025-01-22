@@ -1,31 +1,29 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 export const setSyncState = (factory: Factory) => {
-  factory.inSync = !factory.inSync
+  // Reset all state
+  factory.syncState = {}
+  factory.syncStatePower = {}
 
-  // Record what the synced state is
-  if (factory.inSync) {
-    // Reset all state
-    factory.syncState = {}
-    factory.syncStatePower = {}
+  // Get the current products of the factory and set them
+  factory.products.forEach(product => {
+    factory.syncState[product.id] = {
+      amount: product.amount,
+      recipe: product.recipe,
+    }
+  })
 
-    // Get the current products of the factory and set them
-    factory.products.forEach(product => {
-      factory.syncState[product.id] = {
-        amount: product.amount,
-        recipe: product.recipe,
-      }
-    })
+  // Get the current power producers of the factory and set them
+  factory.powerProducers.forEach(powerProducer => {
+    factory.syncStatePower[powerProducer.building] = {
+      powerAmount: powerProducer.powerAmount,
+      buildingAmount: powerProducer.buildingAmount,
+      recipe: powerProducer.recipe,
+      ingredientAmount: powerProducer.ingredientAmount,
+    }
+  })
 
-    // Get the current power producers of the factory and set them
-    factory.powerProducers.forEach(powerProducer => {
-      factory.syncStatePower[powerProducer.building] = {
-        powerAmount: powerProducer.powerAmount,
-        buildingAmount: powerProducer.buildingAmount,
-        recipe: powerProducer.recipe,
-      }
-    })
-  }
+  factory.inSync = true
 }
 
 export const calculateSyncState = (factory: Factory) => {
@@ -75,7 +73,7 @@ export const checkProductSyncState = (factory: Factory) => {
 
 export const checkPowerProducerSyncState = (factory: Factory) => {
   // If all power producers have been deleted, OOS the factory.
-  if (!factory.powerProducers.length) {
+  if (!factory.powerProducers.length && Object.keys(factory.syncStatePower).length) {
     factory.inSync = false
     return // Nothing else to do
   }
@@ -106,6 +104,11 @@ export const checkPowerProducerSyncState = (factory: Factory) => {
 
     // If power amount doesn't match
     if (syncState.powerAmount !== powerProducer.powerAmount) {
+      factory.inSync = false
+    }
+
+    // If fuel ingredient amount doesn't match
+    if (syncState.ingredientAmount !== powerProducer.ingredientAmount) {
       factory.inSync = false
     }
   })

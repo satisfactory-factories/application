@@ -278,6 +278,11 @@ export const useAppStore = defineStore('app', () => {
         factory.previousInputs = []
       }
 
+      // Patch for #270
+      if (factory.syncStatePower === undefined) {
+        factory.syncStatePower = {}
+      }
+
       // Delete keys that no longer exist
       // @ts-ignore
       if (factory.internalProducts) delete factory.internalProducts

@@ -96,6 +96,7 @@ export interface FactoryPowerSyncState {
   buildingAmount: number
   powerAmount: number
   recipe: string // And also the fuel used
+  ingredientAmount: number
 }
 
 export interface FactoryTask {

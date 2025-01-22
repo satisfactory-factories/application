@@ -30,7 +30,7 @@ describe('syncState', () => {
       expect(mockFactory.inSync).toBe(null)
     })
 
-    describe('product sync', () => {
+    describe('setSyncState checks', () => {
       beforeEach(() => {
         setSyncState(mockFactory)
       })
@@ -44,6 +44,28 @@ describe('syncState', () => {
 
       it('should properly record the sync state for power producers', () => {
         expect(mockFactory.syncState.IronIngot.amount).toBe(100)
+      })
+
+      it('should properly remove sync state when there are no products', () => {
+        // Remove the power producers
+        mockFactory.products = []
+
+        // Run it again
+        setSyncState(mockFactory)
+
+        // Check that the sync state is empty
+        expect(mockFactory.syncState).toEqual({})
+      })
+
+      it('should properly remove sync state when there are no power producers', () => {
+        // Remove the power producers
+        mockFactory.powerProducers = []
+
+        // Run it again
+        setSyncState(mockFactory)
+
+        // Check that the sync state is empty
+        expect(mockFactory.syncStatePower).toEqual({})
       })
     })
   })
@@ -136,6 +158,7 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(true)
       })
+
       it('should OOS when number of generators gets adjusted', () => {
       // Adjust the power building
         mockFactory.powerProducers[0].buildingAmount = 2
@@ -143,6 +166,7 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)
       })
+
       it('should OOS when power amount is adjusted', () => {
       // Adjust the power building
         mockFactory.powerProducers[0].powerAmount = 1234
@@ -150,6 +174,15 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)
       })
+
+      it('should OSS when fuel amount is adjusted', () => {
+      // Adjust the power building
+        mockFactory.powerProducers[0].ingredientAmount = 1234
+
+        calculateSyncState(mockFactory)
+        expect(mockFactory.inSync).toBe(false)
+      })
+
       it('should OOS when recipe is adjusted', () => {
         // Check the before state
         expect(mockFactory.syncStatePower.generatorfuel.recipe).toBe('GeneratorFuel_LiquidFuel')
@@ -160,6 +193,7 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)
       })
+
       it('should OOS when the building is changed in place', () => {
         // Check the before state
         expect(mockFactory.syncStatePower.generatorfuel.buildingAmount).toBe(1)
@@ -190,6 +224,19 @@ describe('syncState', () => {
 
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)
+      })
+
+      it('should do nothing if there are no power producers', () => {
+        mockFactory.powerProducers = []
+
+        // Run set it
+        setSyncState(mockFactory)
+
+        // Double check there is nothing in syncStatePower now
+        expect(mockFactory.syncStatePower).toEqual({})
+
+        calculateSyncState(mockFactory)
+        expect(mockFactory.inSync).toBe(true)
       })
     })
   })
