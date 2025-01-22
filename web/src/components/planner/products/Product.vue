@@ -44,14 +44,13 @@
         />
       </div>
       <div class="input-row d-flex align-center">
-        <v-text-field
-          v-model.number="product.amount"
+        <v-number-input
+          v-model="product.amount"
+          control-variant="stacked"
           hide-details
           label="Qty /min"
-          :max-width="smAndDown ? undefined : '110px'"
-          :min-width="smAndDown ? undefined : '100px'"
-          :name="`${product.id}.amount`"
-          type="number"
+          :max-width="smAndDown ? undefined : '130px'"
+          :min-width="smAndDown ? undefined : '130px'"
           variant="outlined"
           @input="updateFactory(factory)"
         />
