@@ -213,7 +213,11 @@ export const useAppStore = defineStore('app', () => {
     try {
       validateFactories(newFactories, gameData) // Ensure the data is clean
     } catch (err) {
-      alert('Error validating factories: ' + err)
+      // If err is type of Error
+      if (err instanceof Error) {
+        alert('Error validating factories: ' + err.message)
+      }
+      console.error('appStore: initFactories: Error validating factories:', err)
     }
 
     newFactories.forEach(factory => {
@@ -322,8 +326,7 @@ export const useAppStore = defineStore('app', () => {
     const gameData = gameDataStore.getGameData()
     if (!gameData) {
       console.error('appStore: setFactories: Unable to load game data!')
-      console.error('Unable to load game data!')
-      return
+      throw new Error('factories: setFactories: gameData does not exist!')
     }
 
     // Set inited to false as the new data may be invalid.
@@ -371,6 +374,12 @@ export const useAppStore = defineStore('app', () => {
   // ==== END FACTORY MANAGEMENT
 
   // ==== TAB MANAGEMENT
+  const getTab = (id: string) => {
+    return factoryTabs.value.find(tab => tab.id === id)
+  }
+  const getCurrentTab = () => {
+    return factoryTabs.value[currentFactoryTabIndex.value]
+  }
   const getTabs = () => {
     return factoryTabs.value
   }
@@ -458,6 +467,8 @@ export const useAppStore = defineStore('app', () => {
     forceCalculation,
 
     // Testing
+    getTab,
+    getCurrentTab,
     beginLoading,
     inited,
   }

@@ -1,18 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryManager from '@/utils/factory-management/factory'
+import * as FactoryValidate from '@/utils/factory-management/validation'
 import { useAppStore } from '@/stores/app-store'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
+import { useGameDataStore } from '@/stores/game-data-store'
 
 let appStore: ReturnType<typeof useAppStore>
 
 const resetAppStore = (keepLocalStorage = false) => {
   if (!keepLocalStorage) {
     localStorage.removeItem('factoryTabs')
+    localStorage.removeItem('preLoadFactories')
   }
   setActivePinia(createPinia())
   appStore = useAppStore()
@@ -176,6 +179,25 @@ describe('app-store', () => {
 
       expect(spy).not.toHaveBeenCalled()
     })
+
+    it('should show an alert if the factories did not validate', () => {
+      const message = 'Error validating factories!'
+      const error = new Error(message)
+      // Mock validateFactories failing
+      vi.spyOn(window, 'alert').mockImplementation(() => {})
+      vi.spyOn(console, 'error')
+      vi.spyOn(FactoryValidate, 'validateFactories').mockImplementation(() => {
+        throw new Error(message)
+      })
+
+      appStore.initFactories(factories)
+
+      // Expect console.error to have been called
+      expect(console.error).toHaveBeenCalledWith('appStore: initFactories: Error validating factories:', error)
+
+      // Expect alerto to have thrown
+      expect(window.alert).toHaveBeenCalledWith('Error validating factories: ' + error.message)
+    })
   })
 
   describe('loading process', () => {
@@ -236,9 +258,6 @@ describe('app-store', () => {
           factories = [factory, factory2]
           await appStore.prepareLoader(factories)
         })
-        afterEach(() => {
-          localStorage.removeItem('preLoadFactories')
-        })
 
         it('should load another list of factories if preLoadFactories contains them', async () => {
           // Set up prepareForLoad event spy
@@ -268,15 +287,16 @@ describe('app-store', () => {
             shown: 2,
           })
         })
+      })
 
-        // Tried doing this but the spy won't work.
-        // it('should call loadNextFactory', async () => {
-        //   const spy = vi.spyOn(appStore, 'loadNextFactory')
-        //
-        //   await appStore.beginLoading(factories)
-        //
-        //   expect(spy).toHaveBeenCalled()
-        // })
+      it('should finish early if there are no factories to load', async () => {
+        vi.spyOn(eventBus, 'emit')
+
+        await appStore.beginLoading([])
+
+        expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+        expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+        expect(appStore.getFactories()).toEqual([])
       })
 
       describe('loadNextFactory', () => {
@@ -358,6 +378,12 @@ describe('app-store', () => {
         expect(appStore.getFactories()).toEqual([])
       })
 
+      it('should return empty array if the currentFactoryTab is not defined', () => {
+        // @ts-ignore
+        appStore.currentFactoryTab = undefined
+        expect(appStore.getFactories()).toEqual([])
+      })
+
       it('should return the factories from the current tab', () => {
         // Add a factory
         const factory = newFactory('Foobarbaz')
@@ -395,6 +421,31 @@ describe('app-store', () => {
 
         // Meaning this should not have fired
         expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+      })
+    })
+
+    describe('setFactories', () => {
+      it('should throw if the game data does not exist', () => {
+        // Mock the gameData store
+        const mockGameStore = useGameDataStore()
+        mockGameStore.getGameData = vi.fn().mockImplementation(() => null)
+
+        expect(() => appStore.setFactories([])).toThrow('factories: setFactories: gameData does not exist!')
+      })
+
+      it('should run the calculations if told to', () => {
+        const factories = [newFactory('Foo')]
+        const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+        appStore.setFactories(factories, true)
+
+        expect(spy).toHaveBeenCalled()
+      })
+
+      it('should replace the factories with the new ones', () => {
+        const newFactories = [newFactory('Foo'), newFactory('Bar')]
+        appStore.setFactories(newFactories)
+
+        expect(appStore.getFactories()).toEqual(newFactories)
       })
     })
 
@@ -463,6 +514,67 @@ describe('app-store', () => {
         const factories = appStore.getFactories()
         expect(factories[0].displayOrder).toEqual(0)
         expect(factories[1].displayOrder).toEqual(1)
+      })
+    })
+
+    describe('clearFactories', () => {
+      it('should flush all factories', () => {
+        const factory = newFactory('Foobarbaz')
+        appStore.addFactory(factory)
+
+        appStore.clearFactories()
+
+        expect(appStore.getFactories()).toEqual([])
+      })
+    })
+  })
+
+  describe('tab management', () => {
+    describe('addTab', () => {
+      it('should add a new tab and the planner has switched to it ', () => {
+        const newTab: FactoryTab = {
+          id: '12345',
+          name: 'New Tab',
+          factories: [],
+        }
+        appStore.addTab(newTab)
+
+        // Expect the new tab in the list
+        expect(appStore.getTab(newTab.id)).toBeDefined()
+
+        // Expect the current tab to be the newly created tab
+        expect(appStore.currentFactoryTabIndex).toBe(1)
+        expect(appStore.getCurrentTab().id).toBe(newTab.id)
+      })
+    })
+    describe('removeCurrentTab', () => {
+      beforeEach(() => {
+        // Reset the app store each time
+        resetAppStore()
+      })
+      it('should NOT remove the current tab if it is the only one', () => {
+        const currentTabId = appStore.currentFactoryTabIndex
+        appStore.removeCurrentTab()
+        expect(appStore.getTabs()[currentTabId]).toBeDefined()
+      })
+
+      it('should remove the current tab if there is more than one', () => {
+        const originalTab = JSON.parse(JSON.stringify(appStore.getCurrentTab()))
+
+        // Adding a tab changes the current tab index.
+        appStore.addTab({
+          id: '12345',
+          name: 'New Tab',
+          factories: [],
+        })
+        vi.spyOn(eventBus, 'emit')
+
+        // We are therefore removing the tab we just created
+        appStore.removeCurrentTab()
+
+        expect(appStore.getTab('12345')).toBeUndefined()
+        // Expect the old tab to still exist
+        expect(appStore.getCurrentTab()).toEqual(originalTab)
       })
     })
   })
