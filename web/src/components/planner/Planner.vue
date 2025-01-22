@@ -337,7 +337,7 @@
     }
     closeIntro()
     factoriesToLoad = complexDemoPlan().getFactories()
-    prepareLoader(factoriesToLoad)
+    prepareLoader(factoriesToLoad, true)
   }
 
   const closeIntro = () => {
