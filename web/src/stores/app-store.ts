@@ -294,7 +294,7 @@ export const useAppStore = defineStore('app', () => {
       if (factory.exports) delete factory.exports
 
       // Update data version
-      factory.dataVersion = '2025-01-03.2'
+      factory.dataVersion = '2025-01-22'
     })
 
     if (needsCalculation) {
