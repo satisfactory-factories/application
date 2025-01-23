@@ -153,7 +153,9 @@
             </v-col>
           </v-row>
         </v-card-text>
+
         <!-- Hidden factory collapse -->
+
         <v-card-text v-show="factory.hidden" class="pa-0">
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
@@ -222,6 +224,7 @@
                 v-for="part in factory.products"
                 :key="`${factory.id}-${part.id}`"
                 class="sf-chip"
+                :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : ''"
               >
                 <span class="mr-2">
                   <game-asset
@@ -234,10 +237,11 @@
                   <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
                 </span>
                 <span
-                  v-if="hasMetricsForPart(factory, part.id) && factory.dependencies.metrics[part.id].difference !== 0"
+                  v-if="factory.parts[part.id].amountRemaining !== 0"
                   class="ml-2"
-                  :class="differenceClass(factory.dependencies.metrics[part.id].difference)"
-                >({{ formatNumber(factory.dependencies.metrics[part.id].difference) }}/min)</span>
+                  :class="differenceClass(factory.parts[part.id].amountRemaining)"
+                >
+                  (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
               </v-chip>
             </div>
           </v-row>
@@ -284,7 +288,7 @@
 <script setup lang="ts">
   import { defineProps, inject } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { differenceClass, getPartDisplayName, hasMetricsForPart } from '@/utils/helpers'
+  import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
