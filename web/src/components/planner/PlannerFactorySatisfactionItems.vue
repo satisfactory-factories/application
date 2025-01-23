@@ -77,6 +77,16 @@
                   +&nbsp;<i class="fas fa-cube" /><span class="ml-1">Product</span>
                 </v-btn>
                 <v-btn
+                  v-if="showSatisfactionItemButton(factory, partId.toString(), 'addGenerator')"
+                  class="d-block mb-1"
+                  color="yellow-darken-3"
+                  size="small"
+                  variant="outlined"
+                  @click="addGenerator(factory, partId.toString(), part.amountRemaining)"
+                >
+                  +&nbsp;<i class="fas fa-bolt mr-0" style="max-height: 16px" /><span class="ml-1">Generator</span>
+                </v-btn>
+                <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixProduct')"
                   class="d-block my-1"
                   color="green"
@@ -245,19 +255,23 @@
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
+    convertWasteToGeneratorFuel,
     showByProductChip,
-    showImportedChip, showInternalChip,
-    showProductChip, showRawChip,
+    showImportedChip,
+    showInternalChip,
+    showProductChip,
+    showRawChip,
     showSatisfactionItemButton,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
+  import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
 
   const appStore = useAppStore()
 
-  const { getDefaultRecipeForPart } = useGameDataStore()
+  const { getDefaultRecipeForPart, getGeneratorFuelRecipeByPart } = useGameDataStore()
   const openedCalculator = ref('')
   const satisfactionBreakdowns = appStore.getSatisfactionBreakdowns()
 
@@ -287,6 +301,34 @@
       recipe: getDefaultRecipeForPart(part),
     })
 
+    updateFactory(factory)
+  }
+
+  const addGenerator = (factory: Factory, part: string, amount: number): void => {
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+
+    console.log('addGenerator', factory, part, amount)
+
+    // We need to add the power producer first so the DOM renders it.
+    // We need to change the ingredients after the fact because reactivity doesn't work correctly with the byproduct display. It needs a calculation.
+    addPowerProducerToFactory(factory, {
+      building: 'generatornuclear',
+      ingredientAmount: 1,
+      recipe: recipe.id,
+      updated: 'ingredient',
+    })
+
+    updateFactory(factory)
+
+    // Get the producer which should be the latest one in the array
+    const producer = factory.powerProducers[factory.powerProducers.length - 1]
+
+    producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 

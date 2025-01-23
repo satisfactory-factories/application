@@ -124,6 +124,23 @@ export const useGameDataStore = defineStore('game-data', () => {
     return recipes[0]
   }
 
+  const getGeneratorFuelRecipeByPart = (part: string): PowerRecipe | null => {
+    if (!gameData.value || !part) {
+      return null
+    }
+
+    // Filter the recipes by byproduct and return the matching ones
+    const recipes = gameData.value.powerGenerationRecipes.filter(recipe => {
+      return recipe.byproduct?.part === part
+    })
+
+    if (recipes.length === 0) {
+      return null
+    }
+
+    return recipes[0]
+  }
+
   return {
     gameData,
     getGameData,
@@ -134,5 +151,6 @@ export const useGameDataStore = defineStore('game-data', () => {
     getRecipesForPowerProducer,
     getDefaultRecipeForPart,
     getDefaultRecipeForPowerProducer,
+    getGeneratorFuelRecipeByPart,
   }
 })

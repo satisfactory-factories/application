@@ -3,6 +3,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
+  convertWasteToGeneratorFuel,
   showByProductChip,
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
@@ -272,6 +273,26 @@ describe('satisfaction', () => {
       it('should NOT show for a raw part', () => {
         expect(showInternalChip(mockFactory, 'LiquidOil')).toBe(false)
       })
+    })
+  })
+
+  describe('convertWasteToGeneratorFuel', () => {
+    it('should correctly convert nuclear waste to generator fuel rods', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 25)
+      expect(result).toBe(0.5)
+    })
+
+    it('should correctly convert nuclear waste to generator fuel rods #2', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 1000)
+      expect(result).toBe(20)
     })
   })
 })
