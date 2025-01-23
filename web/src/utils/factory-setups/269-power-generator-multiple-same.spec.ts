@@ -2,14 +2,14 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
-import { create269Scenraio } from '@/utils/factory-setups/269-power-generator-multiple-same'
+import { create269Scenario } from '@/utils/factory-setups/269-power-generator-multiple-same'
 
 let factories: Factory[]
 let fuelFac: Factory
 
 describe('269 Scenario Plan', () => {
   beforeAll(() => {
-    const templateInstance = create269Scenraio()
+    const templateInstance = create269Scenario()
     factories = templateInstance.getFactories()
     fuelFac = findFacByName('Fuel Power', factories)
     calculateFactories(factories, gameData)

@@ -61,6 +61,7 @@
   import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
   import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
   import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
+  import { create267Scenario } from '@/utils/factory-setups/267-nuclear-waste-handling'
 
   const { prepareLoader, isDebugMode } = useAppStore()
 
@@ -170,6 +171,13 @@
       name: '#314: Byproduct / Requirements <=0 breakage',
       description: 'Setting the requirement ingredients of the product to 0 used to break the UI.',
       data: JSON.stringify(create341Scenario().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+    },
+    {
+      name: '#267: Nuclear Waste handling',
+      description: 'Nuclear waste was possible to be added via a +Product button in Satisfaction. Now it should show +Generator to add a generator directly instead.',
+      data: JSON.stringify(create267Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
