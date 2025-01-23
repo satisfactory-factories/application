@@ -3,7 +3,7 @@
     Please select a factory from the buttons above in Exports.
   </p>
   <div v-if="selectedFactory && factorySettings">
-    <div class="text-center border-b pb-4">
+    <div class="text-center border-b pb-4 mb-4">
       <p class="mb-2">Transport Method:</p>
       <v-btn
         v-for="method in transportMethodList"
@@ -16,21 +16,18 @@
       </v-btn>
     </div>
 
-    <div class="py-4">
-      <div v-show="factorySettings.transportMethod === TransportMethod.Train">
-        <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
-      </div>
-      <div v-show="factorySettings.transportMethod === TransportMethod.Drone">
-        DRONE transport
-      </div>
-      <div v-show="factorySettings.transportMethod === TransportMethod.Truck">
-        TRUCK transport
-      </div>
-      <div v-show="factorySettings.transportMethod === TransportMethod.Tractor">
-        TRACTOR transport
-      </div>
+    <div v-show="factorySettings.transportMethod === TransportMethod.Train">
+      <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
     </div>
-
+    <div v-show="factorySettings.transportMethod === TransportMethod.Drone">
+      DRONE transport
+    </div>
+    <div v-show="factorySettings.transportMethod === TransportMethod.Truck">
+      TRUCK transport
+    </div>
+    <div v-show="factorySettings.transportMethod === TransportMethod.Tractor">
+      TRACTOR transport
+    </div>
   </div>
 </template>
 
