@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
-import { getRequestsForFactoryByPart } from '@/utils/factory-management/exports'
+import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 
 let factories: Factory[]
@@ -147,7 +147,7 @@ describe('Complex Demo Plan', () => {
       expect(oilFac.dependencies.metrics.Plastic.request).toBe(640) // Comes from 2 requests
     })
     it('should have the correct dependencies and metrics', () => {
-      const requests = getRequestsForFactoryByPart(oilFac, 'Plastic')
+      const requests = getPartExportRequests(oilFac, 'Plastic')
       const expectedFactoryIds = [computersFac.id, circuitBoardsFac.id]
       let found = 0
       let productAmount = 0
@@ -159,13 +159,8 @@ describe('Complex Demo Plan', () => {
         }
       })
 
-      if (found !== expectedFactoryIds.length) {
-        throw new Error('Not all expected factories were found in the requests')
-      }
-
-      if (productAmount !== oilFac.dependencies.metrics.Plastic.request) {
-        throw new Error('The total product amount found via dependencies  does not match the expected requested amount')
-      }
+      expect(found).toBe(expectedFactoryIds.length)
+      expect(productAmount).toBe(oilFac.dependencies.metrics.Plastic.request)
     })
 
     it('should have the correct amount of power calculated', () => {
@@ -616,15 +611,6 @@ describe('Complex Demo Plan', () => {
         isRaw: true,
         exportable: true,
       })
-    })
-    it('should show trim on nuclear waste input', () => {
-
-    })
-    it('should not show trim on non-fissile uranium product', () => {
-
-    })
-    it('should still show Import for the Sulfuric Acid from Uranium Power', () => {
-
     })
   })
 })

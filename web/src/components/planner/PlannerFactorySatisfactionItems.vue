@@ -23,6 +23,7 @@
         <th class="text-h6 text-center" scope="row">
           <i class="fas fa-truck-container" /><span class="ml-2">Exports</span>
         </th>
+        <th class="text-h6 text-center" scope="row" />
       </tr>
     </thead>
     <tbody>
@@ -185,13 +186,13 @@
             </div>
           </td>
           <td :class="satisfactionShading(part)">
-            <p v-if="getRequestsForFactoryByPart(factory, partId.toString()).length === 0" class="text-center">
+            <p v-if="getPartExportRequests(factory, partId.toString()).length === 0" class="text-center">
               -
             </p>
             <div v-else>
               <div>
                 <v-chip
-                  v-for="(request) in getRequestsForFactoryByPart(factory, partId.toString())"
+                  v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="sf-chip small"
                   :color="isRequestSelected(factory, request.requestingFactoryId, partId.toString()) ? 'primary' : ''"
@@ -204,24 +205,36 @@
                   </span>
                 </v-chip>
               </div>
-              <!--              <div class="text-center mt-2">-->
-              <!--                <v-btn-->
-              <!--                  color="primary"-->
-              <!--                  density="comfortable"-->
-              <!--                  variant="outlined"-->
-              <!--                  @click="openCalculator(factory.id.toString(), partId.toString())"-->
-              <!--                >-->
-              <!--                  <i class="fas fa-calculator" /><span class="ml-2">Open Calculator</span>-->
-              <!--                </v-btn>-->
-              <!--              </div>-->
             </div>
+          </td>
+          <td class="text-right" :class="satisfactionShading(part)" style="width: 40px">
+            <v-btn
+              v-if="openedCalculator !== partId && getPartExportRequests(factory, partId.toString()).length > 0"
+              class="rounded"
+              color="primary"
+              icon="fas fa-calculator"
+              size="small"
+              title="Export Calculator"
+              variant="outlined"
+              @click="openedCalculator = partId.toString()"
+            />
+            <v-btn
+              v-if="openedCalculator === partId"
+              class="rounded"
+              color="primary"
+              icon="fas fa-arrow-up"
+              size="small"
+              title="Close Export Calculator"
+              variant="outlined"
+              @click="openedCalculator = ''"
+            />
           </td>
         </tr>
         <tr
-          v-if="getRequestsForFactoryByPart(factory, partId.toString()).length > 0"
+          v-if="getPartExportRequests(factory, partId.toString()).length > 0"
         >
           <td class="calculator-row" colspan="5" style="height: auto">
-            <div class="calculator" :class="{ open: openedCalculator === partId }">
+            <div class="calculator-tray" :class="{ open: openedCalculator === partId }">
               <p class="text-h5">Calculator for {{ getPartDisplayName(partId.toString()) }}</p>
             <!-- Calculator content here -->
             </div>
@@ -241,7 +254,7 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { getRequestsForFactoryByPart } from '@/utils/factory-management/exports'
+  import { getPartExportRequests } from '@/utils/factory-management/exports'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
@@ -348,16 +361,6 @@
   //   }
   //   return requests.find(request => request.part === part)
   // }
-
-  // const openCalculator = (factoryId: string, partId: string) => {
-  //   if (openedCalculator.value === partId) {
-  //     // Close the currently opened calculator
-  //     openedCalculator.value = ''
-  //   } else {
-  //     // Open the clicked calculator and close others
-  //     openedCalculator.value = partId
-  //   }
-  // }
 </script>
 
 <style lang="scss" scoped>
@@ -392,10 +395,10 @@ table {
   }
 }
 
-.calculator {
+.calculator-tray {
   overflow: hidden;
   max-height: 0; /* Collapsed by default */
-  transition: max-height 0.5s ease, padding 0.5s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 
   &.open {
     max-height: 200px; /* Adjust based on expected content height */

@@ -18,7 +18,7 @@ export const getRequestsForFactory = (factory: Factory): FactoryDependencyReques
     .flat()
 }
 
-export const getRequestsForFactoryByPart = (
+export const getPartExportRequests = (
   factory: Factory,
   part: string
 ): FactoryDependencyRequest[] => {
