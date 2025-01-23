@@ -121,16 +121,14 @@ export const showInternalChip = (factory: Factory, partId: string) => {
 
 export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number) => {
   // In order to get the fuel amount to insert into the UI, we need to do some math.
-
   // We know the amount of waste we require.
   // We need to get the amount of fuel rods it takes to produce that amount of waste.
 
   const rodsPerMin = recipe.ingredients[0].perMin // 0.2
   const wastePerMin = recipe.byproduct?.perMin ?? 0 // 10
 
-  // rodsPerWaste = rodsPerMin / wastePerMin
   const rodsPerWaste = rodsPerMin / wastePerMin // 0.02
 
-  // The total rods needed to get the desired 'amount' of waste
+  // The total rods needed to get the desired amount of waste
   return formatNumberFully(rodsPerWaste * amount) // 0.5
 }
