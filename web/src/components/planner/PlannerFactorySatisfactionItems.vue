@@ -195,9 +195,9 @@
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="sf-chip small"
-                  :color="isRequestSelected(factory, request.requestingFactoryId, partId.toString()) ? 'primary' : ''"
-                  :style="isRequestSelected(factory, request.requestingFactoryId, partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
-                  @click="changeCalculatorSelection(factory, request.requestingFactoryId, partId.toString())"
+                  :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
+                  :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
+                  @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
                   <i class="fas fa-industry" />
                   <span class="ml-2">
@@ -216,7 +216,7 @@
               size="small"
               title="Export Calculator"
               variant="outlined"
-              @click="openedCalculator = partId.toString()"
+              @click="initCalculator(factory, partId.toString())"
             />
             <v-btn
               v-if="openedCalculator === partId"
@@ -231,12 +231,11 @@
           </td>
         </tr>
         <tr
-          v-if="getPartExportRequests(factory, partId.toString()).length > 0"
+          v-if="openedCalculator === partId && getPartExportRequests(factory, partId.toString()).length > 0"
         >
           <td class="calculator-row" colspan="5" style="height: auto">
             <div class="calculator-tray" :class="{ open: openedCalculator === partId }">
-              <p class="text-h5">Calculator for {{ getPartDisplayName(partId.toString()) }}</p>
-            <!-- Calculator content here -->
+              <export-calculator :key="openedCalculator + '-' + partId" :factory="factory" :part="partId.toString()" />
             </div>
           </td>
         </tr>
@@ -264,6 +263,11 @@
     showSatisfactionItemButton,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
+  import ExportCalculator from '@/components/planner/satisfaction/ExportCalculator.vue'
+  import {
+    initializeCalculatorFactoryPart,
+    initializeCalculatorFactorySettings,
+  } from '@/utils/factory-management/exportCalculator'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
@@ -317,16 +321,42 @@
     updateFactory(factory)
   }
 
-  const changeCalculatorSelection = (factory: Factory, requestFacId: number, part: string) => {
-    factory.exportCalculator[part].selected = requestFacId.toString()
+  const initCalculator = (factory: Factory, part: string, selectedFactory?: number) => {
+    changeCalculatorSelection(factory, selectedFactory, part)
+    openedCalculator.value = part
   }
 
-  const isRequestSelected = (factory: Factory, factoryId: number, part: string) => {
+  const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | undefined, part: string) => {
+    // Ensure requestFacId is a string indexable by an object
+    let requestFacId
+    if (requestFacIdRaw) {
+      requestFacId = String(requestFacIdRaw)
+    }
+    console.log(`PlannerFactorySatisfactionItems: Changing calculator selection for ${factory.name} part ${part} to factory ${requestFacId}`)
+    if (!factory.exportCalculator[part]) {
+      console.log(`PlannerFactorySatisfactionItems: Calculator Settings for ${factory.name} part ${part} not initialized, creating it now.`)
+      initializeCalculatorFactoryPart(factory, part)
+    }
+
+    if (requestFacId) {
+      if (!factory.exportCalculator[part].factorySettings[requestFacId]?.trainTime) {
+        console.log(`PlannerFactorySatisfactionItems: Calculator Factory settings for ${factory.name} part ${part}, requesting factory ${requestFacId} not initialized, creating it now.`)
+        initializeCalculatorFactorySettings(factory, part, requestFacId)
+      }
+    }
+
+    console.log('changeCalculatorSelection: calculatorSettings', factory.exportCalculator[part])
+    console.log('changeCalculatorSelection: requestFacId', requestFacId)
+
+    factory.exportCalculator[part].selected = requestFacId ?? null
+  }
+
+  const isRequestSelected = (factory: Factory, factoryId: string, part: string) => {
     if (!factory.exportCalculator[part]) {
       // console.error(`Could not find export calculator settings for part ${part}`)
       return false
     }
-    return factory.exportCalculator[part]?.selected === factoryId.toString()
+    return factory.exportCalculator[part]?.selected === factoryId
   }
 
   const getSatisfactionLabel = (total: number) => {
@@ -344,23 +374,6 @@
     fixProduct(product, factory)
     updateFactory(factory)
   }
-
-  // const getCalculatorSettings = (factory: Factory, part: string | null): ExportCalculatorSettings | undefined => {
-  //   if (part === null) {
-  //     console.error(`Could not get calculator settings for invalid part ${part}`)
-  //     return undefined
-  //   }
-  //   return factory.exportCalculator[part]
-  // }
-  //
-  // const getRequestForPartByDestFac = (factory: Factory, part: string, destFacId: string): FactoryDependencyRequest | undefined => {
-  //   // Get the requests, then filter by the requesting factory to get the exact request for the port
-  //   const requests = factory.dependencies.requests[destFacId]
-  //   if (!requests) {
-  //     return undefined
-  //   }
-  //   return requests.find(request => request.part === part)
-  // }
 </script>
 
 <style lang="scss" scoped>
@@ -401,7 +414,7 @@ table {
   transition: max-height 0.3s ease, padding 0.3s ease;
 
   &.open {
-    max-height: 200px; /* Adjust based on expected content height */
+    max-height: 500px; /* Adjust based on expected content height */
     padding: 1rem; /* Optional padding animation */
   }
 }

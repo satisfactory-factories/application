@@ -27,6 +27,16 @@ export const getPartExportRequests = (
   return requests.filter(request => request.part === part)
 }
 
+export const getPartExportRequestByRequestingFactory = (
+  factory: Factory,
+  part: string,
+  requestingFactory: number
+): FactoryDependencyRequest | null => {
+  const requests = getPartExportRequests(factory, part)
+
+  return requests.find(request => request.requestingFactoryId === requestingFactory) ?? null
+}
+
 export const getExportableFactories = (factories: Factory[]): Factory[] => {
   const exportableFacs: Factory[] = []
   // Loop through all the factory parts and if one is exportable, we add it to the list.

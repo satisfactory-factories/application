@@ -1,24 +1,26 @@
-// import { Factory } from '@/interfaces/planner/FactoryInterface'
-//
-// export const configureExportCalculator = (factories: Factory[]) => {
-//   factories.forEach(factory => {
-//     // For each surplus product we need to make sure there is an export calculator setting associated with it
-//     Object.keys(factory.exports).forEach(part => {
-//       // If there's not already a record for this surplus product, create one now.
-//       let selected: string | null = null
-//       const requestKeys = Object.keys(factory.dependencies.requests)
-//
-//       if (!factory.exportCalculator[part]) {
-//         // Set it to the first request by default
-//         if (requestKeys.length > 0) {
-//           selected = requestKeys[0]
-//         }
-//       }
-//
-//       factory.exportCalculator[part] = {
-//         selected,
-//         factorySettings: {},
-//       }
-//     })
-//   })
-// }
+import { Factory, TransportMethod } from '@/interfaces/planner/FactoryInterface'
+
+export const initializeCalculatorFactoryPart = (factory: Factory, part: string) => {
+  if (!factory.exportCalculator[part]) {
+    factory.exportCalculator[part] = {
+      selected: null,
+      factorySettings: {},
+    }
+  }
+}
+
+export const initializeCalculatorFactorySettings = (factory: Factory, part: string, factoryId: string) => {
+  if (!factory.exportCalculator[part].factorySettings) {
+    throw new Error('calculator: Was asked to initialize factory settings, but factory settings parent object is not defined!')
+  }
+
+  if (!factory.exportCalculator[part].factorySettings[factoryId]) {
+    factory.exportCalculator[part].factorySettings[factoryId] = {
+      transportMethod: TransportMethod.Train,
+      trainTime: 1,
+      droneTime: 1,
+      truckTime: 1,
+      tractorTime: 1,
+    }
+  }
+}
