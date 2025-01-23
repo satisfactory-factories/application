@@ -17,10 +17,10 @@ export const initializeCalculatorFactorySettings = (factory: Factory, part: stri
   if (!factory.exportCalculator[part].factorySettings[factoryId]) {
     factory.exportCalculator[part].factorySettings[factoryId] = {
       transportMethod: TransportMethod.Train,
-      trainTime: 1,
-      droneTime: 1,
-      truckTime: 1,
-      tractorTime: 1,
+      trainTime: 123,
+      droneTime: 123,
+      truckTime: 123,
+      tractorTime: 123,
     }
   }
 }

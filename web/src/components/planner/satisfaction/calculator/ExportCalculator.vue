@@ -2,10 +2,6 @@
   <p v-if="!selectedFactory">
     Please select a factory from the buttons above in Exports.
   </p>
-  <pre>
-{{ factorySettings }}
-  </pre>
-
   <div v-if="selectedFactory && factorySettings">
     <div class="text-center border-b pb-4">
       <p class="mb-2">Transport Method:</p>
@@ -22,7 +18,7 @@
 
     <div class="py-4">
       <div v-show="factorySettings.transportMethod === TransportMethod.Train">
-        TRAIN transport
+        <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
       </div>
       <div v-show="factorySettings.transportMethod === TransportMethod.Drone">
         DRONE transport
@@ -41,6 +37,7 @@
 <script setup lang="ts">
   import { Factory, TransportMethod, transportMethodList } from '@/interfaces/planner/FactoryInterface'
   import { getPartExportRequestByRequestingFactory } from '@/utils/factory-management/exports'
+  import TrainCalculator from '@/components/planner/satisfaction/calculator/TrainCalculator.vue'
 
   const props = defineProps<{
     factory: Factory

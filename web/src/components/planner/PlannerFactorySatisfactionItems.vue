@@ -235,7 +235,7 @@
         >
           <td class="calculator-row" colspan="5" style="height: auto">
             <div class="calculator-tray" :class="{ open: openedCalculator === partId }">
-              <export-calculator :key="openedCalculator + '-' + partId" :factory="factory" :part="partId.toString()" />
+              <export-calculator :key="partId + factory.exportCalculator[partId].selected" :factory="factory" :part="partId.toString()" />
             </div>
           </td>
         </tr>
@@ -263,7 +263,7 @@
     showSatisfactionItemButton,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
-  import ExportCalculator from '@/components/planner/satisfaction/ExportCalculator.vue'
+  import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
   import {
     initializeCalculatorFactoryPart,
     initializeCalculatorFactorySettings,

@@ -9,7 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
-    ExportCalculator: typeof import('./components/planner/satisfaction/ExportCalculator.vue')['default']
+    ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
     FactoryNode: typeof import('./components/graph/FactoryNode.vue')['default']
     GameAsset: typeof import('./components/GameAsset.vue')['default']
@@ -56,5 +56,6 @@ declare module 'vue' {
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     Todo: typeof import('./components/graph/Todo.vue')['default']
+    TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
   }
 }
