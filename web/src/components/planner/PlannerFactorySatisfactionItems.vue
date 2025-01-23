@@ -96,6 +96,26 @@
                 >
                   <i class="fas fa-wrench" /><span class="ml-1">Fix Generator</span>
                 </v-btn>
+
+                <template v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGeneratorManually')">
+                  <v-btn
+                    class="d-block my-1"
+                    color="grey"
+                    :ripple="false"
+                    size="small"
+                    variant="outlined"
+                  >
+                    <v-tooltip bottom>
+                      <template #activator="{ props }">
+                        <div v-bind="props">
+                          <i class="fas fa-exclamation-circle" /><span class="ml-1">FIX GENS MANUALLY</span>
+                        </div>
+                      </template>
+                      <span>You have multiple Generator groups for this waste. Since the planner cannot read your mind, we don't know which group to fix.<br>Please either fix manually or reduce to one Generator & Fuel group.</span>
+                    </v-tooltip>
+                  </v-btn>
+                  <p class="text-center"><b>+{{ showFuelRodsNeeded(partId.toString(), part.amountRemaining) }}</b> rods needed</p>
+                </template>
                 <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixProduct')"
                   class="d-block my-1"
@@ -322,8 +342,6 @@
       return
     }
 
-    console.log('addGenerator', factory, part, amount)
-
     // We need to add the power producer first so the DOM renders it.
     // We need to change the ingredients after the fact because reactivity doesn't work correctly with the byproduct display. It needs a calculation.
     addPowerProducerToFactory(factory, {
@@ -340,6 +358,17 @@
 
     producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
+  }
+
+  const showFuelRodsNeeded = (part: string, amount: number) => {
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+
+    return convertWasteToGeneratorFuel(recipe, Math.abs(amount))
   }
 
   const fixSatisfactionImport = (factory: Factory, partIndex: string) => {

@@ -25,6 +25,8 @@ export const showSatisfactionItemButton = (
       return showFixProduct(factory, part, partId)
     case 'fixGenerator':
       return showFixGenerator(factory, part, partId)
+    case 'fixGeneratorManually':
+      return showFixGeneratorManually(factory, part, partId)
     case 'correctManually':
       return showCorrectManually(factory, part, partId)
     case 'fixImport':
@@ -78,10 +80,21 @@ export const showFixGenerator = (factory: Factory, part: PartMetrics, partId: st
   if (part.satisfied) return false
   if (!nuclearParts.includes(partId)) return false
 
-  const powerProducer = factory.powerProducers.find(producer => producer.byproduct?.part === partId)
+  const powerProducer = factory.powerProducers.filter(producer => producer.byproduct?.part === partId)
 
   // If a powerProducer is found, return true as it's not satisfied by it.
-  return !!powerProducer
+  return powerProducer.length === 1
+}
+
+export const showFixGeneratorManually = (factory: Factory, part: PartMetrics, partId: string): boolean => {
+  if (part.satisfied) return false
+  if (!nuclearParts.includes(partId)) return false
+
+  // Find all power producers with the part
+  const powerProducers = factory.powerProducers.filter(producer => producer.byproduct?.part === partId)
+
+  // If there are multiple power producers, we can't fix it.
+  return powerProducers.length > 1
 }
 
 // Satisfaction item chips

@@ -255,6 +255,57 @@ describe('satisfaction', () => {
 
         expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(true)
       })
+
+      it('should not show if there is more than 1 generator group', () => {
+        // Add a generator for NuclearWaste
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(false)
+      })
+    })
+
+    describe('fixGeneratorManually', () => {
+      beforeEach(() => {
+        // Add a product needing nuclear waste (25)
+        addProductToFactory(mockFactory, {
+          id: 'PlutoniumPellet',
+          amount: 30,
+          recipe: 'Plutonium',
+        })
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+      })
+      it('should NOT show if there is only one group', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(false)
+      })
+
+      it('should show if there is more than one group', () => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(true)
+      })
     })
   })
   describe('chips', () => {
