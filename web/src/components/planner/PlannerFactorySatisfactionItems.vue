@@ -427,6 +427,7 @@
       console.error(`Could not find generator fuel recipe for part ${part}`)
       return
     }
+
     generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }

@@ -2,6 +2,7 @@ import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryI
 import { getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { getAllInputs } from '@/utils/factory-management/inputs'
 import { PowerRecipe } from '@/interfaces/Recipes'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 const nuclearParts = ['NuclearWaste', 'PlutoniumWaste']
 
@@ -131,5 +132,5 @@ export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number)
   const rodsPerWaste = rodsPerMin / wastePerMin // 0.02
 
   // The total rods needed to get the desired 'amount' of waste
-  return rodsPerWaste * amount // 0.5
+  return formatNumberFully(rodsPerWaste * amount) // 0.5
 }
