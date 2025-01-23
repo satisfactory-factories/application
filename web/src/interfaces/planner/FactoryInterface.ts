@@ -60,6 +60,12 @@ export enum TransportMethod {
   Truck = 'truck',
   Tractor = 'tractor'
 }
+export const transportMethodList = [
+  TransportMethod.Train,
+  TransportMethod.Drone,
+  TransportMethod.Truck,
+  TransportMethod.Tractor,
+]
 
 export interface ExportCalculatorFactorySettings {
   transportMethod: TransportMethod
