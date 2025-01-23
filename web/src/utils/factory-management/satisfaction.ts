@@ -20,9 +20,11 @@ export const showSatisfactionItemButton = (
     case 'addProduct':
       return showAddProduct(factory, part, partId)
     case 'addGenerator':
-      return showAddGenerator(factory, partId)
+      return showAddGenerator(factory, part, partId)
     case 'fixProduct':
       return showFixProduct(factory, part, partId)
+    case 'fixGenerator':
+      return showFixGenerator(factory, part, partId)
     case 'correctManually':
       return showCorrectManually(factory, part, partId)
     case 'fixImport':
@@ -64,8 +66,22 @@ export const showFixImport = (factory: Factory, part: PartMetrics, partId: strin
 }
 
 // If the part ID is of a nuclear power product, show the button
-export const showAddGenerator = (factory: Factory, partId: string) => {
-  return nuclearParts.includes(partId)
+export const showAddGenerator = (factory: Factory, part: PartMetrics, partId: string): boolean => {
+  if (part.satisfied) return false
+
+  // Attempt to find the powerProducer that produces the part
+  const powerProducer = factory.powerProducers.find(producer => producer.byproduct?.part === partId)
+
+  return nuclearParts.includes(partId) && !powerProducer
+}
+export const showFixGenerator = (factory: Factory, part: PartMetrics, partId: string): boolean => {
+  if (part.satisfied) return false
+  if (!nuclearParts.includes(partId)) return false
+
+  const powerProducer = factory.powerProducers.find(producer => producer.byproduct?.part === partId)
+
+  // If a powerProducer is found, return true as it's not satisfied by it.
+  return !!powerProducer
 }
 
 // Satisfaction item chips

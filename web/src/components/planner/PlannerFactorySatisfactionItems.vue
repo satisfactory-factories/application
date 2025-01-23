@@ -87,6 +87,16 @@
                   +&nbsp;<i class="fas fa-bolt mr-0" style="max-height: 16px" /><span class="ml-1">Generator</span>
                 </v-btn>
                 <v-btn
+                  v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGenerator')"
+                  class="d-block mb-1"
+                  color="green"
+                  size="small"
+                  variant="outlined"
+                  @click="doFixGenerator(factory, partId.toString(), part.amountRequired)"
+                >
+                  <i class="fas fa-wrench" /><span class="ml-1">Fix Generator</span>
+                </v-btn>
+                <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixProduct')"
                   class="d-block my-1"
                   color="green"
@@ -371,6 +381,24 @@
       return
     }
     fixProduct(product, factory)
+    updateFactory(factory)
+  }
+
+  const doFixGenerator = (factory: Factory, part: string, amount: number) => {
+    const generator = factory.powerProducers.find(producer => producer.recipe === getGeneratorFuelRecipeByPart(part)?.id)
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!generator) {
+      alert('Could not fix the generator due to there not being a generator! Please report this to Discord with a share link, quoting the factory in question.')
+      console.error(`Could not find generator for part ${part}`)
+      return
+    }
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+    generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 
