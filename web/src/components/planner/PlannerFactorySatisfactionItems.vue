@@ -166,7 +166,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props }">
                     <v-chip v-bind="props" class="sf-chip cyan small">
-                      <i class="fas fa-info-circle" /><span class="ml-1">Raw</span>
+                      <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Raw Items e.g. Iron Ore are always satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.</span>
@@ -403,7 +403,8 @@ table {
   transition: max-height 0.3s ease, padding 0.3s ease;
 
   &.open {
-    max-height: 500px; /* Adjust based on expected content height */
+    height: 250px;
+    max-height: 250px; /* Adjust based on expected content height */
   }
 }
 </style>
