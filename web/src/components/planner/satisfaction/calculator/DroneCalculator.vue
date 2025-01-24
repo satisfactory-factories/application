@@ -1,19 +1,18 @@
 <template>
-  <div class="d-flex align-center justify-center mb-4">
-    <span class="mr-2">
+  <div class="d-flex align-center justify-center mb-2">
+    <span class="mr-2 pb-5">
       <v-icon icon="fas fa-drone" />
     </span>
-    <v-number-input
-      v-model.number="factorySettings.droneTime"
-      control-variant="stacked"
+    <v-text-field
+      v-model="timeString"
       density="compact"
-      hide-details
-      label="Round trip secs"
-      max-width="150px"
-      type="number"
+      label="Round trip time"
+      max-width="190px"
+      :rules="timeRules"
       variant="outlined"
+      @update:model-value="calculateSeconds()"
     />
-    <tooltip-info text="Round trip time is shown to you in the drone port's UI. <br>This does mean you need to configure the route, run it, then see the duration.<br> However, you will know how many drones you require to be efficent." />
+    <tooltip-info classes="pb-6" text="Round trip time is shown to you in the drone port's UI. <br>This does mean you need to configure the route, run it, then see the duration.<br> However, you will know how many drones you require to be efficient." />
   </div>
   <div class="d-flex align-center justify-center">
     <v-chip>
@@ -25,9 +24,9 @@
 
 <script setup lang="ts">
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumber } from '@/utils/numberFormatter'
   import { useGameDataStore } from '@/stores/game-data-store'
   import TooltipInfo from '@/components/tooltip-info.vue'
+  import { calculateTransportVehiclesForExporting, TransportMethod } from '@/utils/factory-management/exportCalculator'
 
   const gameData = useGameDataStore().getGameData()
 
@@ -36,7 +35,39 @@
     factorySettings: ExportCalculatorFactorySettings
   }>()
 
+  const timeString = ref('0:42')
+  let droneTime = props.factorySettings.droneTime
+
+  const timeRules = [
+    (value: string) => !!value || 'Time is required',
+    (value: string) => {
+      // Regex explanation:
+      // - ^ start of string
+      // - ([0-5]?\d)  => minutes can be:
+      //       0–59 (with or without a leading zero)
+      // - :
+      // - ([0-5]\d)  => seconds must be two digits, 00–59
+      // - $ end of string
+      const validTimeRegex = /^([0-5]?\d):([0-5]\d)$/
+      return validTimeRegex.test(value) || 'Enter a valid time in MM:SS'
+    },
+  ]
+
+  const calculateSeconds = () => {
+    console.log('calculateSeconds', timeString.value)
+    const [minutes, seconds] = timeString.value.split(':').map(Number)
+    droneTime = minutes * 60 + seconds
+  }
+
   const calculateDrones = () => {
-    return '1'
+    if (!props.request) {
+      console.warn('calculateFreightCars: No request provided!')
+      return '???'
+    }
+
+    const part = props.request.part
+    const amount = props.request.amount
+
+    return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Drone, droneTime, gameData)
   }
 </script>
