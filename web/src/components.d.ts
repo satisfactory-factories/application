@@ -56,6 +56,7 @@ declare module 'vue' {
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     Todo: typeof import('./components/graph/Todo.vue')['default']
+    TooltipInfo: typeof import('./components/tooltip-info.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
   }
 }

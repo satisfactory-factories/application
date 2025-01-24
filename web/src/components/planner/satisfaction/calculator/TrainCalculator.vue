@@ -11,18 +11,7 @@
       type="number"
       variant="outlined"
     />
-    <span class="ml-2 text-caption text-grey">
-      <v-tooltip bottom>
-        <template #activator="{ props }">
-          <span v-bind="props">
-            <v-icon
-              icon="fas fa-info-circle"
-            />
-          </span>
-        </template>
-        <span>Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka "3 choos".</span>
-      </v-tooltip>
-    </span>
+    <tooltip-info text="Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka &quot;3 choos&quot;" />
   </div>
 
   <div class="mb-4 text-center">

@@ -48,15 +48,7 @@
                 </v-chip>
               </div>
               <!-- sync status tooltip -->
-              <v-tooltip right>
-                <template #activator="{ props }">
-                  <div class="ml-2 text-grey" v-bind="props">
-                    <i class="fas fa-info-circle" />
-                  </div>
-                </template>
-                <span>Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory's products are changed, the factory will be out of sync, or if you set it manually.
-                </span>
-              </v-tooltip>
+              <tooltip-info text="Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory's products are changed, the factory will be out of sync, or if you set it manually." />
             </div>
           </v-col>
           <v-col class="text-right pt-0 pt-md-3" cols="auto" md="4">

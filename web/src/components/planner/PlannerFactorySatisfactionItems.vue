@@ -7,18 +7,7 @@
         </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
           <i class="fas fa-abacus" /><span class="ml-2">Satisfaction</span>
-          <span class="ml-2 text-caption text-grey">
-            <v-tooltip bottom>
-              <template #activator="{ props }">
-                <div v-bind="props">
-                  <v-icon
-                    icon="fas fa-info-circle"
-                  />
-                </div>
-              </template>
-              <span>Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import.</span>
-            </v-tooltip>
-          </span>
+          <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
         </th>
         <th class="text-h6 text-center" scope="row">
           <i class="fas fa-truck-container" /><span class="ml-2">Exports</span>
