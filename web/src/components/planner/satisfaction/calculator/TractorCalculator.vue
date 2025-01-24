@@ -36,8 +36,12 @@
 </template>
 
 <script setup lang="ts">
+  import { useGameDataStore } from '@/stores/game-data-store'
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import TooltipInfo from '@/components/tooltip-info.vue'
+  import { calculateTransportVehiclesForExporting, TransportMethod } from '@/utils/factory-management/exportCalculator'
+
+  const gameData = useGameDataStore().getGameData()
 
   const props = defineProps<{
     request: FactoryDependencyRequest
@@ -61,6 +65,15 @@
   }
 
   const calculateTractors = () => {
-    return '1'
+    if (!props.request) {
+      console.error('TractorCalculator: calculateTractors: No request provided!')
+      return '???'
+    }
+
+    const part = props.request.part
+    const amount = props.request.amount
+    const time = props.factorySettings.tractorTime ?? 123
+
+    return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Tractor, time, gameData)
   }
 </script>

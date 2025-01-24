@@ -52,6 +52,12 @@ export const calculateTransportVehiclesForExporting = (
 
   const isFluid = gameData.items.parts[part].isFluid
 
+  // Throw if attempting to transport a part with an unsupported method.
+  // In reality this should never happen as the UI prevents it.
+  if (isFluid && method !== TransportMethod.Train) {
+    throw new Error('exportCalculator: calculateTransportRequired: Attempting to calculate a fluid part with a transport method that does not support it!')
+  }
+
   // 2. Get the carrying capacity of the vehicle in stacks
   let stackCapacity = 0
 

@@ -40,8 +40,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import TooltipInfo from '@/components/tooltip-info.vue'
   import { calculateTransportVehiclesForExporting, TransportMethod } from '@/utils/factory-management/exportCalculator'
 
@@ -70,7 +70,7 @@
 
   const calculateFreightCars = () => {
     if (!props.request) {
-      console.warn('calculateFreightCars: No request provided!')
+      console.error('TrainCalculator: calculateFreightCars: No request provided!')
       return '???'
     }
 

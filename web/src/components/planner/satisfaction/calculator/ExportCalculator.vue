@@ -1,7 +1,9 @@
 <template>
-  <p v-if="!selectedFactory">
-    Please select a factory from the buttons above in Exports.
-  </p>
+  <div v-if="!selectedFactory" class="d-flex flex-column justify-center h-100">
+    <p class="text-h6 align-self-center">
+      Please select a factory from the buttons above in Exports.
+    </p>
+  </div>
   <v-row v-if="selectedFactory && factorySettings" class="ma-0 h-100">
     <!-- Train -->
     <v-col class="border-e-md pa-0 d-flex flex-column" cols="12" md="3">
@@ -9,7 +11,7 @@
         <div class="d-flex align-center text-h6 justify-center">
           <game-asset subject="electric-locomotive" type="vehicle" />
           <span class="ml-2">Train</span>
-          <tooltip-info text="It is assumed you are using a pair of train stations with no intermediate stops.<br>NOTE: This is an <b>approximation</b>. The round time may differ by traffic conditions, routing and other variables." />
+          <tooltip-info text="It is assumed you are using a pair of train stations with no intermediate stops and no loading rules.<br>NOTE: This is an <b>approximation</b>. The round time may differ by traffic conditions, routing and other variables." />
         </div>
         <v-chip color="green" density="compact">Great accuracy <tooltip-info text="Subject to inaccuracies due to traffic, acceleration forces (e.g. if stopped on a<br>hill due to traffic, takes a LONG time to speed up), and waiting times at stations. Otherwise very accurate." /></v-chip>
       </div>

@@ -36,7 +36,7 @@
   }>()
 
   const timeString = ref('0:42')
-  let droneTime = props.factorySettings.droneTime
+  const droneTime = ref(props.factorySettings.droneTime)
 
   const timeRules = [
     (value: string) => !!value || 'Time is required',
@@ -53,21 +53,26 @@
     },
   ]
 
+  watch(() => props.request.amount, () => {
+    // If the user changes the request amount we also have to trigger an update
+    calculateDrones()
+  })
+
   const calculateSeconds = () => {
-    console.log('calculateSeconds', timeString.value)
     const [minutes, seconds] = timeString.value.split(':').map(Number)
-    droneTime = minutes * 60 + seconds
+    droneTime.value = minutes * 60 + seconds
+    console.log('DroneCalculator: calculateSeconds: droneTime now: ', droneTime)
   }
 
   const calculateDrones = () => {
     if (!props.request) {
-      console.warn('calculateFreightCars: No request provided!')
+      console.error('DroneCalculator: calculateDrones: No request provided!')
       return '???'
     }
 
     const part = props.request.part
     const amount = props.request.amount
 
-    return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Drone, droneTime, gameData)
+    return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Drone, droneTime.value, gameData)
   }
 </script>
