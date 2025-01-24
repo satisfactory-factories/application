@@ -13,7 +13,7 @@
         </div>
         <v-chip color="green" density="compact">Great accuracy <tooltip-info text="Subject to inaccuracies due to traffic, acceleration forces (e.g. if stopped on a<br>hill due to traffic, takes a LONG time to speed up), and waiting times at stations. Otherwise very accurate." /></v-chip>
       </div>
-      <div class="pt-4">
+      <div v-if="request" class="pt-4 px-2">
         <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
@@ -27,8 +27,11 @@
         </div>
         <v-chip color="blue" density="compact">Excellent accuracy <tooltip-info text="Extremely accurate as drones are based on a 'flight on rails' system,<br> disregarding terrain and all variables except for waiting time and fuel exhaustion." /></v-chip>
       </div>
-      <div class="pt-4">
-        <drone-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
+      <div v-if="request" class="pt-4 px-2">
+        <p v-if="isFluid(request.part)">
+          Fluids in their liquid form cannot be transported via Drone. Please convert them into their packaged version (if possible).
+        </p>
+        <drone-calculator v-else :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
     <!-- Truck -->
@@ -41,8 +44,11 @@
         </div>
         <v-chip color="amber" density="compact">Ok accuracy <tooltip-info text="Highly subject to the game's ability to handle the player's recordings, with inconsistencies often occurring resulting in delays.<br>Also subject to traffic, acceleration forces and even creature collisions when near the player." /></v-chip>
       </div>
-      <div class="pt-4">
-        <truck-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
+      <div v-if="request" class="pt-4 px-2">
+        <p v-if="isFluid(request.part)">
+          Fluids in their liquid form cannot be transported via Truck. Please convert them into their packaged version (if possible).
+        </p>
+        <truck-calculator v-else :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
     <!-- Tractor -->
@@ -55,8 +61,11 @@
         </div>
         <v-chip color="amber" density="compact">Ok accuracy <tooltip-info text="Highly subject to the game's ability to perform the player's recordings, with inconsistencies often occurring resulting in delays.<br>Also subject to traffic, acceleration forces and even creature collisions when near the player." /></v-chip>
       </div>
-      <div class="pt-4" style="height: 100%">
-        <tractor-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
+      <div v-if="request" class="pt-4 px-2">
+        <p v-if="isFluid(request.part)">
+          Fluids in their liquid form cannot be transported via Tractor. Please convert them into their packaged version (if possible).
+        </p>
+        <tractor-calculator v-else :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
   </v-row>
@@ -66,11 +75,14 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { getPartExportRequestByRequestingFactory } from '@/utils/factory-management/exports'
   import TrainCalculator from '@/components/planner/satisfaction/calculator/TrainCalculator.vue'
+  import { useGameDataStore } from '@/stores/game-data-store'
 
   const props = defineProps<{
     factory: Factory
     part: string
   }>()
+
+  const gameData = useGameDataStore().getGameData()
 
   const calculatorSettings = props.factory.exportCalculator[props.part]
 
@@ -81,5 +93,9 @@
   const request = selectedFactory
     ? getPartExportRequestByRequestingFactory(props.factory, props.part, Number(selectedFactory))
     : null
+
+  const isFluid = (part: string) => {
+    return gameData.items.parts[part].isFluid
+  }
 
 </script>
