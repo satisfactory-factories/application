@@ -85,11 +85,6 @@ export interface FactoryInput {
   amount: number
 }
 
-export interface FactoryInternalProduct {
-  id: string;
-  amount: number
-}
-
 export interface FactorySyncState {
   amount: number
   recipe: string

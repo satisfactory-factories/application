@@ -34,16 +34,16 @@
     </v-chip>
     <v-chip v-if="isFluid(request.part)">
       <game-asset subject="freight-car" type="vehicle" />
-      <span class="ml-2">Fluid Freight Cars: <b>{{ calculateFluidCars() }}</b></span>
+      <span class="ml-2">Fluid Freight Cars: <b>{{ calculateFreightCars() }}</b></span>
     </v-chip>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumber } from '@/utils/numberFormatter'
   import { useGameDataStore } from '@/stores/game-data-store'
   import TooltipInfo from '@/components/tooltip-info.vue'
+  import { calculateTransportVehiclesForExporting, TransportMethod } from '@/utils/factory-management/exportCalculator'
 
   const gameData = useGameDataStore().getGameData()
 
@@ -75,37 +75,10 @@
     }
 
     const part = props.request.part
-
-    // 1. Get the product info from game data
-    const data = gameData.items.parts[part]
-
-    if (!data.stackSize) {
-      console.error(`Unable to get stack size for ${part}`)
-    }
-
     const amount = props.request.amount
-    const carCap = 32 * data.stackSize
-    const rtt = props.factorySettings.trainTime ?? 123
+    const time = props.factorySettings.trainTime ?? 123
 
-    // Need amount per minute of the product, divided by the car capacity divided by the round trip time
-    const carsNeeded = (amount / 60) / (carCap / rtt)
-
-    return formatNumber(carsNeeded)
-  }
-
-  const calculateFluidCars = () => {
-    if (!props.request) {
-      console.warn('calculateFluidCars: No request provided!')
-      return '???'
-    }
-    const amount = props.request.amount ?? 0
-    const carCap = 1600
-    const rtt = props.factorySettings.trainTime ?? 123
-
-    // Need amount per minute of the product, divided by the car capacity divided by the round trip time
-    const carsNeeded = (amount / 60) / (carCap / rtt)
-
-    return formatNumber(carsNeeded)
+    return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Train, time, gameData)
   }
 
   const isFluid = (part: string) => {
