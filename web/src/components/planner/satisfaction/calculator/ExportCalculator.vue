@@ -27,20 +27,20 @@
       <div class="d-flex align-center text-h6 border-b justify-center py-2">
         <game-asset subject="truck" type="vehicle" />
         <span class="ml-2">Truck</span>
-        <tooltip-info text="TODO" />
+        <tooltip-info text="It is assumed you are using one truck station and the trucks are fully loaded.<br>Note: This calculation is an <b>estimation</b> due to variables such as vehicle collisions, mis-routing, traffic, etc." />
       </div>
       <div class="px-2 py-4">
-        <p>TRUCK</p>
+        <truck-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
     <v-col class="pa-0" cols="12" md="3">
       <div class="d-flex align-center text-h6 border-b justify-center py-2">
         <game-asset subject="tractor" type="vehicle" />
         <span class="ml-2">Tractor</span>
-        <tooltip-info text="TODO" />
+        <tooltip-info text="It is assumed you are using one truck station and the tractors are fully loaded.<br>Note: This calculation is an <b>estimation</b> due to variables such as vehicle collisions, mis-routing, traffic, etc." />
       </div>
       <div class="px-2 py-4">
-        <p>TRACTOR</p>
+        <tractor-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
       </div>
     </v-col>
   </v-row>

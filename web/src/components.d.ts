@@ -57,6 +57,8 @@ declare module 'vue' {
     Toast: typeof import('./components/Toast.vue')['default']
     Todo: typeof import('./components/graph/Todo.vue')['default']
     TooltipInfo: typeof import('./components/tooltip-info.vue')['default']
+    TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
+    TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
   }
 }
