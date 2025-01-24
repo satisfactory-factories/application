@@ -26,20 +26,20 @@
   </div>
 
   <div class="mb-4 text-center">
-    <v-btn v-if="timer === 0" color="primary" @click="startTimer()">
+    <v-btn v-if="timer === 0" color="primary" density="comfortable" @click="startTimer()">
       Start Timer
     </v-btn>
-    <v-btn v-if="timer !== 0" color="secondary" @click="stopTimer()">
+    <v-btn v-if="timer !== 0" color="secondary" density="comfortable" @click="stopTimer()">
       Stop Timer ({{ timer }}s)
     </v-btn>
   </div>
   <div class="text-center">
     <v-chip v-if="!isFluid(request.part)">
-      <game-asset subject="freight-car" type="item" />
+      <game-asset subject="freight-car" type="vehicle" />
       <span class="ml-2">Freight Cars: <b>{{ calculateFreightCars() }}</b></span>
     </v-chip>
     <v-chip v-if="isFluid(request.part)">
-      <game-asset subject="freight-car" type="item" />
+      <game-asset subject="freight-car" type="vehicle" />
       <span class="ml-2">Fluid Freight Cars: <b>{{ calculateFluidCars() }}</b></span>
     </v-chip>
   </div>
