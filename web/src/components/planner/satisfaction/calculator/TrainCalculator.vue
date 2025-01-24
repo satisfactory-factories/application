@@ -1,5 +1,11 @@
 <template>
   <div class="d-flex align-center justify-center mb-4">
+    <span v-if="timer === 0" class="mr-2">
+      <v-icon icon="fas fa-sync" />
+    </span>
+    <span v-if="timer > 0" class="mr-2">
+      <v-icon icon="fas fa-sync fa-spin" />
+    </span>
     <v-number-input
       v-model.number="factorySettings.trainTime"
       control-variant="stacked"
@@ -7,7 +13,6 @@
       hide-details
       label="Round trip secs"
       max-width="150px"
-      prepend-icon="fas fa-train"
       type="number"
       variant="outlined"
     />
@@ -39,6 +44,7 @@
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import TooltipInfo from '@/components/tooltip-info.vue'
 
   const gameData = useGameDataStore().getGameData()
 
