@@ -13,7 +13,7 @@
       type="number"
       variant="outlined"
     />
-    <tooltip-info text="Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka &quot;3 choos&quot;" />
+    <tooltip-info text="Round trip time is shown to you in the drone port's UI. <br>This does mean you need to configure the route, run it, then see the duration.<br> However, you will know how many drones you require to be efficent." />
   </div>
   <div class="d-flex align-center justify-center">
     <v-chip>
