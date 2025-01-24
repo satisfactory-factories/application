@@ -215,7 +215,7 @@
               size="small"
               title="Close Export Calculator"
               variant="outlined"
-              @click="openedCalculator = ''"
+              @click="closeCalculator()"
             />
           </td>
         </tr>
@@ -223,8 +223,12 @@
           v-if="openedCalculator === partId && getPartExportRequests(factory, partId.toString()).length > 0"
         >
           <td class="calculator-row bg-grey-darken-3" colspan="5">
-            <div class="calculator-tray" :class="{ open: openedCalculator === partId }">
-              <export-calculator :key="partId + factory.exportCalculator[partId].selected" :factory="factory" :part="partId.toString()" />
+            <div class="calculator-tray" :class="{ expanded: calculatorShow }">
+              <export-calculator
+                :key="partId + factory.exportCalculator[partId].selected"
+                :factory="factory"
+                :part="partId.toString()"
+              />
             </div>
           </td>
         </tr>
@@ -266,6 +270,7 @@
   const { getDefaultRecipeForPart } = useGameDataStore()
   const openedCalculator = ref('')
   const satisfactionBreakdowns = appStore.getSatisfactionBreakdowns()
+  const calculatorShow = ref(false)
 
   defineProps<{
     factory: Factory;
@@ -310,9 +315,26 @@
     updateFactory(factory)
   }
 
-  const initCalculator = (factory: Factory, part: string, selectedFactory?: number | string | null) => {
+  const initCalculator = async (
+    factory: Factory,
+    part: string,
+    selectedFactory?: number | string | null
+  ) => {
     changeCalculatorSelection(factory, selectedFactory, part)
     openedCalculator.value = part
+
+    // Wait for the next tick to ensure the calculator is rendered before properly opening it
+    await nextTick()
+
+    calculatorShow.value = true
+  }
+
+  const closeCalculator = async () => {
+    calculatorShow.value = false
+
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    openedCalculator.value = ''
   }
 
   const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | string | null | undefined, part: string) => {
@@ -386,6 +408,7 @@ table {
 
         &.calculator-row {
           padding: 0 !important;
+          height: 0 !important;
         }
 
         &.satisfaction {
@@ -398,11 +421,11 @@ table {
 
 .calculator-tray {
   overflow: hidden;
-  max-height: 0; /* Collapsed by default */
-  transition: max-height, 0.3s ease;
+  height: 0;
+  transition: height, 0.25s ease-in;
 
-  &.open {
-    max-height: 250px; /* Adjust based on expected content height */
+  &.expanded {
+    height: 250px; /* Adjust based on expected content height */
   }
 }
 </style>
