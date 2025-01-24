@@ -1,4 +1,4 @@
-import { Factory, TransportMethod } from '@/interfaces/planner/FactoryInterface'
+import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 export const initializeCalculatorFactoryPart = (factory: Factory, part: string) => {
   if (!factory.exportCalculator[part]) {
@@ -16,7 +16,6 @@ export const initializeCalculatorFactorySettings = (factory: Factory, part: stri
 
   if (!factory.exportCalculator[part].factorySettings[factoryId]) {
     factory.exportCalculator[part].factorySettings[factoryId] = {
-      transportMethod: TransportMethod.Train,
       trainTime: 123,
       droneTime: 123,
       truckTime: 123,

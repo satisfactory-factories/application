@@ -54,21 +54,7 @@ export interface FactoryDependencyMetrics {
   difference: number;
 }
 
-export enum TransportMethod {
-  Train = 'train',
-  Drone = 'drone',
-  Truck = 'truck',
-  Tractor = 'tractor'
-}
-export const transportMethodList = [
-  TransportMethod.Train,
-  TransportMethod.Drone,
-  TransportMethod.Truck,
-  TransportMethod.Tractor,
-]
-
 export interface ExportCalculatorFactorySettings {
-  transportMethod: TransportMethod
   trainTime: number;
   droneTime: number;
   truckTime: number;
