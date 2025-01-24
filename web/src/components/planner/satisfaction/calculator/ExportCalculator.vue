@@ -2,33 +2,32 @@
   <p v-if="!selectedFactory">
     Please select a factory from the buttons above in Exports.
   </p>
-  <div v-if="selectedFactory && factorySettings">
-    <div class="text-center border-b pb-4 mb-4">
-      <p class="mb-2">Transport Method:</p>
-      <v-btn
-        v-for="method in transportMethodList"
-        :key="method"
-        class="mr-2"
-        :color="factorySettings.transportMethod === method ? 'primary' : ''"
-        @click="factorySettings.transportMethod = method"
-      >
-        {{ method }}
-      </v-btn>
-    </div>
-
-    <div v-show="factorySettings.transportMethod === TransportMethod.Train">
-      <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
-    </div>
-    <div v-show="factorySettings.transportMethod === TransportMethod.Drone">
-      DRONE transport
-    </div>
-    <div v-show="factorySettings.transportMethod === TransportMethod.Truck">
-      TRUCK transport
-    </div>
-    <div v-show="factorySettings.transportMethod === TransportMethod.Tractor">
-      TRACTOR transport
-    </div>
-  </div>
+  <v-row v-if="selectedFactory && factorySettings" class="ma-0">
+    <v-col class="border-e pa-0" cols="12" md="3">
+      <p class="text-center text-h6 border-b">Train</p>
+      <div class="px-2 py-4">
+        <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
+      </div>
+    </v-col>
+    <v-col class="border-e pa-0" cols="12" md="3">
+      <p class="text-center text-h6 border-b">Drone</p>
+      <div class="px-2 py-4">
+        <p>DRONE</p>
+      </div>
+    </v-col>
+    <v-col class="border-e pa-0" cols="12" md="3">
+      <p class="text-center text-h6 border-b">Truck</p>
+      <div class="px-2 py-4">
+        <p>TRUCK</p>
+      </div>
+    </v-col>
+    <v-col class="pa-0" cols="12" md="3">
+      <p class="text-center text-h6 border-b">Tractor</p>
+      <div class="px-2 py-4">
+        <p>TRACTOR</p>
+      </div>
+    </v-col>
+  </v-row>
 </template>
 
 <script setup lang="ts">

@@ -216,7 +216,7 @@
               size="small"
               title="Export Calculator"
               variant="outlined"
-              @click="initCalculator(factory, partId.toString())"
+              @click="initCalculator(factory, partId.toString(), factory.exportCalculator[partId]?.selected)"
             />
             <v-btn
               v-if="openedCalculator === partId"
@@ -233,7 +233,7 @@
         <tr
           v-if="openedCalculator === partId && getPartExportRequests(factory, partId.toString()).length > 0"
         >
-          <td class="calculator-row" colspan="5" style="height: auto">
+          <td class="calculator-row bg-grey-darken-3" colspan="5">
             <div class="calculator-tray" :class="{ open: openedCalculator === partId }">
               <export-calculator :key="partId + factory.exportCalculator[partId].selected" :factory="factory" :part="partId.toString()" />
             </div>
@@ -321,12 +321,12 @@
     updateFactory(factory)
   }
 
-  const initCalculator = (factory: Factory, part: string, selectedFactory?: number) => {
+  const initCalculator = (factory: Factory, part: string, selectedFactory?: number | string | null) => {
     changeCalculatorSelection(factory, selectedFactory, part)
     openedCalculator.value = part
   }
 
-  const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | undefined, part: string) => {
+  const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | string | null | undefined, part: string) => {
     // Ensure requestFacId is a string indexable by an object
     let requestFacId
     if (requestFacIdRaw) {
@@ -415,14 +415,6 @@ table {
 
   &.open {
     max-height: 500px; /* Adjust based on expected content height */
-    padding: 1rem; /* Optional padding animation */
   }
-}
-
-.calculator-content {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
 }
 </style>

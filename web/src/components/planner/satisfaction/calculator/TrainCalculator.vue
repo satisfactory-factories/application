@@ -2,10 +2,11 @@
   <div class="d-flex align-center justify-center mb-4">
     <v-number-input
       v-model.number="factorySettings.trainTime"
+      control-variant="stacked"
       density="compact"
       hide-details
       label="Round trip secs"
-      max-width="200px"
+      max-width="150px"
       prepend-icon="fas fa-train"
       type="number"
       variant="outlined"
@@ -19,26 +20,18 @@
             />
           </span>
         </template>
-        <span>Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload.</span>
+        <span>Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka "3 choos".</span>
       </v-tooltip>
     </span>
+  </div>
 
-    <div class="ml-4 pl-4 border-s">
-      <v-btn v-if="timer === 0" color="primary" style="width: 120px;" @click="startTimer()">
-        Start Timer
-      </v-btn>
-      <v-btn v-if="timer !== 0" color="secondary" style="width: 120px;" @click="stopTimer()">
-        Stop Timer
-      </v-btn>
-
-      <div v-if="timer > 0" class="ml-4 text-body-1 d-inline-block" style="width: 60px">
-        <span class="mr-2">{{ timer }}s</span> <i class="fa fa-hourglass fa-spin" />
-      </div>
-      <!-- HTML hack to make sure the buttons and input doesn't jiggle when the timer is shown -->
-      <div v-if="timer === 0" class="ml-4 text-body-1 d-inline-block" style="width: 60px">
-        &nbsp;
-      </div>
-    </div>
+  <div class="mb-4 text-center">
+    <v-btn v-if="timer === 0" color="primary" @click="startTimer()">
+      Start Timer
+    </v-btn>
+    <v-btn v-if="timer !== 0" color="secondary" @click="stopTimer()">
+      Stop Timer ({{ timer }}s)
+    </v-btn>
   </div>
   <div class="text-center">
     <v-chip v-if="!isFluid(request.part)">
