@@ -4,7 +4,7 @@
   </p>
   <v-row v-if="selectedFactory && factorySettings" class="ma-0 h-100">
     <!-- Train -->
-    <v-col class="border-e pa-0 d-flex flex-column" cols="12" md="3">
+    <v-col class="border-e-md pa-0 d-flex flex-column" cols="12" md="3">
       <div class="border-b text-center py-2">
         <div class="d-flex align-center text-h6 justify-center">
           <game-asset subject="electric-locomotive" type="vehicle" />
@@ -18,7 +18,7 @@
       </div>
     </v-col>
     <!-- Drone -->
-    <v-col class="border-e pa-0 d-flex flex-column" cols="12" md="3">
+    <v-col class="border-e-md pa-0 d-flex flex-column" cols="12" md="3">
       <div class="border-b text-center py-2">
         <div class="d-flex align-center text-h6 justify-center">
           <game-asset subject="drone" type="vehicle" />
@@ -35,7 +35,7 @@
       </div>
     </v-col>
     <!-- Truck -->
-    <v-col class="border-e pa-0 d-flex flex-column" cols="12" md="3">
+    <v-col class="border-e-md pa-0 d-flex flex-column" cols="12" md="3">
       <div class="border-b text-center py-2">
         <div class="d-flex align-center text-h6 justify-center">
           <game-asset subject="truck" type="vehicle" />

@@ -386,7 +386,6 @@ table {
 
         &.calculator-row {
           padding: 0 !important;
-          border-block: 0 !important;
         }
 
         &.satisfaction {
@@ -400,10 +399,9 @@ table {
 .calculator-tray {
   overflow: hidden;
   max-height: 0; /* Collapsed by default */
-  transition: max-height 0.3s ease, padding 0.3s ease;
+  transition: max-height, 0.3s ease;
 
   &.open {
-    height: 250px;
     max-height: 250px; /* Adjust based on expected content height */
   }
 }
