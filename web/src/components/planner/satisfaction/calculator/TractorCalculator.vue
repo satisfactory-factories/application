@@ -37,11 +37,7 @@
 
 <script setup lang="ts">
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumber } from '@/utils/numberFormatter'
-  import { useGameDataStore } from '@/stores/game-data-store'
   import TooltipInfo from '@/components/tooltip-info.vue'
-
-  const gameData = useGameDataStore().getGameData()
 
   const props = defineProps<{
     request: FactoryDependencyRequest
