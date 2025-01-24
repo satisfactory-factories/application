@@ -148,7 +148,7 @@
 
         <!-- Hidden factory collapse -->
 
-        <v-card-text v-show="factory.hidden" class="pa-0">
+        <v-card-text v-if="factory.hidden" class="pa-0">
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
             class="text-body-1 py-2 px-4 pb-1"
@@ -212,29 +212,31 @@
             <p v-if="factory.products.length === 0" class="text-body-1">Empty factory! Select a product!</p>
             <div v-else>
               <p class="text-body-1 d-inline-block mr-2">Producing: </p>
-              <v-chip
-                v-for="part in factory.products"
-                :key="`${factory.id}-${part.id}`"
-                class="sf-chip"
-                :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : ''"
-              >
-                <span class="mr-2">
-                  <game-asset
-                    v-if="part.id"
-                    :subject="part.id"
-                    type="item"
-                  />
-                </span>
-                <span>
-                  <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
-                </span>
-                <span
-                  v-if="factory.parts[part.id].amountRemaining !== 0"
-                  class="ml-2"
-                  :class="differenceClass(factory.parts[part.id].amountRemaining)"
+              <template v-for="part in factory.products">
+                <v-chip
+                  v-if="factory.parts[part.id]"
+                  :key="`${factory.id}-${part.id}`"
+                  class="sf-chip"
+                  :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : ''"
                 >
-                  (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
-              </v-chip>
+                  <span class="mr-2">
+                    <game-asset
+                      v-if="part.id"
+                      :subject="part.id"
+                      type="item"
+                    />
+                  </span>
+                  <span>
+                    <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
+                  </span>
+                  <span
+                    v-if="factory.parts[part.id].amountRemaining !== 0"
+                    class="ml-2"
+                    :class="differenceClass(factory.parts[part.id].amountRemaining)"
+                  >
+                    (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                </v-chip>
+              </template>
             </div>
           </v-row>
           <div
