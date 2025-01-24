@@ -19,7 +19,7 @@
     <tooltip-info text="Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka &quot;3 choos&quot;" />
   </div>
 
-  <div class="mb-4 text-center">
+  <div class="d-flex align-center justify-center mb-4">
     <v-btn v-if="timer === 0" color="primary" density="comfortable" @click="startTimer()">
       Start Timer
     </v-btn>
@@ -27,7 +27,7 @@
       Stop Timer ({{ timer }}s)
     </v-btn>
   </div>
-  <div class="text-center">
+  <div class="d-flex align-center justify-center mb-4">
     <v-chip v-if="!isFluid(request.part)">
       <game-asset subject="freight-car" type="vehicle" />
       <span class="ml-2">Freight Cars: <b>{{ calculateFreightCars() }}</b></span>
@@ -37,7 +37,6 @@
       <span class="ml-2">Fluid Freight Cars: <b>{{ calculateFluidCars() }}</b></span>
     </v-chip>
   </div>
-
 </template>
 
 <script setup lang="ts">

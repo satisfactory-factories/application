@@ -19,7 +19,7 @@
     <tooltip-info text="Round Trip time is calculated by riding the truck and timing how long it takes to do a full round trip. Unload, load, unload, or 3 crane animations." />
   </div>
 
-  <div class="mb-4 text-center">
+  <div class="text-center mb-4">
     <v-btn v-if="timer === 0" color="primary" density="comfortable" @click="startTimer()">
       Start Timer
     </v-btn>
@@ -33,7 +33,6 @@
       <span class="ml-2">Trucks: <b>{{ calculateTrucks() }}</b></span>
     </v-chip>
   </div>
-
 </template>
 
 <script setup lang="ts">
