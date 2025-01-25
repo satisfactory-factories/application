@@ -6,8 +6,8 @@ import { gameData } from '@/utils/gameData'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import {
   getExportableFactories,
+  getPartExportRequests,
   getRequestsForFactory,
-  getRequestsForFactoryByPart,
 } from '@/utils/factory-management/exports'
 
 let ironIngotFac: Factory
@@ -76,7 +76,7 @@ describe('exports', () => {
       // The code should then remove the input that has been dropped from the factory it was previously requested from.
       ironRodsFac.inputs = []
       calculateFactories(factories, gameData)
-      const requests = getRequestsForFactoryByPart(ironIngotFac, 'IronIngot')
+      const requests = getPartExportRequests(ironIngotFac, 'IronIngot')
 
       expect(requests).toEqual([
         {

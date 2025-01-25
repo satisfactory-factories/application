@@ -56,6 +56,9 @@ export interface FactoryDependencyMetrics {
 
 export interface ExportCalculatorFactorySettings {
   trainTime: number;
+  droneTime: number;
+  truckTime: number;
+  tractorTime: number;
 }
 
 export interface ExportCalculatorSettings {
@@ -79,11 +82,6 @@ export interface WorldRawResource {
 export interface FactoryInput {
   factoryId: number | null;
   outputPart: string | null;
-  amount: number
-}
-
-export interface FactoryInternalProduct {
-  id: string;
   amount: number
 }
 

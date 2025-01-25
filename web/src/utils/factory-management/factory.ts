@@ -113,9 +113,6 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
-  // Export Calculator stuff
-  // configureExportCalculator(allFactories)
-
   // Check if the factory has any problems
   calculateHasProblem(allFactories)
 

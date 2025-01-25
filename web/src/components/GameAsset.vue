@@ -30,7 +30,7 @@
     subject: string
     height?: string | number | undefined
     width?: string | number | undefined
-    type: 'building' | 'item',
+    type: 'building' | 'item' | 'vehicle',
   }>()
 
   const sluggify = (subject: string): string => {
@@ -40,7 +40,7 @@
 
   const getIcon = (
     subject: string | null,
-    type: 'building' | 'item',
+    type: 'building' | 'item' | 'vehicle',
     size: 'small' | 'big' = 'small'
   ): string => {
     if (!subject) {
@@ -49,6 +49,8 @@
     }
     if (type === 'building') {
       return getImageUrl(subject, 'building', size)
+    } else if (type === 'vehicle') {
+      return getImageUrl(subject, 'vehicle', size)
     } else {
       const partItem = gameData.items.parts[subject]
       const rawItem = gameData.items.rawResources[subject]
@@ -73,7 +75,7 @@
 
   const getImageUrl = (
     name: string,
-    type: 'building' | 'item',
+    type: 'building' | 'item' | 'vehicle',
     size: 'small' | 'big' = 'big'
   ): string => {
     const pxSize = size === 'small' ? 64 : 256

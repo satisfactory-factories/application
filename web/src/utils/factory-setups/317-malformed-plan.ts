@@ -281,13 +281,7 @@ export const create317Scenario = (): any[] => {
         },
       },
     },
-    exportCalculator: {
-      IronPlateReinforced: { selected: null, factorySettings: {} },
-      IronIngot: { selected: null, factorySettings: {} },
-      IronRod: { selected: null, factorySettings: {} },
-      IronScrew: { selected: null, factorySettings: {} },
-      IronPlate: { selected: null, factorySettings: {} },
-    },
+    exportCalculator: {},
     rawResources: { OreIron: { id: 'OreIron', name: 'Iron Ore', amount: 120 } },
     exports: {
       IronIngot: { productId: 'IronIngot', surplus: 0, demands: 0, supply: 120, displayOrder: 4 },
@@ -457,13 +451,7 @@ export const create317Scenario = (): any[] => {
       requests: { 8871: [{ requestingFactoryId: 8871, part: 'Rotor', amount: 2 }] },
       metrics: { Rotor: { part: 'Rotor', request: 2, supply: 10, isRequestSatisfied: true, difference: 8 } },
     },
-    exportCalculator: {
-      Rotor: { selected: null, factorySettings: {} },
-      SpaceElevatorPart_5: { selected: null, factorySettings: {} },
-      IronIngot: { selected: null, factorySettings: {} },
-      IronRod: { selected: null, factorySettings: {} },
-      IronScrew: { selected: null, factorySettings: {} },
-    },
+    exportCalculator: {},
     rawResources: { OreIron: { id: 'OreIron', name: 'Iron Ore', amount: 112.5 } },
     exports: {
       IronIngot: { productId: 'IronIngot', surplus: 0, demands: 0, supply: 112.5, displayOrder: 3 },
@@ -549,7 +537,7 @@ export const create317Scenario = (): any[] => {
     },
     totalPower: 15,
     dependencies: { requests: {}, metrics: {} },
-    exportCalculator: { SpaceElevatorPart_1: { selected: null, factorySettings: {} } },
+    exportCalculator: {},
     rawResources: {},
     exports: {
       SpaceElevatorPart_1: {
@@ -623,7 +611,7 @@ export const create317Scenario = (): any[] => {
     },
     totalPower: 10.340345765969857,
     dependencies: { requests: {}, metrics: {} },
-    exportCalculator: { Cement: { selected: null, factorySettings: {} } },
+    exportCalculator: {},
     rawResources: { Stone: { id: 'Stone', name: 'Limestone', amount: 120 } },
     exports: { Cement: { productId: 'Cement', surplus: 40, demands: 0, supply: 40, displayOrder: 0 } },
     requirementsSatisfied: true,
@@ -742,12 +730,7 @@ export const create317Scenario = (): any[] => {
     },
     totalPower: 44,
     dependencies: { requests: {}, metrics: {} },
-    exportCalculator: {
-      CopperSheet: { selected: null, factorySettings: {} },
-      Cable: { selected: null, factorySettings: {} },
-      CopperIngot: { selected: null, factorySettings: {} },
-      Wire: { selected: null, factorySettings: {} },
-    },
+    exportCalculator: {},
     rawResources: { OreCopper: { id: 'OreCopper', name: 'Copper Ore', amount: 150 } },
     exports: {
       CopperIngot: {
@@ -963,14 +946,7 @@ export const create317Scenario = (): any[] => {
         },
       },
     },
-    exportCalculator: {
-      ModularFrame: { selected: null, factorySettings: {} },
-      IronIngot: { selected: null, factorySettings: {} },
-      IronScrew: { selected: null, factorySettings: {} },
-      IronPlate: { selected: null, factorySettings: {} },
-      IronRod: { selected: null, factorySettings: {} },
-      IronPlateReinforced: { selected: null, factorySettings: {} },
-    },
+    exportCalculator: {},
     rawResources: { OreIron: { id: 'OreIron', name: 'Iron Ore', amount: 120 } },
     exports: {
       IronIngot: { productId: 'IronIngot', surplus: 0, demands: 0, supply: 120, displayOrder: 5 },
@@ -1103,14 +1079,7 @@ export const create317Scenario = (): any[] => {
         },
       },
     },
-    exportCalculator: {
-      SteelPipe: { selected: '7479', factorySettings: {} },
-      SteelPlate: { selected: '9463', factorySettings: {} },
-      SteelPlateReinforced: { selected: null, factorySettings: {} },
-      IronIngot: { selected: null, factorySettings: {} },
-      SteelIngot: { selected: null, factorySettings: {} },
-      Cement: { selected: null, factorySettings: {} },
-    },
+    exportCalculator: {},
     rawResources: {},
     exports: {
       IronIngot: { productId: 'IronIngot', surplus: 0, demands: 0, supply: 720, displayOrder: 5 },
@@ -1206,7 +1175,7 @@ export const create317Scenario = (): any[] => {
     },
     totalPower: 15,
     dependencies: { requests: {}, metrics: {} },
-    exportCalculator: { SpaceElevatorPart_2: { selected: null, factorySettings: {} } },
+    exportCalculator: {},
     rawResources: {},
     exports: {
       SpaceElevatorPart_2: {
