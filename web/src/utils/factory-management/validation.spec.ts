@@ -13,7 +13,7 @@ describe('validation', () => {
   })
 
   it('should successfully detect and delete an invalid factory input', () => {
-    mockFactory.inputs.push({
+    addInputToFactory(mockFactory, {
       factoryId: 123456,
       outputPart: 'IronOre',
       amount: 123,
@@ -44,7 +44,6 @@ describe('validation', () => {
       outputPart: 'IronOre',
       amount: 123,
     })
-
     addInputToFactory(mockFactory, {
       factoryId: 123456,
       outputPart: 'MadeUpPart',
@@ -52,6 +51,7 @@ describe('validation', () => {
     })
 
     validateFactories([mockFactory, validFactory], gameData)
+
     expect(mockFactory.inputs.length).toBe(1)
     expect(mockFactory.inputs[0].factoryId).toBe(validFactory.id)
     expect(alertMock).toHaveBeenCalled()
@@ -74,6 +74,7 @@ describe('validation', () => {
     })
 
     validateFactories([mockFactory, validFactory], gameData)
+
     expect(mockFactory.dependencies.requests[validFactory.id]).toBeDefined()
     expect(mockFactory.dependencies.requests[123456]).toBeUndefined()
     expect(alertMock).toHaveBeenCalled()
@@ -82,6 +83,7 @@ describe('validation', () => {
   it('should run validation on products when they contain a null array', () => {
     // @ts-ignore
     mockFactory.products = [null]
+
     validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products).toEqual([])
@@ -95,6 +97,7 @@ describe('validation', () => {
       recipe: 'IngotIron',
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
+
     validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products[0].amount).toBe(0.1)
@@ -108,9 +111,29 @@ describe('validation', () => {
       recipe: 'IngotIron',
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
+
     validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products[0].amount).toBe(2)
+    expect(alertMock).toHaveBeenCalled()
+  })
+
+  it('should run validation on products that somehow don\'t have their requirements in the part list', () => {
+    const mockInvalidProduct = {
+      id: 'IronIngot',
+      recipe: 'IngotIron',
+      amount: 2,
+      displayOrder: 1,
+      requirements: {
+        MadeUpPart: { amount: 1 },
+      },
+      buildingRequirements: {} as any,
+    } as FactoryItem
+    mockFactory.products = [mockInvalidProduct]
+
+    validateFactories([mockFactory], gameData)
+
+    expect(mockFactory.parts.MadeUpPart).toBeDefined()
     expect(alertMock).toHaveBeenCalled()
   })
 })

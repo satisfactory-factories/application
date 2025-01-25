@@ -19,7 +19,13 @@ type Events = {
   worldData: { buildings: any[] }
 
   readyForData: undefined;
-  plannerShowContent: undefined
+  plannerShow: boolean;
+  calculationsCompleted: undefined
+
+  // Intro
+  introToggle: boolean;
+
+  navigationReady: undefined;
 };
 
 const eventBus = mitt<Events>()

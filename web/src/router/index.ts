@@ -18,8 +18,6 @@ const router = createRouter({
 // Add a global navigation guard to load game data and set up data sync before every route
 router.beforeEach(async (to, from, next) => {
   const gameDataStore = useGameDataStore()
-  const syncStore = useSyncStore()
-  syncStore.setupTick()
 
   // Check if the game data is already loaded
   try {
@@ -31,6 +29,10 @@ router.beforeEach(async (to, from, next) => {
     next(false) // Cancel the navigation if loading fails
     return
   }
+
+  // Need to load the game data first before sync store
+  const syncStore = useSyncStore()
+  syncStore.setupTick()
 
   // Proceed to the route if data is loaded
   next()

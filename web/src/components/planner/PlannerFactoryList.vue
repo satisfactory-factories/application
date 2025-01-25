@@ -84,7 +84,7 @@
     </template>
   </draggable>
   <v-row class="pa-0 ma-0">
-    <v-col class="text-center">
+    <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
         prepend-icon="fas fa-plus"
@@ -106,14 +106,18 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
 
-  const show = ref(false)
-
   // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{
     (event: 'createFactory'): void;
     (event: 'updateFactories', factories: Factory[]): void;
   }>()
-  const compProps = defineProps<{ factories: Factory[], totalFactories: number }>()
+  const compProps = defineProps<{
+    factories: Factory[],
+    totalFactories: number,
+    loadedFrom: string
+  }>()
+  const show = ref(compProps.loadedFrom !== 'planner')
+
   const factoriesCopy = ref([...compProps.factories])
 
   watch(() => compProps.factories, factories => {
@@ -176,5 +180,9 @@
   &:hover {
     color: white;
   }
+}
+
+.pt-n1 {
+  margin-top: -0.25rem !important;
 }
 </style>

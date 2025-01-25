@@ -4,7 +4,9 @@
       <v-btn
         class="ma-1"
         color="blue"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-compress-alt"
+
         variant="tonal"
         @click="emit('hide-all')"
       >
@@ -13,7 +15,9 @@
       <v-btn
         class="ma-1"
         color="blue"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-expand-alt"
+
         variant="tonal"
         @click="expandAll"
       >
@@ -34,7 +38,7 @@
         prepend-icon="fas fa-users-class"
         ripple
         variant="tonal"
-        @click="emit('show-intro')"
+        @click="eventBus.emit('introToggle', true)"
       >
         Show Intro
       </v-btn>
@@ -51,6 +55,7 @@
       <v-btn
         class="ma-1"
         color="red"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-trash"
         variant="tonal"
         @click="confirmDelete('Are you really sure? This will delete literally everything!') && emit('clear-all')"
@@ -58,10 +63,10 @@
         Clear
       </v-btn>
       <templates />
-
       <v-btn
         class="ma-1 mb-0"
         color="secondary"
+        :disabled="getFactories().length === 0"
         prepend-icon="fas fa-copy"
         variant="tonal"
         @click="copyPlanToClipboard"
@@ -77,6 +82,28 @@
       >
         Paste plan
       </v-btn>
+      <v-btn
+        v-if="isDebugMode && !disableRecalc"
+        class="ma-1"
+        color="amber"
+        :disabled="getFactories().length === 0"
+        prepend-icon="fas fa-calculator-alt"
+        variant="tonal"
+        @click="forceRecalc"
+      >
+        Recalculate
+      </v-btn>
+      <v-btn
+        v-if="isDebugMode && disableRecalc"
+        class="ma-1"
+        color="amber"
+        :disabled="disableRecalc"
+        prepend-icon="fas fa-sync fa-spin"
+        variant="tonal"
+        @click="forceRecalc"
+      >
+        Recalculate
+      </v-btn>
     </v-col>
   </v-row>
 </template>
@@ -87,16 +114,17 @@
   import eventBus from '@/utils/eventBus'
   import { confirmDialog } from '@/utils/helpers'
 
-  const { getFactories, prepareLoader } = useAppStore()
+  const { getFactories, prepareLoader, forceCalculation, isDebugMode } = useAppStore()
+
+  const disableRecalc = ref(false)
 
   defineProps<{ helpTextShown: boolean }>()
   // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{
-    (event: 'show-intro'): void;
-    (event: 'import-world'): void;
     (event: 'hide-all'): void;
     (event: 'show-all'): void;
     (event: 'toggle-help-text'): void;
+    (event: 'import-world'): void;
     (event: 'clear-all'): void;
   }>()
 
@@ -143,6 +171,20 @@
       }
     })
   }
+
+  const forceRecalc = async () => {
+    eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while for large plans. Expect lag.', type: 'warning' })
+
+    // Wait for planner to comply
+    await new Promise(resolve => setTimeout(resolve, 250))
+
+    disableRecalc.value = true
+    forceCalculation()
+  }
+
+  eventBus.on('calculationsCompleted', () => {
+    disableRecalc.value = false
+  })
 </script>
 
 <style lang="scss" scoped>

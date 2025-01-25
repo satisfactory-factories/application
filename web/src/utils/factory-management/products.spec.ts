@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
@@ -80,6 +80,9 @@ describe('products', () => {
     beforeEach(() => {
       mockFactory.products = []
       mockFactory.parts = {}
+    })
+    afterEach(() => {
+      vi.resetAllMocks()
     })
     it('should calculate the products and produce the correct part info', () => {
       addProductToFactory(mockFactory, mockIngotIron)
@@ -258,6 +261,27 @@ describe('products', () => {
       expect(mockFactory.parts.IronPlate.amountSuppliedViaProduction).toBe(150)
       expect(mockFactory.parts.IronPlate.amountRemaining).toBe(150) // No demands, 150 left
       expect(mockFactory.parts.IronPlate.amountSuppliedViaInput).toBe(0)
+    })
+
+    it('should properly handle product amounts set to 0', () => {
+      const mockProduct = {
+        id: 'IronPlate',
+        amount: 0,
+        recipe: 'IronPlate',
+      }
+
+      vi.spyOn(eventBus, 'emit')
+      addProductToFactory(mockFactory, mockProduct)
+      calculateFactories([mockFactory], gameData)
+
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'You cannot set a product quantity to be 0. Setting to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
+        type: 'warning',
+      })
+
+      expect(mockFactory.parts.IronPlate.amountSupplied).toBe(0.1)
+      expect(mockFactory.parts.IronPlate.amountRemaining).toBe(0.1)
+      expect(mockFactory.parts.IronIngot.amountRequired).toBe(0.15)
     })
   })
 
@@ -555,13 +579,17 @@ describe('products', () => {
   describe('Update product via byproduct / requirement amounts', () => {
     let factory: Factory
     let product: FactoryItem
-    const eventSpy = vi.spyOn(eventBus, 'emit')
     beforeEach(() => {
+      vi.spyOn(eventBus, 'emit')
+
       const factories = create341Scenario().getFactories()
       factory = factories[0]
       product = factory.products[0] // Non-Fissile Uranium, note has byproduct of water
 
       calculateFactories(factories, gameData)
+    })
+    afterEach(() => {
+      vi.resetAllMocks()
     })
 
     describe('updateProductAmountViaByproduct', () => {
@@ -592,7 +620,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -607,7 +635,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -640,7 +668,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
@@ -656,7 +684,7 @@ describe('products', () => {
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
-        expect(eventSpy).toHaveBeenCalledWith('toast', toastEvent)
+        expect(eventBus.emit).toHaveBeenCalledWith('toast', toastEvent)
 
         // Should correct the product amount to 0.1
         expect(product.amount).toBe(0.1)
