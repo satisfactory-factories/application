@@ -30,3 +30,10 @@ export const differenceClass = (difference: number) => {
 export const confirmDialog = (message: string): boolean => {
   return window.confirm(message)
 }
+
+export const replacePlaceholders = (inputString: string, valuesArray: string[]) => {
+  return inputString.replace(/\$(\d+)/g, (match, index) => {
+    const valueIndex = parseInt(index, 10) - 1
+    return valuesArray[valueIndex] || match
+  });
+}

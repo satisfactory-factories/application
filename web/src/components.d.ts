@@ -16,6 +16,7 @@ declare module 'vue' {
     Introduction: typeof import('./components/planner/Introduction.vue')['default']
     JoinDiscord: typeof import('./components/JoinDiscord.vue')['default']
     KoFi: typeof import('./components/ko-fi.vue')['default']
+    Loader: typeof import('./components/Loader.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     Notice: typeof import('./components/planner/Notice.vue')['default']
@@ -55,5 +56,7 @@ declare module 'vue' {
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     Todo: typeof import('./components/graph/Todo.vue')['default']
+    WorldData: typeof import('./components/planner/WorldData.vue')['default']
+    WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
   }
 }

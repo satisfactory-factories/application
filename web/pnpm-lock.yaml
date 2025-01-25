@@ -47,6 +47,9 @@ importers:
       roboto-fontface:
         specifier: '*'
         version: 0.10.0
+      sav2json:
+        specifier: ^1.0.0
+        version: 1.0.0
       vue:
         specifier: ^3.5.13
         version: 3.5.13(typescript@5.6.3)
@@ -2452,6 +2455,9 @@ packages:
     resolution: {integrity: sha512-ByXE1oLD79GVq9Ht1PeHWCPMPB8XHpBuz1r85oByKHjZY6qV6rWnQovQzXJXuQ/XyE1Oj3iPk3lo28uzaRA2/Q==}
     engines: {node: '>=14.0.0'}
     hasBin: true
+
+  sav2json@1.0.0:
+    resolution: {integrity: sha512-NU2izwgAxlGSO4NNkxf/lTOw/k/Tq5Hfz6LaJgGezLkeUwbbMOIbQ9WBLJVjK7ErKpPQZYTEaXT1oC/BmRM6Bw==}
 
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
@@ -5564,6 +5570,8 @@ snapshots:
       chokidar: 3.6.0
       immutable: 4.3.7
       source-map-js: 1.2.1
+
+  sav2json@1.0.0: {}
 
   saxes@6.0.0:
     dependencies:

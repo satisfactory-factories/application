@@ -40,6 +40,16 @@
       </v-btn>
       <v-btn
         class="ma-1"
+        color="yellow"
+        prepend-icon="fas fa-file-import"
+        ripple
+        variant="tonal"
+        @click="emit('import-world')"
+      >
+        Import world
+      </v-btn>
+      <v-btn
+        class="ma-1"
         color="red"
         prepend-icon="fas fa-trash"
         variant="tonal"
@@ -83,6 +93,7 @@
   // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{
     (event: 'show-intro'): void;
+    (event: 'import-world'): void;
     (event: 'hide-all'): void;
     (event: 'show-all'): void;
     (event: 'toggle-help-text'): void;
