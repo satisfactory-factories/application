@@ -424,5 +424,14 @@ describe('satisfaction', () => {
       const result = convertWasteToGeneratorFuel(recipe, 1000)
       expect(result).toBe(20)
     })
+
+    it('should properly overproduce slightly to accommodate for a non-fixable scenario with nuclear waste', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 1.667)
+      expect(result).toBe(0.034)
+    })
   })
 })

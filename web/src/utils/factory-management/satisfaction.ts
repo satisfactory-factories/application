@@ -129,6 +129,11 @@ export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number)
 
   const rodsPerWaste = rodsPerMin / wastePerMin // 0.02
 
+  let result = rodsPerWaste * amount // 0.5
+
+  // Since the result may be 0.000x, we need to round it up to the nearest 0.001 to ensure the user can actually achieve it in game
+  result = Math.ceil(result * 1000) / 1000
+
   // The total rods needed to get the desired amount of waste
-  return formatNumberFully(rodsPerWaste * amount) // 0.5
+  return formatNumberFully(result) // 0.5
 }
