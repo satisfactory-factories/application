@@ -75,6 +75,7 @@
     { title: 'Planner', icon: 'fas fa-ruler-triangle', href: '/' },
     { title: 'Graph (WIP)', icon: 'fas fa-project-diagram', href: '/graph' },
     { title: 'Recipes', icon: 'fas fa-hat-chef', href: '/recipes' },
+    { title: 'Change Log', icon: 'fas fa-scroll', href: '/changelog' },
   ]
 
   onMounted(async () => {
