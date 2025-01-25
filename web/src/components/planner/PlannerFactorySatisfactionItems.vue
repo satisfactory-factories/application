@@ -67,6 +67,46 @@
                   +&nbsp;<i class="fas fa-cube" /><span class="ml-1">Product</span>
                 </v-btn>
                 <v-btn
+                  v-if="showSatisfactionItemButton(factory, partId.toString(), 'addGenerator')"
+                  class="d-block mb-1"
+                  color="yellow-darken-3"
+                  size="small"
+                  variant="outlined"
+                  @click="addGenerator(factory, partId.toString(), part.amountRemaining)"
+                >
+                  +&nbsp;<i class="fas fa-bolt mr-0" style="max-height: 16px" /><span class="ml-1">Generator</span>
+                </v-btn>
+                <v-btn
+                  v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGenerator')"
+                  class="d-block mb-1"
+                  color="green"
+                  size="small"
+                  variant="outlined"
+                  @click="doFixGenerator(factory, partId.toString(), part.amountRequired)"
+                >
+                  <i class="fas fa-wrench" /><span class="ml-1">Fix Generator</span>
+                </v-btn>
+
+                <template v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGeneratorManually')">
+                  <v-btn
+                    class="d-block my-1"
+                    color="grey"
+                    :ripple="false"
+                    size="small"
+                    variant="outlined"
+                  >
+                    <v-tooltip bottom>
+                      <template #activator="{ props }">
+                        <div v-bind="props">
+                          <i class="fas fa-exclamation-circle" /><span class="ml-1">FIX GENS MANUALLY</span>
+                        </div>
+                      </template>
+                      <span>You have multiple Generator groups for this waste. Since the planner cannot read your mind, we don't know which group to fix.<br>Please either fix manually or reduce to one Generator & Fuel group.</span>
+                    </v-tooltip>
+                  </v-btn>
+                  <p class="text-center"><b>+{{ showFuelRodsNeeded(partId.toString(), part.amountRemaining) }}</b> rods needed</p>
+                </template>
+                <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixProduct')"
                   class="d-block my-1"
                   color="green"
@@ -250,12 +290,16 @@
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
+    convertWasteToGeneratorFuel,
     showByProductChip,
-    showImportedChip, showInternalChip,
-    showProductChip, showRawChip,
+    showImportedChip,
+    showInternalChip,
+    showProductChip,
+    showRawChip,
     showSatisfactionItemButton,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
+  import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
   import {
     initializeCalculatorFactoryPart,
@@ -267,7 +311,7 @@
 
   const appStore = useAppStore()
 
-  const { getDefaultRecipeForPart } = useGameDataStore()
+  const { getDefaultRecipeForPart, getGeneratorFuelRecipeByPart } = useGameDataStore()
   const openedCalculator = ref('')
   const satisfactionBreakdowns = appStore.getSatisfactionBreakdowns()
   const calculatorShow = ref(false)
@@ -299,6 +343,43 @@
     })
 
     updateFactory(factory)
+  }
+
+  const addGenerator = (factory: Factory, part: string, amount: number): void => {
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+
+    // We need to add the power producer first so the DOM renders it.
+    // We need to change the ingredients after the fact because reactivity doesn't work correctly with the byproduct display. It needs a calculation.
+    addPowerProducerToFactory(factory, {
+      building: 'generatornuclear',
+      ingredientAmount: 1,
+      recipe: recipe.id,
+      updated: 'ingredient',
+    })
+
+    updateFactory(factory)
+
+    // Get the producer which should be the latest one in the array
+    const producer = factory.powerProducers[factory.powerProducers.length - 1]
+
+    producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    updateFactory(factory)
+  }
+
+  const showFuelRodsNeeded = (part: string, amount: number) => {
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+
+    return convertWasteToGeneratorFuel(recipe, Math.abs(amount))
   }
 
   const fixSatisfactionImport = (factory: Factory, partIndex: string) => {
@@ -385,6 +466,52 @@
     fixProduct(product, factory)
     updateFactory(factory)
   }
+
+  const doFixGenerator = (factory: Factory, part: string, amount: number) => {
+    const generator = factory.powerProducers.find(producer => producer.recipe === getGeneratorFuelRecipeByPart(part)?.id)
+    const recipe = getGeneratorFuelRecipeByPart(part)
+
+    if (!generator) {
+      alert('Could not fix the generator due to there not being a generator! Please report this to Discord with a share link, quoting the factory in question.')
+      console.error(`Could not find generator for part ${part}`)
+      return
+    }
+
+    if (!recipe) {
+      console.error(`Could not find generator fuel recipe for part ${part}`)
+      return
+    }
+
+    generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    updateFactory(factory)
+  }
+
+  // const getCalculatorSettings = (factory: Factory, part: string | null): ExportCalculatorSettings | undefined => {
+  //   if (part === null) {
+  //     console.error(`Could not get calculator settings for invalid part ${part}`)
+  //     return undefined
+  //   }
+  //   return factory.exportCalculator[part]
+  // }
+  //
+  // const getRequestForPartByDestFac = (factory: Factory, part: string, destFacId: string): FactoryDependencyRequest | undefined => {
+  //   // Get the requests, then filter by the requesting factory to get the exact request for the port
+  //   const requests = factory.dependencies.requests[destFacId]
+  //   if (!requests) {
+  //     return undefined
+  //   }
+  //   return requests.find(request => request.part === part)
+  // }
+
+  // const openCalculator = (factoryId: string, partId: string) => {
+  //   if (openedCalculator.value === partId) {
+  //     // Close the currently opened calculator
+  //     openedCalculator.value = ''
+  //   } else {
+  //     // Open the clicked calculator and close others
+  //     openedCalculator.value = partId
+  //   }
+  // }
 </script>
 
 <style lang="scss" scoped>
