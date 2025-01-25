@@ -75,16 +75,17 @@
             />
           </div>
           <div class="input-row d-flex align-center">
-            <v-text-field
+            <v-number-input
               v-model.number="input.amount"
+              control-variant="stacked"
               :disabled="!input.outputPart"
               hide-details
               label="Qty /min"
-              :max-width="smAndDown ? undefined : '110px'"
-              :min-width="smAndDown ? undefined : '100px'"
-              type="number"
+              :max-width="smAndDown ? undefined : '130px'"
+              :min-width="smAndDown ? undefined : '130px'"
+              :name="`${input.factoryId}-${input.outputPart}.amount`"
               variant="outlined"
-              @input="updateFactories(factory, input)"
+              @update:model-value="updateFactories(factory, input)"
             />
           </div>
           <div class="input-row d-flex align-center">

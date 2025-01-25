@@ -4,7 +4,7 @@
     prepend-icon="fas fa-files-medical"
     @click="dialog = true"
   >Templates</v-btn>
-  <v-dialog v-model="dialog" max-width="800">
+  <v-dialog v-model="dialog" max-width="1200">
     <v-card class="pa-2">
       <v-card-title>
         <h4 class="text-h4">Load a template plan</h4>
@@ -42,7 +42,8 @@
         <v-btn color="blue darken-1" variant="elevated" @click="dialog = false">Close</v-btn>
       </v-card-actions>
     </v-card>
-  </v-dialog></template>
+  </v-dialog>
+</template>
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { createSimple } from '@/utils/factory-setups/simple-plan'
@@ -179,7 +180,7 @@
 
     // This is a workaround for the templating bug where the data was passed as a reference, and would refuse to load the same template until the page is refreshed.
     const data = JSON.parse(template.data) as Factory[]
-    prepareLoader(data)
+    prepareLoader(data, true)
     dialog.value = false
   }
 </script>

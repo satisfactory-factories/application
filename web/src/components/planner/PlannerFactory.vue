@@ -30,19 +30,19 @@
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="setSync(factory)">
+                <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="setSync(factory)">
+                <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!factory.products[0]?.id" @click="setSync(factory)">
+                <v-chip class="border border-gray border-dashed" :disabled="!factory.products[0]?.id" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                 </v-chip>
@@ -153,7 +153,9 @@
             </v-col>
           </v-row>
         </v-card-text>
+
         <!-- Hidden factory collapse -->
+
         <v-card-text v-show="factory.hidden" class="pa-0">
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
@@ -222,6 +224,7 @@
                 v-for="part in factory.products"
                 :key="`${factory.id}-${part.id}`"
                 class="sf-chip"
+                :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : ''"
               >
                 <span class="mr-2">
                   <game-asset
@@ -234,10 +237,11 @@
                   <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
                 </span>
                 <span
-                  v-if="hasMetricsForPart(factory, part.id) && factory.dependencies.metrics[part.id].difference !== 0"
+                  v-if="factory.parts[part.id].amountRemaining !== 0"
                   class="ml-2"
-                  :class="differenceClass(factory.dependencies.metrics[part.id].difference)"
-                >({{ formatNumber(factory.dependencies.metrics[part.id].difference) }}/min)</span>
+                  :class="differenceClass(factory.parts[part.id].amountRemaining)"
+                >
+                  (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
               </v-chip>
             </div>
           </v-row>
@@ -284,11 +288,12 @@
 <script setup lang="ts">
   import { defineProps, inject } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { differenceClass, getPartDisplayName, hasMetricsForPart } from '@/utils/helpers'
+  import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import ProductsAndPower from '@/components/planner/products/ProductsAndPower.vue'
+  import { setSyncState } from '@/utils/factory-management/syncState'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
@@ -321,22 +326,6 @@
     return Object.keys(factory.dependencies.requests).length > 0
   }
 
-  const setSync = (factory: Factory) => {
-    factory.inSync = !factory.inSync
-
-    // Record what the sync'ed state is
-    if (factory.inSync) {
-      factory.syncState = {}
-
-      // Get the current products of the factory and set them
-      factory.products.forEach(product => {
-        factory.syncState[product.id] = {
-          amount: product.amount,
-          recipe: product.recipe,
-        }
-      })
-    }
-  }
 </script>
 
 <style lang="scss" scoped>

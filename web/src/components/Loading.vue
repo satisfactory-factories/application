@@ -25,13 +25,6 @@
       <template v-if="firstLoad">
         <div class="text-h5">Loading Planner...</div>
       </template>
-      <template v-if="showEdgeWarning">
-        <div class="mt-4">
-          <p>
-            If you are using Edge, unfortunately the site is not compatible. There is a bug deep within the Vue reactivity system which we cannot fix. Please use a different browser e.g. Firefox or Chrome.
-          </p>
-        </div>
-      </template>
     </v-card>
   </v-overlay>
 </template>
@@ -49,7 +42,6 @@
   const firstLoad = ref(true)
   const isRendering = ref(false) // Flag to indicate calculation step
   const isLoading = ref(false)
-  const showEdgeWarning = ref(false)
 
   const calculatingMessages = [
     'Calculating...',
@@ -94,7 +86,6 @@
     isRendering.value = false
     isLoading.value = true
     firstLoad.value = false
-    showEdgeWarning.value = false
 
     console.log('Loader: State after prepareForLoad', getState())
     console.log('Loader: Waiting for v-overlay afterEnter event...')
@@ -124,11 +115,6 @@
     showLoad.value = false
     isLoading.value = false
     console.log('Loader: State after hide', getState())
-
-    // Handle issues with Edge browser breaking reactivity.
-    setTimeout(() => {
-      showEdgeWarning.value = true
-    }, 5000)
   }
 
   onMounted(() => {

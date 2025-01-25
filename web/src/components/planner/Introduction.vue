@@ -52,7 +52,7 @@
         <v-btn color="blue" @click="close">
           <i class="fas fa-file" /><span class="ml-2">Start with an empty plan</span>
         </v-btn>
-        <v-btn color="green" variant="elevated" @click="showDemo">
+        <v-btn color="green" variant="elevated" @click="setupDemo">
           <i class="fas fa-list" /><span class="ml-2">Start with a demo plan</span>
         </v-btn>
       </v-card-actions>
@@ -60,23 +60,15 @@
   </v-dialog>
 </template>
 <script setup lang="ts">
-  import { defineEmits } from 'vue'
+  import eventBus from '@/utils/eventBus'
+  import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+  import { useAppStore } from '@/stores/app-store'
+  const { getFactories, prepareLoader } = useAppStore()
 
-  const props = defineProps<{
-    introShow: boolean
-  }>()
-
+  // Grab from local storage if the user has already dismissed this popup
+  // If they have, don't show it again.
+  const introShow = ref<boolean>(!localStorage.getItem('dismissed-introduction'))
   const showDialog = ref<boolean>(false)
-
-  onMounted(() => {
-    console.log('Intro show:', props.introShow)
-    showDialog.value = props.introShow
-  })
-
-  // Set up a watcher to close the dialog when the prop changes
-  watch(() => props.introShow, value => {
-    showDialog.value = value
-  })
 
   // Set up a watcher if the dialogue is changed to closed, we emit the event by calling close()
   watch(() => showDialog.value, value => {
@@ -86,22 +78,34 @@
     }
   })
 
-  // eslint-disable-next-line func-call-spacing
-  const emit = defineEmits<{
-    (event: 'showDemo'): void;
-    (event: 'closeIntro'): void;
-  }>()
+  eventBus.on('introToggle', (show: boolean) => {
+    console.log('Introduction: Got introToggle event', show)
+    show ? open() : close()
+  })
 
-  const showDemo = () => {
-    console.log('Showing demo')
-    emit('showDemo')
-    close()
+  const open = () => {
+    console.log('Introduction: Opening introduction')
+    showDialog.value = true
+    localStorage.setItem('dismissed-introduction', 'false')
+  }
+  const close = () => {
+    console.log('Introduction: Closing introduction')
+    showDialog.value = false
+    localStorage.setItem('dismissed-introduction', 'true')
   }
 
-  const close = () => {
-    console.log('Closing introduction')
-    emit('closeIntro')
-    showDialog.value = false
+  const setupDemo = () => {
+    if (getFactories().length > 0) {
+      if (!confirm('Showing the demo will clear the current plan. Are you sure you wish to do this?')) {
+        return // User cancelled
+      }
+    }
+    close()
+    prepareLoader(complexDemoPlan().getFactories(), true)
+  }
+
+  if (introShow.value) {
+    open()
   }
 </script>
 <style lang="scss" scoped>

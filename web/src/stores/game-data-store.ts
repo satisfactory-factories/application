@@ -45,7 +45,6 @@ export const useGameDataStore = defineStore('game-data', () => {
   const getGameData = (): DataInterface => {
     if (!gameData.value) {
       loadGameData()
-      alert('Could not load the game data! Please refresh!')
     }
 
     if (!gameData.value) {

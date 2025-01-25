@@ -69,6 +69,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     hasProblem: false,
     inSync: null,
     syncState: {},
+    syncStatePower: {},
     displayOrder: order ?? -1, // this will get set by the planner
     tasks: [],
     notes: '',
@@ -83,7 +84,7 @@ export const calculateFactory = (
   gameData: DataInterface,
   loadMode = false,
 ) => {
-  // console.log('Calculating factory:', factory.name)
+  console.log('factory: calculateFactory started', factory.name)
 
   factory.rawResources = {}
   factory.parts = {}
@@ -121,10 +122,13 @@ export const calculateFactory = (
   // Emit an event that the data has been updated so it can be synced
   eventBus.emit('factoryUpdated')
 
+  console.log('factory: calculateFactory completed', factory.name)
+
   return factory
 }
 
 export const calculateFactories = (factories: Factory[], gameData: DataInterface): void => {
+  console.log('factory: Calculating factories', factories)
   // We need to do this twice to ensure all the part dependency metrics are calculated, before we then check for invalid dependencies
   // loadMode flag passed here to ensure we don't nuke inputs due to no part data.
   // This generates the Part metrics for the factories, which is then used by calculateDependencies to generate the dependency metrics.
@@ -136,8 +140,44 @@ export const calculateFactories = (factories: Factory[], gameData: DataInterface
 
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
   factories.forEach(factory => calculateFactory(factory, factories, gameData))
+
+  console.log('factory: Calculations completed', factories)
+
+  eventBus.emit('calculationsCompleted')
 }
 
 export const countActiveTasks = (factory: Factory) => {
   return factory.tasks.filter(task => !task.completed).length
+}
+
+export const reorderFactory = (factory: Factory, direction: string, allFactories: Factory[]) => {
+  const currentOrder = factory.displayOrder
+  let targetOrder
+
+  if (direction === 'up' && currentOrder > 0) {
+    targetOrder = currentOrder - 1
+  } else if (direction === 'down' && currentOrder < allFactories.length - 1) {
+    targetOrder = currentOrder + 1
+  } else {
+    return // Invalid move
+  }
+
+  // Find the target factory and swap display orders
+  const targetFactory = allFactories.find(fac => fac.displayOrder === targetOrder)
+  if (targetFactory) {
+    targetFactory.displayOrder = currentOrder
+    factory.displayOrder = targetOrder
+  }
+
+  regenerateSortOrders(allFactories)
+}
+
+export const regenerateSortOrders = (factories: Factory[]) => {
+  // Sort the factories by their display order should they for some reason be out of sync in the object.
+  factories.sort((a, b) => a.displayOrder - b.displayOrder)
+
+  // Ensure that the display order is in the correct order numerically.
+  factories.forEach((factory, index) => {
+    factory.displayOrder = index
+  })
 }
