@@ -74,7 +74,7 @@ const bigBoiPlan: Factory[] = [{
     },
     metrics: { Cement: { part: 'Cement', request: 3544, supply: 3840, isRequestSatisfied: true, difference: 296 } },
   },
-  exportCalculator: { Cement: { selected: null, factorySettings: {} } },
+  exportCalculator: {},
   rawResources: {
     Stone: { id: 'Stone', name: 'Limestone', amount: 5760 },
     Water: { id: 'Water', name: 'Water', amount: 4800 },

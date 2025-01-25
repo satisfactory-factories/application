@@ -57,6 +57,14 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
         recipe: 'ResidualFuel',
       },
     }
+    oilFac.syncStatePower = {
+      generatorfuel: {
+        powerAmount: 500,
+        buildingAmount: 2,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        ingredientAmount: 40,
+      },
+    }
     oilFac.inSync = true
     // =================
 
