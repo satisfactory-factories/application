@@ -3,6 +3,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
+  convertWasteToGeneratorFuel,
   showByProductChip,
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
@@ -12,6 +13,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory, getAllInputs, getInput } from '@/utils/factory-management/inputs'
 import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 describe('satisfaction', () => {
   let factories: Factory[]
@@ -100,6 +102,7 @@ describe('satisfaction', () => {
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'correctManually')).toBe(false)
       })
     })
+
     describe('fixImport', () => {
       beforeEach(() => {
         // Add an import
@@ -174,6 +177,134 @@ describe('satisfaction', () => {
 
           expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'fixImport')).toBe(false)
         })
+      })
+    })
+
+    describe('addGenerator', () => {
+      beforeEach(() => {
+        // Add a product needing nuclear waste (25)
+        addProductToFactory(mockFactory, {
+          id: 'PlutoniumPellet',
+          amount: 30,
+          recipe: 'Plutonium',
+        })
+        calculateFactories(factories, gameData)
+      })
+
+      it('should return true for a nuclear part that requires a generator', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'addGenerator')).toBe(true)
+      })
+
+      it('should return false for a nuclear part that has a generator', () => {
+        // Add a generator for NuclearWaste
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'addGenerator')).toBe(false)
+      })
+
+      it('should ignore non nuclear parts', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addGenerator')).toBe(false)
+      })
+    })
+
+    describe('fixGenerator', () => {
+      beforeEach(() => {
+        // Add a product needing nuclear waste (25)
+        addProductToFactory(mockFactory, {
+          id: 'PlutoniumPellet',
+          amount: 30,
+          recipe: 'Plutonium',
+        })
+        calculateFactories(factories, gameData)
+      })
+
+      it('should not show if the part is not a nuclear part', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'fixGenerator')).toBe(false)
+      })
+
+      it('should not show if there is no generator', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(false)
+      })
+
+      it('should not show if the part is satisfied', () => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 100, // Will deffo be satisfied lol
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(false)
+      })
+
+      it('should show if there is already a generator and it is insufficient', () => {
+        // Add a generator for NuclearWaste
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(true)
+      })
+
+      it('should not show if there is more than 1 generator group', () => {
+        // Add a generator for NuclearWaste
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGenerator')).toBe(false)
+      })
+    })
+
+    describe('fixGeneratorManually', () => {
+      beforeEach(() => {
+        // Add a product needing nuclear waste (25)
+        addProductToFactory(mockFactory, {
+          id: 'PlutoniumPellet',
+          amount: 30,
+          recipe: 'Plutonium',
+        })
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+      })
+      it('should NOT show if there is only one group', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(false)
+      })
+
+      it('should show if there is more than one group', () => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: 'building',
+        })
+        calculateFactories(factories, gameData)
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(true)
       })
     })
   })
@@ -272,6 +403,35 @@ describe('satisfaction', () => {
       it('should NOT show for a raw part', () => {
         expect(showInternalChip(mockFactory, 'LiquidOil')).toBe(false)
       })
+    })
+  })
+
+  describe('convertWasteToGeneratorFuel', () => {
+    it('should correctly convert nuclear waste to generator fuel rods', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 25)
+      expect(result).toBe(0.5)
+    })
+
+    it('should correctly convert nuclear waste to generator fuel rods #2', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 1000)
+      expect(result).toBe(20)
+    })
+
+    it('should properly overproduce slightly to accommodate for a non-fixable scenario with nuclear waste', () => {
+      const recipe = gameData.powerGenerationRecipes.find(recipe => recipe.id === 'GeneratorNuclear_NuclearFuelRod')
+      if (!recipe) {
+        throw new Error('No recipe found for NuclearWaste')
+      }
+      const result = convertWasteToGeneratorFuel(recipe, 1.667)
+      expect(result).toBe(0.034)
     })
   })
 })

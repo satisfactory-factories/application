@@ -18,13 +18,23 @@ export const getRequestsForFactory = (factory: Factory): FactoryDependencyReques
     .flat()
 }
 
-export const getRequestsForFactoryByPart = (
+export const getPartExportRequests = (
   factory: Factory,
   part: string
 ): FactoryDependencyRequest[] => {
   const requests = getRequestsForFactory(factory)
   // Filter by the part
   return requests.filter(request => request.part === part)
+}
+
+export const getPartExportRequestByRequestingFactory = (
+  factory: Factory,
+  part: string,
+  requestingFactory: number
+): FactoryDependencyRequest | null => {
+  const requests = getPartExportRequests(factory, part)
+
+  return requests.find(request => request.requestingFactoryId === requestingFactory) ?? null
 }
 
 export const getExportableFactories = (factories: Factory[]): Factory[] => {

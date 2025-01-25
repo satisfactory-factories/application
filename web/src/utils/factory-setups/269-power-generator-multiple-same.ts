@@ -2,7 +2,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
-export const create269Scenraio = (): { getFactories: () => Factory[] } => {
+export const create269Scenario = (): { getFactories: () => Factory[] } => {
   // Local variables to ensure a fresh instance on every call
   const fuelFac = newFactory('Fuel Power', 0)
 

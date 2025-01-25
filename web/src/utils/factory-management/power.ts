@@ -2,7 +2,7 @@ import { Factory, FactoryPowerProducer } from '@/interfaces/planner/FactoryInter
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipeById } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
-import { formatNumber } from '@/utils/numberFormatter'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 // For internal testing use
 export const addPowerProducerToFactory = (
@@ -63,7 +63,7 @@ export const calculatePowerProducers = (
 
       // Now we've handled the updated values, we can calculate the power generation again
       producer.powerProduced = calculatePowerAmount(producer, recipe)
-      producer.powerAmount = Number(formatNumber(producer.powerProduced))
+      producer.powerAmount = formatNumberFully(producer.powerProduced)
     }
 
     if (producer.updated === 'building') {
@@ -75,7 +75,7 @@ export const calculatePowerProducers = (
 
       // Now we need to increase the power so the supplemental fuel is calculated correctly
       producer.powerProduced = calculatePowerAmount(producer, recipe)
-      producer.powerAmount = Number(formatNumber(producer.powerProduced))
+      producer.powerAmount = formatNumberFully(producer.powerProduced)
     }
 
     // For supplemental fuels, we need to know the power produced in order to calculate them
@@ -86,7 +86,7 @@ export const calculatePowerProducers = (
     if (producer.updated !== 'building') {
       // Now calculate the amount of buildings the user needs to build
       producer.buildingCount = producer.powerProduced / recipe.building.power
-      producer.buildingAmount = Number(formatNumber(producer.buildingCount))
+      producer.buildingAmount = formatNumberFully(producer.buildingCount)
     }
 
     // Now add the byproducts

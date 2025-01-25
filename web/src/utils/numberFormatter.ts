@@ -8,6 +8,10 @@ export function formatNumber (value: any): string {
   return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(3)).toString()
 }
 
+export function formatNumberFully (value: any): number {
+  return Number(formatNumber(value))
+}
+
 // Returns a number formatted in the value of megawatts or gigawatts. If supplied GW, the number is divided by 1000.
 export function formatPower (value: number): { value: string, unit: string } {
   let formattedValue = formatNumber(value)

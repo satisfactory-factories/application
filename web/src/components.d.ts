@@ -9,6 +9,8 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
+    DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
+    ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
     FactoryNode: typeof import('./components/graph/FactoryNode.vue')['default']
     GameAsset: typeof import('./components/GameAsset.vue')['default']
@@ -23,7 +25,6 @@ declare module 'vue' {
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']
     Planner: typeof import('./components/planner/Planner.vue')['default']
     PlannerFactory: typeof import('./components/planner/PlannerFactory.vue')['default']
-    PlannerFactoryExportCalculator: typeof import('./components/planner/PlannerFactoryExportCalculator.vue')['default']
     PlannerFactoryImports: typeof import('./components/planner/PlannerFactoryImports.vue')['default']
     PlannerFactoryList: typeof import('./components/planner/PlannerFactoryList.vue')['default']
     PlannerFactoryNotes: typeof import('./components/planner/PlannerFactoryNotes.vue')['default']
@@ -58,5 +59,9 @@ declare module 'vue' {
     Todo: typeof import('./components/graph/Todo.vue')['default']
     WorldData: typeof import('./components/planner/WorldData.vue')['default']
     WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
+    TooltipInfo: typeof import('./components/tooltip-info.vue')['default']
+    TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
+    TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
+    TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
   }
 }
