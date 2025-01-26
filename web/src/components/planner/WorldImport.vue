@@ -2,13 +2,14 @@
   <v-dialog v-model="showDialog" max-width="1000" scrollable>
     <v-card class="my-2">
       <v-card-title class="text-center pb-0">
-        <h1 class="text-h1">Import a world!</h1>
+        <h1 class="text-h1">Import a world! [WIP]</h1>
       </v-card-title>
       <v-card-subtitle class="text-center">
         <h6 class="text-h6">Find all your somersloops.</h6>
       </v-card-subtitle>
       <v-card-text class="text-body-1 text-left">
-        <p>This will search through your world and find all the machines that contains somersloops.</p>
+        <p>This will currently search through your world and find all the machines that contains somersloops.</p>
+        <p>This feature is Work In Progress, and we plan to add more features such as factory importing.</p>
         <!-- https://satisfactory.wiki.gg/wiki/Save_files#Save_file_location -->
         <p>Can't find your worlds? Check out <a href="https://satisfactory.fandom.com/wiki/Save_files#Save_File_Location" target="_blank">Save File Location</a> in the Satisfactory Wiki.</p>
       </v-card-text>

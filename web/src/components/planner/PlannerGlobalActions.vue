@@ -50,7 +50,7 @@
         variant="tonal"
         @click="emit('import-world')"
       >
-        Import world
+        Import world [WIP]
       </v-btn>
       <v-btn
         class="ma-1"
