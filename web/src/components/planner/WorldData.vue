@@ -17,9 +17,11 @@
               <!-- <p>{{ building.name }}</p> -->
             </div>
             <v-icon icon="fas fa-arrow-right" />
-            <div>
-              <game-asset :subject="getRecipeAssetName(building.product)" type="item_id" height="50" width="50" />
-              <!-- <p>{{ building.product }}</p> -->
+            <div style="display: flex;flex-direction: column;gap: 8px;">
+              <div v-for="product in building.products">
+                <game-asset :subject="product" type="item" height="50" width="50" />
+                <!-- <p>{{ product }}</p> -->
+              </div>
             </div>
           </div>
           
@@ -49,21 +51,18 @@
   const buildings = ref<any[]>([])
   
   eventBus.on('worldData', (data: { buildings: any[] }) => {
-    buildings.value = data.buildings
+    buildings.value = data.buildings.map(getRecipeAssets)
   })
 
-  function getRecipeAssetName(recipeId: string) {
-    const recipes: any[] = JSON.parse(localStorage.getItem('gameData') || "{}").recipes
+  function getRecipeAssets(building: any) {
+    const gameData: any = JSON.parse(localStorage.getItem('gameData') || "{}")
+    if (!gameData) return building
 
-    return displayToAssetName(recipes.find(a => a.id === recipeId)?.displayName)
+    const recipeId: string = building.product
+    const products = gameData.recipes.find((a: any) => a.id === recipeId)?.products || []
 
-    function displayToAssetName(name: string) {
-      return name
-        .replace(/\s*\(\d+\)$/, '') // remove (1)
-        .replace(":", "") // Alternate:
-        .replaceAll(" ", "-")
-        .toLowerCase()
-    }
+    building.products = products.map(({ part }: any) => part)
+    return building
   }
 
   function close() {

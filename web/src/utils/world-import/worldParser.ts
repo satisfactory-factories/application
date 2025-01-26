@@ -128,7 +128,7 @@ function parseObjects(json: any) {
 
 function trimObject(object: any) {
   const name = getBuildingName(object.instanceName)
-  const product = object.properties.find((a: any, i: number) => i < 5 && a?.pathName?.includes("/Recipes/"))?.pathName
+  const product = object.properties.find((a: any, i: number) => i < 5 && a?.pathName?.includes(".Recipe_"))?.pathName
   return {
     name,
     slots: object.slots,

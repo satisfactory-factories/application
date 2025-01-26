@@ -1,6 +1,6 @@
 <template>
   <loading />
-  <loader />
+  <save-loader />
   <splash />
   <planner />
 </template>
