@@ -7,7 +7,7 @@
       <img alt="Site logo" src="/assets/img/SF.png" style="max-width: 48px;">
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
-        <v-chip class="sf-chip blue small">v0.3 ALPHA</v-chip>
+        <v-chip class="sf-chip blue small">v0.4 ALPHA</v-chip>
       </span>
     </template>
     <v-tabs
@@ -75,6 +75,7 @@
     { title: 'Planner', icon: 'fas fa-ruler-triangle', href: '/' },
     { title: 'Graph (WIP)', icon: 'fas fa-project-diagram', href: '/graph' },
     { title: 'Recipes', icon: 'fas fa-hat-chef', href: '/recipes' },
+    { title: 'Change Log', icon: 'fas fa-scroll', href: '/changelog' },
   ]
 
   onMounted(async () => {
