@@ -30,7 +30,7 @@
     subject: string
     height?: string | number | undefined
     width?: string | number | undefined
-    type: 'building' | 'item' | 'vehicle',
+    type: 'building' | 'item' | 'item_id' | 'vehicle'
   }>()
 
   const sluggify = (subject: string): string => {
@@ -40,7 +40,7 @@
 
   const getIcon = (
     subject: string | null,
-    type: 'building' | 'item' | 'vehicle',
+    type: 'building' | 'item' | 'item_id' | 'vehicle',
     size: 'small' | 'big' = 'small'
   ): string => {
     if (!subject) {
@@ -49,6 +49,8 @@
     }
     if (type === 'building') {
       return getImageUrl(subject, 'building', size)
+    } else if (type === "item_id") {
+      return getImageUrl(subject, 'item', size)
     } else if (type === 'vehicle') {
       return getImageUrl(subject, 'vehicle', size)
     } else {
