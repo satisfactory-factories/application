@@ -7,7 +7,7 @@
       <img alt="Site logo" src="/assets/img/SF.png" style="max-width: 48px;">
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
-        <v-chip class="sf-chip blue small">v0.4 ALPHA</v-chip>
+        <v-chip class="sf-chip blue small">ALPHA v0.4</v-chip>
       </span>
     </template>
     <v-tabs

@@ -15,6 +15,20 @@
         <v-divider />
         <h1>Alpha v0.4</h1>
 
+        <p>Check out what's new in the video below!</p>
+        <v-responsive :aspect-ratio="16 / 9" class="pb-4">
+          <iframe
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+            frameborder="0"
+            height="100%"
+            referrerpolicy="strict-origin-when-cross-origin"
+            src="https://www.youtube.com/embed/xiE7AwfzOpc?si=O0WvISqiPUPKFpCT"
+            title="YouTube video player"
+            width="100%"
+          />
+        </v-responsive>
+
         <h3><a href="https://github.com/orgs/satisfactory-factories/projects/2/views/1?filterQuery=+milestone%3A%22Alpha+4%22+&sortedBy%5Bdirection%5D=asc&sortedBy%5BcolumnId%5D=Title">Click here</a> for an itemised list of changes on GitHub!</h3>
 
         <p>There was a strong emphasis of planner stability in this update, addressing long running bugs and adding measures to prevent Planner breakages.  We managed to squish over <b>20 bugs</b>! 🐞 Many quality of life changes were added as well.</p>
