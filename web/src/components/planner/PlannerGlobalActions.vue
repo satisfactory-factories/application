@@ -44,6 +44,16 @@
       </v-btn>
       <v-btn
         class="ma-1"
+        color="yellow"
+        prepend-icon="fas fa-file-import"
+        ripple
+        variant="tonal"
+        @click="emit('import-world')"
+      >
+        Import world [WIP]
+      </v-btn>
+      <v-btn
+        class="ma-1"
         color="red"
         :disabled="getFactories().length === 0"
         prepend-icon="fas fa-trash"
@@ -114,6 +124,7 @@
     (event: 'hide-all'): void;
     (event: 'show-all'): void;
     (event: 'toggle-help-text'): void;
+    (event: 'import-world'): void;
     (event: 'clear-all'): void;
   }>()
 

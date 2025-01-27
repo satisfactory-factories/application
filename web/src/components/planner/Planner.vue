@@ -1,5 +1,7 @@
 <template>
   <introduction />
+  <world-import :showImportWorldPopup @close-world-import="closeWorldImport" />
+  <world-data v-if="showWorldData" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
   <div class="planner-container">
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -13,6 +15,7 @@
       <planner-global-actions
         class="py-4"
         :help-text-shown="helpText"
+        @import-world="importWorld"
         @clear-all="clearAll"
         @hide-all="showHideAll('hide')"
         @show-all="showHideAll('show')"
@@ -34,6 +37,7 @@
           <planner-global-actions
             class="py-2"
             :help-text-shown="helpText"
+            @import-world="importWorld"
             @clear-all="clearAll"
             @hide-all="showHideAll('hide')"
             @show-all="showHideAll('show')"
@@ -101,6 +105,9 @@
 
   const planVisible = ref(false)
   const navigationReady = ref(false)
+
+  const showImportWorldPopup = ref<boolean>(false)
+  const showWorldData = ref<boolean>(false)
 
   // When we are starting a new load we need to unload all the DOM elements
   eventBus.on('plannerShow', (show: boolean) => {
@@ -262,6 +269,19 @@
       console.error('Factory not found to delete?!')
     }
   }
+
+  const importWorld = () => {
+    console.log("Open Import World");
+    showImportWorldPopup.value = true
+  }
+
+  const closeWorldImport = () => {
+    showImportWorldPopup.value = false
+  }
+  
+  eventBus.on('worldDataShow', (value: boolean) => {
+    showWorldData.value = value
+  })
 
   const clearAll = () => {
     clearFactories()

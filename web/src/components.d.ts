@@ -42,6 +42,7 @@ declare module 'vue' {
     RecipeSearchItem: typeof import('./components/recipes/RecipeSearchItem.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SaveLoader: typeof import('./components/SaveLoader.vue')['default']
     ShareButton: typeof import('./components/ShareButton.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
@@ -60,5 +61,7 @@ declare module 'vue' {
     TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
     TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
+    WorldData: typeof import('./components/planner/WorldData.vue')['default']
+    WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
   }
 }
