@@ -266,6 +266,14 @@
   }
 
   const updateProductSelection = (product: FactoryItem, factory: Factory) => {
+    // If Uranium Waste or Plutonium Waste are selected, alert the user, and remove it.
+
+    if (product.id === 'NuclearWaste' || product.id === 'PlutoniumWaste') {
+      alert('Uranium and Plutonium Waste are created by adding a Power Generator (and adding a Nuclear Power Plant). This product will now be cleared.')
+      product.id = ''
+      return
+    }
+
     product.recipe = getDefaultRecipeForPart(product.id)
     product.amount = 1
 
