@@ -1,6 +1,6 @@
 <template>
   <v-btn
-    class="ml-1"
+    class="ma-1"
     prepend-icon="fas fa-files-medical"
     @click="dialog = true"
   >Templates</v-btn>

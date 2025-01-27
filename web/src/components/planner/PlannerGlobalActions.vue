@@ -1,6 +1,6 @@
 <template>
   <v-row>
-    <v-col class="last-child-no-margin">
+    <v-col>
       <v-btn
         class="ma-1"
         color="blue"
@@ -62,9 +62,8 @@
       >
         Clear
       </v-btn>
-      <templates />
       <v-btn
-        class="ma-1 mb-0"
+        class="ma-1"
         color="secondary"
         :disabled="getFactories().length === 0"
         prepend-icon="fas fa-copy"
@@ -82,6 +81,7 @@
       >
         Paste plan
       </v-btn>
+      <templates />
       <v-btn
         v-if="isDebugMode && !disableRecalc"
         class="ma-1"
