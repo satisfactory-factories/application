@@ -56,7 +56,7 @@
           Your browser does not support the video tag.
         </video>
         <p>
-          The way that factory plans are loaded has been completely redesigned. It now loads each factory in sequence performing checks as it goes to prevent possible corruption, and also shows to the user how far along in the loading process it is. Whereas before, if you loaded a large plan, it would just appear to freeze for what could be 30 or so seconds at a time for very big plans. Now the user is given feedback on what's happening at every step of the way.
+          The way that factory plans are loaded has been completely redesigned. It now loads each factory in sequence performing checks / validation as it goes to prevent possible plan corruption, and also shows to the user how far along in the loading process it is. Whereas before, if you loaded a large plan, it would just appear to freeze for what could be 30 or so seconds at a time for very big plans. Now the user is given feedback on what's happening at every step of the way.
         </p>
 
         <v-divider class="subsection" />
