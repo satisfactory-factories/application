@@ -1,4 +1,5 @@
 <template>
+  <introduction source="changelog" />
   <v-container max-width="1200">
     <v-row>
       <v-col cols="12">

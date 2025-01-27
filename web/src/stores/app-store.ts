@@ -6,6 +6,7 @@ import { calculateFactories, regenerateSortOrders } from '@/utils/factory-manage
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
+import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -432,7 +433,18 @@ export const useAppStore = defineStore('app', () => {
     return window.location.search.includes('debug')
   }
 
+  const isSetupDemo = () => {
+    return window.location.search.includes('setupDemo')
+  }
+
+  if (isSetupDemo()) {
+    console.log('appStore: setupDemo: Setting up demo data')
+    const factories = complexDemoPlan().getFactories()
+    prepareLoader(factories, true)
+  }
+
   isDebugMode.value = debugMode()
+
   // ==== END MISC
 
   const forceCalculation = () => {

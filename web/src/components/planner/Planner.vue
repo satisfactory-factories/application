@@ -1,6 +1,6 @@
 <template>
-  <introduction />
-  <world-import :showImportWorldPopup @close-world-import="closeWorldImport" />
+  <introduction source="planner" />
+  <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
   <world-data v-if="showWorldData" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
   <div class="planner-container">
@@ -15,9 +15,9 @@
       <planner-global-actions
         class="py-4"
         :help-text-shown="helpText"
-        @import-world="importWorld"
         @clear-all="clearAll"
         @hide-all="showHideAll('hide')"
+        @import-world="importWorld"
         @show-all="showHideAll('show')"
         @toggle-help-text="toggleHelp()"
       />
@@ -37,9 +37,9 @@
           <planner-global-actions
             class="py-2"
             :help-text-shown="helpText"
-            @import-world="importWorld"
             @clear-all="clearAll"
             @hide-all="showHideAll('hide')"
+            @import-world="importWorld"
             @show-all="showHideAll('show')"
             @toggle-help-text="toggleHelp()"
           />
@@ -271,14 +271,14 @@
   }
 
   const importWorld = () => {
-    console.log("Open Import World");
+    console.log('Open Import World')
     showImportWorldPopup.value = true
   }
 
   const closeWorldImport = () => {
     showImportWorldPopup.value = false
   }
-  
+
   eventBus.on('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })

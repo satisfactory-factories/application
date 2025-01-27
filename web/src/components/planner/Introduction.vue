@@ -49,12 +49,22 @@
         <p>Happy planning! - Maelstromeous</p>
       </v-card-text>
       <v-card-actions>
-        <v-btn color="blue" @click="close">
-          <i class="fas fa-file" /><span class="ml-2">Start with an empty plan</span>
-        </v-btn>
-        <v-btn color="green" variant="elevated" @click="setupDemo">
-          <i class="fas fa-list" /><span class="ml-2">Start with a demo plan</span>
-        </v-btn>
+        <template v-if="source === 'planner'">
+          <v-btn color="blue" @click="close">
+            <i class="fas fa-file" /><span class="ml-2">Start with an empty plan</span>
+          </v-btn>
+          <v-btn color="green" variant="elevated" @click="setupDemo">
+            <i class="fas fa-list" /><span class="ml-2">Start with a demo plan</span>
+          </v-btn>
+        </template>
+        <template v-if="source === 'changelog'">
+          <v-btn color="green" href="/?setupDemo=true" variant="elevated">
+            <i class="fas fa-list" /><span class="ml-2">Open Demo</span>
+          </v-btn>
+          <v-btn color="blue" variant="elevated" @click="close">
+            <i class="fas fa-check" /><span class="ml-2">Close</span>
+          </v-btn>
+        </template>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -64,6 +74,8 @@
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useAppStore } from '@/stores/app-store'
   const { getFactories, prepareLoader } = useAppStore()
+
+  const props = defineProps<{ source: 'planner' | 'changelog' }>()
 
   // Grab from local storage if the user has already dismissed this popup
   // If they have, don't show it again.
