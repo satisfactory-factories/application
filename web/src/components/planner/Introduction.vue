@@ -75,7 +75,7 @@
   import { useAppStore } from '@/stores/app-store'
   const { getFactories, prepareLoader } = useAppStore()
 
-  const props = defineProps<{ source: 'planner' | 'changelog' }>()
+  defineProps<{ source: 'planner' | 'changelog' }>()
 
   // Grab from local storage if the user has already dismissed this popup
   // If they have, don't show it again.
