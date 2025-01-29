@@ -26,14 +26,14 @@
   import eventBus from '@/utils/eventBus'
 
   const isLoading = ref(false)
-  const title = ref("Loading...")
+  const title = ref('Loading...')
   const loadingSteps = ref(1)
   const loadingProgress = ref(0)
-  const loadingMessage = ref("")
+  const loadingMessage = ref('')
 
   function loaderInit (data: { title?: string, steps: number }) {
     isLoading.value = true
-    title.value = data.title || "Loading..."
+    title.value = data.title || 'Loading...'
     loadingProgress.value = 0
     loadingSteps.value = data.steps || 1
   }
@@ -45,15 +45,15 @@
 
     loadingMessage.value = data.message
 
-    console.log(`Loading ${loadingProgress.value}/${loadingSteps.value}: ${loadingMessage.value}`);
-    
+    console.log(`Loading ${loadingProgress.value}/${loadingSteps.value}: ${loadingMessage.value}`)
+
     if ((loadingProgress.value >= loadingSteps.value) || data.isFinalStep) {
       // quickly show message before closing
       setTimeout(done, 100)
     }
   }
 
-  function done() {
+  function done () {
     isLoading.value = false
     loadingProgress.value = 0
   }
