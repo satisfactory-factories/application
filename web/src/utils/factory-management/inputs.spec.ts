@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import * as factoryUtils from '@/utils/factory-management/factory'
@@ -8,7 +8,7 @@ import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates,
   calculatePossibleImports, deleteInputPair, importFactorySelections,
-  importPartSelections, isImportRedundant, satisfyImport,
+  importPartSelections, isImportRedundant, satisfyImport, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -19,6 +19,13 @@ import { create324Scenario } from '@/utils/factory-setups/324-redundant-import'
 import { create242Scenario } from '@/utils/factory-setups/242-inputs-byproducts'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { createSimple } from '@/utils/factory-setups/simple-plan'
+import eventBus from '@/utils/eventBus'
+
+vi.mock('@/utils/eventBus', () => ({
+  default: {
+    emit: vi.fn(),
+  },
+}))
 
 describe('inputs', () => {
   let mockFactory: Factory
@@ -765,6 +772,32 @@ describe('inputs', () => {
       expect(ingotFac.parts.IronIngot.amountRequired).toBe(0) // Iron Ingot demand
       expect(ingotFac.parts.CopperIngot.amountRequired).toBe(100) // Copper Ingot demand
       expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Iron Ingot removed supply
+    })
+  })
+
+  describe('validateInput', () => {
+    afterEach(() => {
+      vi.resetAllMocks()
+    })
+    it('should properly handle input amounts set to 0', () => {
+      addInputToFactory(mockDependantFactory, {
+        factoryId: mockFactory.id,
+        outputPart: 'IronIngot',
+        amount: 123,
+      })
+      vi.spyOn(eventBus, 'emit')
+
+      const input = mockDependantFactory.inputs[0]
+      input.amount = 0
+
+      // Set the input amount to 0
+      validateInput(input)
+
+      expect(input.amount).toBe(1)
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'You cannot set an input quantity to be <=0. Setting to 1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, enter a period then the number e.g. ".5".',
+        type: 'warning',
+      })
     })
   })
 })

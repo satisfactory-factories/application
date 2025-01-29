@@ -3,6 +3,7 @@ import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
 import { DataInterface } from '@/interfaces/DataInterface'
+import eventBus from '@/utils/eventBus'
 
 export const getInput = (factory: Factory, part: string, factoryId?: number) => {
   // Returns a SINGULAR input object by the outputPart. If multiple are detected, throw.
@@ -323,4 +324,19 @@ export const deleteInputPair = (factory: Factory, input: FactoryInput, factories
 
   // Now calculate the dependencies on the other factory, which will remove the dependency on the deleted input and recalculate the parts.
   recalculateFactoryDependencies(supplyingFactory, factories, gameData)
+}
+
+export const validateInput = (input: FactoryInput) => {
+  // Check if the inputs are valid
+  if (!input.amount || input.amount < 0) {
+    // If the product amount is negative, this causes issues with calculations, so force it to 0.
+    console.warn('inputs: validateInputs: Input amount is <= 0, force setting to 1 to prevent calculation errors.')
+
+    input.amount = 1
+
+    eventBus.emit('toast', {
+      message: 'You cannot set an input quantity to be <=0. Setting to 1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, enter a period then the number e.g. ".5".',
+      type: 'warning',
+    })
+  }
 }

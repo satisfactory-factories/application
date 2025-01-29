@@ -163,7 +163,10 @@
     calculateImportCandidates,
     calculatePossibleImports, deleteInputPair,
     importFactorySelections,
-    importPartSelections, isImportRedundant, satisfyImport,
+    importPartSelections,
+    isImportRedundant,
+    satisfyImport,
+    validateInput,
   } from '@/utils/factory-management/inputs'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
@@ -301,6 +304,7 @@
   }
 
   const updateFactories = (factory: Factory, input: FactoryInput) => {
+    validateInput(input)
     updateFactory(factory)
     if (input.factoryId) {
       updateFactory(findFactory(input.factoryId))
