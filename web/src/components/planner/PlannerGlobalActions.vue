@@ -161,16 +161,21 @@
   }
 
   const forceRecalc = async () => {
-    const confirmed = confirmDialog('Forcing a recalculation takes a LONG time for large plans. Your browser will lag and will likely complain about stalling. Are you sure?')
+    const confirmed = confirmDialog('WARNING: Forcing a recalculation takes a LONG time for large plans. Your browser will lag and will likely complain about stalling. Are you sure?')
 
     if (!confirmed) return
 
     eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while for large plans. Expect lag.', type: 'warning' })
+    eventBus.emit('plannerShow', false)
     disableRecalc.value = true
 
     // Wait for planner to comply
     await new Promise(resolve => setTimeout(resolve, 250))
     forceCalculation()
+
+    console.log('Calculations completed, telling planner to show')
+    eventBus.emit('plannerShow', true)
+    eventBus.emit('toast', { message: 'Recalculations completed.', type: 'success' })
   }
 
   eventBus.on('calculationsCompleted', () => {
