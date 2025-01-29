@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import {
   calculateAllDependencies,
   removeFactoryDependants,
@@ -9,6 +9,7 @@ import {
 import { addInputToFactory, getInput } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
 import { addProductToFactory } from '@/utils/factory-management/products'
+import { create251Scenario } from '@/utils/factory-setups/251-multiple-imports'
 
 describe('dependencies', () => {
   let factories: Factory[] = []
@@ -338,6 +339,75 @@ describe('dependencies', () => {
 
       const foundInvalidInput = getInput(factory2, 'IronIngot')
       expect(foundInvalidInput).not.toBeDefined()
+    })
+
+    // GH: #376
+    it('should handle when the user changes the factoryID of an input', () => {
+      const factories = create251Scenario().getFactories()
+      const factoryA = findFacByName('Factory A', factories)
+      const factoryB = findFacByName('Factory B', factories)
+      const factoryC = findFacByName('Factory C', factories)
+
+      calculateFactories(factories, gameData)
+      // Remove one of the inputs from Factory C so we're only importing from Factory A
+      factoryC.inputs.pop()
+      expect(factoryC.inputs[0].factoryId).toBe(factoryA.id)
+
+      // Calculate
+      calculateFactories(factories, gameData)
+
+      // Now, change the factoryId of the input to Factory B
+      factoryC.inputs[0].factoryId = factoryB.id
+
+      // Recalculate, the function should have detected the change and removed the dependency metrics from Factory A, added them to Factory B, and updated the part metrics.
+      calculateFactory(factoryC, factories, gameData)
+
+      // Dependency metrics checks
+      expect(factoryA.dependencies.requests[factoryC.id]).toBe(undefined)
+      expect(factoryA.dependencies.metrics.CompactedCoal).toBe(undefined)
+      expect(factoryA.dependencies.metrics).toEqual({})
+      expect(factoryB.dependencies.requests[factoryC.id]).toEqual([{
+        requestingFactoryId: factoryC.id,
+        part: 'CompactedCoal',
+        amount: 540, // NOT 450, because the input swapped factories not quantity.
+      }])
+      expect(factoryB.dependencies.metrics.CompactedCoal).toEqual({
+        part: 'CompactedCoal',
+        request: 540,
+        supply: 450,
+        isRequestSatisfied: false,
+        difference: -90,
+      })
+
+      // Part metrics checks
+      expect(factoryB.parts.CompactedCoal).toEqual({
+        amountRequired: 540,
+        amountRequiredExports: 540,
+        amountRequiredProduction: 0,
+        amountRequiredPower: 0,
+        amountSupplied: 450,
+        amountSuppliedViaInput: 0,
+        amountSuppliedViaRaw: 0,
+        amountSuppliedViaProduction: 450,
+        amountRemaining: -90,
+        satisfied: false,
+        isRaw: false,
+        exportable: true,
+      })
+      expect(factoryA.parts.CompactedCoal).toEqual({
+        amountRequired: 0,
+        amountRequiredExports: 0,
+        amountRequiredProduction: 0,
+        amountRequiredPower: 0,
+        amountSupplied: 540,
+        amountSuppliedViaInput: 0,
+        amountSuppliedViaRaw: 0,
+        amountSuppliedViaProduction: 540,
+        amountRemaining: 540,
+        satisfied: true,
+        isRaw: false,
+        exportable: true,
+      })
     })
 
     // TODO: Add more tests for if factory is deleted, it's hard to spy on it and my brain is fried.

@@ -83,6 +83,7 @@
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useAppStore } from '@/stores/app-store'
   import {
+    flushInvalidRequests,
     removeFactoryDependants,
   } from '@/utils/factory-management/dependencies'
   import {
