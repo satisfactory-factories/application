@@ -39,10 +39,10 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
 
     if (!product.amount || product.amount < 0) {
       // If the product amount is negative, this causes issues with calculations, so force it to 0.
-      product.amount = 0.1
-      console.warn('products: calculateProducts: Product amount is <= 0, force setting to 0.1 to prevent calculation errors.')
+      product.amount = 1
+      console.warn('products: calculateProducts: Product amount is <= 0, force setting to 1 to prevent calculation errors.')
       eventBus.emit('toast', {
-        message: 'You cannot set a product quantity to be 0. Setting to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
+        message: 'You cannot set a product quantity to be <=0. Setting to 1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, enter a period then the number e.g. ".5".',
         type: 'warning',
       })
     }

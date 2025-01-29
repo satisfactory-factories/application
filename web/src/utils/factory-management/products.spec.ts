@@ -275,13 +275,13 @@ describe('products', () => {
       calculateFactories([mockFactory], gameData)
 
       expect(eventBus.emit).toHaveBeenCalledWith('toast', {
-        message: 'You cannot set a product quantity to be 0. Setting to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
+        message: 'You cannot set a product quantity to be <=0. Setting to 1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, enter a period then the number e.g. ".5".',
         type: 'warning',
       })
 
-      expect(mockFactory.parts.IronPlate.amountSupplied).toBe(0.1)
-      expect(mockFactory.parts.IronPlate.amountRemaining).toBe(0.1)
-      expect(mockFactory.parts.IronIngot.amountRequired).toBe(0.15)
+      expect(mockFactory.parts.IronPlate.amountSupplied).toBe(1)
+      expect(mockFactory.parts.IronPlate.amountRemaining).toBe(1)
+      expect(mockFactory.parts.IronIngot.amountRequired).toBe(1.5)
     })
   })
 
