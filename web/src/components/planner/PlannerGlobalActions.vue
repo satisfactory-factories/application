@@ -83,7 +83,7 @@
       </v-btn>
       <templates />
       <v-btn
-        v-if="isDebugMode && !disableRecalc"
+        v-if="!disableRecalc"
         class="ma-1"
         color="amber"
         :disabled="getFactories().length === 0"
@@ -94,13 +94,12 @@
         Recalculate
       </v-btn>
       <v-btn
-        v-if="isDebugMode && disableRecalc"
+        v-if="disableRecalc"
         class="ma-1"
         color="amber"
         :disabled="disableRecalc"
         prepend-icon="fas fa-sync fa-spin"
         variant="tonal"
-        @click="forceRecalc"
       >
         Recalculate
       </v-btn>
@@ -111,10 +110,10 @@
 <script setup lang="ts">
   import { defineEmits, defineProps } from 'vue'
   import { useAppStore } from '@/stores/app-store'
-  import eventBus from '@/utils/eventBus'
   import { confirmDialog } from '@/utils/helpers'
+  import eventBus from '@/utils/eventBus'
 
-  const { getFactories, prepareLoader, forceCalculation, isDebugMode } = useAppStore()
+  const { getFactories, prepareLoader, forceCalculation } = useAppStore()
 
   const disableRecalc = ref(false)
 
@@ -173,6 +172,10 @@
   }
 
   const forceRecalc = async () => {
+    const confirmed = confirmDialog('Forcing a recalculation takes a LONG time for large plans. Your browser will lag. Are you sure?')
+
+    if (!confirmed) return
+
     eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while for large plans. Expect lag.', type: 'warning' })
 
     // Wait for planner to comply
