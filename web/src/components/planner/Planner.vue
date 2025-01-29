@@ -82,9 +82,7 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useAppStore } from '@/stores/app-store'
-  import {
-    removeFactoryDependants,
-  } from '@/utils/factory-management/dependencies'
+  import { removeFactoryDependants } from '@/utils/factory-management/dependencies'
   import {
     calculateFactories,
     calculateFactory,

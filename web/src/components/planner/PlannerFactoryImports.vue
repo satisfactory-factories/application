@@ -32,7 +32,7 @@
       <v-card class="rounded sub-card border-md mb-2">
         <div
           v-for="(input, inputIndex) in factory.inputs"
-          :key="`${inputIndex}-${input.outputPart}`"
+          :key="`${input.factoryId}-${input.outputPart}`"
           class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
         >
           <div class="input-row d-flex align-center">
@@ -301,11 +301,8 @@
   }
 
   const updateFactories = (factory: Factory, input: FactoryInput) => {
-    // Update this factory
     updateFactory(factory)
-
     if (input.factoryId) {
-      // Update the other factory
       updateFactory(findFactory(input.factoryId))
     }
   }

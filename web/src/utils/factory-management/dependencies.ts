@@ -97,7 +97,7 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         }
 
         // If all requests from the factory have been removed, also delete the key.
-        if (factory.dependencies.requests[requestedFactoryId].length === 0) {
+        if (factory.dependencies.requests[requestedFactoryId]?.length === 0) {
           delete factory.dependencies.requests[requestedFactoryId]
         }
       })
