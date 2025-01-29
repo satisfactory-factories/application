@@ -83,23 +83,12 @@
       </v-btn>
       <templates />
       <v-btn
-        v-if="!disableRecalc"
         class="ma-1"
         color="amber"
-        :disabled="getFactories().length === 0"
+        :disabled="getFactories().length === 0 || disableRecalc"
         prepend-icon="fas fa-calculator-alt"
         variant="tonal"
         @click="forceRecalc"
-      >
-        Recalculate
-      </v-btn>
-      <v-btn
-        v-if="disableRecalc"
-        class="ma-1"
-        color="amber"
-        :disabled="disableRecalc"
-        prepend-icon="fas fa-sync fa-spin"
-        variant="tonal"
       >
         Recalculate
       </v-btn>
@@ -172,16 +161,15 @@
   }
 
   const forceRecalc = async () => {
-    const confirmed = confirmDialog('Forcing a recalculation takes a LONG time for large plans. Your browser will lag. Are you sure?')
+    const confirmed = confirmDialog('Forcing a recalculation takes a LONG time for large plans. Your browser will lag and will likely complain about stalling. Are you sure?')
 
     if (!confirmed) return
 
     eventBus.emit('toast', { message: 'Forcing recalculation of all factories. This may take a while for large plans. Expect lag.', type: 'warning' })
+    disableRecalc.value = true
 
     // Wait for planner to comply
     await new Promise(resolve => setTimeout(resolve, 250))
-
-    disableRecalc.value = true
     forceCalculation()
   }
 
