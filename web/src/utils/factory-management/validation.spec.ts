@@ -4,6 +4,7 @@ import { newFactory } from '@/utils/factory-management/factory'
 import { validateFactories } from '@/utils/factory-management/validation'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
+import { addProductToFactory } from '@/utils/factory-management/products'
 
 describe('validation', () => {
   const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {})
@@ -134,6 +135,25 @@ describe('validation', () => {
     validateFactories([mockFactory], gameData)
 
     expect(mockFactory.parts.MadeUpPart).toBeDefined()
+    expect(alertMock).toHaveBeenCalled()
+  })
+
+  it('should detect invalid inputs and set them to 1', () => {
+    // Set up a valid factory
+    const validFactory: Factory = newFactory('Some Factory')
+    addProductToFactory(validFactory, {
+      id: 'IronIngot',
+      amount: 100,
+      recipe: 'IngotIron',
+    })
+    addInputToFactory(mockFactory, {
+      factoryId: validFactory.id,
+      outputPart: 'IronIngot',
+      amount: 0,
+    })
+
+    validateFactories([mockFactory, validFactory], gameData)
+    expect(mockFactory.inputs[0].amount).toBe(1)
     expect(alertMock).toHaveBeenCalled()
   })
 })

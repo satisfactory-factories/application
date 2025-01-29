@@ -9,6 +9,13 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
 
   factories.forEach(factory => {
     factory.inputs.forEach(input => {
+      if (input.amount <= 0) {
+        hasErrors = true
+        console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has an input with an amount of 0 or less. Setting to 1.`)
+
+        input.amount = 1
+      }
+
       const inputFac = findFac(Number(input.factoryId), factories)
       if (!inputFac?.id) {
         hasErrors = true
