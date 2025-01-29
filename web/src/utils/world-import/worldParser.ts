@@ -16,6 +16,11 @@ export const importWorldLoadMessages = {
   done: 'Done!',
 }
 
+type InventoryItem = {
+  name: string
+  amount: number
+}
+
 export async function parseSavFile (buffer: Uint8Array) {
   eventBus.emit('loaderNextStep', { message: importWorldLoadMessages.parse_sav })
 
@@ -134,11 +139,6 @@ function trimObject (object: any) {
     slots: object.slots,
     product: getRecipeName(product),
   }
-}
-
-type InventoryItem = {
-  name: string
-  amount: number
 }
 
 export function getInventorySlots (components: any[]) {
