@@ -86,7 +86,9 @@ export const calculateFactory = (
 ) => {
   console.log('factory: calculateFactory started', factory.name)
 
-  // Scan for invalid inputs as the user may have changed an input's factoryID
+  // Scan for invalid inputs as the user may have changed an input's factoryID.
+  // Yes we are running this multiple times especially from calculateFactories,
+  // but it's a very quick operation, and it ensures integrity.
   flushInvalidRequests(allFactories, gameData)
 
   factory.rawResources = {}
