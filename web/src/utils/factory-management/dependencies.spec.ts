@@ -341,7 +341,7 @@ describe('dependencies', () => {
       expect(foundInvalidInput).not.toBeDefined()
     })
 
-    // GH: #376
+    // GH: #378
     it('should handle when the user changes the factoryID of an input', () => {
       const factories = create251Scenario().getFactories()
       const factoryA = findFacByName('Factory A', factories)
