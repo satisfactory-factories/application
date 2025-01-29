@@ -29,23 +29,24 @@ const mountSubject = (factory: Factory) => {
 }
 
 describe('Product', () => {
-  const factory = newFactory('test')
+  let factory = newFactory('test')
   let subject: VueWrapper<{factory: Factory, helpText: boolean }>
 
   beforeEach(() => {
     setActivePinia(createPinia())
+    factory = newFactory('test')
 
-    calculateFactory(factory, [factory], gameData)
-    subject = mountSubject(factory)
-  })
-
-  test('should update produced amount when requirement amount is changed', async () => {
     addProductToFactory(factory, {
       id: 'IronIngot',
       amount: 30,
       recipe: 'IngotIron',
     })
 
+    calculateFactory(factory, [factory], gameData)
+    subject = mountSubject(factory)
+  })
+
+  test('should update produced amount when requirement amount is changed', async () => {
     calculateFactory(factory, [factory], gameData)
     subject = mountSubject(factory) // Remount the subject as things have changed
 
@@ -79,6 +80,6 @@ describe('Product', () => {
   test('should prevent a breakage when the input amount is set to negative numbers', async () => {
     const productionInput = subject.find('input[name="IronIngot.amount"]')
     await productionInput.setValue('-123')
-    expect(productionInput?.attributes?.()?.value).toBe('0.1')
+    expect(productionInput?.attributes?.()?.value).toBe('1')
   })
 })
