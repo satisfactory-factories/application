@@ -7,10 +7,10 @@
     persistent
   >
     <v-card class="pa-4 px-16" height="80vh" width="80vw">
-      <div class="text-center overflow-auto w-100 h-100">
-        <p v-if="!buildings.length" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);">No buildings found!</p>
+      <p v-if="!buildings.length" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);">No buildings found!</p>
+      <div v-if="buildings.length" class="text-center overflow-auto w-100 h-100">
 
-        <div v-for="building in buildings" v-if="buildings.length" class="machine sub-card border">
+        <div v-for="building in buildings" :key="building.name" class="machine sub-card border">
           <div class="flex-row align-center" style="display: flex;gap: 50px;">
             <div>
               <game-asset height="120" :subject="building.name" type="building" width="120" />
@@ -18,7 +18,7 @@
             </div>
             <v-icon icon="fas fa-arrow-right" />
             <div style="display: flex;flex-direction: column;gap: 8px;">
-              <div v-for="product in building.products">
+              <div v-for="product in building.products" :key="product.id">
                 <game-asset height="50" :subject="product" type="item" width="50" />
                 <!-- <p>{{ product }}</p> -->
               </div>
