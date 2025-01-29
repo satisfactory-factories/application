@@ -7,17 +7,18 @@ import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates,
-  calculatePossibleImports, importFactorySelections,
+  calculatePossibleImports, deleteInputPair, importFactorySelections,
   importPartSelections, isImportRedundant, satisfyImport,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
 import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
 import { create315Scenario } from '@/utils/factory-setups/315-non-exportable-parts-imports'
-import { calculateDependencies } from '@/utils/factory-management/dependencies'
+import { calculateAllDependencies } from '@/utils/factory-management/dependencies'
 import { create324Scenario } from '@/utils/factory-setups/324-redundant-import'
 import { create242Scenario } from '@/utils/factory-setups/242-inputs-byproducts'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+import { createSimple } from '@/utils/factory-setups/simple-plan'
 
 describe('inputs', () => {
   let mockFactory: Factory
@@ -501,7 +502,7 @@ describe('inputs', () => {
           amount: 100, // This will result in a 50 import deficit
           recipe: 'IngotIron',
         })
-        calculateDependencies([mockFactory, mockFactory2], gameData, true)
+        calculateAllDependencies([mockFactory, mockFactory2], gameData, true)
         calculateFactories([mockFactory, mockFactory2], gameData)
       })
 
@@ -667,7 +668,7 @@ describe('inputs', () => {
       let factories: Factory[]
       beforeEach(() => {
         factories = create242Scenario().getFactories()
-        calculateDependencies(factories, gameData, true)
+        calculateAllDependencies(factories, gameData, true)
         calculateFactories(factories, gameData)
       })
 
@@ -683,6 +684,87 @@ describe('inputs', () => {
         // The import should now be 5, as 25 is produced internally.
         expect(issueFactory.inputs[0].amount).toBe(5)
       })
+    })
+  })
+
+  describe('deleteInputPair', () => {
+    let factories: Factory[]
+    let ingotFac: Factory
+    let ironPlateFac: Factory
+
+    beforeEach(() => {
+      factories = createSimple().getFactories()
+      ingotFac = findFacByName('Iron Ingots', factories)
+      ironPlateFac = findFacByName('Iron Plates', factories)
+
+      calculateFactories(factories, gameData)
+    })
+
+    it('should properly delete an input from the source factory', () => {
+      const input = ironPlateFac.inputs[0]
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ironPlateFac.inputs.length).toBe(0)
+    })
+
+    // GH #373
+    it('should properly recalculate the iron ingot part demand now it has been deleted', () => {
+      const input = ironPlateFac.inputs[0]
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ingotFac.parts.IronIngot.amountRequired).toBe(0)
+    })
+
+    it('should not affect other factory dependency pairs', () => {
+      // Add a third factory that requires Iron Ingots
+      const ironPlateFac2 = newFactory('Iron Plates 2')
+      addProductToFactory(ironPlateFac2, {
+        id: 'IronPlate',
+        amount: 1000,
+        recipe: 'IronPlate',
+      })
+      addInputToFactory(ironPlateFac2, {
+        factoryId: ingotFac.id,
+        outputPart: 'IronIngot',
+        amount: 150,
+      })
+
+      factories.push(ironPlateFac2)
+      calculateFactories(factories, gameData)
+
+      const input = ironPlateFac.inputs[0]
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ingotFac.parts.IronIngot.amountRequired).toBe(150) // Demand from plate fac 2
+      expect(ironPlateFac2.parts.IronIngot.amountSupplied).toBe(150) // Supply from ingots
+      expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Deleted input factory
+    })
+
+    it('should not affect other parts based on the same factory pair', () => {
+      // Add a new product to iron ingot fac (copperingots)
+      addProductToFactory(ingotFac, {
+        id: 'CopperIngot',
+        amount: 1000,
+        recipe: 'IngotCopper',
+      })
+
+      // Add a new input to iron plate fac that requires copper ingots
+      addInputToFactory(ironPlateFac, {
+        factoryId: ingotFac.id,
+        outputPart: 'CopperIngot',
+        amount: 100,
+      })
+
+      calculateFactories(factories, gameData)
+
+      const input = ironPlateFac.inputs[0] // Iron Ingots
+      expect(input.outputPart).toBe('IronIngot')
+
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ingotFac.parts.IronIngot.amountRequired).toBe(0) // Iron Ingot demand
+      expect(ingotFac.parts.CopperIngot.amountRequired).toBe(100) // Copper Ingot demand
+      expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Iron Ingot removed supply
     })
   })
 })

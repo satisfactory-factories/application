@@ -3,7 +3,7 @@ import { calculateProducts } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateParts } from '@/utils/factory-management/parts'
 import {
-  calculateDependencies,
+  calculateAllDependencies,
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
   calculateFactoryDependencies,
@@ -133,7 +133,7 @@ export const calculateFactories = (factories: Factory[], gameData: DataInterface
   factories.forEach(factory => calculateFactory(factory, factories, gameData, true))
 
   // Now calculate the dependencies for all factories, removing any invalid inputs.
-  calculateDependencies(factories, gameData)
+  calculateAllDependencies(factories, gameData)
 
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
   factories.forEach(factory => calculateFactory(factory, factories, gameData))

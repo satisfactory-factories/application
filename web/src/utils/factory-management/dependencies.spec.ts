@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
-  calculateDependencies,
+  calculateAllDependencies,
   removeFactoryDependants,
   updateDependency,
 } from '@/utils/factory-management/dependencies'
@@ -146,7 +146,7 @@ describe('dependencies', () => {
       }
 
       addInputToFactory(mockDependantFactory, input)
-      calculateDependencies(factories, gameData, true) // Has to be true otherwise imports get removed due to no parts
+      calculateAllDependencies(factories, gameData, true) // Has to be true otherwise imports get removed due to no parts
       expect(mockFactory.dependencies.requests[mockDependantFactory.id].length).toBe(1)
       expect(mockFactory.dependencies.requests[mockDependantFactory.id][0].part).toBe('IronIngot')
     })
@@ -160,7 +160,7 @@ describe('dependencies', () => {
       }
       mockDependantFactory.inputs.push(input)
 
-      calculateDependencies(factories, gameData, true)
+      calculateAllDependencies(factories, gameData, true)
       // TODO: console.error should be called
       expect(factories.find).toBeCalledTimes(0)
     })
@@ -174,7 +174,7 @@ describe('dependencies', () => {
 
       addInputToFactory(mockFactory, input)
       expect(() => {
-        calculateDependencies(factories, gameData, true)
+        calculateAllDependencies(factories, gameData, true)
       }).toThrow()
     })
 
@@ -189,7 +189,7 @@ describe('dependencies', () => {
       // It should have force added the input.
       expect(mockDependantFactory.inputs.length).toBe(1)
 
-      calculateDependencies(factories, gameData) // Note not true on purpose here to test the factory not existing, parts are not involved.
+      calculateAllDependencies(factories, gameData) // Note not true on purpose here to test the factory not existing, parts are not involved.
       // TODO: console.error should be called
 
       // The invalid input should be removed.
