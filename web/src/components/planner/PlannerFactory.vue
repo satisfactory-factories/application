@@ -42,7 +42,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!factory.products[0]?.id" @click="setSyncState(factory)">
+                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                 </v-chip>
@@ -318,6 +318,11 @@
   const hasExports = (factory: Factory) => {
     if (!factory.dependencies?.requests) return false
     return Object.keys(factory.dependencies.requests).length > 0
+  }
+
+  const validForGameSync = (factory: Factory): boolean => {
+    return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
+      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
   }
 
 </script>
