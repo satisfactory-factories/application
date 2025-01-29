@@ -714,5 +714,57 @@ describe('inputs', () => {
 
       expect(ingotFac.parts.IronIngot.amountRequired).toBe(0)
     })
+
+    it('should not affect other factory dependency pairs', () => {
+      // Add a third factory that requires Iron Ingots
+      const ironPlateFac2 = newFactory('Iron Plates 2')
+      addProductToFactory(ironPlateFac2, {
+        id: 'IronPlate',
+        amount: 1000,
+        recipe: 'IronPlate',
+      })
+      addInputToFactory(ironPlateFac2, {
+        factoryId: ingotFac.id,
+        outputPart: 'IronIngot',
+        amount: 150,
+      })
+
+      factories.push(ironPlateFac2)
+      calculateFactories(factories, gameData)
+
+      const input = ironPlateFac.inputs[0]
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ingotFac.parts.IronIngot.amountRequired).toBe(150) // Demand from plate fac 2
+      expect(ironPlateFac2.parts.IronIngot.amountSupplied).toBe(150) // Supply from ingots
+      expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Deleted input factory
+    })
+
+    it('should not affect other parts based on the same factory pair', () => {
+      // Add a new product to iron ingot fac (copperingots)
+      addProductToFactory(ingotFac, {
+        id: 'CopperIngot',
+        amount: 1000,
+        recipe: 'IngotCopper',
+      })
+
+      // Add a new input to iron plate fac that requires copper ingots
+      addInputToFactory(ironPlateFac, {
+        factoryId: ingotFac.id,
+        outputPart: 'CopperIngot',
+        amount: 100,
+      })
+
+      calculateFactories(factories, gameData)
+
+      const input = ironPlateFac.inputs[0] // Iron Ingots
+      expect(input.outputPart).toBe('IronIngot')
+
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(ingotFac.parts.IronIngot.amountRequired).toBe(0) // Iron Ingot demand
+      expect(ingotFac.parts.CopperIngot.amountRequired).toBe(100) // Copper Ingot demand
+      expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Iron Ingot removed supply
+    })
   })
 })

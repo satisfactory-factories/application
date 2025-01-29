@@ -307,21 +307,20 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
 }
 
 export const deleteInputPair = (factory: Factory, input: FactoryInput, factories: Factory[], gameData: DataInterface): void => {
-  const sourceFactory = findFac(String(input.factoryId), factories)
+  const supplyingFactory = findFac(String(input.factoryId), factories)
 
-  if (!sourceFactory) {
+  if (!supplyingFactory) {
     throw new Error(`inputs: deleteInputPair: Source factory ${input.factoryId} not found!`)
   }
 
   // Delete the source factory's input by factory and part
-  factory.inputs = factory.inputs.filter(i =>
-    i.factoryId !== sourceFactory.id &&
-    i.outputPart === input.outputPart
-  )
+  factory.inputs = factory.inputs.filter(inp => {
+    return !(inp.factoryId === input.factoryId && inp.outputPart === input.outputPart)
+  })
 
   // Calculate the factory again as it's inputs have now changed
   calculateFactory(factory, factories, gameData)
 
   // Now calculate the dependencies on the other factory, which will remove the dependency on the deleted input and recalculate the parts.
-  recalculateFactoryDependencies(sourceFactory, factories, gameData)
+  recalculateFactoryDependencies(supplyingFactory, factories, gameData)
 }
