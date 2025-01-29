@@ -1,6 +1,8 @@
 // This simply loops through all the inputs and adds them to the parts object.
-import { Factory } from '@/interfaces/planner/FactoryInterface'
-import { findFac } from '@/utils/factory-management/factory'
+import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
+import { calculateFactory, findFac } from '@/utils/factory-management/factory'
+import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
+import { DataInterface } from '@/interfaces/DataInterface'
 
 export const getInput = (factory: Factory, part: string, factoryId?: number) => {
   // Returns a SINGULAR input object by the outputPart. If multiple are detected, throw.
@@ -302,4 +304,24 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
     partData.amountSuppliedViaProduction -
     totalImported
   input.amount = difference > 0 ? difference : 0 // Don't set it to negatives
+}
+
+export const deleteInputPair = (factory: Factory, input: FactoryInput, factories: Factory[], gameData: DataInterface): void => {
+  const sourceFactory = findFac(String(input.factoryId), factories)
+
+  if (!sourceFactory) {
+    throw new Error(`inputs: deleteInputPair: Source factory ${input.factoryId} not found!`)
+  }
+
+  // Delete the source factory's input by factory and part
+  factory.inputs = factory.inputs.filter(i =>
+    i.factoryId !== sourceFactory.id &&
+    i.outputPart === input.outputPart
+  )
+
+  // Calculate the factory again as it's inputs have now changed
+  calculateFactory(factory, factories, gameData)
+
+  // Now calculate the dependencies on the other factory, which will remove the dependency on the deleted input and recalculate the parts.
+  recalculateFactoryDependencies(sourceFactory, factories, gameData)
 }

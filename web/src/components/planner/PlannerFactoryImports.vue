@@ -161,7 +161,7 @@
     addInputToFactory,
     calculateAbleToImport,
     calculateImportCandidates,
-    calculatePossibleImports,
+    calculatePossibleImports, deleteInputPair,
     importFactorySelections,
     importPartSelections, isImportRedundant, satisfyImport,
   } from '@/utils/factory-management/inputs'
@@ -170,7 +170,6 @@
   import { useDisplay } from 'vuetify'
   import { useAppStore } from '@/stores/app-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
-  import { calculateDependencies } from '@/utils/factory-management/dependencies'
   import { useGameDataStore } from '@/stores/game-data-store'
 
   const { getFactories } = useAppStore()
@@ -196,20 +195,8 @@
   }
 
   const deleteInput = (inputIndex: number, factory: Factory) => {
-    // Need to recalculate dependencies as we've now removed an input
-    calculateDependencies(getFactories(), getGameData())
-    // Take a copy of the current input data without copying via reference
-    const input: FactoryInput = JSON.parse(JSON.stringify(factory.inputs[inputIndex]))
-
-    factory.inputs.splice(inputIndex, 1)
-
-    // Update the factory as our parts will have been changed
-    updateFactory(factory)
-
-    // Also update the other factory affected
-    if (input.factoryId) {
-      updateFactory(findFactory(input.factoryId))
-    }
+    const input = factory.inputs[inputIndex]
+    deleteInputPair(factory, input, getFactories(), getGameData())
   }
 
   const factoriesWithExports = computed(() => {

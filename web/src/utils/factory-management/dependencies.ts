@@ -1,5 +1,5 @@
 import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/planner/FactoryInterface'
-import { findFac } from '@/utils/factory-management/factory'
+import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { calculateParts } from '@/utils/factory-management/parts'
 import { DataInterface } from '@/interfaces/DataInterface'
 
@@ -45,7 +45,7 @@ export const updateDependency = (
 }
 
 // Scans for invalid dependency requests and removes the request and the input from the erroneous factory.
-export const flushInvalidRequests = (factories: Factory[]): void => {
+export const flushInvalidRequests = (factories: Factory[], gameData: DataInterface): void => {
   // console.log('dependencies: flushInvalidRequests')
   factories.forEach(factory => {
     // If there's no requests, nothing to do.
@@ -72,17 +72,9 @@ export const flushInvalidRequests = (factories: Factory[]): void => {
 
         // If the product does not exist, remove the dependency and the input.
         if (!foundPart) {
-          console.warn(`flushInvalidRequests: Factory "${factory.name}" (${factory.id}) does not have the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
+          console.warn(`flushInvalidRequests: partCheck Factory "${factory.name}" (${factory.id}) does not have the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
-          // Filter out the dependency request(s) for the part from the erroneous factory.
-          removeDependency(factory, dependantFactory, request.part)
-
-          // Delete the input from the factory that caused the issue.
-          dependantFactory.inputs.forEach((input, index) => {
-            if (input.factoryId === factory.id && input.outputPart === request.part) {
-              dependantFactory.inputs.splice(index, 1)
-            }
-          })
+          deleteRequestPair(factory, dependantFactory, factories, request, gameData)
         }
         const foundProduct = factory.products.find(product => product.id === request.part)
         const foundByProduct = factory.byProducts.find(byProduct => byProduct.id === request.part)
@@ -91,26 +83,17 @@ export const flushInvalidRequests = (factories: Factory[]): void => {
         // If a part is found, check if the part is produced within the factory. If it isn't, remove the dependency and the input.
         // Thankfully since we are doing the dependency calculation BEFORE the parts calculation, the part data will be eventually correct.
         if (foundPart && (!foundProduct && !foundByProduct && !foundPowerProducerByProduct)) {
-          console.warn(`flushInvalidRequests: Factory "${factory.name}" (${factory.id}) does not produce the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
+          console.warn(`flushInvalidRequests: productCheck: Factory "${factory.name}" (${factory.id}) does not produce the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
-          // Filter out the dependency request(s) for the part from the erroneous factory.
-          removeDependency(factory, dependantFactory, request.part)
-
-          // Delete the input from the factory that caused the issue.
-          dependantFactory.inputs.forEach((input, index) => {
-            if (input.factoryId === factory.id && input.outputPart === request.part) {
-              dependantFactory.inputs.splice(index, 1)
-            }
-          })
+          deleteRequestPair(factory, dependantFactory, factories, request, gameData)
         }
 
         // Check the other end for invalid inputs
         const foundInput = dependantFactory.inputs.find(input => input.factoryId === factory.id && input.outputPart === request.part)
         if (!foundInput) {
-          console.warn(`flushInvalidRequests: Found invalid input for "${factory.name}" (${factory.id}) was requesting ${request.part} from "${dependantFactory.name}" (${dependantFactory.id}) where it does not exist.`, foundInput)
+          console.warn(`flushInvalidRequests: inputCheck: Found invalid input for "${factory.name}" (${factory.id}) was requesting ${request.part} from "${dependantFactory.name}" (${dependantFactory.id}) where it does not exist.`, foundInput)
 
-          // Filter out the dependency request(s) for the part from the erroneous factory.
-          removeDependency(factory, dependantFactory, request.part)
+          deleteRequestPair(factory, dependantFactory, factories, request, gameData)
         }
 
         // If all requests from the factory have been removed, also delete the key.
@@ -143,12 +126,19 @@ export const removeFactoryDependants = (factory: Factory, factories: Factory[]) 
 }
 
 // Loop through all factories, checking their inputs and building a dependency tree.
-export const calculateDependencies = (factories: Factory[], gameData: DataInterface, loadMode = false): void => {
-  flushInvalidRequests(factories)
+export const calculateAllDependencies = (factories: Factory[], gameData: DataInterface, loadMode = false): void => {
+  flushInvalidRequests(factories, gameData)
 
   factories.forEach(factory => {
     calculateFactoryDependencies(factory, factories, gameData, loadMode)
   })
+}
+
+// Lighter version of the allDependencies when only one factory needs to be recalculated.
+export const recalculateFactoryDependencies = (factory: Factory, factories: Factory[], gameData: DataInterface): void => {
+  flushInvalidRequests(factories, gameData)
+
+  calculateFactoryDependencies(factory, factories, gameData)
 }
 
 // This function checks a factory's inputs and generates the dependency data.
@@ -256,4 +246,26 @@ export const calculateDependencyMetricsSupply = (factory: Factory) => {
     metrics.difference = metrics.supply - metrics.request
     metrics.isRequestSatisfied = metrics.difference >= 0
   })
+}
+
+export const deleteRequestPair = (
+  factory: Factory,
+  dependantFactory: Factory,
+  factories:Factory[],
+  request: FactoryDependencyRequest,
+  gameData: DataInterface
+) => {
+  // Filter out the dependency request(s) for the part from the erroneous factory.
+  removeDependency(factory, dependantFactory, request.part)
+
+  // Delete any inputs from the requesting factory
+  dependantFactory.inputs.forEach((input, index) => {
+    if (input.factoryId === factory.id && input.outputPart === request.part) {
+      dependantFactory.inputs.splice(index, 1)
+    }
+  })
+
+  // Recalculate the both factories now as the part demand has changed likely for both.
+  calculateFactory(factory, factories, gameData)
+  calculateFactory(dependantFactory, factories, gameData)
 }
