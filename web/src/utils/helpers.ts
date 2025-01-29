@@ -35,5 +35,5 @@ export const replacePlaceholders = (inputString: string, valuesArray: string[]) 
   return inputString.replace(/\$(\d+)/g, (match, index) => {
     const valueIndex = parseInt(index, 10) - 1
     return valuesArray[valueIndex] || match
-  });
+  })
 }

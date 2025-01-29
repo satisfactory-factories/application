@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
   import { defineEmits } from 'vue'
-  import { parseSavFile, importWorldLoadMessages } from '@/utils/world-import/worldParser'
+  import { importWorldLoadMessages, parseSavFile } from '@/utils/world-import/worldParser'
   import eventBus from '@/utils/eventBus'
   import { replacePlaceholders } from '@/utils/helpers'
 
@@ -61,7 +61,7 @@
     showDialog.value = false
   }
 
-  function selectFile() {
+  function selectFile () {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.sav'
@@ -69,17 +69,17 @@
     input.click()
   }
 
-  function readFile(e: any) {
+  function readFile (e: any) {
     const file = e.target.files[0]
 
-    const name = file.name.split("_")[0] || file.name
+    const name = file.name.split('_')[0] || file.name
 
-    console.log("Selected world save:", name)
-    eventBus.emit('loaderInit', { steps: Object.keys(importWorldLoadMessages).length, title: "Importing world file..." })
+    console.log('Selected world save:', name)
+    eventBus.emit('loaderInit', { steps: Object.keys(importWorldLoadMessages).length, title: 'Importing world file...' })
     eventBus.emit('loaderNextStep', { message: replacePlaceholders(importWorldLoadMessages.read_world, [name]) })
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = e => {
       if (!e.target?.result) return
 
       const buffer = new Uint8Array(e.target.result as ArrayBuffer)

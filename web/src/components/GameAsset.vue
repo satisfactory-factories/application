@@ -49,7 +49,7 @@
     }
     if (type === 'building') {
       return getImageUrl(subject, 'building', size)
-    } else if (type === "item_id") {
+    } else if (type === 'item_id') {
       return getImageUrl(subject, 'item', size)
     } else if (type === 'vehicle') {
       return getImageUrl(subject, 'vehicle', size)

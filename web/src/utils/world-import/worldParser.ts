@@ -1,5 +1,5 @@
 import eventBus from '@/utils/eventBus'
-import parseFile from "sav2json"
+import parseFile from 'sav2json'
 
 export type Building = {
   id: string
@@ -10,48 +10,48 @@ export type Building = {
 }
 
 export const importWorldLoadMessages = {
-  read_world: "Reading world $1...",
-  parse_sav: "Parsing sav format...",
-  organizing_objects: "Organizing objects...",
-  done: "Done!",
+  read_world: 'Reading world $1...',
+  parse_sav: 'Parsing sav format...',
+  organizing_objects: 'Organizing objects...',
+  done: 'Done!',
 }
 
-export async function parseSavFile(buffer: Uint8Array) {
+export async function parseSavFile (buffer: Uint8Array) {
   eventBus.emit('loaderNextStep', { message: importWorldLoadMessages.parse_sav })
 
   let json
   try {
     json = await parseFile(buffer)
   } catch (err) {
-    eventBus.emit('loaderNextStep', { message: "Something went wrong!", isFinalStep: true })
+    eventBus.emit('loaderNextStep', { message: 'Something went wrong!', isFinalStep: true })
     console.error(err)
     return
   }
-  console.log("WORLD:", json)
-  
+  console.log('WORLD:', json)
+
   const objects = parseObjects(json)
   // const objectsWithIO = getIOItems(objects)
 
-  let objectsWithSomersloops: any[] = []
-  Object.keys(objects).forEach((id) => {
-    objects[id].forEach((object) => {
+  const objectsWithSomersloops: any[] = []
+  Object.keys(objects).forEach(id => {
+    objects[id].forEach(object => {
       const slots = getInventorySlots(object.components || [])
       object.slots = slots
       if (slots.somersloops) objectsWithSomersloops.push(trimObject(object))
     })
   })
 
-  console.log("DONE", objectsWithSomersloops)
+  console.log('DONE', objectsWithSomersloops)
 
   eventBus.emit('loaderNextStep', { message: importWorldLoadMessages.done })
-  eventBus.emit("worldDataShow", true)
+  eventBus.emit('worldDataShow', true)
   // wait for popup to init
   setTimeout(() => {
-    eventBus.emit("worldData", { buildings: objectsWithSomersloops })
+    eventBus.emit('worldData', { buildings: objectsWithSomersloops })
   })
 }
 
-function parseObjects(json: any) {
+function parseObjects (json: any) {
   eventBus.emit('loaderNextStep', { message: importWorldLoadMessages.organizing_objects })
 
   // get main objects in world
@@ -61,28 +61,28 @@ function parseObjects(json: any) {
 
   // we do not need conveyors as we have the connectionComponent
   // only keep the necessary objects, like machines, inventories and belt connections
-  const allowObjects = ["/Buildable/Factory", "Inventory", "/Resource/", "FactoryConnectionComponent"]
-  const hideObjects = ["Power", "Light", "Floodlight", "ConveyorPole", "SignDigital", "HubTerminal", "WorkBench", "Workshop", "TradingPost", "Mam", "Parts", "Blueprint"]
+  const allowObjects = ['/Buildable/Factory', 'Inventory', '/Resource/', 'FactoryConnectionComponent']
+  const hideObjects = ['Power', 'Light', 'Floodlight', 'ConveyorPole', 'SignDigital', 'HubTerminal', 'WorkBench', 'Workshop', 'TradingPost', 'Mam', 'Parts', 'Blueprint']
 
   // merge objects with their header values
-  let filteredObjects: any[] = [];
+  const filteredObjects: any[] = []
   data.objectHeaders.forEach((header: any, i: number) => {
-    if (!allowObjects.find((a) => header.typePath.includes(a))) return
-    if (hideObjects.find((a) => header.typePath.includes(a))) return
+    if (!allowObjects.find(a => header.typePath.includes(a))) return
+    if (hideObjects.find(a => header.typePath.includes(a))) return
 
     filteredObjects.push({ ...header, ...data.objects[i] })
   })
 
   // merge same object types into one array (for easier reading)
   const mergedObjects: { [key: string]: any[] } = {}
-  filteredObjects.forEach((obj) => {
-    const type = obj.typePath.replace("/Game/FactoryGame", "")
+  filteredObjects.forEach(obj => {
+    const type = obj.typePath.replace('/Game/FactoryGame', '')
     if (!mergedObjects[type]) mergedObjects[type] = []
     mergedObjects[type].push(trimObject(obj))
   })
 
   // remove unnecessary values
-  function trimObject(obj: any) {
+  function trimObject (obj: any) {
     delete obj.typePath
     delete obj.rootObject
     delete obj.parentLevelName
@@ -92,9 +92,9 @@ function parseObjects(json: any) {
   }
 
   // format all inventory items
-  let inventories: { [key: string]: any } = {};
-  const objectInventories = mergedObjects["/Script/FactoryGame.FGInventoryComponent"]
-  objectInventories.forEach((inv) => {
+  const inventories: { [key: string]: any } = {}
+  const objectInventories = mergedObjects['/Script/FactoryGame.FGInventoryComponent']
+  objectInventories.forEach(inv => {
     if (!inv.properties?.length) return
 
     const id = inv.instanceName
@@ -104,35 +104,35 @@ function parseObjects(json: any) {
     inventories[id] = values
   })
 
-  function formatProperties(values: any[]): InventoryItem[] {
+  function formatProperties (values: any[]): InventoryItem[] {
     return values
-      .map((a) => Object.values(a))
+      .map(a => Object.values(a))
       .flat()
-      .filter((a: any) => a.type === "InventoryItem" && a.itemName)
+      .filter((a: any) => a.type === 'InventoryItem' && a.itemName)
       .map((a: any) => ({ name: a.itemName, amount: a.property?.property?.value || 0 }))
   }
 
   // add inventory items to objects
   Object.values(mergedObjects).forEach((objects: any[]) => {
-    objects.forEach((obj) => {
+    objects.forEach(obj => {
       obj.components?.forEach((component: any) => {
-        let inventory = inventories[component.pathName]
+        const inventory = inventories[component.pathName]
         if (inventory) component.inventory = inventory
       })
     })
   })
 
-  console.log("OBJECTS", mergedObjects)
+  console.log('OBJECTS', mergedObjects)
   return mergedObjects
 }
 
-function trimObject(object: any) {
+function trimObject (object: any) {
   const name = getBuildingName(object.instanceName)
-  const product = object.properties.find((a: any, i: number) => i < 5 && a?.pathName?.includes(".Recipe_"))?.pathName
+  const product = object.properties.find((a: any, i: number) => i < 5 && a?.pathName?.includes('.Recipe_'))?.pathName
   return {
     name,
     slots: object.slots,
-    product: getRecipeName(product)
+    product: getRecipeName(product),
   }
 }
 
@@ -141,33 +141,32 @@ type InventoryItem = {
   amount: number
 }
 
-export function getInventorySlots(components: any[]) {
-  const input: InventoryItem[] = components.find((a) => a.pathName.includes("InputInventory"))?.inventory || []
-  const output: InventoryItem[] = components.find((a) => a.pathName.includes("OutputInventory"))?.inventory || []
+export function getInventorySlots (components: any[]) {
+  const input: InventoryItem[] = components.find(a => a.pathName.includes('InputInventory'))?.inventory || []
+  const output: InventoryItem[] = components.find(a => a.pathName.includes('OutputInventory'))?.inventory || []
 
-  const extra: InventoryItem[] = components.find((a) => a.pathName.includes("InventoryPotential"))?.inventory || []
+  const extra: InventoryItem[] = components.find(a => a.pathName.includes('InventoryPotential'))?.inventory || []
   // /Game/FactoryGame/Resource/Environment/Crystal/Desc_CrystalShard.Desc_CrystalShard_C (1x1x1)
-  const powershards: number = extra.filter((a) => a.name.includes("CrystalShard")).length
+  const powershards: number = extra.filter(a => a.name.includes('CrystalShard')).length
   // /Game/FactoryGame/Prototype/WAT/Desc_WAT1.Desc_WAT1_C (4)
-  const somersloops: number = extra.filter((a) => a.name.includes("/WAT/"))?.[0]?.amount || 0
+  const somersloops: number = extra.filter(a => a.name.includes('/WAT/'))?.[0]?.amount || 0
 
   return { input, output, powershards, somersloops }
 }
 
-function getBuildingName(instanceName: string) {
-  if (!instanceName) return ""
-  const start = instanceName.indexOf("Build_") + 6
-  const end = instanceName.indexOf("_", start)
+function getBuildingName (instanceName: string) {
+  if (!instanceName) return ''
+  const start = instanceName.indexOf('Build_') + 6
+  const end = instanceName.indexOf('_', start)
   return instanceName.slice(start, end).toLowerCase()
 }
 
-function getRecipeName(pathName: string) {
-  if (!pathName) return ""
-  const start = pathName.indexOf("/Recipe_") + 8
-  const end = pathName.indexOf(".Recipe_", start)
-  return pathName.slice(start, end).replace(".Recipe", "")
+function getRecipeName (pathName: string) {
+  if (!pathName) return ''
+  const start = pathName.indexOf('/Recipe_') + 8
+  const end = pathName.indexOf('.Recipe_', start)
+  return pathName.slice(start, end).replace('.Recipe', '')
 }
-
 
 // ALTERNATIVE: create a node graph of current world using the existing factory system
 // const objects = parseObjects(json)
@@ -185,7 +184,7 @@ function getRecipeName(pathName: string) {
 //     let type = req.name
 //     const buildingType = Object.keys(objects).find(buildingId => buildingId.toLowerCase().includes(type))
 //     if (!buildingType) return
-    
+
 //     buildings.push(...objects[buildingType].map(a => ({
 //       id: a.instanceName,
 //       type,
@@ -236,7 +235,7 @@ function getRecipeName(pathName: string) {
 //         notes: "",
 //         dataVersion: ""
 //       }
-  
+
 //       factories[building.instanceName] = factory
 //     })
 //   })
