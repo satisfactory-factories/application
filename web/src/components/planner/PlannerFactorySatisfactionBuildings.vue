@@ -37,6 +37,7 @@
           variant="tonal"
         >
           <game-asset
+            :key="`${buildingIndex}-${buildingData.name}`"
             :subject="buildingData.name"
             type="building"
           />
