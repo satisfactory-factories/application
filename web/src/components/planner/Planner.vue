@@ -228,12 +228,18 @@
   const copyFactory = (originalFactory: Factory) => {
     // Make a deep copy of the factory with a new ID
     const newId = Math.floor(Math.random() * 10000)
-    const newFactory = {
+    const newFactory: Factory = {
       ...JSON.parse(JSON.stringify(originalFactory)),
       id: newId,
       name: `${originalFactory.name} (copy)`,
       displayOrder: originalFactory.displayOrder + 1,
     }
+
+    // Remove GameSync data from the new factory
+    newFactory.syncState = {}
+    newFactory.syncStatePower = {}
+    newFactory.inSync = null
+
     getFactories().push(newFactory)
 
     // Update the display order of the other factory
