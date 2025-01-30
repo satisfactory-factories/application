@@ -1,124 +1,130 @@
 <template>
-  <v-card class="rounded sub-card border-md mb-2">
-    <div
-      v-for="(input, inputIndex) in factory.inputs"
-      :key="`${input.factoryId}-${input.outputPart}`"
-      class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
-    >
-      <div class="input-row d-flex align-center">
-        <i class="fas fa-industry mr-2" style="width: 32px; height: 32px;" />
-        <!-- This is being watched for changes to update the old factory -->
-        <v-autocomplete
-          v-model.number="input.factoryId"
-          hide-details
-          :items="getImportFactorySelections(inputIndex)"
-          label="Factory"
-          max-width="300px"
-          variant="outlined"
-          width="300px"
-          @update:model-value="handleInputFactoryChange(factory)"
-        />
-      </div>
-      <div class="input-row d-flex align-center">
-        <span v-show="!input.outputPart" class="mr-2">
-          <i class="fas fa-cube" style="width: 32px; height: 32px" />
-        </span>
-        <span v-if="input.outputPart" class="mr-2">
-          <game-asset
-            :key="input.outputPart"
-            height="32px"
-            :subject="input.outputPart"
-            type="item"
-            width="32px"
+  <template v-if="!validToDisplay">
+    <p class="text-body-2">There are no factories available to import the current product selection.</p>
+  </template>
+  <template v-else>
+    <v-card class="rounded sub-card border-md mb-2">
+      <div
+        v-for="(input, inputIndex) in factory.inputs"
+        :key="`${input.factoryId}-${input.outputPart}`"
+        class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
+      >
+        <div class="input-row d-flex align-center">
+          <i class="fas fa-industry mr-2" style="width: 32px; height: 32px;" />
+          <!-- This is being watched for changes to update the old factory -->
+          <v-autocomplete
+            v-model.number="input.factoryId"
+            hide-details
+            :items="getImportFactorySelections(inputIndex)"
+            label="Factory"
+            max-width="300px"
+            variant="outlined"
+            width="300px"
+            @update:model-value="handleInputFactoryChange(factory)"
           />
-        </span>
-        <v-autocomplete
-          v-model="input.outputPart"
-          :disabled="!input.factoryId"
-          hide-details
-          :items="getImportPartSelections(inputIndex)"
-          label="Item"
-          max-width="350px"
-          variant="outlined"
-          width="350px"
-          @update:model-value="updateFactories(factory, input)"
-        />
+        </div>
+        <div class="input-row d-flex align-center">
+          <span v-show="!input.outputPart" class="mr-2">
+            <i class="fas fa-cube" style="width: 32px; height: 32px" />
+          </span>
+          <span v-if="input.outputPart" class="mr-2">
+            <game-asset
+              :key="input.outputPart"
+              height="32px"
+              :subject="input.outputPart"
+              type="item"
+              width="32px"
+            />
+          </span>
+          <v-autocomplete
+            v-model="input.outputPart"
+            :disabled="!input.factoryId"
+            hide-details
+            :items="getImportPartSelections(inputIndex)"
+            label="Item"
+            max-width="350px"
+            variant="outlined"
+            width="350px"
+            @update:model-value="updateFactories(factory, input)"
+          />
+        </div>
+        <div class="input-row d-flex align-center">
+          <v-number-input
+            v-model.number="input.amount"
+            control-variant="stacked"
+            :disabled="!input.outputPart"
+            hide-details
+            label="Qty /min"
+            :max-width="smAndDown ? undefined : '130px'"
+            :min-width="smAndDown ? undefined : '130px'"
+            :name="`${input.factoryId}-${input.outputPart}.amount`"
+            variant="outlined"
+            @update:model-value="updateFactories(factory, input)"
+          />
+        </div>
+        <div class="input-row d-flex align-center">
+          <v-btn
+            v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
+            class="rounded mr-2"
+            color="yellow"
+            prepend-icon="fas fa-arrow-down"
+            size="default"
+            @click="updateInputToSatisfy(inputIndex, factory)"
+          >Trim</v-btn>
+          <v-btn
+            v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
+            class="rounded mr-2"
+            color="green"
+            prepend-icon="fas fa-arrow-up"
+            size="default"
+            @click="updateInputToSatisfy(inputIndex, factory)"
+          >Satisfy</v-btn>
+          <v-btn
+            class="rounded"
+            color="primary"
+            :disabled="!input.factoryId"
+            prepend-icon="fas fa-industry"
+            size="default"
+            variant="outlined"
+            @click="navigateToFactory(input.factoryId)"
+          >View</v-btn>
+          <v-btn
+            class="rounded ml-2"
+            color="red"
+            icon="fas fa-trash"
+            size="small"
+            variant="outlined"
+            @click="deleteInput(inputIndex, factory)"
+          />
+        </div>
+        <div class="input-row d-flex align-center">
+          <v-chip v-if="input.amount === 0" class="sf-chip red small">
+            <i class="fas fa-exclamation-triangle" />
+            <span class="ml-2">No amount set!</span>
+          </v-chip>
+          <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small orange">
+            <i class="fas fa-exclamation-triangle" />
+            <span class="ml-2">Redundant!</span>
+          </v-chip>
+        </div>
       </div>
-      <div class="input-row d-flex align-center">
-        <v-number-input
-          v-model.number="input.amount"
-          control-variant="stacked"
-          :disabled="!input.outputPart"
-          hide-details
-          label="Qty /min"
-          :max-width="smAndDown ? undefined : '130px'"
-          :min-width="smAndDown ? undefined : '130px'"
-          :name="`${input.factoryId}-${input.outputPart}.amount`"
-          variant="outlined"
-          @update:model-value="updateFactories(factory, input)"
-        />
-      </div>
-      <div class="input-row d-flex align-center">
-        <v-btn
-          v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
-          class="rounded mr-2"
-          color="yellow"
-          prepend-icon="fas fa-arrow-down"
-          size="default"
-          @click="updateInputToSatisfy(inputIndex, factory)"
-        >Trim</v-btn>
-        <v-btn
-          v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
-          class="rounded mr-2"
-          color="green"
-          prepend-icon="fas fa-arrow-up"
-          size="default"
-          @click="updateInputToSatisfy(inputIndex, factory)"
-        >Satisfy</v-btn>
-        <v-btn
-          class="rounded"
-          color="primary"
-          :disabled="!input.factoryId"
-          prepend-icon="fas fa-industry"
-          size="default"
-          variant="outlined"
-          @click="navigateToFactory(input.factoryId)"
-        >View</v-btn>
-        <v-btn
-          class="rounded ml-2"
-          color="red"
-          icon="fas fa-trash"
-          size="small"
-          variant="outlined"
-          @click="deleteInput(inputIndex, factory)"
-        />
-      </div>
-      <div class="input-row d-flex align-center">
-        <v-chip v-if="input.amount === 0" class="sf-chip red small">
-          <i class="fas fa-exclamation-triangle" />
-          <span class="ml-2">No amount set!</span>
-        </v-chip>
-        <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small orange">
-          <i class="fas fa-exclamation-triangle" />
-          <span class="ml-2">Redundant!</span>
-        </v-chip>
-      </div>
+    </v-card>
+    <div class="input-row d-flex align-center">
+      <v-btn
+        v-show="Object.keys(factory.parts).length > 0"
+        color="green"
+        :disabled="ableToImport(factory) !== true"
+        prepend-icon="fas fa-dolly"
+        ripple
+        :variant="ableToImport(factory) === true ? 'flat' : 'outlined'"
+        @click="addEmptyInput(factory)"
+      >Add Import
+      </v-btn>
+      <span v-if="ableToImport(factory) === 'rawOnly'" class="ml-2">(This factory is only using raw resources and requires no imports.)</span>
+      <span v-if="ableToImport(factory) === 'noImportFacs'" class="ml-2">(There are no factories that have exports available to supply this factory.)</span>
     </div>
-  </v-card>
-  <div class="input-row d-flex align-center">
-    <v-btn
-      v-show="Object.keys(factory.parts).length > 0"
-      color="green"
-      :disabled="ableToImport(factory) !== true"
-      prepend-icon="fas fa-dolly"
-      ripple
-      :variant="ableToImport(factory) === true ? 'flat' : 'outlined'"
-      @click="addEmptyInput(factory)"
-    >Add Import
-    </v-btn>
-    <span v-if="ableToImport(factory) === 'rawOnly'" class="ml-2">(This factory is only using raw resources and requires no imports.)</span>
-    <span v-if="ableToImport(factory) === 'noImportFacs'" class="ml-2">(There are no factories that have exports available to supply this factory.)</span>
-  </div>
+  </template>
+
 </template>
 
 <script setup lang="ts">
@@ -154,6 +160,18 @@
     factory: Factory;
     helpText: boolean;
   }>()
+
+  const validToDisplay = computed(() => {
+    if (possibleImports.value.length > 0) {
+      return true
+    }
+
+    if (props.factory.inputs.length > 0) {
+      return true
+    }
+
+    return false
+  })
 
   // Check if another factory has exports that can be used as imports for the current factory
   const possibleImports = computed(() => {
@@ -276,9 +294,10 @@
       updateFactory(findFactory(input.factoryId))
     }
   }
-
 </script>
 
+<script setup lang="ts">
+</script>
 <style lang="scss" scoped>
   .input-row {
     max-width: 100%;

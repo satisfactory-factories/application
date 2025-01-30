@@ -1,5 +1,5 @@
 <template>
-  <v-card v-if="Object.keys(factory.rawResources).length > 0" class="mb-4 border-md sub-card">
+  <v-card v-if="validToDisplay" class="mb-4 border-md sub-card">
     <v-card-title>
       <i class="fas fa-hard-hat" /><span class="ml-2">Raw Resources</span>
     </v-card-title>
@@ -20,10 +20,28 @@
     </v-card-text>
   </v-card>
 </template>
+
 <script setup lang="ts">
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
 
-  defineProps<{ factory: Factory }>()
+  const props = defineProps<{ factory: Factory }>()
+
+  const validToDisplay = computed(() => {
+    let valid = false
+
+    if (Object.keys(props.factory.parts).length > 0) {
+      // Scan all parts and if one of them has raw resources demand then it's valid to display.
+      // Fixes #266.
+      Object.keys(props.factory.parts).forEach(partKey => {
+        const partData = props.factory.parts[partKey]
+        if (partData.amountSuppliedViaRaw > 0) {
+          valid = true
+        }
+      })
+    }
+
+    return valid
+  })
 </script>
