@@ -5,12 +5,12 @@ import {
   addProductToFactory,
   fixProduct,
   getProduct,
-  getProductAmountByPart,
+  getProductAmountByPart, isPartByProductOfRecipe,
   recipeByproductPerMin,
   recipeIngredientPerMin,
   shouldShowFix,
   shouldShowInternal,
-  shouldShowNotInDemand,
+  shouldShowNotInDemand, swapByProductRecipeForProduct,
   updateProductAmountViaByproduct,
   updateProductAmountViaRequirement,
 } from '@/utils/factory-management/products'
@@ -751,5 +751,54 @@ describe('products', () => {
     })
   })
 
-  describe('isPartBy')
+  describe('isPartByProductOfRecipe', () => {
+    it('should detect if a part is a byproduct of a recipe', () => {
+      expect(isPartByProductOfRecipe('HeavyOilResidue', 'Rubber', gameData)).toBe(true)
+      expect(isPartByProductOfRecipe('Water', 'Battery', gameData)).toBe(true)
+      expect(isPartByProductOfRecipe('SulfuricAcid', 'UraniumCell', gameData)).toBe(true)
+    })
+
+    it('should not incorrectly detect a byproduct-able part being a byproduct if it is an actual product', () => {
+      // Check it's not detecting legitimate parts as byproducts
+      expect(isPartByProductOfRecipe('UraniumCell', 'UraniumCell', gameData)).toBe(false)
+
+      // Check if it's not detecting itself being a byproduct of other recipes when it is an product in it's own right
+      expect(isPartByProductOfRecipe('Water', 'UnpackageWater', gameData)).toBe(false)
+      expect(isPartByProductOfRecipe('SulphuricAcid', 'SulfuricAcid', gameData)).toBe(false)
+    })
+  })
+
+  describe('swapByProductRecipeForProduct', () => {
+    it('should correctly swap out a byproduct recipe for a product recipe', () => {
+      const product = {
+        id: 'HeavyOilResidue',
+        amount: 100,
+        recipe: 'Rubber',
+      } as FactoryItem
+
+      swapByProductRecipeForProduct(product, gameData)
+
+      expect(product).toEqual({
+        id: product.recipe,
+        amount: 100,
+        recipe: product.recipe,
+      })
+    })
+
+    it('should correctly swap out a byproduct recipe for a product even on weird names', () => {
+      const product = {
+        id: 'HeavyOilResidue',
+        amount: 100,
+        recipe: 'Rubber',
+      } as FactoryItem
+
+      swapByProductRecipeForProduct(product, gameData)
+
+      expect(product).toEqual({
+        id: product.recipe,
+        amount: 100,
+        recipe: product.recipe,
+      })
+    })
+  })
 })

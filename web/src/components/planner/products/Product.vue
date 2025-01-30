@@ -272,7 +272,9 @@
 
     if (product.id === 'NuclearWaste' || product.id === 'PlutoniumWaste') {
       alert('Uranium and Plutonium Waste are created by adding a Power Generator (and adding a Nuclear Power Plant). This product will now be cleared.')
+      product.recipe = ''
       product.id = ''
+      updateFactory(factory)
       return
     }
 
