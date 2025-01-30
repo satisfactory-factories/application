@@ -6,7 +6,7 @@ type Events = {
   sessionExpired: undefined;
   dataSynced: undefined;
   dataOutOfSync: undefined;
-  toast: { message: string; type?: 'success' | 'warning' | 'error' };
+  toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
   // Initial factory loading dialog
   loadingCompleted: undefined;
   incrementLoad: { step: string }; // Payload to denote loading or calculation step

@@ -62,6 +62,7 @@
   import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
   import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
   import { create267Scenario } from '@/utils/factory-setups/267-nuclear-waste-handling'
+  import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
 
   const { prepareLoader, isDebugMode } = useAppStore()
 
@@ -178,6 +179,13 @@
       name: '#267: Nuclear Waste handling',
       description: 'Nuclear waste was possible to be added via a +Product button in Satisfaction. Now it should show +Generator to add a generator directly instead.',
       data: JSON.stringify(create267Scenario().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+    },
+    {
+      name: '#375: Byproduct products handling',
+      description: 'Contains a factory that has selected a byproduct as a product. In the issue, a ghost surplus was created as it was counting both the product quantity of 100, and the byproduct quantity of 100. The UI should show Rubber as the main recipe, and HOR as the byproduct.',
+      data: JSON.stringify(create375Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },

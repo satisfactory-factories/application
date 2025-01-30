@@ -750,4 +750,6 @@ describe('products', () => {
       ).toThrow(`products: recipeIngredientPerMin: No ingredient found for part FooPart in recipe ${recipe.id}!`)
     })
   })
+
+  describe('isPartBy')
 })

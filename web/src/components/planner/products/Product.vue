@@ -40,7 +40,7 @@
           max-width="350px"
           variant="outlined"
           width="350px"
-          @update:model-value="updateFactory(factory)"
+          @update:model-value="updateRecipe(product, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -212,9 +212,11 @@
 <script setup lang="ts">
   import {
     fixProduct,
+    isPartByProductOfRecipe,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
+    swapByProductRecipeForProduct,
     updateProductAmountViaByproduct,
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
@@ -276,6 +278,23 @@
 
     product.recipe = getDefaultRecipeForPart(product.id)
     product.amount = 1
+
+    const isByProduct = isPartByProductOfRecipe(product.id, product.recipe, gameData)
+
+    console.log('isByProduct updateProduct', isByProduct)
+
+    updateFactory(factory)
+  }
+
+  const updateRecipe = (product: FactoryItem, factory: Factory) => {
+    // We need to check if the recipe the user is adding a byproduct via a recipe where the item is a byproduct
+    const isByProduct = isPartByProductOfRecipe(product.id, product.recipe, gameData)
+
+    console.log('isByProduct updateRecipe', isByProduct)
+
+    if (isByProduct) {
+      swapByProductRecipeForProduct(product, gameData)
+    }
 
     updateFactory(factory)
   }

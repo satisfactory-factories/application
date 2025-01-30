@@ -16,6 +16,7 @@ export const getPartDisplayName = (part: string | number | null): string => {
     gameData.items.parts[part]?.name ||
     `UNKNOWN PART ${part}!`
 }
+
 export const hasMetricsForPart = (factory: Factory, part: string) => {
   return factory.dependencies.metrics && factory.dependencies.metrics[part]
 }

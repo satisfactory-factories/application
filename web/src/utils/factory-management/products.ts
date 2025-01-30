@@ -1,6 +1,6 @@
 import { BuildingRequirement, ByProductItem, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getRecipe } from '@/utils/factory-management/common'
+import { getPartDisplayNameWithoutDataStore, getRecipe } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
 
 export const addProductToFactory = (
@@ -325,4 +325,37 @@ export const recipeIngredientPerMin = (ingredientPart: string, recipe: Recipe) =
     throw new Error(error)
   }
   return ingredient.perMin
+}
+
+export const isPartByProductOfRecipe = (part: string, recipeId: string, gameData: DataInterface) => {
+  const recipe = getRecipe(recipeId, gameData)
+
+  if (!recipe) {
+    console.warn(`isPartByProductOfRecipe: Recipe with ID ${recipeId} not found. It could be the user has not yet selected one.`)
+    return false
+  }
+
+  return recipe.products.some(p => p.part === part && p.isByProduct)
+}
+
+// Takes the byproduct and swaps it for the product recipe otherwise the planner does real dumb shit
+export const swapByProductRecipeForProduct = (product: FactoryItem, gameData: DataInterface) => {
+  // Get what should be the correct product recipe combo. We do this by getting the recipeId and simply replacing the product's productId with that instead and updating the factory.
+  const recipe = getRecipe(product.recipe, gameData)
+  const oldPartName = getPartDisplayNameWithoutDataStore(product.id, gameData)
+
+  if (!recipe) {
+    console.warn(`isPartByProductOfRecipe: Recipe with ID ${product.recipe} not found. It could be the user has not yet selected one.`)
+    return false
+  }
+
+  const newProductId = recipe.products[0].part
+
+  console.log(`products: swapByProductRecipeForProduct: Replacing byproduct ${product.id} with ${newProductId}`)
+  eventBus.emit('toast', {
+    message: `The chosen Byproduct <b>${oldPartName}</b> was swapped for the producing Product <b>${recipe.displayName}</b>.<br>Update the Byproduct ingredient on <b>${recipe.displayName}</b> for the desired item quantity.`,
+    type: 'info',
+    timeout: 10000,
+  })
+  product.id = recipe.products[0].part
 }
