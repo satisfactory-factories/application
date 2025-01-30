@@ -284,6 +284,13 @@ export const useAppStore = defineStore('app', () => {
         factory.syncStatePower = {}
       }
 
+      factory.products.forEach(product => {
+        // Patch for #11
+        if (product.buildingGroups === undefined) {
+          product.buildingGroups = []
+        }
+      })
+
       // Delete keys that no longer exist
       // @ts-ignore
       if (factory.internalProducts) delete factory.internalProducts

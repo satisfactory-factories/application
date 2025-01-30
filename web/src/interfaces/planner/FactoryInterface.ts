@@ -30,6 +30,14 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
+export interface ProductBuildingGroup {
+  id: number;
+  buildingCount: number
+  overclockPercent: number
+  sommersloops: number
+  notes: string
+}
+
 export interface FactoryItem {
   id: string;
   recipe: string;
@@ -38,6 +46,7 @@ export interface FactoryItem {
   requirements: { [key: string]: { amount: number } };
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
+  buildingGroups: ProductBuildingGroup[]
 }
 
 export interface FactoryDependencyRequest {

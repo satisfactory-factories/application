@@ -147,7 +147,7 @@
       </div>
       <div
         v-if="Object.keys(product.requirements).length > 0 || product.buildingRequirements"
-        class="d-flex flex-sm-wrap align-center"
+        class="d-flex flex-sm-wrap align-center mb-2"
       >
         <p class="mr-2">Requires:</p>
         <v-chip
@@ -207,6 +207,9 @@
           <span class="ml-2">{{ formatPower(product.buildingRequirements.powerConsumed ?? 0).value }} {{ formatPower(product.buildingRequirements.powerConsumed ?? 0).unit }}</span>
         </v-chip>
       </div>
+      <div class="mb-2">
+        <building-groups :product="product" />
+      </div>
     </div>
   </div>
 </template>
@@ -228,6 +231,7 @@
   import { useDisplay } from 'vuetify'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { inject } from 'vue'
+  import BuildingGroups from '@/components/planner/products/BuildingGroups.vue'
 
   const gameData = useGameDataStore().getGameData()
 

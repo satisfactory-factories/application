@@ -21,6 +21,7 @@ export const addProductToFactory = (
     requirements: options.requirements ?? {},
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
+    buildingGroups: [],
   })
 }
 
