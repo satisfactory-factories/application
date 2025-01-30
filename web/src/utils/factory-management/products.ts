@@ -166,7 +166,7 @@ export const shouldShowFix = (product: FactoryItem, factory: Factory): string | 
   return null
 }
 
-export const shouldShowInternal = (product: FactoryItem, factory: Factory) => {
+export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory: Factory) => {
   if (!factory.parts[product.id]) {
     return false
   }
