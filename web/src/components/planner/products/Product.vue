@@ -115,33 +115,35 @@
         class="d-flex align-center"
       >
         <p class="mr-2">Byproduct:</p>
-        <v-chip
+        <template
           v-for="byProduct in product.byProducts"
           :key="byProduct.id"
-          class="sf-chip"
         >
-          <game-asset :subject="byProduct.id" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(byProduct.id) }}</b>:
-          </span>
+          <v-chip class="sf-chip">
+            <game-asset :subject="byProduct.id" type="item" />
+            <span class="ml-2">
+              <b>{{ getPartDisplayName(byProduct.id) }}</b>:
+            </span>
 
-          <v-text-field
-            v-model.number="byProduct.amount"
-            class="inline-inputs product-secondary-input"
-            flat
-            hide-details
-            hide-spin-buttons
-            min="0"
-            :name="`${product.id}.byProducts.${byProduct.id}`"
-            :product="product.id"
-            type="number"
-            width="60px"
-            @input="setProductQtyByByproduct(product, byProduct.id)"
-          />
-          <span>
-            /min
-          </span>
-        </v-chip>
+            <v-text-field
+              v-model.number="byProduct.amount"
+              class="inline-inputs product-secondary-input"
+              flat
+              hide-details
+              hide-spin-buttons
+              min="0"
+              :name="`${product.id}.byProducts.${byProduct.id}`"
+              :product="product.id"
+              type="number"
+              width="60px"
+              @input="setProductQtyByByproduct(product, byProduct.id)"
+            />
+            <span>/min</span>
+          </v-chip>
+          <v-chip v-if="shouldShowInternal(byProduct, factory)" class="sf-chip small green">
+            Internal
+          </v-chip>
+        </template>
       </div>
       <div
         v-if="Object.keys(product.requirements).length > 0 || product.buildingRequirements"

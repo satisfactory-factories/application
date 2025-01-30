@@ -10,7 +10,8 @@ import {
   recipeByproductPerMin,
   recipeIngredientPerMin,
   shouldShowFix,
-  shouldShowInternal, shouldShowNotInDemand,
+  shouldShowInternal,
+  shouldShowNotInDemand,
   updateProductAmountViaByproduct,
   updateProductAmountViaRequirement,
 } from '@/utils/factory-management/products'
