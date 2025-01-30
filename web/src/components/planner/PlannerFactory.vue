@@ -113,12 +113,12 @@
           </v-col>
         </v-row>
         <v-card-text v-if="!factory.hidden">
-          <ProductsAndPower
+          <products-and-power
             :factory="factory"
             :help-text="helpText"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <planner-factory-imports
+          <factory-imports
             :factory="factory"
             :help-text="helpText"
           />
@@ -286,7 +286,6 @@
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
-  import ProductsAndPower from '@/components/planner/products/ProductsAndPower.vue'
   import { setSyncState } from '@/utils/factory-management/syncState'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
