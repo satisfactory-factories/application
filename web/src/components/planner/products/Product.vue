@@ -211,12 +211,11 @@
 
 <script setup lang="ts">
   import {
+    byProductAsProductCheck,
     fixProduct,
-    isPartByProductOfRecipe,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
-    swapByProductRecipeForProduct,
     updateProductAmountViaByproduct,
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
@@ -281,23 +280,13 @@
     product.recipe = getDefaultRecipeForPart(product.id)
     product.amount = 1
 
-    const isByProduct = isPartByProductOfRecipe(product.id, product.recipe, gameData)
-
-    console.log('isByProduct updateProduct', isByProduct)
+    byProductAsProductCheck(product, gameData)
 
     updateFactory(factory)
   }
 
   const updateRecipe = (product: FactoryItem, factory: Factory) => {
-    // We need to check if the recipe the user is adding a byproduct via a recipe where the item is a byproduct
-    const isByProduct = isPartByProductOfRecipe(product.id, product.recipe, gameData)
-
-    console.log('isByProduct updateRecipe', isByProduct)
-
-    if (isByProduct) {
-      swapByProductRecipeForProduct(product, gameData)
-    }
-
+    byProductAsProductCheck(product, gameData)
     updateFactory(factory)
   }
 

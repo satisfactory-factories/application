@@ -3,14 +3,14 @@ import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductToFactory,
+  byProductAsProductCheck,
   fixProduct,
-  getProduct,
-  getProductAmountByPart, isPartByProductOfRecipe,
+  getProduct, getProductAmountByPart,
+  isPartByProductOfRecipe,
   recipeByproductPerMin,
   recipeIngredientPerMin,
   shouldShowFix,
-  shouldShowInternal,
-  shouldShowNotInDemand, swapByProductRecipeForProduct,
+  shouldShowInternal, shouldShowNotInDemand,
   updateProductAmountViaByproduct,
   updateProductAmountViaRequirement,
 } from '@/utils/factory-management/products'
@@ -768,7 +768,7 @@ describe('products', () => {
     })
   })
 
-  describe('swapByProductRecipeForProduct', () => {
+  describe('byProductAsProductCheck', () => {
     it('should correctly swap out a byproduct recipe for a product recipe', () => {
       const product = {
         id: 'HeavyOilResidue',
@@ -776,7 +776,7 @@ describe('products', () => {
         recipe: 'Rubber',
       } as FactoryItem
 
-      swapByProductRecipeForProduct(product, gameData)
+      byProductAsProductCheck(product, gameData)
 
       expect(product).toEqual({
         id: product.recipe,
@@ -785,17 +785,17 @@ describe('products', () => {
       })
     })
 
-    it('should correctly swap out a byproduct recipe for a product even on weird names', () => {
+    it('should not affect already correct recipes', () => {
       const product = {
-        id: 'HeavyOilResidue',
+        id: 'Water',
         amount: 100,
-        recipe: 'Rubber',
+        recipe: 'UnpackageWater',
       } as FactoryItem
 
-      swapByProductRecipeForProduct(product, gameData)
+      byProductAsProductCheck(product, gameData)
 
       expect(product).toEqual({
-        id: product.recipe,
+        id: product.id,
         amount: 100,
         recipe: product.recipe,
       })

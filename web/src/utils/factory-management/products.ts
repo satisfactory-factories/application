@@ -339,7 +339,14 @@ export const isPartByProductOfRecipe = (part: string, recipeId: string, gameData
 }
 
 // Takes the byproduct and swaps it for the product recipe otherwise the planner does real dumb shit
-export const swapByProductRecipeForProduct = (product: FactoryItem, gameData: DataInterface) => {
+export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInterface) => {
+  // Check if a swap is required
+  const required = isPartByProductOfRecipe(product.id, product.recipe, gameData)
+
+  if (!required) {
+    return
+  }
+
   // Get what should be the correct product recipe combo. We do this by getting the recipeId and simply replacing the product's productId with that instead and updating the factory.
   const recipe = getRecipe(product.recipe, gameData)
   const oldPartName = getPartDisplayNameWithoutDataStore(product.id, gameData)
