@@ -178,7 +178,7 @@
           class="sf-chip orange"
           variant="tonal"
         >
-          <game-asset :subject="product.buildingRequirements.name" type="building" />
+          <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
           <span class="ml-2">
             <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>:
           </span>

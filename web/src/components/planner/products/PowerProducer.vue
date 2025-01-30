@@ -11,7 +11,7 @@
         </span>
         <span v-if="producer.building" class="mr-2">
           <game-asset
-            :key="producer.building"
+            :key="`${producerIndex}-${producer.building}`"
             height="42px"
             :subject="producer.building"
             type="building"
@@ -155,7 +155,7 @@
             class="sf-chip orange"
             variant="tonal"
           >
-            <game-asset :subject="producer.building" type="building" />
+            <game-asset :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" />
             <span class="ml-2">
               <b>{{ getBuildingDisplayName(producer.building) }}</b>:
             </span>
