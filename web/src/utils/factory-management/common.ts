@@ -23,15 +23,28 @@ export const createNewPart = (factory: Factory, part: string) => {
 
 // You may think that this is duplication with the gameDataStore. It kind of is, however, trying to mock the store in tests is a gigantic pain in the arse.
 // Therefore, usage of gameDataStore within the ./factory-management files is to be used sparingly, and proxies created here.
-export const getRecipe = (partId: any, gameData: DataInterface): Recipe | undefined => {
-  const recipe = gameData.recipes.find(r => r.id === partId)
+export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | undefined => {
+  const recipe = gameData.recipes.find(r => r.id === recipeId)
 
   if (!recipe) {
-    console.error(`Recipe with ID ${partId} not found.`)
+    console.error(`Recipe with ID ${recipeId} not found.`)
     return
   }
 
   return recipe
+}
+
+export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataInterface): string => {
+  if (!part) {
+    return 'NO PART!!!'
+  }
+  if (!gameData) {
+    console.error('getPartDisplayName: No game data!!')
+    return 'NO DATA!!!'
+  }
+  return gameData.items.rawResources[part]?.name ||
+    gameData.items.parts[part]?.name ||
+    `UNKNOWN PART ${part}!`
 }
 
 export const getPowerRecipeById = (id: string, gameData: DataInterface): PowerRecipe | null => {

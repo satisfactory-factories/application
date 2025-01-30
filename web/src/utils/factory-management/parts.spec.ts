@@ -119,4 +119,22 @@ describe('parts', () => {
       expect(otherMockFactory.parts.CompactedCoal.exportable).toBe(true)
     })
   })
+
+  it('should properly remove part data with no name', () => {
+    const mockFactory = newFactory('Test Factory')
+    addProductToFactory(mockFactory, {
+      id: 'CompactedCoal',
+      amount: 50,
+      recipe: 'Alternate_EnrichedCoal',
+    })
+
+    // @ts-ignore
+    mockFactory.parts[''] = {
+      amountRequired: 0,
+    }
+
+    calculateFactories([mockFactory], gameData)
+
+    expect(mockFactory.parts['']).toBeUndefined()
+  })
 })

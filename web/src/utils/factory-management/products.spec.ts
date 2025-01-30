@@ -3,14 +3,14 @@ import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductToFactory,
+  byProductAsProductCheck,
   fixProduct,
-  getProduct,
-  getProductAmountByPart,
+  getProduct, getProductAmountByPart,
+  isPartByProductOfRecipe,
   recipeByproductPerMin,
   recipeIngredientPerMin,
   shouldShowFix,
-  shouldShowInternal,
-  shouldShowNotInDemand,
+  shouldShowInternal, shouldShowNotInDemand,
   updateProductAmountViaByproduct,
   updateProductAmountViaRequirement,
 } from '@/utils/factory-management/products'
@@ -748,6 +748,77 @@ describe('products', () => {
       expect(() =>
         recipeIngredientPerMin('FooPart', recipe)
       ).toThrow(`products: recipeIngredientPerMin: No ingredient found for part FooPart in recipe ${recipe.id}!`)
+    })
+  })
+
+  describe('isPartByProductOfRecipe', () => {
+    it('should detect if a part is a byproduct of a recipe', () => {
+      expect(isPartByProductOfRecipe('HeavyOilResidue', 'Rubber', gameData)).toBe(true)
+      expect(isPartByProductOfRecipe('Water', 'Battery', gameData)).toBe(true)
+      expect(isPartByProductOfRecipe('SulfuricAcid', 'UraniumCell', gameData)).toBe(true)
+    })
+
+    it('should not incorrectly detect a byproduct-able part being a byproduct if it is an actual product', () => {
+      // Check it's not detecting legitimate parts as byproducts
+      expect(isPartByProductOfRecipe('UraniumCell', 'UraniumCell', gameData)).toBe(false)
+
+      // Check if it's not detecting itself being a byproduct of other recipes when it is an product in it's own right
+      expect(isPartByProductOfRecipe('Water', 'UnpackageWater', gameData)).toBe(false)
+      expect(isPartByProductOfRecipe('SulphuricAcid', 'SulfuricAcid', gameData)).toBe(false)
+    })
+  })
+
+  describe('byProductAsProductCheck', () => {
+    afterEach(() => {
+      vi.resetAllMocks()
+    })
+    it('should correctly swap out a byproduct recipe for a product recipe', () => {
+      const product = {
+        id: 'HeavyOilResidue',
+        amount: 100,
+        recipe: 'Rubber',
+      } as FactoryItem
+
+      byProductAsProductCheck(product, gameData)
+
+      expect(product).toEqual({
+        id: product.recipe,
+        amount: 100,
+        recipe: product.recipe,
+      })
+    })
+
+    it('should not affect already correct recipes', () => {
+      const product = {
+        id: 'Water',
+        amount: 100,
+        recipe: 'UnpackageWater',
+      } as FactoryItem
+
+      byProductAsProductCheck(product, gameData)
+
+      expect(product).toEqual({
+        id: product.id,
+        amount: 100,
+        recipe: product.recipe,
+      })
+    })
+
+    it('should emit an event to the user when it has changed', () => {
+      const product = {
+        id: 'HeavyOilResidue',
+        amount: 100,
+        recipe: 'Rubber',
+      } as FactoryItem
+      vi.spyOn(eventBus, 'emit')
+
+      byProductAsProductCheck(product, gameData)
+
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'The chosen Byproduct <b>Heavy Oil Residue</b> was swapped for the producing Product <b>Rubber</b>.<br>Update the Byproduct ingredient on <b>Rubber</b> for the desired item quantity.',
+        type: 'info',
+        timeout: 10000,
+      })
     })
   })
 })

@@ -41,6 +41,13 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
 
   // Now we calculate the remaining amount of parts required after all inputs and internal products are accounted for.
   for (const part in factory.parts) {
+    // If for some reason the part key is an empty string, remove it.
+    if (part === '') {
+      console.error('calculatePartMetrics: Part key is an empty string! Flushing part data.', factory.parts)
+      delete factory.parts[part]
+      return
+    }
+
     const partData = factory.parts[part]
 
     // Sum up remaining amount

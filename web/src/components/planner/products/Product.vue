@@ -40,7 +40,7 @@
           max-width="350px"
           variant="outlined"
           width="350px"
-          @update:model-value="updateFactory(factory)"
+          @update:model-value="updateRecipe(product, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -211,6 +211,7 @@
 
 <script setup lang="ts">
   import {
+    byProductAsProductCheck,
     fixProduct,
     shouldShowFix,
     shouldShowInternal,
@@ -270,13 +271,22 @@
 
     if (product.id === 'NuclearWaste' || product.id === 'PlutoniumWaste') {
       alert('Uranium and Plutonium Waste are created by adding a Power Generator (and adding a Nuclear Power Plant). This product will now be cleared.')
+      product.recipe = ''
       product.id = ''
+      updateFactory(factory)
       return
     }
 
     product.recipe = getDefaultRecipeForPart(product.id)
     product.amount = 1
 
+    byProductAsProductCheck(product, gameData)
+
+    updateFactory(factory)
+  }
+
+  const updateRecipe = (product: FactoryItem, factory: Factory) => {
+    byProductAsProductCheck(product, gameData)
     updateFactory(factory)
   }
 
