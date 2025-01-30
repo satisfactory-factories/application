@@ -769,6 +769,9 @@ describe('products', () => {
   })
 
   describe('byProductAsProductCheck', () => {
+    afterEach(() => {
+      vi.resetAllMocks()
+    })
     it('should correctly swap out a byproduct recipe for a product recipe', () => {
       const product = {
         id: 'HeavyOilResidue',
@@ -798,6 +801,23 @@ describe('products', () => {
         id: product.id,
         amount: 100,
         recipe: product.recipe,
+      })
+    })
+
+    it('should emit an event to the user when it has changed', () => {
+      const product = {
+        id: 'HeavyOilResidue',
+        amount: 100,
+        recipe: 'Rubber',
+      } as FactoryItem
+      vi.spyOn(eventBus, 'emit')
+
+      byProductAsProductCheck(product, gameData)
+
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'The chosen Byproduct <b>Heavy Oil Residue</b> was swapped for the producing Product <b>Rubber</b>.<br>Update the Byproduct ingredient on <b>Rubber</b> for the desired item quantity.',
+        type: 'info',
+        timeout: 10000,
       })
     })
   })
