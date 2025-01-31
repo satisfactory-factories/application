@@ -49,10 +49,9 @@
           control-variant="stacked"
           hide-details
           label="Qty /min"
-          :max-width="smAndDown ? undefined : '130px'"
-          :min-width="smAndDown ? undefined : '130px'"
           :name="`${product.id}.amount`"
           variant="outlined"
+          :width="smAndDown ? undefined : '130px'"
           @update:model-value="updateFactory(factory)"
         />
       </div>
@@ -119,23 +118,23 @@
           v-for="byProduct in product.byProducts"
           :key="byProduct.id"
         >
-          <v-chip class="sf-chip">
+          <v-chip class="sf-chip input unit">
             <game-asset :subject="byProduct.id" type="item" />
-            <span class="ml-2">
-              <b>{{ getPartDisplayName(byProduct.id) }}</b>:
+            <span>
+              <b>{{ getPartDisplayName(byProduct.id) }}</b>
             </span>
 
-            <v-text-field
+            <v-number-input
               v-model.number="byProduct.amount"
-              class="inline-inputs product-secondary-input"
-              flat
+              class="inline-inputs"
+              control-variant="stacked"
               hide-details
               hide-spin-buttons
-              min="0"
+              :min="0"
               :name="`${product.id}.byProducts.${byProduct.id}`"
               :product="product.id"
               type="number"
-              width="60px"
+              width="120px"
               @input="setProductQtyByByproduct(product, byProduct.id)"
             />
             <span>/min</span>
@@ -153,48 +152,49 @@
         <v-chip
           v-for="(requirement, part) in product.requirements"
           :key="`ingredients-${part}`"
-          class="sf-chip"
+          class="sf-chip input unit"
           :class="factory.parts[part].isRaw ? 'cyan': 'blue'"
           variant="tonal"
         >
           <game-asset :subject="part.toString()" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(part.toString()) }}</b>:
+          <span>
+            <b>{{ getPartDisplayName(part.toString()) }}</b>
           </span>
-          <v-text-field
+          <v-number-input
             v-model.number="requirement.amount"
-            class="inline-inputs product-secondary-input"
+            class="inline-inputs"
+            control-variant="stacked"
             flat
             hide-details
             hide-spin-buttons
-            min="0"
+            :min="0"
             :name="`${product.id}.ingredients.${part}`"
             :product="product.id"
             type="number"
-            width="60px"
+            width="120px"
             @input="setProductQtyByRequirement(product, part.toString())"
           />
           <span>/min</span>
         </v-chip>
         <v-chip
-          class="sf-chip orange"
+          class="sf-chip orange input"
           variant="tonal"
         >
           <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
-          <span class="ml-2">
-            <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>:
+          <span>
+            <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>
           </span>
-          <v-text-field
+          <v-number-input
             v-model.number="product.buildingRequirements.amount"
-            class="inline-inputs"
-            flat
+            class="inline-inputs ml-2"
+            control-variant="stacked"
             hide-details
             hide-spin-buttons
-            min="0"
+            :min="0"
             :name="`${product.id}.buildingAmount`"
             :product="product.id"
             type="number"
-            width="60px"
+            width="120px"
             @input="increaseProductQtyByBuilding(product)"
           />
         </v-chip>
@@ -359,9 +359,5 @@
 <style lang="scss" scoped>
   .product {
     border-left: 5px solid #2196f3 !important
-  }
-  div.product-secondary-input:deep(input) {
-    // Match input's font size to the rest of the requirement chip
-    font-size: 0.875rem;
   }
 </style>

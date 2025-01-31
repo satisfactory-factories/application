@@ -57,6 +57,20 @@
   &.no-border {
     border: 0 !important;
   }
+
+  &.input {
+    border-radius: 5px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+
+    .v-img {
+      margin: 0 8px !important;
+    }
+
+    span:last-child {
+      margin: 0 8px !important;
+    }
+  }
 }
 
 .selectors {
@@ -164,10 +178,13 @@
 
 .inline-inputs {
   margin-left: 5px;
-
   input {
     padding: 0;
-    text-align: center
+    text-align: center;
+  }
+
+  .v-number-input__control {
+    height: 40px !important;
   }
 }
 
