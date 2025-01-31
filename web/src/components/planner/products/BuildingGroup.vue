@@ -9,12 +9,13 @@
         v-model.number="group.buildingCount"
         class="inline-inputs ml-0"
         control-variant="stacked"
+        density="compact"
         hide-details
         hide-spin-buttons
         :min="0"
         type="number"
         width="100px"
-        @input="updateGroup(group)"
+        @update:model-value="updateGroup(group)"
       />
     </v-chip>
   </div>

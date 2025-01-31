@@ -128,14 +128,14 @@
               v-model.number="byProduct.amount"
               class="inline-inputs"
               control-variant="stacked"
+              density="compact"
               hide-details
               hide-spin-buttons
               :min="0"
               :name="`${product.id}.byProducts.${byProduct.id}`"
               :product="product.id"
-              type="number"
               width="120px"
-              @input="setProductQtyByByproduct(product, byProduct.id)"
+              @update:model-value="setProductQtyByByproduct(product, byProduct.id)"
             />
             <span>/min</span>
           </v-chip>
@@ -164,15 +164,14 @@
             v-model.number="requirement.amount"
             class="inline-inputs"
             control-variant="stacked"
-            flat
+            density="compact"
             hide-details
             hide-spin-buttons
             :min="0"
             :name="`${product.id}.ingredients.${part}`"
             :product="product.id"
-            type="number"
             width="120px"
-            @input="setProductQtyByRequirement(product, part.toString())"
+            @update:model-value="setProductQtyByRequirement(product, part.toString())"
           />
           <span>/min</span>
         </v-chip>
@@ -188,14 +187,14 @@
             v-model.number="product.buildingRequirements.amount"
             class="inline-inputs ml-2"
             control-variant="stacked"
+            density="compact"
             hide-details
             hide-spin-buttons
             :min="0"
             :name="`${product.id}.buildingAmount`"
             :product="product.id"
-            type="number"
             width="120px"
-            @input="increaseProductQtyByBuilding(product)"
+            @update:model-value="increaseProductQtyByBuilding(product)"
           />
         </v-chip>
         <v-chip

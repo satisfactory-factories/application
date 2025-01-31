@@ -60,6 +60,7 @@
 
   &.input {
     border-radius: 5px !important;
+    border-width: 1px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
 
@@ -67,7 +68,7 @@
       margin: 0 8px !important;
     }
 
-    span:last-child {
+    span:not([class]) {
       margin: 0 8px !important;
     }
   }
@@ -178,13 +179,17 @@
 
 .inline-inputs {
   margin-left: 5px;
+  padding-top: 2px; // Needed to remove the annoying line underneath the input when inactive
+  height: 44px;
+
+  .v-field__overlay {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+  }
+
   input {
     padding: 0;
     text-align: center;
-  }
-
-  .v-number-input__control {
-    height: 40px !important;
   }
 }
 
