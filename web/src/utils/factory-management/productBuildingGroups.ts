@@ -1,5 +1,6 @@
 import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export const addGroup = (product: FactoryItem) => {
   product.buildingGroups.push({
@@ -25,7 +26,15 @@ export const rebalanceGroups = (product: FactoryItem) => {
 
   // Set the building count for each group
   groups.forEach((group, index) => {
+    const hasRemainder = index < remainder ? 1 : 0
     group.buildingCount = targetPerGroup + (index < remainder ? 1 : 0)
+
+    // If the building count is not a whole number, apply a clock to the whole group
+    if (hasRemainder) {
+      group.overclockPercent = formatNumberFully(
+        (targetPerGroup / group.buildingCount) * 100
+      )
+    }
   })
 }
 
