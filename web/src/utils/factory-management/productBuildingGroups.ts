@@ -2,7 +2,7 @@ import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
-export const addGroup = (product: FactoryItem) => {
+export const addGroup = (product: FactoryItem, balance = true) => {
   product.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
     buildingCount: 0,
@@ -11,7 +11,10 @@ export const addGroup = (product: FactoryItem) => {
     parts: {},
     notes: '',
   })
-  rebalanceGroups(product)
+
+  if (balance) {
+    rebalanceGroups(product)
+  }
   calculateBuildingGroupParts([product])
 }
 
@@ -34,6 +37,8 @@ export const rebalanceGroups = (product: FactoryItem) => {
       group.overclockPercent = formatNumberFully(
         (targetPerGroup / group.buildingCount) * 100
       )
+    } else {
+      group.overclockPercent = 100
     }
   })
 }
@@ -68,6 +73,22 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
       }
     }
   }
+}
+
+export const calculateEffectiveBuildingCount = (product: FactoryItem) => {
+  // This takes the building groups and:
+  // 1. Calculates the total building count
+  // 2. Applies the overclocking to the building count to process the effective building count
+  // 3. Adds this up for all groups
+
+  let effectiveBuildingCount = 0
+  for (const group of product.buildingGroups) {
+    // Remember it is a percentage so we need to divide by 100
+    const groupEffectiveBuildingCount = group.buildingCount * group.overclockPercent / 100
+    effectiveBuildingCount += groupEffectiveBuildingCount
+  }
+
+  return formatNumberFully(effectiveBuildingCount)
 }
 
 eventBus.on('rebalanceGroups', rebalanceGroups)

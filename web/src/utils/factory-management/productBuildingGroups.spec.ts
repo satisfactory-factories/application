@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
-import { addGroup, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
+import {
+  addGroup,
+  calculateEffectiveBuildingCount,
+  rebalanceGroups,
+} from '@/utils/factory-management/productBuildingGroups'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 
@@ -74,8 +78,8 @@ describe('productBuildingGroups', () => {
     let group1: ProductBuildingGroup
     let product: FactoryItem
     beforeEach(() => {
-      addGroup(mockFactory.products[0])
       product = mockFactory.products[0]
+      addGroup(product)
       group1 = product.buildingGroups[0]
     })
 
@@ -124,6 +128,58 @@ describe('productBuildingGroups', () => {
         expect(group1.overclockPercent).toBe(100)
         expect(group2.overclockPercent).toBe(150)
       })
+    })
+  })
+
+  describe('calculateEffectiveBuildingCount', () => {
+    let group1: ProductBuildingGroup
+    let group2: ProductBuildingGroup
+    let product: FactoryItem
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      addGroup(product)
+      group1 = product.buildingGroups[0]
+    })
+    it('should properly calculate the effective building count across multiple groups', () => {
+      addGroup(product)
+      group1 = product.buildingGroups[0]
+      group2 = product.buildingGroups[1]
+
+      group1.buildingCount = 3
+      group1.overclockPercent = 100
+
+      group2.buildingCount = 2
+      group2.overclockPercent = 150
+
+      // Should be:
+      // 3 + 2 * 1.5 = 6
+
+      expect(calculateEffectiveBuildingCount(product)).toBe(6)
+    })
+
+    it('should properly calculate the effective building count across multiple groups with precise percentages', () => {
+      addGroup(product)
+      addGroup(product)
+      group1 = product.buildingGroups[0]
+      group2 = product.buildingGroups[1]
+      const group3 = product.buildingGroups[2]
+
+      group1.buildingCount = 3
+      group1.overclockPercent = 133
+
+      group2.buildingCount = 2
+      group2.overclockPercent = 56.334
+
+      group3.buildingCount = 11
+      group3.overclockPercent = 133.678
+
+      // Should be:
+      // Group 1: 3 * 1.33 = 3.99
+      // Group 2: 2 * 0.56334 = 1.12668 (1.127 ceiled)
+      // Group 3: 11 * 1.33678 = 14.70458 (14.705 ceiled)
+      // Totalling 19.822
+
+      expect(calculateEffectiveBuildingCount(product)).toBe(19.822)
     })
   })
 })

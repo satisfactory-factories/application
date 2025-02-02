@@ -6,7 +6,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addGroup(product)"
+      @click="addGroup(product, false)"
     >
       <i class="fas fa-plus" />
       <span class="my-2">Add Building Group</span>
@@ -19,26 +19,25 @@
       size="small"
       @click="rebalanceGroups(product)"
     ><i class="fas fa-balance-scale" />
-      <span class="ml-2">Rebalance</span>
+      <span class="ml-2">Evenly balance</span>
     </v-btn>
-    <span class="ml-2">Remaining Buildings: {{ formatNumber(remainingBuildings) }}</span>
+    <span class="ml-2">Remaining Buildings: {{ remainingBuildings }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
   import BuildingGroup from '@/components/planner/products/BuildingGroup.vue'
   import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
-  import { addGroup, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import {
+    addGroup,
+    calculateEffectiveBuildingCount,
+    rebalanceGroups,
+  } from '@/utils/factory-management/productBuildingGroups'
 
   const props = defineProps<{
     factory: Factory
     product: FactoryItem
   }>()
 
-  const remainingBuildings = computed(() => {
-    const used = props.product.buildingGroups.reduce((acc, group) => acc + group.buildingCount, 0)
-
-    return props.product.buildingRequirements.amount - used
-  })
+  const remainingBuildings = calculateEffectiveBuildingCount(props.product)
 </script>

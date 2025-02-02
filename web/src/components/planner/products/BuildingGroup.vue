@@ -45,8 +45,7 @@
         width="100px"
         @update:model-value="updateGroup(group)"
       />
-      <span>%<tooltip-info classes="ml-n1" text="Not yet supported. Coming in a future release!" /></span>
-
+      <span>%</span>
     </v-chip>
     <div class="px-2">
       +
@@ -103,28 +102,9 @@
 
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
       <v-chip
-        v-if="part === product.id"
-        class="sf-chip blue input mx-1 text-body-1"
-        variant="tonal"
-      >
-        <tooltip :text="getPartDisplayName(part)">
-          <game-asset :subject="String(part)" type="item" />
-        </tooltip>
-        <v-number-input
-          v-model.number="group.parts[part]"
-          class="inline-inputs"
-          control-variant="stacked"
-          density="compact"
-          hide-details
-          hide-spin-buttons
-          :min="0"
-          :name="`${product.id}-${part}.amount`"
-          width="110px"
-        />
-      </v-chip>
-      <v-chip
-        v-if="partIsByProduct(String(part))"
-        class="sf-chip green input mx-1 text-body-1"
+        v-if="part === product.id || partIsByProduct(String(part))"
+        class="sf-chip input mx-1 text-body-1"
+        :class="chipColors(String(part))"
         variant="tonal"
       >
         <tooltip :text="getPartDisplayName(part)">
@@ -143,10 +123,6 @@
         />
       </v-chip>
     </template>
-    <!--    <v-chip-->
-    <!--      class="sf-chip input mx-1"-->
-    <!--      variant="tonal"-->
-    <!--    >[BYPRODUCT]</v-chip>-->
   </div>
 
 </template>
@@ -190,15 +166,18 @@
       group.buildingCount = Math.floor(group.buildingCount)
     }
 
-    // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
-    // Reduce all the groups building counts to get the total building count.
-    const totalBuildingCount = props.product.buildingGroups.reduce((acc, group) => acc + group.buildingCount, 0)
-
-    console.log('new building count', totalBuildingCount)
-
-    // Update the product's building requirements
-    props.product.buildingRequirements.amount = totalBuildingCount
-    increaseProductQtyViaBuilding(props.product, gameData)
+    if (props.product.buildingGroups.length === 1) {
+      // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
+      // Reduce all the groups building counts to get the total building count.
+      // Update the product's building requirements
+      props.product.buildingRequirements.amount = group.buildingCount
+      increaseProductQtyViaBuilding(props.product, gameData)
+    } else {
+      eventBus.emit('toast', {
+        message: 'Since you have multiple building groups, please ensure the total building count is correct.',
+        type: 'info',
+      })
+    }
 
     // Update the factory
     updateFactory(props.factory)
@@ -221,6 +200,16 @@
     }
 
     return part === props.product.byProducts[0].id
+  }
+
+  const chipColors = (part: string) => {
+    const isRaw = props.factory.parts[part].isRaw
+
+    return {
+      cyan: isRaw,
+      blue: !isRaw && !partIsByProduct(part),
+      green: partIsByProduct(part),
+    }
   }
 
 </script>
