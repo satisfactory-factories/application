@@ -52,7 +52,7 @@
           :name="`${product.id}.amount`"
           variant="outlined"
           :width="smAndDown ? undefined : '130px'"
-          @update:model-value="updateFactory(factory)"
+          @update:model-value="updateProductQty(product, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -293,6 +293,14 @@
   const updateRecipe = (product: FactoryItem, factory: Factory) => {
     byProductAsProductCheck(product, gameData)
     updateFactory(factory)
+  }
+
+  const updateProductQty = (product: FactoryItem, factory: Factory) => {
+    updateFactory(factory)
+
+    if (product.buildingGroups.length === 1) {
+      eventBus.emit('rebalanceGroups', product)
+    }
   }
 
   // Enables the user to move the order of the byproduct up or down

@@ -4,7 +4,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import {
   addGroup,
   calculateEffectiveBuildingCount,
-  rebalanceGroups,
+  rebalanceGroups, remainderToLast, remainderToNewGroup,
 } from '@/utils/factory-management/productBuildingGroups'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
@@ -89,7 +89,16 @@ describe('productBuildingGroups', () => {
       rebalanceGroups(product)
 
       expect(group1.buildingCount).toBe(6)
-      expect(group1.overclockPercent).toBe(83.333)
+      expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
+    })
+
+    it('should apply an underclock to the group if the building count is not whole', () => {
+      product.buildingRequirements.amount = 5.7
+
+      rebalanceGroups(product)
+
+      expect(group1.buildingCount).toBe(6)
+      expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
     })
 
     it('should apply no clock changes on whole buildings', () => {
@@ -180,6 +189,102 @@ describe('productBuildingGroups', () => {
       // Totalling 19.822
 
       expect(calculateEffectiveBuildingCount(product)).toBe(19.822)
+    })
+  })
+
+  describe('remainder handling', () => {
+    let group1: ProductBuildingGroup
+    let group2: ProductBuildingGroup
+    let product: FactoryItem
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      addGroup(product)
+      addGroup(product)
+
+      group1 = product.buildingGroups[0]
+      group2 = product.buildingGroups[1]
+    })
+
+    describe('remainderToLast', () => {
+      it('should properly add the remainder to the last group when a full number', () => {
+        product.buildingRequirements.amount = 5
+
+        group1.buildingCount = 3
+        group2.buildingCount = 1 // Missing 1
+
+        remainderToLast(product)
+
+        expect(group1.buildingCount).toBe(3)
+        expect(group2.buildingCount).toBe(2)
+      })
+
+      it('should properly add the remainder to the last group when not a full number', () => {
+        product.buildingRequirements.amount = 131.1
+
+        group1.buildingCount = 131
+        group2.buildingCount = 1 // Which will need a 10% overclock
+
+        remainderToLast(product)
+
+        expect(group1.buildingCount).toBe(131)
+        expect(group1.overclockPercent).toBe(100)
+        expect(group2.buildingCount).toBe(1)
+        expect(group2.overclockPercent).toBe(10)
+      })
+
+      it('should properly add the remainder to the last group when it already has a overclock', () => {
+        product.buildingRequirements.amount = 131.1
+
+        group1.buildingCount = 131
+        group2.buildingCount = 1 // Which will need a 10% overclock
+        group2.overclockPercent = 50 // 40% too high
+
+        remainderToLast(product)
+
+        expect(group1.buildingCount).toBe(131)
+        expect(group1.overclockPercent).toBe(100)
+        expect(group2.buildingCount).toBe(1)
+        expect(group2.overclockPercent).toBe(10)
+      })
+    })
+
+    describe('remainderToNewGroup', () => {
+      it('should properly add the remainder to a new group when a full number', () => {
+        product.buildingRequirements.amount = 5
+
+        group1.buildingCount = 3
+        group2.buildingCount = 1 // Missing 1
+
+        remainderToNewGroup(product)
+
+        expect(product.buildingGroups.length).toBe(3)
+        expect(product.buildingGroups[2].buildingCount).toBe(1)
+        expect(product.buildingGroups[2].overclockPercent).toBe(100)
+      })
+
+      it('should properly add the remainder to a new group when a fractional', () => {
+        product.buildingRequirements.amount = 5.5
+
+        group1.buildingCount = 3
+        group2.buildingCount = 2 // Missing 0.5
+
+        remainderToNewGroup(product)
+
+        expect(product.buildingGroups.length).toBe(3)
+        expect(product.buildingGroups[2].buildingCount).toBe(1)
+        expect(product.buildingGroups[2].overclockPercent).toBe(50)
+      })
+
+      it('should do nothing when the remainder is negative', () => {
+        product.buildingRequirements.amount = 5.5
+
+        group1.buildingCount = 3
+        group2.buildingCount = 3 // 0.5 too many
+
+        remainderToNewGroup(product)
+
+        expect(product.buildingGroups.length).toBe(2)
+      })
     })
   })
 })

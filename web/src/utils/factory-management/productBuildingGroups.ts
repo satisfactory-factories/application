@@ -2,7 +2,7 @@ import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
-export const addGroup = (product: FactoryItem, balance = true) => {
+export const addGroup = (product: FactoryItem) => {
   product.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
     buildingCount: 0,
@@ -12,9 +12,6 @@ export const addGroup = (product: FactoryItem, balance = true) => {
     notes: '',
   })
 
-  if (balance) {
-    rebalanceGroups(product)
-  }
   calculateBuildingGroupParts([product])
 }
 
@@ -24,13 +21,12 @@ export const rebalanceGroups = (product: FactoryItem) => {
   const groups = product.buildingGroups
 
   // Based on the number of groups, divide the target by the number of groups
-  const targetPerGroup = Math.floor(targetBuildings / groups.length)
+  const targetPerGroup = targetBuildings / groups.length
   const remainder = targetBuildings % groups.length
-
+  const hasRemainder = remainder ? 1 : 0
   // Set the building count for each group
   groups.forEach((group, index) => {
-    const hasRemainder = index < remainder ? 1 : 0
-    group.buildingCount = targetPerGroup + (index < remainder ? 1 : 0)
+    group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
 
     // If the building count is not a whole number, apply a clock to the whole group
     if (hasRemainder) {
@@ -89,6 +85,58 @@ export const calculateEffectiveBuildingCount = (product: FactoryItem) => {
   }
 
   return formatNumberFully(effectiveBuildingCount)
+}
+
+export const remainderToLast = (product: FactoryItem) => {
+  const groups = product.buildingGroups
+  if (!groups || groups.length === 0) return
+
+  // The last group is the one to adjust.
+  const lastGroup = groups[groups.length - 1]
+
+  // Compute effective count for all groups EXCEPT the last one.
+  const effectiveExcludingLast = groups
+    .slice(0, -1)
+    .reduce((total, group) => {
+      // Assume overclockPercent defaults to 100 if not set.
+      const percent = group.overclockPercent ?? 100
+      return total + group.buildingCount * (percent / 100)
+    }, 0)
+
+  // For a dedicated fractional (last) group, we assume the overall target effective
+  // count should be the requirement plus the effective contribution of the fractional group.
+  // In your example you want group0’s 131 plus 0.1 from group1 to equal 131.1.
+  // (If there is only one group, you may wish to simply target the requirement exactly.)
+  const targetEffective = product.buildingRequirements.amount
+
+  // The effective contribution needed from the last group.
+  const desiredFraction = targetEffective - effectiveExcludingLast
+
+  // If the desiredFraction is exactly a whole number, just add whole buildings:
+  if (desiredFraction % 1 === 0) {
+    lastGroup.buildingCount = desiredFraction
+    lastGroup.overclockPercent = 100
+  } else {
+    // For a fractional group, force buildingCount to 1
+    lastGroup.buildingCount = 1
+    // If desiredFraction is negative, then we run below 100%:
+    if (desiredFraction < 0) {
+      lastGroup.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
+    } else {
+      lastGroup.overclockPercent = formatNumberFully(desiredFraction * 100)
+    }
+  }
+}
+
+export const remainderToNewGroup = (product: FactoryItem) => {
+  const remaining = product.buildingRequirements.amount - calculateEffectiveBuildingCount(product)
+
+  if (remaining <= 0) {
+    return // Nothing to do
+  }
+
+  addGroup(product)
+  remainderToLast(product)
 }
 
 eventBus.on('rebalanceGroups', rebalanceGroups)
