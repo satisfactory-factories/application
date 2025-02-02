@@ -157,6 +157,7 @@
   import eventBus from '@/utils/eventBus'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
@@ -170,16 +171,36 @@
   const building = props.product.buildingRequirements.name
 
   const updateGroup = (group: ProductBuildingGroup) => {
-    console.log(group.buildingCount)
     if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {
       eventBus.emit('toast', {
         message: 'Building count must be a positive number.',
         type: 'warning',
       })
-      group.buildingCount = 0.1
+      group.buildingCount = 1
       return
     }
 
+    // Ensure the building count is a whole number
+    if (group.buildingCount % 1 !== 0) {
+      eventBus.emit('toast', {
+        message: 'Building count must equal to a whole number. If you need a single building clocked, create a new building group and adjust it\'s clock.',
+        type: 'error',
+        timeout: 5000,
+      })
+      group.buildingCount = Math.floor(group.buildingCount)
+    }
+
+    // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
+    // Reduce all the groups building counts to get the total building count.
+    const totalBuildingCount = props.product.buildingGroups.reduce((acc, group) => acc + group.buildingCount, 0)
+
+    console.log('new building count', totalBuildingCount)
+
+    // Update the product's building requirements
+    props.product.buildingRequirements.amount = totalBuildingCount
+    increaseProductQtyViaBuilding(props.product, gameData)
+
+    // Update the factory
     updateFactory(props.factory)
   }
 
