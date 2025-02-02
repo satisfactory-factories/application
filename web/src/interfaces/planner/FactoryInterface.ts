@@ -34,7 +34,8 @@ export interface ProductBuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
-  sommersloops: number
+  somersloops: number
+  parts: {[key: string]: number}
   notes: string
 }
 

@@ -1,15 +1,64 @@
-import { FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import eventBus from '@/utils/eventBus'
 
-export const newBuildingGroup = (): ProductBuildingGroup => {
-  return {
+export const addGroup = (product: FactoryItem) => {
+  product.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
     buildingCount: 0,
-    overclockPercent: 0,
-    sommersloops: 0,
+    overclockPercent: 100,
+    somersloops: 0,
+    parts: {},
     notes: '',
+  })
+  rebalanceGroups(product)
+  calculateBuildingGroupParts([product])
+}
+
+// Takes the building groups of a product and rebalances them based on the building count
+export const rebalanceGroups = (product: FactoryItem) => {
+  const targetBuildings = product.buildingRequirements.amount
+  const groups = product.buildingGroups
+
+  // Based on the number of groups, divide the target by the number of groups
+  const targetPerGroup = Math.floor(targetBuildings / groups.length)
+  const remainder = targetBuildings % groups.length
+
+  // Set the building count for each group
+  groups.forEach((group, index) => {
+    group.buildingCount = targetPerGroup + (index < remainder ? 1 : 0)
+  })
+}
+
+// Maintains the factory's building groups and keeps them synchronised.
+export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
+  // Handle any group part quantity changes.
+  // Loop through all the building groups buildings and use that as relative to update each part quantities.
+  for (const product of products) {
+  // Firstly, check if the product needs any building groups as the user may have changed the product.
+    if (product.id === '' || product.recipe === '') {
+      product.buildingGroups = []
+      continue // Skip this product
+    }
+
+    // Check if the product should have a product group
+    if (product.buildingGroups.length === 0) {
+      addGroup(product)
+    }
+
+    console.log('productBuildingGroups.ts calculateBuildingGroups product:', product.id)
+    const totalBuildingCount = product.buildingRequirements.amount
+    for (const group of product.buildingGroups) {
+      for (const part in product.requirements) {
+        const productPartRequirement = product.requirements[part].amount
+        // We need to get a fraction based on the total amount required by the product and the number of buildings.
+        const partPerBuilding = productPartRequirement / totalBuildingCount
+        const partAmount = partPerBuilding * group.buildingCount
+
+        group.parts[part] = partAmount
+        group.parts[product.id] = partAmount
+      }
+    }
   }
 }
 
-export const addGroup = (product: FactoryItem) => {
-  product.buildingGroups.push(newBuildingGroup())
-}
+eventBus.on('rebalanceGroups', rebalanceGroups)

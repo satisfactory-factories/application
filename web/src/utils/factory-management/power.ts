@@ -1,6 +1,6 @@
 import { Factory, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipeById } from '@/utils/factory-management/common'
+import { getPowerRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
@@ -37,7 +37,7 @@ export const calculatePowerProducers = (
   gameData: DataInterface
 ) => {
   factory.powerProducers.forEach(producer => {
-    const originalRecipe = getPowerRecipeById(producer.recipe, gameData) // Shallow copy the recipe data every time
+    const originalRecipe = getPowerRecipe(producer.recipe, gameData) // Shallow copy the recipe data every time
     if (!originalRecipe) {
       console.error(`Could not find recipe with id: ${producer.recipe}`)
       return

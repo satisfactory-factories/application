@@ -1,4 +1,5 @@
 import mitt from 'mitt'
+import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 
 type Events = {
   factoryUpdated: undefined; // No payload for this event
@@ -26,6 +27,9 @@ type Events = {
   introToggle: boolean;
 
   navigationReady: undefined;
+
+  // Factory building group management
+  rebalanceGroups: FactoryItem;
 };
 
 const eventBus = mitt<Events>()

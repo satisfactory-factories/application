@@ -13,6 +13,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
+import { calculateBuildingGroupParts } from '@/utils/factory-management/productBuildingGroups'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -117,6 +118,9 @@ export const calculateFactory = (
 
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
+
+  // Calculate / synchronise the factory groups
+  calculateBuildingGroupParts(factory.products)
 
   // Check if the factory has any problems
   calculateHasProblem(allFactories)

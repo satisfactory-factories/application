@@ -194,7 +194,7 @@
             :name="`${product.id}.buildingAmount`"
             :product="product.id"
             width="120px"
-            @update:model-value="increaseProductQtyByBuilding(product)"
+            @update:model-value="changeBuildingAmount(product)"
           />
         </v-chip>
         <v-chip
@@ -207,7 +207,7 @@
         </v-chip>
       </div>
       <div class="mb-2">
-        <building-groups :product="product" />
+        <building-groups :factory="factory" :product="product" />
       </div>
     </div>
   </div>
@@ -216,7 +216,7 @@
 <script setup lang="ts">
   import {
     byProductAsProductCheck,
-    fixProduct,
+    fixProduct, increaseProductQtyViaBuilding,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
@@ -230,9 +230,7 @@
   import { useDisplay } from 'vuetify'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { inject } from 'vue'
-  import BuildingGroups from '@/components/planner/products/BuildingGroups.vue'
-
-  const gameData = useGameDataStore().getGameData()
+  import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -241,9 +239,10 @@
   const {
     getRecipesForPart,
     getDefaultRecipeForPart,
-    getRecipeById,
     getGameData,
   } = useGameDataStore()
+
+  const gameData = getGameData()
 
   const props = defineProps<{
     factory: Factory;
@@ -278,12 +277,13 @@
       alert('Uranium and Plutonium Waste are created by adding a Power Generator (and adding a Nuclear Power Plant). This product will now be cleared.')
       product.recipe = ''
       product.id = ''
-      updateFactory(factory)
       return
     }
 
     product.recipe = getDefaultRecipeForPart(product.id)
     product.amount = 1
+    // Blow the building groups away, updateFactory will regenerate them
+    product.buildingGroups = []
 
     byProductAsProductCheck(product, gameData)
 
@@ -303,6 +303,7 @@
   const setProductQtyByByproduct = (product: FactoryItem, part: string) => {
     updateProductAmountViaByproduct(product, part, gameData)
     updateFactory(props.factory)
+    eventBus.emit('rebalanceGroups', product)
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
@@ -310,27 +311,10 @@
     updateFactory(props.factory)
   }
 
-  const increaseProductQtyByBuilding = (product: FactoryItem) => {
-    // Get what is now the new buildingRequirement for the product
-    const newVal = product.buildingRequirements.amount
-
-    if (newVal < 0 || !newVal) {
-      product.buildingRequirements.amount = 0 // Prevents the product being totally deleted
-      return
-    }
-
-    // Get the recipe for the product in order to get the new quantity
-    const recipe = getRecipeById(product.recipe)
-
-    if (!recipe) {
-      console.error('No recipe found for product!', product)
-      throw new Error('No recipe found for product!')
-    }
-
-    // Set the new quantity of the product
-    product.amount = recipe.products[0].perMin * newVal
-
+  const changeBuildingAmount = (product: FactoryItem) => {
+    increaseProductQtyViaBuilding(product, gameData)
     updateFactory(props.factory)
+    eventBus.emit('rebalanceGroups', product)
   }
 
   const doFixProduct = (product: FactoryItem, factory: Factory) => {

@@ -1,7 +1,7 @@
 // Calculates what buildings are required to produce the products.
 import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipeById, getRecipe } from '@/utils/factory-management/common'
+import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -56,7 +56,7 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
 export const calculatePowerProducerBuildings = (factory: Factory, gameData: DataInterface) => {
   // Loop through each power producer and add up the buildings
   factory.powerProducers.forEach(producer => {
-    const recipe = getPowerRecipeById(producer.recipe, gameData)
+    const recipe = getPowerRecipe(producer.recipe, gameData)
 
     if (!recipe) {
       console.warn(`calculatePowerProducerBuildingRequirements: Recipe with ID ${producer.recipe} not found. It could be the user has not yet selected one.`)

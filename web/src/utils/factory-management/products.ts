@@ -1,7 +1,11 @@
 import { BuildingRequirement, ByProductItem, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPartDisplayNameWithoutDataStore, getRecipe } from '@/utils/factory-management/common'
+import {
+  getPartDisplayNameWithoutDataStore,
+  getRecipe,
+} from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
+import { addGroup, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
 
 export const addProductToFactory = (
   factory: Factory,
@@ -23,6 +27,9 @@ export const addProductToFactory = (
     byProducts: [],
     buildingGroups: [],
   })
+
+  // Also push the first factory group
+  addGroup(factory.products[factory.products.length - 1])
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
@@ -207,8 +214,11 @@ export const fixProduct = (product: FactoryItem | ByProductItem, factory: Factor
   const required = partData.amountRequired
   const diff = required - produced
 
-  // Whatever calls this MUST then trigger a calculation.
   product.amount = diff + product.amount
+
+  eventBus.emit('rebalanceGroups', product as FactoryItem)
+
+  // updateFactory must be called!
 }
 
 export const getProduct = (
@@ -249,6 +259,9 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
     product.amount = 0.1
   }
 
+  // Because we've changed the product amount, we need to rebalance the groups.
+  rebalanceGroups(product)
+
   // Must call update factory!
 }
 
@@ -272,6 +285,7 @@ export const updateProductAmountViaRequirement = (product: FactoryItem, part: st
     product.amount = 0.1
   }
 
+  eventBus.emit('rebalanceGroups', product)
   // Must call update factory!
 }
 
@@ -366,4 +380,29 @@ export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInte
     timeout: 10000,
   })
   product.id = recipe.products[0].part
+}
+
+// Get what is now the new buildingRequirement for the product
+export const increaseProductQtyViaBuilding = (product: FactoryItem, gameData: DataInterface) => {
+  const newVal = product.buildingRequirements.amount
+
+  if (newVal < 0 || !newVal) {
+    product.buildingRequirements.amount = 0 // Prevents the product being totally deleted
+    return
+  }
+
+  // Get the recipe for the product in order to get the new quantity
+  const recipe = getRecipe(product.recipe, gameData)
+
+  if (!recipe) {
+    console.error('No recipe found for product!', product)
+    throw new Error('No recipe found for product!')
+  }
+
+  // Set the new quantity of the product
+  product.amount = recipe.products[0].perMin * newVal
+
+  eventBus.emit('rebalanceGroups', product)
+
+  // Must call updateFactory!
 }
