@@ -38,7 +38,6 @@
         class="inline-inputs ml-0"
         control-variant="stacked"
         density="compact"
-        disabled
         hide-details
         hide-spin-buttons
         :min="0"
