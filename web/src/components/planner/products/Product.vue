@@ -156,10 +156,9 @@
           :class="factory.parts[part].isRaw ? 'cyan': 'blue'"
           variant="tonal"
         >
-          <game-asset :subject="part.toString()" type="item" />
-          <span>
-            <b>{{ getPartDisplayName(part.toString()) }}</b>
-          </span>
+          <tooltip :text="getPartDisplayName(part)">
+            <game-asset :subject="String(part)" type="item" />
+          </tooltip>
           <v-number-input
             v-model.number="requirement.amount"
             class="inline-inputs"

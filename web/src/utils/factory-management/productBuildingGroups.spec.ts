@@ -215,7 +215,9 @@ describe('productBuildingGroups', () => {
         remainderToLast(product)
 
         expect(group1.buildingCount).toBe(3)
+        expect(group1.overclockPercent).toBe(100)
         expect(group2.buildingCount).toBe(2)
+        expect(group2.overclockPercent).toBe(100)
       })
 
       it('should properly add the remainder to the last group when not a full number', () => {
@@ -245,6 +247,23 @@ describe('productBuildingGroups', () => {
         expect(group1.overclockPercent).toBe(100)
         expect(group2.buildingCount).toBe(1)
         expect(group2.overclockPercent).toBe(10)
+      })
+
+      it('should properly adjust the group to account for massive disparities and underclock the result', () => {
+        product.buildingRequirements.amount = 5.5
+
+        group1.buildingCount = 2
+        group2.buildingCount = 1
+        group2.overclockPercent = 10
+
+        remainderToLast(product)
+
+        // This scenario is not 100% possible to equate to perfect numbers.
+        // Therefore, we expect a "best effort" of the number of buildings being overallocated, and underclocked, rather than overclocked, which needs a shard.
+        expect(group1.buildingCount).toBe(2)
+        expect(group1.overclockPercent).toBe(100)
+        expect(group2.buildingCount).toBe(4)
+        expect(group2.overclockPercent).toBe(88)
       })
     })
 

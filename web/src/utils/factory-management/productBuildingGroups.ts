@@ -65,7 +65,18 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
         const partAmount = partPerBuilding * group.buildingCount
 
         group.parts[part] = partAmount
-        group.parts[product.id] = partAmount
+      }
+
+      // Also figure out the parts for the product itself and byproduct
+      const productPerBuilding = product.amount / totalBuildingCount
+      const partAmount = productPerBuilding * group.buildingCount
+      group.parts[product.id] = partAmount
+
+      // And byproduct if applicable
+      if (product.byProducts && product.byProducts.length > 0) {
+        const byproductPerBuilding = product.byProducts[0].amount / totalBuildingCount
+        const byproductAmount = byproductPerBuilding * group.buildingCount
+        group.parts[product.byProducts[0].id] = byproductAmount
       }
     }
   }
@@ -87,45 +98,73 @@ export const calculateEffectiveBuildingCount = (product: FactoryItem) => {
   return formatNumberFully(effectiveBuildingCount)
 }
 
+// Brought to you courtesy of ChatGPT o3-mini-high.
+// This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
 export const remainderToLast = (product: FactoryItem) => {
   const groups = product.buildingGroups
   if (!groups || groups.length === 0) return
 
-  // The last group is the one to adjust.
+  // The last group is the one we adjust.
   const lastGroup = groups[groups.length - 1]
 
-  // Compute effective count for all groups EXCEPT the last one.
+  // Compute the effective building count for all groups EXCEPT the last.
   const effectiveExcludingLast = groups
     .slice(0, -1)
     .reduce((total, group) => {
-      // Assume overclockPercent defaults to 100 if not set.
       const percent = group.overclockPercent ?? 100
       return total + group.buildingCount * (percent / 100)
     }, 0)
 
-  // For a dedicated fractional (last) group, we assume the overall target effective
-  // count should be the requirement plus the effective contribution of the fractional group.
-  // In your example you want group0’s 131 plus 0.1 from group1 to equal 131.1.
-  // (If there is only one group, you may wish to simply target the requirement exactly.)
   const targetEffective = product.buildingRequirements.amount
-
-  // The effective contribution needed from the last group.
   const desiredFraction = targetEffective - effectiveExcludingLast
 
-  // If the desiredFraction is exactly a whole number, just add whole buildings:
-  if (desiredFraction % 1 === 0) {
-    lastGroup.buildingCount = desiredFraction
-    lastGroup.overclockPercent = 100
-  } else {
-    // For a fractional group, force buildingCount to 1
+  // If no gap, nothing to do.
+  if (desiredFraction === 0) return
+
+  // Handle overproduction (gap negative)
+  if (desiredFraction < 0) {
     lastGroup.buildingCount = 1
-    // If desiredFraction is negative, then we run below 100%:
-    if (desiredFraction < 0) {
-      lastGroup.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
-    } else {
-      lastGroup.overclockPercent = formatNumberFully(desiredFraction * 100)
+    lastGroup.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
+    return
+  }
+
+  /*
+    For a positive gap, instead of defaulting to a single building,
+    we consider using multiple buildings if the gap exceeds 1 effective building.
+    We try candidate building counts (n) and compute the required overclock per building:
+
+       candidateClock = Math.ceil((desiredFraction / n) * 100)
+
+    We then pick the candidate for which candidateClock is as close as possible to 100.
+    (We use Math.ceil so any tiny fractional remainder pushes the clock upward slightly.)
+
+    Also, if candidateClock would exceed 250, that candidate is invalid.
+  */
+  const maxN = Math.ceil(desiredFraction) + 1 // a reasonable search range
+  let bestN: number | null = null
+  let bestClock: number | null = null
+  let bestDiff = Number.POSITIVE_INFINITY
+
+  for (let n = 1; n <= maxN; n++) {
+    const rawClock = (desiredFraction / n) * 100
+    const candidateClock = Math.ceil(rawClock)
+    if (candidateClock > 250) continue // game cap: skip any candidate over 250%
+    const diff = Math.abs(candidateClock - 100)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestN = n
+      bestClock = candidateClock
     }
   }
+
+  // Fallback if no candidate was found (shouldn't happen normally)
+  if (bestN === null || bestClock === null) {
+    bestN = 1
+    bestClock = 250
+  }
+
+  lastGroup.buildingCount = bestN
+  lastGroup.overclockPercent = formatNumberFully(bestClock)
 }
 
 export const remainderToNewGroup = (product: FactoryItem) => {
