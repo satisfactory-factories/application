@@ -9,7 +9,6 @@ export const addGroup = (product: FactoryItem) => {
     overclockPercent: 100,
     somersloops: 0,
     parts: {},
-    trayOpen: false,
   })
 
   calculateBuildingGroupParts([product])

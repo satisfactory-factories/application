@@ -26,6 +26,7 @@ export const addProductToFactory = (
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
     buildingGroups: [],
+    buildingGroupTrayOpen: false,
   })
 
   // Also push the first factory group

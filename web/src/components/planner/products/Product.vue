@@ -97,6 +97,26 @@
           variant="outlined"
           @click="deleteProduct(productIndex, factory)"
         />
+        <div class="ml-2">
+          <v-btn
+            v-if="!product.buildingGroupTrayOpen"
+            color="primary"
+            :disabled="product.buildingGroups.length === 0"
+            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+            @click="product.buildingGroupTrayOpen = true"
+          >
+            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple mode <tooltip-info text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
+          </v-btn>
+          <v-btn
+            v-if="product.buildingGroupTrayOpen"
+            color="primary"
+            :disabled="product.buildingGroups.length === 0"
+            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+            @click="product.buildingGroupTrayOpen = false"
+          >
+            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Advanced Mode</span>
+          </v-btn>
+        </div>
         <v-chip v-if="shouldShowInternal(product, factory)" class="ml-2 sf-chip small green">
           Internal
         </v-chip>
@@ -205,7 +225,7 @@
           <span class="ml-2">{{ formatPower(product.buildingRequirements.powerConsumed ?? 0).value }} {{ formatPower(product.buildingRequirements.powerConsumed ?? 0).unit }}</span>
         </v-chip>
       </div>
-      <div class="mb-2">
+      <div v-if="product.buildingGroupTrayOpen" class="mb-2">
         <building-groups :factory="factory" :product="product" />
       </div>
     </div>

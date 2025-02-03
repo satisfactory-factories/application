@@ -32,7 +32,9 @@
       class="sf-chip input unit yellow mx-1"
       variant="tonal"
     >
-      <game-asset subject="overclock-production" type="item_id" />
+      <tooltip text="Overclock">
+        <game-asset subject="overclock-production" type="item_id" />
+      </tooltip>
       <v-number-input
         v-model.number="group.overclockPercent"
         class="inline-inputs ml-0"
@@ -54,7 +56,9 @@
       class="sf-chip input sloop mx-1"
       variant="tonal"
     >
-      <game-asset subject="somersloop" type="item_id" />
+      <tooltip text="Somersloop">
+        <game-asset subject="somersloop" type="item_id" />
+      </tooltip>
       <v-number-input
         v-model.number="group.somersloops"
         class="inline-inputs ml-0"

@@ -11,12 +11,12 @@
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
     </v-btn>
-    <tooltip-info text="Building Groups are a means to split up the number of buildings needed to create this product into sub-groups.<br>This is very useful to split buildings by a constraint (e.g. refineries for a pipe, constructors for a belt)." />
     <v-btn
       class="ml-2"
       color="secondary"
       :disabled="product.buildingGroups.length === 1 || remainingBuildings === 0"
       size="small"
+      :variant="product.buildingGroups.length === 1 || remainingBuildings === 0 ? 'outlined' : 'flat'"
       @click="rebalanceGroups(product)"
     ><i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance</span>
@@ -26,6 +26,7 @@
       color="success"
       :disabled="remainingBuildings === 0"
       size="small"
+      :variant="remainingBuildings === 0 ? 'outlined' : 'flat'"
       @click="remainderToLast(product)"
     ><i class="fas fa-balance-scale-right" />
       <span class="ml-2">Remainder to last</span>
@@ -35,6 +36,7 @@
       color="success"
       :disabled="remainingBuildings <= 0"
       size="small"
+      :variant="remainingBuildings <= 0 ? 'outlined' : 'flat'"
       @click="remainderToNewGroup(product)"
     ><i class="fas fa-stream" />
       <span class="ml-2">Remainder to new group</span>
@@ -42,7 +44,10 @@
     <v-btn
       class="ml-2"
       color="amber"
+      :disabled="areAllClocks100(product)"
       size="small"
+      :variant="areAllClocks100(product) ? 'outlined' : 'flat'"
+
       @click="resetClocks(product)"
     ><i class="fas fa-history" />
       <span class="ml-2">OC @ 100%</span>
@@ -75,5 +80,9 @@
     product.buildingGroups.forEach(group => {
       group.overclockPercent = 100
     })
+  }
+
+  const areAllClocks100 = (product: FactoryItem) => {
+    return product.buildingGroups.every(group => group.overclockPercent === 100)
   }
 </script>

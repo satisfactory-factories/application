@@ -35,7 +35,6 @@ export interface ProductBuildingGroup {
   buildingCount: number
   overclockPercent: number
   somersloops: number
-  trayOpen: boolean
 }
 
 export interface FactoryItem {
@@ -47,6 +46,7 @@ export interface FactoryItem {
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
   buildingGroups: ProductBuildingGroup[]
+  buildingGroupTrayOpen: boolean
 }
 
 export interface FactoryDependencyRequest {

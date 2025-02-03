@@ -36,7 +36,6 @@ export interface ProductBuildingGroup {
   overclockPercent: number
   somersloops: number
   parts: {[key: string]: number}
-  trayOpen: boolean
 }
 
 export interface FactoryItem {
@@ -48,6 +47,7 @@ export interface FactoryItem {
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
   buildingGroups: ProductBuildingGroup[]
+  buildingGroupTrayOpen: boolean
 }
 
 export interface FactoryDependencyRequest {

@@ -288,6 +288,7 @@ export const useAppStore = defineStore('app', () => {
         // Patch for #11
         if (product.buildingGroups === undefined) {
           product.buildingGroups = []
+          product.buildingGroupTrayOpen = false
         }
       })
 
