@@ -1,5 +1,5 @@
 <template>
-  <div :key="group.id" class="d-flex align-center">
+  <div :key="group.id" class="d-flex flex-wrap items-center align-center">
     <v-btn
       class="mr-2"
       color="red rounded"
@@ -70,6 +70,8 @@
       />
       <span><tooltip-info classes="ml-n1" text="Not yet supported. Coming in a future release!" /></span>
     </v-chip>
+    <!-- Spacer if there's too many items -->
+    <div :class="{'w-100': partCount > 4 && lgAndDown}" />
     <div class="px-2">
       +
     </div>
@@ -134,9 +136,12 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
+  import { useDisplay } from 'vuetify'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
+
+  const { lgAndDown } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
@@ -206,10 +211,14 @@
     const isRaw = props.factory.parts[part].isRaw
 
     return {
-      cyan: isRaw,
+      cyan: isRaw && !partIsByProduct(part),
       blue: !isRaw && !partIsByProduct(part),
-      green: partIsByProduct(part),
+      nocolor: partIsByProduct(part),
     }
   }
+
+  const partCount = computed(() => {
+    return Object.values(props.group.parts).length
+  })
 
 </script>

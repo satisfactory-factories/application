@@ -24,6 +24,11 @@
     margin: 0 !important;
   }
 
+  &.nocolor {
+    color: white !important;
+    border-color: #7f7f7f !important;
+  }
+
   &.red {
     color: #f44336 !important;
     border-color: #f44336 !important;

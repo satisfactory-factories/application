@@ -146,7 +146,7 @@
       </div>
       <div
         v-if="Object.keys(product.requirements).length > 0 || product.buildingRequirements"
-        class="d-flex flex-sm-wrap align-center mb-2"
+        class="d-flex flex-wrap align-center mb-2"
       >
         <p class="mr-2">Requires:</p>
         <v-chip
