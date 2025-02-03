@@ -227,16 +227,6 @@ app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestB
           factory.tasks = factory.tasks.slice(0, 50);
         }
       }
-
-      // Validate product building groups to ensure they don't exceed a certain character limit
-      factory.products.forEach((product) => {
-        product.buildingGroups.forEach((group) => {
-          if (group.notes && group.notes.length > 150) {
-            console.warn(`User ${username} tried to save a product building group notes field that was too long!`);
-            group.notes = group.notes.substring(0, 150);
-          }
-        });
-      });
     })
 
     await FactoryData.findOneAndUpdate(

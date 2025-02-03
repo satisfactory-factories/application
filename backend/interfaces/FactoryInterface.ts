@@ -34,8 +34,8 @@ export interface ProductBuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
-  sommersloops: number
-  notes: string
+  somersloops: number
+  trayOpen: boolean
 }
 
 export interface FactoryItem {

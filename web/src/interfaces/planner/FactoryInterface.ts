@@ -36,7 +36,7 @@ export interface ProductBuildingGroup {
   overclockPercent: number
   somersloops: number
   parts: {[key: string]: number}
-  notes: string
+  trayOpen: boolean
 }
 
 export interface FactoryItem {
