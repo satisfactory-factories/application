@@ -72,6 +72,18 @@ describe('productBuildingGroups', () => {
       expect(group2.parts.OreIron).toBe(0)
       expect(group2.parts.IronIngot).toBe(0)
     })
+    it('should automatically add a group when a product is added to a factory', () => {
+      addProductToFactory(mockFactory, {
+        id: 'CopperIngot',
+        amount: 150,
+        recipe: 'IngotCopper',
+      })
+
+      const product = mockFactory.products[1]
+
+      expect(product.buildingGroups.length).toBe(1)
+      expect(product.buildingGroups[0].buildingCount).toBe(5)
+    })
   })
 
   describe('rebalanceGroups', () => {
@@ -348,12 +360,20 @@ describe('productBuildingGroups', () => {
   })
 
   describe('overclocking', () => {
+    let factory: Factory
+    let factories: Factory[]
     let group1: ProductBuildingGroup
     let product: FactoryItem
+
     beforeEach(() => {
-      product = mockFactory.products[0]
-      product.amount = 120 // Make it 4 buildings
-      addGroup(product)
+      factory = newFactory('Test Overclocking Factory')
+      factories = [factory]
+      addProductToFactory(factory, {
+        id: 'CopperIngot',
+        amount: 30,
+        recipe: 'IngotCopper',
+      }) // This adds a building group
+      product = factory.products[0]
 
       group1 = product.buildingGroups[0]
       calculateFactories(factories, gameData)
@@ -362,10 +382,10 @@ describe('productBuildingGroups', () => {
     it('should correctly apply the overclock to the group, updating the parts consumed and produced', () => {
       group1.overclockPercent = 150
 
-      calculateBuildingGroupParts([product])
+      calculateBuildingGroupParts(factory, gameData)
 
-      expect(group1.parts.OreIron).toBe(180)
-      expect(group1.parts.IronIngot).toBe(180)
+      expect(group1.parts.OreCopper).toBe(45)
+      expect(group1.parts.CopperIngot).toBe(45)
     })
   })
 })

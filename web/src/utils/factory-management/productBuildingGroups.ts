@@ -66,13 +66,13 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
 
     console.log('productBuildingGroups.ts calculateBuildingGroups product:', product.id)
     const totalBuildingCount = product.buildingRequirements.amount
+
     for (const group of product.buildingGroups) {
-      const overclockMulti = group.overclockPercent / 100
       for (const part in product.requirements) {
         const productPartRequirement = product.requirements[part].amount
         // We need to get a fraction based on the total amount required by the product and the number of buildings.
         const partPerBuilding = productPartRequirement / totalBuildingCount
-        group.parts[part] = (partPerBuilding * group.buildingCount) * overclockMulti
+        group.parts[part] = (partPerBuilding * group.buildingCount)
       }
 
       // Also figure out the parts for the product itself and byproduct
@@ -82,7 +82,14 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
       // And byproduct if applicable
       if (product.byProducts && product.byProducts.length > 0) {
         const byproductPerBuilding = product.byProducts[0].amount / totalBuildingCount
-        group.parts[product.byProducts[0].id] = (byproductPerBuilding * group.buildingCount) * overclockMulti
+        group.parts[product.byProducts[0].id] = (byproductPerBuilding * group.buildingCount)
+      }
+
+      const overclockMulti = group.overclockPercent / 100
+
+      // Now apply the overclock multiplier for all parts in the group
+      for (const part in group.parts) {
+        group.parts[part] = group.parts[part] * overclockMulti
       }
     }
   }
