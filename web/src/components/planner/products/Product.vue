@@ -23,9 +23,9 @@
           hide-details
           :items="autocompletePartItems"
           label="Item"
-          max-width="300px"
+          :max-width="productSelectionWidth"
           variant="outlined"
-          width="300px"
+          :width="productSelectionWidth"
           @update:model-value="updateProductSelection(product, factory)"
         />
       </div>
@@ -37,9 +37,9 @@
           hide-details
           :items="getRecipesForPartSelector(product.id)"
           label="Recipe"
-          max-width="350px"
+          :max-width="recipeSelectionWidth"
           variant="outlined"
-          width="350px"
+          :width="recipeSelectionWidth"
           @update:model-value="updateRecipe(product, factory)"
         />
       </div>
@@ -71,58 +71,57 @@
           size="default"
           @click="doFixProduct(product, factory)"
         >Trim</v-btn>
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="product.displayOrder === 0"
-          icon="fas fa-arrow-up"
-          size="small"
-          variant="outlined"
-          @click="updateProductOrder('up', product)"
-        />
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="product.displayOrder === factory.products.length - 1"
-          icon="fas fa-arrow-down"
-          size="small"
-          variant="outlined"
-          @click="updateProductOrder('down', product)"
-        />
-        <v-btn
-          class="rounded"
-          color="red"
-          icon="fas fa-trash"
-          size="small"
-          variant="outlined"
-          @click="deleteProduct(productIndex, factory)"
-        />
-        <div class="ml-2">
-          <v-btn
-            v-if="!product.buildingGroupTrayOpen"
-            color="primary"
-            :disabled="product.buildingGroups.length === 0"
-            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="product.buildingGroupTrayOpen = true"
-          >
-            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple mode <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
-          </v-btn>
-          <v-btn
-            v-if="product.buildingGroupTrayOpen"
-            color="primary"
-            :disabled="product.buildingGroups.length === 0"
-            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="product.buildingGroupTrayOpen = false"
-          >
-            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Advanced Mode</span>
-          </v-btn>
-        </div>
         <v-chip v-if="shouldShowInternal(product, factory)" class="ml-2 sf-chip small green">
           Internal
         </v-chip>
         <v-chip v-if="shouldShowNotInDemand(product, factory)" class="ml-2 sf-chip small orange">
           No demand!
         </v-chip>
+        <div class="product-controls">
+          <v-btn
+            v-if="!product.buildingGroupTrayOpen"
+            color="amber"
+            :disabled="product.buildingGroups.length === 0"
+            size="small"
+            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+            @click="product.buildingGroupTrayOpen = true"
+          >
+            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
+          </v-btn>
+          <v-btn
+            v-if="product.buildingGroupTrayOpen"
+            color="amber"
+            :disabled="product.buildingGroups.length === 0"
+            size="small"
+            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+            @click="product.buildingGroupTrayOpen = false"
+          >
+            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Advanced</span>
+          </v-btn>
+          <v-btn
+            color="blue"
+            :disabled="product.displayOrder === 0"
+            icon="fas fa-arrow-up"
+            size="small"
+            variant="flat"
+            @click="updateProductOrder('up', product)"
+          />
+          <v-btn
+            color="blue"
+            :disabled="product.displayOrder === factory.products.length - 1"
+            icon="fas fa-arrow-down"
+            size="small"
+            variant="flat"
+            @click="updateProductOrder('down', product)"
+          />
+          <v-btn
+            color="red"
+            icon="fas fa-trash"
+            size="small"
+            variant="flat"
+            @click="deleteProduct(productIndex, factory)"
+          />
+        </div>
       </div>
     </div>
     <div
@@ -254,7 +253,7 @@
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
 
-  const { smAndDown } = useDisplay()
+  const { smAndDown, mdAndDown } = useDisplay()
   const {
     getRecipesForPart,
     getDefaultRecipeForPart,
@@ -267,6 +266,30 @@
     factory: Factory;
     helpText: boolean;
   }>()
+
+  const productSelectionWidth = computed(() => {
+    let width = '300px'
+    if (mdAndDown) {
+      width = '275px'
+    }
+    if (smAndDown) {
+      width = '200px'
+    }
+
+    return width
+  })
+
+  const recipeSelectionWidth = computed(() => {
+    let width = '300px'
+    if (mdAndDown) {
+      width = '275px'
+    }
+    if (smAndDown) {
+      width = '200px'
+    }
+
+    return width
+  })
 
   const deleteProduct = (outputIndex: number, factory: Factory) => {
     factory.products.splice(outputIndex, 1)
@@ -370,8 +393,36 @@
 
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
   .product {
-    border-left: 5px solid #2196f3 !important
+    border-left: 5px solid #2196f3 !important;
+    position: relative;
+  }
+
+  .product-controls {
+    position: absolute;
+    right: 0;
+    top: -1px;
+
+    .v-btn {
+      height: 20px;
+      border-radius: 0;
+      border-right-width: 2px;
+
+      &:first-child {
+        border-top-left-radius: 2px;
+        border-bottom-left-radius: 2px;
+      }
+
+      &:last-child {
+        border-top-right-radius: 2px;
+        border-bottom-right-radius: 2px;
+        border-right-width: 0;
+      }
+    }
+
+    .v-btn__content svg {
+      height: 14px !important;
+    }
   }
 </style>
