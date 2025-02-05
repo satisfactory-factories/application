@@ -105,7 +105,7 @@
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
             @click="product.buildingGroupTrayOpen = true"
           >
-            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple mode <tooltip-info text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
+            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple mode <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
           </v-btn>
           <v-btn
             v-if="product.buildingGroupTrayOpen"
