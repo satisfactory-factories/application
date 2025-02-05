@@ -26,6 +26,7 @@ import { getRecipe } from '@/utils/factory-management/common'
 vi.mock('@/utils/eventBus', () => ({
   default: {
     emit: vi.fn(),
+    on: vi.fn(),
   },
 }))
 

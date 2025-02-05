@@ -2,10 +2,15 @@ import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
-export const addGroup = (product: FactoryItem) => {
+export const addGroup = (product: FactoryItem, addBuildings = true) => {
+  let buildingCount = 0
+  if (addBuildings) {
+    buildingCount = product.buildingRequirements.amount
+  }
+
   product.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
-    buildingCount: 0,
+    buildingCount,
     overclockPercent: 100,
     somersloops: 0,
     parts: {},
@@ -19,23 +24,28 @@ export const rebalanceGroups = (product: FactoryItem) => {
   const targetBuildings = product.buildingRequirements.amount
   const groups = product.buildingGroups
 
-  // Based on the number of groups, divide the target by the number of groups
+  // Divide the target equally among groups.
   const targetPerGroup = targetBuildings / groups.length
   const remainder = targetBuildings % groups.length
   const hasRemainder = remainder ? 1 : 0
-  // Set the building count for each group
-  groups.forEach((group, index) => {
+
+  groups.forEach(group => {
+    // Even scenario: each group gets exactly the quotient.
+    // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
     group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
 
-    // If the building count is not a whole number, apply a clock to the whole group
+    // Set overclock percentage.
+    // Even: no adjustment needed (100%).
+    // Odd: underclock so that effective production is exactly targetPerGroup.
     if (hasRemainder) {
-      group.overclockPercent = formatNumberFully(
-        (targetPerGroup / group.buildingCount) * 100
-      )
+      group.overclockPercent = formatNumberFully((targetPerGroup / group.buildingCount) * 100)
     } else {
       group.overclockPercent = 100
     }
   })
+
+  // Since we've messed with the building counts, recalculate all groups now.
+  calculateBuildingGroupParts([product])
 }
 
 // Maintains the factory's building groups and keeps them synchronised.
@@ -51,7 +61,7 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
 
     // Check if the product should have a product group
     if (product.buildingGroups.length === 0) {
-      addGroup(product)
+      addGroup(product, true)
     }
 
     console.log('productBuildingGroups.ts calculateBuildingGroups product:', product.id)
@@ -61,21 +71,17 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
         const productPartRequirement = product.requirements[part].amount
         // We need to get a fraction based on the total amount required by the product and the number of buildings.
         const partPerBuilding = productPartRequirement / totalBuildingCount
-        const partAmount = partPerBuilding * group.buildingCount
-
-        group.parts[part] = partAmount
+        group.parts[part] = partPerBuilding * group.buildingCount
       }
 
       // Also figure out the parts for the product itself and byproduct
       const productPerBuilding = product.amount / totalBuildingCount
-      const partAmount = productPerBuilding * group.buildingCount
-      group.parts[product.id] = partAmount
+      group.parts[product.id] = productPerBuilding * group.buildingCount
 
       // And byproduct if applicable
       if (product.byProducts && product.byProducts.length > 0) {
         const byproductPerBuilding = product.byProducts[0].amount / totalBuildingCount
-        const byproductAmount = byproductPerBuilding * group.buildingCount
-        group.parts[product.byProducts[0].id] = byproductAmount
+        group.parts[product.byProducts[0].id] = byproductPerBuilding * group.buildingCount
       }
     }
   }

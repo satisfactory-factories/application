@@ -6,7 +6,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addGroup(product)"
+      @click="addGroup(product, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -18,7 +18,8 @@
       size="small"
       :variant="product.buildingGroups.length === 1 || remainingBuildings === 0 ? 'outlined' : 'flat'"
       @click="rebalanceGroups(product)"
-    ><i class="fas fa-balance-scale" />
+    >
+      <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance</span>
     </v-btn>
     <v-btn

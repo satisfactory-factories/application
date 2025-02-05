@@ -311,6 +311,10 @@
 
   const updateRecipe = (product: FactoryItem, factory: Factory) => {
     byProductAsProductCheck(product, gameData)
+
+    // Blow the building groups away, updateFactory will regenerate them
+    product.buildingGroups = []
+
     updateFactory(factory)
   }
 

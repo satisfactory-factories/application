@@ -24,6 +24,7 @@ import eventBus from '@/utils/eventBus'
 vi.mock('@/utils/eventBus', () => ({
   default: {
     emit: vi.fn(),
+    on: vi.fn(),
   },
 }))
 
