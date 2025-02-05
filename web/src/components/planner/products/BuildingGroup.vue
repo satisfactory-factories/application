@@ -42,6 +42,7 @@
         density="compact"
         hide-details
         hide-spin-buttons
+        :max="250"
         :min="0"
         type="number"
         width="100px"
