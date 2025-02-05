@@ -346,4 +346,26 @@ describe('productBuildingGroups', () => {
       })
     })
   })
+
+  describe('overclocking', () => {
+    let group1: ProductBuildingGroup
+    let product: FactoryItem
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      product.amount = 120 // Make it 4 buildings
+      addGroup(product)
+
+      group1 = product.buildingGroups[0]
+      calculateFactories(factories, gameData)
+    })
+
+    it('should correctly apply the overclock to the group, updating the parts consumed and produced', () => {
+      group1.overclockPercent = 150
+
+      calculateBuildingGroupParts([product])
+
+      expect(group1.parts.OreIron).toBe(180)
+      expect(group1.parts.IronIngot).toBe(180)
+    })
+  })
 })

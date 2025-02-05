@@ -48,7 +48,7 @@ export const rebalanceGroups = (product: FactoryItem) => {
   calculateBuildingGroupParts([product])
 }
 
-// Maintains the factory's building groups and keeps them synchronised.
+// Calculates all of the parts for a product based on the building groups
 export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
   // Handle any group part quantity changes.
   // Loop through all the building groups buildings and use that as relative to update each part quantities.
@@ -67,11 +67,12 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
     console.log('productBuildingGroups.ts calculateBuildingGroups product:', product.id)
     const totalBuildingCount = product.buildingRequirements.amount
     for (const group of product.buildingGroups) {
+      const overclockMulti = group.overclockPercent / 100
       for (const part in product.requirements) {
         const productPartRequirement = product.requirements[part].amount
         // We need to get a fraction based on the total amount required by the product and the number of buildings.
         const partPerBuilding = productPartRequirement / totalBuildingCount
-        group.parts[part] = partPerBuilding * group.buildingCount
+        group.parts[part] = (partPerBuilding * group.buildingCount) * overclockMulti
       }
 
       // Also figure out the parts for the product itself and byproduct
@@ -81,7 +82,7 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
       // And byproduct if applicable
       if (product.byProducts && product.byProducts.length > 0) {
         const byproductPerBuilding = product.byProducts[0].amount / totalBuildingCount
-        group.parts[product.byProducts[0].id] = byproductPerBuilding * group.buildingCount
+        group.parts[product.byProducts[0].id] = (byproductPerBuilding * group.buildingCount) * overclockMulti
       }
     }
   }
