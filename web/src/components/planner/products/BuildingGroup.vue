@@ -77,7 +77,7 @@
     </v-chip>
     <!-- Spacer if there's too many items -->
     <div :class="{'w-100': partCount > 4 && lgAndDown}" />
-    <div class="px-2">
+    <div :class="lgAndDown ? 'px-4' : 'px-2'">
       +
     </div>
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
@@ -146,7 +146,7 @@
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
 
-  const { lgAndDown } = useDisplay()
+  const { smAndDown, lgAndDown } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
