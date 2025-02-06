@@ -129,6 +129,8 @@ describe('validation', () => {
         MadeUpPart: { amount: 1 },
       },
       buildingRequirements: {} as any,
+      buildingGroups: [],
+      buildingGroupTrayOpen: false,
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
 

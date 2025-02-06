@@ -7,7 +7,7 @@ import {
   rebalanceGroups, remainderToLast, remainderToNewGroup,
 } from '@/utils/factory-management/productBuildingGroups'
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
-import { gameData } from '@/utils/gameData'
+import { fetchGameData } from '@/utils/gameData'
 
 vi.mock('@/utils/eventBus', () => ({
   default: {
@@ -16,10 +16,11 @@ vi.mock('@/utils/eventBus', () => ({
   },
 }))
 
-describe('productBuildingGroups', () => {
+describe('productBuildingGroups', async () => {
   let mockFactory: Factory
   let factories: Factory[]
   let buildingGroups: ProductBuildingGroup[]
+  const gameData = await fetchGameData()
 
   beforeEach(() => {
     mockFactory = newFactory('Test Factory')
@@ -89,6 +90,7 @@ describe('productBuildingGroups', () => {
   describe('rebalanceGroups', () => {
     let group1: ProductBuildingGroup
     let product: FactoryItem
+
     beforeEach(() => {
       product = mockFactory.products[0]
       addGroup(product)
@@ -382,7 +384,7 @@ describe('productBuildingGroups', () => {
     it('should correctly apply the overclock to the group, updating the parts consumed and produced', () => {
       group1.overclockPercent = 150
 
-      calculateBuildingGroupParts(factory, gameData)
+      calculateBuildingGroupParts([product])
 
       expect(group1.parts.OreCopper).toBe(45)
       expect(group1.parts.CopperIngot).toBe(45)
