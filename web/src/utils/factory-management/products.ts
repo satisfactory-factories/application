@@ -6,6 +6,9 @@ import {
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
 import { addGroup, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
+import { fetchGameData } from '@/utils/gameDataService'
+
+const gameData = await fetchGameData()
 
 export const addProductToFactory = (
   factory: Factory,
@@ -266,7 +269,7 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
   // Must call update factory!
 }
 
-export const updateProductAmountViaRequirement = (product: FactoryItem, part: string, gameData: DataInterface) => {
+export const updateProductAmountViaRequirement = async (product: FactoryItem, part: string) => {
   const ingredient = product.requirements[part]
 
   if (!ingredient) {

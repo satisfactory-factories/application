@@ -146,7 +146,7 @@
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
 
-  const { smAndDown, lgAndDown } = useDisplay()
+  const { lgAndDown } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
