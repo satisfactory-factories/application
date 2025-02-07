@@ -2,7 +2,7 @@
   <div v-for="group in product.buildingGroups" :key="group.id" class="border-t-md py-1">
     <building-group :factory="factory" :group="group" :product="product" />
   </div>
-  <div class="my-2 d-flex align-center">
+  <div class="mb-2 d-flex align-center">
     <span :class="{ 'text-green': correct }">Effective Buildings: <b>{{ effectiveBuildings }}</b> | {{ buildingsRemaining }} remaining</span>
     <div class="mx-1">
       <span v-if="over" class="text-amber ml-2">Over producing!</span>
@@ -26,33 +26,35 @@
     <v-btn
       class="ml-2"
       color="secondary"
-      :disabled="product.buildingGroups.length === 1 || buildingsRemaining === 0"
+      :disabled="product.buildingGroups.length === 1 || correct"
       size="small"
-      :variant="product.buildingGroups.length === 1 || buildingsRemaining === 0 ? 'outlined' : 'flat'"
+      :variant="product.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
       @click="rebalanceGroups(product)"
     >
       <i class="fas fa-balance-scale" />
-      <span class="ml-2">Evenly balance</span>
+      <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
     </v-btn>
     <v-btn
       class="ml-2"
       color="success"
-      :disabled="buildingsRemaining === 0"
+      :disabled="correct || over"
       size="small"
-      :variant="buildingsRemaining === 0 ? 'outlined' : 'flat'"
+      :variant="correct || over ? 'outlined' : 'flat'"
       @click="remainderToLast(product)"
-    ><i class="fas fa-balance-scale-right" />
-      <span class="ml-2">Remainder to last</span>
+    >
+      <i class="fas fa-balance-scale-right" />
+      <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
     </v-btn>
     <v-btn
       class="ml-2"
       color="success"
-      :disabled="buildingsRemaining <= 0"
+      :disabled="correct || over"
       size="small"
-      :variant="buildingsRemaining <= 0 ? 'outlined' : 'flat'"
+      :variant="correct || over ? 'outlined' : 'flat'"
       @click="remainderToNewGroup(product)"
-    ><i class="fas fa-stream" />
-      <span class="ml-2">Remainder to new group</span>
+    >
+      <i class="fas fa-stream" />
+      <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
     </v-btn>
     <v-btn
       class="ml-2"
@@ -62,8 +64,9 @@
       :variant="areAllClocks100(product) ? 'outlined' : 'flat'"
 
       @click="resetClocks(product)"
-    ><i class="fas fa-history" />
-      <span class="ml-2">OC @ 100%</span>
+    >
+      <i class="fas fa-history" />
+      <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
     </v-btn>
   </div>
 </template>
