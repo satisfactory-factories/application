@@ -84,9 +84,9 @@
             :disabled="product.buildingGroups.length === 0"
             size="small"
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="product.buildingGroupTrayOpen = true"
+            @click="openBuildingGroupTray(product)"
           >
-            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Simple <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
+            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Building Groups <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
           </v-btn>
           <v-btn
             v-if="product.buildingGroupTrayOpen"
@@ -96,7 +96,7 @@
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
             @click="product.buildingGroupTrayOpen = false"
           >
-            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Advanced</span>
+            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Building Groups</span>
           </v-btn>
           <v-btn
             color="blue"
@@ -390,6 +390,18 @@
   }
 
   const autocompletePartItems = autocompletePartItemsGenerator()
+
+  const openBuildingGroupTray = (product: FactoryItem) => {
+    const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
+
+    if (!buildingGroupTutorialOpened) {
+      eventBus.emit('openBuildingGroupTutorial')
+    }
+
+    product.buildingGroupTrayOpen = true
+
+    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+  }
 
 </script>
 

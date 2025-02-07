@@ -11,6 +11,7 @@ declare module 'vue' {
     Auth: typeof import('./components/Auth.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']
     BuildingGroups: typeof import('./components/planner/products/BuildingGroups.vue')['default']
+    BuildingGroupTutorial: typeof import('./components/planner/products/BuildingGroupTutorial.vue')['default']
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
     ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']

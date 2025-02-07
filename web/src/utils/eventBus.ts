@@ -30,6 +30,9 @@ type Events = {
 
   // Factory building group management
   rebalanceGroups: FactoryItem;
+
+  // Building Groups
+  openBuildingGroupTutorial: undefined;
 };
 
 const eventBus = mitt<Events>()
