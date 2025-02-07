@@ -652,12 +652,12 @@ describe('products', () => {
       }
       it('should throw if ingredient is missing', () => {
         expect(() => {
-          updateProductAmountViaRequirement(product, 'NotAnIngredient', gameData)
+          updateProductAmountViaRequirement(product, 'NotAnIngredient')
         }).toThrow(`products: updateProductAmountByRequirement: No ingredient part NotAnIngredient found for product ${product.id}!`)
       })
       it('should correctly update the product amount via requirement', () => {
         product.requirements.Silica.amount = 100
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         expect(product.amount).toBe(200)
@@ -666,7 +666,7 @@ describe('products', () => {
       })
       it('should prevent negative values', () => {
         product.requirements.Silica.amount = -123
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
@@ -682,7 +682,7 @@ describe('products', () => {
       // Reset the mock to ensure a clean slate
         if (!product.byProducts) throw new Error('Product has no byproducts')
         product.requirements.Silica.amount = 0
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
