@@ -3,12 +3,21 @@
     <building-group :factory="factory" :group="group" :product="product" />
   </div>
   <div class="mb-2 d-flex align-center">
-    <span :class="{ 'text-green': correct }">Effective Buildings: <b>{{ effectiveBuildings }}</b> | {{ buildingsRemaining }} remaining</span>
-    <div class="mx-1">
-      <span v-if="over" class="text-amber ml-2">Over producing!</span>
-      <span v-if="under" class="text-red ml-2">Under producing!</span>
+    <span :class="{ 'text-green': correct }">
+      <i class="fas fa-building" />
+      <span class="ml-1">
+        Effective Buildings: <b>{{ effectiveBuildings }}</b> | {{ buildingsRemaining }} remaining
+      </span>
+    </span>
+    <div class="ml-2">
+      <v-chip v-if="over" class="sf-chip red small">
+        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
+      </v-chip>
+      <v-chip v-if="under" class="sf-chip red small">
+        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
+      </v-chip>
     </div>
-    <div class="mx-1">
+    <div class="mr-2">
       <v-chip v-if="product.buildingGroups.length === 1" class="sf-chip small gray">Basic mode</v-chip>
       <v-chip v-if="product.buildingGroups.length > 1" class="sf-chip small gray">Advanced mode</v-chip>
     </div>
