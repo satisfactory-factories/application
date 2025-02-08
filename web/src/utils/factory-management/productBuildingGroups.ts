@@ -20,7 +20,13 @@ export const addGroup = (product: FactoryItem, addBuildings = true) => {
 }
 
 // Takes the building groups of a product and rebalances them based on the building count
-export const rebalanceGroups = (product: FactoryItem) => {
+export const rebalanceGroups = (product: FactoryItem, force = false) => {
+  // Prevent rebalancing when in advanced mode
+  if (!force && product.buildingGroups.length > 1) {
+    console.log('Rebalance skipped due to advanced mode')
+    return
+  }
+
   const targetBuildings = product.buildingRequirements.amount
   const groups = product.buildingGroups
 

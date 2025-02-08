@@ -29,7 +29,7 @@
       :disabled="product.buildingGroups.length === 1 || correct"
       size="small"
       :variant="product.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
-      @click="rebalanceGroups(product)"
+      @click="rebalanceGroups(product, true)"
     >
       <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
