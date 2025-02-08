@@ -249,6 +249,7 @@
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import eventBus from '@/utils/eventBus'
+  import { rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -343,10 +344,6 @@
 
   const updateProductQty = (product: FactoryItem, factory: Factory) => {
     updateFactory(factory)
-
-    if (product.buildingGroups.length === 1) {
-      eventBus.emit('rebalanceGroups', product)
-    }
   }
 
   // Enables the user to move the order of the byproduct up or down
@@ -357,37 +354,21 @@
   const setProductQtyByByproduct = (product: FactoryItem, part: string) => {
     updateProductAmountViaByproduct(product, part, gameData)
     updateFactory(props.factory)
-
-    if (product.buildingGroups.length === 1) {
-      eventBus.emit('rebalanceGroups', product)
-    }
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
     updateProductAmountViaRequirement(product, part)
     updateFactory(props.factory)
-
-    if (product.buildingGroups.length === 1) {
-      eventBus.emit('rebalanceGroups', product)
-    }
   }
 
   const changeBuildingAmount = (product: FactoryItem) => {
     increaseProductQtyViaBuilding(product, gameData)
     updateFactory(props.factory)
-
-    if (product.buildingGroups.length === 1) {
-      eventBus.emit('rebalanceGroups', product)
-    }
   }
 
   const doFixProduct = (product: FactoryItem, factory: Factory) => {
     fixProduct(product, factory)
     updateFactory(factory)
-
-    if (product.buildingGroups.length === 1) {
-      eventBus.emit('rebalanceGroups', product)
-    }
   }
 
   const autocompletePartItemsGenerator = () => {

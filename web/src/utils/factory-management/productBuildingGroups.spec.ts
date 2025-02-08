@@ -131,10 +131,23 @@ describe('productBuildingGroups', async () => {
         group2 = product.buildingGroups[1]
       })
 
+      it('should not rebalance when in advanced mode and not forced', () => {
+        // Assert the before
+        expect(group1.buildingCount).toBe(5)
+        expect(group2.buildingCount).toBe(5)
+        product.buildingRequirements.amount = 20
+
+        rebalanceGroups(product)
+
+        // Nothing should have changed
+        expect(group1.buildingCount).toBe(5)
+        expect(group2.buildingCount).toBe(5)
+      })
+
       it('should distribute the building count evenly', () => {
         product.buildingRequirements.amount = 6
 
-        rebalanceGroups(product)
+        rebalanceGroups(product, true)
 
         expect(group1.buildingCount).toBe(3)
         expect(group2.buildingCount).toBe(3)
@@ -143,7 +156,7 @@ describe('productBuildingGroups', async () => {
       it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
         product.buildingRequirements.amount = 5
 
-        rebalanceGroups(product)
+        rebalanceGroups(product, true)
 
         expect(group1.buildingCount).toBe(3)
         expect(group2.buildingCount).toBe(3)
@@ -155,7 +168,7 @@ describe('productBuildingGroups', async () => {
       it('should distribute the fractional group with an underclock', () => {
         product.buildingRequirements.amount = 3
 
-        rebalanceGroups(product)
+        rebalanceGroups(product, true)
 
         expect(group1.buildingCount).toBe(2)
         expect(group2.buildingCount).toBe(2)

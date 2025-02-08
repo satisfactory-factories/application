@@ -5,7 +5,7 @@ import {
   getRecipe,
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
-import { addGroup, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
+import { addGroup } from '@/utils/factory-management/productBuildingGroups'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -196,7 +196,7 @@ export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) =>
   return partRequired <= 0
 }
 
-export const fixProduct = (product: FactoryItem | ByProductItem, factory: Factory): void => {
+export const fixProduct = (product: FactoryItem, factory: Factory): void => {
   // If the product is not found, throw
   if (!product.id) {
     const error = 'products: fixPart: Product ID is missing!'
@@ -219,8 +219,6 @@ export const fixProduct = (product: FactoryItem | ByProductItem, factory: Factor
   const diff = required - produced
 
   product.amount = diff + product.amount
-
-  eventBus.emit('rebalanceGroups', product as FactoryItem)
 
   // updateFactory must be called!
 }
@@ -263,12 +261,6 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
     product.amount = 0.1
   }
 
-  // Because we've changed the product amount, we need to rebalance the groups.
-  // Only do this when in basic mode.
-  if (product.buildingGroups.length === 1) {
-    rebalanceGroups(product)
-  }
-
   // Must call update factory!
 }
 
@@ -292,10 +284,6 @@ export const updateProductAmountViaRequirement = async (product: FactoryItem, pa
     product.amount = 0.1
   }
 
-  // Because we've changed the product amount, we need to rebalance the groups.
-  if (product.buildingGroups.length === 1) {
-    rebalanceGroups(product)
-  }
   // Must call update factory!
 }
 
@@ -411,8 +399,6 @@ export const increaseProductQtyViaBuilding = (product: FactoryItem, gameData: Da
 
   // Set the new quantity of the product
   product.amount = recipe.products[0].perMin * newVal
-
-  eventBus.emit('rebalanceGroups', product)
 
   // Must call updateFactory!
 }
