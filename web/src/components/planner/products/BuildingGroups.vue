@@ -1,5 +1,5 @@
 <template>
-  <div v-for="group in product.buildingGroups" :key="group.id" class="border-t-md py-1">
+  <div v-for="group in product.buildingGroups" :key="group.id" class="buildingGroup" :class="isLast(group, product.buildingGroups) ? 'last' : ''">
     <building-group :factory="factory" :group="group" :product="product" />
   </div>
   <div class="mb-2 d-flex align-center">
@@ -18,7 +18,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addGroup(product, false)"
+      @click="addBuildingGroup(product, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -73,9 +73,9 @@
 
 <script setup lang="ts">
   import BuildingGroup from '@/components/planner/products/BuildingGroup.vue'
-  import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
   import {
-    addGroup,
+    addBuildingGroup,
     calculateEffectiveBuildingCount,
     rebalanceGroups,
     remainderToLast,
@@ -123,4 +123,21 @@
   const showTutorial = () => {
     eventBus.emit('openBuildingGroupTutorial')
   }
+
+  const isLast = (group: ProductBuildingGroup, groups: ProductBuildingGroup[]) => {
+    return groups.indexOf(group) === groups.length - 1
+  }
 </script>
+
+<style scoped lang="scss">
+  .buildingGroup {
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid #4b4b4b;
+
+    &.last {
+      border-bottom: none !important;
+      padding-bottom: 0 !important;
+    }
+  }
+</style>

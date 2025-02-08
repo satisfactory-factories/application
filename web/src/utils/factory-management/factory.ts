@@ -13,7 +13,11 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
-import { calculateBuildingGroupParts, rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
+import {
+  calculateBuildingGroupParts,
+  calculateBuildingGroupProblems,
+  rebalanceGroups,
+} from '@/utils/factory-management/productBuildingGroups'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -120,9 +124,10 @@ export const calculateFactory = (
   calculateDependencyMetricsSupply(factory)
 
   // Calculate / synchronise the factory groups
-  factory.products.forEach(product =>
-    rebalanceGroups(product),
-  )
+  factory.products.forEach(product => {
+    rebalanceGroups(product)
+    calculateBuildingGroupProblems(product)
+  })
   calculateBuildingGroupParts(factory.products)
 
   // Check if the factory has any problems

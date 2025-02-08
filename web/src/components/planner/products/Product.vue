@@ -80,7 +80,7 @@
         <div class="product-controls">
           <v-btn
             v-if="!product.buildingGroupTrayOpen"
-            color="amber"
+            :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
             :disabled="product.buildingGroups.length === 0"
             size="small"
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
@@ -90,7 +90,7 @@
           </v-btn>
           <v-btn
             v-if="product.buildingGroupTrayOpen"
-            color="amber"
+            :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
             :disabled="product.buildingGroups.length === 0"
             size="small"
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
@@ -224,8 +224,14 @@
           <span class="ml-2">{{ formatPower(product.buildingRequirements.powerConsumed ?? 0).value }} {{ formatPower(product.buildingRequirements.powerConsumed ?? 0).unit }}</span>
         </v-chip>
       </div>
-      <div v-if="product.buildingGroupTrayOpen" class="mb-2">
+      <div v-if="product.buildingGroupTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
         <building-groups :factory="factory" :product="product" />
+      </div>
+      <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupTrayOpen" class="mb-2">
+        <v-btn color="red" @click="openBuildingGroupTray(product)">
+          <i class="fas fa-exclamation-triangle" />
+          <span class="ml-2">Building Groups have a problem!</span>
+        </v-btn>
       </div>
     </div>
   </div>
@@ -249,7 +255,6 @@
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import eventBus from '@/utils/eventBus'
-  import { rebalanceGroups } from '@/utils/factory-management/productBuildingGroups'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -430,6 +435,15 @@
 
     .v-btn__content svg {
       height: 14px !important;
+    }
+  }
+
+  .buildingGroups {
+    border-left: 5px solid #4caf50 !important;
+    padding-left: 10px;
+
+    &.problem {
+      border-left-color: #f44336 !important;
     }
   }
 </style>

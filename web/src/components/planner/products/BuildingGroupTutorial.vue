@@ -15,7 +15,7 @@
         <p>There are in effect two modes:</p>
         <ul class="ml-4">
           <li>
-            <b>"Basic" mode:</b> Simply have one logical group, and your configuration will affect the entire product line. e.g. if you increase the number of buildings, it will adjust the line as well. This is the default mode. This enables you to clock all buildings on the line easily in one setting.</li>
+            <b>"Basic" mode:</b> Simply have one logical group, and your configuration will affect the entire product line. e.g. if you increase the number of buildings, it will adjust the line as well and also vice versa. This is the default mode. This enables you to clock all buildings on the line easily in one setting.</li>
           <li>
             <b>"Advanced" mode:</b> If you make multiple groups, we in effect give you direct manual control to make all the adjustments as you please. Note however that the auto correction of the product requirements and building groups are disabled, you will have to adjust manually and ensure the "Effective Buildings" is 0, otherwise the math will not balance. It will be obvious when the math doesn't add up. There is a 0.1 effective building margin of error before the tool yells at you to correct it.
           </li>

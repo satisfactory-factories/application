@@ -2,7 +2,7 @@ import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
-export const addGroup = (product: FactoryItem, addBuildings = true) => {
+export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   let buildingCount = 0
   if (addBuildings) {
     buildingCount = product.buildingRequirements.amount
@@ -67,7 +67,7 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
 
     // Check if the product should have a product group
     if (product.buildingGroups.length === 0) {
-      addGroup(product, true)
+      addBuildingGroup(product, true)
     }
 
     const totalBuildingCount = product.buildingRequirements.amount
@@ -192,8 +192,19 @@ export const remainderToNewGroup = (product: FactoryItem) => {
     return // Nothing to do
   }
 
-  addGroup(product)
+  addBuildingGroup(product)
   remainderToLast(product)
+}
+
+// Calculates whether the building group passes it's requirements for effective buildings
+export const calculateBuildingGroupProblems = (product: FactoryItem) => {
+  // Get the effective building count
+  const effectiveBuildingCount = calculateEffectiveBuildingCount(product)
+
+  // If the effective building count is out of whack between -0.1 and 0.1, we mark it as having a problem.
+  const absDiff = Math.abs(product.buildingRequirements.amount - effectiveBuildingCount)
+
+  product.buildingGroupsHaveProblem = absDiff > 0.1
 }
 
 eventBus.on('rebalanceGroups', rebalanceGroups)

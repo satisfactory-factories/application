@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
-  addGroup, calculateBuildingGroupParts,
+  addBuildingGroup, calculateBuildingGroupParts, calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
   rebalanceGroups, remainderToLast, remainderToNewGroup,
 } from '@/utils/factory-management/productBuildingGroups'
@@ -42,28 +42,28 @@ describe('productBuildingGroups', async () => {
 
   describe('addGroup', () => {
     it('should add a new group to the product with the correct building count', () => {
-      addGroup(mockFactory.products[0])
+      addBuildingGroup(mockFactory.products[0])
 
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
     it('should add a new group to the product with 0 buildings when asked', () => {
-      addGroup(mockFactory.products[0], false)
+      addBuildingGroup(mockFactory.products[0], false)
 
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(0)
     })
 
     it('should add a new group to the product with the correct parts', () => {
-      addGroup(mockFactory.products[0])
+      addBuildingGroup(mockFactory.products[0])
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
     })
     it('should add a multiple groups each containing the correct part amounts', () => {
-      addGroup(mockFactory.products[0]) // The first group should contain the full requirement
-      addGroup(mockFactory.products[0], false)
+      addBuildingGroup(mockFactory.products[0]) // The first group should contain the full requirement
+      addBuildingGroup(mockFactory.products[0], false)
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
@@ -90,7 +90,7 @@ describe('productBuildingGroups', async () => {
 
     beforeEach(() => {
       product = mockFactory.products[0]
-      addGroup(product)
+      addBuildingGroup(product)
       group1 = product.buildingGroups[0]
 
       calculateFactories(factories, gameData)
@@ -127,7 +127,7 @@ describe('productBuildingGroups', async () => {
       let group2: ProductBuildingGroup
 
       beforeEach(() => {
-        addGroup(product)
+        addBuildingGroup(product)
         group2 = product.buildingGroups[1]
       })
 
@@ -209,7 +209,7 @@ describe('productBuildingGroups', async () => {
     let group: ProductBuildingGroup
     let product: FactoryItem
     beforeEach(() => {
-      addGroup(mockFactory.products[0])
+      addBuildingGroup(mockFactory.products[0])
       calculateFactories(factories, gameData)
       product = mockFactory.products[0]
       group = mockFactory.products[0].buildingGroups[0]
@@ -229,7 +229,7 @@ describe('productBuildingGroups', async () => {
     })
 
     it('should properly calculate the parts for a product with multiple groups when updated', () => {
-      addGroup(product, false)
+      addBuildingGroup(product, false)
       const group2 = product.buildingGroups[1]
 
       // Assert the before
@@ -267,11 +267,11 @@ describe('productBuildingGroups', async () => {
     let product: FactoryItem
     beforeEach(() => {
       product = mockFactory.products[0]
-      addGroup(product)
+      addBuildingGroup(product)
       group1 = product.buildingGroups[0]
     })
     it('should properly calculate the effective building count across multiple groups', () => {
-      addGroup(product)
+      addBuildingGroup(product)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
 
@@ -288,8 +288,8 @@ describe('productBuildingGroups', async () => {
     })
 
     it('should properly calculate the effective building count across multiple groups with precise percentages', () => {
-      addGroup(product)
-      addGroup(product)
+      addBuildingGroup(product)
+      addBuildingGroup(product)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
       const group3 = product.buildingGroups[2]
@@ -319,8 +319,8 @@ describe('productBuildingGroups', async () => {
     let product: FactoryItem
     beforeEach(() => {
       product = mockFactory.products[0]
-      addGroup(product)
-      addGroup(product)
+      addBuildingGroup(product)
+      addBuildingGroup(product)
 
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
@@ -455,6 +455,48 @@ describe('productBuildingGroups', async () => {
 
       expect(group1.parts.OreCopper).toBe(45)
       expect(group1.parts.CopperIngot).toBe(45)
+    })
+  })
+
+  describe('calculateBuildingGroupProblems', () => {
+    let group1: ProductBuildingGroup
+    let group2: ProductBuildingGroup
+    let product: FactoryItem
+
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      addBuildingGroup(product)
+      addBuildingGroup(product)
+      group1 = product.buildingGroups[0]
+      group2 = product.buildingGroups[1]
+    })
+
+    it('should correctly identify when a building group has a problem', () => {
+      // Lower the effective building count from 5 to 4
+      group1.buildingCount = 1
+      group2.buildingCount = 3
+
+      calculateBuildingGroupProblems(mockFactory.products[0])
+
+      expect(product.buildingGroupsHaveProblem).toBe(true)
+    })
+
+    it('should remove the problem flag when it has been resolved', () => {
+      // Lower the effective building count from 5 to 4
+      group1.buildingCount = 1
+      group2.buildingCount = 3
+
+      calculateBuildingGroupProblems(mockFactory.products[0])
+
+      expect(product.buildingGroupsHaveProblem).toBe(true)
+
+      // Now fix the problem
+      group1.buildingCount = 2
+      group2.buildingCount = 3
+
+      calculateBuildingGroupProblems(mockFactory.products[0])
+
+      expect(product.buildingGroupsHaveProblem).toBe(false)
     })
   })
 })

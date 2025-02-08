@@ -48,6 +48,7 @@ export interface FactoryItem {
   byProducts?: ByProductItem[];
   buildingGroups: ProductBuildingGroup[]
   buildingGroupTrayOpen: boolean
+  buildingGroupsHaveProblem: boolean
 }
 
 export interface FactoryDependencyRequest {

@@ -17,5 +17,12 @@ export const calculateHasProblem = (factories: Factory[]) => {
         factory.hasProblem = true
       }
     })
+
+    // Loop through all the products of a factory and check if any building groups have problems.
+    factory.products.forEach(product => {
+      if (product.buildingGroupsHaveProblem) {
+        factory.hasProblem = true
+      }
+    })
   })
 }

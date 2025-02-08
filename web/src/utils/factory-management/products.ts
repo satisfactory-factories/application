@@ -5,7 +5,7 @@ import {
   getRecipe,
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
-import { addGroup } from '@/utils/factory-management/productBuildingGroups'
+import { addBuildingGroup } from '@/utils/factory-management/productBuildingGroups'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -30,10 +30,11 @@ export const addProductToFactory = (
     byProducts: [],
     buildingGroups: [],
     buildingGroupTrayOpen: false,
+    buildingGroupsHaveProblem: false,
   })
 
   // Also push the first factory group
-  addGroup(factory.products[factory.products.length - 1])
+  addBuildingGroup(factory.products[factory.products.length - 1])
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
