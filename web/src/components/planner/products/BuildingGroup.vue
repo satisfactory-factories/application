@@ -73,7 +73,7 @@
         width="80px"
         @update:model-value="updateGroup(group)"
       />
-      <span><tooltip-info classes="ml-n1" text="Not yet supported. Coming in a future release!" /></span>
+      <span><tooltip-info classes="ml-n1" text="Not yet supported. Coming soon!" /></span>
     </v-chip>
     <!-- Spacer if there's too many items -->
     <div :class="{'w-100': partCount > 4 && lgAndDown}" />
