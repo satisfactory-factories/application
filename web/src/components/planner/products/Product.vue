@@ -79,24 +79,21 @@
         </v-chip>
         <div class="product-controls">
           <v-btn
-            v-if="!product.buildingGroupTrayOpen"
             :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
             :disabled="product.buildingGroups.length === 0"
             size="small"
             :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="openBuildingGroupTray(product)"
+            @click="toggleBuildingGroupTray(product)"
           >
-            <v-icon left>fas fa-arrow-down</v-icon><span class="ml-2">Building Groups <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." /></span>
-          </v-btn>
-          <v-btn
-            v-if="product.buildingGroupTrayOpen"
-            :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
-            :disabled="product.buildingGroups.length === 0"
-            size="small"
-            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="product.buildingGroupTrayOpen = false"
-          >
-            <v-icon left>fas fa-arrow-up</v-icon> <span class="ml-2">Building Groups</span>
+            <span v-if="!product.buildingGroupTrayOpen">
+              <v-icon left>fas fa-arrow-down</v-icon>
+            </span>
+            <span v-if="product.buildingGroupTrayOpen">
+              <v-icon left>fas fa-arrow-up</v-icon>
+            </span>
+            <span class="ml-2">Building Groups ({{ product.buildingGroups.length }})
+              <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." />
+            </span>
           </v-btn>
           <v-btn
             color="blue"
@@ -228,7 +225,7 @@
         <building-groups :factory="factory" :product="product" />
       </div>
       <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupTrayOpen" class="mb-2">
-        <v-btn color="red" @click="openBuildingGroupTray(product)">
+        <v-btn color="red" @click="toggleBuildingGroupTray(product)">
           <i class="fas fa-exclamation-triangle" />
           <span class="ml-2">Building Groups have a problem!</span>
         </v-btn>
@@ -275,10 +272,10 @@
 
   const productSelectionWidth = computed(() => {
     let width = '300px'
-    if (mdAndDown) {
+    if (mdAndDown.value) {
       width = '275px'
     }
-    if (smAndDown) {
+    if (smAndDown.value) {
       width = '200px'
     }
 
@@ -287,10 +284,10 @@
 
   const recipeSelectionWidth = computed(() => {
     let width = '300px'
-    if (mdAndDown) {
+    if (mdAndDown.value) {
       width = '275px'
     }
-    if (smAndDown) {
+    if (smAndDown.value) {
       width = '200px'
     }
 
@@ -391,16 +388,15 @@
 
   const autocompletePartItems = autocompletePartItemsGenerator()
 
-  const openBuildingGroupTray = (product: FactoryItem) => {
+  const toggleBuildingGroupTray = (product: FactoryItem) => {
     const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
 
     if (!buildingGroupTutorialOpened) {
       eventBus.emit('openBuildingGroupTutorial')
+      localStorage.setItem('buildingGroupTutorialOpened', 'true')
     }
 
-    product.buildingGroupTrayOpen = true
-
-    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+    product.buildingGroupTrayOpen = !product.buildingGroupTrayOpen
   }
 
 </script>

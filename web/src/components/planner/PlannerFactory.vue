@@ -323,7 +323,6 @@
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
       (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
   }
-
 </script>
 
 <style lang="scss" scoped>
