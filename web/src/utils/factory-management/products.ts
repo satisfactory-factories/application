@@ -264,7 +264,10 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
   }
 
   // Because we've changed the product amount, we need to rebalance the groups.
-  rebalanceGroups(product)
+  // Only do this when in basic mode.
+  if (product.buildingGroups.length === 1) {
+    rebalanceGroups(product)
+  }
 
   // Must call update factory!
 }
@@ -289,7 +292,10 @@ export const updateProductAmountViaRequirement = async (product: FactoryItem, pa
     product.amount = 0.1
   }
 
-  eventBus.emit('rebalanceGroups', product)
+  // Because we've changed the product amount, we need to rebalance the groups.
+  if (product.buildingGroups.length === 1) {
+    rebalanceGroups(product)
+  }
   // Must call update factory!
 }
 

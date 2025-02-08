@@ -43,12 +43,14 @@ describe('productBuildingGroups', async () => {
   describe('addGroup', () => {
     it('should add a new group to the product with the correct building count', () => {
       addGroup(mockFactory.products[0])
+
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
     it('should add a new group to the product with 0 buildings when asked', () => {
       addGroup(mockFactory.products[0], false)
+
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(0)
     })
@@ -56,22 +58,17 @@ describe('productBuildingGroups', async () => {
     it('should add a new group to the product with the correct parts', () => {
       addGroup(mockFactory.products[0])
 
-      const group = buildingGroups[0]
-
-      expect(group.parts.OreIron).toBe(150)
-      expect(group.parts.IronIngot).toBe(150)
+      expect(buildingGroups[0].parts.OreIron).toBe(150)
+      expect(buildingGroups[0].parts.IronIngot).toBe(150)
     })
     it('should add a multiple groups each containing the correct part amounts', () => {
       addGroup(mockFactory.products[0]) // The first group should contain the full requirement
       addGroup(mockFactory.products[0], false)
 
-      const group1 = buildingGroups[0]
-      const group2 = buildingGroups[1]
-
-      expect(group1.parts.OreIron).toBe(150)
-      expect(group1.parts.IronIngot).toBe(150)
-      expect(group2.parts.OreIron).toBe(0)
-      expect(group2.parts.IronIngot).toBe(0)
+      expect(buildingGroups[0].parts.OreIron).toBe(150)
+      expect(buildingGroups[0].parts.IronIngot).toBe(150)
+      expect(buildingGroups[1].parts.OreIron).toBe(0)
+      expect(buildingGroups[1].parts.IronIngot).toBe(0)
     })
     it('should automatically add a group when a product is added to a factory', () => {
       addProductToFactory(mockFactory, {
@@ -128,6 +125,7 @@ describe('productBuildingGroups', async () => {
 
     describe('multiple groups', () => {
       let group2: ProductBuildingGroup
+
       beforeEach(() => {
         addGroup(product)
         group2 = product.buildingGroups[1]
@@ -191,6 +189,62 @@ describe('productBuildingGroups', async () => {
         expect(group2.parts.OreIron).toBe(60)
         expect(group2.parts.IronIngot).toBe(60)
       })
+    })
+  })
+
+  describe('calculateBuildingGroupParts', () => {
+    let group: ProductBuildingGroup
+    let product: FactoryItem
+    beforeEach(() => {
+      addGroup(mockFactory.products[0])
+      calculateFactories(factories, gameData)
+      product = mockFactory.products[0]
+      group = mockFactory.products[0].buildingGroups[0]
+    })
+
+    it('should properly calculate the parts for a product with a single group when updated', () => {
+      // Assert the before
+      expect(group.parts.OreIron).toBe(150)
+      expect(group.parts.IronIngot).toBe(150)
+
+      group.buildingCount = 10 // This should force a recalculation, originally it's 5
+
+      calculateBuildingGroupParts([mockFactory.products[0]])
+
+      expect(group.parts.OreIron).toBe(300)
+      expect(group.parts.IronIngot).toBe(300)
+    })
+
+    it('should properly calculate the parts for a product with multiple groups when updated', () => {
+      addGroup(product, false)
+      const group2 = product.buildingGroups[1]
+
+      // Assert the before
+      expect(group.parts.OreIron).toBe(150)
+      expect(group2.parts.OreIron).toBe(0)
+      expect(group.parts.IronIngot).toBe(150)
+      expect(group2.parts.IronIngot).toBe(0)
+
+      group.buildingCount = 11.5
+      group2.buildingCount = 5.5
+
+      calculateBuildingGroupParts([product])
+
+      expect(group.parts.OreIron).toBe(345)
+      expect(group.parts.IronIngot).toBe(345)
+      expect(group2.parts.OreIron).toBe(165)
+      expect(group2.parts.IronIngot).toBe(165)
+    })
+
+    it('should not adjust any clocks', () => {
+      // Assert the before
+      expect(group.overclockPercent).toBe(100)
+
+      group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
+
+      calculateBuildingGroupParts([mockFactory.products[0]])
+
+      expect(group.overclockPercent).toBe(100)
     })
   })
 

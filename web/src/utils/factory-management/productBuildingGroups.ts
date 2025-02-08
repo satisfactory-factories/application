@@ -48,7 +48,7 @@ export const rebalanceGroups = (product: FactoryItem) => {
   calculateBuildingGroupParts([product])
 }
 
-// Calculates all of the parts for a product based on the building groups
+// Calculates all parts for a product based on the building groups
 export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
   // Handle any group part quantity changes.
   // Loop through all the building groups buildings and use that as relative to update each part quantities.
@@ -64,7 +64,6 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
       addGroup(product, true)
     }
 
-    console.log('productBuildingGroups.ts calculateBuildingGroups product:', product.id)
     const totalBuildingCount = product.buildingRequirements.amount
 
     for (const group of product.buildingGroups) {

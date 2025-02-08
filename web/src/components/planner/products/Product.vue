@@ -357,23 +357,37 @@
   const setProductQtyByByproduct = (product: FactoryItem, part: string) => {
     updateProductAmountViaByproduct(product, part, gameData)
     updateFactory(props.factory)
-    eventBus.emit('rebalanceGroups', product)
+
+    if (product.buildingGroups.length === 1) {
+      eventBus.emit('rebalanceGroups', product)
+    }
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
-    updateProductAmountViaRequirement(product, part, gameData)
+    updateProductAmountViaRequirement(product, part)
     updateFactory(props.factory)
+
+    if (product.buildingGroups.length === 1) {
+      eventBus.emit('rebalanceGroups', product)
+    }
   }
 
   const changeBuildingAmount = (product: FactoryItem) => {
     increaseProductQtyViaBuilding(product, gameData)
     updateFactory(props.factory)
-    eventBus.emit('rebalanceGroups', product)
+
+    if (product.buildingGroups.length === 1) {
+      eventBus.emit('rebalanceGroups', product)
+    }
   }
 
   const doFixProduct = (product: FactoryItem, factory: Factory) => {
     fixProduct(product, factory)
     updateFactory(factory)
+
+    if (product.buildingGroups.length === 1) {
+      eventBus.emit('rebalanceGroups', product)
+    }
   }
 
   const autocompletePartItemsGenerator = () => {

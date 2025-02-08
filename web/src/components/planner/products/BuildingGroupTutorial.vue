@@ -37,7 +37,7 @@
 <script lang="ts" setup>
   import eventBus from '@/utils/eventBus'
 
-  const openTutorial = ref(true)
+  const openTutorial = ref(false)
 
   eventBus.on('openBuildingGroupTutorial', () => {
     console.log('openBuildingGroupTutorial')
