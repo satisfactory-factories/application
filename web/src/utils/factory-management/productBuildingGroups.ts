@@ -1,5 +1,4 @@
 import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
-import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 
@@ -209,5 +208,3 @@ export const calculateBuildingGroupProblems = (product: FactoryItem) => {
 
   product.buildingGroupsHaveProblem = absDiff > 0.1
 }
-
-eventBus.on('rebalanceGroups', rebalanceGroups)
