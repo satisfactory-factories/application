@@ -45,7 +45,7 @@
         :max="250"
         :min="0"
         type="number"
-        width="100px"
+        width="125px"
         @update:model-value="updateGroup(group)"
       />
       <span>%</span>
@@ -178,14 +178,19 @@
 
     if (props.product.buildingGroups.length === 1) {
       // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
-      // Reduce all the groups building counts to get the total building count.
-      // Update the product's building requirements
       props.product.buildingRequirements.amount = group.buildingCount
       increaseProductQtyViaBuilding(props.product, gameData)
-    } else {
+    }
+
+    // If the user is trying to use more than .0001 precision for overclock, truncate it and alert them.
+    const clock = group.overclockPercent.toString().split('.')[0]
+    const precision = group.overclockPercent.toString().split('.')[1]
+    if (precision?.length > 4) {
+      // Truncate the overclock to 4 decimal places.2255255255525555
+      group.overclockPercent = Number(`${clock}.${precision.slice(0, 4)}`)
       eventBus.emit('toast', {
-        message: 'Since you have multiple building groups, please ensure the total building count is correct.',
-        type: 'info',
+        message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
+        type: 'warning',
       })
     }
 

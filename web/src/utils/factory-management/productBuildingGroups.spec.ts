@@ -313,6 +313,15 @@ describe('productBuildingGroups', async () => {
         expect(group2.parts.OreCopper).toBe(31.882)
         expect(group2.parts.Water).toBe(21.255)
         expect(group2.parts.CopperIngot).toBe(79.706)
+
+        // Test 3: 113.4933% overclock, testing to maximum precision
+        group2.overclockPercent = 113.4933
+
+        calculateBuildingGroupParts([mockFactory.products[1]])
+
+        expect(group2.parts.OreCopper).toBe(17.023)
+        expect(group2.parts.Water).toBe(11.349)
+        expect(group2.parts.CopperIngot).toBe(42.559)
       })
     })
   })
