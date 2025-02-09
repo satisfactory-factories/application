@@ -94,7 +94,7 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
 
       // Now apply the overclock multiplier for all parts in the group
       for (const part in group.parts) {
-        group.parts[part] = group.parts[part] * overclockMulti
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti)
       }
     }
   }

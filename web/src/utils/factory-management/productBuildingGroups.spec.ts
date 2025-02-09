@@ -259,6 +259,62 @@ describe('productBuildingGroups', async () => {
 
       expect(group.overclockPercent).toBe(100)
     })
+
+    describe('overclocking', () => {
+      it('should correctly apply an overclock to the parts', () => {
+        group.buildingCount = 10
+        group.overclockPercent = 150
+
+        calculateBuildingGroupParts([mockFactory.products[0]])
+
+        // 30 * 1.5 = 45 * 10 = 450
+        expect(group.parts.OreIron).toBe(450)
+        expect(group.parts.IronIngot).toBe(450)
+      })
+
+      it('should correctly apply a underclock to the parts', () => {
+        group.buildingCount = 10
+        group.overclockPercent = 50
+
+        calculateBuildingGroupParts([mockFactory.products[0]])
+
+        // 30 * 0.5 = 15 * 10 = 150
+        expect(group.parts.OreIron).toBe(150)
+        expect(group.parts.IronIngot).toBe(150)
+      })
+
+      it('should correctly apply an in-game validated overclock', () => {
+        addProductToFactory(mockFactory, {
+          id: 'CopperIngot',
+          amount: 120,
+          recipe: 'Alternate_PureCopperIngot',
+        })
+        calculateFactories([mockFactory], gameData)
+
+        addBuildingGroup(mockFactory.products[1])
+        addBuildingGroup(mockFactory.products[1]) // Puts it in advanced mode
+        const group2 = mockFactory.products[1].buildingGroups[0]
+
+        // Test 1: 150% overclock
+        group2.buildingCount = 1
+        group2.overclockPercent = 150
+
+        calculateBuildingGroupParts([mockFactory.products[1]])
+
+        expect(group2.parts.OreCopper).toBe(22.5)
+        expect(group2.parts.Water).toBe(15)
+        expect(group2.parts.CopperIngot).toBe(56.25)
+
+        // Test 2: 212.55% overclock, also testing the precision of the parts
+        group2.overclockPercent = 212.55
+
+        calculateBuildingGroupParts([mockFactory.products[1]])
+
+        expect(group2.parts.OreCopper).toBe(31.882)
+        expect(group2.parts.Water).toBe(21.255)
+        expect(group2.parts.CopperIngot).toBe(79.706)
+      })
+    })
   })
 
   describe('calculateEffectiveBuildingCount', () => {
