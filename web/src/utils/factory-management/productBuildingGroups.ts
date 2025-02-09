@@ -1,6 +1,7 @@
-import { FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import eventBus from '@/utils/eventBus'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { calculateHasProblem } from '@/utils/factory-management/problems'
 
 export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   let buildingCount = 0
@@ -118,7 +119,7 @@ export const calculateEffectiveBuildingCount = (product: FactoryItem) => {
 
 // Brought to you courtesy of ChatGPT o3-mini-high.
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
-export const remainderToLast = (product: FactoryItem) => {
+export const remainderToLast = (product: FactoryItem, factory: Factory) => {
   const groups = product.buildingGroups
   if (!groups || groups.length === 0) return
 
@@ -183,9 +184,11 @@ export const remainderToLast = (product: FactoryItem) => {
 
   lastGroup.buildingCount = bestN
   lastGroup.overclockPercent = formatNumberFully(bestClock)
+  calculateBuildingGroupProblems(product)
+  calculateHasProblem(factory)
 }
 
-export const remainderToNewGroup = (product: FactoryItem) => {
+export const remainderToNewGroup = (product: FactoryItem, factory: Factory) => {
   const remaining = product.buildingRequirements.amount - calculateEffectiveBuildingCount(product)
 
   if (remaining <= 0) {
@@ -193,7 +196,7 @@ export const remainderToNewGroup = (product: FactoryItem) => {
   }
 
   addBuildingGroup(product)
-  remainderToLast(product)
+  remainderToLast(product, factory)
 }
 
 // Calculates whether the building group passes it's requirements for effective buildings

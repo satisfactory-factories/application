@@ -398,7 +398,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 1 // Missing 1
 
-        remainderToLast(product)
+        remainderToLast(product, mockFactory)
 
         expect(group1.buildingCount).toBe(3)
         expect(group1.overclockPercent).toBe(100)
@@ -412,7 +412,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 131
         group2.buildingCount = 1 // Which will need a 10% overclock
 
-        remainderToLast(product)
+        remainderToLast(product, mockFactory)
 
         expect(group1.buildingCount).toBe(131)
         expect(group1.overclockPercent).toBe(100)
@@ -427,7 +427,7 @@ describe('productBuildingGroups', async () => {
         group2.buildingCount = 1 // Which will need a 10% overclock
         group2.overclockPercent = 50 // 40% too high
 
-        remainderToLast(product)
+        remainderToLast(product, mockFactory)
 
         expect(group1.buildingCount).toBe(131)
         expect(group1.overclockPercent).toBe(100)
@@ -442,7 +442,7 @@ describe('productBuildingGroups', async () => {
         group2.buildingCount = 1
         group2.overclockPercent = 10
 
-        remainderToLast(product)
+        remainderToLast(product, mockFactory)
 
         // This scenario is not 100% possible to equate to perfect numbers.
         // Therefore, we expect a "best effort" of the number of buildings being overallocated, and underclocked, rather than overclocked, which needs a shard.
@@ -460,7 +460,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 1 // Missing 1
 
-        remainderToNewGroup(product)
+        remainderToNewGroup(product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(3)
         expect(product.buildingGroups[2].buildingCount).toBe(1)
@@ -473,7 +473,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 2 // Missing 0.5
 
-        remainderToNewGroup(product)
+        remainderToNewGroup(product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(3)
         expect(product.buildingGroups[2].buildingCount).toBe(1)
@@ -486,7 +486,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 3 // 0.5 too many
 
-        remainderToNewGroup(product)
+        remainderToNewGroup(product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(2)
       })

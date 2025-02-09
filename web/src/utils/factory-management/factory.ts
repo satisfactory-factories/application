@@ -131,7 +131,9 @@ export const calculateFactory = (
   calculateBuildingGroupParts(factory.products)
 
   // Check if the factory has any problems
-  calculateHasProblem(allFactories)
+  allFactories.forEach(fac => {
+    calculateHasProblem(fac)
+  })
 
   // Emit an event that the data has been updated so it can be synced
   eventBus.emit('factoryUpdated')

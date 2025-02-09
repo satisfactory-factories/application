@@ -60,7 +60,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToNewGroup(product)"
+      @click="remainderToNewGroup(product, factory)"
     >
       <i class="fas fa-stream" />
       <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
