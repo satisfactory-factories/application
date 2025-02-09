@@ -1,11 +1,16 @@
 export function formatNumber (value: any): string {
   const num = Number(value)
   if (isNaN(num)) {
-    // throw new TypeError('The provided value is not a number');
-    // Instead of an error - just return the value as is.
+    // Instead of throwing an error, return the value as is.
     return value
   }
-  return num % 1 === 0 ? num.toFixed(0) : parseFloat(num.toFixed(3)).toString()
+  // If the number is an integer, return it with no decimal places.
+  if (num % 1 === 0) {
+    return num.toFixed(0)
+  }
+  // Always round down (floor) to 3 decimal places.
+  const truncated = Math.floor(num * 1000) / 1000
+  return truncated.toString()
 }
 
 export function formatNumberFully (value: any): number {
