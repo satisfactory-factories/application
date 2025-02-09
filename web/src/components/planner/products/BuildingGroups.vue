@@ -17,7 +17,7 @@
         <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
       </v-chip>
     </div>
-    <div class="mr-2">
+    <div class="mr-1">
       <v-chip v-if="product.buildingGroups.length === 1" class="sf-chip small gray">Basic mode</v-chip>
       <v-chip v-if="product.buildingGroups.length > 1" class="sf-chip small gray">Advanced mode</v-chip>
     </div>
@@ -49,7 +49,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToLast(product)"
+      @click="remainderToLast(product, factory)"
     >
       <i class="fas fa-balance-scale-right" />
       <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>

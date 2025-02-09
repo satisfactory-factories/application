@@ -1,8 +1,7 @@
 <template>
   <div :key="group.id" class="d-flex flex-wrap items-center align-center">
     <v-btn
-      class="mr-2"
-      color="red rounded"
+      color="red rounded mr-1"
       :disabled="product.buildingGroups.length === 1"
       icon="fas fa-trash"
       size="small"
@@ -11,7 +10,7 @@
       @click="deleteGroup(group)"
     />
     <v-chip
-      class="sf-chip orange input"
+      class="sf-chip orange input mx-1"
       variant="tonal"
     >
       <game-asset :subject="building" type="building" />
@@ -28,7 +27,10 @@
         @update:model-value="updateGroup(group)"
       />
     </v-chip>
-    @<v-chip
+    <div class="px-1">
+      @
+    </div>
+    <v-chip
       class="sf-chip input unit yellow mx-1"
       variant="tonal"
     >
@@ -50,7 +52,7 @@
       />
       <span>%</span>
     </v-chip>
-    <div class="px-2">
+    <div class="px-1">
       +
     </div>
     <v-chip
@@ -77,7 +79,7 @@
     </v-chip>
     <!-- Spacer if there's too many items -->
     <div :class="{'w-100': partCount > 4 && lgAndDown}" />
-    <div :class="lgAndDown ? 'px-4' : 'px-2'">
+    <div :class="lgAndDown ? 'px-4' : 'px-1'">
       +
     </div>
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
@@ -102,11 +104,9 @@
         />
       </v-chip>
     </template>
-
-    <div class="px-2">
+    <div class="px-1">
       =
     </div>
-
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
       <v-chip
         v-if="part === product.id || partIsByProduct(String(part))"
