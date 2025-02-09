@@ -77,7 +77,7 @@
       />
       <span><tooltip-info classes="ml-n1" text="Not yet supported. Coming soon!" /></span>
     </v-chip>
-    <!-- Spacer if there's too many items -->
+    <!-- Spacer if there's too many items on small screens -->
     <div :class="{'w-100': partCount > 4 && lgAndDown}" />
     <div :class="lgAndDown ? 'px-4' : 'px-1'">
       +
@@ -104,7 +104,9 @@
         />
       </v-chip>
     </template>
-    <div class="px-1">
+    <!-- Spacer if there's too many items on big screens -->
+    <div :class="{'w-100': partCount > 4 && lgAndUp}" />
+    <div class="px-1" :class="partCount > 4 && lgAndUp ? 'px-4' : ''">
       =
     </div>
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
@@ -146,7 +148,7 @@
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
 
-  const { lgAndDown } = useDisplay()
+  const { lgAndDown, lgAndUp } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
