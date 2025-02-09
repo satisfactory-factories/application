@@ -96,7 +96,7 @@
             </span>
           </v-btn>
           <v-btn
-            color="blue"
+            :color="product.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
             :disabled="product.displayOrder === 0"
             icon="fas fa-arrow-up"
             size="small"
@@ -104,7 +104,7 @@
             @click="updateProductOrder('up', product)"
           />
           <v-btn
-            color="blue"
+            :color="product.displayOrder === factory.products.length - 1 ? 'light-blue-darken-4' : 'blue'"
             :disabled="product.displayOrder === factory.products.length - 1"
             icon="fas fa-arrow-down"
             size="small"
