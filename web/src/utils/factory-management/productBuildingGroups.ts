@@ -20,6 +20,8 @@ export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
     parts: {},
   })
 
+  // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
+  rebalanceGroups(product, true, true)
   calculateBuildingGroupParts([product])
 }
 

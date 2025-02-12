@@ -7,6 +7,7 @@ import {
 import eventBus from '@/utils/eventBus'
 import { addBuildingGroup } from '@/utils/factory-management/productBuildingGroups'
 import { fetchGameData } from '@/utils/gameDataService'
+import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 
 const gameData = await fetchGameData()
 
@@ -32,6 +33,10 @@ export const addProductToFactory = (
     buildingGroupTrayOpen: false,
     buildingGroupsHaveProblem: false,
   })
+
+  // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.
+
+  calculateProductBuildings(factory, gameData)
 
   // Also push the first factory group
   addBuildingGroup(factory.products[factory.products.length - 1])

@@ -823,4 +823,22 @@ describe('products', () => {
       })
     })
   })
+
+  describe('building groups', () => {
+    it('when a product is added, the correct building count and underclock should be applied', () => {
+      const mockFactory = newFactory('Batteries')
+      addProductToFactory(mockFactory, {
+        id: 'Battery',
+        amount: 1,
+        recipe: 'Battery',
+      })
+      const product = mockFactory.products[0]
+      const buildingGroup = product.buildingGroups[0]
+
+      expect(buildingGroup).toBeDefined()
+
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.overclockPercent).toBe(5)
+    })
+  })
 })
