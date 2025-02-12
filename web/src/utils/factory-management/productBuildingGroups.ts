@@ -7,7 +7,7 @@ import { fetchGameData } from '@/utils/gameDataService'
 const gameData = await fetchGameData()
 
 export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
-  let buildingCount = 0
+  let buildingCount = 1
   if (addBuildings) {
     buildingCount = product.buildingRequirements.amount
   }
@@ -239,9 +239,6 @@ export const updateGroupParts = (buildingGroup: ProductBuildingGroup, product: F
 
   // Since the building count has changed, we need to recalculate the parts for the group so the rest of them remain in sync.
   calculateBuildingGroupParts([product], part)
-
-  // If the new building count is a fractional, we need to round up to the nearest whole number and provide an underclock
-  // TODO
 }
 
 export const buildingsNeededForPart = (
@@ -261,8 +258,6 @@ export const buildingsNeededForPart = (
   // Determine if the part is an ingredient or a (by)product
   const isIngredient = recipe.ingredients.find(ingredient => ingredient.part === part)
   const isProduct = recipe.products.find(product => product.part === part) // Also handles byproducts as they're the same thing in terms of recipe.
-
-  // TODO: FACTOR IN OVERCLOCKING
 
   if (isIngredient && !isProduct) {
     // This is an ingredient

@@ -1,151 +1,170 @@
 <template>
   <div :key="group.id" class="d-flex flex-wrap items-center align-center">
-    <v-btn
-      color="red rounded mr-1"
-      :disabled="product.buildingGroups.length === 1"
-      icon="fas fa-trash"
-      size="small"
-      title="Delete Factory"
-      variant="outlined"
-      @click="deleteGroup(group)"
-    />
-    <v-chip
-      class="sf-chip orange input mx-1"
-      variant="tonal"
-    >
-      <game-asset :subject="building" type="building" />
-      <v-number-input
-        v-model.number="group.buildingCount"
-        class="inline-inputs ml-0"
-        control-variant="stacked"
-        density="compact"
-        hide-details
-        hide-spin-buttons
-        :min="0"
-        type="number"
-        width="100px"
-        @update:model-value="updateGroup(group)"
+    <div>
+      <v-btn
+        color="red rounded mr-1"
+        :disabled="product.buildingGroups.length === 1"
+        icon="fas fa-trash"
+        size="small"
+        title="Delete Factory"
+        variant="outlined"
+        @click="deleteGroup(group)"
       />
-    </v-chip>
-    <div class="px-1">
-      @
+      <div class="underchip">&nbsp;</div>
     </div>
-    <v-chip
-      class="sf-chip input unit yellow mx-1"
-      variant="tonal"
-    >
-      <tooltip text="Overclock">
-        <game-asset subject="overclock-production" type="item_id" />
-      </tooltip>
-      <v-number-input
-        v-model.number="group.overclockPercent"
-        class="inline-inputs ml-0"
-        control-variant="stacked"
-        density="compact"
-        hide-details
-        hide-spin-buttons
-        :max="250"
-        :min="0"
-        type="number"
-        width="125px"
-        @update:model-value="updateGroup(group)"
-      />
-      <span>%</span>
-    </v-chip>
-    <div class="px-1">
-      +
-    </div>
-    <v-chip
-      class="sf-chip input sloop mx-1"
-      variant="tonal"
-    >
-      <tooltip text="Somersloop">
-        <game-asset subject="somersloop" type="item_id" />
-      </tooltip>
-      <v-number-input
-        v-model.number="group.somersloops"
-        class="inline-inputs ml-0"
-        control-variant="stacked"
-        density="compact"
-        disabled
-        hide-details
-        hide-spin-buttons
-        :min="0"
-        type="number"
-        width="80px"
-        @update:model-value="updateGroup(group)"
-      />
-      <span><tooltip-info classes="ml-n1" text="Not yet supported. Coming soon!" /></span>
-    </v-chip>
-    <!-- Spacer if there's too many items on small screens -->
-    <div :class="{'w-100': partCount > 4 && lgAndDown}" />
-    <div :class="lgAndDown ? 'px-4' : 'px-1'">
-      +
-    </div>
-    <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
+    <div>
       <v-chip
-        v-if="part !== product.id"
-        class="sf-chip blue input mx-1 text-body-1"
+        class="sf-chip orange input mx-1"
         variant="tonal"
       >
-        <tooltip :text="getPartDisplayName(part)">
-          <game-asset :subject="String(part)" type="item" />
-        </tooltip>
+        <game-asset :subject="building" type="building" />
         <v-number-input
-          v-model.number="group.parts[part]"
-          class="inline-inputs"
+          v-model.number="group.buildingCount"
+          class="inline-inputs ml-0"
           control-variant="stacked"
           density="compact"
           hide-details
           hide-spin-buttons
           :min="0"
-          :name="`${product.id}-${part}.amount`"
-          width="110px"
-          @update:model-value="updateGroupPartsDebounce(group, product, part.toString())"
+          type="number"
+          width="100px"
+          @update:model-value="updateGroup(group)"
         />
-        <span v-if="updatingPart === part">
-          <v-icon>fas fa-sync fa-spin</v-icon>
-        </span>
       </v-chip>
+      <div class="underchip">&nbsp;</div>
+    </div>
+    <div class="px-1">
+      <div>@</div>
+      <div class="underchip">&nbsp;</div>
+    </div>
+    <div>
+      <v-chip
+        class="sf-chip input unit yellow mx-1"
+        variant="tonal"
+      >
+        <tooltip text="Overclock">
+          <game-asset subject="overclock-production" type="item_id" />
+        </tooltip>
+        <v-number-input
+          v-model.number="group.overclockPercent"
+          class="inline-inputs ml-0"
+          control-variant="stacked"
+          density="compact"
+          hide-details
+          hide-spin-buttons
+          :max="250"
+          :min="0"
+          type="number"
+          width="125px"
+          @update:model-value="updateGroup(group)"
+        />
+        <span>%</span>
+      </v-chip>
+      <div class="underchip text-yellow-darken-2">
+        Power used: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
+      </div>
+    </div>
+    <div class="px-1">
+      <div>+</div>
+      <div class="underchip">&nbsp;</div>
+    </div>
+    <div>
+      <v-chip
+        class="sf-chip input sloop mx-1"
+        variant="tonal"
+      >
+        <tooltip text="Somersloop">
+          <game-asset subject="somersloop" type="item_id" />
+        </tooltip>
+        <v-number-input
+          v-model.number="group.somersloops"
+          class="inline-inputs ml-0"
+          control-variant="stacked"
+          density="compact"
+          disabled
+          hide-details
+          hide-spin-buttons
+          :min="0"
+          type="number"
+          width="80px"
+          @update:model-value="updateGroup(group)"
+        />
+      </v-chip>
+      <div class="underchip text-purple-lighten-1">
+        Coming soon!
+      </div>
+    </div>
+    <!-- Spacer if there's too many items on small screens -->
+    <div :class="{'w-100': partCount > 4 && lgAndDown}" />
+    <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
+      <div>+</div>
+      <div class="underchip">&nbsp;</div>
+    </div>
+    <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
+      <div v-if="part !== product.id">
+        <v-chip
+          v-if="part !== product.id"
+          class="sf-chip blue input mx-1 text-body-1"
+          variant="tonal"
+        >
+          <tooltip :text="getPartDisplayName(part)">
+            <game-asset :subject="String(part)" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="group.parts[part]"
+            class="inline-inputs"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            :name="`${product.id}-${part}.amount`"
+            width="110px"
+            @update:model-value="updateGroupPartsDebounce(group, product, part.toString())"
+          />
+          <span v-if="updatingPart === part">
+            <v-icon>fas fa-sync fa-spin</v-icon>
+          </span>
+        </v-chip>
+        <div class="underchip text-blue-darken-1">
+          {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
+        </div>
+      </div>
     </template>
     <!-- Spacer if there's too many items on big screens -->
     <div :class="{'w-100': partCount > 4 && lgAndUp}" />
-    <div class="px-1" :class="partCount > 4 && lgAndUp ? 'px-4' : ''">
-      =
+    <div :class="partCount > 4 && lgAndUp ? 'px-4' : 'px-1'">
+      <div>=</div>
+      <div class="underchip">&nbsp;</div>
     </div>
     <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
-      <v-chip
-        v-if="part === product.id || partIsByProduct(String(part))"
-        class="sf-chip input mx-1 text-body-1"
-        :class="chipColors(String(part))"
-        variant="tonal"
-      >
-        <tooltip :text="getPartDisplayName(part)">
-          <game-asset :subject="String(part)" type="item" />
-        </tooltip>
-        <v-number-input
-          v-model.number="group.parts[part]"
-          class="inline-inputs"
-          control-variant="stacked"
-          density="compact"
-          hide-details
-          hide-spin-buttons
-          :min="0"
-          :name="`${product.id}-${part}.amount`"
-          width="110px"
-        />
-      </v-chip>
+      <div v-if="part === product.id || partIsByProduct(String(part))">
+        <v-chip
+          class="sf-chip input mx-1 text-body-1"
+          :class="chipColors(String(part))"
+          variant="tonal"
+        >
+          <tooltip :text="getPartDisplayName(part)">
+            <game-asset :subject="String(part)" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="group.parts[part]"
+            class="inline-inputs"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            :name="`${product.id}-${part}.amount`"
+            width="110px"
+          />
+        </v-chip>
+        <div class="underchip" :class="partIsByProduct(String(part)) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
+          {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
+        </div>
+      </div>
     </template>
-    <v-chip
-      class="sf-chip yellow ml-1"
-      variant="tonal"
-    >
-      <i class="fas fa-bolt" />
-      <i class="fas fa-minus" />
-      <span class="ml-2">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
-    </v-chip>
   </div>
-
 </template>
 
 <script setup lang="ts">
@@ -157,7 +176,7 @@
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
   import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
-  import { formatPower } from '@/utils/numberFormatter'
+  import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
@@ -261,5 +280,13 @@
       updatingPart = ''
     }, 750)
   }
-
 </script>
+
+<style lang="scss" scoped>
+.underchip {
+  margin-top: -5px;
+  text-align: center;
+  align-items: center;
+  font-size: 0.8rem;
+}
+</style>
