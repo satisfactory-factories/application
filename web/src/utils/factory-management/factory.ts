@@ -14,7 +14,7 @@ import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
 import {
-  calculateBuildingGroupParts,
+  calculateBuildingGroupParts, calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
   rebalanceGroups,
 } from '@/utils/factory-management/productBuildingGroups'
@@ -128,6 +128,7 @@ export const calculateFactory = (
     rebalanceGroups(product)
     calculateBuildingGroupParts([product])
     calculateBuildingGroupProblems(product)
+    calculateBuildingGroupPower(product)
   })
   calculateBuildingGroupParts(factory.products)
 

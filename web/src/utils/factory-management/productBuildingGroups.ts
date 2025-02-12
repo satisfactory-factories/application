@@ -18,10 +18,14 @@ export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
     overclockPercent: 100,
     somersloops: 0,
     parts: {},
+    powerUsage: 0,
   })
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
-  rebalanceGroups(product, true, true)
+  // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
+  if (product.buildingGroups.length === 1) {
+    rebalanceGroups(product, true, true)
+  }
   calculateBuildingGroupParts([product])
 }
 
@@ -273,4 +277,25 @@ export const buildingsNeededForPart = (
   }
 
   return 0
+}
+
+export const calculateBuildingGroupPower = (product: FactoryItem) => {
+  product.buildingGroups.forEach(group => {
+    // In order to figure this out, we need to:
+  // 1. Get the original building's power
+  // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
+
+    // Get the building's details
+    const buildingPower = gameData.buildings[product.buildingRequirements.name]
+
+    if (!buildingPower) {
+      throw new Error(`productBuildingGroups: calculateGroupPower: Building not found! ${product.buildingRequirements.name}`)
+    }
+
+    // Now, using the formula above, we calculate the power usage.
+    const powerUsagePerBuilding = buildingPower * Math.pow(group.overclockPercent / 100, 1.321928)
+
+    // Now multiply it by number of buildings and return
+    group.powerUsage = formatNumberFully(powerUsagePerBuilding * group.buildingCount, 4)
+  })
 }

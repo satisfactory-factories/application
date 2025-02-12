@@ -5,11 +5,13 @@ import {
   addBuildingGroup,
   buildingsNeededForPart,
   calculateBuildingGroupParts,
+  calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
   rebalanceGroups,
   remainderToLast,
-  remainderToNewGroup, updateGroupParts,
+  remainderToNewGroup,
+  updateGroupParts,
 } from '@/utils/factory-management/productBuildingGroups'
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { fetchGameData } from '@/utils/gameDataService'
@@ -689,6 +691,57 @@ describe('productBuildingGroups', async () => {
       const group2 = product2.buildingGroups[0]
       expect(buildingsNeededForPart('Water', 60, complexProduct, group2)).toBe(3)
       expect(buildingsNeededForPart('Water', 64, complexProduct, group2)).toBe(3.2)
+    })
+  })
+
+  describe('calculateGroupPower', () => {
+    let mockFactory: Factory
+    let product: FactoryItem
+    let group: ProductBuildingGroup
+
+    beforeEach(() => {
+      mockFactory = newFactory('Iron Rods')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 15,
+        recipe: 'IronRod',
+      })
+      calculateFactories([mockFactory], gameData)
+      product = mockFactory.products[0]
+      group = product.buildingGroups[0]
+      group.buildingCount = 1
+    })
+
+    describe('wiki example of iron rods', () => {
+      it('should calculate a singular building correctly', () => {
+        group.overclockPercent = 100
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(4)
+      })
+
+      it('should calculate a singular building with an underclock', () => {
+        group.overclockPercent = 10
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(0.1906)
+
+        group.overclockPercent = 50
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(1.6)
+      })
+
+      it('should calculate a singular building with an overclock', () => {
+        group.overclockPercent = 150
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(6.8366)
+
+        group.overclockPercent = 200
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(10)
+
+        group.overclockPercent = 250
+        calculateBuildingGroupPower(product)
+        expect(group.powerUsage).toBe(13.431)
+      })
     })
   })
 })

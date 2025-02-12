@@ -136,6 +136,14 @@
         />
       </v-chip>
     </template>
+    <v-chip
+      class="sf-chip yellow ml-1"
+      variant="tonal"
+    >
+      <i class="fas fa-bolt" />
+      <i class="fas fa-minus" />
+      <span class="ml-2">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
+    </v-chip>
   </div>
 
 </template>
@@ -149,6 +157,7 @@
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
   import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
+  import { formatPower } from '@/utils/numberFormatter'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
