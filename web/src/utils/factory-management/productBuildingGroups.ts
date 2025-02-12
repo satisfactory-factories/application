@@ -1,6 +1,10 @@
-import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
+import { getRecipe } from '@/utils/factory-management/common'
+import { fetchGameData } from '@/utils/gameDataService'
+
+const gameData = await fetchGameData()
 
 export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   let buildingCount = 0
@@ -20,10 +24,10 @@ export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
 }
 
 // Takes the building groups of a product and rebalances them based on the building count
-export const rebalanceGroups = (product: FactoryItem, force = false) => {
+export const rebalanceGroups = (product: FactoryItem, force = false, changeBuildings = true) => {
   // Prevent rebalancing when in advanced mode
   if (!force && product.buildingGroups.length > 1) {
-    console.log('Rebalance skipped due to advanced mode')
+    console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
     return
   }
 
@@ -38,7 +42,9 @@ export const rebalanceGroups = (product: FactoryItem, force = false) => {
   groups.forEach(group => {
     // Even scenario: each group gets exactly the quotient.
     // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
-    group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
+    if (changeBuildings) {
+      group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
+    }
 
     // Set overclock percentage.
     // Even: no adjustment needed (100%).
@@ -50,12 +56,11 @@ export const rebalanceGroups = (product: FactoryItem, force = false) => {
     }
   })
 
-  // Since we've messed with the building counts, recalculate all groups now.
-  calculateBuildingGroupParts([product])
+  // Whatever calls this should call calculateBuildingGroupParts afterwards.
 }
 
 // Calculates all parts for a product based on the building groups
-export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
+export const calculateBuildingGroupParts = (products: FactoryItem[], exclude?: string) => {
   // Handle any group part quantity changes.
   // Loop through all the building groups buildings and use that as relative to update each part quantities.
   for (const product of products) {
@@ -74,6 +79,9 @@ export const calculateBuildingGroupParts = (products: FactoryItem[]) => {
 
     for (const group of product.buildingGroups) {
       for (const part in product.requirements) {
+        if (part === exclude) {
+          continue // Skip this part so we don't cause an update storm.
+        }
         const productPartRequirement = product.requirements[part].amount
         // We need to get a fraction based on the total amount required by the product and the number of buildings.
         const partPerBuilding = productPartRequirement / totalBuildingCount
@@ -151,7 +159,7 @@ export const remainderToLast = (product: FactoryItem, factory: Factory) => {
     we consider using multiple buildings if the gap exceeds 1 effective building.
     We try candidate building counts (n) and compute the required overclock per building:
 
-       candidateClock = Math.ceil((desiredFraction / n) * 100)
+    candidateClock = Math.ceil((desiredFraction / n) * 100)
 
     We then pick the candidate for which candidateClock is as close as possible to 100.
     (We use Math.ceil so any tiny fractional remainder pushes the clock upward slightly.)
@@ -207,4 +215,60 @@ export const calculateBuildingGroupProblems = (product: FactoryItem) => {
   const absDiff = Math.abs(product.buildingRequirements.amount - effectiveBuildingCount)
 
   product.buildingGroupsHaveProblem = absDiff > 0.1
+}
+
+export const updateGroupParts = (buildingGroup: ProductBuildingGroup, product: FactoryItem, part: string) => {
+  // Loop each of the parts, calculating each one. If the calculated size of the building has changed, we update the building group, and if it's a singular building group, the product's building requirements as well.
+  const partAmount = buildingGroup.parts[part]
+  const newBuildingCount = buildingsNeededForPart(part, partAmount, product, buildingGroup)
+
+  // If the new building count is different, update the building group's building count
+  buildingGroup.buildingCount = Math.ceil(newBuildingCount)
+
+  // If this is the only building group, update the product's building requirements as well, and call a rebalance so it deals with the overclocking for us
+  if (product.buildingGroups.length === 1) {
+    product.buildingRequirements.amount = newBuildingCount // With this one we don't care about overclocking.
+    rebalanceGroups(product, true, false)
+  }
+
+  // Since the building count has changed, we need to recalculate the parts for the group so the rest of them remain in sync.
+  calculateBuildingGroupParts([product], part)
+
+  // If the new building count is a fractional, we need to round up to the nearest whole number and provide an underclock
+  // TODO
+}
+
+export const buildingsNeededForPart = (
+  part: string,
+  amount: number,
+  product: FactoryItem,
+  buildingGroup: ProductBuildingGroup
+) => {
+  // Get the recipe for the product in order to get the new quantity
+  const recipe = getRecipe(product.recipe, gameData)
+
+  if (!recipe) {
+    throw new Error('productBuildingGroups: buildingsNeededForPart: Recipe not found!')
+  }
+
+  // From the recipe, figure out how many buldings will be needed.
+  // Determine if the part is an ingredient or a (by)product
+  const isIngredient = recipe.ingredients.find(ingredient => ingredient.part === part)
+  const isProduct = recipe.products.find(product => product.part === part) // Also handles byproducts as they're the same thing in terms of recipe.
+
+  // TODO: FACTOR IN OVERCLOCKING
+
+  if (isIngredient && !isProduct) {
+    // This is an ingredient
+    const perMinOverclocked = isIngredient.perMin * buildingGroup.overclockPercent / 100
+    return formatNumberFully(amount / perMinOverclocked)
+  }
+
+  if (isProduct && !isIngredient) {
+    // This is a product
+    const perMinOverclocked = isProduct.perMin * buildingGroup.overclockPercent / 100
+    return formatNumberFully(amount / perMinOverclocked)
+  }
+
+  return 0
 }

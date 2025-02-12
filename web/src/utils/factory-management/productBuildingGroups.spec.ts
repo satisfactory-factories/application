@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
-  addBuildingGroup, calculateBuildingGroupParts, calculateBuildingGroupProblems,
+  addBuildingGroup,
+  buildingsNeededForPart,
+  calculateBuildingGroupParts,
+  calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
-  rebalanceGroups, remainderToLast, remainderToNewGroup,
+  rebalanceGroups,
+  remainderToLast,
+  remainderToNewGroup, updateGroupParts,
 } from '@/utils/factory-management/productBuildingGroups'
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { fetchGameData } from '@/utils/gameDataService'
@@ -562,6 +567,128 @@ describe('productBuildingGroups', async () => {
       calculateBuildingGroupProblems(mockFactory.products[0])
 
       expect(product.buildingGroupsHaveProblem).toBe(false)
+    })
+  })
+
+  describe('updateGroupParts', () => {
+    let group: ProductBuildingGroup
+    let product: FactoryItem
+
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      addBuildingGroup(product)
+      group = product.buildingGroups[0]
+      group.buildingCount = 10
+      calculateFactories([mockFactory], gameData)
+    })
+
+    it('should update the group\'s building count when an ingredient part has been modified', () => {
+      group.parts.OreIron = 300
+
+      updateGroupParts(group, product, 'OreIron')
+
+      expect(group.buildingCount).toBe(10)
+      expect(group.parts.OreIron).toBe(300)
+    })
+
+    it('should update the group\'s building count when it results in a fractional building', () => {
+      // We expect that when we update the parts, it will recalculate the building count to 2, with an underclock.
+
+      group.parts.OreIron = 32
+
+      updateGroupParts(group, product, 'OreIron')
+
+      expect(group.buildingCount).toBe(2)
+      expect(group.overclockPercent).toBe(53.334)
+      expect(group.parts.OreIron).toBe(32)
+    })
+
+    it('should update the product\'s building count to a whole number when a single group is updated', () => {
+      product.buildingRequirements.amount = 5
+      group.parts.OreIron = 300
+
+      updateGroupParts(group, product, 'OreIron')
+
+      expect(group.buildingCount).toBe(10)
+      expect(product.buildingRequirements.amount).toBe(10)
+    })
+
+    it('should update the product\'s building count to a fractional number when a single group is updated', () => {
+      product.buildingRequirements.amount = 5
+      group.parts.OreIron = 27
+
+      updateGroupParts(group, product, 'OreIron')
+
+      expect(group.buildingCount).toBe(1)
+      expect(group.overclockPercent).toBe(90)
+      expect(product.buildingRequirements.amount).toBe(0.9)
+    })
+
+    it('should NOT update the product\'s building count or other groups when there are multiple groups (advanced mode)', () => {
+      addBuildingGroup(product)
+      const group2 = product.buildingGroups[1]
+      group.buildingCount = 1
+      group2.buildingCount = 3
+      group.overclockPercent = 100
+      product.buildingRequirements.amount = 10
+
+      group.parts.OreIron = 60
+      updateGroupParts(group, product, 'OreIron')
+
+      expect(group.buildingCount).toBe(2)
+      expect(group2.buildingCount).toBe(3)
+      expect(group.overclockPercent).toBe(100)
+      expect(product.buildingRequirements.amount).toBe(10)
+    })
+  })
+
+  describe('buildingsNeededForPart', () => {
+    let group: ProductBuildingGroup
+    let groupComplex: ProductBuildingGroup
+    let product: FactoryItem
+    let complexProduct: FactoryItem
+
+    beforeEach(() => {
+      product = mockFactory.products[0]
+
+      addProductToFactory(mockFactory, {
+        id: 'Battery',
+        amount: 150,
+        recipe: 'Battery',
+      })
+      complexProduct = mockFactory.products[1]
+      addBuildingGroup(product)
+      addBuildingGroup(complexProduct)
+      group = product.buildingGroups[0]
+      groupComplex = complexProduct.buildingGroups[0]
+    })
+
+    it('should calculate how many buildings are needed for an ingredient part', () => {
+      expect(buildingsNeededForPart('OreIron', 150, product, group)).toBe(5)
+    })
+
+    it('should calculate how many buildings are needed for an ingredient part which results in a fractional', () => {
+      expect(buildingsNeededForPart('OreIron', 555.554, product, group)).toBe(18.518)
+    })
+
+    it('should calculate how many buildings are needed for an product part', () => {
+      expect(buildingsNeededForPart('IronIngot', 150, product, group)).toBe(5)
+    })
+
+    it('should calculate how many buildings are needed for a byproduct part, and return a fractional', () => {
+      expect(buildingsNeededForPart('Water', 43.5, complexProduct, groupComplex)).toBe(1.45)
+    })
+
+    it('should calculate how many buildings are needed for a secondary input part', () => {
+      addProductToFactory(mockFactory, {
+        id: 'IronIngot',
+        amount: 150,
+        recipe: 'Alternate_PureIronIngot',
+      })
+      const product2 = mockFactory.products[1]
+      const group2 = product2.buildingGroups[0]
+      expect(buildingsNeededForPart('Water', 60, complexProduct, group2)).toBe(3)
+      expect(buildingsNeededForPart('Water', 64, complexProduct, group2)).toBe(3.2)
     })
   })
 })

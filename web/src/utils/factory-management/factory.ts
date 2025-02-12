@@ -126,6 +126,7 @@ export const calculateFactory = (
   // Calculate / synchronise the factory groups
   factory.products.forEach(product => {
     rebalanceGroups(product)
+    calculateBuildingGroupParts([product])
     calculateBuildingGroupProblems(product)
   })
   calculateBuildingGroupParts(factory.products)

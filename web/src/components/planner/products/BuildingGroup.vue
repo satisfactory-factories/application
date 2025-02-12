@@ -101,7 +101,11 @@
           :min="0"
           :name="`${product.id}-${part}.amount`"
           width="110px"
+          @update:model-value="updateGroupPartsDebounce(group, product, part.toString())"
         />
+        <span v-if="updatingPart === part">
+          <v-icon>fas fa-sync fa-spin</v-icon>
+        </span>
       </v-chip>
     </template>
     <!-- Spacer if there's too many items on big screens -->
@@ -144,9 +148,13 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
+  import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
+
+  let timeout: NodeJS.Timeout | null = null
+  let updatingPart: string
 
   const { lgAndDown, lgAndUp } = useDisplay()
 
@@ -232,5 +240,17 @@
   const partCount = computed(() => {
     return Object.values(props.group.parts).length
   })
+
+  const updateGroupPartsDebounce = (group: ProductBuildingGroup, product: FactoryItem, part: string) => {
+    updatingPart = part
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+
+    timeout = setTimeout(() => {
+      updateGroupParts(group, product, part)
+      updatingPart = ''
+    }, 750)
+  }
 
 </script>
