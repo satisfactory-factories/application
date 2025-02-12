@@ -259,7 +259,7 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
   product.amount = getProductAmountByPart(product, part, 'byproduct', byProduct.amount, gameData)
 
   if (product.amount <= 0) {
-    console.warn('product: setProductQtyByByproduct: product amount is less than 0, force setting to 0.1')
+    console.warn('product: setProductQtyByByproduct: product amount is less than 0.1, force setting to 0.1')
     eventBus.emit('toast', {
       message: 'You cannot set a byproduct to be 0. Setting product amount to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
       type: 'warning',

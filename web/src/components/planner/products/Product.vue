@@ -205,7 +205,6 @@
             density="compact"
             hide-details
             hide-spin-buttons
-            :min="0"
             :name="`${product.id}.buildingAmount`"
             :product="product.id"
             width="120px"
@@ -237,7 +236,8 @@
 <script setup lang="ts">
   import {
     byProductAsProductCheck,
-    fixProduct, increaseProductQtyViaBuilding,
+    fixProduct,
+    increaseProductQtyViaBuilding,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
@@ -345,6 +345,10 @@
   }
 
   const updateProductQty = (product: FactoryItem, factory: Factory) => {
+    if (product.amount === 0) {
+      // The user may be typing a decimal point starting with zero, so leave them alone
+      return
+    }
     updateFactory(factory)
   }
 
@@ -354,16 +358,30 @@
   }
 
   const setProductQtyByByproduct = (product: FactoryItem, part: string) => {
+    const productAmount = product.byProducts?.find(bp => bp.id === part)?.amount ?? 0
+    if (productAmount === 0) {
+      // The user may be typing a decimal point starting with zero, so leave them alone
+      return
+    }
     updateProductAmountViaByproduct(product, part, gameData)
     updateFactory(props.factory)
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
+    if (product.requirements[part].amount === 0) {
+      // The user may be typing a decimal point starting with zero, so leave them alone
+      return
+    }
     updateProductAmountViaRequirement(product, part)
     updateFactory(props.factory)
   }
 
   const changeBuildingAmount = (product: FactoryItem) => {
+    if (product.buildingRequirements.amount === 0) {
+      // The user may be typing a decimal point starting with zero, so leave them alone
+      return
+    }
+
     increaseProductQtyViaBuilding(product, gameData)
     updateFactory(props.factory)
   }
