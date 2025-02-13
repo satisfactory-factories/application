@@ -2,6 +2,7 @@
 import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -92,19 +93,27 @@ export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: Da
   // First tot up all building and power requirements for products and power generators
   calculateProductBuildings(factory, gameData)
   calculatePowerProducerBuildings(factory, gameData)
+}
 
+// This is called later on in the calculation process to get the final values using the building groups, which will be actually what the player needs to build.
+export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   factory.power = {
     consumed: 0,
     produced: 0,
     difference: 0,
   }
 
-  // Then sum up the total power
-  Object.keys(factory.buildingRequirements).forEach(key => {
-    const building = factory.buildingRequirements[key]
-    factory.power.consumed += building.powerConsumed ?? 0
-    factory.power.produced += building.powerProduced ?? 0
+  // Sum up the power consumption using the building groups.
+  const products = factory.products
+  let consumed = 0
+
+  products.forEach(product => {
+    product.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      consumed += group.powerUsage
+    })
   })
 
-  factory.power.difference = factory.power.produced - factory.power.consumed
+  factory.power.consumed = formatNumberFully(consumed, 1)
 }

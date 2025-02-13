@@ -1,6 +1,6 @@
 import { BuildingRequirement, Factory, FactoryDependency, FactoryPower } from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
-import { calculateFactoryBuildingsAndPower } from '@/utils/factory-management/buildings'
+import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateParts } from '@/utils/factory-management/parts'
 import {
   calculateAllDependencies,
@@ -123,14 +123,16 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
-  // Calculate / synchronise the factory groups
+  // Calculate / synchronise the factory groups.
+  // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
     rebalanceGroups(product)
     calculateBuildingGroupParts([product])
     calculateBuildingGroupPower(product)
     calculateBuildingGroupProblems(product)
   })
-  calculateBuildingGroupParts(factory.products)
+
+  calculateFinalBuildingsAndPower(factory)
 
   // Check if the factory has any problems
   allFactories.forEach(fac => {
