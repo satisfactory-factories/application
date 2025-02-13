@@ -61,7 +61,7 @@
         <span>%</span>
       </v-chip>
       <div class="underchip text-yellow-darken-2">
-        Power used: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
+        Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
       </div>
     </div>
     <div class="px-1">

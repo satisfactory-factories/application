@@ -217,7 +217,7 @@
         >
           <i class="fas fa-bolt" />
           <i class="fas fa-minus" />
-          <span class="ml-2">{{ formatPower(product.buildingRequirements.powerConsumed ?? 0).value }} {{ formatPower(product.buildingRequirements.powerConsumed ?? 0).unit }}</span>
+          <span class="ml-2">{{ productPowerConsumed(product).value }} {{ productPowerConsumed(product).unit }}</span>
         </v-chip>
       </div>
       <div v-if="product.buildingGroupTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
@@ -415,6 +415,17 @@
     }
 
     product.buildingGroupTrayOpen = !product.buildingGroupTrayOpen
+  }
+
+  const productPowerConsumed = (product: FactoryItem) => {
+    let totalPower = 0
+
+    // Loop all of the building groups and sum the power consumed
+    product.buildingGroups.forEach(group => {
+      totalPower += group.powerUsage
+    })
+
+    return formatPower(totalPower ?? 0)
   }
 
 </script>
