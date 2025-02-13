@@ -86,7 +86,7 @@ export const calculatePowerProducerBuildings = (factory: Factory, gameData: Data
   })
 }
 
-// Sums up all of the building data to create an aggregate value of power and building requirements
+// Sums up all building data to create an aggregate value of power and building requirements
 export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: DataInterface) => {
   factory.buildingRequirements = {}
   // First tot up all building and power requirements for products and power generators

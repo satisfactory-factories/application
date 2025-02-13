@@ -198,6 +198,17 @@ describe('app-store', () => {
       // Expect alerto to have thrown
       expect(window.alert).toHaveBeenCalledWith('Error validating factories: ' + error.message)
     })
+
+    it('should ensure factories have building groups and it has initialized it correctly', () => {
+      // @ts-ignore
+      factory.products[0].buildingGroups = undefined
+
+      appStore.initFactories(factories)
+
+      const buildingGroup = factory.products[0].buildingGroups[0]
+      expect(buildingGroup).toBeDefined()
+      expect(buildingGroup.buildingCount).toBe(45)
+    })
   })
 
   describe('loading process', () => {
