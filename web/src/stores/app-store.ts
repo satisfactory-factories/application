@@ -9,7 +9,7 @@ import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import {
   addBuildingGroup,
-  calculateBuildingGroupParts,
+  calculateBuildingGroupParts, calculateBuildingGroupPower,
   rebalanceGroups,
 } from '@/utils/factory-management/productBuildingGroups'
 
@@ -299,6 +299,7 @@ export const useAppStore = defineStore('app', () => {
           // Calculate the building group
           rebalanceGroups(product)
           calculateBuildingGroupParts([product])
+          calculateBuildingGroupPower(product)
         }
       })
 

@@ -127,8 +127,8 @@ export const calculateFactory = (
   factory.products.forEach(product => {
     rebalanceGroups(product)
     calculateBuildingGroupParts([product])
-    calculateBuildingGroupProblems(product)
     calculateBuildingGroupPower(product)
+    calculateBuildingGroupProblems(product)
   })
   calculateBuildingGroupParts(factory.products)
 
