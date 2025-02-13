@@ -208,6 +208,7 @@ describe('app-store', () => {
       const buildingGroup = factory.products[0].buildingGroups[0]
       expect(buildingGroup).toBeDefined()
       expect(buildingGroup.buildingCount).toBe(45)
+      expect(buildingGroup.overclockPercent).toBe(99.037)
     })
   })
 
