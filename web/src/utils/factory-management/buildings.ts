@@ -116,4 +116,25 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   })
 
   factory.power.consumed = formatNumberFully(consumed, 1)
+
+  // Set all factory building counts to 0.
+  Object.keys(factory.buildingRequirements).forEach(key => {
+    factory.buildingRequirements[key].amount = 0
+  })
+
+  // Sum up the buildings
+  products.forEach(product => {
+    product.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      const building = product.buildingRequirements.name
+
+      const buildingData = factory.buildingRequirements[building] // It should be present by the time this is run (from calculateFactoryBuildingsAndPower)
+      if (!buildingData) {
+        throw new Error(`buildings: calculateFinalBuildingsAndPower: Building data not found for ${building} when it should exist!`)
+      }
+
+      buildingData.amount += group.buildingCount
+    })
+  })
 }
