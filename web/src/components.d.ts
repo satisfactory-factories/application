@@ -41,6 +41,7 @@ declare module 'vue' {
     PlannerTooManyFactoriesOpen: typeof import('./components/planner/PlannerTooManyFactoriesOpen.vue')['default']
     PowerProducer: typeof import('./components/planner/products/PowerProducer.vue')['default']
     Product: typeof import('./components/planner/products/Product.vue')['default']
+    ProductBuildingGroup: typeof import('./components/planner/products/ProductBuildingGroup.vue')['default']
     ProductLogicalGroup: typeof import('./components/planner/products/ProductLogicalGroup.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
     RawResources: typeof import('./components/planner/imports/RawResources.vue')['default']

@@ -1,6 +1,6 @@
 <template>
   <div v-for="group in product.buildingGroups" :key="group.id" class="buildingGroup" :class="isLast(group, product.buildingGroups) ? 'last' : ''">
-    <building-group :factory="factory" :group="group" :product="product" />
+    <product-building-group :factory="factory" :group="group" :product="product" />
   </div>
   <div class="mb-2 d-flex align-center">
     <span :class="{ 'text-green': correct }">
@@ -27,7 +27,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addBuildingGroup(product, false)"
+      @click="addProductBuildingGroup(product, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -38,7 +38,7 @@
       :disabled="product.buildingGroups.length === 1 || correct"
       size="small"
       :variant="product.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
-      @click="rebalanceGroups(product, true)"
+      @click="rebalanceProductGroups(product, true)"
     >
       <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
@@ -81,12 +81,11 @@
 </template>
 
 <script setup lang="ts">
-  import BuildingGroup from '@/components/planner/products/BuildingGroup.vue'
-  import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+  import { BuildingGroup, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
   import {
-    addBuildingGroup,
+    addProductBuildingGroup,
     calculateEffectiveBuildingCount,
-    rebalanceGroups,
+    rebalanceProductGroups,
     remainderToLast,
     remainderToNewGroup,
   } from '@/utils/factory-management/productBuildingGroups'
@@ -133,7 +132,7 @@
     eventBus.emit('openBuildingGroupTutorial')
   }
 
-  const isLast = (group: ProductBuildingGroup, groups: ProductBuildingGroup[]) => {
+  const isLast = (group: BuildingGroup, groups: BuildingGroup[]) => {
     return groups.indexOf(group) === groups.length - 1
   }
 </script>

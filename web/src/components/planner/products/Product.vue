@@ -2,8 +2,50 @@
   <div
     v-for="(product, productIndex) in factory.products"
     :key="productIndex"
-    class="product px-4 my-2 border-md rounded sub-card"
+    class="factory-item px-4 my-2 border-md rounded sub-card"
   >
+    <div class="factory-item-controls">
+      <v-btn
+        :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
+        :disabled="product.buildingGroups.length === 0"
+        size="small"
+        :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+        @click="toggleBuildingGroupTray(product)"
+      >
+        <span v-if="!product.buildingGroupsTrayOpen">
+          <v-icon left>fas fa-arrow-down</v-icon>
+        </span>
+        <span v-if="product.buildingGroupsTrayOpen">
+          <v-icon left>fas fa-arrow-up</v-icon>
+        </span>
+        <span class="ml-2">Building Groups ({{ product.buildingGroups.length }})
+          <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." />
+        </span>
+      </v-btn>
+      <v-btn
+        :color="product.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
+        :disabled="product.displayOrder === 0"
+        icon="fas fa-arrow-up"
+        size="small"
+        variant="flat"
+        @click="updateProductOrder('up', product)"
+      />
+      <v-btn
+        :color="product.displayOrder === factory.products.length - 1 ? 'light-blue-darken-4' : 'blue'"
+        :disabled="product.displayOrder === factory.products.length - 1"
+        icon="fas fa-arrow-down"
+        size="small"
+        variant="flat"
+        @click="updateProductOrder('down', product)"
+      />
+      <v-btn
+        color="red"
+        icon="fas fa-trash"
+        size="small"
+        variant="flat"
+        @click="deleteProduct(productIndex, factory)"
+      />
+    </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
       <div class="input-row d-flex align-center">
         <span v-show="!product.id" class="mr-2">
@@ -77,48 +119,6 @@
         <v-chip v-if="shouldShowNotInDemand(product, factory)" class="ml-2 sf-chip small orange">
           No demand!
         </v-chip>
-        <div class="product-controls">
-          <v-btn
-            :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
-            :disabled="product.buildingGroups.length === 0"
-            size="small"
-            :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-            @click="toggleBuildingGroupTray(product)"
-          >
-            <span v-if="!product.buildingGroupTrayOpen">
-              <v-icon left>fas fa-arrow-down</v-icon>
-            </span>
-            <span v-if="product.buildingGroupTrayOpen">
-              <v-icon left>fas fa-arrow-up</v-icon>
-            </span>
-            <span class="ml-2">Building Groups ({{ product.buildingGroups.length }})
-              <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." />
-            </span>
-          </v-btn>
-          <v-btn
-            :color="product.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
-            :disabled="product.displayOrder === 0"
-            icon="fas fa-arrow-up"
-            size="small"
-            variant="flat"
-            @click="updateProductOrder('up', product)"
-          />
-          <v-btn
-            :color="product.displayOrder === factory.products.length - 1 ? 'light-blue-darken-4' : 'blue'"
-            :disabled="product.displayOrder === factory.products.length - 1"
-            icon="fas fa-arrow-down"
-            size="small"
-            variant="flat"
-            @click="updateProductOrder('down', product)"
-          />
-          <v-btn
-            color="red"
-            icon="fas fa-trash"
-            size="small"
-            variant="flat"
-            @click="deleteProduct(productIndex, factory)"
-          />
-        </div>
       </div>
     </div>
     <div
@@ -220,10 +220,10 @@
           <span class="ml-2">{{ productPowerConsumed(product).value }} {{ productPowerConsumed(product).unit }}</span>
         </v-chip>
       </div>
-      <div v-if="product.buildingGroupTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
+      <div v-if="product.buildingGroupsTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
         <building-groups :factory="factory" :product="product" />
       </div>
-      <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupTrayOpen" class="mb-2">
+      <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupsTrayOpen" class="mb-2">
         <v-btn color="red" @click="toggleBuildingGroupTray(product)">
           <i class="fas fa-exclamation-triangle" />
           <span class="ml-2">Building Groups have a problem!</span>
@@ -414,7 +414,7 @@
       localStorage.setItem('buildingGroupTutorialOpened', 'true')
     }
 
-    product.buildingGroupTrayOpen = !product.buildingGroupTrayOpen
+    product.buildingGroupsTrayOpen = !product.buildingGroupsTrayOpen
   }
 
   const productPowerConsumed = (product: FactoryItem) => {
@@ -429,46 +429,3 @@
   }
 
 </script>
-
-<style lang="scss">
-  .product {
-    border-left: 5px solid #2196f3 !important;
-    position: relative;
-  }
-
-  .product-controls {
-    position: absolute;
-    right: 0;
-    top: -1px;
-
-    .v-btn {
-      height: 20px;
-      border-radius: 0;
-      border-right-width: 2px;
-
-      &:first-child {
-        border-top-left-radius: 2px;
-        border-bottom-left-radius: 2px;
-      }
-
-      &:last-child {
-        border-top-right-radius: 2px;
-        border-bottom-right-radius: 2px;
-        border-right-width: 0;
-      }
-    }
-
-    .v-btn__content svg {
-      height: 14px !important;
-    }
-  }
-
-  .buildingGroups {
-    border-left: 5px solid #4caf50 !important;
-    padding-left: 10px;
-
-    &.problem {
-      border-left-color: #f44336 !important;
-    }
-  }
-</style>

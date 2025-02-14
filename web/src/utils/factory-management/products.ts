@@ -5,7 +5,7 @@ import {
   getRecipe,
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
-import { addBuildingGroup } from '@/utils/factory-management/productBuildingGroups'
+import { addProductBuildingGroup } from '@/utils/factory-management/productBuildingGroups'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 
@@ -30,7 +30,7 @@ export const addProductToFactory = (
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
     buildingGroups: [],
-    buildingGroupTrayOpen: false,
+    buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
   })
 
@@ -39,7 +39,7 @@ export const addProductToFactory = (
   calculateProductBuildings(factory, gameData)
 
   // Also push the first product building group
-  addBuildingGroup(factory.products[factory.products.length - 1])
+  addProductBuildingGroup(factory.products[factory.products.length - 1])
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>

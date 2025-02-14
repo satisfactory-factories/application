@@ -2,8 +2,53 @@
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
     :key="producerIndex"
-    class="powerProducer px-4 my-2 border-md rounded sub-card"
+    class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
   >
+    <div class="factory-item-controls">
+      <v-btn
+        :color="producer.buildingGroupsHaveProblem ? 'red' : 'green'"
+        :disabled="producer.buildingGroups.length === 0"
+        size="small"
+        :variant="producer.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+        @click="toggleBuildingGroupTray(producer)"
+      >
+        <span v-if="!producer.buildingGroupTrayOpen">
+          <v-icon left>fas fa-arrow-down</v-icon>
+        </span>
+        <span v-if="producer.buildingGroupTrayOpen">
+          <v-icon left>fas fa-arrow-up</v-icon>
+        </span>
+        <span class="ml-2">Building Groups ({{ producer.buildingGroups.length }})
+          <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." />
+        </span>
+      </v-btn>
+      <v-btn
+        class="rounded mr-2"
+        color="blue"
+        :disabled="producer.displayOrder === 0"
+        icon="fas fa-arrow-up"
+        size="small"
+        variant="outlined"
+        @click="updatePowerProducerOrder('up', producer)"
+      />
+      <v-btn
+        class="rounded mr-2"
+        color="blue"
+        :disabled="producer.displayOrder === factory.powerProducers.length - 1"
+        icon="fas fa-arrow-down"
+        size="small"
+        variant="outlined"
+        @click="updatePowerProducerOrder('down', producer)"
+      />
+      <v-btn
+        class="rounded"
+        color="red"
+        icon="fas fa-trash"
+        size="small"
+        variant="outlined"
+        @click="deletePowerProducer(producerIndex, factory)"
+      />
+    </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
       <div class="input-row d-flex align-center">
         <span v-show="!producer.building" class="mr-2">
@@ -55,60 +100,32 @@
         />
       </div>
       <div class="input-row d-flex align-center">
-        <v-text-field
+        <v-number-input
           v-model.number="producer.ingredientAmount"
+          control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
           label="Fuel Qty/min"
-          :max-width="smAndDown ? undefined : '110px'"
-          min="0"
-          :min-width="smAndDown ? undefined : '100px'"
+          :min="0"
           type="number"
           variant="outlined"
+          :width="smAndDown ? undefined : '130px'"
           @update:model-value="updatePowerProducerFigures('ingredient', producer, factory)"
         />
       </div>
       <div class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
-        <v-text-field
+        <v-number-input
           v-model.number="producer.powerAmount"
+          control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
           label="MW"
-          :max-width="smAndDown ? undefined : '110px'"
-          min="0"
-          :min-width="smAndDown ? undefined : '100px'"
+          :min="0"
           type="number"
           variant="outlined"
+          :width="smAndDown ? undefined : '130px'"
           @update:model-value="updatePowerProducerFigures('power', producer, factory)"
-        />
-      </div>
-      <div class="input-row d-flex align-center">
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="producer.displayOrder === 0"
-          icon="fas fa-arrow-up"
-          size="small"
-          variant="outlined"
-          @click="updatePowerProducerOrder('up', producer)"
-        />
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="producer.displayOrder === factory.powerProducers.length - 1"
-          icon="fas fa-arrow-down"
-          size="small"
-          variant="outlined"
-          @click="updatePowerProducerOrder('down', producer)"
-        />
-        <v-btn
-          class="rounded"
-          color="red"
-          icon="fas fa-trash"
-          size="small"
-          variant="outlined"
-          @click="deletePowerProducer(producerIndex, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">

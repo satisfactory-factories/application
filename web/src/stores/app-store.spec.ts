@@ -9,6 +9,7 @@ import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -39,6 +40,13 @@ describe('app-store', () => {
         id: 'CopperIngot',
         amount: 1337,
         recipe: 'IngotCopper',
+      })
+
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        ingredientAmount: 100,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: 'ingredient',
       })
 
       factories = [factory]
@@ -199,16 +207,32 @@ describe('app-store', () => {
       expect(window.alert).toHaveBeenCalledWith('Error validating factories: ' + error.message)
     })
 
-    it('should ensure factories have building groups and it has initialized it correctly', () => {
+    describe('building groups', () => {
+      it('should ensure factories have product building groups and it has initialized it correctly', () => {
       // @ts-ignore
-      factory.products[0].buildingGroups = undefined
+        factory.products[0].buildingGroups = undefined
 
-      appStore.initFactories(factories)
+        appStore.initFactories(factories)
 
-      const buildingGroup = factory.products[0].buildingGroups[0]
-      expect(buildingGroup).toBeDefined()
-      expect(buildingGroup.buildingCount).toBe(45)
-      expect(buildingGroup.overclockPercent).toBe(99.037)
+        const buildingGroup = factory.products[0].buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(45)
+        expect(buildingGroup.overclockPercent).toBe(99.037)
+        expect(factory.products[0].buildingGroupsHaveProblem).toBe(false)
+        expect(factory.products[0].buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have power producer building groups and it has initialized it correctly', () => {
+      // @ts-ignore
+        factory.powerProducers[0].buildingGroups = undefined
+
+        appStore.initFactories(factories)
+
+        const producer = factory.powerProducers[0]
+        const buildingGroup = producer.buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(producer.buildingGroupsTrayOpen).toBe(false)
+      })
     })
   })
 

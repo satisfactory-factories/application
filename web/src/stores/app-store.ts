@@ -8,9 +8,11 @@ import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import {
-  addBuildingGroup,
-  calculateBuildingGroupParts, calculateBuildingGroupPower,
-  rebalanceGroups,
+  addPowerProducerBuildingGroup,
+  addProductBuildingGroup,
+  calculateBuildingGroupPower,
+  calculateProductBuildingGroupParts,
+  rebalanceProductGroups,
 } from '@/utils/factory-management/productBuildingGroups'
 
 export const useAppStore = defineStore('app', () => {
@@ -293,13 +295,27 @@ export const useAppStore = defineStore('app', () => {
         // Patch for #11
         if (product.buildingGroups === undefined) {
           product.buildingGroups = []
-          product.buildingGroupTrayOpen = false
+          product.buildingGroupsTrayOpen = false
 
-          addBuildingGroup(product, true)
+          addProductBuildingGroup(product, true)
           // Calculate the building group
-          rebalanceGroups(product)
-          calculateBuildingGroupParts([product])
+          rebalanceProductGroups(product)
+          calculateProductBuildingGroupParts([product])
           calculateBuildingGroupPower(product)
+        }
+      })
+
+      factory.powerProducers.forEach(producer => {
+        // Patch for #11
+        if (producer.buildingGroups === undefined) {
+          producer.buildingGroups = []
+          producer.buildingGroupsTrayOpen = false
+
+          addPowerProducerBuildingGroup(producer, true)
+          // // Calculate the building group
+          // rebalanceProductGroups(producer)
+          // calculateProductBuildingGroupParts([producer])
+          // calculateBuildingGroupPower(producer)
         }
       })
 

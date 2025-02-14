@@ -1,4 +1,4 @@
-import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem, FactoryPowerProducer, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { getRecipe } from '@/utils/factory-management/common'
@@ -6,7 +6,7 @@ import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
 
-export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
+export const addProductBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   let buildingCount = 1
   if (addBuildings) {
     buildingCount = product.buildingRequirements.amount
@@ -24,13 +24,35 @@ export const addBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
   if (product.buildingGroups.length === 1) {
-    rebalanceGroups(product, true, true)
+    rebalanceProductGroups(product, true, true)
   }
-  calculateBuildingGroupParts([product])
+  calculateProductBuildingGroupParts([product])
+}
+
+export const addPowerProducerBuildingGroup = (producer: FactoryPowerProducer, addBuildings = true) => {
+  let buildingCount = 1
+  if (addBuildings) {
+    buildingCount = producer.buildingCount
+  }
+
+  producer.buildingGroups.push({
+    id: Math.floor(Math.random() * 10000),
+    buildingCount,
+    overclockPercent: 100,
+    parts: {},
+    powerUsage: 0,
+  })
+
+  // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
+  // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
+  // if (producer.buildingGroups.length === 1) {
+  //   rebalanceProductGroups(product, true, true)
+  // }
+  // calculateProductBuildingGroupParts([product])
 }
 
 // Takes the building groups of a product and rebalances them based on the building count
-export const rebalanceGroups = (product: FactoryItem, force = false, changeBuildings = true) => {
+export const rebalanceProductGroups = (product: FactoryItem, force = false, changeBuildings = true) => {
   // Prevent rebalancing when in advanced mode
   if (!force && product.buildingGroups.length > 1) {
     console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
@@ -66,7 +88,7 @@ export const rebalanceGroups = (product: FactoryItem, force = false, changeBuild
 }
 
 // Calculates all parts for a product based on the building groups
-export const calculateBuildingGroupParts = (products: FactoryItem[], exclude?: string) => {
+export const calculateProductBuildingGroupParts = (products: FactoryItem[], exclude?: string) => {
   // Handle any group part quantity changes.
   // Loop through all the building groups buildings and use that as relative to update each part quantities.
   for (const product of products) {
@@ -78,7 +100,7 @@ export const calculateBuildingGroupParts = (products: FactoryItem[], exclude?: s
 
     // Check if the product should have a product group
     if (product.buildingGroups.length === 0) {
-      addBuildingGroup(product, true)
+      addProductBuildingGroup(product, true)
     }
 
     const totalBuildingCount = product.buildingRequirements.amount
@@ -208,7 +230,7 @@ export const remainderToNewGroup = (product: FactoryItem, factory: Factory) => {
     return // Nothing to do
   }
 
-  addBuildingGroup(product)
+  addProductBuildingGroup(product)
   remainderToLast(product, factory)
 }
 
@@ -234,11 +256,11 @@ export const updateGroupParts = (buildingGroup: ProductBuildingGroup, product: F
   // If this is the only building group, update the product's building requirements as well, and call a rebalance so it deals with the overclocking for us
   if (product.buildingGroups.length === 1) {
     product.buildingRequirements.amount = newBuildingCount // With this one we don't care about overclocking.
-    rebalanceGroups(product, true, false)
+    rebalanceProductGroups(product, true, false)
   }
 
   // Since the building count has changed, we need to recalculate the parts for the group so the rest of them remain in sync.
-  calculateBuildingGroupParts([product], part)
+  calculateProductBuildingGroupParts([product], part)
 }
 
 export const buildingsNeededForPart = (

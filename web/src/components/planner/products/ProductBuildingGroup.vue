@@ -169,7 +169,7 @@
 
 <script setup lang="ts">
   import { defineProps, inject } from 'vue'
-  import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+  import { BuildingGroup, Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
   import eventBus from '@/utils/eventBus'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useGameDataStore } from '@/stores/game-data-store'
@@ -194,7 +194,7 @@
 
   const building = props.product.buildingRequirements.name
 
-  const updateGroup = (group: ProductBuildingGroup) => {
+  const updateGroup = (group: BuildingGroup) => {
     if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {
       eventBus.emit('toast', {
         message: 'Building count must be a positive number.',
@@ -236,7 +236,7 @@
     updateFactory(props.factory)
   }
 
-  const deleteGroup = (group: ProductBuildingGroup) => {
+  const deleteGroup = (group: BuildingGroup) => {
     const index = props.product.buildingGroups.indexOf(group)
     props.product.buildingGroups.splice(index, 1)
   }
@@ -269,7 +269,7 @@
     return Object.values(props.group.parts).length
   })
 
-  const updateGroupPartsDebounce = (group: ProductBuildingGroup, product: FactoryItem, part: string) => {
+  const updateGroupPartsDebounce = (group: BuildingGroup, product: FactoryItem, part: string) => {
     updatingPart = part
     if (timeout) {
       clearTimeout(timeout)

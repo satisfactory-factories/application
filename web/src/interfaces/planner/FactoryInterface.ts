@@ -30,13 +30,16 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
-export interface ProductBuildingGroup {
+export interface BuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
-  somersloops: number
   parts: {[key: string]: number}
   powerUsage: number
+}
+
+export interface ProductBuildingGroup extends BuildingGroup {
+  somersloops: number
 }
 
 export interface FactoryItem {
@@ -48,7 +51,7 @@ export interface FactoryItem {
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
   buildingGroups: ProductBuildingGroup[]
-  buildingGroupTrayOpen: boolean
+  buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
 }
 
@@ -126,6 +129,9 @@ export interface FactoryPowerProducer {
   recipe: string;
   displayOrder: number;
   updated: string | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
+  buildingGroups: BuildingGroup[]
+  buildingGroupsTrayOpen: boolean
+  buildingGroupsHaveProblem: boolean
 }
 
 export interface FactoryPower {

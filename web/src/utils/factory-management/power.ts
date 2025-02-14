@@ -28,7 +28,13 @@ export const addPowerProducerToFactory = (
     byproduct: null,
     displayOrder: factory.powerProducers.length,
     updated: options.updated,
+    buildingGroups: [],
+    buildingGroupsHaveProblem: false,
+    buildingGroupsTrayOpen: false,
   })
+
+  // Add the default building group for the producer
+  // TODO
 }
 
 // Depending on which value is updated, we need to recalculate the power generation.

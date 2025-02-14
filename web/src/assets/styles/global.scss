@@ -242,3 +242,44 @@
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6 {
   font-weight: 400 !important;
 }
+
+.factory-item {
+  border-left: 5px solid #2196f3 !important;
+  position: relative;
+}
+
+.factory-item-controls{
+  position: absolute;
+  right: 0;
+  top: -1px;
+
+  .v-btn {
+    height: 20px;
+    border-radius: 0;
+    border-right-width: 2px;
+
+    &:first-child {
+      border-top-left-radius: 2px;
+      border-bottom-left-radius: 2px;
+    }
+
+    &:last-child {
+      border-top-right-radius: 2px;
+      border-bottom-right-radius: 2px;
+      border-right-width: 0;
+    }
+  }
+
+  .v-btn__content svg {
+    height: 14px !important;
+  }
+}
+
+.buildingGroups {
+  border-left: 5px solid #4caf50 !important;
+  padding-left: 10px;
+
+  &.problem {
+    border-left-color: #f44336 !important;
+  }
+}

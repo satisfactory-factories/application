@@ -14,9 +14,9 @@ import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
 import {
-  calculateBuildingGroupParts, calculateBuildingGroupPower,
-  calculateBuildingGroupProblems,
-  rebalanceGroups,
+  calculateBuildingGroupPower, calculateBuildingGroupProblems,
+  calculateProductBuildingGroupParts,
+  rebalanceProductGroups,
 } from '@/utils/factory-management/productBuildingGroups'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
@@ -126,8 +126,8 @@ export const calculateFactory = (
   // Calculate / synchronise the factory groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    rebalanceGroups(product)
-    calculateBuildingGroupParts([product])
+    rebalanceProductGroups(product)
+    calculateProductBuildingGroupParts([product])
     calculateBuildingGroupPower(product)
     calculateBuildingGroupProblems(product)
   })
