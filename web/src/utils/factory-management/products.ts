@@ -38,7 +38,7 @@ export const addProductToFactory = (
 
   calculateProductBuildings(factory, gameData)
 
-  // Also push the first factory group
+  // Also push the first product building group
   addBuildingGroup(factory.products[factory.products.length - 1])
 }
 

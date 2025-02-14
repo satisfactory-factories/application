@@ -528,6 +528,128 @@ describe('productBuildingGroups', async () => {
       expect(group1.parts.OreCopper).toBe(45)
       expect(group1.parts.CopperIngot).toBe(45)
     })
+
+    describe('clocking with in-game validated numbers', () => {
+      let overclockedFactory: Factory
+      let copperIngots: FactoryItem
+      let plastic: FactoryItem
+      let copperIngotsGroup: ProductBuildingGroup
+      let plasticGroup: ProductBuildingGroup
+
+      beforeEach(() => {
+        overclockedFactory = newFactory('Test Overclocking Factory')
+      })
+
+      describe('refineries', () => {
+        beforeEach(() => {
+          addProductToFactory(overclockedFactory, {
+            id: 'CopperIngot',
+            amount: 123,
+            recipe: 'Alternate_PureCopperIngot',
+          })
+          copperIngots = overclockedFactory.products[0]
+          copperIngotsGroup = copperIngots.buildingGroups[0]
+          copperIngotsGroup.buildingCount = 1
+          addBuildingGroup(copperIngots, false) // Puts it into advanced mode
+          copperIngots.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
+
+          addProductToFactory(overclockedFactory, {
+            id: 'Plastic',
+            amount: 123,
+            recipe: 'Plastic',
+          })
+          plastic = overclockedFactory.products[1]
+          plasticGroup = plastic.buildingGroups[0]
+          plasticGroup.buildingCount = 1
+          addBuildingGroup(plastic, false) // Puts it into advanced mode
+          plastic.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
+
+          calculateFactories([overclockedFactory], gameData)
+        })
+
+        it('should correctly overclock a pure copper ingot recipe', () => {
+          copperIngotsGroup.overclockPercent = 137.4667
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(copperIngotsGroup.parts.CopperIngot).toBe(51.55)
+          expect(copperIngotsGroup.parts.OreCopper).toBe(20.62)
+          expect(copperIngotsGroup.parts.Water).toBe(13.747)
+        })
+
+        it('should correctly underclock a pure copper ingot recipe', () => {
+          copperIngotsGroup.overclockPercent = 55.533
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(copperIngotsGroup.parts.CopperIngot).toBe(20.825)
+          expect(copperIngotsGroup.parts.OreCopper).toBe(8.33)
+          expect(copperIngotsGroup.parts.Water).toBe(5.553)
+        })
+
+        it('should correctly overclock a plastic recipe', () => {
+          plasticGroup.overclockPercent = 189.5
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(plasticGroup.parts.Plastic).toBe(37.9)
+          expect(plasticGroup.parts.LiquidOil).toBe(56.85)
+          expect(plasticGroup.parts.HeavyOilResidue).toBe(18.95)
+        })
+
+        it('should correctly underclock a plastic recipe', () => {
+          plasticGroup.overclockPercent = 62.55
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(plasticGroup.parts.Plastic).toBe(12.51)
+          expect(plasticGroup.parts.LiquidOil).toBe(18.765)
+          expect(plasticGroup.parts.HeavyOilResidue).toBe(6.255)
+        })
+      })
+
+      describe('manufacturer', () => {
+        let product: FactoryItem
+        let group: ProductBuildingGroup
+        beforeEach(() => {
+          addProductToFactory(overclockedFactory, {
+            id: 'SpaceElevatorPart_5', // Adaptive Control Unit
+            amount: 123,
+            recipe: 'SpaceElevatorPart_5',
+          })
+
+          product = overclockedFactory.products[0]
+          group = product.buildingGroups[0]
+          group.buildingCount = 1
+          addBuildingGroup(product, false) // Puts it into advanced mode
+          product.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
+        })
+
+        it('should correctly overclock a ACU recipe', () => {
+          group.overclockPercent = 143.333
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(group.parts.SpaceElevatorPart_5).toBe(1.433)
+          expect(group.parts.SpaceElevatorPart_3).toBe(7.167) // Automated Wiring
+          expect(group.parts.CircuitBoard).toBe(7.167)
+          expect(group.parts.ModularFrameHeavy).toBe(1.433)
+          expect(group.parts.Computer).toBe(2.867)
+        })
+
+        it('should correctly underclock a ACU recipe', () => {
+          group.overclockPercent = 63.656
+
+          calculateFactories([overclockedFactory], gameData)
+
+          expect(group.parts.SpaceElevatorPart_5).toBe(0.637)
+          expect(group.parts.SpaceElevatorPart_3).toBe(3.183) // Automated Wiring
+          expect(group.parts.CircuitBoard).toBe(3.183)
+          expect(group.parts.ModularFrameHeavy).toBe(0.637)
+          expect(group.parts.Computer).toBe(1.273)
+        })
+      })
+    })
   })
 
   describe('calculateBuildingGroupProblems', () => {

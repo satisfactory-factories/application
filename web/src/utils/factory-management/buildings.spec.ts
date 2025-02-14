@@ -123,63 +123,69 @@ describe('buildings', () => {
     })
 
     describe('buildings', () => {
-      it('should properly calculate the number of buildings derived from a singular building group', () => {
-        calculateFinalBuildingsAndPower(mockFactory)
+      describe('products', () => {
+        it('should properly calculate the number of buildings derived from a singular building group', () => {
+          calculateFinalBuildingsAndPower(mockFactory)
 
-        expect(group.buildingCount).toBe(8)
-        expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(8)
-      })
-
-      it('should properly calculate the number of buildings derived from multiple building group', () => {
-        addBuildingGroup(product, true)
-        const group2 = product.buildingGroups[1]
-        group.buildingCount = 5
-        group2.buildingCount = 10
-
-        calculateFinalBuildingsAndPower(mockFactory)
-
-        expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(15)
-      })
-
-      it('should properly calculate the number of buildings derived from multiple products with singular groups', () => {
-        addProductToFactory(mockFactory, {
-          id: 'Cement',
-          amount: 90,
-          recipe: 'Concrete',
+          expect(group.buildingCount).toBe(8)
+          expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(8)
         })
-        const product2 = mockFactory.products[1]
-        const group2 = product2.buildingGroups[0]
 
-        calculateFactories([mockFactory], gameData) // Hard to do it across multiple products
+        it('should properly calculate the number of buildings derived from multiple building group', () => {
+          addBuildingGroup(product, true)
+          const group2 = product.buildingGroups[1]
+          group.buildingCount = 5
+          group2.buildingCount = 10
 
-        expect(group.buildingCount).toBe(8)
-        expect(group2.buildingCount).toBe(6)
-        expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(14)
+          calculateFinalBuildingsAndPower(mockFactory)
+
+          expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(15)
+        })
+
+        it('should properly calculate the number of buildings derived from multiple products with singular groups', () => {
+          addProductToFactory(mockFactory, {
+            id: 'Cement',
+            amount: 90,
+            recipe: 'Concrete',
+          })
+          const product2 = mockFactory.products[1]
+          const group2 = product2.buildingGroups[0]
+
+          calculateFactories([mockFactory], gameData) // Hard to do it across multiple products
+
+          expect(group.buildingCount).toBe(8)
+          expect(group2.buildingCount).toBe(6)
+          expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(14)
+        })
+
+        it('should properly calculate the number of buildings derived from multiple products with multiple groups', () => {
+          addBuildingGroup(product, false)
+          const group2 = product.buildingGroups[1]
+
+          addProductToFactory(mockFactory, {
+            id: 'Cement',
+            amount: 90,
+            recipe: 'Concrete',
+          })
+          const product2 = mockFactory.products[1]
+          const group1p2 = product2.buildingGroups[0]
+          addBuildingGroup(product2, false)
+          const group2p2 = product2.buildingGroups[1]
+
+          // Set the building counts
+          group.buildingCount = 5
+          group2.buildingCount = 10
+          group1p2.buildingCount = 5
+          group2p2.buildingCount = 10
+
+          calculateFactories([mockFactory], gameData) // Hard to do it across multiple products
+
+          expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(30)
+        })
       })
 
-      it('should properly calculate the number of buildings derived from multiple products with multiple groups', () => {
-        addBuildingGroup(product, false)
-        const group2 = product.buildingGroups[1]
+      describe('powerProducers', () => {
 
-        addProductToFactory(mockFactory, {
-          id: 'Cement',
-          amount: 90,
-          recipe: 'Concrete',
-        })
-        const product2 = mockFactory.products[1]
-        const group1p2 = product2.buildingGroups[0]
-        addBuildingGroup(product2, false)
-        const group2p2 = product2.buildingGroups[1]
-
-        // Set the building counts
-        group.buildingCount = 5
-        group2.buildingCount = 10
-        group1p2.buildingCount = 5
-        group2p2.buildingCount = 10
-
-        calculateFactories([mockFactory], gameData) // Hard to do it across multiple products
-
-        expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(30)
       })
     })
   })
