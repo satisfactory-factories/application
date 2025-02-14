@@ -293,7 +293,7 @@ export const useAppStore = defineStore('app', () => {
 
       factory.products.forEach(product => {
         // Patch for #11
-        if (product.buildingGroups === undefined) {
+        if (product.buildingGroups === undefined || product.buildingGroups.length === 0) {
           product.buildingGroups = []
           product.buildingGroupsTrayOpen = false
 
@@ -307,7 +307,7 @@ export const useAppStore = defineStore('app', () => {
 
       factory.powerProducers.forEach(producer => {
         // Patch for #11
-        if (producer.buildingGroups === undefined) {
+        if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
           producer.buildingGroups = []
           producer.buildingGroupsTrayOpen = false
 

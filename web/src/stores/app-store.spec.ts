@@ -208,7 +208,7 @@ describe('app-store', () => {
     })
 
     describe('building groups', () => {
-      it('should ensure factories have product building groups and it has initialized it correctly', () => {
+      it('should ensure factories have product building groups and it has initialized it correctly when undefined', () => {
       // @ts-ignore
         factory.products[0].buildingGroups = undefined
 
@@ -222,7 +222,21 @@ describe('app-store', () => {
         expect(factory.products[0].buildingGroupsTrayOpen).toBe(false)
       })
 
-      it('should ensure factories have power producer building groups and it has initialized it correctly', () => {
+      it('should ensure factories have product building groups and it has initialized it correctly when on an empty array', () => {
+      // @ts-ignore
+        factory.products[0].buildingGroups = []
+
+        appStore.initFactories(factories)
+
+        const buildingGroup = factory.products[0].buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(45)
+        expect(buildingGroup.overclockPercent).toBe(99.037)
+        expect(factory.products[0].buildingGroupsHaveProblem).toBe(false)
+        expect(factory.products[0].buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have power producer building groups and it has initialized it correctly when undefined', () => {
       // @ts-ignore
         factory.powerProducers[0].buildingGroups = undefined
 
@@ -231,6 +245,20 @@ describe('app-store', () => {
         const producer = factory.powerProducers[0]
         const buildingGroup = producer.buildingGroups[0]
         expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(5)
+        expect(producer.buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have power producer building groups and it has initialized it correctly with a blank array', () => {
+      // @ts-ignore
+        factory.powerProducers[0].buildingGroups = []
+
+        appStore.initFactories(factories)
+
+        const producer = factory.powerProducers[0]
+        const buildingGroup = producer.buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(5)
         expect(producer.buildingGroupsTrayOpen).toBe(false)
       })
     })
