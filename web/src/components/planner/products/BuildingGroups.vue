@@ -1,6 +1,6 @@
 <template>
   <div v-for="group in product.buildingGroups" :key="group.id" class="buildingGroup" :class="isLast(group, product.buildingGroups) ? 'last' : ''">
-    <product-building-group :factory="factory" :group="group" :product="product" />
+    <building-group :factory="factory" :group="group" :product="product" />
   </div>
   <div class="mb-2 d-flex align-center">
     <span :class="{ 'text-green': correct }">
@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-  import { BuildingGroup, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+  import { BuildingGroup, Factory, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
   import {
     addProductBuildingGroup,
     calculateEffectiveBuildingCount,
@@ -94,7 +94,7 @@
 
   const props = defineProps<{
     factory: Factory
-    product: FactoryItem
+    product: FactoryItem | FactoryPowerProducer
   }>()
 
   const effectiveBuildings = computed(() => {

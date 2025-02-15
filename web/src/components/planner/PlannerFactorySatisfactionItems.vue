@@ -281,7 +281,7 @@
   import { inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
-    Factory,
+    Factory, FactoryItem,
     PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
@@ -456,7 +456,7 @@
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {
-    const product = getProduct(factory, partId)
+    const product = getProduct(factory, partId) as FactoryItem
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')

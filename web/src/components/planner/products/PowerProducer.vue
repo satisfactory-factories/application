@@ -10,12 +10,12 @@
         :disabled="producer.buildingGroups.length === 0"
         size="small"
         :variant="producer.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-        @click="toggleBuildingGroupTray(producer)"
+        @click="!!producer.buildingGroupsTrayOpen"
       >
-        <span v-if="!producer.buildingGroupTrayOpen">
+        <span v-if="!producer.buildingGroupsTrayOpen">
           <v-icon left>fas fa-arrow-down</v-icon>
         </span>
-        <span v-if="producer.buildingGroupTrayOpen">
+        <span v-if="producer.buildingGroupsTrayOpen">
           <v-icon left>fas fa-arrow-up</v-icon>
         </span>
         <span class="ml-2">Building Groups ({{ producer.buildingGroups.length }})
@@ -189,6 +189,15 @@
             />
           </v-chip>
         </span>
+      </div>
+      <div v-if="producer.buildingGroupsTrayOpen" class="mb-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
+        <building-groups :factory="factory" :product="producer" />
+      </div>
+      <div v-if="producer.buildingGroupsHaveProblem && !producer.buildingGroupsTrayOpen" class="mb-2">
+        <v-btn color="red" @click="!!producer.buildingGroupsTrayOpen">
+          <i class="fas fa-exclamation-triangle" />
+          <span class="ml-2">Building Groups have a problem!</span>
+        </v-btn>
       </div>
     </div>
   </div>

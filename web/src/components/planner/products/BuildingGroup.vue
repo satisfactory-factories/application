@@ -70,6 +70,7 @@
     </div>
     <div>
       <v-chip
+        v-if="isProductGroup"
         class="sf-chip input sloop mx-1"
         variant="tonal"
       >
@@ -77,7 +78,7 @@
           <game-asset subject="somersloop" type="item_id" />
         </tooltip>
         <v-number-input
-          v-model.number="group.somersloops"
+          v-model.number="productGroup.somersloops"
           class="inline-inputs ml-0"
           control-variant="stacked"
           density="compact"
@@ -188,9 +189,22 @@
 
   const props = defineProps<{
     factory: Factory
-    group: ProductBuildingGroup
+    group: BuildingGroup | ProductBuildingGroup
     product: FactoryItem
   }>()
+
+  function isProductBuildingGroup (
+    group: BuildingGroup
+  ): group is ProductBuildingGroup {
+    return (group as ProductBuildingGroup).somersloops !== undefined
+  }
+
+  const isProductGroup = computed(() => isProductBuildingGroup(props.group))
+
+  const productGroup = computed(() => {
+    // Only safe because you check isProductGroup in the template
+    return props.group as ProductBuildingGroup
+  })
 
   const building = props.product.buildingRequirements.name
 
@@ -236,7 +250,7 @@
     updateFactory(props.factory)
   }
 
-  const deleteGroup = (group: BuildingGroup) => {
+  const deleteGroup = (group: ProductBuildingGroup) => {
     const index = props.product.buildingGroups.indexOf(group)
     props.product.buildingGroups.splice(index, 1)
   }
@@ -269,7 +283,7 @@
     return Object.values(props.group.parts).length
   })
 
-  const updateGroupPartsDebounce = (group: BuildingGroup, product: FactoryItem, part: string) => {
+  const updateGroupPartsDebounce = (group: ProductBuildingGroup, product: FactoryItem, part: string) => {
     updatingPart = part
     if (timeout) {
       clearTimeout(timeout)

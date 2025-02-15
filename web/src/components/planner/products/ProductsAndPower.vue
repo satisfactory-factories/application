@@ -38,6 +38,7 @@
 <script setup lang="ts">
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
+  import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
   defineProps<{
     factory: Factory;
@@ -52,17 +53,8 @@
   }
 
   const addEmptyPowerProducer = (factory: Factory) => {
-    factory.powerProducers.push({
-      building: '',
-      buildingAmount: 0,
-      buildingCount: 0,
-      ingredientAmount: 0,
-      ingredients: [],
-      powerAmount: 0,
-      powerProduced: 0,
+    addPowerProducerToFactory(factory, {
       recipe: '',
-      byproduct: null,
-      displayOrder: factory.powerProducers.length,
       updated: 'power',
     })
   }
