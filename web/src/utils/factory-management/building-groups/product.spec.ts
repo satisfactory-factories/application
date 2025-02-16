@@ -1,19 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductBuildingGroup,
+  calculateProductBuildingGroupParts,
+  updateProductBuildingGroupParts,
+} from '@/utils/factory-management/building-groups/product'
+import {
   buildingsNeededForPart,
   calculateBuildingGroupPower,
-  calculateBuildingGroupProblems,
-  calculateEffectiveBuildingCount,
-  calculateProductBuildingGroupParts,
-  rebalanceProductGroups,
   remainderToLast,
   remainderToNewGroup,
-  updateGroupParts,
-} from '@/utils/factory-management/productBuildingGroups'
-import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
+} from '@/utils/factory-management/building-groups/common'
+import { addProductToFactory } from '@/utils/factory-management/products'
 import { fetchGameData } from '@/utils/gameDataService'
 
 vi.mock('@/utils/eventBus', () => ({
@@ -26,7 +25,7 @@ vi.mock('@/utils/eventBus', () => ({
 describe('productBuildingGroups', async () => {
   let mockFactory: Factory
   let factories: Factory[]
-  let buildingGroups: ProductBuildingGroup[]
+  let buildingGroups: BuildingGroup[]
   const gameData = await fetchGameData()
 
   beforeEach(() => {
@@ -47,7 +46,7 @@ describe('productBuildingGroups', async () => {
     expect(buildingGroups.length).toBe(0)
   })
 
-  describe('addGroup', () => {
+  describe('addProductBuildingGroup', () => {
     it('should add a new group to the product with the correct building count', () => {
       addProductBuildingGroup(mockFactory.products[0])
 
@@ -91,129 +90,8 @@ describe('productBuildingGroups', async () => {
     })
   })
 
-  describe('rebalanceGroups', () => {
-    let group1: ProductBuildingGroup
-    let product: FactoryItem
-
-    beforeEach(() => {
-      product = mockFactory.products[0]
-      addProductBuildingGroup(product)
-      group1 = product.buildingGroups[0]
-
-      calculateFactories(factories, gameData)
-    })
-
-    it('should apply an underclock to the group if the building count is not whole', () => {
-      product.buildingRequirements.amount = 5.5
-
-      rebalanceProductGroups(product)
-
-      expect(group1.buildingCount).toBe(6)
-      expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
-    })
-
-    it('should apply an underclock to the group if the building count is not whole', () => {
-      product.buildingRequirements.amount = 5.7
-
-      rebalanceProductGroups(product)
-
-      expect(group1.buildingCount).toBe(6)
-      expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
-    })
-
-    it('should apply no clock changes on whole buildings', () => {
-      product.buildingRequirements.amount = 4
-
-      rebalanceProductGroups(product)
-
-      expect(group1.buildingCount).toBe(4)
-      expect(group1.overclockPercent).toBe(100)
-    })
-
-    describe('multiple groups', () => {
-      let group2: ProductBuildingGroup
-
-      beforeEach(() => {
-        addProductBuildingGroup(product)
-        group2 = product.buildingGroups[1]
-      })
-
-      it('should not rebalance when in advanced mode and not forced', () => {
-        // Assert the before
-        expect(group1.buildingCount).toBe(5)
-        expect(group2.buildingCount).toBe(5)
-        product.buildingRequirements.amount = 20
-
-        rebalanceProductGroups(product)
-
-        // Nothing should have changed
-        expect(group1.buildingCount).toBe(5)
-        expect(group2.buildingCount).toBe(5)
-      })
-
-      it('should distribute the building count evenly', () => {
-        product.buildingRequirements.amount = 6
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(3)
-        expect(group2.buildingCount).toBe(3)
-      })
-
-      it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
-        product.buildingRequirements.amount = 5
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(3)
-        expect(group2.buildingCount).toBe(3)
-
-        expect(group1.overclockPercent).toBe(83.333)
-        expect(group2.overclockPercent).toBe(83.333)
-      })
-
-      it('should distribute the fractional group with an underclock', () => {
-        product.buildingRequirements.amount = 3
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(2)
-        expect(group2.buildingCount).toBe(2)
-
-        expect(group1.overclockPercent).toBe(75)
-        expect(group2.overclockPercent).toBe(75)
-      })
-
-      it('should distribute and update the resources correctly', () => {
-        product.buildingRequirements.amount = 4
-        increaseProductQtyViaBuilding(product, gameData)// Ensure it needs 4 buildings
-
-        // Recalculate
-        calculateFactories(factories, gameData)
-
-        // Set the initial values, group 2 purposefully unbalanced
-        group1.buildingCount = 2
-        group2.buildingCount = 3
-
-        // Calculate, it should be properly imbalanced
-        calculateProductBuildingGroupParts([product])
-
-        expect(group2.parts.OreIron).toBe(90)
-        expect(group2.parts.IronIngot).toBe(90)
-
-        rebalanceProductGroups(product)
-
-        expect(group1.buildingCount).toBe(2)
-        expect(group2.buildingCount).toBe(2)
-
-        expect(group2.parts.OreIron).toBe(60)
-        expect(group2.parts.IronIngot).toBe(60)
-      })
-    })
-  })
-
-  describe('calculateBuildingGroupParts', () => {
-    let group: ProductBuildingGroup
+  describe('calculateProductBuildingGroupParts', () => {
+    let group: BuildingGroup
     let product: FactoryItem
     beforeEach(() => {
       addProductBuildingGroup(mockFactory.products[0])
@@ -222,7 +100,7 @@ describe('productBuildingGroups', async () => {
       group = mockFactory.products[0].buildingGroups[0]
     })
 
-    it('should properly calculate the parts for a product with a single group when updated', () => {
+    it('should calculate for a single group', () => {
       // Assert the before
       expect(group.parts.OreIron).toBe(150)
       expect(group.parts.IronIngot).toBe(150)
@@ -235,7 +113,7 @@ describe('productBuildingGroups', async () => {
       expect(group.parts.IronIngot).toBe(300)
     })
 
-    it('should properly calculate the parts for a product with multiple groups when updated', () => {
+    it('should calculate for multiple groups', () => {
       addProductBuildingGroup(product, false)
       const group2 = product.buildingGroups[1]
 
@@ -333,61 +211,9 @@ describe('productBuildingGroups', async () => {
     })
   })
 
-  describe('calculateEffectiveBuildingCount', () => {
-    let group1: ProductBuildingGroup
-    let group2: ProductBuildingGroup
-    let product: FactoryItem
-    beforeEach(() => {
-      product = mockFactory.products[0]
-      addProductBuildingGroup(product)
-      group1 = product.buildingGroups[0]
-    })
-    it('should properly calculate the effective building count across multiple groups', () => {
-      addProductBuildingGroup(product)
-      group1 = product.buildingGroups[0]
-      group2 = product.buildingGroups[1]
-
-      group1.buildingCount = 3
-      group1.overclockPercent = 100
-
-      group2.buildingCount = 2
-      group2.overclockPercent = 150
-
-      // Should be:
-      // 3 + 2 * 1.5 = 6
-
-      expect(calculateEffectiveBuildingCount(product)).toBe(6)
-    })
-
-    it('should properly calculate the effective building count across multiple groups with precise percentages', () => {
-      addProductBuildingGroup(product)
-      addProductBuildingGroup(product)
-      group1 = product.buildingGroups[0]
-      group2 = product.buildingGroups[1]
-      const group3 = product.buildingGroups[2]
-
-      group1.buildingCount = 3
-      group1.overclockPercent = 133
-
-      group2.buildingCount = 2
-      group2.overclockPercent = 56.334
-
-      group3.buildingCount = 11
-      group3.overclockPercent = 133.678
-
-      // Should be:
-      // Group 1: 3 * 1.33 = 3.99
-      // Group 2: 2 * 0.56334 = 1.12668 (1.127 ceiled)
-      // Group 3: 11 * 1.33678 = 14.70458 (14.705 ceiled)
-      // Totalling 19.822
-
-      expect(calculateEffectiveBuildingCount(product)).toBe(19.822)
-    })
-  })
-
   describe('remainder handling', () => {
-    let group1: ProductBuildingGroup
-    let group2: ProductBuildingGroup
+    let group1: BuildingGroup
+    let group2: BuildingGroup
     let product: FactoryItem
     beforeEach(() => {
       product = mockFactory.products[0]
@@ -405,7 +231,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 1 // Missing 1
 
-        remainderToLast(product, mockFactory)
+        remainderToLast(product, GroupType.Product, mockFactory)
 
         expect(group1.buildingCount).toBe(3)
         expect(group1.overclockPercent).toBe(100)
@@ -419,7 +245,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 131
         group2.buildingCount = 1 // Which will need a 10% overclock
 
-        remainderToLast(product, mockFactory)
+        remainderToLast(product, GroupType.Product, mockFactory)
 
         expect(group1.buildingCount).toBe(131)
         expect(group1.overclockPercent).toBe(100)
@@ -434,7 +260,7 @@ describe('productBuildingGroups', async () => {
         group2.buildingCount = 1 // Which will need a 10% overclock
         group2.overclockPercent = 50 // 40% too high
 
-        remainderToLast(product, mockFactory)
+        remainderToLast(product, GroupType.Product, mockFactory)
 
         expect(group1.buildingCount).toBe(131)
         expect(group1.overclockPercent).toBe(100)
@@ -449,7 +275,7 @@ describe('productBuildingGroups', async () => {
         group2.buildingCount = 1
         group2.overclockPercent = 10
 
-        remainderToLast(product, mockFactory)
+        remainderToLast(product, GroupType.Product, mockFactory)
 
         // This scenario is not 100% possible to equate to perfect numbers.
         // Therefore, we expect a "best effort" of the number of buildings being overallocated, and underclocked, rather than overclocked, which needs a shard.
@@ -467,7 +293,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 1 // Missing 1
 
-        remainderToNewGroup(product, mockFactory)
+        remainderToNewGroup(product, GroupType.Product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(3)
         expect(product.buildingGroups[2].buildingCount).toBe(1)
@@ -480,7 +306,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 2 // Missing 0.5
 
-        remainderToNewGroup(product, mockFactory)
+        remainderToNewGroup(product, GroupType.Product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(3)
         expect(product.buildingGroups[2].buildingCount).toBe(1)
@@ -493,7 +319,7 @@ describe('productBuildingGroups', async () => {
         group1.buildingCount = 3
         group2.buildingCount = 3 // 0.5 too many
 
-        remainderToNewGroup(product, mockFactory)
+        remainderToNewGroup(product, GroupType.Product, mockFactory)
 
         expect(product.buildingGroups.length).toBe(2)
       })
@@ -503,7 +329,7 @@ describe('productBuildingGroups', async () => {
   describe('overclocking', () => {
     let factory: Factory
     let factories: Factory[]
-    let group1: ProductBuildingGroup
+    let group1: BuildingGroup
     let product: FactoryItem
 
     beforeEach(() => {
@@ -533,8 +359,8 @@ describe('productBuildingGroups', async () => {
       let overclockedFactory: Factory
       let copperIngots: FactoryItem
       let plastic: FactoryItem
-      let copperIngotsGroup: ProductBuildingGroup
-      let plasticGroup: ProductBuildingGroup
+      let copperIngotsGroup: BuildingGroup
+      let plasticGroup: BuildingGroup
 
       beforeEach(() => {
         overclockedFactory = newFactory('Test Overclocking Factory')
@@ -610,7 +436,7 @@ describe('productBuildingGroups', async () => {
 
       describe('manufacturer', () => {
         let product: FactoryItem
-        let group: ProductBuildingGroup
+        let group: BuildingGroup
         beforeEach(() => {
           addProductToFactory(overclockedFactory, {
             id: 'SpaceElevatorPart_5', // Adaptive Control Unit
@@ -652,50 +478,8 @@ describe('productBuildingGroups', async () => {
     })
   })
 
-  describe('calculateBuildingGroupProblems', () => {
-    let group1: ProductBuildingGroup
-    let group2: ProductBuildingGroup
-    let product: FactoryItem
-
-    beforeEach(() => {
-      product = mockFactory.products[0]
-      addProductBuildingGroup(product)
-      addProductBuildingGroup(product)
-      group1 = product.buildingGroups[0]
-      group2 = product.buildingGroups[1]
-    })
-
-    it('should correctly identify when a building group has a problem', () => {
-      // Lower the effective building count from 5 to 4
-      group1.buildingCount = 1
-      group2.buildingCount = 3
-
-      calculateBuildingGroupProblems(mockFactory.products[0])
-
-      expect(product.buildingGroupsHaveProblem).toBe(true)
-    })
-
-    it('should remove the problem flag when it has been resolved', () => {
-      // Lower the effective building count from 5 to 4
-      group1.buildingCount = 1
-      group2.buildingCount = 3
-
-      calculateBuildingGroupProblems(mockFactory.products[0])
-
-      expect(product.buildingGroupsHaveProblem).toBe(true)
-
-      // Now fix the problem
-      group1.buildingCount = 2
-      group2.buildingCount = 3
-
-      calculateBuildingGroupProblems(mockFactory.products[0])
-
-      expect(product.buildingGroupsHaveProblem).toBe(false)
-    })
-  })
-
   describe('updateGroupParts', () => {
-    let group: ProductBuildingGroup
+    let group: BuildingGroup
     let product: FactoryItem
 
     beforeEach(() => {
@@ -706,32 +490,32 @@ describe('productBuildingGroups', async () => {
       calculateFactories([mockFactory], gameData)
     })
 
-    it('should update the group\'s building count when an ingredient part has been modified', () => {
+    it('should update when an ingredient part has been modified', () => {
       group.parts.OreIron = 300
 
-      updateGroupParts(group, product, 'OreIron')
+      updateProductBuildingGroupParts(group, product, 'OreIron')
 
       expect(group.buildingCount).toBe(10)
       expect(group.parts.OreIron).toBe(300)
     })
 
-    it('should update the group\'s building count when it results in a fractional building', () => {
+    it('should update when it results in a fractional building', () => {
       // We expect that when we update the parts, it will recalculate the building count to 2, with an underclock.
 
       group.parts.OreIron = 32
 
-      updateGroupParts(group, product, 'OreIron')
+      updateProductBuildingGroupParts(group, product, 'OreIron')
 
       expect(group.buildingCount).toBe(2)
       expect(group.overclockPercent).toBe(53.334)
       expect(group.parts.OreIron).toBe(32)
     })
 
-    it('should update the product\'s building count to a whole number when a single group is updated', () => {
+    it('should update to a whole number when a single group is updated', () => {
       product.buildingRequirements.amount = 5
       group.parts.OreIron = 300
 
-      updateGroupParts(group, product, 'OreIron')
+      updateProductBuildingGroupParts(group, product, 'OreIron')
 
       expect(group.buildingCount).toBe(10)
       expect(product.buildingRequirements.amount).toBe(10)
@@ -741,7 +525,7 @@ describe('productBuildingGroups', async () => {
       product.buildingRequirements.amount = 5
       group.parts.OreIron = 27
 
-      updateGroupParts(group, product, 'OreIron')
+      updateProductBuildingGroupParts(group, product, 'OreIron')
 
       expect(group.buildingCount).toBe(1)
       expect(group.overclockPercent).toBe(90)
@@ -757,7 +541,7 @@ describe('productBuildingGroups', async () => {
       product.buildingRequirements.amount = 10
 
       group.parts.OreIron = 60
-      updateGroupParts(group, product, 'OreIron')
+      updateProductBuildingGroupParts(group, product, 'OreIron')
 
       expect(group.buildingCount).toBe(2)
       expect(group2.buildingCount).toBe(3)
@@ -767,8 +551,8 @@ describe('productBuildingGroups', async () => {
   })
 
   describe('buildingsNeededForPart', () => {
-    let group: ProductBuildingGroup
-    let groupComplex: ProductBuildingGroup
+    let group: BuildingGroup
+    let groupComplex: BuildingGroup
     let product: FactoryItem
     let complexProduct: FactoryItem
 
@@ -787,23 +571,23 @@ describe('productBuildingGroups', async () => {
       groupComplex = complexProduct.buildingGroups[0]
     })
 
-    it('should calculate how many buildings are needed for an ingredient part', () => {
+    it('should calculate for an ingredient part', () => {
       expect(buildingsNeededForPart('OreIron', 150, product, group)).toBe(5)
     })
 
-    it('should calculate how many buildings are needed for an ingredient part which results in a fractional', () => {
+    it('should calculate for an ingredient part which results in a fractional', () => {
       expect(buildingsNeededForPart('OreIron', 555.554, product, group)).toBe(18.518)
     })
 
-    it('should calculate how many buildings are needed for an product part', () => {
+    it('should calculate for an product part', () => {
       expect(buildingsNeededForPart('IronIngot', 150, product, group)).toBe(5)
     })
 
-    it('should calculate how many buildings are needed for a byproduct part, and return a fractional', () => {
+    it('should calculate for a byproduct part, and return a fractional', () => {
       expect(buildingsNeededForPart('Water', 43.5, complexProduct, groupComplex)).toBe(1.45)
     })
 
-    it('should calculate how many buildings are needed for a secondary input part', () => {
+    it('should calculate for a secondary input part', () => {
       addProductToFactory(mockFactory, {
         id: 'IronIngot',
         amount: 150,
@@ -819,7 +603,7 @@ describe('productBuildingGroups', async () => {
   describe('calculateGroupPower', () => {
     let mockFactory: Factory
     let product: FactoryItem
-    let group: ProductBuildingGroup
+    let group: BuildingGroup
 
     beforeEach(() => {
       mockFactory = newFactory('Iron Rods')
@@ -837,31 +621,31 @@ describe('productBuildingGroups', async () => {
     describe('wiki example of iron rods', () => {
       it('should calculate a singular building correctly', () => {
         group.overclockPercent = 100
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(4)
       })
 
       it('should calculate a singular building with an underclock', () => {
         group.overclockPercent = 10
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(0.1906)
 
         group.overclockPercent = 50
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(1.6)
       })
 
       it('should calculate a singular building with an overclock', () => {
         group.overclockPercent = 150
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(6.8366)
 
         group.overclockPercent = 200
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(10)
 
         group.overclockPercent = 250
-        calculateBuildingGroupPower(product)
+        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         expect(group.powerUsage).toBe(13.431)
       })
     })

@@ -1,29 +1,31 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { gameData } from '@/utils/gameData'
 import {
   addProductBuildingGroup,
+  calculateProductBuildingGroupParts,
+} from '@/utils/factory-management/building-groups/product'
+import {
   calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
-  calculateProductBuildingGroupParts,
   rebalanceProductGroups,
-} from '@/utils/factory-management/productBuildingGroups'
+} from '@/utils/factory-management/building-groups/common'
 
 const doCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
   rebalanceProductGroups(product)
   calculateProductBuildingGroupParts([product])
-  calculateBuildingGroupPower(product)
-  calculateBuildingGroupProblems(product)
+  calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+  calculateBuildingGroupProblems(product, GroupType.Product)
 }
 
 describe('buildings', () => {
   let mockFactory: Factory
   let product: FactoryItem
-  let group: ProductBuildingGroup
+  let group: BuildingGroup
 
   beforeEach(() => {
     mockFactory = newFactory('Test Factory')
@@ -34,12 +36,6 @@ describe('buildings', () => {
     })
     product = mockFactory.products[0]
     group = product.buildingGroups[0]
-  })
-
-  describe('calculateProductBuildings', () => {
-    it('should calculate the building requirements for a product', () => {
-
-    })
   })
 
   describe('calculateFinalBuildingsAndPower', () => {

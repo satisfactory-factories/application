@@ -190,8 +190,13 @@
           </v-chip>
         </span>
       </div>
-      <div v-if="producer.buildingGroupsTrayOpen" class="mb-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
-        <building-groups :factory="factory" :product="producer" />
+      <div v-if="producer.buildingGroupsTrayOpen && producer.building" class="mb-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
+        <building-groups
+          :building="producer.building"
+          :factory="factory"
+          :item="producer"
+          :type="GroupType.Power"
+        />
       </div>
       <div v-if="producer.buildingGroupsHaveProblem && !producer.buildingGroupsTrayOpen" class="mb-2">
         <v-btn color="red" @click="!!producer.buildingGroupsTrayOpen">
@@ -207,7 +212,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { Factory, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryPowerProducer, GroupType } from '@/interfaces/planner/FactoryInterface'
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'

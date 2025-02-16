@@ -1,6 +1,16 @@
 <template>
-  <div v-for="group in product.buildingGroups" :key="group.id" class="buildingGroup" :class="isLast(group, product.buildingGroups) ? 'last' : ''">
-    <building-group :factory="factory" :group="group" :product="product" />
+  <div
+    v-for="group in item.buildingGroups"
+    :key="group.id"
+    class="buildingGroup"
+    :class="isLast(group, item.buildingGroups) ? 'last' : ''"
+  >
+    <building-group
+      :building="building"
+      :factory="factory"
+      :group="group"
+      :item="item"
+    />
   </div>
   <div class="mb-2 d-flex align-center">
     <span :class="{ 'text-green': correct }">
@@ -18,8 +28,8 @@
       </v-chip>
     </div>
     <div class="mr-1">
-      <v-chip v-if="product.buildingGroups.length === 1" class="sf-chip small gray">Basic mode</v-chip>
-      <v-chip v-if="product.buildingGroups.length > 1" class="sf-chip small gray">Advanced mode</v-chip>
+      <v-chip v-if="item.buildingGroups.length === 1" class="sf-chip small gray">Basic mode</v-chip>
+      <v-chip v-if="item.buildingGroups.length > 1" class="sf-chip small gray">Advanced mode</v-chip>
     </div>
     <v-btn color="primary" size="small" variant="flat" @click="showTutorial">Show Tutorial</v-btn>
   </div>
@@ -27,7 +37,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addProductBuildingGroup(product, false)"
+      @click="addProductBuildingGroup(item, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -35,10 +45,10 @@
     <v-btn
       class="ml-2"
       color="secondary"
-      :disabled="product.buildingGroups.length === 1 || correct"
+      :disabled="item.buildingGroups.length === 1 || correct"
       size="small"
-      :variant="product.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
-      @click="rebalanceProductGroups(product, true)"
+      :variant="item.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
+      @click="rebalanceProductGroups(item, true)"
     >
       <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
@@ -49,7 +59,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToLast(product, factory)"
+      @click="remainderToLast(item, factory)"
     >
       <i class="fas fa-balance-scale-right" />
       <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
@@ -60,7 +70,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToNewGroup(product, factory)"
+      @click="remainderToNewGroup(item, type, factory)"
     >
       <i class="fas fa-stream" />
       <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
@@ -68,11 +78,11 @@
     <v-btn
       class="ml-2"
       color="amber"
-      :disabled="areAllClocks100(product)"
+      :disabled="areAllClocks100(item.buildingGroups)"
       size="small"
-      :variant="areAllClocks100(product) ? 'outlined' : 'flat'"
+      :variant="areAllClocks100(item.buildingGroups) ? 'outlined' : 'flat'"
 
-      @click="resetClocks(product)"
+      @click="resetClocks(item.buildingGroups)"
     >
       <i class="fas fa-history" />
       <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
@@ -81,29 +91,49 @@
 </template>
 
 <script setup lang="ts">
-  import { BuildingGroup, Factory, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
+  import {
+    BuildingGroup,
+    Factory,
+    FactoryItem,
+    FactoryPowerProducer,
+    GroupType,
+  } from '@/interfaces/planner/FactoryInterface'
   import {
     addProductBuildingGroup,
-    calculateEffectiveBuildingCount,
-    rebalanceProductGroups,
-    remainderToLast,
-    remainderToNewGroup,
-  } from '@/utils/factory-management/productBuildingGroups'
+
+  } from '@/utils/factory-management/building-groups/product'
   import { formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import {
+    calculateEffectiveBuildingCount, rebalanceProductGroups,
+    remainderToLast,
+    remainderToNewGroup,
+  } from '@/utils/factory-management/buildingGroupsCommon'
 
   const props = defineProps<{
     factory: Factory
-    product: FactoryItem | FactoryPowerProducer
+    item: FactoryItem | FactoryPowerProducer
+    building: string
+    type: GroupType
   }>()
 
   const effectiveBuildings = computed(() => {
-    return formatNumberFully(calculateEffectiveBuildingCount(props.product)).toFixed(2)
+    return formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups)).toFixed(2)
   })
 
   const buildingsRemaining = computed(() => {
-    const groupBuildings = calculateEffectiveBuildingCount(props.product)
-    return formatNumberFully(props.product.buildingRequirements.amount - groupBuildings)
+    const groupBuildings = calculateEffectiveBuildingCount(props.item.buildingGroups)
+
+    let subject: FactoryItem | FactoryPowerProducer
+    if (props.type === GroupType.Product) {
+      subject = props.item as FactoryItem
+      return formatNumberFully(subject.buildingRequirements.amount - groupBuildings)
+    } else if (props.type === GroupType.Power) {
+      subject = props.item as FactoryPowerProducer
+      return formatNumberFully(subject.buildingCount - groupBuildings)
+    }
+
+    throw new Error('BuildingGroups: buildingsRemaining: Invalid group type!')
   })
 
   const correct = computed(() => {
@@ -118,14 +148,14 @@
     return buildingsRemaining.value > 0.1
   })
 
-  const resetClocks = (product: FactoryItem) => {
-    product.buildingGroups.forEach(group => {
+  const resetClocks = (buildingGroups: BuildingGroup[]) => {
+    buildingGroups.forEach(group => {
       group.overclockPercent = 100
     })
   }
 
-  const areAllClocks100 = (product: FactoryItem) => {
-    return product.buildingGroups.every(group => group.overclockPercent === 100)
+  const areAllClocks100 = (buildingGroups: BuildingGroup[]) => {
+    return buildingGroups.every(group => group.overclockPercent === 100)
   }
 
   const showTutorial = () => {

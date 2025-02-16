@@ -17,6 +17,7 @@ export const addPowerProducerToFactory = (
   },
 ) => {
   factory.powerProducers.push({
+    id: Math.floor(Math.random() * 10000).toString(),
     building: options.building ?? '',
     buildingAmount: options.buildingAmount ?? 0,
     buildingCount: 0, // Calculated later

@@ -30,16 +30,19 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
+export enum GroupType {
+  Power = 'Power',
+  Product = 'Product',
+}
+
 export interface BuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
   parts: {[key: string]: number}
   powerUsage: number
-}
-
-export interface ProductBuildingGroup extends BuildingGroup {
-  somersloops: number
+  somersloops?: number
+  type: GroupType
 }
 
 export interface FactoryItem {
@@ -50,7 +53,7 @@ export interface FactoryItem {
   requirements: { [key: string]: { amount: number } };
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
-  buildingGroups: ProductBuildingGroup[]
+  buildingGroups: BuildingGroup[]
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
 }
@@ -118,6 +121,7 @@ export interface FactoryTask {
 }
 
 export interface FactoryPowerProducer {
+  id: string;
   building: string;
   buildingAmount: number; // Amount of buildings requested by the user
   buildingCount: number; // Amount of buildings actually needed to produce the power requested by the user

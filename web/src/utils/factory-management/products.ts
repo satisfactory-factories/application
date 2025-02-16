@@ -5,7 +5,7 @@ import {
   getRecipe,
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
-import { addProductBuildingGroup } from '@/utils/factory-management/productBuildingGroups'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 

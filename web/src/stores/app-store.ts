@@ -8,12 +8,12 @@ import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import {
-  addPowerProducerBuildingGroup,
   addProductBuildingGroup,
-  calculateBuildingGroupPower,
   calculateProductBuildingGroupParts,
-  rebalanceProductGroups,
-} from '@/utils/factory-management/productBuildingGroups'
+
+} from '@/utils/factory-management/building-groups/product'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/powerBuildingGroups'
+import { calculateBuildingGroupPower, rebalanceProductGroups } from '@/utils/factory-management/buildingGroupsCommon'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -301,7 +301,7 @@ export const useAppStore = defineStore('app', () => {
           // Calculate the building group
           rebalanceProductGroups(product)
           calculateProductBuildingGroupParts([product])
-          calculateBuildingGroupPower(product)
+          calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         }
       })
 

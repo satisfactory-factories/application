@@ -1,4 +1,10 @@
-import { BuildingRequirement, Factory, FactoryDependency, FactoryPower } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingRequirement,
+  Factory,
+  FactoryDependency,
+  FactoryPower,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateParts } from '@/utils/factory-management/parts'
@@ -6,7 +12,8 @@ import {
   calculateAllDependencies,
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
-  calculateFactoryDependencies, flushInvalidRequests,
+  calculateFactoryDependencies,
+  flushInvalidRequests,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
@@ -14,10 +21,14 @@ import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
 import {
-  calculateBuildingGroupPower, calculateBuildingGroupProblems,
   calculateProductBuildingGroupParts,
+
+} from '@/utils/factory-management/building-groups/product'
+import {
+  calculateBuildingGroupPower,
+  calculateBuildingGroupProblems,
   rebalanceProductGroups,
-} from '@/utils/factory-management/productBuildingGroups'
+} from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -128,8 +139,8 @@ export const calculateFactory = (
   factory.products.forEach(product => {
     rebalanceProductGroups(product)
     calculateProductBuildingGroupParts([product])
-    calculateBuildingGroupPower(product)
-    calculateBuildingGroupProblems(product)
+    calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+    calculateBuildingGroupProblems(product, GroupType.Product)
   })
 
   calculateFinalBuildingsAndPower(factory)

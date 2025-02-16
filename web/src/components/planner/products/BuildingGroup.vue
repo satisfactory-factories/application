@@ -3,7 +3,7 @@
     <div>
       <v-btn
         color="red rounded mr-1"
-        :disabled="product.buildingGroups.length === 1"
+        :disabled="item.buildingGroups.length === 1"
         icon="fas fa-trash"
         size="small"
         title="Delete Factory"
@@ -70,7 +70,7 @@
     </div>
     <div>
       <v-chip
-        v-if="isProductGroup"
+        v-if="group.type === GroupType.Product"
         class="sf-chip input sloop mx-1"
         variant="tonal"
       >
@@ -78,7 +78,7 @@
           <game-asset subject="somersloop" type="item_id" />
         </tooltip>
         <v-number-input
-          v-model.number="productGroup.somersloops"
+          v-model.number="group.somersloops"
           class="inline-inputs ml-0"
           control-variant="stacked"
           density="compact"
@@ -101,10 +101,10 @@
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
-    <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
-      <div v-if="part !== product.id">
+    <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
+      <div v-if="part.toString() !== item.id">
         <v-chip
-          v-if="part !== product.id"
+          v-if="part.toString() !== item.id"
           class="sf-chip blue input mx-1 text-body-1"
           variant="tonal"
         >
@@ -119,11 +119,11 @@
             hide-details
             hide-spin-buttons
             :min="0"
-            :name="`${product.id}-${part}.amount`"
+            :name="`${item.id}-${part}.amount`"
             width="110px"
-            @update:model-value="updateGroupPartsDebounce(group, product, part.toString())"
+            @update:model-value="updateGroupPartsDebounce(group, item, part.toString())"
           />
-          <span v-if="updatingPart === part">
+          <span v-if="updatingPart === part.toString()">
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
         </v-chip>
@@ -138,8 +138,8 @@
       <div>=</div>
       <div class="underchip">&nbsp;</div>
     </div>
-    <template v-for="(_, part) in group.parts" :key="`${product.id}-${part}`">
-      <div v-if="part === product.id || partIsByProduct(String(part))">
+    <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
+      <div v-if="part.toString() === item.id || partIsByProduct(String(part), group.type)">
         <v-chip
           class="sf-chip input mx-1 text-body-1"
           :class="chipColors(String(part))"
@@ -156,11 +156,11 @@
             hide-details
             hide-spin-buttons
             :min="0"
-            :name="`${product.id}-${part}.amount`"
+            :name="`${item.id}-${part}.amount`"
             width="110px"
           />
         </v-chip>
-        <div class="underchip" :class="partIsByProduct(String(part)) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
+        <div class="underchip" :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
           {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
         </div>
       </div>
@@ -170,43 +170,36 @@
 
 <script setup lang="ts">
   import { defineProps, inject } from 'vue'
-  import { BuildingGroup, Factory, FactoryItem, ProductBuildingGroup } from '@/interfaces/planner/FactoryInterface'
+  import {
+    BuildingGroup,
+    Factory,
+    FactoryItem,
+    FactoryPowerProducer,
+    GroupType,
+  } from '@/interfaces/planner/FactoryInterface'
   import eventBus from '@/utils/eventBus'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
-  import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
+  // import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
+  import { PowerItem } from '@/interfaces/Recipes'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
 
-  let timeout: NodeJS.Timeout | null = null
+  // const timeout: NodeJS.Timeout | null = null
   let updatingPart: string
 
   const { lgAndDown, lgAndUp } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
-    group: BuildingGroup | ProductBuildingGroup
-    product: FactoryItem
-  }>()
-
-  function isProductBuildingGroup (
     group: BuildingGroup
-  ): group is ProductBuildingGroup {
-    return (group as ProductBuildingGroup).somersloops !== undefined
-  }
-
-  const isProductGroup = computed(() => isProductBuildingGroup(props.group))
-
-  const productGroup = computed(() => {
-    // Only safe because you check isProductGroup in the template
-    return props.group as ProductBuildingGroup
-  })
-
-  const building = props.product.buildingRequirements.name
+    item: FactoryItem | FactoryPowerProducer
+    building: string // Building name
+  }>()
 
   const updateGroup = (group: BuildingGroup) => {
     if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {
@@ -228,10 +221,18 @@
       group.buildingCount = Math.floor(group.buildingCount)
     }
 
-    if (props.product.buildingGroups.length === 1) {
+    if (props.item.buildingGroups.length === 1) {
       // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
-      props.product.buildingRequirements.amount = group.buildingCount
-      increaseProductQtyViaBuilding(props.product, gameData)
+      if (props.group.type === GroupType.Product) {
+        const subject = props.item as FactoryItem
+        subject.buildingRequirements.amount = group.buildingCount
+        increaseProductQtyViaBuilding(subject, gameData)
+      } else if (props.group.type === GroupType.Power) {
+        const subject = props.item as FactoryPowerProducer
+        subject.buildingCount = 1
+      } else {
+        throw new Error('Invalid type')
+      }
     }
 
     // If the user is trying to use more than .0001 precision for overclock, truncate it and alert them.
@@ -250,32 +251,55 @@
     updateFactory(props.factory)
   }
 
-  const deleteGroup = (group: ProductBuildingGroup) => {
-    const index = props.product.buildingGroups.indexOf(group)
-    props.product.buildingGroups.splice(index, 1)
+  const deleteGroup = (group: BuildingGroup) => {
+    let index = 0
+    index = props.item.buildingGroups.indexOf(group)
+
+    props.item.buildingGroups.splice(index, 1)
   }
 
   const hasByProduct = computed(() => {
-    return props.product.byProducts && props.product.byProducts.length > 0 && props.product.byProducts[0].id
+    return isByProduct(props.group.type)
   })
 
-  const partIsByProduct = (part: string) => {
-    if (!hasByProduct.value) return false
-
-    if (!props.product.byProducts?.length) {
-      throw new Error('Somehow checking for byproduct that does not exist!')
+  const isByProduct = (groupType: GroupType) => {
+    let subject: FactoryItem | FactoryPowerProducer
+    if (groupType === GroupType.Product) {
+      subject = props.item as FactoryItem
+      return subject.byProducts && subject.byProducts.length > 0 && subject.byProducts[0].id
+    } else if (groupType === GroupType.Power) {
+      subject = props.item as FactoryPowerProducer
+      return subject.byproduct
+    } else {
+      throw new Error('BuildingGroup: hasByProduct: Invalid type!')
     }
+  }
 
-    return part === props.product.byProducts[0].id
+  const partIsByProduct = (part: string, groupType: GroupType) => {
+    if (!hasByProduct.value) return false
+    let subject = props.item as FactoryItem | FactoryPowerProducer
+
+    if (groupType === GroupType.Product) {
+      subject = props.item as FactoryItem
+      if (!subject.byProducts?.length) {
+        throw new Error('BuildingGroup: Somehow checking for byproduct on a FactoryItem that does not exist!')
+      }
+      return part === subject.byProducts[0].id
+    } else if (groupType === GroupType.Power) {
+      subject = props.item as FactoryPowerProducer
+      return part === subject.byproduct?.part
+    } else {
+      throw new Error('BuildingGroup: partIsByProduct: Invalid type!')
+    }
   }
 
   const chipColors = (part: string) => {
     const isRaw = props.factory.parts[part].isRaw
 
     return {
-      cyan: isRaw && !partIsByProduct(part),
-      blue: !isRaw && !partIsByProduct(part),
-      nocolor: partIsByProduct(part),
+      cyan: isRaw && !partIsByProduct(part, props.group.type),
+      blue: !isRaw && !partIsByProduct(part, props.group.type),
+      nocolor: partIsByProduct(part, props.group.type),
     }
   }
 
@@ -283,16 +307,16 @@
     return Object.values(props.group.parts).length
   })
 
-  const updateGroupPartsDebounce = (group: ProductBuildingGroup, product: FactoryItem, part: string) => {
-    updatingPart = part
-    if (timeout) {
-      clearTimeout(timeout)
-    }
-
-    timeout = setTimeout(() => {
-      updateGroupParts(group, product, part)
-      updatingPart = ''
-    }, 750)
+  const updateGroupPartsDebounce = (group: BuildingGroup, item: FactoryItem | PowerItem, part: string) => {
+    // updatingPart = part
+    // if (timeout) {
+    //   clearTimeout(timeout)
+    // }
+    //
+    // timeout = setTimeout(() => {
+    //   updateGroupParts(group, product, part)
+    //   updatingPart = ''
+    // }, 750)
   }
 </script>
 

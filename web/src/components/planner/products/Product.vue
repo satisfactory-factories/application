@@ -221,7 +221,12 @@
         </v-chip>
       </div>
       <div v-if="product.buildingGroupsTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
-        <building-groups :factory="factory" :product="product" />
+        <building-groups
+          :building="product.buildingRequirements.name"
+          :factory="factory"
+          :item="product"
+          :type="GroupType.Product"
+        />
       </div>
       <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupsTrayOpen" class="mb-2">
         <v-btn color="red" @click="toggleBuildingGroupTray(product)">
@@ -246,7 +251,7 @@
   } from '@/utils/factory-management/products'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatPower } from '@/utils/numberFormatter'
-  import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
