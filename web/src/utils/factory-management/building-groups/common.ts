@@ -147,12 +147,23 @@ export const calculateBuildingGroupParts = (
     // Get the part requirements
     const requirements = getBuildingGroupRequirements(item, type)
 
-    // Get target amount
+    // Get target amount, and set the item ID
     let itemAmount = 0
+    let partId = ''
     if (type === GroupType.Product) {
-      itemAmount = (item as FactoryItem).amount
+      const subject = item as FactoryItem
+      itemAmount = subject.amount
+      partId = subject.id
     } else if (type === GroupType.Power) {
-      itemAmount = (item as FactoryPowerProducer).ingredients[0].amount ?? 0
+      const subject = item as FactoryPowerProducer
+
+      // If we don't have the ingredients calculated yet, we simply cannot continue
+      if (subject.ingredients.length === 0) {
+        return
+      }
+
+      itemAmount = subject.ingredients[0].perMin * totalBuildingCount
+      partId = subject.ingredients[0].part ?? 'UNKNOWN'
     }
 
     for (const group of item.buildingGroups) {
@@ -167,7 +178,7 @@ export const calculateBuildingGroupParts = (
 
       // Also figure out the parts for the product itself and byproduct
       const productPerBuilding = itemAmount / totalBuildingCount
-      group.parts[item.id] = productPerBuilding * group.buildingCount
+      group.parts[partId] = productPerBuilding * group.buildingCount
 
       // And byproduct if applicable
       if (type === GroupType.Product) {

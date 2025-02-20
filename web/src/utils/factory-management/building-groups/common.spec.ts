@@ -298,13 +298,13 @@ describe('buildingGroupsCommon', async () => {
   describe('calculateBuildingGroupParts', () => {
     let group: BuildingGroup
 
-    beforeEach(() => {
-      addProductBuildingGroup(product)
-      calculateFactories(factories, gameData)
-      group = product.buildingGroups[0]
-    })
-
     describe('product', () => {
+      beforeEach(() => {
+        addProductBuildingGroup(product)
+        calculateFactories(factories, gameData)
+        group = product.buildingGroups[0]
+      })
+
       it('should calculate for a single group', () => {
         // Assert the before
         expect(group.parts.OreIron).toBe(150)
@@ -340,7 +340,7 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should not adjust any clocks', () => {
-      // Assert the before
+        // Assert the before
         expect(group.overclockPercent).toBe(100)
 
         group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
@@ -357,7 +357,7 @@ describe('buildingGroupsCommon', async () => {
 
           calculateBuildingGroupParts([product], GroupType.Product)
 
-          // 30 * 1.5 = 45 * 10 = 450
+          // 30 (ore) * 1.5 (clock) = 45 (ore) * 10 (buildings) = 450
           expect(group.parts.OreIron).toBe(450)
           expect(group.parts.IronIngot).toBe(450)
         })
@@ -368,9 +368,21 @@ describe('buildingGroupsCommon', async () => {
 
           calculateBuildingGroupParts([product], GroupType.Product)
 
-          // 30 * 0.5 = 15 * 10 = 150
+          // 30 (ore) * 0.5 (clock) = 15 (ore) * 10 (buildings) = 150
           expect(group.parts.OreIron).toBe(150)
           expect(group.parts.IronIngot).toBe(150)
+        })
+
+        it('should correctly apply an a clock with decimals', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 133.3333
+
+          calculateBuildingGroupParts([product], GroupType.Product)
+
+          // 30 (ore) * 1.333333 (clock) = 39.9999 (ore) * 10 (buildings) = 399.999
+          // 400 rounded
+          expect(group.parts.OreIron).toBe(400)
+          expect(group.parts.IronIngot).toBe(400)
         })
 
         it('should correctly apply an in-game validated overclock', () => {
@@ -412,6 +424,86 @@ describe('buildingGroupsCommon', async () => {
           expect(group2.parts.OreCopper).toBe(17.023)
           expect(group2.parts.Water).toBe(11.349)
           expect(group2.parts.CopperIngot).toBe(42.559)
+        })
+      })
+    })
+
+    describe('power', () => {
+      beforeEach(() => {
+        addPowerProducerBuildingGroup(powerProducer)
+        calculateFactories(factories, gameData)
+        group = powerProducer.buildingGroups[0]
+      })
+
+      it('should calculate for a single group', () => {
+        // Assert the before
+        expect(group.parts.LiquidFuel).toBe(80)
+
+        group.buildingCount = 8 // This should force a recalculation, originally it's 4
+
+        calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+        expect(group.parts.LiquidFuel).toBe(160)
+      })
+
+      it('should calculate for multiple groups', () => {
+        addPowerProducerBuildingGroup(powerProducer, false)
+        const group2 = powerProducer.buildingGroups[1]
+
+        // Assert the before
+        expect(group.parts.LiquidFuel).toBe(80)
+        expect(group2.parts.LiquidFuel).toBe(0)
+
+        group.buildingCount = 11.5
+        group2.buildingCount = 5.5
+
+        calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+        expect(group.parts.LiquidFuel).toBe(230)
+        expect(group2.parts.LiquidFuel).toBe(110)
+      })
+
+      it('should not adjust any clocks', () => {
+        // Assert the before
+        expect(group.overclockPercent).toBe(100)
+
+        group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
+
+        calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+        expect(group.overclockPercent).toBe(100)
+      })
+
+      describe('overclocking', () => {
+        it('should correctly apply an overclock to the parts', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 150
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          // 20 (fuel) * 1.5 (150% OC) = 30 (fuel) * 10 (buildings) = 300 (fuel)
+          expect(group.parts.LiquidFuel).toBe(300)
+        })
+
+        it('should correctly apply a underclock to the parts', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 50
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          // 20 (fuel) * 0.5 (50% OC) = 10 (fuel) * 10 (buildings) = 150 (fuel)
+          expect(group.parts.LiquidFuel).toBe(100)
+        })
+
+        it('should correctly apply an a clock with decimals', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 133.3333
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          // 20 (fuel) * 1.33333 (133.3333% OC) = 26.666 (fuel) * 10 (buildings) = 266.666 (fuel)
+          // 26.667 rounded
+          expect(group.parts.LiquidFuel).toBe(266.667)
         })
       })
     })
