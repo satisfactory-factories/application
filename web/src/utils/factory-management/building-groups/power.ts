@@ -10,9 +10,13 @@ export const addPowerProducerBuildingGroup = (producer: FactoryPowerProducer, ad
   if (producer.buildingGroups.length === 1) {
     rebalancePowerProducerBuildingGroups(producer)
   }
-  // calculateProductBuildingGroupParts([product])
+  calculatePowerProducerBuildingGroupParts(producer)
 }
 
 export const rebalancePowerProducerBuildingGroups = (producer: FactoryPowerProducer) => {
+
+}
+
+export const calculatePowerProducerBuildingGroupParts = (producer: FactoryPowerProducer) => {
 
 }

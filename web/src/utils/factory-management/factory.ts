@@ -20,8 +20,8 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
-import { calculateProductBuildingGroupParts } from '@/utils/factory-management/building-groups/product'
 import {
+  calculateBuildingGroupParts,
   calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
   rebalanceBuildingGroups,
@@ -135,12 +135,13 @@ export const calculateFactory = (
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
     rebalanceBuildingGroups(product, GroupType.Product)
-    calculateProductBuildingGroupParts([product])
+    calculateBuildingGroupParts([product], GroupType.Product)
     calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
     calculateBuildingGroupProblems(product, GroupType.Product)
   })
   factory.powerProducers.forEach(producer => {
     rebalanceBuildingGroups(producer, GroupType.Power)
+    calculateBuildingGroupParts([producer], GroupType.Power)
   })
 
   calculateFinalBuildingsAndPower(factory)

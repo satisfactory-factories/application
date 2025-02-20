@@ -57,22 +57,22 @@ describe('buildingGroupsPower', async () => {
       addPowerProducerBuildingGroup(powerProducer)
 
       expect(powerBuildingGroups.length).toBe(1)
-      expect(powerBuildingGroups[0].buildingCount).toBe(5)
+      expect(powerBuildingGroups[0].buildingCount).toBe(4)
     })
 
-    // it('should add a new group to the power producer with 0 buildings when asked', () => {
-    //   addPowerProducerBuildingGroup(product, false)
-    //
-    //   expect(powerBuildingGroups.length).toBe(1)
-    //   expect(powerBuildingGroups[0].buildingCount).toBe(0)
-    // })
-    //
-    // it('should add a new group to the power producer with the correct parts', () => {
-    //   addPowerProducerBuildingGroup(product)
-    //
-    //   expect(powerBuildingGroups[0].parts.OreIron).toBe(150)
-    //   expect(powerBuildingGroups[0].parts.IronIngot).toBe(150)
-    // })
+    it('should add a new group to the power producer with 0 buildings when asked', () => {
+      addPowerProducerBuildingGroup(powerProducer, false)
+
+      expect(powerBuildingGroups.length).toBe(1)
+      expect(powerBuildingGroups[0].buildingCount).toBe(0)
+    })
+
+    it('should add a new group to the power producer with the correct parts', () => {
+      addPowerProducerBuildingGroup(powerProducer)
+
+      expect(powerBuildingGroups[0].parts.OreIron).toBe(150)
+      expect(powerBuildingGroups[0].parts.IronIngot).toBe(150)
+    })
     // it('should add a multiple groups each containing the correct part amounts', () => {
     //   addPowerProducerBuildingGroup(product) // The first group should contain the full requirement
     //   addPowerProducerBuildingGroup(product, false)
@@ -94,5 +94,9 @@ describe('buildingGroupsPower', async () => {
     //   expect(product.powerBuildingGroups.length).toBe(1)
     //   expect(product2.powerBuildingGroups[0].buildingCount).toBe(5)
     // })
+  })
+
+  describe('calculatePowerProducerBuildingGroupParts', () => {
+
   })
 })

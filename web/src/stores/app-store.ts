@@ -7,11 +7,12 @@ import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
-  addProductBuildingGroup,
-  calculateProductBuildingGroupParts,
-} from '@/utils/factory-management/building-groups/product'
-import { calculateBuildingGroupPower, rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+  calculateBuildingGroupParts,
+  calculateBuildingGroupPower,
+  rebalanceBuildingGroups,
+} from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
@@ -299,7 +300,7 @@ export const useAppStore = defineStore('app', () => {
           addProductBuildingGroup(product, true)
           // Calculate the building group
           rebalanceBuildingGroups(product, GroupType.Product)
-          calculateProductBuildingGroupParts([product])
+          calculateBuildingGroupParts([product], GroupType.Product)
           calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         }
       })

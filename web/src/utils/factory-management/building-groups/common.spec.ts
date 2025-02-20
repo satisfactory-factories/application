@@ -10,11 +10,9 @@ import { fetchGameData } from '@/utils/gameDataService'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
-  addProductBuildingGroup,
-  calculateProductBuildingGroupParts,
-} from '@/utils/factory-management/building-groups/product'
-import {
+  calculateBuildingGroupParts,
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
   rebalanceBuildingGroups,
@@ -278,20 +276,142 @@ describe('buildingGroupsCommon', async () => {
           group2.buildingCount = 3
 
           // Calculate, it should be properly imbalanced
-          calculateProductBuildingGroupParts([product])
+          calculateBuildingGroupParts([product], GroupType.Product)
 
           expect(group2.parts.OreIron).toBe(90)
           expect(group2.parts.IronIngot).toBe(90)
 
           // Now rebalance and recalculate, it should distribute evenly.
           rebalanceBuildingGroups(product, GroupType.Product, { force: true })
-          calculateProductBuildingGroupParts([product])
+          calculateBuildingGroupParts([product], GroupType.Product)
 
           expect(group1.buildingCount).toBe(2)
           expect(group2.buildingCount).toBe(2)
 
           expect(group2.parts.OreIron).toBe(60)
           expect(group2.parts.IronIngot).toBe(60)
+        })
+      })
+    })
+  })
+
+  describe('calculateBuildingGroupParts', () => {
+    let group: BuildingGroup
+
+    beforeEach(() => {
+      addProductBuildingGroup(product)
+      calculateFactories(factories, gameData)
+      group = product.buildingGroups[0]
+    })
+
+    describe('product', () => {
+      it('should calculate for a single group', () => {
+        // Assert the before
+        expect(group.parts.OreIron).toBe(150)
+        expect(group.parts.IronIngot).toBe(150)
+
+        group.buildingCount = 10 // This should force a recalculation, originally it's 5
+
+        calculateBuildingGroupParts([product], GroupType.Product)
+
+        expect(group.parts.OreIron).toBe(300)
+        expect(group.parts.IronIngot).toBe(300)
+      })
+
+      it('should calculate for multiple groups', () => {
+        addProductBuildingGroup(product, false)
+        const group2 = product.buildingGroups[1]
+
+        // Assert the before
+        expect(group.parts.OreIron).toBe(150)
+        expect(group2.parts.OreIron).toBe(0)
+        expect(group.parts.IronIngot).toBe(150)
+        expect(group2.parts.IronIngot).toBe(0)
+
+        group.buildingCount = 11.5
+        group2.buildingCount = 5.5
+
+        calculateBuildingGroupParts([product], GroupType.Product)
+
+        expect(group.parts.OreIron).toBe(345)
+        expect(group.parts.IronIngot).toBe(345)
+        expect(group2.parts.OreIron).toBe(165)
+        expect(group2.parts.IronIngot).toBe(165)
+      })
+
+      it('should not adjust any clocks', () => {
+      // Assert the before
+        expect(group.overclockPercent).toBe(100)
+
+        group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
+
+        calculateBuildingGroupParts([product], GroupType.Product)
+
+        expect(group.overclockPercent).toBe(100)
+      })
+
+      describe('overclocking', () => {
+        it('should correctly apply an overclock to the parts', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 150
+
+          calculateBuildingGroupParts([product], GroupType.Product)
+
+          // 30 * 1.5 = 45 * 10 = 450
+          expect(group.parts.OreIron).toBe(450)
+          expect(group.parts.IronIngot).toBe(450)
+        })
+
+        it('should correctly apply a underclock to the parts', () => {
+          group.buildingCount = 10
+          group.overclockPercent = 50
+
+          calculateBuildingGroupParts([product], GroupType.Product)
+
+          // 30 * 0.5 = 15 * 10 = 150
+          expect(group.parts.OreIron).toBe(150)
+          expect(group.parts.IronIngot).toBe(150)
+        })
+
+        it('should correctly apply an in-game validated overclock', () => {
+          addProductToFactory(mockFactory, {
+            id: 'CopperIngot',
+            amount: 120,
+            recipe: 'Alternate_PureCopperIngot',
+          })
+          calculateFactories([mockFactory], gameData)
+
+          addProductBuildingGroup(mockFactory.products[1])
+          addProductBuildingGroup(mockFactory.products[1]) // Puts it in advanced mode
+          const group2 = mockFactory.products[1].buildingGroups[0]
+
+          // Test 1: 150% overclock
+          group2.buildingCount = 1
+          group2.overclockPercent = 150
+
+          calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product)
+
+          expect(group2.parts.OreCopper).toBe(22.5)
+          expect(group2.parts.Water).toBe(15)
+          expect(group2.parts.CopperIngot).toBe(56.25)
+
+          // Test 2: 212.55% overclock, also testing the precision of the parts
+          group2.overclockPercent = 212.55
+
+          calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product)
+
+          expect(group2.parts.OreCopper).toBe(31.882)
+          expect(group2.parts.Water).toBe(21.255)
+          expect(group2.parts.CopperIngot).toBe(79.706)
+
+          // Test 3: 113.4933% overclock, testing to maximum precision
+          group2.overclockPercent = 113.4933
+
+          calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product)
+
+          expect(group2.parts.OreCopper).toBe(17.023)
+          expect(group2.parts.Water).toBe(11.349)
+          expect(group2.parts.CopperIngot).toBe(42.559)
         })
       })
     })

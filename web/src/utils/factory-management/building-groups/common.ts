@@ -117,6 +117,109 @@ export const getBuildingCount = (
   return buildingCount
 }
 
+// Calculates all parts for an item based on the building groups
+export const calculateBuildingGroupParts = (
+  items: FactoryItem[] | FactoryPowerProducer[],
+  type: GroupType,
+  exclude?: string
+) => {
+  // Handle any group part quantity changes.
+  // Loop through all the building groups buildings and use that as relative to update each part quantities.
+  for (const item of items) {
+  // Firstly, check if the item needs any building groups as the user may have changed the product.
+    if (item.id === '' || item.recipe === '') {
+      item.buildingGroups = []
+      continue // Skip this product
+    }
+
+    // Sanitize the building groups
+    if (item.buildingGroups.length === 0) {
+      if (type === GroupType.Product) {
+        addProductBuildingGroup(item as FactoryItem, true)
+      } else if (type === GroupType.Power) {
+        addPowerProducerBuildingGroup(item as FactoryPowerProducer, true)
+      }
+    }
+
+    // Get the total building count
+    const totalBuildingCount = getBuildingCount(item, type)
+
+    // Get the part requirements
+    const requirements = getBuildingGroupRequirements(item, type)
+
+    // Get target amount
+    let itemAmount = 0
+    if (type === GroupType.Product) {
+      itemAmount = (item as FactoryItem).amount
+    } else if (type === GroupType.Power) {
+      itemAmount = (item as FactoryPowerProducer).ingredients[0].amount ?? 0
+    }
+
+    for (const group of item.buildingGroups) {
+      Object.entries(requirements).forEach(([partKey, amount]) => {
+        if (partKey === exclude) {
+          return // Skip this part so we don't cause an update storm.
+        }
+        // We need to get a fraction based on the total amount required by the product and the number of buildings.
+        const partPerBuilding = amount / totalBuildingCount
+        group.parts[partKey] = (partPerBuilding * group.buildingCount)
+      })
+
+      // Also figure out the parts for the product itself and byproduct
+      const productPerBuilding = itemAmount / totalBuildingCount
+      group.parts[item.id] = productPerBuilding * group.buildingCount
+
+      // And byproduct if applicable
+      if (type === GroupType.Product) {
+        const subject = item as FactoryItem
+        if (subject.byProducts && subject.byProducts.length > 0) {
+          const byproductPerBuilding = subject.byProducts[0].amount / totalBuildingCount
+          group.parts[subject.byProducts[0].id] = (byproductPerBuilding * group.buildingCount)
+        }
+      } else if (type === GroupType.Power) {
+        const subject = item as FactoryPowerProducer
+        if (subject.byproduct) {
+          group.parts[subject.byproduct.part] = subject.byproduct.amount
+        }
+      }
+
+      const overclockMulti = group.overclockPercent / 100
+
+      // Now apply the overclock multiplier for all parts in the group
+      for (const part in group.parts) {
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti)
+      }
+    }
+  }
+}
+
+interface BuildingGroupRequirements {
+  [key: string]: number
+}
+
+export const getBuildingGroupRequirements = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType
+): BuildingGroupRequirements => {
+  const data: BuildingGroupRequirements = {}
+
+  if (type === GroupType.Product) {
+    const subject = item as FactoryItem
+    Object.entries(subject.requirements).forEach(([partKey, part]) => {
+      data[partKey] = part.amount
+    })
+  } else if (type === GroupType.Power) {
+    const subject = item as FactoryPowerProducer
+    Object.entries(subject.ingredients).forEach(([, part]) => {
+      data[part.part] = part.amount ?? 0
+    })
+  } else {
+    throw new Error('productBuildingGroups: getBuildingGroupRequirements: Invalid group type!')
+  }
+
+  return data
+}
+
 // Calculates whether the building group passes it's requirements for effective buildings
 export const calculateBuildingGroupProblems = (
   item: FactoryItem | FactoryPowerProducer,
