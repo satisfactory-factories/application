@@ -239,7 +239,7 @@
     const clock = group.overclockPercent.toString().split('.')[0]
     const precision = group.overclockPercent.toString().split('.')[1]
     if (precision?.length > 4) {
-      // Truncate the overclock to 4 decimal places.2255255255525555
+      // Truncate the overclock to 4 decimal places
       group.overclockPercent = Number(`${clock}.${precision.slice(0, 4)}`)
       eventBus.emit('toast', {
         message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
