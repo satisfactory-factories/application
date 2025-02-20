@@ -3,7 +3,7 @@ import { formatNumberFully } from '@/utils/numberFormatter'
 import {
   addBuildingGroup,
   buildingsNeededForPart,
-  rebalanceProductGroups,
+  rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 
 export const addProductBuildingGroup = (product: FactoryItem, addBuildings = true) => {
@@ -12,7 +12,11 @@ export const addProductBuildingGroup = (product: FactoryItem, addBuildings = tru
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
   if (product.buildingGroups.length === 1 && addBuildings) {
-    rebalanceProductGroups(product, true, true)
+    rebalanceBuildingGroups(
+      product,
+      GroupType.Product,
+      { force: true, changeBuildings: true }
+    )
   }
   calculateProductBuildingGroupParts([product])
 }
@@ -84,7 +88,7 @@ export const updateProductBuildingGroupParts = (
   // If this is the only building group, update the product's building requirements as well, and call a rebalance so it deals with the overclocking for us
   if (product.buildingGroups.length === 1) {
     product.buildingRequirements.amount = newBuildingCount // With this one we don't care about overclocking.
-    rebalanceProductGroups(product, true, false)
+    rebalanceBuildingGroups(product, GroupType.Product, { force: true, changeBuildings: false })
   }
 
   // Since the building count has changed, we need to recalculate the parts for the group so the rest of them remain in sync.

@@ -135,11 +135,9 @@
           :key="byProduct.id"
         >
           <v-chip class="sf-chip input unit">
-            <game-asset :subject="byProduct.id" type="item" />
-            <span>
-              <b>{{ getPartDisplayName(byProduct.id) }}</b>
-            </span>
-
+            <tooltip :text="getPartDisplayName(byProduct.id)">
+              <game-asset :subject="String(byProduct.id)" type="item" />
+            </tooltip>
             <v-number-input
               v-model.number="byProduct.amount"
               class="inline-inputs"
@@ -256,7 +254,7 @@
   import { useDisplay } from 'vuetify'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { inject } from 'vue'
-  import eventBus from '@/utils/eventBus'
+  import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -410,17 +408,6 @@
   }
 
   const autocompletePartItems = autocompletePartItemsGenerator()
-
-  const toggleBuildingGroupTray = (product: FactoryItem) => {
-    const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
-
-    if (!buildingGroupTutorialOpened) {
-      eventBus.emit('openBuildingGroupTutorial')
-      localStorage.setItem('buildingGroupTutorialOpened', 'true')
-    }
-
-    product.buildingGroupsTrayOpen = !product.buildingGroupsTrayOpen
-  }
 
   const productPowerConsumed = (product: FactoryItem) => {
     let totalPower = 0

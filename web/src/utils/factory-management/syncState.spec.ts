@@ -177,7 +177,7 @@ describe('syncState', () => {
 
       it('should OSS when fuel amount is adjusted', () => {
       // Adjust the power building
-        mockFactory.powerProducers[0].ingredientAmount = 1234
+        mockFactory.powerProducers[0].fuelAmount = 1234
 
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)

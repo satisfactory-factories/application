@@ -10,7 +10,7 @@
         :disabled="producer.buildingGroups.length === 0"
         size="small"
         :variant="producer.buildingGroups.length === 0 ? 'outlined' : 'flat'"
-        @click="!!producer.buildingGroupsTrayOpen"
+        @click="toggleBuildingGroupTray(producer)"
       >
         <span v-if="!producer.buildingGroupsTrayOpen">
           <v-icon left>fas fa-arrow-down</v-icon>
@@ -71,7 +71,7 @@
           max-width="250px"
           variant="outlined"
           width="250px"
-          @update:model-value="updatePowerProducerSelection('building', producer, factory)"
+          @update:model-value="updatePowerProducerSelection(FactoryPowerChangeType.Building, producer, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -101,7 +101,7 @@
       </div>
       <div class="input-row d-flex align-center">
         <v-number-input
-          v-model.number="producer.ingredientAmount"
+          v-model.number="producer.fuelAmount"
           control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
@@ -110,7 +110,7 @@
           type="number"
           variant="outlined"
           :width="smAndDown ? undefined : '130px'"
-          @update:model-value="updatePowerProducerFigures('ingredient', producer, factory)"
+          @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Fuel, producer, factory)"
         />
       </div>
       <div class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
@@ -125,7 +125,7 @@
           type="number"
           variant="outlined"
           :width="smAndDown ? undefined : '130px'"
-          @update:model-value="updatePowerProducerFigures('power', producer, factory)"
+          @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Power, producer, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -148,44 +148,69 @@
         class="d-flex align-center"
       >
         <p class="mr-2">Byproduct:</p>
-        <v-chip class="sf-chip">
-          <game-asset :subject="producer.byproduct.part" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(producer.byproduct.part) }}</b>: {{ formatNumber(producer.byproduct.amount ?? 0) }}/min
-          </span>
+        <v-chip class="sf-chip input">
+          <tooltip :text="getPartDisplayName(producer.byproduct.part)">
+            <game-asset :subject="producer.byproduct.part" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="producer.byproduct.amount"
+            class="inline-inputs ml-2"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :name="`${producer.id}.byproduct.${producer.byproduct.part.toString()}`"
+            :producer="producer.id"
+            width="120px"
+            @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"
+          />
+          <span>/min</span>
         </v-chip>
       </div>
       <div class="d-flex align-center">
         <p class="mr-2">Requires:</p>
         <v-chip
           v-if="producer.ingredients[1]"
-          class="sf-chip blue"
+          class="sf-chip blue input"
           variant="tonal"
         >
-          <game-asset :subject="producer.ingredients[1].part" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(producer.ingredients[1].part.toString()) }}</b>: {{ formatNumber(producer.ingredients[1].perMin) }}/min
-          </span>
+          <tooltip :text="getPartDisplayName(producer.ingredients[1].part)">
+            <game-asset :subject="producer.ingredients[1].part" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="producer.ingredients[1].perMin"
+            class="inline-inputs ml-2"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :name="`${producer.id}.ingredient.${producer.ingredients[1].part.toString()}`"
+            :producer="producer.id"
+            width="120px"
+            @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"
+          />
+          <span>/min</span>
         </v-chip>
         <span>
           <v-chip
-            class="sf-chip orange"
+            class="sf-chip orange input"
             variant="tonal"
           >
             <game-asset :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" />
-            <span class="ml-2">
-              <b>{{ getBuildingDisplayName(producer.building) }}</b>:
+            <span>
+              <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>
-            <v-text-field
+            <v-number-input
               v-model.number="producer.buildingAmount"
-              class="inline-inputs"
-              flat
+              class="inline-inputs ml-2"
+              control-variant="stacked"
+              density="compact"
               hide-details
               hide-spin-buttons
-              min="0"
-              type="number"
-              width="60px"
-              @input="updatePowerProducerFigures('building', producer, factory)"
+              :name="`${producer.id}.buildingAmount`"
+              :producer="producer.id"
+              width="120px"
+              @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
             />
           </v-chip>
         </span>
@@ -199,7 +224,7 @@
         />
       </div>
       <div v-if="producer.buildingGroupsHaveProblem && !producer.buildingGroupsTrayOpen" class="mb-2">
-        <v-btn color="red" @click="!!producer.buildingGroupsTrayOpen">
+        <v-btn color="red" @click="producer.buildingGroupsTrayOpen != producer.buildingGroupsTrayOpen">
           <i class="fas fa-exclamation-triangle" />
           <span class="ml-2">Building Groups have a problem!</span>
         </v-btn>
@@ -212,10 +237,12 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { Factory, FactoryPowerProducer, GroupType } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryPowerChangeType, FactoryPowerProducer, GroupType } from '@/interfaces/planner/FactoryInterface'
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -288,6 +315,9 @@
   }
 
   const updatePowerProducerSelection = (source: 'building' | 'recipe', producer: FactoryPowerProducer, factory: Factory) => {
+    // Since the user has selected a new building, we need to reset the building groups
+    producer.buildingGroups = []
+
     // Hmmm tastes like chicken!
     let originalRecipe: PowerRecipe | null = JSON.parse(JSON.stringify(getDefaultRecipeForPowerProducer(producer.building)))
 
@@ -307,7 +337,7 @@
     producer.recipe = recipe.id
     producer.ingredients = recipe.ingredients
     producer.powerAmount = 0
-    producer.ingredientAmount = 0
+    producer.fuelAmount = 0
     producer.byproduct = null
 
     // Patch the ingredients to be zeroed
@@ -315,15 +345,22 @@
       ingredient.perMin = 0
     })
 
+    // Add a building group in
+    addPowerProducerBuildingGroup(producer, true)
+
     updateFactory(factory)
   }
 
-  const updatePowerProducerFigures = (type: 'ingredient' | 'power' | 'building', producer: FactoryPowerProducer, factory: Factory) => {
+  const updatePowerProducerFigures = (
+    type: FactoryPowerChangeType,
+    producer: FactoryPowerProducer,
+    factory: Factory
+  ) => {
     producer.updated = type
 
     // If user has tried to enter zeros for any inputs, zero it
-    if (producer.ingredientAmount < 0) {
-      producer.ingredientAmount = 0
+    if (producer.fuelAmount < 0) {
+      producer.fuelAmount = 0
     }
     if (producer.powerAmount < 0) {
       producer.powerAmount = 0

@@ -5,7 +5,7 @@
     class="buildingGroup"
     :class="isLast(group, item.buildingGroups) ? 'last' : ''"
   >
-    <building-group
+    <BuildingGroupComponent
       :building="building"
       :factory="factory"
       :group="group"
@@ -37,7 +37,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addProductBuildingGroup(item, false)"
+      @click="addBuildingGroupBasedOnType(item, type, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -48,7 +48,7 @@
       :disabled="item.buildingGroups.length === 1 || correct"
       size="small"
       :variant="item.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
-      @click="rebalanceProductGroups(item, true)"
+      @click="rebalanceBuildingGroups(item, type, {force: true})"
     >
       <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
@@ -59,7 +59,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToLast(item, factory)"
+      @click="remainderToLast(item, type, factory)"
     >
       <i class="fas fa-balance-scale-right" />
       <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
@@ -98,17 +98,16 @@
     FactoryPowerProducer,
     GroupType,
   } from '@/interfaces/planner/FactoryInterface'
-  import {
-    addProductBuildingGroup,
-
-  } from '@/utils/factory-management/building-groups/product'
   import { formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
   import {
-    calculateEffectiveBuildingCount, rebalanceProductGroups,
+    addBuildingGroupBasedOnType,
+    calculateEffectiveBuildingCount,
+    rebalanceBuildingGroups,
     remainderToLast,
     remainderToNewGroup,
-  } from '@/utils/factory-management/buildingGroupsCommon'
+  } from '@/utils/factory-management/building-groups/common'
+  import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
 
   const props = defineProps<{
     factory: Factory

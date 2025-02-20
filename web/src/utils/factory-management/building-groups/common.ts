@@ -10,8 +10,24 @@ import { fetchGameData } from '@/utils/gameDataService'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { getRecipe } from '@/utils/factory-management/common'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import eventBus from '@/utils/eventBus'
 
 const gameData = await fetchGameData()
+
+export const addBuildingGroupBasedOnType = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  addBuildings = true
+) => {
+  if (type === GroupType.Product) {
+    addProductBuildingGroup(item as FactoryItem, addBuildings)
+  } else if (type === GroupType.Power) {
+    addPowerProducerBuildingGroup(item as FactoryPowerProducer, addBuildings)
+  } else {
+    throw new Error(`addBuildingGroupBasedOnType: Invalid group type: ${type}`)
+  }
+}
 
 export const addBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
@@ -94,7 +110,7 @@ export const getBuildingCount = (item: FactoryItem | FactoryPowerProducer, group
     const producer = item as FactoryPowerProducer
     buildingCount = producer.buildingCount
   } else {
-    throw new Error('productBuildingGroups: remainderToLast: Invalid group type!')
+    throw new Error('productBuildingGroups: getBuildingCount: Invalid group type!')
   }
 
   return buildingCount
@@ -114,15 +130,35 @@ export const calculateBuildingGroupProblems = (
 
   item.buildingGroupsHaveProblem = absDiff > 0.1
 }
+
+export interface RebalanceBuildingGroupOptions {
+  force?: boolean
+  changeBuildings?: boolean
+}
 // Takes the building groups and rebalances them based on the building count
-export const rebalanceProductGroups = (item: FactoryItem | FactoryPowerProducer, force = false, changeBuildings = true) => {
+export const rebalanceBuildingGroups = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  options?: RebalanceBuildingGroupOptions
+) => {
+  if (!options) {
+    options = {}
+  }
+  // Set defaults if not supplied
+  if (options?.force === undefined) {
+    options.force = false
+  }
+  if (options?.changeBuildings === undefined) {
+    options.changeBuildings = true
+  }
+
   // Prevent rebalancing when in advanced mode
-  if (!force && item.buildingGroups.length > 1) {
+  if (!options?.force && item.buildingGroups.length > 1) {
     console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
     return
   }
 
-  const targetBuildings = getBuildingCount(item, GroupType.Product)
+  const targetBuildings = getBuildingCount(item, type)
   const groups = item.buildingGroups
 
   // Divide the target equally among groups.
@@ -133,7 +169,7 @@ export const rebalanceProductGroups = (item: FactoryItem | FactoryPowerProducer,
   groups.forEach(group => {
     // Even scenario: each group gets exactly the quotient.
     // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
-    if (changeBuildings) {
+    if (options?.changeBuildings) {
       group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
     }
 
@@ -274,4 +310,15 @@ export const buildingsNeededForPart = (
   }
 
   return 0
+}
+
+export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
+  const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
+
+  if (!buildingGroupTutorialOpened) {
+    eventBus.emit('openBuildingGroupTutorial')
+    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+  }
+
+  item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
 }

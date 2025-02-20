@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { ref, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -10,10 +10,9 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import {
   addProductBuildingGroup,
   calculateProductBuildingGroupParts,
-
 } from '@/utils/factory-management/building-groups/product'
-import { addPowerProducerBuildingGroup } from '@/utils/factory-management/powerBuildingGroups'
-import { calculateBuildingGroupPower, rebalanceProductGroups } from '@/utils/factory-management/buildingGroupsCommon'
+import { calculateBuildingGroupPower, rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -299,7 +298,7 @@ export const useAppStore = defineStore('app', () => {
 
           addProductBuildingGroup(product, true)
           // Calculate the building group
-          rebalanceProductGroups(product)
+          rebalanceBuildingGroups(product, GroupType.Product)
           calculateProductBuildingGroupParts([product])
           calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         }
@@ -316,6 +315,15 @@ export const useAppStore = defineStore('app', () => {
           // rebalanceProductGroups(producer)
           // calculateProductBuildingGroupParts([producer])
           // calculateBuildingGroupPower(producer)
+        }
+
+        // Patch for #11 renaming ingredientAmount to fuelAmount
+        // @ts-ignore
+        if (producer.ingredientAmount !== undefined) {
+          // @ts-ignore
+          producer.fuelAmount = producer.ingredientAmount
+          // @ts-ignore
+          delete producer.ingredientAmount
         }
       })
 

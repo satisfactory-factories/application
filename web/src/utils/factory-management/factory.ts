@@ -20,14 +20,11 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
-import {
-  calculateProductBuildingGroupParts,
-
-} from '@/utils/factory-management/building-groups/product'
+import { calculateProductBuildingGroupParts } from '@/utils/factory-management/building-groups/product'
 import {
   calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
-  rebalanceProductGroups,
+  rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
@@ -134,13 +131,16 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
-  // Calculate / synchronise the factory groups.
+  // Calculate / synchronise the factory building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    rebalanceProductGroups(product)
+    rebalanceBuildingGroups(product, GroupType.Product)
     calculateProductBuildingGroupParts([product])
     calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
     calculateBuildingGroupProblems(product, GroupType.Product)
+  })
+  factory.powerProducers.forEach(producer => {
+    rebalanceBuildingGroups(producer, GroupType.Power)
   })
 
   calculateFinalBuildingsAndPower(factory)

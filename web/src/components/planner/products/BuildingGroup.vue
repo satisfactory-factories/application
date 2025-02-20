@@ -68,39 +68,42 @@
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
-    <div>
-      <v-chip
-        v-if="group.type === GroupType.Product"
-        class="sf-chip input sloop mx-1"
-        variant="tonal"
-      >
-        <tooltip text="Somersloop">
-          <game-asset subject="somersloop" type="item_id" />
-        </tooltip>
-        <v-number-input
-          v-model.number="group.somersloops"
-          class="inline-inputs ml-0"
-          control-variant="stacked"
-          density="compact"
-          disabled
-          hide-details
-          hide-spin-buttons
-          :min="0"
-          type="number"
-          width="80px"
-          @update:model-value="updateGroup(group)"
-        />
-      </v-chip>
-      <div class="underchip text-purple-lighten-1">
-        Coming soon!
+    <template v-if="group.type === GroupType.Product">
+      <div>
+        <v-chip
+          class="sf-chip input sloop mx-1"
+          variant="tonal"
+        >
+          <tooltip text="Somersloop">
+            <game-asset subject="somersloop" type="item_id" />
+          </tooltip>
+          <v-number-input
+            v-model.number="group.somersloops"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            disabled
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            type="number"
+            width="80px"
+            @update:model-value="updateGroup(group)"
+          />
+        </v-chip>
+        <div class="underchip text-purple-lighten-1">
+          Coming soon!
+        </div>
       </div>
-    </div>
+    </template>
+    <template v-if="group.type === GroupType.Product">
+      <div :class="{'w-100': partCount > 4 && lgAndDown}" />
+      <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
+        <div>+</div>
+        <div class="underchip">&nbsp;</div>
+      </div>
+    </template>
     <!-- Spacer if there's too many items on small screens -->
-    <div :class="{'w-100': partCount > 4 && lgAndDown}" />
-    <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
-      <div>+</div>
-      <div class="underchip">&nbsp;</div>
-    </div>
     <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
       <div v-if="part.toString() !== item.id">
         <v-chip
@@ -271,7 +274,7 @@
       subject = props.item as FactoryPowerProducer
       return subject.byproduct
     } else {
-      throw new Error('BuildingGroup: hasByProduct: Invalid type!')
+      throw new Error('BuildingGroup: isByProduct: Invalid type!')
     }
   }
 

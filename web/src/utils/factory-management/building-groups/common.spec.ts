@@ -1,4 +1,10 @@
-import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingGroup,
+  Factory,
+  FactoryItem,
+  FactoryPowerChangeType,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
@@ -10,7 +16,7 @@ import {
 import {
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
-  rebalanceProductGroups,
+  rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -36,7 +42,7 @@ describe('buildingGroupsCommon', async () => {
       building: 'generatorfuel',
       ingredientAmount: 80,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
 
     // Calculate factory to get some extra contextual info, then blow the building groups away
@@ -176,111 +182,115 @@ describe('buildingGroupsCommon', async () => {
       calculateFactories(factories, gameData)
     })
 
-    it('should apply an underclock to the group if the building count is not whole', () => {
-      product.buildingRequirements.amount = 5.5
+    describe('products', () => {
+      it('should apply an underclock to the group if the building count is not whole', () => {
+        product.buildingRequirements.amount = 5.5
 
-      rebalanceProductGroups(product)
+        rebalanceBuildingGroups(product, GroupType.Product)
 
-      expect(group1.buildingCount).toBe(6)
-      expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
-    })
-
-    it('should apply an underclock to the group if the building count is not whole', () => {
-      product.buildingRequirements.amount = 5.7
-
-      rebalanceProductGroups(product)
-
-      expect(group1.buildingCount).toBe(6)
-      expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
-    })
-
-    it('should apply no clock changes on whole buildings', () => {
-      product.buildingRequirements.amount = 4
-
-      rebalanceProductGroups(product)
-
-      expect(group1.buildingCount).toBe(4)
-      expect(group1.overclockPercent).toBe(100)
-    })
-
-    describe('multiple groups', () => {
-      let group2: BuildingGroup
-
-      beforeEach(() => {
-        addProductBuildingGroup(product)
-        group2 = product.buildingGroups[1]
+        expect(group1.buildingCount).toBe(6)
+        expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
       })
 
-      it('should not rebalance when in advanced mode and not forced', () => {
-        // Assert the before
-        expect(group1.buildingCount).toBe(5)
-        expect(group2.buildingCount).toBe(5)
-        product.buildingRequirements.amount = 20
+      it('should apply an underclock to the group if the building count is not whole', () => {
+        product.buildingRequirements.amount = 5.7
 
-        rebalanceProductGroups(product)
+        rebalanceBuildingGroups(product, GroupType.Product)
 
-        // Nothing should have changed
-        expect(group1.buildingCount).toBe(5)
-        expect(group2.buildingCount).toBe(5)
+        expect(group1.buildingCount).toBe(6)
+        expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
       })
 
-      it('should distribute the building count evenly', () => {
-        product.buildingRequirements.amount = 6
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(3)
-        expect(group2.buildingCount).toBe(3)
-      })
-
-      it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
-        product.buildingRequirements.amount = 5
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(3)
-        expect(group2.buildingCount).toBe(3)
-
-        expect(group1.overclockPercent).toBe(83.333)
-        expect(group2.overclockPercent).toBe(83.333)
-      })
-
-      it('should distribute the fractional group with an underclock', () => {
-        product.buildingRequirements.amount = 3
-
-        rebalanceProductGroups(product, true)
-
-        expect(group1.buildingCount).toBe(2)
-        expect(group2.buildingCount).toBe(2)
-
-        expect(group1.overclockPercent).toBe(75)
-        expect(group2.overclockPercent).toBe(75)
-      })
-
-      it('should distribute and update the resources correctly', () => {
+      it('should apply no clock changes on whole buildings', () => {
         product.buildingRequirements.amount = 4
-        increaseProductQtyViaBuilding(product, gameData)// Ensure it needs 4 buildings
 
-        // Recalculate
-        calculateFactories(factories, gameData)
+        rebalanceBuildingGroups(product, GroupType.Product)
 
-        // Set the initial values, group 2 purposefully unbalanced
-        group1.buildingCount = 2
-        group2.buildingCount = 3
+        expect(group1.buildingCount).toBe(4)
+        expect(group1.overclockPercent).toBe(100)
+      })
 
-        // Calculate, it should be properly imbalanced
-        calculateProductBuildingGroupParts([product])
+      describe('multiple groups', () => {
+        let group2: BuildingGroup
 
-        expect(group2.parts.OreIron).toBe(90)
-        expect(group2.parts.IronIngot).toBe(90)
+        beforeEach(() => {
+          addProductBuildingGroup(product)
+          group2 = product.buildingGroups[1]
+        })
 
-        rebalanceProductGroups(product)
+        it('should not rebalance when in advanced mode and not forced', () => {
+        // Assert the before
+          expect(group1.buildingCount).toBe(5)
+          expect(group2.buildingCount).toBe(5)
+          product.buildingRequirements.amount = 20
 
-        expect(group1.buildingCount).toBe(2)
-        expect(group2.buildingCount).toBe(2)
+          rebalanceBuildingGroups(product, GroupType.Product)
 
-        expect(group2.parts.OreIron).toBe(60)
-        expect(group2.parts.IronIngot).toBe(60)
+          // Nothing should have changed
+          expect(group1.buildingCount).toBe(5)
+          expect(group2.buildingCount).toBe(5)
+        })
+
+        it('should distribute the building count evenly', () => {
+          product.buildingRequirements.amount = 6
+
+          rebalanceBuildingGroups(product, GroupType.Product, { force: true })
+
+          expect(group1.buildingCount).toBe(3)
+          expect(group2.buildingCount).toBe(3)
+        })
+
+        it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
+          product.buildingRequirements.amount = 5
+
+          rebalanceBuildingGroups(product, GroupType.Product, { force: true })
+
+          expect(group1.buildingCount).toBe(3)
+          expect(group2.buildingCount).toBe(3)
+
+          expect(group1.overclockPercent).toBe(83.333)
+          expect(group2.overclockPercent).toBe(83.333)
+        })
+
+        it('should distribute the fractional group with an underclock', () => {
+          product.buildingRequirements.amount = 3
+
+          rebalanceBuildingGroups(product, GroupType.Product, { force: true })
+
+          expect(group1.buildingCount).toBe(2)
+          expect(group2.buildingCount).toBe(2)
+
+          expect(group1.overclockPercent).toBe(75)
+          expect(group2.overclockPercent).toBe(75)
+        })
+
+        it('should distribute and update the resources correctly', () => {
+          product.buildingRequirements.amount = 4
+          increaseProductQtyViaBuilding(product, gameData)// Ensure it needs 4 buildings
+
+          // Recalculate
+          calculateFactories(factories, gameData)
+
+          // Set the initial values, group 2 purposefully unbalanced
+          group1.buildingCount = 2
+          group2.buildingCount = 3
+
+          // Calculate, it should be properly imbalanced
+          calculateProductBuildingGroupParts([product])
+
+          expect(group2.parts.OreIron).toBe(90)
+          expect(group2.parts.IronIngot).toBe(90)
+
+          // Now rebalance and recalculate, it should distribute evenly.
+          rebalanceBuildingGroups(product, GroupType.Product, { force: true })
+          calculateProductBuildingGroupParts([product])
+
+          expect(group1.buildingCount).toBe(2)
+          expect(group2.buildingCount).toBe(2)
+
+          expect(group2.parts.OreIron).toBe(60)
+          expect(group2.parts.IronIngot).toBe(60)
+        })
       })
     })
   })

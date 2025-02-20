@@ -367,7 +367,7 @@
     // Get the producer which should be the latest one in the array
     const producer = factory.powerProducers[factory.powerProducers.length - 1]
 
-    producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    producer.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 
@@ -482,7 +482,7 @@
       return
     }
 
-    generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    generator.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 

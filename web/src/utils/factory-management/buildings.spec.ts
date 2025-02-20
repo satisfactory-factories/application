@@ -11,12 +11,12 @@ import {
 import {
   calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
-  rebalanceProductGroups,
+  rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 
 const doCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceProductGroups(product)
+  rebalanceBuildingGroups(product)
   calculateProductBuildingGroupParts([product])
   calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
   calculateBuildingGroupProblems(product, GroupType.Product)
