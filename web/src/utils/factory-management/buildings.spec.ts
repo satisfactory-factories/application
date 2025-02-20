@@ -1,31 +1,47 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingGroup,
+  Factory,
+  FactoryItem,
+  FactoryPowerChangeType,
+  FactoryPowerProducer,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { gameData } from '@/utils/gameData'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
-  addProductBuildingGroup,
   calculateBuildingGroupParts,
-} from '@/utils/factory-management/building-groups/product'
-import {
   calculateBuildingGroupPower,
   calculateBuildingGroupProblems,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
-const doCalculations = (mockFactory: Factory, product: FactoryItem) => {
+const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(product)
-  calculateBuildingGroupParts([product])
-  calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+  rebalanceBuildingGroups(product, GroupType.Product)
+  calculateBuildingGroupParts([product], GroupType.Product)
+  calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
   calculateBuildingGroupProblems(product, GroupType.Product)
+}
+
+const doPowerCalculations = (mockFactory: Factory, producer: FactoryPowerProducer) => {
+  calculateFactoryBuildingsAndPower(mockFactory, gameData)
+  rebalanceBuildingGroups(producer, GroupType.Power)
+  calculateBuildingGroupParts([producer], GroupType.Power)
+  calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+  calculateBuildingGroupProblems(producer, GroupType.Power)
 }
 
 describe('buildings', () => {
   let mockFactory: Factory
   let product: FactoryItem
-  let group: BuildingGroup
+  let producer: FactoryPowerProducer
+  let productGroup: BuildingGroup
+  let producerGroup: BuildingGroup
 
   beforeEach(() => {
     mockFactory = newFactory('Test Factory')
@@ -35,87 +51,104 @@ describe('buildings', () => {
       recipe: 'Concrete',
     })
     product = mockFactory.products[0]
-    group = product.buildingGroups[0]
+    productGroup = product.buildingGroups[0]
+
+    addPowerProducerToFactory(mockFactory, {
+      building: 'generatorfuel',
+      ingredientAmount: 80,
+      recipe: 'GeneratorFuel_LiquidFuel',
+      updated: FactoryPowerChangeType.Ingredient,
+    })
+    producer = mockFactory.powerProducers[0]
+    producerGroup = producer.buildingGroups[0]
   })
 
   describe('calculateFinalBuildingsAndPower', () => {
-    beforeEach(() => {
-      doCalculations(mockFactory, product)
-    })
-
-    describe('power', () => {
-      it('should calculate the correct power usage across the factory for one product', () => {
-        calculateFinalBuildingsAndPower(mockFactory)
-
-        expect(group.powerUsage).toBe(32)
-        expect(mockFactory.power.consumed).toBe(32)
-        expect(mockFactory.power.produced).toBe(0)
-        expect(mockFactory.power.consumed).toBe(32)
-      })
-
-      it('should calculate the correct power usage for an overclocked product', () => {
-        addProductBuildingGroup(product, true) // Sets it into advanced mode so it doesn't do auto-rebalancing. We technically break our product here, but it's ok for testing.
-        const group2 = product.buildingGroups[1]
-        group.buildingCount = 0 // Set this so we have full control over the 2nd group
-        group2.overclockPercent = 200
-        group2.buildingCount = 10
-
-        doCalculations(mockFactory, product)
-        calculateFinalBuildingsAndPower(mockFactory)
-
-        expect(group2.powerUsage).toBe(100)
-        expect(mockFactory.power.consumed).toBe(100)
-      })
-
-      it('should calculate the correct power usage across multiple groups for one product', () => {
-        addProductBuildingGroup(product, true)
-        const group2 = product.buildingGroups[1]
-        group.buildingCount = 5
-        group2.overclockPercent = 200
-        group2.buildingCount = 10
-
-        doCalculations(mockFactory, product)
-        calculateFinalBuildingsAndPower(mockFactory)
-
-        expect(mockFactory.power.consumed).toBe(120)
-      })
-
-      it('should calculate the power consumption across multiple products', () => {
-        addProductToFactory(mockFactory, {
-          id: 'CopperIngot',
-          amount: 150,
-          recipe: 'IngotCopper',
+    describe('power calculations', () => {
+      describe('product', () => {
+        beforeEach(() => {
+          doProductCalculations(mockFactory, product)
         })
-        const group2 = mockFactory.products[1].buildingGroups[0]
 
-        calculateFactories([mockFactory], gameData) // Difficult to do it per product, has to be all of them
+        it('should calculate the correct power usage across the factory for one product', () => {
+          calculateFinalBuildingsAndPower(mockFactory)
 
-        expect(group.powerUsage).toBe(32)
-        expect(group2.powerUsage).toBe(20) // 5 smelters 5mw each
-        expect(mockFactory.power.consumed).toBe(52)
+          expect(productGroup.powerUsage).toBe(32)
+          expect(mockFactory.power.consumed).toBe(32)
+          expect(mockFactory.power.produced).toBe(0)
+          expect(mockFactory.power.consumed).toBe(32)
+        })
+
+        it('should calculate the correct power usage for an overclocked product', () => {
+          addProductBuildingGroup(product, true) // Sets it into advanced mode so it doesn't do auto-rebalancing. We technically break our product here, but it's ok for testing.
+          const group2 = product.buildingGroups[1]
+          productGroup.buildingCount = 0 // Set this so we have full control over the 2nd group
+          group2.overclockPercent = 200
+          group2.buildingCount = 10
+
+          doProductCalculations(mockFactory, product)
+          calculateFinalBuildingsAndPower(mockFactory)
+
+          expect(group2.powerUsage).toBe(100)
+          expect(mockFactory.power.consumed).toBe(100)
+        })
+
+        it('should calculate the correct power usage across multiple groups for one product', () => {
+          addProductBuildingGroup(product, true)
+          const group2 = product.buildingGroups[1]
+          productGroup.buildingCount = 5
+          group2.overclockPercent = 200
+          group2.buildingCount = 10
+
+          doProductCalculations(mockFactory, product)
+          calculateFinalBuildingsAndPower(mockFactory)
+
+          expect(mockFactory.power.consumed).toBe(120)
+        })
+
+        it('should calculate the power consumption across multiple products', () => {
+          addProductToFactory(mockFactory, {
+            id: 'CopperIngot',
+            amount: 150,
+            recipe: 'IngotCopper',
+          })
+          const group2 = mockFactory.products[1].buildingGroups[0]
+
+          calculateFactories([mockFactory], gameData) // Difficult to do it per product, has to be all of them
+
+          expect(productGroup.powerUsage).toBe(32)
+          expect(group2.powerUsage).toBe(20) // 5 smelters 5mw each
+          expect(mockFactory.power.consumed).toBe(52)
+        })
+
+        it('should calculate the power consumption across multiple products with overclocks', () => {
+          addProductToFactory(mockFactory, {
+            id: 'CopperIngot',
+            amount: 150,
+            recipe: 'IngotCopper',
+          })
+          const product2 = mockFactory.products[1]
+          const group2 = product2.buildingGroups[0]
+          group2.buildingCount = 0
+          addProductBuildingGroup(product2, false) // Sets it into advanced mode
+          product2.buildingGroups[1].buildingCount = 0
+          group2.buildingCount = 5
+
+          group2.overclockPercent = 150
+          productGroup.overclockPercent = 120
+
+          calculateFactories([mockFactory], gameData) // Difficult to do it per product, has to be all of them
+
+          expect(productGroup.powerUsage).toBe(32)
+          expect(group2.powerUsage).toBe(34.183) // 5 smelters 5mw each
+          expect(mockFactory.power.consumed).toBe(66.2)
+        })
       })
 
-      it('should calculate the power consumption across multiple products with overclocks', () => {
-        addProductToFactory(mockFactory, {
-          id: 'CopperIngot',
-          amount: 150,
-          recipe: 'IngotCopper',
+      describe('power producers', () => {
+        beforeEach(() => {
+          doPowerCalculations(mockFactory, producer)
         })
-        const product2 = mockFactory.products[1]
-        const group2 = product2.buildingGroups[0]
-        group2.buildingCount = 0
-        addProductBuildingGroup(product2, false) // Sets it into advanced mode
-        product2.buildingGroups[1].buildingCount = 0
-        group2.buildingCount = 5
-
-        group2.overclockPercent = 150
-        group.overclockPercent = 120
-
-        calculateFactories([mockFactory], gameData) // Difficult to do it per product, has to be all of them
-
-        expect(group.powerUsage).toBe(32)
-        expect(group2.powerUsage).toBe(34.183) // 5 smelters 5mw each
-        expect(mockFactory.power.consumed).toBe(66.2)
       })
     })
 
@@ -124,14 +157,14 @@ describe('buildings', () => {
         it('should properly calculate the number of buildings derived from a singular building group', () => {
           calculateFinalBuildingsAndPower(mockFactory)
 
-          expect(group.buildingCount).toBe(8)
+          expect(productGroup.buildingCount).toBe(8)
           expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(8)
         })
 
         it('should properly calculate the number of buildings derived from multiple building group', () => {
           addProductBuildingGroup(product, true)
           const group2 = product.buildingGroups[1]
-          group.buildingCount = 5
+          productGroup.buildingCount = 5
           group2.buildingCount = 10
 
           calculateFinalBuildingsAndPower(mockFactory)
@@ -150,7 +183,7 @@ describe('buildings', () => {
 
           calculateFactories([mockFactory], gameData) // Hard to do it across multiple products
 
-          expect(group.buildingCount).toBe(8)
+          expect(productGroup.buildingCount).toBe(8)
           expect(group2.buildingCount).toBe(6)
           expect(mockFactory.buildingRequirements.constructormk1.amount).toBe(14)
         })
@@ -170,7 +203,7 @@ describe('buildings', () => {
           const group2p2 = product2.buildingGroups[1]
 
           // Set the building counts
-          group.buildingCount = 5
+          productGroup.buildingCount = 5
           group2.buildingCount = 10
           group1p2.buildingCount = 5
           group2p2.buildingCount = 10

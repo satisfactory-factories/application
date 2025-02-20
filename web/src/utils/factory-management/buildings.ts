@@ -117,6 +117,20 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
 
   factory.power.consumed = formatNumberFully(consumed, 1)
 
+  // Sum up all power production
+  const powerProducers = factory.powerProducers
+  let produced = 0
+
+  powerProducers.forEach(producer => {
+    producer.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      produced += group.powerProduced
+    })
+  })
+
+  factory.power.produced = formatNumberFully(produced, 1)
+
   // Set all factory building counts to 0.
   Object.keys(factory.buildingRequirements).forEach(key => {
     factory.buildingRequirements[key].amount = 0

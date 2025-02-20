@@ -61,6 +61,7 @@ export const addBuildingGroup = (
     overclockPercent: 100,
     parts: {},
     powerUsage: 0,
+    powerProduced: 0,
   })
 }
 
@@ -78,7 +79,11 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
 }
 
 // Returns the total power usage of all building groups
-export const calculateBuildingGroupPower = (buildingGroups: BuildingGroup[], building: string) => {
+export const calculateBuildingGroupPower = (
+  buildingGroups: BuildingGroup[],
+  building: string,
+  groupType: GroupType
+) => {
   buildingGroups.forEach(group => {
     // In order to figure this out, we need to:
     // 1. Get the original building's power
@@ -92,10 +97,14 @@ export const calculateBuildingGroupPower = (buildingGroups: BuildingGroup[], bui
     }
 
     // Now, using the formula above, we calculate the power usage.
-    const powerUsagePerBuilding = buildingPower * Math.pow(group.overclockPercent / 100, 1.321928)
+    const powerPerBuilding = buildingPower * Math.pow(group.overclockPercent / 100, 1.321928)
 
-    // Now multiply it by number of buildings and return
-    group.powerUsage = formatNumberFully(powerUsagePerBuilding * group.buildingCount, 4)
+    // Now multiply it by number of buildings, depending on type this may be a production or consuption.
+    if (groupType === GroupType.Power) {
+      group.powerUsage = formatNumberFully(powerPerBuilding * group.buildingCount, 4)
+    } else if (groupType === GroupType.Product) {
+      group.powerProduced = formatNumberFully(powerPerBuilding * group.buildingCount, 4)
+    }
   })
 }
 

@@ -136,12 +136,14 @@ export const calculateFactory = (
   factory.products.forEach(product => {
     rebalanceBuildingGroups(product, GroupType.Product)
     calculateBuildingGroupParts([product], GroupType.Product)
-    calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+    calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
     calculateBuildingGroupProblems(product, GroupType.Product)
   })
   factory.powerProducers.forEach(producer => {
     rebalanceBuildingGroups(producer, GroupType.Power)
     calculateBuildingGroupParts([producer], GroupType.Power)
+    calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+    // calculateBuildingGroupProblems(product, GroupType.Power)
   })
 
   calculateFinalBuildingsAndPower(factory)

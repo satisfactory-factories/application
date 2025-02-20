@@ -301,7 +301,7 @@ export const useAppStore = defineStore('app', () => {
           // Calculate the building group
           rebalanceBuildingGroups(product, GroupType.Product)
           calculateBuildingGroupParts([product], GroupType.Product)
-          calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+          calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
         }
       })
 
@@ -313,9 +313,9 @@ export const useAppStore = defineStore('app', () => {
 
           addPowerProducerBuildingGroup(producer, true)
           // // Calculate the building group
-          // rebalanceProductGroups(producer)
-          // calculateProductBuildingGroupParts([producer])
-          // calculateBuildingGroupPower(producer)
+          rebalanceBuildingGroups(producer, GroupType.Power)
+          calculateBuildingGroupParts([producer], GroupType.Power)
+          calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
         }
 
         // Patch for #11 renaming ingredientAmount to fuelAmount
@@ -339,7 +339,7 @@ export const useAppStore = defineStore('app', () => {
       if (factory.exports) delete factory.exports
 
       // Update data version
-      factory.dataVersion = '2025-01-22'
+      factory.dataVersion = '2025-02-20'
     })
 
     if (needsCalculation) {

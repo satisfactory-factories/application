@@ -61,7 +61,10 @@
         <span>%</span>
       </v-chip>
       <div class="underchip text-yellow-darken-2">
-        Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
+        <span v-if="group.type !== GroupType.Power">
+          Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
+        </span>
+        <span v-else>&nbsp;</span>
       </div>
     </div>
     <div class="px-1">
@@ -166,6 +169,21 @@
         <div class="underchip" :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
           {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
         </div>
+      </div>
+    </template>
+    <template v-if="group.type === GroupType.Power">
+      <div>
+        <v-chip
+          class="sf-chip yellow"
+          variant="tonal"
+        >
+          <i class="fas fa-bolt" />
+          <i class="fas fa-plus" />
+          <span class="ml-2">
+            Produces: {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
+          </span>
+        </v-chip>
+        <div class="underchip">&nbsp;</div>
       </div>
     </template>
   </div>

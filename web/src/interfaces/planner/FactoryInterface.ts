@@ -41,6 +41,7 @@ export interface BuildingGroup {
   overclockPercent: number
   parts: {[key: string]: number}
   powerUsage: number
+  powerProduced: number
   somersloops?: number
   type: GroupType
 }

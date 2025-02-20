@@ -233,7 +233,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatPower } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
