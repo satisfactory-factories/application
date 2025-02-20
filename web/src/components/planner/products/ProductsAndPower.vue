@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
@@ -55,7 +55,7 @@
   const addEmptyPowerProducer = (factory: Factory) => {
     addPowerProducerToFactory(factory, {
       recipe: '',
-      updated: 'power',
+      updated: FactoryPowerChangeType.Power,
     })
   }
 

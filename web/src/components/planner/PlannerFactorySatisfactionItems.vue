@@ -359,7 +359,7 @@
       building: 'generatornuclear',
       ingredientAmount: 1,
       recipe: recipe.id,
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
 
     updateFactory(factory)

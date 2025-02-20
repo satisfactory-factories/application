@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateSyncState, setSyncState } from '@/utils/factory-management/syncState'
@@ -19,7 +19,7 @@ describe('syncState', () => {
       building: 'generatorfuel',
       buildingAmount: 1,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'power',
+      updated: FactoryPowerChangeType.Power,
     })
     setSyncState(mockFactory)
   })
@@ -211,7 +211,7 @@ describe('syncState', () => {
           building: 'generatorfuel',
           buildingAmount: 1,
           recipe: 'GeneratorFuel_LiquidFuel',
-          updated: 'power',
+          updated: FactoryPowerChangeType.Power,
         })
 
         calculateSyncState(mockFactory)

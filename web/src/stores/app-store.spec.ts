@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
+import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
 import { useAppStore } from '@/stores/app-store'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -46,7 +46,7 @@ describe('app-store', () => {
         building: 'generatorfuel',
         ingredientAmount: 100,
         recipe: 'GeneratorFuel_LiquidFuel',
-        updated: 'ingredient',
+        updated: FactoryPowerChangeType.Ingredient,
       })
 
       factories = [factory]

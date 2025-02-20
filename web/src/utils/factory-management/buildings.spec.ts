@@ -149,6 +149,14 @@ describe('buildings', () => {
         beforeEach(() => {
           doPowerCalculations(mockFactory, producer)
         })
+
+        it('should correctly calculate the amount of power produced for a singular group', () => {
+          calculateFactories([mockFactory], gameData)
+
+          // Default buildings is 4, 250MW per building
+          expect(producerGroup.powerProduced).toBe(1000)
+          expect(mockFactory.power.produced).toBe(1000)
+        })
       })
     })
 

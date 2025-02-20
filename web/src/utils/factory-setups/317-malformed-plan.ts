@@ -1841,7 +1841,7 @@ export const create317Scenario = (): any[] => {
       recipe: 'GeneratorFuel_LiquidFuel',
       byproduct: null,
       displayOrder: 0,
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     }],
     inputs: [],
     previousInputs: [],

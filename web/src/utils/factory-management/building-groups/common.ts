@@ -99,7 +99,7 @@ export const calculateBuildingGroupPower = (
     // Now, using the formula above, we calculate the power usage.
     const powerPerBuilding = buildingPower * Math.pow(group.overclockPercent / 100, 1.321928)
 
-    // Now multiply it by number of buildings, depending on type this may be a production or consuption.
+    // Now multiply it by number of buildings, depending on type this may be a production or consumption.
     if (groupType === GroupType.Power) {
       group.powerUsage = formatNumberFully(powerPerBuilding * group.buildingCount, 4)
     } else if (groupType === GroupType.Product) {
