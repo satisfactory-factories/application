@@ -8,7 +8,6 @@ import {
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
-import { getRecipe } from '@/utils/factory-management/common'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
@@ -29,6 +28,7 @@ export const addBuildingGroupBasedOnType = (
   }
 }
 
+// @See ./product.ts, ./power.ts for usages
 export const addBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
@@ -56,35 +56,33 @@ export const addBuildingGroup = (
 
   subject.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
+    type: groupType,
     buildingCount,
     overclockPercent: 100,
     parts: {},
     powerUsage: 0,
-    type: groupType,
   })
 }
 
+// This takes the building groups and:
+// 1. Calculates the total building count
+// 2. Applies the overclocking to the building count to process the effective building count
 export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[]) => {
-  // This takes the building groups and:
-  // 1. Calculates the total building count
-  // 2. Applies the overclocking to the building count to process the effective building count
-  // 3. Adds this up for all groups
-
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
     // Remember it is a percentage so we need to divide by 100
-    const groupEffectiveBuildingCount = group.buildingCount * group.overclockPercent / 100
-    effectiveBuildingCount += groupEffectiveBuildingCount
+    effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100
   }
 
   return formatNumberFully(effectiveBuildingCount)
 }
 
+// Returns the total power usage of all building groups
 export const calculateBuildingGroupPower = (buildingGroups: BuildingGroup[], building: string) => {
   buildingGroups.forEach(group => {
     // In order to figure this out, we need to:
-  // 1. Get the original building's power
-  // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
+    // 1. Get the original building's power
+    // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
 
     // Get the building's details
     const buildingPower = gameData.buildings[building]
@@ -101,7 +99,10 @@ export const calculateBuildingGroupPower = (buildingGroups: BuildingGroup[], bui
   })
 }
 
-export const getBuildingCount = (item: FactoryItem | FactoryPowerProducer, groupType: GroupType) => {
+export const getBuildingCount = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType
+) => {
   let buildingCount = 0
   if (groupType === GroupType.Product) {
     const product = item as FactoryItem
@@ -185,6 +186,7 @@ export const rebalanceBuildingGroups = (
 
   // Whatever calls this should call calculateBuildingGroupParts afterwards.
 }
+
 // Brought to you courtesy of ChatGPT o3-mini-high.
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
 export const remainderToLast = (
@@ -278,38 +280,6 @@ export const remainderToNewGroup = (
   }
 
   remainderToLast(item, groupType, factory)
-}
-export const buildingsNeededForPart = (
-  part: string,
-  amount: number,
-  product: FactoryItem,
-  buildingGroup: BuildingGroup
-) => {
-  // Get the recipe for the product in order to get the new quantity
-  const recipe = getRecipe(product.recipe, gameData)
-
-  if (!recipe) {
-    throw new Error('productBuildingGroups: buildingsNeededForPart: Recipe not found!')
-  }
-
-  // From the recipe, figure out how many buildings will be needed.
-  // Determine if the part is an ingredient or a (by)product
-  const isIngredient = recipe.ingredients.find(ingredient => ingredient.part === part)
-  const isProduct = recipe.products.find(product => product.part === part) // Also handles byproducts as they're the same thing in terms of recipe.
-
-  if (isIngredient && !isProduct) {
-    // This is an ingredient
-    const perMinOverclocked = isIngredient.perMin * buildingGroup.overclockPercent / 100
-    return formatNumberFully(amount / perMinOverclocked)
-  }
-
-  if (isProduct && !isIngredient) {
-    // This is a product
-    const perMinOverclocked = isProduct.perMin * buildingGroup.overclockPercent / 100
-    return formatNumberFully(amount / perMinOverclocked)
-  }
-
-  return 0
 }
 
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {

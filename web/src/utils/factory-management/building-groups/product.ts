@@ -1,10 +1,10 @@
 import { BuildingGroup, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import {
-  addBuildingGroup,
-  buildingsNeededForPart,
-  rebalanceBuildingGroups,
-} from '@/utils/factory-management/building-groups/common'
+import { addBuildingGroup, rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { getRecipe } from '@/utils/factory-management/common'
+import { fetchGameData } from '@/utils/gameDataService'
+
+const gameData = await fetchGameData()
 
 export const addProductBuildingGroup = (product: FactoryItem, addBuildings = true) => {
   addBuildingGroup(product, GroupType.Product, addBuildings)
@@ -70,17 +70,50 @@ export const calculateProductBuildingGroupParts = (products: FactoryItem[], excl
   }
 }
 
+export const buildingsNeededForPartsProducts = (
+  part: string,
+  amount: number,
+  product: FactoryItem,
+  buildingGroup: BuildingGroup
+) => {
+  // Get the recipe for the product in order to get the new quantity
+  const recipe = getRecipe(product.recipe, gameData)
+
+  if (!recipe) {
+    throw new Error('buildingGroupProducts: buildingsNeededForPartsProducts: Recipe not found!')
+  }
+
+  // From the recipe, figure out how many buildings will be needed.
+  // Determine if the part is an ingredient or a (by)product
+  const isIngredient = recipe.ingredients.find(ingredient => ingredient.part === part)
+  const isProduct = recipe.products.find(product => product.part === part) // Also handles byproducts as they're the same thing in terms of recipe.
+
+  if (isIngredient && !isProduct) {
+    // This is an ingredient
+    const perMinOverclocked = isIngredient.perMin * buildingGroup.overclockPercent / 100
+    return formatNumberFully(amount / perMinOverclocked)
+  }
+
+  if (isProduct && !isIngredient) {
+    // This is a product
+    const perMinOverclocked = isProduct.perMin * buildingGroup.overclockPercent / 100
+    return formatNumberFully(amount / perMinOverclocked)
+  }
+
+  return 0
+}
+
 export const updateProductBuildingGroupParts = (
   buildingGroup: BuildingGroup,
   product: FactoryItem,
   part: string
 ) => {
   if (buildingGroup.type !== GroupType.Product) {
-    throw new Error('productBuildingGroups: updateProductBuildingGroupParts: Group is not a product group!')
+    throw new Error('buildingGroupProducts: updateProductBuildingGroupParts: Group is not a product group!')
   }
   // Loop each of the parts, calculating each one. If the calculated size of the building has changed, we update the building group, and if it's a singular building group, the product's building requirements as well.
   const partAmount = buildingGroup.parts[part]
-  const newBuildingCount = buildingsNeededForPart(part, partAmount, product, buildingGroup)
+  const newBuildingCount = buildingsNeededForPartsProducts(part, partAmount, product, buildingGroup)
 
   // If the new building count is different, update the building group's building count
   buildingGroup.buildingCount = Math.ceil(newBuildingCount)

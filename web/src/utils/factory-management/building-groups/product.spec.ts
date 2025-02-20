@@ -3,11 +3,11 @@ import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/pla
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductBuildingGroup,
+  buildingsNeededForPartsProducts,
   calculateProductBuildingGroupParts,
   updateProductBuildingGroupParts,
 } from '@/utils/factory-management/building-groups/product'
 import {
-  buildingsNeededForPart,
   calculateBuildingGroupPower,
   remainderToLast,
   remainderToNewGroup,
@@ -572,19 +572,19 @@ describe('productBuildingGroups', async () => {
     })
 
     it('should calculate for an ingredient part', () => {
-      expect(buildingsNeededForPart('OreIron', 150, product, group)).toBe(5)
+      expect(buildingsNeededForPartsProducts('OreIron', 150, product, group)).toBe(5)
     })
 
     it('should calculate for an ingredient part which results in a fractional', () => {
-      expect(buildingsNeededForPart('OreIron', 555.554, product, group)).toBe(18.518)
+      expect(buildingsNeededForPartsProducts('OreIron', 555.554, product, group)).toBe(18.518)
     })
 
     it('should calculate for an product part', () => {
-      expect(buildingsNeededForPart('IronIngot', 150, product, group)).toBe(5)
+      expect(buildingsNeededForPartsProducts('IronIngot', 150, product, group)).toBe(5)
     })
 
     it('should calculate for a byproduct part, and return a fractional', () => {
-      expect(buildingsNeededForPart('Water', 43.5, complexProduct, groupComplex)).toBe(1.45)
+      expect(buildingsNeededForPartsProducts('Water', 43.5, complexProduct, groupComplex)).toBe(1.45)
     })
 
     it('should calculate for a secondary input part', () => {
@@ -595,8 +595,8 @@ describe('productBuildingGroups', async () => {
       })
       const product2 = mockFactory.products[1]
       const group2 = product2.buildingGroups[0]
-      expect(buildingsNeededForPart('Water', 60, complexProduct, group2)).toBe(3)
-      expect(buildingsNeededForPart('Water', 64, complexProduct, group2)).toBe(3.2)
+      expect(buildingsNeededForPartsProducts('Water', 60, complexProduct, group2)).toBe(3)
+      expect(buildingsNeededForPartsProducts('Water', 64, complexProduct, group2)).toBe(3.2)
     })
   })
 

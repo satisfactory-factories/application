@@ -3,6 +3,7 @@ import {
   Factory,
   FactoryItem,
   FactoryPowerChangeType,
+  FactoryPowerProducer,
   GroupType,
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
@@ -17,6 +18,7 @@ import {
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
   rebalanceBuildingGroups,
+  toggleBuildingGroupTray,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -24,6 +26,8 @@ import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 describe('buildingGroupsCommon', async () => {
   let mockFactory: Factory
   let factories: Factory[]
+  let product: FactoryItem
+  let powerProducer: FactoryPowerProducer
   let productBuildingGroups: BuildingGroup[]
   let powerBuildingGroups: BuildingGroup[]
   const gameData = await fetchGameData()
@@ -37,6 +41,7 @@ describe('buildingGroupsCommon', async () => {
       amount: 150,
       recipe: 'IngotIron',
     })
+    product = mockFactory.products[0]
 
     addPowerProducerToFactory(mockFactory, {
       building: 'generatorfuel',
@@ -44,13 +49,14 @@ describe('buildingGroupsCommon', async () => {
       recipe: 'GeneratorFuel_LiquidFuel',
       updated: FactoryPowerChangeType.Ingredient,
     })
+    powerProducer = mockFactory.powerProducers[0]
 
     // Calculate factory to get some extra contextual info, then blow the building groups away
     calculateFactories(factories, gameData)
-    mockFactory.products[0].buildingGroups = []
+    product.buildingGroups = []
     mockFactory.powerProducers[0].buildingGroups = []
 
-    productBuildingGroups = mockFactory.products[0].buildingGroups
+    productBuildingGroups = product.buildingGroups
     powerBuildingGroups = mockFactory.powerProducers[0].buildingGroups
     expect(productBuildingGroups.length).toBe(0)
     expect(productBuildingGroups.length).toBe(0)
@@ -58,7 +64,7 @@ describe('buildingGroupsCommon', async () => {
 
   describe('addGroup', () => {
     it('should add a product group', () => {
-      addProductBuildingGroup(mockFactory.products[0])
+      addProductBuildingGroup(product)
 
       expect(productBuildingGroups.length).toBe(1)
       expect(productBuildingGroups[0].type).toBe(GroupType.Product)
@@ -79,12 +85,12 @@ describe('buildingGroupsCommon', async () => {
   describe('calculateEffectiveBuildingCount', () => {
     let group1: BuildingGroup
     let group2: BuildingGroup
-    let product: FactoryItem
+
     beforeEach(() => {
-      product = mockFactory.products[0]
       addProductBuildingGroup(product)
       group1 = product.buildingGroups[0]
     })
+
     it('should properly calculate the effective building count across multiple groups', () => {
       addProductBuildingGroup(product)
       group1 = product.buildingGroups[0]
@@ -131,10 +137,8 @@ describe('buildingGroupsCommon', async () => {
   describe('calculateBuildingGroupProblems', () => {
     let group1: BuildingGroup
     let group2: BuildingGroup
-    let product: FactoryItem
 
     beforeEach(() => {
-      product = mockFactory.products[0]
       addProductBuildingGroup(product)
       addProductBuildingGroup(product)
       group1 = product.buildingGroups[0]
@@ -146,7 +150,7 @@ describe('buildingGroupsCommon', async () => {
       group1.buildingCount = 1
       group2.buildingCount = 3
 
-      calculateBuildingGroupProblems(mockFactory.products[0], GroupType.Product)
+      calculateBuildingGroupProblems(product, GroupType.Product)
 
       expect(product.buildingGroupsHaveProblem).toBe(true)
     })
@@ -156,7 +160,7 @@ describe('buildingGroupsCommon', async () => {
       group1.buildingCount = 1
       group2.buildingCount = 3
 
-      calculateBuildingGroupProblems(mockFactory.products[0], GroupType.Product)
+      calculateBuildingGroupProblems(product, GroupType.Product)
 
       expect(product.buildingGroupsHaveProblem).toBe(true)
 
@@ -164,7 +168,7 @@ describe('buildingGroupsCommon', async () => {
       group1.buildingCount = 2
       group2.buildingCount = 3
 
-      calculateBuildingGroupProblems(mockFactory.products[0], GroupType.Product)
+      calculateBuildingGroupProblems(product, GroupType.Product)
 
       expect(product.buildingGroupsHaveProblem).toBe(false)
     })
@@ -172,10 +176,8 @@ describe('buildingGroupsCommon', async () => {
 
   describe('rebalanceGroups', () => {
     let group1: BuildingGroup
-    let product: FactoryItem
 
     beforeEach(() => {
-      product = mockFactory.products[0]
       addProductBuildingGroup(product)
       group1 = product.buildingGroups[0]
 
@@ -292,6 +294,26 @@ describe('buildingGroupsCommon', async () => {
           expect(group2.parts.IronIngot).toBe(60)
         })
       })
+    })
+  })
+
+  describe('toggleBuildingGroupTray', () => {
+    it('should open the tray if closed', () => {
+      // Ensure it's closed first
+      product.buildingGroupsTrayOpen = false
+
+      toggleBuildingGroupTray(product)
+
+      expect(product.buildingGroupsTrayOpen).toBe(true)
+    })
+
+    it('should close the tray if open', () => {
+      // Ensure it's open first
+      product.buildingGroupsTrayOpen = true
+
+      toggleBuildingGroupTray(product)
+
+      expect(product.buildingGroupsTrayOpen).toBe(false)
     })
   })
 })
