@@ -1,0 +1,419 @@
+import {
+  BuildingGroup,
+  Factory,
+  FactoryItem,
+  FactoryPowerProducer,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
+import { formatNumberFully } from '@/utils/numberFormatter'
+import { fetchGameData } from '@/utils/gameDataService'
+import { calculateHasProblem } from '@/utils/factory-management/problems'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import eventBus from '@/utils/eventBus'
+import { calculatePowerAmount } from '@/utils/factory-management/power'
+
+const gameData = await fetchGameData()
+
+export const addBuildingGroupBasedOnType = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  addBuildings = true
+) => {
+  if (type === GroupType.Product) {
+    addProductBuildingGroup(item as FactoryItem, addBuildings)
+  } else if (type === GroupType.Power) {
+    addPowerProducerBuildingGroup(item as FactoryPowerProducer, addBuildings)
+  } else {
+    throw new Error(`addBuildingGroupBasedOnType: Invalid group type: ${type}`)
+  }
+}
+
+// @See ./product.ts, ./power.ts for usages
+export const addBuildingGroup = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType,
+  addBuildings = true
+) => {
+  let subject: FactoryItem | FactoryPowerProducer
+  if (groupType === GroupType.Product) {
+    subject = item as FactoryItem
+  } else if (groupType === GroupType.Power) {
+    subject = item as FactoryPowerProducer
+  } else {
+    throw new Error(`addBuildingGroup: Invalid group type: ${groupType}`)
+  }
+
+  let buildingCount = 0
+  if (addBuildings) {
+    if (groupType === GroupType.Product) {
+      subject = item as FactoryItem // TS... why...
+      buildingCount = subject.buildingRequirements.amount
+    } else if (groupType === GroupType.Power) {
+      subject = item as FactoryPowerProducer // TS... why...
+      buildingCount = subject.buildingCount
+    }
+  }
+
+  subject.buildingGroups.push({
+    id: Math.floor(Math.random() * 10000),
+    type: groupType,
+    buildingCount,
+    overclockPercent: 100,
+    parts: {},
+    powerUsage: 0,
+    powerProduced: 0,
+  })
+}
+
+// This takes the building groups and:
+// 1. Calculates the total building count
+// 2. Applies the overclocking to the building count to process the effective building count
+export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[]) => {
+  let effectiveBuildingCount = 0
+  for (const group of buildingGroups) {
+    // Remember it is a percentage so we need to divide by 100
+    effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100
+  }
+
+  return formatNumberFully(effectiveBuildingCount)
+}
+
+// Returns the total power usage of all building groups
+export const calculateBuildingGroupPower = (
+  buildingGroups: BuildingGroup[],
+  building: string,
+  groupType: GroupType
+) => {
+  buildingGroups.forEach(group => {
+    // In order to figure this out, we need to:
+    // 1. Get the original building's power
+    // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
+
+    // Get the building's details
+    const consumptionPerBuilding = gameData.buildings[building]
+
+    if (consumptionPerBuilding === undefined) {
+      throw new Error(`productBuildingGroups: calculateGroupPower: Building not found! ${building}`)
+    }
+
+    // Now, using the formula above, we calculate the power usage.
+    const totalConsumption = consumptionPerBuilding * Math.pow(group.overclockPercent / 100, 1.321928)
+
+    // Now multiply it by number of buildings, depending on type this may be a production or consumption.
+    if (groupType === GroupType.Product) {
+      group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
+      // We're done
+    }
+
+    // For power producers, we have to do some fucky wucky to figure out the power production.
+  })
+}
+
+export const getBuildingCount = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType
+) => {
+  let buildingCount = 0
+  if (groupType === GroupType.Product) {
+    const product = item as FactoryItem
+    buildingCount = product.buildingRequirements.amount
+  } else if (groupType === GroupType.Power) {
+    const producer = item as FactoryPowerProducer
+    buildingCount = producer.buildingCount
+  } else {
+    throw new Error('productBuildingGroups: getBuildingCount: Invalid group type!')
+  }
+
+  return buildingCount
+}
+
+// Calculates all parts for an item based on the building groups
+export const calculateBuildingGroupParts = (
+  items: FactoryItem[] | FactoryPowerProducer[],
+  type: GroupType,
+  exclude?: string
+) => {
+  // Handle any group part quantity changes.
+  // Loop through all the building groups buildings and use that as relative to update each part quantities.
+  for (const item of items) {
+  // Firstly, check if the item needs any building groups as the user may have changed the product.
+    if (item.id === '' || item.recipe === '') {
+      item.buildingGroups = []
+      continue // Skip this product
+    }
+
+    // Sanitize the building groups
+    if (item.buildingGroups.length === 0) {
+      if (type === GroupType.Product) {
+        addProductBuildingGroup(item as FactoryItem, true)
+      } else if (type === GroupType.Power) {
+        addPowerProducerBuildingGroup(item as FactoryPowerProducer, true)
+      }
+    }
+
+    // Get the total building count
+    const totalBuildingCount = getBuildingCount(item, type)
+
+    // Get the part requirements
+    const requirements = getBuildingGroupRequirements(item, type)
+
+    // Get target amount, and set the item ID
+    let itemAmount = 0
+    let partId = ''
+    if (type === GroupType.Product) {
+      const subject = item as FactoryItem
+      itemAmount = subject.amount
+      partId = subject.id
+    } else if (type === GroupType.Power) {
+      const subject = item as FactoryPowerProducer
+
+      // If we don't have the ingredients calculated yet, we simply cannot continue
+      if (subject.ingredients.length === 0) {
+        return
+      }
+
+      itemAmount = subject.ingredients[0].perMin * totalBuildingCount
+      partId = subject.ingredients[0].part ?? 'UNKNOWN'
+    }
+
+    for (const group of item.buildingGroups) {
+      Object.entries(requirements).forEach(([partKey, amount]) => {
+        if (partKey === exclude) {
+          return // Skip this part so we don't cause an update storm.
+        }
+        // We need to get a fraction based on the total amount required by the product and the number of buildings.
+        const partPerBuilding = amount / totalBuildingCount
+        group.parts[partKey] = (partPerBuilding * group.buildingCount)
+      })
+
+      // Also figure out the parts for the product itself and byproduct
+      const productPerBuilding = itemAmount / totalBuildingCount
+      group.parts[partId] = productPerBuilding * group.buildingCount
+
+      // And byproduct if applicable
+      if (type === GroupType.Product) {
+        const subject = item as FactoryItem
+        if (subject.byProducts && subject.byProducts.length > 0) {
+          const byproductPerBuilding = subject.byProducts[0].amount / totalBuildingCount
+          group.parts[subject.byProducts[0].id] = (byproductPerBuilding * group.buildingCount)
+        }
+      } else if (type === GroupType.Power) {
+        const subject = item as FactoryPowerProducer
+        if (subject.byproduct) {
+          group.parts[subject.byproduct.part] = subject.byproduct.amount
+        }
+      }
+
+      const overclockMulti = group.overclockPercent / 100
+
+      // Now apply the overclock multiplier for all parts in the group
+      for (const part in group.parts) {
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti)
+      }
+    }
+  }
+}
+
+interface BuildingGroupRequirements {
+  [key: string]: number
+}
+
+export const getBuildingGroupRequirements = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType
+): BuildingGroupRequirements => {
+  const data: BuildingGroupRequirements = {}
+
+  if (type === GroupType.Product) {
+    const subject = item as FactoryItem
+    Object.entries(subject.requirements).forEach(([partKey, part]) => {
+      data[partKey] = part.amount
+    })
+  } else if (type === GroupType.Power) {
+    const subject = item as FactoryPowerProducer
+    Object.entries(subject.ingredients).forEach(([, part]) => {
+      data[part.part] = part.amount ?? 0
+    })
+  } else {
+    throw new Error('productBuildingGroups: getBuildingGroupRequirements: Invalid group type!')
+  }
+
+  return data
+}
+
+// Calculates whether the building group passes it's requirements for effective buildings
+export const calculateBuildingGroupProblems = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType
+) => {
+  // Get the effective building count
+  const effectiveBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups)
+
+  // If the effective building count is out of whack between -0.1 and 0.1, we mark it as having a problem.
+  const buildingCount = getBuildingCount(item, groupType)
+  const absDiff = Math.abs(buildingCount - effectiveBuildingCount)
+
+  item.buildingGroupsHaveProblem = absDiff > 0.1
+}
+
+export interface RebalanceBuildingGroupOptions {
+  force?: boolean
+  changeBuildings?: boolean
+}
+// Takes the building groups and rebalances them based on the building count
+export const rebalanceBuildingGroups = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  options?: RebalanceBuildingGroupOptions
+) => {
+  if (!options) {
+    options = {}
+  }
+  // Set defaults if not supplied
+  if (options?.force === undefined) {
+    options.force = false
+  }
+  if (options?.changeBuildings === undefined) {
+    options.changeBuildings = true
+  }
+
+  // Prevent rebalancing when in advanced mode
+  if (!options?.force && item.buildingGroups.length > 1) {
+    console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
+    return
+  }
+
+  const targetBuildings = getBuildingCount(item, type)
+  const groups = item.buildingGroups
+
+  // Divide the target equally among groups.
+  const targetPerGroup = targetBuildings / groups.length
+  const remainder = targetBuildings % groups.length
+  const hasRemainder = remainder ? 1 : 0
+
+  groups.forEach(group => {
+    // Even scenario: each group gets exactly the quotient.
+    // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
+    if (options?.changeBuildings) {
+      group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
+    }
+
+    // Set overclock percentage.
+    // Even: no adjustment needed (100%).
+    // Odd: underclock so that effective production is exactly targetPerGroup.
+    if (hasRemainder) {
+      group.overclockPercent = formatNumberFully((targetPerGroup / group.buildingCount) * 100)
+    } else {
+      group.overclockPercent = 100
+    }
+  })
+
+  // Whatever calls this should call calculateBuildingGroupParts afterwards.
+}
+
+// Brought to you courtesy of ChatGPT o3-mini-high.
+// This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
+export const remainderToLast = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  factory: Factory
+) => {
+  const groups = item.buildingGroups
+  if (!groups || groups.length === 0) return
+
+  // The last group is the one we adjust.
+  const lastGroup = groups[groups.length - 1]
+
+  // Compute the effective building count for all groups EXCEPT the last.
+  const effectiveExcludingLast = groups
+    .slice(0, -1)
+    .reduce((total, group) => {
+      const percent = group.overclockPercent ?? 100
+      return total + group.buildingCount * (percent / 100)
+    }, 0)
+
+  const targetEffective = getBuildingCount(item, type)
+  const desiredFraction = targetEffective - effectiveExcludingLast
+
+  // If no gap, nothing to do.
+  if (desiredFraction === 0) return
+
+  // Handle overproduction (gap negative)
+  if (desiredFraction < 0) {
+    lastGroup.buildingCount = 1
+    lastGroup.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
+    return
+  }
+
+  /*
+    For a positive gap, instead of defaulting to a single building,
+    we consider using multiple buildings if the gap exceeds 1 effective building.
+    We try candidate building counts (n) and compute the required overclock per building:
+
+    candidateClock = Math.ceil((desiredFraction / n) * 100)
+
+    We then pick the candidate for which candidateClock is as close as possible to 100.
+    (We use Math.ceil so any tiny fractional remainder pushes the clock upward slightly.)
+
+    Also, if candidateClock would exceed 250, that candidate is invalid.
+  */
+  const maxN = Math.ceil(desiredFraction) + 1 // a reasonable search range
+  let bestN: number | null = null
+  let bestClock: number | null = null
+  let bestDiff = Number.POSITIVE_INFINITY
+
+  for (let n = 1; n <= maxN; n++) {
+    const rawClock = (desiredFraction / n) * 100
+    const candidateClock = Math.ceil(rawClock)
+    if (candidateClock > 250) continue // game cap: skip any candidate over 250%
+    const diff = Math.abs(candidateClock - 100)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestN = n
+      bestClock = candidateClock
+    }
+  }
+
+  // Fallback if no candidate was found (shouldn't happen normally)
+  if (bestN === null || bestClock === null) {
+    bestN = 1
+    bestClock = 250
+  }
+
+  lastGroup.buildingCount = bestN
+  lastGroup.overclockPercent = formatNumberFully(bestClock)
+  calculateBuildingGroupProblems(item, type)
+  calculateHasProblem(factory)
+}
+export const remainderToNewGroup = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType,
+  factory: Factory
+) => {
+  const buildingCount = getBuildingCount(item, groupType)
+
+  const remaining = buildingCount - calculateEffectiveBuildingCount(item.buildingGroups)
+
+  if (remaining <= 0) {
+    return // Nothing to do
+  }
+
+  if (groupType === GroupType.Product) {
+    const subject = item as FactoryItem
+    addProductBuildingGroup(subject)
+  }
+
+  remainderToLast(item, groupType, factory)
+}
+
+export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
+  const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
+
+  if (!buildingGroupTutorialOpened) {
+    eventBus.emit('openBuildingGroupTutorial')
+    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+  }
+
+  item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
+}

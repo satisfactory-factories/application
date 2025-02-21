@@ -34,6 +34,14 @@ export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | unde
   return recipe
 }
 
+export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | null => {
+  if (!gameData || !id) {
+    return null
+  }
+
+  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? null
+}
+
 export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataInterface): string => {
   if (!part) {
     return 'NO PART!!!'
@@ -45,14 +53,6 @@ export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataI
   return gameData.items.rawResources[part]?.name ||
     gameData.items.parts[part]?.name ||
     `UNKNOWN PART ${part}!`
-}
-
-export const getPowerRecipeById = (id: string, gameData: DataInterface): PowerRecipe | null => {
-  if (!gameData || !id) {
-    return null
-  }
-
-  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? null
 }
 
 export const getBuildingDisplayName = (building: string) => {

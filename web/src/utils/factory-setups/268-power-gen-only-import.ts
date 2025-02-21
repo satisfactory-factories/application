@@ -26,7 +26,7 @@ export const create268Scenraio = (): { getFactories: () => Factory[] } => {
       building: 'generatorfuel',
       ingredientAmount: 100,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
   }
 

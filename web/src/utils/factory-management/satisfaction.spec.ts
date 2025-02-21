@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
@@ -201,7 +201,7 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
         expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'addGenerator')).toBe(false)
@@ -236,7 +236,7 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 100, // Will deffo be satisfied lol
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
 
@@ -249,7 +249,7 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
 
@@ -262,13 +262,13 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         addPowerProducerToFactory(mockFactory, {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
 
@@ -288,7 +288,7 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
       })
@@ -301,7 +301,7 @@ describe('satisfaction', () => {
           building: 'generatornuclear',
           buildingAmount: 1,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: 'building',
+          updated: FactoryPowerChangeType.Building,
         })
         calculateFactories(factories, gameData)
         expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(true)

@@ -26,6 +26,9 @@ type Events = {
   introToggle: boolean;
 
   navigationReady: undefined;
+
+  // Building Groups
+  openBuildingGroupTutorial: undefined;
 };
 
 const eventBus = mitt<Events>()

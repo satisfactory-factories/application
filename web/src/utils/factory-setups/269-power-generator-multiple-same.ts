@@ -13,13 +13,13 @@ export const create269Scenario = (): { getFactories: () => Factory[] } => {
     building: 'generatorfuel',
     powerAmount: 1000,
     recipe: 'GeneratorFuel_LiquidFuel',
-    updated: 'power',
+    updated: FactoryPowerChangeType.Power,
   })
   addPowerProducerToFactory(fuelFac, {
     building: 'generatorfuel',
     powerAmount: 1000,
     recipe: 'GeneratorFuel_LiquidFuel',
-    updated: 'power',
+    updated: FactoryPowerChangeType.Power,
   })
 
   // Return an object with a method to access the factories

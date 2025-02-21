@@ -1,12 +1,19 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { ref, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import {
+  calculateBuildingGroupParts,
+  calculateBuildingGroupPower,
+  rebalanceBuildingGroups,
+} from '@/utils/factory-management/building-groups/common'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -284,6 +291,43 @@ export const useAppStore = defineStore('app', () => {
         factory.syncStatePower = {}
       }
 
+      factory.products.forEach(product => {
+        // Patch for #11
+        if (product.buildingGroups === undefined || product.buildingGroups.length === 0) {
+          product.buildingGroups = []
+          product.buildingGroupsTrayOpen = false
+
+          addProductBuildingGroup(product, true)
+          // Calculate the building group
+          rebalanceBuildingGroups(product, GroupType.Product)
+          calculateBuildingGroupParts([product], GroupType.Product)
+          calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
+        }
+      })
+
+      factory.powerProducers.forEach(producer => {
+        // Patch for #11
+        if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
+          producer.buildingGroups = []
+          producer.buildingGroupsTrayOpen = false
+
+          addPowerProducerBuildingGroup(producer, true)
+          // // Calculate the building group
+          rebalanceBuildingGroups(producer, GroupType.Power)
+          calculateBuildingGroupParts([producer], GroupType.Power)
+          calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+        }
+
+        // Patch for #11 renaming ingredientAmount to fuelAmount
+        // @ts-ignore
+        if (producer.ingredientAmount !== undefined) {
+          // @ts-ignore
+          producer.fuelAmount = producer.ingredientAmount
+          // @ts-ignore
+          delete producer.ingredientAmount
+        }
+      })
+
       // Delete keys that no longer exist
       // @ts-ignore
       if (factory.internalProducts) delete factory.internalProducts
@@ -295,7 +339,7 @@ export const useAppStore = defineStore('app', () => {
       if (factory.exports) delete factory.exports
 
       // Update data version
-      factory.dataVersion = '2025-01-22'
+      factory.dataVersion = '2025-02-20'
     })
 
     if (needsCalculation) {

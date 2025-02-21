@@ -281,7 +281,7 @@
   import { inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
-    Factory,
+    Factory, FactoryItem,
     PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
@@ -359,7 +359,7 @@
       building: 'generatornuclear',
       ingredientAmount: 1,
       recipe: recipe.id,
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
 
     updateFactory(factory)
@@ -367,7 +367,7 @@
     // Get the producer which should be the latest one in the array
     const producer = factory.powerProducers[factory.powerProducers.length - 1]
 
-    producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    producer.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 
@@ -456,7 +456,7 @@
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {
-    const product = getProduct(factory, partId)
+    const product = getProduct(factory, partId) as FactoryItem
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')
@@ -482,7 +482,7 @@
       return
     }
 
-    generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    generator.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 

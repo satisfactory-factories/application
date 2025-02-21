@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import * as factoryUtils from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -24,6 +24,7 @@ import eventBus from '@/utils/eventBus'
 vi.mock('@/utils/eventBus', () => ({
   default: {
     emit: vi.fn(),
+    on: vi.fn(),
   },
 }))
 
@@ -389,7 +390,7 @@ describe('inputs', () => {
           building: 'generatorfuel',
           ingredientAmount: 100,
           recipe: 'GeneratorFuel_LiquidFuel',
-          updated: 'ingredient',
+          updated: FactoryPowerChangeType.Ingredient,
         })
       })
       it('should return noProductsOrProducers if the factory has no products AND no power producers', () => {

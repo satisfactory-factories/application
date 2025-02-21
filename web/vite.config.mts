@@ -81,5 +81,7 @@ export default defineConfig(() => ({
     environment: 'jsdom',
     pool: 'vmThreads',
     setupFiles: ['src/setup-vitest.ts'],
+    globalSetup: './testing/global-setup.ts',
+    globalTeardown: './testing/global-teardown.ts',
   },
 }))

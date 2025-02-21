@@ -1,18 +1,31 @@
-import { BuildingRequirement, Factory, FactoryDependency, FactoryPower } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingRequirement,
+  Factory,
+  FactoryDependency,
+  FactoryPower,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
-import { calculateFactoryBuildingsAndPower } from '@/utils/factory-management/buildings'
+import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateParts } from '@/utils/factory-management/parts'
 import {
   calculateAllDependencies,
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
-  calculateFactoryDependencies, flushInvalidRequests,
+  calculateFactoryDependencies,
+  flushInvalidRequests,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
+import {
+  calculateBuildingGroupParts,
+  calculateBuildingGroupPower,
+  calculateBuildingGroupProblems,
+  rebalanceBuildingGroups,
+} from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -118,8 +131,27 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
+  // Calculate / synchronise the factory building groups.
+  // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
+  factory.products.forEach(product => {
+    rebalanceBuildingGroups(product, GroupType.Product)
+    calculateBuildingGroupParts([product], GroupType.Product)
+    calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
+    calculateBuildingGroupProblems(product, GroupType.Product)
+  })
+  factory.powerProducers.forEach(producer => {
+    rebalanceBuildingGroups(producer, GroupType.Power)
+    calculateBuildingGroupParts([producer], GroupType.Power)
+    calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+    // calculateBuildingGroupProblems(product, GroupType.Power)
+  })
+
+  calculateFinalBuildingsAndPower(factory)
+
   // Check if the factory has any problems
-  calculateHasProblem(allFactories)
+  allFactories.forEach(fac => {
+    calculateHasProblem(fac)
+  })
 
   // Emit an event that the data has been updated so it can be synced
   eventBus.emit('factoryUpdated')
