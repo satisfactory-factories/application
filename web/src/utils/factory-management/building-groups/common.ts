@@ -11,6 +11,7 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
+import { calculatePowerAmount } from '@/utils/factory-management/power'
 
 const gameData = await fetchGameData()
 
@@ -90,21 +91,22 @@ export const calculateBuildingGroupPower = (
     // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
 
     // Get the building's details
-    const buildingPower = gameData.buildings[building]
+    const consumptionPerBuilding = gameData.buildings[building]
 
-    if (!buildingPower) {
+    if (consumptionPerBuilding === undefined) {
       throw new Error(`productBuildingGroups: calculateGroupPower: Building not found! ${building}`)
     }
 
     // Now, using the formula above, we calculate the power usage.
-    const powerPerBuilding = buildingPower * Math.pow(group.overclockPercent / 100, 1.321928)
+    const totalConsumption = consumptionPerBuilding * Math.pow(group.overclockPercent / 100, 1.321928)
 
     // Now multiply it by number of buildings, depending on type this may be a production or consumption.
-    if (groupType === GroupType.Power) {
-      group.powerUsage = formatNumberFully(powerPerBuilding * group.buildingCount, 4)
-    } else if (groupType === GroupType.Product) {
-      group.powerProduced = formatNumberFully(powerPerBuilding * group.buildingCount, 4)
+    if (groupType === GroupType.Product) {
+      group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
+      // We're done
     }
+
+    // For power producers, we have to do some fucky wucky to figure out the power production.
   })
 }
 

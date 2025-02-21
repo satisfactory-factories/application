@@ -28,7 +28,7 @@ const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateBuildingGroupProblems(product, GroupType.Product)
 }
 
-const doPowerCalculations = (mockFactory: Factory, producer: FactoryPowerProducer) => {
+const doPowerProducerCalculations = (mockFactory: Factory, producer: FactoryPowerProducer) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
   rebalanceBuildingGroups(producer, GroupType.Power)
   calculateBuildingGroupParts([producer], GroupType.Power)
@@ -55,9 +55,9 @@ describe('buildings', () => {
 
     addPowerProducerToFactory(mockFactory, {
       building: 'generatorfuel',
-      ingredientAmount: 80,
+      buildingAmount: 4,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: FactoryPowerChangeType.Ingredient,
+      updated: FactoryPowerChangeType.Building,
     })
     producer = mockFactory.powerProducers[0]
     producerGroup = producer.buildingGroups[0]
@@ -147,7 +147,7 @@ describe('buildings', () => {
 
       describe('power producers', () => {
         beforeEach(() => {
-          doPowerCalculations(mockFactory, producer)
+          doPowerProducerCalculations(mockFactory, producer)
         })
 
         it('should correctly calculate the amount of power produced for a singular group', () => {
