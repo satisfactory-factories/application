@@ -296,12 +296,21 @@ export const useAppStore = defineStore('app', () => {
         if (product.buildingGroups === undefined || product.buildingGroups.length === 0) {
           product.buildingGroups = []
           product.buildingGroupsTrayOpen = false
+          product.buildingGroupsHaveProblem = false
 
           addProductBuildingGroup(product, true)
           // Calculate the building group
           rebalanceBuildingGroups(product, GroupType.Product)
           calculateBuildingGroupParts([product], GroupType.Product)
           calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
+        }
+
+        if (product.buildingGroupsHaveProblem === undefined) {
+          product.buildingGroupsHaveProblem = false
+        }
+
+        if (product.buildingGroupsTrayOpen === undefined) {
+          product.buildingGroupsTrayOpen = false
         }
       })
 
@@ -310,6 +319,7 @@ export const useAppStore = defineStore('app', () => {
         if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
           producer.buildingGroups = []
           producer.buildingGroupsTrayOpen = false
+          producer.buildingGroupsHaveProblem = false
 
           addPowerProducerBuildingGroup(producer, true)
           // // Calculate the building group
@@ -325,6 +335,16 @@ export const useAppStore = defineStore('app', () => {
           producer.fuelAmount = producer.ingredientAmount
           // @ts-ignore
           delete producer.ingredientAmount
+        }
+
+        // Patch for #11 adding IDs
+        if (producer.id === undefined) {
+          producer.id = Math.floor(Math.random() * 10000).toString()
+        }
+
+        // Patch for #11 adding Building Groups have problems
+        if (producer.buildingGroupsHaveProblem === undefined) {
+          producer.buildingGroupsHaveProblem = false
         }
       })
 

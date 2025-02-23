@@ -281,7 +281,7 @@
   import { inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
-    Factory, FactoryItem,
+    Factory, FactoryItem, FactoryPowerChangeType,
     PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'

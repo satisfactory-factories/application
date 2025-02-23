@@ -262,6 +262,33 @@ describe('app-store', () => {
         expect(producer.buildingGroupsTrayOpen).toBe(false)
       })
     })
+
+    it('should add id to powerProducers', () => {
+      // @ts-ignore
+      delete factory.powerProducers[0].id
+
+      appStore.initFactories(factories)
+
+      expect(factory.powerProducers[0].id).toBeDefined()
+    })
+
+    it('should add buildingGroupsHaveProblem to power producers', () => {
+      // @ts-ignore
+      delete factory.powerProducers[0].buildingGroupsHaveProblem
+
+      appStore.initFactories(factories)
+
+      expect(factory.powerProducers[0].buildingGroupsHaveProblem).toBeDefined()
+    })
+
+    it('should add buildingGroupsHaveProblem to products', () => {
+      // @ts-ignore
+      delete factory.products[0].buildingGroupsHaveProblem
+
+      appStore.initFactories(factories)
+
+      expect(factory.products[0].buildingGroupsHaveProblem).toBeDefined()
+    })
   })
 
   describe('loading process', () => {

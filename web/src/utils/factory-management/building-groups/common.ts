@@ -11,7 +11,6 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
-import { calculatePowerAmount } from '@/utils/factory-management/power'
 
 const gameData = await fetchGameData()
 
