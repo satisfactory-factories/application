@@ -529,3 +529,35 @@ describe('buildingGroupsCommon', async () => {
     })
   })
 })
+
+describe('powerProducer special cases', async () => {
+  let mockFactory: Factory
+  let powerProducer: FactoryPowerProducer
+  let group: BuildingGroup
+  const gameData = await fetchGameData()
+
+  beforeEach(() => {
+    mockFactory = newFactory('Assuming full control')
+  })
+
+  it('should calculate for a single group with calculateFactory', () => {
+    addPowerProducerToFactory(mockFactory, {
+      building: 'generatorfuel',
+      fuelAmount: 100, // 5 buildings
+      recipe: 'GeneratorFuel_LiquidFuel',
+      updated: FactoryPowerChangeType.Fuel,
+    })
+    powerProducer = mockFactory.powerProducers[0]
+    group = powerProducer.buildingGroups[0]
+    calculateFactories([mockFactory], gameData)
+
+    // Set the producer's building count to 10, which should update the group as well
+    powerProducer.buildingAmount = 10 // 200 fuel total
+    powerProducer.updated = FactoryPowerChangeType.Building
+
+    calculateFactories([mockFactory], gameData)
+
+    expect(powerProducer.ingredients[0].perMin).toBe(200)
+    expect(group.parts.LiquidFuel).toBe(200)
+  })
+})

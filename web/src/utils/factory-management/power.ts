@@ -12,6 +12,7 @@ export const addPowerProducerToFactory = (
     building?: string,
     buildingAmount?: number,
     powerAmount?: number,
+    fuelAmount?: number,
     ingredientAmount?: number,
     recipe: string;
     updated: FactoryPowerChangeType // Needed so the power generation can be recalculated in certain ways
@@ -23,7 +24,7 @@ export const addPowerProducerToFactory = (
     buildingAmount: options.buildingAmount ?? 0,
     buildingCount: 0, // Calculated later
     ingredients: [], // Calculated later
-    fuelAmount: options.ingredientAmount ?? 0,
+    fuelAmount: options.fuelAmount ?? 0,
     powerAmount: options.powerAmount ?? 0,
     powerProduced: 0, // Calculated later
     recipe: options.recipe,

@@ -172,7 +172,7 @@ export const calculateBuildingGroupParts = (
         return
       }
 
-      itemAmount = subject.ingredients[0].perMin * totalBuildingCount
+      itemAmount = subject.ingredients[0].perMin
       partId = subject.ingredients[0].part ?? 'UNKNOWN'
     }
 
@@ -181,7 +181,7 @@ export const calculateBuildingGroupParts = (
         if (partKey === exclude) {
           return // Skip this part so we don't cause an update storm.
         }
-        // We need to get a fraction based on the total amount required by the product and the number of buildings.
+        // We need to get a fraction based on the total amount required by the product and the number of buildings.`
         const partPerBuilding = amount / totalBuildingCount
         group.parts[partKey] = (partPerBuilding * group.buildingCount)
       })

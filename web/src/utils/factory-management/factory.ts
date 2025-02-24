@@ -175,7 +175,7 @@ export const calculateFactories = (factories: Factory[], gameData: DataInterface
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
   factories.forEach(factory => calculateFactory(factory, factories, gameData))
 
-  console.log('factory: Calculations completed', factories)
+  console.log('factory: Calculations completed')
 
   eventBus.emit('calculationsCompleted')
 }
