@@ -33,6 +33,7 @@ describe('numberFormatter', () => {
       expect(formatNumberFully(1.22244999999999, 4)).toBe(1.2224)
       expect(formatNumberFully(1.222450000000001, 4)).toBe(1.2225)
       expect(formatNumberFully(1.99999999999999, 4)).toBe(2)
+      expect(formatNumberFully(42.5599875, 3)).toBe(42.56)
     })
   })
 

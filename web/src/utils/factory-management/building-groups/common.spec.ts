@@ -43,9 +43,9 @@ describe('buildingGroupsCommon', async () => {
 
     addPowerProducerToFactory(mockFactory, {
       building: 'generatorfuel',
-      ingredientAmount: 80,
+      buildingAmount: 4,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: FactoryPowerChangeType.Ingredient,
+      updated: FactoryPowerChangeType.Building,
     })
     powerProducer = mockFactory.powerProducers[0]
 
@@ -321,18 +321,18 @@ describe('buildingGroupsCommon', async () => {
 
             calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product)
 
-            expect(group2.parts.OreCopper).toBe(31.882)
+            expect(group2.parts.OreCopper).toBe(31.883)
             expect(group2.parts.Water).toBe(21.255)
             expect(group2.parts.CopperIngot).toBe(79.706)
 
             // Test 3: 113.4933% overclock, testing to maximum precision
-            group2.overclockPercent = 113.4933
+            group2.overclockPercent = 113.6666
 
             calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product)
 
-            expect(group2.parts.OreCopper).toBe(17.023)
-            expect(group2.parts.Water).toBe(11.349)
-            expect(group2.parts.CopperIngot).toBe(42.559)
+            expect(group2.parts.OreCopper).toBe(17.05)
+            expect(group2.parts.Water).toBe(11.367)
+            expect(group2.parts.CopperIngot).toBe(42.625)
           })
         })
       })
@@ -411,7 +411,7 @@ describe('buildingGroupsCommon', async () => {
             calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
             // 20 (fuel) * 1.33333 (133.3333% OC) = 26.666 (fuel) * 10 (buildings) = 266.666 (fuel)
-            // 26.667 rounded
+            // 266.667 rounded
             expect(group.parts.LiquidFuel).toBe(266.667)
           })
         })
@@ -728,11 +728,98 @@ describe('powerProducer simplified cases', async () => {
 
     // https://satisfactory.wiki.gg/wiki/Clock_speed#Clock_speed_for_power_generators
     describe('ingredient scaling', () => {
-      describe('coal generators', () => {
+      describe('coal generators - ingame validated', () => {
+        beforeEach(() => {
+          mockFactory.powerProducers = []
+          addPowerProducerToFactory(mockFactory, {
+            building: 'generatorcoal',
+            buildingAmount: 1, // 2 buildings
+            recipe: 'GeneratorCoal_Coal',
+            updated: FactoryPowerChangeType.Building,
+          })
+          powerProducer = mockFactory.powerProducers[0]
+          group = powerProducer.buildingGroups[0]
+          calculateFactories([mockFactory], gameData)
+        })
 
+        it('should correctly scale ingredients based on an overclock', () => {
+          group.overclockPercent = 150
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(22.5)
+          expect(group.parts.Water).toBe(67.5) // Ingame 68, seems the game rounds it to 0 decimals
+
+          group.overclockPercent = 222.2222
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(33.333)
+          expect(group.parts.Water).toBe(100)
+        })
+
+        it('should correctly scale ingredients based on an underclock', () => {
+          group.overclockPercent = 55.223
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(8.283) // 8.28 in game
+          expect(group.parts.Water).toBe(24.85) // Ingame 25, game rounds it up
+
+          group.overclockPercent = 13.37
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(2.005) // 2.01 in game
+          expect(group.parts.Water).toBe(6.017) // Ingame 6, game rounds it
+        })
       })
-      it('should correctly scale ingredients based on an overclock', () => {
 
+      describe('fuel generators - ingame validated', () => {
+        beforeEach(() => {
+          mockFactory.powerProducers = []
+          addPowerProducerToFactory(mockFactory, {
+            building: 'generatorcoal',
+            buildingAmount: 1, // 2 buildings
+            recipe: 'GeneratorCoal_Coal',
+            updated: FactoryPowerChangeType.Building,
+          })
+          powerProducer = mockFactory.powerProducers[0]
+          group = powerProducer.buildingGroups[0]
+          calculateFactories([mockFactory], gameData)
+        })
+
+        it('should correctly scale ingredients based on an overclock', () => {
+          group.overclockPercent = 150
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(22.5)
+          expect(group.parts.Water).toBe(67.5) // Ingame 68, seems the game rounds it to 0 decimals
+
+          group.overclockPercent = 222.2222
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(33.333)
+          expect(group.parts.Water).toBe(100)
+        })
+
+        it('should correctly scale ingredients based on an underclock', () => {
+          group.overclockPercent = 55.223
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(8.283) // 8.28 in game
+          expect(group.parts.Water).toBe(24.85) // Ingame 25, game rounds it up
+
+          group.overclockPercent = 13.37
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(2.005) // 2.01 in game
+          expect(group.parts.Water).toBe(6.017) // Ingame 6, game rounds it
+        })
       })
     })
   })

@@ -204,25 +204,11 @@ export const calculateBuildingGroupParts = (
         group.parts[partKey] = (partPerBuilding * group.buildingCount)
       })
 
-      // And byproduct if applicable
-      if (type === GroupType.Product) {
-        const subject = item as FactoryItem
-        if (subject.byProducts && subject.byProducts.length > 0) {
-          const byproductPerBuilding = subject.byProducts[0].amount / totalBuildingCount
-          group.parts[subject.byProducts[0].id] = (byproductPerBuilding * group.buildingCount)
-        }
-      } else if (type === GroupType.Power) {
-        const subject = item as FactoryPowerProducer
-        if (subject.byproduct) {
-          group.parts[subject.byproduct.part] = subject.byproduct.amount
-        }
-      }
-
       const overclockMulti = group.overclockPercent / 100
 
       // Now apply the overclock multiplier for all parts in the group
       for (const part in group.parts) {
-        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti)
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti, 3)
       }
     }
   }
