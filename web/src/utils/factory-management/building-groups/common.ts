@@ -287,19 +287,12 @@ export const rebalanceBuildingGroups = (
   // Whatever calls this should call calculateBuildingGroupParts afterwards.
 }
 
-// Brought to you courtesy of ChatGPT o3-mini-high.
-// This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
-export const remainderToLast = (
+export const bestEffortUpdateBuildingCount = (
   item: FactoryItem | FactoryPowerProducer,
+  group: BuildingGroup,
+  groups: BuildingGroup[],
   type: GroupType,
-  factory: Factory
 ) => {
-  const groups = item.buildingGroups
-  if (!groups || groups.length === 0) return
-
-  // The last group is the one we adjust.
-  const lastGroup = groups[groups.length - 1]
-
   // Compute the effective building count for all groups EXCEPT the last.
   const effectiveExcludingLast = groups
     .slice(0, -1)
@@ -316,8 +309,8 @@ export const remainderToLast = (
 
   // Handle overproduction (gap negative)
   if (desiredFraction < 0) {
-    lastGroup.buildingCount = 1
-    lastGroup.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
+    group.buildingCount = 1
+    group.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
     return
   }
 
@@ -356,8 +349,24 @@ export const remainderToLast = (
     bestClock = 250
   }
 
-  lastGroup.buildingCount = bestN
-  lastGroup.overclockPercent = formatNumberFully(bestClock)
+  group.buildingCount = bestN
+  group.overclockPercent = formatNumberFully(bestClock)
+}
+
+// Brought to you courtesy of ChatGPT o3-mini-high.
+// This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
+export const remainderToLast = (
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  factory: Factory
+) => {
+  const groups = item.buildingGroups
+  if (!groups || groups.length === 0) return
+
+  // The last group is the one we adjust.
+  const lastGroup = groups[groups.length - 1]
+
+  bestEffortUpdateBuildingCount(item, lastGroup, groups, type)
 
   // Recalculate parts and problems
   calculateBuildingGroupParts([item], type)
@@ -410,3 +419,10 @@ export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer
 
   item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
 }
+
+// export const updateBuildingGroupBuildingCountViaPart = (group: BuildingGroup, part: string) => {
+//   const partAmount = group.parts[part]
+//   const newBuildingCount = amount / partAmount
+//
+//   group.buildingCount = Math.ceil(newBuildingCount)
+// }

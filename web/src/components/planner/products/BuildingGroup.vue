@@ -127,7 +127,7 @@
             :min="0"
             :name="`${item.id}-${part}.amount`"
             width="110px"
-            @update:model-value="updateGroupPartsDebounce(group, item, part.toString())"
+            @update:model-value="updateGroupPartsDebounce(item, group.type, part.toString())"
           />
           <span v-if="updatingPart === part.toString()">
             <v-icon>fas fa-sync fa-spin</v-icon>
@@ -204,9 +204,8 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
-  // import { updateGroupParts } from '@/utils/factory-management/productBuildingGroups'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
-  import { PowerItem } from '@/interfaces/Recipes'
+  import { calculateBuildingGroupParts } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
@@ -332,16 +331,22 @@
     return Object.values(props.group.parts).length
   })
 
-  const updateGroupPartsDebounce = (group: BuildingGroup, item: FactoryItem | PowerItem, part: string) => {
-    // updatingPart = part
-    // if (timeout) {
-    //   clearTimeout(timeout)
-    // }
-    //
-    // timeout = setTimeout(() => {
-    //   updateGroupParts(group, product, part)
-    //   updatingPart = ''
-    // }, 750)
+  const timeout = ref<NodeJS.Timeout | null>(null)
+
+  const updateGroupPartsDebounce = (
+    item: FactoryItem | FactoryPowerProducer,
+    groupType: GroupType,
+    part: string
+  ) => {
+    updatingPart = part
+    if (timeout.value) {
+      clearTimeout(timeout.value)
+    }
+
+    timeout.value = setTimeout(() => {
+      calculateBuildingGroupParts([item], groupType)
+      updatingPart = ''
+    }, 1000)
   }
 </script>
 
