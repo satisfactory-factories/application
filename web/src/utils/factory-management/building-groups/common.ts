@@ -362,6 +362,16 @@ export const remainderToLast = (
   // Recalculate parts and problems
   calculateBuildingGroupParts([item], type)
   calculateBuildingGroupProblems(item, type)
+
+  if (type === GroupType.Product) {
+    const subject = item as FactoryItem
+    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name)
+  }
+  if (type === GroupType.Power) {
+    const subject = item as FactoryPowerProducer
+    calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
+  }
+
   calculateHasProblem(factory)
 }
 export const remainderToNewGroup = (
