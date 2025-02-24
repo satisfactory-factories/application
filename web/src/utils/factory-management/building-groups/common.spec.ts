@@ -12,9 +12,9 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
-  calculateBuildingGroupParts,
-  calculateBuildingGroupProblems,
-  calculateEffectiveBuildingCount,
+  calculateBuildingGroupParts, calculateBuildingGroupProblems,
+  calculateEffectiveBuildingCount, calculatePowerProducerBuildingGroupPower,
+  calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
   toggleBuildingGroupTray,
 } from '@/utils/factory-management/building-groups/common'
@@ -419,7 +419,141 @@ describe('buildingGroupsCommon', async () => {
     })
 
     describe('calculateBuildingGroupPower', () => {
+      let mockFactory: Factory
+      let product: FactoryItem
+      let powerProducer: FactoryPowerProducer
+      let group: BuildingGroup
 
+      beforeEach(() => {
+        mockFactory = newFactory('Iron Rods')
+      })
+
+      describe('product consumption', () => {
+        beforeEach(() => {
+          addProductToFactory(mockFactory, {
+            id: 'IronRod',
+            amount: 15,
+            recipe: 'IronRod',
+          })
+          calculateFactories([mockFactory], gameData)
+          product = mockFactory.products[0]
+          group = product.buildingGroups[0]
+          group.buildingCount = 1
+        })
+
+        describe('wiki example of iron rods', () => {
+          it('should calculate a singular building correctly', () => {
+            group.overclockPercent = 100
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(4)
+          })
+
+          it('should calculate a singular building with an underclock', () => {
+            group.overclockPercent = 10
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(0.1906)
+
+            group.overclockPercent = 50
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(1.6)
+          })
+
+          it('should calculate a singular building with an overclock', () => {
+            group.overclockPercent = 150
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(6.8366)
+
+            group.overclockPercent = 200
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(10)
+
+            group.overclockPercent = 250
+            calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+            expect(group.powerUsage).toBe(13.431)
+          })
+        })
+      })
+
+      describe('power producer generation', () => {
+        beforeEach(() => {
+          addPowerProducerToFactory(mockFactory, {
+            building: 'generatorfuel',
+            ingredientAmount: 80,
+            recipe: 'GeneratorFuel_LiquidFuel',
+            updated: FactoryPowerChangeType.Ingredient,
+          })
+          powerProducer = mockFactory.powerProducers[0]
+          group = powerProducer.buildingGroups[0]
+          calculateFactories([mockFactory], gameData)
+        })
+
+        it('should generate the expected power called directly', () => {
+          group.buildingCount = 1
+          group.overclockPercent = 100
+
+          calculatePowerProducerBuildingGroupPower(
+            powerProducer.buildingGroups,
+            'GeneratorFuel_LiquidFuel',
+          )
+
+          expect(group.powerProduced).toBe(250)
+        })
+
+        it('should generate the expected power called via calculateFactories', () => {
+          // Need to set it on a product level
+          powerProducer.buildingAmount = 1
+          powerProducer.updated = FactoryPowerChangeType.Building
+
+          calculateFactories([mockFactory], gameData)
+
+          expect(group.powerProduced).toBe(250)
+        })
+
+        it('should generate the expected power called via calculateFactories on fractionals', () => {
+          // Need to set it on a product level
+          powerProducer.buildingAmount = 1.5
+          powerProducer.updated = FactoryPowerChangeType.Building
+
+          calculateFactories([mockFactory], gameData)
+
+          expect(group.powerProduced).toBe(375)
+        })
+
+        describe('wiki validated numbers, coal generator', () => {
+          beforeEach(() => {
+            mockFactory.powerProducers = []
+            addPowerProducerToFactory(mockFactory, {
+              building: 'generatorcoal',
+              buildingAmount: 1,
+              recipe: 'GeneratorCoal_Coal',
+              updated: FactoryPowerChangeType.Building,
+            })
+            powerProducer = mockFactory.powerProducers[0]
+            group = powerProducer.buildingGroups[0]
+            calculateFactories([mockFactory], gameData)
+          })
+
+          it('should generate the expected amount of power, 100%', () => {
+            expect(group.powerProduced).toBe(75)
+          })
+
+          it('should generate the expected amount of power, 10%', () => {
+            group.overclockPercent = 10
+
+            calculatePowerProducerBuildingGroupPower([group], 'GeneratorCoal_Coal')
+
+            expect(group.powerProduced).toBe(7.5)
+          })
+
+          it('should generate the expected amount of power, 250%', () => {
+            group.overclockPercent = 250
+
+            calculatePowerProducerBuildingGroupPower([group], 'GeneratorCoal_Coal')
+
+            expect(group.powerProduced).toBe(187.5)
+          })
+        })
+      })
     })
 
     describe('calculateBuildingGroupProblems', () => {

@@ -10,7 +10,7 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
   calculateBuildingGroupParts,
-  calculateBuildingGroupPower,
+  calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
@@ -302,7 +302,7 @@ export const useAppStore = defineStore('app', () => {
           // Calculate the building group
           rebalanceBuildingGroups(product, GroupType.Product)
           calculateBuildingGroupParts([product], GroupType.Product)
-          calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
+          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
         }
 
         if (product.buildingGroupsHaveProblem === undefined) {
@@ -325,7 +325,7 @@ export const useAppStore = defineStore('app', () => {
           // // Calculate the building group
           rebalanceBuildingGroups(producer, GroupType.Power)
           calculateBuildingGroupParts([producer], GroupType.Power)
-          calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+          calculateProductBuildingGroupPower(producer.buildingGroups, producer.building)
         }
 
         // Patch for #11 renaming ingredientAmount to fuelAmount

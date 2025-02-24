@@ -22,8 +22,8 @@ import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
 import {
   calculateBuildingGroupParts,
-  calculateBuildingGroupPower,
-  calculateBuildingGroupProblems,
+  calculateBuildingGroupProblems, calculatePowerProducerBuildingGroupPower,
+  calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 
@@ -136,13 +136,13 @@ export const calculateFactory = (
   factory.products.forEach(product => {
     rebalanceBuildingGroups(product, GroupType.Product)
     calculateBuildingGroupParts([product], GroupType.Product)
-    calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Product)
+    calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
     calculateBuildingGroupProblems(product, GroupType.Product)
   })
   factory.powerProducers.forEach(producer => {
     rebalanceBuildingGroups(producer, GroupType.Power)
     calculateBuildingGroupParts([producer], GroupType.Power)
-    calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+    calculatePowerProducerBuildingGroupPower(producer.buildingGroups, producer.recipe)
     // calculateBuildingGroupProblems(product, GroupType.Power)
   })
 

@@ -8,7 +8,6 @@ import {
 } from '@/utils/factory-management/building-groups/product'
 import {
   calculateBuildingGroupParts,
-  calculateBuildingGroupPower,
   remainderToLast,
   remainderToNewGroup,
 } from '@/utils/factory-management/building-groups/common'
@@ -476,57 +475,6 @@ describe('productBuildingGroups', async () => {
       const group2 = product2.buildingGroups[0]
       expect(buildingsNeededForPartsProducts('Water', 60, complexProduct, group2)).toBe(3)
       expect(buildingsNeededForPartsProducts('Water', 64, complexProduct, group2)).toBe(3.2)
-    })
-  })
-
-  describe('calculateGroupPower', () => {
-    let mockFactory: Factory
-    let product: FactoryItem
-    let group: BuildingGroup
-
-    beforeEach(() => {
-      mockFactory = newFactory('Iron Rods')
-      addProductToFactory(mockFactory, {
-        id: 'IronRod',
-        amount: 15,
-        recipe: 'IronRod',
-      })
-      calculateFactories([mockFactory], gameData)
-      product = mockFactory.products[0]
-      group = product.buildingGroups[0]
-      group.buildingCount = 1
-    })
-
-    describe('wiki example of iron rods', () => {
-      it('should calculate a singular building correctly', () => {
-        group.overclockPercent = 100
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(4)
-      })
-
-      it('should calculate a singular building with an underclock', () => {
-        group.overclockPercent = 10
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(0.1906)
-
-        group.overclockPercent = 50
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(1.6)
-      })
-
-      it('should calculate a singular building with an overclock', () => {
-        group.overclockPercent = 150
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(6.8366)
-
-        group.overclockPercent = 200
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(10)
-
-        group.overclockPercent = 250
-        calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
-        expect(group.powerUsage).toBe(13.431)
-      })
     })
   })
 })

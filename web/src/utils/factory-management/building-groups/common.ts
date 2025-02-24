@@ -11,6 +11,7 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
+import { getPowerRecipe } from '@/utils/factory-management/common'
 
 const gameData = await fetchGameData()
 
@@ -78,11 +79,10 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
   return formatNumberFully(effectiveBuildingCount)
 }
 
-// Returns the total power usage of all building groups
-export const calculateBuildingGroupPower = (
+// Returns the total power usage of all building groups for a product
+export const calculateProductBuildingGroupPower = (
   buildingGroups: BuildingGroup[],
   building: string,
-  groupType: GroupType
 ) => {
   buildingGroups.forEach(group => {
     // In order to figure this out, we need to:
@@ -99,13 +99,29 @@ export const calculateBuildingGroupPower = (
     // Now, using the formula above, we calculate the power usage.
     const totalConsumption = consumptionPerBuilding * Math.pow(group.overclockPercent / 100, 1.321928)
 
-    // Now multiply it by number of buildings, depending on type this may be a production or consumption.
-    if (groupType === GroupType.Product) {
-      group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
-      // We're done
+    // Now multiply it by number of buildings
+    group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
+  })
+}
+
+// Returns the total power usage of all building groups for a product
+export const calculatePowerProducerBuildingGroupPower = (
+  buildingGroups: BuildingGroup[],
+  recipe: string
+) => {
+  buildingGroups.forEach(group => {
+    const powerRecipe = getPowerRecipe(recipe, gameData)
+
+    if (!powerRecipe) {
+      throw new Error(`productBuildingGroups: calculatePowerProducerBuildingGroupPower: Power recipe not found! ${recipe}`)
     }
 
-    // For power producers, we have to do some fucky wucky to figure out the power production.
+    const productionPerBuilding = powerRecipe.building.power * group.buildingCount
+
+    // Power production for power producers is a bit different, it is a flat 1:1 ratio
+    const totalProduction = productionPerBuilding * group.overclockPercent / 100
+
+    group.powerProduced = formatNumberFully(totalProduction, 4)
   })
 }
 

@@ -14,8 +14,8 @@ import { gameData } from '@/utils/gameData'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
   calculateBuildingGroupParts,
-  calculateBuildingGroupPower,
-  calculateBuildingGroupProblems,
+  calculateBuildingGroupProblems, calculatePowerProducerBuildingGroupPower,
+  calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -24,7 +24,7 @@ const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
   rebalanceBuildingGroups(product, GroupType.Product)
   calculateBuildingGroupParts([product], GroupType.Product)
-  calculateBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, GroupType.Power)
+  calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
   calculateBuildingGroupProblems(product, GroupType.Product)
 }
 
@@ -32,7 +32,7 @@ const doPowerProducerCalculations = (mockFactory: Factory, producer: FactoryPowe
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
   rebalanceBuildingGroups(producer, GroupType.Power)
   calculateBuildingGroupParts([producer], GroupType.Power)
-  calculateBuildingGroupPower(producer.buildingGroups, producer.building, GroupType.Power)
+  calculatePowerProducerBuildingGroupPower(producer.buildingGroups, producer.recipe)
   calculateBuildingGroupProblems(producer, GroupType.Power)
 }
 
