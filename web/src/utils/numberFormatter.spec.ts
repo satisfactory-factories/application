@@ -35,6 +35,10 @@ describe('numberFormatter', () => {
       expect(formatNumberFully(1.99999999999999, 4)).toBe(2)
       expect(formatNumberFully(42.5599875, 3)).toBe(42.56)
     })
+
+    it('should handle a NaN to 0', () => {
+      expect(formatNumberFully('NaN')).toBe(0)
+    })
   })
 
   describe('formatPower', () => {

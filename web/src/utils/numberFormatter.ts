@@ -22,7 +22,12 @@ export function formatNumber (value: any, precision = 3): string {
 }
 
 export function formatNumberFully (value: any, precision = 3): number {
-  return Number(formatNumber(value, precision))
+  const result = formatNumber(value, precision)
+
+  if (isNaN(Number(result))) {
+    return 0
+  }
+  return Number(result)
 }
 
 // Returns a number formatted in the value of megawatts or gigawatts. If supplied GW, the number is divided by 1000.
