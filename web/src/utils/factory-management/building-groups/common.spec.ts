@@ -400,7 +400,7 @@ describe('buildingGroupsCommon', async () => {
 
             calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
-            // 20 (fuel) * 0.5 (50% OC) = 10 (fuel) * 10 (buildings) = 150 (fuel)
+            // 20 (fuel) * 0.5 (50% OC) = 10 (fuel) * 10 (buildings) = 100 (fuel)
             expect(group.parts.LiquidFuel).toBe(100)
           })
 
@@ -700,6 +700,40 @@ describe('powerProducer simplified cases', async () => {
 
       expect(powerProducer.ingredients[0].perMin).toBe(200)
       expect(group.parts.LiquidFuel).toBe(200)
+    })
+
+    it('should calculate for a single group with multiple parts via calculateFactory', () => {
+      mockFactory.powerProducers = []
+      addPowerProducerToFactory(mockFactory, {
+        building: 'generatorcoal',
+        fuelAmount: 30, // 2 buildings
+        recipe: 'GeneratorCoal_Coal',
+        updated: FactoryPowerChangeType.Fuel,
+      })
+      powerProducer = mockFactory.powerProducers[0]
+      group = powerProducer.buildingGroups[0]
+      calculateFactories([mockFactory], gameData)
+
+      // Set the producer's building count to 10, which should update the group as well
+      powerProducer.buildingAmount = 1 // 200 fuel total
+      powerProducer.updated = FactoryPowerChangeType.Building
+
+      calculateFactories([mockFactory], gameData)
+
+      expect(powerProducer.ingredients[0].perMin).toBe(15)
+      expect(powerProducer.ingredients[1].perMin).toBe(45)
+      expect(group.parts.Coal).toBe(15)
+      expect(group.parts.Water).toBe(45)
+    })
+
+    // https://satisfactory.wiki.gg/wiki/Clock_speed#Clock_speed_for_power_generators
+    describe('ingredient scaling', () => {
+      describe('coal generators', () => {
+
+      })
+      it('should correctly scale ingredients based on an overclock', () => {
+
+      })
     })
   })
 })

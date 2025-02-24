@@ -22,7 +22,8 @@ import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
 import {
   calculateBuildingGroupParts,
-  calculateBuildingGroupProblems, calculatePowerProducerBuildingGroupPower,
+  calculateBuildingGroupProblems,
+  calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
