@@ -6,7 +6,7 @@
         :disabled="item.buildingGroups.length === 1"
         icon="fas fa-trash"
         size="small"
-        title="Delete Factory"
+        title="Delete Building Group"
         variant="outlined"
         @click="deleteGroup(group)"
       />

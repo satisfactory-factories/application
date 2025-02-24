@@ -19,33 +19,30 @@
           <v-icon left>fas fa-arrow-up</v-icon>
         </span>
         <span class="ml-2">Building Groups ({{ producer.buildingGroups.length }})
-          <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock and apply Somersloops." />
+          <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock generators." />
         </span>
       </v-btn>
       <v-btn
-        class="rounded mr-2"
-        color="blue"
+        :color="producer.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
         :disabled="producer.displayOrder === 0"
         icon="fas fa-arrow-up"
         size="small"
-        variant="outlined"
+        variant="flat"
         @click="updatePowerProducerOrder('up', producer)"
       />
       <v-btn
-        class="rounded mr-2"
-        color="blue"
+        :color="producer.displayOrder === factory.powerProducers.length - 1 ? 'light-blue-darken-4' : 'blue'"
         :disabled="producer.displayOrder === factory.powerProducers.length - 1"
         icon="fas fa-arrow-down"
         size="small"
-        variant="outlined"
+        variant="flat"
         @click="updatePowerProducerOrder('down', producer)"
       />
       <v-btn
-        class="rounded"
         color="red"
         icon="fas fa-trash"
         size="small"
-        variant="outlined"
+        variant="flat"
         @click="deletePowerProducer(producerIndex, factory)"
       />
     </div>

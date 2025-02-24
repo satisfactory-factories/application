@@ -10,6 +10,7 @@ declare module 'vue' {
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']
+    BuildingGroupControls: typeof import('./components/planner/products/BuildingGroupControls.vue')['default']
     BuildingGroups: typeof import('./components/planner/products/BuildingGroups.vue')['default']
     BuildingGroupTutorial: typeof import('./components/planner/products/BuildingGroupTutorial.vue')['default']
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
