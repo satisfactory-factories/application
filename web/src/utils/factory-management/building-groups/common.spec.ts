@@ -553,6 +553,49 @@ describe('buildingGroupsCommon', async () => {
             expect(group.powerProduced).toBe(187.5)
           })
         })
+
+        describe('in game validated, fuel generator', () => {
+          beforeEach(() => {
+            mockFactory.powerProducers = []
+            addPowerProducerToFactory(mockFactory, {
+              building: 'generatorfuel',
+              buildingAmount: 1,
+              recipe: 'GeneratorFuel_LiquidFuel',
+              updated: FactoryPowerChangeType.Building,
+            })
+            powerProducer = mockFactory.powerProducers[0]
+            group = powerProducer.buildingGroups[0]
+            calculateFactories([mockFactory], gameData)
+          })
+
+          it('should generate the expected amount of power, 100%', () => {
+            expect(group.powerProduced).toBe(250)
+          })
+
+          it('should generate the expected amount of power, 10%', () => {
+            group.overclockPercent = 10
+
+            calculatePowerProducerBuildingGroupPower([group], 'GeneratorFuel_LiquidFuel')
+
+            expect(group.powerProduced).toBe(25)
+          })
+
+          it('should generate the expected amount of power, 250%', () => {
+            group.overclockPercent = 250
+
+            calculatePowerProducerBuildingGroupPower([group], 'GeneratorFuel_LiquidFuel')
+
+            expect(group.powerProduced).toBe(625)
+          })
+
+          it('should generate the expected amount of power, 222.2222%', () => {
+            group.overclockPercent = 222.2222
+
+            calculatePowerProducerBuildingGroupPower([group], 'GeneratorFuel_LiquidFuel')
+
+            expect(group.powerProduced).toBe(555.5555) // 555.56 in game
+          })
+        })
       })
     })
 
