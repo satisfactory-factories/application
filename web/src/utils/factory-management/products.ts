@@ -386,7 +386,6 @@ export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInte
   product.id = recipe.products[0].part
 }
 
-// Get what is now the new buildingRequirement for the product
 export const increaseProductQtyViaBuilding = (product: FactoryItem, gameData: DataInterface) => {
   const newVal = product.buildingRequirements.amount
 

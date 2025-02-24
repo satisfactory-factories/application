@@ -174,13 +174,13 @@
     <template v-if="group.type === GroupType.Power">
       <div>
         <v-chip
-          class="sf-chip yellow"
+          class="sf-chip yellow ml-1"
           variant="tonal"
         >
           <i class="fas fa-bolt" />
           <i class="fas fa-plus" />
           <span class="ml-2">
-            Produces: {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
+            {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
           </span>
         </v-chip>
         <div class="underchip">&nbsp;</div>
@@ -195,6 +195,7 @@
     BuildingGroup,
     Factory,
     FactoryItem,
+    FactoryPowerChangeType,
     FactoryPowerProducer,
     GroupType,
   } from '@/interfaces/planner/FactoryInterface'
@@ -250,7 +251,10 @@
         increaseProductQtyViaBuilding(subject, gameData)
       } else if (props.group.type === GroupType.Power) {
         const subject = props.item as FactoryPowerProducer
-        subject.buildingCount = 1
+        subject.buildingAmount = group.buildingCount
+        subject.updated = FactoryPowerChangeType.Building
+
+        // The factory update should then take over and change the rest
       } else {
         throw new Error('Invalid type')
       }
