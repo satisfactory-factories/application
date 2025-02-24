@@ -804,7 +804,7 @@ describe('powerProducer simplified cases', async () => {
           mockFactory.powerProducers = []
           addPowerProducerToFactory(mockFactory, {
             building: 'generatorfuel',
-            buildingAmount: 1, // 2 buildings
+            buildingAmount: 1,
             recipe: 'GeneratorFuel_LiquidFuel',
             updated: FactoryPowerChangeType.Building,
           })
@@ -814,19 +814,17 @@ describe('powerProducer simplified cases', async () => {
         })
 
         it('should correctly scale ingredients based on an overclock', () => {
-          group.overclockPercent = 150
+          group.overclockPercent = 127.5555
 
           calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
-          expect(group.parts.Coal).toBe(22.5)
-          expect(group.parts.Water).toBe(67.5) // Ingame 68, seems the game rounds it to 0 decimals
+          expect(group.parts.LiquidFuel).toBe(25.511) // 25.51 in game
 
           group.overclockPercent = 222.2222
 
           calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
-          expect(group.parts.Coal).toBe(33.333)
-          expect(group.parts.Water).toBe(100)
+          expect(group.parts.LiquidFuel).toBe(44.444) // 44.44 in game
         })
 
         it('should correctly scale ingredients based on an underclock', () => {
@@ -834,15 +832,13 @@ describe('powerProducer simplified cases', async () => {
 
           calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
-          expect(group.parts.Coal).toBe(8.283) // 8.28 in game
-          expect(group.parts.Water).toBe(24.85) // Ingame 25, game rounds it up
+          expect(group.parts.LiquidFuel).toBe(11.045) // 11.04 in game
 
           group.overclockPercent = 13.37
 
           calculateBuildingGroupParts([powerProducer], GroupType.Power)
 
-          expect(group.parts.Coal).toBe(2.005) // 2.01 in game
-          expect(group.parts.Water).toBe(6.017) // Ingame 6, game rounds it
+          expect(group.parts.LiquidFuel).toBe(2.674) // 2.67 in game
         })
       })
     })
