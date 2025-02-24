@@ -733,7 +733,7 @@ describe('powerProducer simplified cases', async () => {
           mockFactory.powerProducers = []
           addPowerProducerToFactory(mockFactory, {
             building: 'generatorcoal',
-            buildingAmount: 1, // 2 buildings
+            buildingAmount: 1,
             recipe: 'GeneratorCoal_Coal',
             updated: FactoryPowerChangeType.Building,
           })
@@ -773,15 +773,39 @@ describe('powerProducer simplified cases', async () => {
           expect(group.parts.Coal).toBe(2.005) // 2.01 in game
           expect(group.parts.Water).toBe(6.017) // Ingame 6, game rounds it
         })
+
+        it('should correctly scale ingredients when multiple buildings are involved', () => {
+          // Start off at 100% clock
+          group.buildingCount = 5
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(75)
+          expect(group.parts.Water).toBe(225)
+
+          group.overclockPercent = 150
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(112.5)
+          expect(group.parts.Water).toBe(337.5)
+
+          group.overclockPercent = 55
+
+          calculateBuildingGroupParts([powerProducer], GroupType.Power)
+
+          expect(group.parts.Coal).toBe(41.25)
+          expect(group.parts.Water).toBe(123.75)
+        })
       })
 
       describe('fuel generators - ingame validated', () => {
         beforeEach(() => {
           mockFactory.powerProducers = []
           addPowerProducerToFactory(mockFactory, {
-            building: 'generatorcoal',
+            building: 'generatorfuel',
             buildingAmount: 1, // 2 buildings
-            recipe: 'GeneratorCoal_Coal',
+            recipe: 'GeneratorFuel_LiquidFuel',
             updated: FactoryPowerChangeType.Building,
           })
           powerProducer = mockFactory.powerProducers[0]

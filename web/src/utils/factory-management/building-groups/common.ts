@@ -199,8 +199,11 @@ export const calculateBuildingGroupParts = (
         if (partKey === exclude) {
           return // Skip this part so we don't cause an update storm.
         }
-        // Multiply all parts by the number of buildings.
+
+        // Calculate the amount of parts per building, based off total building count to get the per building amount
         const partPerBuilding = amount / totalBuildingCount
+
+        // Now multiply the per building amount by the number of buildings in the group to get the true amount.
         group.parts[partKey] = (partPerBuilding * group.buildingCount)
       })
 
