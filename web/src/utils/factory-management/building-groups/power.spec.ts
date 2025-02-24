@@ -95,8 +95,4 @@ describe('buildingGroupsPower', async () => {
     //   expect(product2.powerBuildingGroups[0].buildingCount).toBe(5)
     // })
   })
-
-  describe('calculatePowerProducerBuildingGroupParts', () => {
-
-  })
 })
