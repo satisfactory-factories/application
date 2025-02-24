@@ -145,7 +145,7 @@ export const getBuildingCount = (
 
 // Calculates all parts for an item based on the building groups
 export const calculateBuildingGroupParts = (
-  items: FactoryItem[] | FactoryPowerProducer[],
+  items: (FactoryItem | FactoryPowerProducer)[],
   type: GroupType,
   exclude?: string
 ) => {
@@ -358,6 +358,9 @@ export const remainderToLast = (
 
   lastGroup.buildingCount = bestN
   lastGroup.overclockPercent = formatNumberFully(bestClock)
+
+  // Recalculate parts and problems
+  calculateBuildingGroupParts([item], type)
   calculateBuildingGroupProblems(item, type)
   calculateHasProblem(factory)
 }
