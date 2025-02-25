@@ -448,13 +448,12 @@ export const updateBuildingGroupViaPart = (
   }
 
   // 3. Find the recipe item corresponding to the updated part.
-  // For Product recipes, assume the updated part is an ingredient.
+  // For Product recipes, check ingredients and then products.
   // For Power recipes, check ingredients first and then byproduct.
   let recipePart: any
   if (type === GroupType.Product) {
     const productRecipe = recipe as Recipe
     recipePart = productRecipe.ingredients.find(i => i.part === part)
-
     if (!recipePart) {
       recipePart = productRecipe.products.find(i => i.part === part)
     }
@@ -469,52 +468,54 @@ export const updateBuildingGroupViaPart = (
     throw new Error(`updateBuildingGroupViaPart: Part '${part}' not found in recipe!`)
   }
 
-  // 4. Use the recipe item's "perMin" value as the baseline consumption/production rate
-  // for one building running at 100%.
+  // 4. Use the recipe item's "perMin" value as the baseline rate for one building running at 100%.
   const baseRate = recipePart.perMin
   if (!baseRate) {
     throw new Error(`updateBuildingGroupViaPart: perMin value for part '${part}' is not defined!`)
   }
 
   // 5. Calculate the target effective building count for this group.
-  // For example, if baseRate is 15 and the updated amount is 20,
-  // then targetEffective ≈ 20 / 15 ≈ 1.33 buildings.
+  // E.g., if baseRate is 15 and amount is 20, then targetEffective ≈ 20/15 ≈ 1.33 buildings.
   const targetEffective = amount / baseRate
 
   // 6. Determine the best combination of whole building count and clock speed.
-  // If less than one full building is required, use one building with an underclock.
+  // We prefer to have a clock percentage at or below 100%.
   if (targetEffective < 1) {
     group.buildingCount = 1
     group.overclockPercent = formatNumberFully(targetEffective * 100)
   } else {
-    // Try candidate configurations: for candidate building counts from 1 to ceil(targetEffective) + 1.
     const maxCandidateCount = Math.ceil(targetEffective) + 1
-    let bestBuildingCount: number | null = null
-    let bestClock: number | null = null
-    let bestDiff = Number.POSITIVE_INFINITY
+    type Candidate = { buildingCount: number; clock: number; diff: number }
+    let bestUnderCandidate: Candidate | null = null
+    let bestOverCandidate: Candidate | null = null
 
     for (let n = 1; n <= maxCandidateCount; n++) {
       const rawClock = (targetEffective / n) * 100
       const candidateClock = Math.ceil(rawClock)
-      // Skip any candidate that exceeds the game cap (e.g., 250%).
-      if (candidateClock > 250) continue
-      // Choose the candidate whose clock is as close as possible to 100%.
+      if (candidateClock > 250) continue // skip candidates exceeding the game cap
       const diff = Math.abs(candidateClock - 100)
-      if (diff < bestDiff) {
-        bestDiff = diff
-        bestBuildingCount = n
-        bestClock = candidateClock
+      if (candidateClock <= 100) {
+        if (!bestUnderCandidate || diff < bestUnderCandidate.diff) {
+          bestUnderCandidate = { buildingCount: n, clock: candidateClock, diff }
+        }
+      } else {
+        if (!bestOverCandidate || diff < bestOverCandidate.diff) {
+          bestOverCandidate = { buildingCount: n, clock: candidateClock, diff }
+        }
       }
     }
 
-    // Fallback if no candidate was found (should be rare).
-    if (bestBuildingCount === null || bestClock === null) {
-      bestBuildingCount = 1
-      bestClock = 250
+    let chosenCandidate: Candidate
+    if (bestUnderCandidate) {
+      chosenCandidate = bestUnderCandidate
+    } else if (bestOverCandidate) {
+      chosenCandidate = bestOverCandidate
+    } else {
+      chosenCandidate = { buildingCount: 1, clock: 250, diff: Math.abs(250 - 100) }
     }
 
-    group.buildingCount = bestBuildingCount
-    group.overclockPercent = formatNumberFully(bestClock)
+    group.buildingCount = chosenCandidate.buildingCount
+    group.overclockPercent = formatNumberFully(chosenCandidate.clock)
   }
 
   // 7. Perform any additional calculations needed after updating the group.
