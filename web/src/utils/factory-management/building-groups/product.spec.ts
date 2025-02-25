@@ -4,7 +4,6 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import {
   addProductBuildingGroup,
   buildingsNeededForPartsProducts,
-  updateProductBuildingGroupParts,
 } from '@/utils/factory-management/building-groups/product'
 import {
   calculateBuildingGroupParts,
@@ -47,28 +46,28 @@ describe('productBuildingGroups', async () => {
 
   describe('addProductBuildingGroup', () => {
     it('should add a new group to the product with the correct building count', () => {
-      addProductBuildingGroup(mockFactory.products[0])
+      addProductBuildingGroup(mockFactory.products[0], mockFactory)
 
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
     it('should add a new group to the product with 0 buildings when asked', () => {
-      addProductBuildingGroup(mockFactory.products[0], false)
+      addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
 
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(0)
     })
 
     it('should add a new group to the product with the correct parts', () => {
-      addProductBuildingGroup(mockFactory.products[0])
+      addProductBuildingGroup(mockFactory.products[0], mockFactory)
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
     })
     it('should add a multiple groups each containing the correct part amounts', () => {
-      addProductBuildingGroup(mockFactory.products[0]) // The first group should contain the full requirement
-      addProductBuildingGroup(mockFactory.products[0], false)
+      addProductBuildingGroup(mockFactory.products[0], mockFactory) // The first group should contain the full requirement
+      addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
@@ -95,8 +94,8 @@ describe('productBuildingGroups', async () => {
     let product: FactoryItem
     beforeEach(() => {
       product = mockFactory.products[0]
-      addProductBuildingGroup(product)
-      addProductBuildingGroup(product)
+      addProductBuildingGroup(product, mockFactory)
+      addProductBuildingGroup(product, mockFactory)
 
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
@@ -227,7 +226,7 @@ describe('productBuildingGroups', async () => {
     it('should correctly apply the overclock to the group, updating the parts consumed and produced', () => {
       group1.overclockPercent = 150
 
-      calculateBuildingGroupParts([product], GroupType.Product)
+      calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
 
       expect(group1.parts.OreCopper).toBe(45)
       expect(group1.parts.CopperIngot).toBe(45)
@@ -254,7 +253,7 @@ describe('productBuildingGroups', async () => {
           copperIngots = overclockedFactory.products[0]
           copperIngotsGroup = copperIngots.buildingGroups[0]
           copperIngotsGroup.buildingCount = 1
-          addProductBuildingGroup(copperIngots, false) // Puts it into advanced mode
+          addProductBuildingGroup(copperIngots, mockFactory, false) // Puts it into advanced mode
           copperIngots.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
 
           addProductToFactory(overclockedFactory, {
@@ -265,7 +264,7 @@ describe('productBuildingGroups', async () => {
           plastic = overclockedFactory.products[1]
           plasticGroup = plastic.buildingGroups[0]
           plasticGroup.buildingCount = 1
-          addProductBuildingGroup(plastic, false) // Puts it into advanced mode
+          addProductBuildingGroup(plastic, mockFactory, false) // Puts it into advanced mode
           plastic.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
 
           calculateFactories([overclockedFactory], gameData)
@@ -325,7 +324,7 @@ describe('productBuildingGroups', async () => {
           product = overclockedFactory.products[0]
           group = product.buildingGroups[0]
           group.buildingCount = 1
-          addProductBuildingGroup(product, false) // Puts it into advanced mode
+          addProductBuildingGroup(product, mockFactory, false) // Puts it into advanced mode
           product.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
         })
 
@@ -356,78 +355,6 @@ describe('productBuildingGroups', async () => {
     })
   })
 
-  describe('updateGroupParts', () => {
-    let group: BuildingGroup
-    let product: FactoryItem
-
-    beforeEach(() => {
-      product = mockFactory.products[0]
-      addProductBuildingGroup(product)
-      group = product.buildingGroups[0]
-      group.buildingCount = 10
-      calculateFactories([mockFactory], gameData)
-    })
-
-    it('should update when an ingredient part has been modified', () => {
-      group.parts.OreIron = 300
-
-      updateProductBuildingGroupParts(group, product, 'OreIron')
-
-      expect(group.buildingCount).toBe(10)
-      expect(group.parts.OreIron).toBe(300)
-    })
-
-    it('should update when it results in a fractional building', () => {
-      // We expect that when we update the parts, it will recalculate the building count to 2, with an underclock.
-
-      group.parts.OreIron = 32
-
-      updateProductBuildingGroupParts(group, product, 'OreIron')
-
-      expect(group.buildingCount).toBe(2)
-      expect(group.overclockPercent).toBe(53.334)
-      expect(group.parts.OreIron).toBe(32)
-    })
-
-    it('should update to a whole number when a single group is updated', () => {
-      product.buildingRequirements.amount = 5
-      group.parts.OreIron = 300
-
-      updateProductBuildingGroupParts(group, product, 'OreIron')
-
-      expect(group.buildingCount).toBe(10)
-      expect(product.buildingRequirements.amount).toBe(10)
-    })
-
-    it('should update the product\'s building count to a fractional number when a single group is updated', () => {
-      product.buildingRequirements.amount = 5
-      group.parts.OreIron = 27
-
-      updateProductBuildingGroupParts(group, product, 'OreIron')
-
-      expect(group.buildingCount).toBe(1)
-      expect(group.overclockPercent).toBe(90)
-      expect(product.buildingRequirements.amount).toBe(0.9)
-    })
-
-    it('should NOT update the product\'s building count or other groups when there are multiple groups (advanced mode)', () => {
-      addProductBuildingGroup(product)
-      const group2 = product.buildingGroups[1]
-      group.buildingCount = 1
-      group2.buildingCount = 3
-      group.overclockPercent = 100
-      product.buildingRequirements.amount = 10
-
-      group.parts.OreIron = 60
-      updateProductBuildingGroupParts(group, product, 'OreIron')
-
-      expect(group.buildingCount).toBe(2)
-      expect(group2.buildingCount).toBe(3)
-      expect(group.overclockPercent).toBe(100)
-      expect(product.buildingRequirements.amount).toBe(10)
-    })
-  })
-
   describe('buildingsNeededForPart', () => {
     let group: BuildingGroup
     let groupComplex: BuildingGroup
@@ -443,8 +370,8 @@ describe('productBuildingGroups', async () => {
         recipe: 'Battery',
       })
       complexProduct = mockFactory.products[1]
-      addProductBuildingGroup(product)
-      addProductBuildingGroup(complexProduct)
+      addProductBuildingGroup(product, mockFactory)
+      addProductBuildingGroup(complexProduct, mockFactory)
       group = product.buildingGroups[0]
       groupComplex = complexProduct.buildingGroups[0]
     })

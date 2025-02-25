@@ -352,6 +352,7 @@
         props.group,
         props.item,
         props.group.type,
+        props.factory,
         part,
         props.group.parts[part],
       )

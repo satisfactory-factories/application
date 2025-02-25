@@ -8,11 +8,7 @@ import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
-import {
-  calculateBuildingGroupParts,
-  calculateProductBuildingGroupPower,
-  rebalanceBuildingGroups,
-} from '@/utils/factory-management/building-groups/common'
+import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
@@ -298,11 +294,9 @@ export const useAppStore = defineStore('app', () => {
           product.buildingGroupsTrayOpen = false
           product.buildingGroupsHaveProblem = false
 
-          addProductBuildingGroup(product, true)
+          addProductBuildingGroup(product, factory, true)
           // Calculate the building group
-          rebalanceBuildingGroups(product, GroupType.Product)
-          calculateBuildingGroupParts([product], GroupType.Product)
-          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+          rebalanceBuildingGroups(product, GroupType.Product, factory)
         }
 
         if (product.buildingGroupsHaveProblem === undefined) {
@@ -321,11 +315,9 @@ export const useAppStore = defineStore('app', () => {
           producer.buildingGroupsTrayOpen = false
           producer.buildingGroupsHaveProblem = false
 
-          addPowerProducerBuildingGroup(producer, true)
-          // // Calculate the building group
-          rebalanceBuildingGroups(producer, GroupType.Power)
-          calculateBuildingGroupParts([producer], GroupType.Power)
-          calculateProductBuildingGroupPower(producer.buildingGroups, producer.building)
+          addPowerProducerBuildingGroup(producer, factory, true)
+          // Calculate the building group
+          rebalanceBuildingGroups(producer, GroupType.Power, factory)
         }
 
         // Patch for #11 renaming ingredientAmount to fuelAmount

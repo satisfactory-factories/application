@@ -19,12 +19,13 @@ const gameData = await fetchGameData()
 export const addBuildingGroupBasedOnType = (
   item: FactoryItem | FactoryPowerProducer,
   type: GroupType,
+  factory: Factory,
   addBuildings = true
 ) => {
   if (type === GroupType.Product) {
-    addProductBuildingGroup(item as FactoryItem, addBuildings)
+    addProductBuildingGroup(item as FactoryItem, factory, addBuildings)
   } else if (type === GroupType.Power) {
-    addPowerProducerBuildingGroup(item as FactoryPowerProducer, addBuildings)
+    addPowerProducerBuildingGroup(item as FactoryPowerProducer, factory, addBuildings)
   } else {
     throw new Error(`addBuildingGroupBasedOnType: Invalid group type: ${type}`)
   }
@@ -148,6 +149,7 @@ export const getBuildingCount = (
 export const calculateBuildingGroupParts = (
   items: (FactoryItem | FactoryPowerProducer)[],
   type: GroupType,
+  factory: Factory,
   exclude?: string
 ) => {
   // Handle any group part quantity changes.
@@ -162,9 +164,9 @@ export const calculateBuildingGroupParts = (
     // Sanitize the building groups
     if (item.buildingGroups.length === 0) {
       if (type === GroupType.Product) {
-        addProductBuildingGroup(item as FactoryItem, true)
+        addProductBuildingGroup(item as FactoryItem, factory, true)
       } else if (type === GroupType.Power) {
-        addPowerProducerBuildingGroup(item as FactoryPowerProducer, true)
+        addPowerProducerBuildingGroup(item as FactoryPowerProducer, factory, true)
       }
     }
 
@@ -245,7 +247,8 @@ export interface RebalanceBuildingGroupOptions {
 // Takes the building groups and rebalances them based on the building count
 export const rebalanceBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
-  type: GroupType,
+  groupType: GroupType,
+  factory: Factory,
   options?: RebalanceBuildingGroupOptions
 ) => {
   if (!options) {
@@ -265,7 +268,7 @@ export const rebalanceBuildingGroups = (
     return
   }
 
-  const targetBuildings = getBuildingCount(item, type)
+  const targetBuildings = getBuildingCount(item, groupType)
   const groups = item.buildingGroups
 
   // Divide the target equally among groups.
@@ -290,7 +293,7 @@ export const rebalanceBuildingGroups = (
     }
   })
 
-  // Whatever calls this should call calculateBuildingGroupParts afterwards.
+  recalculateGroupMetrics(item, groupType, factory)
 }
 
 // Brought to you courtesy of ChatGPT o3-mini-high.
@@ -364,7 +367,7 @@ export const bestEffortUpdateBuildingCount = (
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
 export const remainderToLast = (
   item: FactoryItem | FactoryPowerProducer,
-  type: GroupType,
+  groupType: GroupType,
   factory: Factory
 ) => {
   const groups = item.buildingGroups
@@ -373,23 +376,11 @@ export const remainderToLast = (
   // The last group is the one we adjust.
   const lastGroup = groups[groups.length - 1]
 
-  bestEffortUpdateBuildingCount(item, lastGroup, groups, type)
+  bestEffortUpdateBuildingCount(item, lastGroup, groups, groupType)
 
-  // Recalculate parts and problems
-  calculateBuildingGroupParts([item], type)
-  calculateBuildingGroupProblems(item, type)
-
-  if (type === GroupType.Product) {
-    const subject = item as FactoryItem
-    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name)
-  }
-  if (type === GroupType.Power) {
-    const subject = item as FactoryPowerProducer
-    calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
-  }
-
-  calculateHasProblem(factory)
+  recalculateGroupMetrics(item, groupType, factory)
 }
+
 export const remainderToNewGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
@@ -405,15 +396,16 @@ export const remainderToNewGroup = (
 
   if (groupType === GroupType.Product) {
     const subject = item as FactoryItem
-    addProductBuildingGroup(subject)
+    addProductBuildingGroup(subject, factory)
   } else if (groupType === GroupType.Power) {
     const subject = item as FactoryPowerProducer
-    addPowerProducerBuildingGroup(subject)
+    addPowerProducerBuildingGroup(subject, factory)
   } else {
     throw new Error('productBuildingGroups: remainderToNewGroup: Invalid group type!')
   }
 
   remainderToLast(item, groupType, factory)
+  recalculateGroupMetrics(item, groupType, factory)
 }
 
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
@@ -433,7 +425,8 @@ export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer
 export const updateBuildingGroupViaPart = (
   group: BuildingGroup,
   item: FactoryItem | FactoryPowerProducer,
-  type: GroupType,
+  groupType: GroupType,
+  factory: Factory,
   part: string,
   amount: number
 ) => {
@@ -443,9 +436,9 @@ export const updateBuildingGroupViaPart = (
   // 2. Retrieve the recipe details.
   const recipeUsed = item.recipe
   let recipe: Recipe | PowerRecipe | undefined
-  if (type === GroupType.Product) {
+  if (groupType === GroupType.Product) {
     recipe = getRecipe(recipeUsed, gameData)
-  } else if (type === GroupType.Power) {
+  } else if (groupType === GroupType.Power) {
     recipe = getPowerRecipe(recipeUsed, gameData)
   }
   if (!recipe) {
@@ -456,13 +449,13 @@ export const updateBuildingGroupViaPart = (
   // For Product recipes, check ingredients and then products.
   // For Power recipes, check ingredients first and then byproduct.
   let recipePart: any
-  if (type === GroupType.Product) {
+  if (groupType === GroupType.Product) {
     const productRecipe = recipe as Recipe
     recipePart = productRecipe.ingredients.find(i => i.part === part)
     if (!recipePart) {
       recipePart = productRecipe.products.find(i => i.part === part)
     }
-  } else if (type === GroupType.Power) {
+  } else if (groupType === GroupType.Power) {
     recipePart = recipe.ingredients.find(i => i.part === part)
     const powerRecipe = recipe as PowerRecipe
     if (!recipePart && powerRecipe.byproduct && powerRecipe.byproduct.part === part) {
@@ -503,10 +496,8 @@ export const updateBuildingGroupViaPart = (
         if (!bestUnderCandidate || diff < bestUnderCandidate.diff) {
           bestUnderCandidate = { buildingCount: n, clock: candidateClock, diff }
         }
-      } else {
-        if (!bestOverCandidate || diff < bestOverCandidate.diff) {
-          bestOverCandidate = { buildingCount: n, clock: candidateClock, diff }
-        }
+      } else if (!bestOverCandidate || diff < bestOverCandidate.diff) {
+        bestOverCandidate = { buildingCount: n, clock: candidateClock, diff }
       }
     }
 
@@ -524,15 +515,24 @@ export const updateBuildingGroupViaPart = (
   }
 
   // 7. Perform any additional calculations needed after updating the group.
-  calculateBuildingGroupParts([item], type)
+  recalculateGroupMetrics(item, groupType, factory)
+}
 
-  if (type === GroupType.Product) {
+export const recalculateGroupMetrics = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: GroupType,
+  factory: Factory
+) => {
+  // Run the calculations again on the changed group
+  calculateBuildingGroupParts([item], groupType, factory)
+
+  if (groupType === GroupType.Product) {
     const subject = item as FactoryItem
     calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name)
-  }
-  if (type === GroupType.Power) {
+  } else {
     const subject = item as FactoryPowerProducer
     calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
   }
-  calculateBuildingGroupProblems(item, type)
+  calculateBuildingGroupProblems(item, groupType)
+  calculateHasProblem(factory)
 }

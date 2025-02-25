@@ -39,7 +39,7 @@ export const addProductToFactory = (
   calculateProductBuildings(factory, gameData)
 
   // Also push the first product building group
-  addProductBuildingGroup(factory.products[factory.products.length - 1])
+  addProductBuildingGroup(factory.products[factory.products.length - 1], factory)
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>

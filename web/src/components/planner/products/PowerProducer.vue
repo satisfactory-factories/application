@@ -343,7 +343,7 @@
     })
 
     // Add a building group in
-    addPowerProducerBuildingGroup(producer, true)
+    addPowerProducerBuildingGroup(producer, factory, true)
 
     updateFactory(factory)
   }

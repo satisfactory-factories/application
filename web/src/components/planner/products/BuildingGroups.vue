@@ -37,7 +37,7 @@
     <v-btn
       color="primary"
       size="small"
-      @click="addBuildingGroupBasedOnType(item, type, false)"
+      @click="addBuildingGroupBasedOnType(item, type, factory, false)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -48,7 +48,7 @@
       :disabled="item.buildingGroups.length === 1 || correct"
       size="small"
       :variant="item.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
-      @click="rebalanceBuildingGroups(item, type, {force: true})"
+      @click="rebalance()"
     >
       <i class="fas fa-balance-scale" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
@@ -146,6 +146,14 @@
   const under = computed(() => {
     return buildingsRemaining.value > 0.1
   })
+
+  const rebalance = () => {
+    rebalanceBuildingGroups(
+      props.item,
+      props.type,
+      props.factory,
+      { force: true })
+  }
 
   const resetClocks = (buildingGroups: BuildingGroup[]) => {
     buildingGroups.forEach(group => {

@@ -54,21 +54,21 @@ describe('buildingGroupsPower', async () => {
 
   describe('addPowerProducerBuildingGroup', () => {
     it('should add a new group to the power producer with the correct building count', () => {
-      addPowerProducerBuildingGroup(powerProducer)
+      addPowerProducerBuildingGroup(powerProducer, mockFactory)
 
       expect(powerBuildingGroups.length).toBe(1)
       expect(powerBuildingGroups[0].buildingCount).toBe(4)
     })
 
     it('should add a new group to the power producer with 0 buildings when asked', () => {
-      addPowerProducerBuildingGroup(powerProducer, false)
+      addPowerProducerBuildingGroup(powerProducer, mockFactory, false)
 
       expect(powerBuildingGroups.length).toBe(1)
       expect(powerBuildingGroups[0].buildingCount).toBe(0)
     })
 
     it('should add a new group to the power producer with the correct parts', () => {
-      addPowerProducerBuildingGroup(powerProducer)
+      addPowerProducerBuildingGroup(powerProducer, mockFactory)
 
       expect(powerBuildingGroups[0].parts.OreIron).toBe(150)
       expect(powerBuildingGroups[0].parts.IronIngot).toBe(150)

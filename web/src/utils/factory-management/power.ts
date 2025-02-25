@@ -38,7 +38,7 @@ export const addPowerProducerToFactory = (
 
   if (options.building) {
     // Add the default building group for the producer when one is selected, otherwise we have to wait for the user to choose one
-    addPowerProducerBuildingGroup(factory.powerProducers[factory.powerProducers.length - 1], true)
+    addPowerProducerBuildingGroup(factory.powerProducers[factory.powerProducers.length - 1], factory, true)
   }
 }
 

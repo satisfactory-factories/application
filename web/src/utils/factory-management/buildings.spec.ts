@@ -12,28 +12,17 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { gameData } from '@/utils/gameData'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
-import {
-  calculateBuildingGroupParts,
-  calculateBuildingGroupProblems, calculatePowerProducerBuildingGroupPower,
-  calculateProductBuildingGroupPower,
-  rebalanceBuildingGroups,
-} from '@/utils/factory-management/building-groups/common'
+import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(product, GroupType.Product)
-  calculateBuildingGroupParts([product], GroupType.Product)
-  calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
-  calculateBuildingGroupProblems(product, GroupType.Product)
+  rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
 }
 
 const doPowerProducerCalculations = (mockFactory: Factory, producer: FactoryPowerProducer) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(producer, GroupType.Power)
-  calculateBuildingGroupParts([producer], GroupType.Power)
-  calculatePowerProducerBuildingGroupPower(producer.buildingGroups, producer.recipe)
-  calculateBuildingGroupProblems(producer, GroupType.Power)
+  rebalanceBuildingGroups(producer, GroupType.Power, mockFactory)
 }
 
 describe('buildings', () => {
@@ -80,7 +69,7 @@ describe('buildings', () => {
         })
 
         it('should calculate the correct power usage for an overclocked product', () => {
-          addProductBuildingGroup(product, true) // Sets it into advanced mode so it doesn't do auto-rebalancing. We technically break our product here, but it's ok for testing.
+          addProductBuildingGroup(product, mockFactory, true) // Sets it into advanced mode so it doesn't do auto-rebalancing. We technically break our product here, but it's ok for testing.
           const group2 = product.buildingGroups[1]
           productGroup.buildingCount = 0 // Set this so we have full control over the 2nd group
           group2.overclockPercent = 200
@@ -94,7 +83,7 @@ describe('buildings', () => {
         })
 
         it('should calculate the correct power usage across multiple groups for one product', () => {
-          addProductBuildingGroup(product, true)
+          addProductBuildingGroup(product, mockFactory, true)
           const group2 = product.buildingGroups[1]
           productGroup.buildingCount = 5
           group2.overclockPercent = 200
@@ -130,7 +119,7 @@ describe('buildings', () => {
           const product2 = mockFactory.products[1]
           const group2 = product2.buildingGroups[0]
           group2.buildingCount = 0
-          addProductBuildingGroup(product2, false) // Sets it into advanced mode
+          addProductBuildingGroup(product2, mockFactory, false) // Sets it into advanced mode
           product2.buildingGroups[1].buildingCount = 0
           group2.buildingCount = 5
 
@@ -170,7 +159,7 @@ describe('buildings', () => {
         })
 
         it('should properly calculate the number of buildings derived from multiple building group', () => {
-          addProductBuildingGroup(product, true)
+          addProductBuildingGroup(product, mockFactory, true)
           const group2 = product.buildingGroups[1]
           productGroup.buildingCount = 5
           group2.buildingCount = 10
@@ -197,7 +186,7 @@ describe('buildings', () => {
         })
 
         it('should properly calculate the number of buildings derived from multiple products with multiple groups', () => {
-          addProductBuildingGroup(product, false)
+          addProductBuildingGroup(product, mockFactory, false)
           const group2 = product.buildingGroups[1]
 
           addProductToFactory(mockFactory, {
@@ -207,7 +196,7 @@ describe('buildings', () => {
           })
           const product2 = mockFactory.products[1]
           const group1p2 = product2.buildingGroups[0]
-          addProductBuildingGroup(product2, false)
+          addProductBuildingGroup(product2, mockFactory, false)
           const group2p2 = product2.buildingGroups[1]
 
           // Set the building counts
