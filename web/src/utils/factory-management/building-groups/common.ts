@@ -11,7 +11,8 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
-import { getPowerRecipe } from '@/utils/factory-management/common'
+import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
+import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 
 const gameData = await fetchGameData()
 
@@ -287,14 +288,16 @@ export const rebalanceBuildingGroups = (
   // Whatever calls this should call calculateBuildingGroupParts afterwards.
 }
 
+// Brought to you courtesy of ChatGPT o3-mini-high.
+// This function attempts to match the target building count via both over-allocating buildings and underclocking the remainder.
 export const bestEffortUpdateBuildingCount = (
   item: FactoryItem | FactoryPowerProducer,
   group: BuildingGroup,
   groups: BuildingGroup[],
   type: GroupType,
 ) => {
-  // Compute the effective building count for all groups EXCEPT the last.
-  const effectiveExcludingLast = groups
+  // Compute the effective building count for all groups EXCEPT the target.
+  const effectiveExcludingTarget = groups
     .slice(0, -1)
     .reduce((total, group) => {
       const percent = group.overclockPercent ?? 100
@@ -302,7 +305,7 @@ export const bestEffortUpdateBuildingCount = (
     }, 0)
 
   const targetEffective = getBuildingCount(item, type)
-  const desiredFraction = targetEffective - effectiveExcludingLast
+  const desiredFraction = targetEffective - effectiveExcludingTarget
 
   // If no gap, nothing to do.
   if (desiredFraction === 0) return
@@ -327,7 +330,7 @@ export const bestEffortUpdateBuildingCount = (
     Also, if candidateClock would exceed 250, that candidate is invalid.
   */
   const maxN = Math.ceil(desiredFraction) + 1 // a reasonable search range
-  let bestN: number | null = null
+  let bestBuildingCount: number | null = null
   let bestClock: number | null = null
   let bestDiff = Number.POSITIVE_INFINITY
 
@@ -338,22 +341,21 @@ export const bestEffortUpdateBuildingCount = (
     const diff = Math.abs(candidateClock - 100)
     if (diff < bestDiff) {
       bestDiff = diff
-      bestN = n
+      bestBuildingCount = n
       bestClock = candidateClock
     }
   }
 
   // Fallback if no candidate was found (shouldn't happen normally)
-  if (bestN === null || bestClock === null) {
-    bestN = 1
+  if (bestBuildingCount === null || bestClock === null) {
+    bestBuildingCount = 1
     bestClock = 250
   }
 
-  group.buildingCount = bestN
+  group.buildingCount = bestBuildingCount
   group.overclockPercent = formatNumberFully(bestClock)
 }
 
-// Brought to you courtesy of ChatGPT o3-mini-high.
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
 export const remainderToLast = (
   item: FactoryItem | FactoryPowerProducer,
@@ -420,9 +422,111 @@ export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer
   item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
 }
 
-// export const updateBuildingGroupBuildingCountViaPart = (group: BuildingGroup, part: string) => {
-//   const partAmount = group.parts[part]
-//   const newBuildingCount = amount / partAmount
-//
-//   group.buildingCount = Math.ceil(newBuildingCount)
-// }
+// Buckle up, this is gonna be a read.
+// This function takes the part of the building group and calculates the required buildings and clock to make the amount happen.
+// It can take both an ingredient and the product, using the same calculation to figure out the buildings required.
+export const updateBuildingGroupViaPart = (
+  group: BuildingGroup,
+  item: FactoryItem | FactoryPowerProducer,
+  type: GroupType,
+  part: string,
+  amount: number
+) => {
+  // 1. Update the part amount in this group.
+  group.parts[part] = amount
+
+  // 2. Retrieve the recipe details.
+  const recipeUsed = item.recipe
+  let recipe: Recipe | PowerRecipe | undefined
+  if (type === GroupType.Product) {
+    recipe = getRecipe(recipeUsed, gameData)
+  } else if (type === GroupType.Power) {
+    recipe = getPowerRecipe(recipeUsed, gameData)
+  }
+  if (!recipe) {
+    throw new Error('updateBuildingGroupViaPart: Recipe not found!')
+  }
+
+  // 3. Find the recipe item corresponding to the updated part.
+  // For Product recipes, assume the updated part is an ingredient.
+  // For Power recipes, check ingredients first and then byproduct.
+  let recipePart: any
+  if (type === GroupType.Product) {
+    const productRecipe = recipe as Recipe
+    recipePart = productRecipe.ingredients.find(i => i.part === part)
+
+    if (!recipePart) {
+      recipePart = productRecipe.products.find(i => i.part === part)
+    }
+  } else if (type === GroupType.Power) {
+    recipePart = recipe.ingredients.find(i => i.part === part)
+    const powerRecipe = recipe as PowerRecipe
+    if (!recipePart && powerRecipe.byproduct && powerRecipe.byproduct.part === part) {
+      recipePart = powerRecipe.byproduct
+    }
+  }
+  if (!recipePart) {
+    throw new Error(`updateBuildingGroupViaPart: Part '${part}' not found in recipe!`)
+  }
+
+  // 4. Use the recipe item's "perMin" value as the baseline consumption/production rate
+  // for one building running at 100%.
+  const baseRate = recipePart.perMin
+  if (!baseRate) {
+    throw new Error(`updateBuildingGroupViaPart: perMin value for part '${part}' is not defined!`)
+  }
+
+  // 5. Calculate the target effective building count for this group.
+  // For example, if baseRate is 15 and the updated amount is 20,
+  // then targetEffective ≈ 20 / 15 ≈ 1.33 buildings.
+  const targetEffective = amount / baseRate
+
+  // 6. Determine the best combination of whole building count and clock speed.
+  // If less than one full building is required, use one building with an underclock.
+  if (targetEffective < 1) {
+    group.buildingCount = 1
+    group.overclockPercent = formatNumberFully(targetEffective * 100)
+  } else {
+    // Try candidate configurations: for candidate building counts from 1 to ceil(targetEffective) + 1.
+    const maxCandidateCount = Math.ceil(targetEffective) + 1
+    let bestBuildingCount: number | null = null
+    let bestClock: number | null = null
+    let bestDiff = Number.POSITIVE_INFINITY
+
+    for (let n = 1; n <= maxCandidateCount; n++) {
+      const rawClock = (targetEffective / n) * 100
+      const candidateClock = Math.ceil(rawClock)
+      // Skip any candidate that exceeds the game cap (e.g., 250%).
+      if (candidateClock > 250) continue
+      // Choose the candidate whose clock is as close as possible to 100%.
+      const diff = Math.abs(candidateClock - 100)
+      if (diff < bestDiff) {
+        bestDiff = diff
+        bestBuildingCount = n
+        bestClock = candidateClock
+      }
+    }
+
+    // Fallback if no candidate was found (should be rare).
+    if (bestBuildingCount === null || bestClock === null) {
+      bestBuildingCount = 1
+      bestClock = 250
+    }
+
+    group.buildingCount = bestBuildingCount
+    group.overclockPercent = formatNumberFully(bestClock)
+  }
+
+  // 7. Perform any additional calculations needed after updating the group.
+  calculateBuildingGroupParts([item], type)
+
+  if (type === GroupType.Product) {
+    const subject = item as FactoryItem
+    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name)
+  }
+  if (type === GroupType.Power) {
+    const subject = item as FactoryPowerProducer
+    calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
+  }
+  calculateBuildingGroupProblems(item, type)
+}

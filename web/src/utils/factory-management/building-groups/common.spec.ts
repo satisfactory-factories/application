@@ -886,4 +886,8 @@ describe('powerProducer simplified cases', async () => {
       })
     })
   })
+
+  describe('bestEffortUpdateBuildingCount', () => {
+    it('should update the ')
+  })
 })

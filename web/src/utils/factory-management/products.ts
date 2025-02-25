@@ -279,7 +279,13 @@ export const updateProductAmountViaRequirement = async (product: FactoryItem, pa
     throw new Error(error)
   }
 
-  product.amount = getProductAmountByPart(product, part, 'requirement', ingredient.amount, gameData)
+  product.amount = getProductAmountByPart(
+    product,
+    part,
+    'requirement',
+    ingredient.amount,
+    gameData
+  )
 
   if (product.amount <= 0) {
     console.warn('product: setProductQtyByRequirement: product amount is less than 0, force setting to 0.1')
@@ -293,6 +299,7 @@ export const updateProductAmountViaRequirement = async (product: FactoryItem, pa
   // Must call update factory!
 }
 
+// This function gets the amount of a product based off the new amount wanted for the part and recipe used.
 export const getProductAmountByPart = (
   product: FactoryItem,
   part: string,

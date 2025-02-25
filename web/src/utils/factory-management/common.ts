@@ -34,12 +34,12 @@ export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | unde
   return recipe
 }
 
-export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | null => {
+export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | undefined => {
   if (!gameData || !id) {
-    return null
+    return
   }
 
-  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? null
+  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? undefined
 }
 
 export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataInterface): string => {

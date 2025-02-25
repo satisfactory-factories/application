@@ -127,14 +127,14 @@
             :min="0"
             :name="`${item.id}-${part}.amount`"
             width="110px"
-            @update:model-value="updateGroupPartsDebounce(item, group.type, part.toString())"
+            @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
           <span v-if="updatingPart === part.toString()">
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
         </v-chip>
         <div class="underchip text-blue-darken-1">
-          {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
+          {{ formatNumberFully(group.parts[part] / group.buildingCount) ?? 0 }} / building
         </div>
       </div>
     </template>
@@ -164,8 +164,13 @@
             :min="0"
             :name="`${item.id}-${part}.amount`"
             width="110px"
+            @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
+          <span v-if="updatingPart === part.toString()">
+            <v-icon>fas fa-sync fa-spin</v-icon>
+          </span>
         </v-chip>
+
         <div class="underchip" :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
           {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
         </div>
@@ -205,13 +210,13 @@
   import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
-  import { calculateBuildingGroupParts } from '@/utils/factory-management/building-groups/common'
+  import { updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const gameData = useGameDataStore().getGameData()
 
   // const timeout: NodeJS.Timeout | null = null
-  let updatingPart: string
+  const updatingPart = ref('')
 
   const { lgAndDown, lgAndUp } = useDisplay()
 
@@ -334,19 +339,25 @@
   const timeout = ref<NodeJS.Timeout | null>(null)
 
   const updateGroupPartsDebounce = (
-    item: FactoryItem | FactoryPowerProducer,
-    groupType: GroupType,
     part: string
   ) => {
-    updatingPart = part
+    updatingPart.value = part
     if (timeout.value) {
       clearTimeout(timeout.value)
     }
 
     timeout.value = setTimeout(() => {
-      calculateBuildingGroupParts([item], groupType)
-      updatingPart = ''
-    }, 1000)
+      console.log('Updating building group parts')
+      updateBuildingGroupViaPart(
+        props.group,
+        props.item,
+        props.group.type,
+        part,
+        props.group.parts[part],
+      )
+      updatingPart.value = ''
+      console.log(`Part ${part} updated`)
+    }, 500)
   }
 </script>
 
