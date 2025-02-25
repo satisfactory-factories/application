@@ -94,7 +94,7 @@ export const calculateProductBuildingGroupPower = (
     const consumptionPerBuilding = gameData.buildings[building]
 
     if (consumptionPerBuilding === undefined) {
-      throw new Error(`productBuildingGroups: calculateGroupPower: Building not found! ${building}`)
+      throw new Error(`productBuildingGroups: calculateProductBuildingGroupPower: Building not found! ${building}`)
     }
 
     // Now, using the formula above, we calculate the power usage.
