@@ -12,7 +12,7 @@ export async function fetchGameData (): Promise<DataInterface> {
   }
 
   // First, try the local test server.
-  const testUrl = 'http://localhost:3001/gameData.json'
+  const testUrl = 'http://localhost:3010/gameData.json'
   try {
     const response = await fetch(testUrl)
     if (!response.ok) {
