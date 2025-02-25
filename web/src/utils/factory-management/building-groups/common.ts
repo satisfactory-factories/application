@@ -193,6 +193,11 @@ export const calculateBuildingGroupParts = (
       subject.ingredients.forEach(ingredient => {
         parts[ingredient.part] = ingredient.perMin
       })
+
+      // Also add the byproduct
+      if (subject.byproduct) {
+        parts[subject.byproduct.part] = subject.byproduct.amount
+      }
     }
 
     for (const group of item.buildingGroups) {

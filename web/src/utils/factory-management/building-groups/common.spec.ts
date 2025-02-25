@@ -12,15 +12,17 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
-  calculateBuildingGroupParts, calculateBuildingGroupProblems,
-  calculateEffectiveBuildingCount, calculatePowerProducerBuildingGroupPower,
+  calculateBuildingGroupParts,
+  calculateBuildingGroupProblems,
+  calculateEffectiveBuildingCount,
+  calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
-  toggleBuildingGroupTray, updateBuildingGroupViaPart,
+  toggleBuildingGroupTray,
+  updateBuildingGroupViaPart,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
-import { getPowerRecipe } from '@/utils/factory-management/common'
 
 describe('buildingGroupsCommon', async () => {
   let mockFactory: Factory
@@ -1028,7 +1030,7 @@ describe('powerProducer simplified cases', async () => {
         group = powerProducer.buildingGroups[0]
       })
 
-      it('should update a power group when the part is in the ingredients', () => {
+      it('should update a power group when the part is an ingredient', () => {
       // Assume that for the "GeneratorFuel_LiquidFuel" recipe, the ingredient "LiquidFuel" has perMin = 20.
       // If we update "LiquidFuel" to 10, then targetEffective = 10 / 20 = 0.5.
       // The result should be 1 building with an underclock of 50%.
@@ -1038,34 +1040,28 @@ describe('powerProducer simplified cases', async () => {
       })
 
       it('should update a power group when the part is in the byproduct', () => {
-      // To simulate a power recipe where the relevant part is found only in byproduct,
-      // we override getPowerRecipe temporarily with a fake recipe.
-        const fakePowerRecipe = {
-          id: 'FakePower',
-          displayName: 'Fake Power',
-          ingredients: [],
-          byproduct: { part: 'UraniumWaste', perMin: 5 },
-          building: { name: 'fakeGenerator', power: 100 },
-        }
-        // Save original function so we can restore it later.
-        const originalGetPowerRecipe = getPowerRecipe
-        // Override getPowerRecipe to return our fake recipe.
-        // (This example assumes getPowerRecipe is not a constant; if it is, you might use a dependency injection approach.)
-        // @ts-ignore
-        getPowerRecipe = () => fakePowerRecipe
+        mockFactory.powerProducers = []
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 2,
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: FactoryPowerChangeType.Building,
+        })
+        powerProducer = mockFactory.powerProducers[0]
+        group = powerProducer.buildingGroups[0]
+        calculateFactories([mockFactory], gameData) // Needed for ingredient data
 
-        // For the byproduct "UraniumWaste", perMin = 5.
-        // If we update "UraniumWaste" to 8, then targetEffective = 8/5 = 1.6.
-        // For n = 1: candidate clock = ceil(1.6 * 100) = 160 (>100%).
-        // For n = 2: candidate clock = ceil((1.6/2) * 100) = ceil(80) = 80 (≤100%).
-        // We expect 2 buildings and a clock of 80%.
-        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, 'UraniumWaste', 8)
-        expect(group.buildingCount).toBe(2)
-        expect(group.overclockPercent).toBeCloseTo(80, 0)
+        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, 'NuclearWaste', 100)
 
-        // Restore the original getPowerRecipe
-        // @ts-ignore
-        getPowerRecipe = originalGetPowerRecipe
+        expect(group.buildingCount).toBe(10)
+        expect(group.overclockPercent).toBe(100)
+
+        expect(group.parts.NuclearFuelRod).toBe(2) // Fuel
+        expect(group.parts.Water).toBe(2400) // Ingredient
+        expect(group.parts.NuclearWaste).toBe(100) // Byproduct
+
+        // Also check the power
+        expect(group.powerProduced).toBe(25000)
       })
     })
   })
