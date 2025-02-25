@@ -357,7 +357,7 @@
       )
       updatingPart.value = ''
       console.log(`Part ${part} updated`)
-    }, 500)
+    }, 750)
   }
 </script>
 
