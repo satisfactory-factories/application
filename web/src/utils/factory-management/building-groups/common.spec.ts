@@ -16,10 +16,11 @@ import {
   calculateEffectiveBuildingCount, calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
   rebalanceBuildingGroups,
-  toggleBuildingGroupTray,
+  toggleBuildingGroupTray, updateBuildingGroupViaPart,
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { getPowerRecipe } from '@/utils/factory-management/common'
 
 describe('buildingGroupsCommon', async () => {
   let mockFactory: Factory
@@ -257,6 +258,38 @@ describe('buildingGroupsCommon', async () => {
           calculateBuildingGroupParts([product], GroupType.Product)
 
           expect(group.overclockPercent).toBe(100)
+        })
+
+        it('should calculate ALL parts of a product', () => {
+          mockFactory.products = []
+          addProductToFactory(mockFactory, {
+            id: 'AlienPowerFuel',
+            amount: 2, // 0.8 buildings
+            recipe: 'AlienPowerFuel',
+          })
+          product = mockFactory.products[0]
+          group = mockFactory.products[0].buildingGroups[0]
+          calculateFactories([mockFactory], gameData)
+
+          expect(group.parts.AlienPowerFuel).toBe(2) // Product
+          expect(group.parts.DarkEnergy).toBe(48) // Byproduct AND ingredient
+          expect(group.parts.SAMFluctuator).toBe(10) // Ingredient
+          expect(group.parts.CrystalShard).toBe(6) // Ingredient
+          expect(group.parts.QuantumOscillator).toBe(6) // Ingredient
+          expect(group.parts.QuantumEnergy).toBe(48) // Ingredient aka Excited Photonic
+
+          group.buildingCount = 10 // This forces a recalculation
+          group.overclockPercent = 100
+
+          calculateBuildingGroupParts([product], GroupType.Product)
+
+          expect(group.overclockPercent).toBe(100)
+          expect(group.parts.AlienPowerFuel).toBe(25) // Product
+          expect(group.parts.DarkEnergy).toBe(600) // Byproduct AND ingredient
+          expect(group.parts.SAMFluctuator).toBe(125) // Ingredient
+          expect(group.parts.CrystalShard).toBe(75) // Ingredient
+          expect(group.parts.QuantumOscillator).toBe(75) // Ingredient
+          expect(group.parts.QuantumEnergy).toBe(600) // Ingredient aka Excited Photonic
         })
 
         describe('overclocking', () => {
@@ -887,7 +920,153 @@ describe('powerProducer simplified cases', async () => {
     })
   })
 
-  describe('bestEffortUpdateBuildingCount', () => {
-    it('should update the ')
+  describe('updateBuildingGroupViaPart', () => {
+    beforeEach(async () => {
+      mockFactory = newFactory('Test Update Group')
+    })
+
+    describe('product', () => {
+      let product: FactoryItem
+
+      beforeEach(() => {
+        addProductToFactory(mockFactory, {
+          id: 'IronRod',
+          amount: 15,
+          recipe: 'IronRod',
+        })
+        product = mockFactory.products[0]
+        group = product.buildingGroups[0]
+      })
+
+      describe('building counts and overclocks', () => {
+        it('should update a product group when building count would result in >1, and underclock the remainder', () => {
+        // For "IronRod", assume its recipe (from gameData) defines:
+        //   ingredient "IronIngot" with perMin = 15.
+        // If we update "IronIngot" to 20, then:
+        //   targetEffective = 20 / 15 ≈ 1.33.
+        // For n = 1: candidate clock = ceil(1.33 * 100) = 134 (>100%).
+        // For n = 2: candidate clock = ceil((1.33/2) * 100) = ceil(66.5) = 67 (≤100%).
+        // We expect the function to choose buildings = 2 and clock = 67.
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'IronIngot', 20)
+          expect(group.buildingCount).toBe(2)
+          expect(group.overclockPercent).toBe(67)
+        })
+
+        it('should update a product group with an underclock when targetEffective < 1', () => {
+        // For baseRate = 15, if we update the part amount to 10:
+        // targetEffective = 10/15 ≈ 0.666666666666667 (0.667 rounded to 3 precision).
+        // Because it is sub 1, we expect a building count of the minimum of 1 and with an underclock.
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'IronIngot', 10)
+          expect(group.buildingCount).toBe(1)
+          expect(group.overclockPercent).toBe(66.667)
+        })
+
+        it('should update a product group when the part is a decimal', () => {
+        // For baseRate = 15, if we update the part amount to 7.5:
+        // targetEffective = 7.5/15 = 0.5.
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'IronIngot', 7.5)
+          expect(group.buildingCount).toBe(1)
+          expect(group.overclockPercent).toBe(50)
+        })
+
+        it('should update a product group when the part is a decimal with high precision', () => {
+        // For baseRate = 15, if we update the part amount to 7.5:
+        // targetEffective = 7.555/15 = 0.503666666666667.
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'IronIngot', 7.555)
+          expect(group.buildingCount).toBe(1)
+          expect(group.overclockPercent).toBe(50.367)
+        })
+      })
+
+      describe('part re-calculations', () => {
+        beforeEach(() => {
+          mockFactory.products = []
+          addProductToFactory(mockFactory, {
+            id: 'AlienPowerFuel',
+            amount: 2,
+            recipe: 'AlienPowerFuel',
+          })
+          product = mockFactory.products[0]
+          group = mockFactory.products[0].buildingGroups[0]
+          calculateFactories([mockFactory], gameData) // Needed for item requirements.
+        })
+        it('should update a product group when the part is an ingredient AND update all parts', () => {
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'SAMFluctuator', 120)
+
+          expect(group.buildingCount).toBe(10)
+          expect(group.overclockPercent).toBe(96)
+          expect(group.parts.AlienPowerFuel).toBe(24) // Product
+          expect(group.parts.DarkEnergy).toBe(576) // Byproduct AND ingredient
+          expect(group.parts.SAMFluctuator).toBe(120) // Ingredient
+          expect(group.parts.CrystalShard).toBe(72) // Ingredient
+          expect(group.parts.QuantumOscillator).toBe(72) // Ingredient
+          expect(group.parts.QuantumEnergy).toBe(576) // Ingredient aka Excited Photonic Matter
+        })
+
+        it('should update a product group when the part is a byproduct', () => {
+          updateBuildingGroupViaPart(group, product, GroupType.Product, 'DarkEnergy', 120)
+
+          expect(group.buildingCount).toBe(2)
+          expect(group.overclockPercent).toBe(100)
+          expect(group.parts.DarkEnergy).toBe(120)
+          expect(group.parts.AlienPowerFuel).toBe(5)
+        })
+      })
+    })
+
+    describe('power', () => {
+      let powerProducer: FactoryPowerProducer
+
+      beforeEach(() => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatorfuel',
+          fuelAmount: 80,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Building,
+        })
+        powerProducer = mockFactory.powerProducers[0]
+        group = powerProducer.buildingGroups[0]
+      })
+
+      it('should update a power group when the part is in the ingredients', () => {
+      // Assume that for the "GeneratorFuel_LiquidFuel" recipe, the ingredient "LiquidFuel" has perMin = 20.
+      // If we update "LiquidFuel" to 10, then targetEffective = 10 / 20 = 0.5.
+      // The result should be 1 building with an underclock of 50%.
+        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, 'LiquidFuel', 10)
+        expect(group.buildingCount).toBe(1)
+        expect(group.overclockPercent).toBeCloseTo(50, 0)
+      })
+
+      it('should update a power group when the part is in the byproduct', () => {
+      // To simulate a power recipe where the relevant part is found only in byproduct,
+      // we override getPowerRecipe temporarily with a fake recipe.
+        const fakePowerRecipe = {
+          id: 'FakePower',
+          displayName: 'Fake Power',
+          ingredients: [],
+          byproduct: { part: 'UraniumWaste', perMin: 5 },
+          building: { name: 'fakeGenerator', power: 100 },
+        }
+        // Save original function so we can restore it later.
+        const originalGetPowerRecipe = getPowerRecipe
+        // Override getPowerRecipe to return our fake recipe.
+        // (This example assumes getPowerRecipe is not a constant; if it is, you might use a dependency injection approach.)
+        // @ts-ignore
+        getPowerRecipe = () => fakePowerRecipe
+
+        // For the byproduct "UraniumWaste", perMin = 5.
+        // If we update "UraniumWaste" to 8, then targetEffective = 8/5 = 1.6.
+        // For n = 1: candidate clock = ceil(1.6 * 100) = 160 (>100%).
+        // For n = 2: candidate clock = ceil((1.6/2) * 100) = ceil(80) = 80 (≤100%).
+        // We expect 2 buildings and a clock of 80%.
+        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, 'UraniumWaste', 8)
+        expect(group.buildingCount).toBe(2)
+        expect(group.overclockPercent).toBeCloseTo(80, 0)
+
+        // Restore the original getPowerRecipe
+        // @ts-ignore
+        getPowerRecipe = originalGetPowerRecipe
+      })
+    })
   })
 })
