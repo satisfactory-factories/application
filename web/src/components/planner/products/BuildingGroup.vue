@@ -213,20 +213,16 @@
     BuildingGroup,
     Factory,
     FactoryItem,
-    FactoryPowerChangeType,
     FactoryPowerProducer,
     GroupType,
   } from '@/interfaces/planner/FactoryInterface'
-  import eventBus from '@/utils/eventBus'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { useGameDataStore } from '@/stores/game-data-store'
-  import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
   import { updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
+  import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
-  const gameData = useGameDataStore().getGameData()
 
   // const timeout: NodeJS.Timeout | null = null
   const updatingPart = ref('')
@@ -241,53 +237,7 @@
   }>()
 
   const updateGroup = (group: BuildingGroup) => {
-    if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {
-      eventBus.emit('toast', {
-        message: 'Building count must be a positive number.',
-        type: 'warning',
-      })
-      group.buildingCount = 1
-      return
-    }
-
-    // Ensure the building count is a whole number
-    if (group.buildingCount % 1 !== 0) {
-      eventBus.emit('toast', {
-        message: 'Building count must equal to a whole number. If you need a single building clocked, create a new building group and adjust it\'s clock.',
-        type: 'error',
-        timeout: 5000,
-      })
-      group.buildingCount = Math.floor(group.buildingCount)
-    }
-
-    if (props.item.buildingGroups.length === 1) {
-      // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
-      if (props.group.type === GroupType.Product) {
-        const subject = props.item as FactoryItem
-        subject.buildingRequirements.amount = group.buildingCount
-        increaseProductQtyViaBuilding(subject, gameData)
-      } else if (props.group.type === GroupType.Power) {
-        const subject = props.item as FactoryPowerProducer
-        subject.buildingAmount = group.buildingCount
-        subject.updated = FactoryPowerChangeType.Building
-
-        // The factory update should then take over and change the rest
-      } else {
-        throw new Error('Invalid type')
-      }
-    }
-
-    // If the user is trying to use more than .0001 precision for overclock, truncate it and alert them.
-    const clock = group.overclockPercent.toString().split('.')[0]
-    const precision = group.overclockPercent.toString().split('.')[1]
-    if (precision?.length > 4) {
-      // Truncate the overclock to 4 decimal places
-      group.overclockPercent = Number(`${clock}.${precision.slice(0, 4)}`)
-      eventBus.emit('toast', {
-        message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
-        type: 'warning',
-      })
-    }
+    updateBuildingGroup(group, props.item)
 
     // Update the factory
     updateFactory(props.factory)
