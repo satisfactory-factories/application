@@ -7,9 +7,8 @@
     <div class="factory-item-controls">
       <v-btn
         :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
-        :disabled="product.buildingGroups.length === 0"
         size="small"
-        :variant="product.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+        variant="flat"
         @click="toggleBuildingGroupTray(product)"
       >
         <span v-if="!product.buildingGroupsTrayOpen">

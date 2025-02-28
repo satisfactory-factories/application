@@ -37,27 +37,17 @@ export const addBuildingGroup = (
   groupType: GroupType,
   addBuildings = true
 ) => {
-  let subject: FactoryItem | FactoryPowerProducer
-  if (groupType === GroupType.Product) {
-    subject = item as FactoryItem
-  } else if (groupType === GroupType.Power) {
-    subject = item as FactoryPowerProducer
-  } else {
-    throw new Error(`addBuildingGroup: Invalid group type: ${groupType}`)
-  }
+  let buildingCount = 1
 
-  let buildingCount = 0
   if (addBuildings) {
     if (groupType === GroupType.Product) {
-      subject = item as FactoryItem // TS... why...
-      buildingCount = subject.buildingRequirements.amount
+      buildingCount = (item as FactoryItem).buildingRequirements.amount
     } else if (groupType === GroupType.Power) {
-      subject = item as FactoryPowerProducer // TS... why...
-      buildingCount = subject.buildingCount
+      buildingCount = (item as FactoryPowerProducer).buildingCount
     }
   }
 
-  subject.buildingGroups.push({
+  item.buildingGroups.push({
     id: Math.floor(Math.random() * 10000),
     type: groupType,
     buildingCount,

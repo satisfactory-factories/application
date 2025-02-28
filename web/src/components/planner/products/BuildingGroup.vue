@@ -1,5 +1,9 @@
 <template>
-  <div :key="group.id" class="d-flex flex-wrap items-center align-center">
+  <div
+    :id="`${factory.id}-${group.id}-building-group`"
+    :key="`${factory.id}-${group.id}`"
+    class="d-flex flex-wrap items-center align-center"
+  >
     <div>
       <v-btn
         color="red rounded mr-1"
@@ -19,6 +23,7 @@
       >
         <game-asset :subject="building" type="building" />
         <v-number-input
+          :id="`${factory.id}-${group.id}-building-count`"
           v-model.number="group.buildingCount"
           class="inline-inputs ml-0"
           control-variant="stacked"
@@ -46,6 +51,7 @@
           <game-asset subject="overclock-production" type="item_id" />
         </tooltip>
         <v-number-input
+          :id="`${factory.id}-${group.id}-clock`"
           v-model.number="group.overclockPercent"
           class="inline-inputs ml-0"
           control-variant="stacked"
@@ -61,7 +67,10 @@
         <span>%</span>
       </v-chip>
       <div class="underchip text-yellow-darken-2">
-        <span v-if="group.type !== GroupType.Power">
+        <span
+          v-if="group.type !== GroupType.Power"
+          :id="`${factory.id}-${group.id}-group-power`"
+        >
           Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
         </span>
         <span v-else>&nbsp;</span>
@@ -81,6 +90,7 @@
             <game-asset subject="somersloop" type="item_id" />
           </tooltip>
           <v-number-input
+            :id="`${factory.id}-${group.id}-somersloops`"
             v-model.number="group.somersloops"
             class="inline-inputs ml-0"
             control-variant="stacked"
@@ -118,6 +128,7 @@
             <game-asset :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
+            :id="`${factory.id}-${group.id}-parts-${part}-amount`"
             v-model.number="group.parts[part]"
             class="inline-inputs"
             control-variant="stacked"
@@ -125,7 +136,6 @@
             hide-details
             hide-spin-buttons
             :min="0"
-            :name="`${item.id}-${part}.amount`"
             width="110px"
             @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
@@ -144,6 +154,7 @@
       <div>=</div>
       <div class="underchip">&nbsp;</div>
     </div>
+    <!-- Rendering for products / byproducts -->
     <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
       <div v-if="part.toString() === item.id || partIsByProduct(String(part), group.type)">
         <v-chip
@@ -155,6 +166,7 @@
             <game-asset :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
+            :id="`${factory.id}-${group.id}-parts-${part}-amount`"
             v-model.number="group.parts[part]"
             class="inline-inputs"
             control-variant="stacked"
@@ -162,7 +174,6 @@
             hide-details
             hide-spin-buttons
             :min="0"
-            :name="`${item.id}-${part}.amount`"
             width="110px"
             @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
@@ -176,6 +187,8 @@
         </div>
       </div>
     </template>
+
+    <!-- Power production -->
     <template v-if="group.type === GroupType.Power">
       <div>
         <v-chip
@@ -184,7 +197,7 @@
         >
           <i class="fas fa-bolt" />
           <i class="fas fa-plus" />
-          <span class="ml-2">
+          <span :id="`${factory.id}-${group.id}-power`" class="ml-2">
             {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
           </span>
         </v-chip>

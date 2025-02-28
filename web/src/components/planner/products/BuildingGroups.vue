@@ -16,7 +16,13 @@
     <span :class="{ 'text-green': correct }">
       <i class="fas fa-building" />
       <span class="ml-1">
-        Effective Buildings: <b>{{ effectiveBuildings }}</b> | {{ buildingsRemaining }} remaining
+        Effective Buildings: <b><span :id="`${factory.id}-effective-buildings`">
+          {{ effectiveBuildings }}
+        </span></b>
+        |
+        <span :id="`${factory.id}-buildings-remaining`">
+          {{ buildingsRemaining }}
+        </span> remaining
       </span>
     </span>
     <div class="ml-2">
@@ -35,6 +41,7 @@
   </div>
   <div class="d-flex align-center">
     <v-btn
+      :id="`${factory.id}-add-building-group`"
       color="primary"
       size="small"
       @click="addBuildingGroupBasedOnType(item, type, factory, false)"

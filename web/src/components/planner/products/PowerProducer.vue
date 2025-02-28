@@ -1,15 +1,14 @@
 <template>
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
-    :key="producerIndex"
+    :key="`${factory.id}-${producerIndex}`"
     class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
   >
     <div class="factory-item-controls">
       <v-btn
         :color="producer.buildingGroupsHaveProblem ? 'red' : 'green'"
-        :disabled="producer.buildingGroups.length === 0"
         size="small"
-        :variant="producer.buildingGroups.length === 0 ? 'outlined' : 'flat'"
+        variant="flat"
         @click="toggleBuildingGroupTray(producer)"
       >
         <span v-if="!producer.buildingGroupsTrayOpen">
