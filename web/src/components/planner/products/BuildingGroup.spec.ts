@@ -37,21 +37,54 @@ describe('BuildingGroup.ts', () => {
     it('should emit a warning toast if the building count is not a positive number', () => {
       buildingGroup.buildingCount = 0
 
-      updateBuildingGroup(buildingGroup, product)
+      updateBuildingGroup(buildingGroup)
 
       expect(eventBus.emit).toHaveBeenCalledWith('toast', {
         message: 'Building count must be a positive number.',
         type: 'warning',
       })
+      expect(buildingGroup.buildingCount).toBe(1)
     })
 
-    it('should increase the product\'s quantity if it is a singular building group', () => {
-      buildingGroup.buildingCount = 5
+    it('should emit a warning toast if the overclock percent is invalid', () => {
+      buildingGroup.overclockPercent = -100
 
-      updateBuildingGroup(buildingGroup, product)
+      updateBuildingGroup(buildingGroup)
 
-      expect(product.buildingRequirements.amount).toBe(5)
-      expect(product.amount).toBe(150)
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'Overclock percentage must be a positive number.',
+        type: 'warning',
+      })
+      expect(buildingGroup.overclockPercent).toBe(1)
+
+      buildingGroup.overclockPercent = -100
+
+      updateBuildingGroup(buildingGroup)
+      expect(buildingGroup.overclockPercent).toBe(1)
+    })
+
+    it('should emit a warning toast if the overclock percent is above 250%', () => {
+      buildingGroup.overclockPercent = 251
+
+      updateBuildingGroup(buildingGroup)
+
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'Overclock percentage must not exceed 250%.',
+        type: 'warning',
+      })
+      expect(buildingGroup.overclockPercent).toBe(250)
+    })
+
+    it('should emit a warning toast if the overclock percent is above maximum precision', () => {
+      buildingGroup.overclockPercent = 123.333333333
+
+      updateBuildingGroup(buildingGroup)
+
+      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
+        message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
+        type: 'warning',
+      })
+      expect(buildingGroup.overclockPercent).toBe(123.3333)
     })
   })
 })
