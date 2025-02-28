@@ -119,6 +119,35 @@ describe('BuildingGroups', () => {
       })
     })
 
+    describe('editing groups', () => {
+      it('should correctly update the building group when building count has changed', async () => {
+        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        await count.setValue('2')
+
+        expect(buildingGroup.buildingCount).toBe(2)
+        expect(buildingGroup.overclockPercent).toBe(100)
+        expect(buildingGroup.parts.OreIron).toBe(60)
+        expect(buildingGroup.parts.IronIngot).toBe(60)
+      })
+
+      it('should correctly update the product building count when building count has changed when only one group', async () => {
+        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        await count.setValue('2')
+
+        expect(product.buildingRequirements.amount).toBe(2)
+      })
+
+      it('should the clock the changed, the parts should update', async () => {
+        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+        await count.setValue('133.333')
+
+        expect(buildingGroup.buildingCount).toBe(1)
+        expect(buildingGroup.overclockPercent).toBe(133.333)
+        expect(buildingGroup.parts.OreIron).toBe(39.999)
+        expect(buildingGroup.parts.IronIngot).toBe(39.999)
+      })
+    })
+
     describe('removing groups', () => {})
 
     describe('spot checks', () => {
