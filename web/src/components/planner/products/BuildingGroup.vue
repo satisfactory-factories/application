@@ -118,7 +118,7 @@
     </template>
     <!-- Spacer if there's too many items on small screens -->
     <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
-      <div v-if="part.toString() !== item.id">
+      <div v-if="part.toString() !== item.id && !partIsByProduct(String(part), group.type)">
         <v-chip
           v-if="part.toString() !== item.id"
           class="sf-chip blue input mx-1 text-body-1"

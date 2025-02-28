@@ -118,6 +118,29 @@ describe('BuildingGroups', () => {
         expect(power.exists()).toBe(false)
       })
     })
+
+    describe('removing groups', () => {})
+
+    describe('spot checks', () => {
+      it('should display distilled silica which has an input that is also and byproduct (water)', () => {
+        addProductToFactory(factory, {
+          id: 'Silica',
+          amount: 27,
+          recipe: 'Alternate_Silica_Distilled',
+        })
+        product = factory.products[1]
+        product.buildingGroupsTrayOpen = true
+        buildingGroup = product.buildingGroups[0]
+        calculateFactories([factory], gameData)
+        subject = mountProduct(factory)
+
+        const waterInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-ingredients-Water-amount"]`)
+        const waterOutput = subject.find(`[id="${factory.id}-${buildingGroup.id}-products-Water-amount"]`)
+
+        expect(waterInput.attributes('value')).toBe('10')
+        expect(waterOutput.attributes('value')).toBe('8')
+      })
+    })
   })
 
   describe('power producers', () => {
