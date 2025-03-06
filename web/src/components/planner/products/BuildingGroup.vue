@@ -62,9 +62,12 @@
           :min="0"
           type="number"
           width="125px"
-          @update:model-value="updateGroup(group)"
+          @update:model-value="updateGroupOverclockDebounce(group)"
         />
         <span>%</span>
+        <span v-if="updatingOverclock">
+          <v-icon>fas fa-sync fa-spin</v-icon>
+        </span>
       </v-chip>
       <div class="underchip text-yellow-darken-2">
         <span
@@ -226,6 +229,9 @@
 
   // const timeout: NodeJS.Timeout | null = null
   const updatingPart = ref('')
+  const updatingOverclock = ref(false)
+
+  const timeout = ref<NodeJS.Timeout | null>(null)
 
   const { lgAndDown, lgAndUp } = useDisplay()
 
@@ -237,10 +243,25 @@
   }>()
 
   const updateGroup = (group: BuildingGroup) => {
-    updateBuildingGroup(group, props.item)
+    updateBuildingGroup(group)
 
     // Update the factory
     updateFactory(props.factory)
+  }
+
+  const updateGroupOverclockDebounce = (group: BuildingGroup) => {
+    updatingOverclock.value = true
+    if (timeout.value) {
+      clearTimeout(timeout.value)
+    }
+
+    timeout.value = setTimeout(() => {
+      console.log('Updating building group overclock')
+      updateBuildingGroup(group)
+      updateFactory(props.factory)
+      updatingOverclock.value = false
+      console.log('Overclock updated')
+    }, 750)
   }
 
   const deleteGroup = (group: BuildingGroup) => {
@@ -298,8 +319,6 @@
   const partCount = computed(() => {
     return Object.values(props.group.parts).length
   })
-
-  const timeout = ref<NodeJS.Timeout | null>(null)
 
   const updateGroupPartsDebounce = (
     part: string

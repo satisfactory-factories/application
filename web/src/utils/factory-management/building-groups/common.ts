@@ -2,6 +2,7 @@ import {
   BuildingGroup,
   Factory,
   FactoryItem,
+  FactoryPowerChangeType,
   FactoryPowerProducer,
   GroupType,
 } from '@/interfaces/planner/FactoryInterface'
@@ -13,6 +14,7 @@ import { addPowerProducerBuildingGroup } from '@/utils/factory-management/buildi
 import eventBus from '@/utils/eventBus'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
+import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 
 const gameData = await fetchGameData()
 
@@ -525,4 +527,29 @@ export const recalculateGroupMetrics = (
   }
   calculateBuildingGroupProblems(item, groupType)
   calculateHasProblem(factory)
+}
+
+// Updates the item if the building group has been updated under certain conditions
+export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer) => {
+  if (item.buildingGroups.length === 1) {
+    const group = item.buildingGroups[0]
+
+    // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
+    if (group.type === GroupType.Product) {
+      const subject = item as FactoryItem
+
+      // We need to update the product via effective building count, not whole buildings.
+      subject.buildingRequirements.amount = calculateEffectiveBuildingCount([group])
+
+      increaseProductQtyViaBuilding(subject, gameData)
+    } else if (group.type === GroupType.Power) {
+      const subject = item as FactoryPowerProducer
+      subject.buildingAmount = calculateEffectiveBuildingCount([group])
+      subject.updated = FactoryPowerChangeType.Building
+
+      // The factory update should then take over and change the rest
+    } else {
+      throw new Error('Invalid type')
+    }
+  }
 }

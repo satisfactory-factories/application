@@ -17,6 +17,7 @@ import {
   calculateEffectiveBuildingCount,
   calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
+  checkForItemUpdate,
   rebalanceBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -54,16 +55,17 @@ describe('buildingGroupsCommon', async () => {
 
     // Calculate factory to get some extra contextual info, then blow the building groups away
     calculateFactories(factories, gameData)
-    product.buildingGroups = []
-    mockFactory.powerProducers[0].buildingGroups = []
 
     productBuildingGroups = product.buildingGroups
     powerBuildingGroups = mockFactory.powerProducers[0].buildingGroups
-    expect(productBuildingGroups.length).toBe(0)
-    expect(productBuildingGroups.length).toBe(0)
   })
 
   describe('addGroup', () => {
+    beforeEach(() => {
+      product.buildingGroups = []
+      powerProducer.buildingGroups = []
+    })
+
     it('should add a product group', () => {
       addProductBuildingGroup(product, mockFactory)
 
@@ -670,6 +672,66 @@ describe('buildingGroupsCommon', async () => {
         calculateBuildingGroupProblems(product, GroupType.Product)
 
         expect(product.buildingGroupsHaveProblem).toBe(false)
+      })
+    })
+
+    describe('checkForItemUpdate', () => {
+      it('should increase the product\'s quantity if it is a singular building group', () => {
+        productBuildingGroups[0].buildingCount = 10
+
+        checkForItemUpdate(product)
+
+        expect(product.buildingRequirements.amount).toBe(10)
+        expect(product.amount).toBe(300)
+      })
+
+      it('should increase the product\'s quantity if it is a singular building group, via calculateFactories', () => {
+        productBuildingGroups[0].buildingCount = 10
+
+        calculateFactories(factories, gameData)
+
+        expect(product.buildingRequirements.amount).toBe(10)
+        expect(product.amount).toBe(300)
+      })
+
+      it('should NOT increase the product\'s quantity if it is multiple building groups', () => {
+        addProductBuildingGroup(product, mockFactory)
+        productBuildingGroups[0].buildingCount = 1337
+
+        checkForItemUpdate(product)
+
+        expect(product.buildingRequirements.amount).toBe(5)
+        expect(product.amount).toBe(150)
+      })
+
+      it('should update the product\'s quantity if the clock has been changed', () => {
+        productBuildingGroups[0].buildingCount = 1
+        productBuildingGroups[0].overclockPercent = 50
+
+        checkForItemUpdate(product)
+
+        expect(product.amount).toBe(15)
+      })
+
+      // In this context if the user is intentionally overclocking we'd prefer it to respect the building count.
+      it('should respect the user\'s overclock and keep it to the same building, but updating the product quantity, when a singular group', () => {
+        productBuildingGroups[0].buildingCount = 1
+        productBuildingGroups[0].overclockPercent = 200
+
+        checkForItemUpdate(product)
+
+        expect(product.buildingRequirements.amount).toBe(1)
+        expect(product.amount).toBe(45)
+      })
+
+      it('should make no changes to product quantity when multiple groups and overclocking', () => {
+        addProductBuildingGroup(product, mockFactory)
+        productBuildingGroups[0].overclockPercent = 200
+
+        checkForItemUpdate(product)
+
+        expect(product.buildingRequirements.amount).toBe(5)
+        expect(product.amount).toBe(150)
       })
     })
   })

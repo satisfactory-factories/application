@@ -293,6 +293,7 @@ export const useAppStore = defineStore('app', () => {
           product.buildingGroups = []
           product.buildingGroupsTrayOpen = false
           product.buildingGroupsHaveProblem = false
+          product.buildingGroupItemSync = true
 
           addProductBuildingGroup(product, factory, true)
           // Calculate the building group
@@ -314,6 +315,7 @@ export const useAppStore = defineStore('app', () => {
           producer.buildingGroups = []
           producer.buildingGroupsTrayOpen = false
           producer.buildingGroupsHaveProblem = false
+          producer.buildingGroupItemSync = true
 
           addPowerProducerBuildingGroup(producer, factory, true)
           // Calculate the building group

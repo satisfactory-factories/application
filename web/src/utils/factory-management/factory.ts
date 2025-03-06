@@ -20,7 +20,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
-import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { checkForItemUpdate, rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -129,9 +129,11 @@ export const calculateFactory = (
   // Calculate / synchronise the factory building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
+    checkForItemUpdate(product)
     rebalanceBuildingGroups(product, GroupType.Product, factory)
   })
   factory.powerProducers.forEach(producer => {
+    checkForItemUpdate(producer)
     rebalanceBuildingGroups(producer, GroupType.Power, factory)
   })
 

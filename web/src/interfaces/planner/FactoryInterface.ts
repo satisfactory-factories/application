@@ -57,6 +57,7 @@ export interface FactoryItem {
   buildingGroups: BuildingGroup[]
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
+  buildingGroupItemSync: boolean
 }
 
 export interface FactoryDependencyRequest {
@@ -144,6 +145,7 @@ export interface FactoryPowerProducer {
   buildingGroups: BuildingGroup[]
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
+  buildingGroupItemSync: boolean
 }
 
 export interface FactoryPower {
