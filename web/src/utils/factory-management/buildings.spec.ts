@@ -20,11 +20,6 @@ const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
 }
 
-const doPowerProducerCalculations = (mockFactory: Factory, producer: FactoryPowerProducer) => {
-  calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(producer, GroupType.Power, mockFactory)
-}
-
 describe('buildings', () => {
   let mockFactory: Factory
   let product: FactoryItem
@@ -135,10 +130,6 @@ describe('buildings', () => {
       })
 
       describe('power producers', () => {
-        beforeEach(() => {
-          doPowerProducerCalculations(mockFactory, producer)
-        })
-
         it('should correctly calculate the amount of power produced for a singular group', () => {
           calculateFactories([mockFactory], gameData)
 
@@ -149,7 +140,7 @@ describe('buildings', () => {
       })
     })
 
-    describe('buildings', () => {
+    describe('building groups', () => {
       describe('products', () => {
         it('should properly calculate the number of buildings derived from a singular building group', () => {
           calculateFinalBuildingsAndPower(mockFactory)

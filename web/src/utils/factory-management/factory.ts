@@ -129,12 +129,12 @@ export const calculateFactory = (
   // Calculate / synchronise the factory building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
+    rebalanceBuildingGroups(product, GroupType.Product, factory, { forcePartCalculation: true })
     checkForItemUpdate(product)
-    rebalanceBuildingGroups(product, GroupType.Product, factory)
   })
   factory.powerProducers.forEach(producer => {
+    rebalanceBuildingGroups(producer, GroupType.Power, factory, { forcePartCalculation: true })
     checkForItemUpdate(producer)
-    rebalanceBuildingGroups(producer, GroupType.Power, factory)
   })
 
   calculateFinalBuildingsAndPower(factory)

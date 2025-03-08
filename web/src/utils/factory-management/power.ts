@@ -39,7 +39,12 @@ export const addPowerProducerToFactory = (
 
   if (options.building) {
     // Add the default building group for the producer when one is selected, otherwise we have to wait for the user to choose one
-    addPowerProducerBuildingGroup(factory.powerProducers[factory.powerProducers.length - 1], factory, true)
+    addPowerProducerBuildingGroup(
+      factory.powerProducers[factory.powerProducers.length - 1],
+      factory,
+      true,
+      true,
+    )
   }
 }
 
@@ -76,17 +81,16 @@ export const calculatePowerProducers = (
 
       // Now we've handled the updated values, we can calculate the power generation again
       producer.powerProduced = calculatePowerAmount(producer, recipe)
-      producer.powerAmount = producer.powerProduced
     }
 
     if (producer.updated === FactoryPowerChangeType.Ingredient) {
       // producer.ingredients[1].perMin will have been changed directly, so we just run the calculation.
       producer.powerProduced = calculatePowerAmount(producer, recipe)
-      producer.powerAmount = producer.powerProduced
     }
 
     if (producer.updated === FactoryPowerChangeType.Building) {
-      producer.buildingCount = producer.buildingAmount // Replace the building directly
+      // Replace the building directly
+      producer.buildingCount = producer.buildingAmount
 
       // Now we need to set the ingredients in a ratio equivalent of the amount of buildings
       producer.ingredients[0].perMin = recipe.ingredients[0].perMin * producer.buildingCount
@@ -94,7 +98,6 @@ export const calculatePowerProducers = (
 
       // Now we need to increase the power so the supplemental fuel is calculated correctly
       producer.powerProduced = calculatePowerAmount(producer, recipe)
-      producer.powerAmount = producer.powerProduced
     }
 
     // For supplemental fuels, we need to know the power produced in order to calculate them
@@ -105,7 +108,6 @@ export const calculatePowerProducers = (
     if (producer.updated !== FactoryPowerChangeType.Building) {
       // Now calculate the amount of buildings the user needs to build
       producer.buildingCount = producer.powerProduced / recipe.building.power
-      producer.buildingAmount = producer.buildingCount
     }
 
     // Now add the byproduct if it exists
@@ -134,6 +136,11 @@ export const calculatePowerProducers = (
     if (producer.byproduct) {
       producer.byproduct.amount = formatNumberFully(producer.byproduct.amount)
     }
+
+    // Ensure the amounts match the new reality, so that if they are re-calculated they don't change without the user's say so.
+    producer.buildingAmount = producer.buildingCount
+    producer.powerAmount = producer.powerProduced
+    producer.fuelAmount = producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0)
   })
 }
 

@@ -39,13 +39,19 @@ export const addBuildingGroup = (
   groupType: GroupType,
   addBuildings = true
 ) => {
-  let buildingCount = 1
+  let buildingCount = 0
 
   if (addBuildings) {
     if (groupType === GroupType.Product) {
       buildingCount = (item as FactoryItem).buildingRequirements.amount
     } else if (groupType === GroupType.Power) {
-      buildingCount = (item as FactoryPowerProducer).buildingCount
+      const subject = item as FactoryPowerProducer
+      buildingCount = subject.buildingCount
+
+      // We need to shim in the building count if it's 0 but the amount is set. This is for when we are adding a new producer.
+      if (buildingCount === 0 && subject.buildingAmount !== 0) {
+        buildingCount = subject.buildingAmount
+      }
     }
   }
 
@@ -130,6 +136,12 @@ export const getBuildingCount = (
   } else if (groupType === GroupType.Power) {
     const producer = item as FactoryPowerProducer
     buildingCount = producer.buildingCount
+
+    // If the power producer is freshly added, and due to the async way power producers are calculated, we need to shim in the building count.
+    if (buildingCount === 0 && producer.buildingAmount !== 0) {
+      buildingCount = producer.buildingAmount
+      // NOTE we do not change the actual data yet, that is done later in the process.
+    }
   } else {
     throw new Error('productBuildingGroups: getBuildingCount: Invalid group type!')
   }
@@ -154,6 +166,7 @@ export const calculateBuildingGroupParts = (
     }
 
     // Sanitize the building groups
+    // TODO: Hoist this sanitization to the factory calculation
     if (item.buildingGroups.length === 0) {
       if (type === GroupType.Product) {
         addProductBuildingGroup(item as FactoryItem, factory, true)
@@ -235,6 +248,7 @@ export const calculateBuildingGroupProblems = (
 export interface RebalanceBuildingGroupOptions {
   force?: boolean
   changeBuildings?: boolean
+  forcePartCalculation?: boolean
 }
 // Takes the building groups and rebalances them based on the building count
 export const rebalanceBuildingGroups = (
@@ -254,8 +268,13 @@ export const rebalanceBuildingGroups = (
     options.changeBuildings = true
   }
 
+  // If we're looking merely to rebalance, do it now, as there may be no changes needed to buildings but the parts may need update anyway.
+  if (options.forcePartCalculation) {
+    recalculateGroupMetrics(item, groupType, factory)
+  }
+
   // Prevent rebalancing when in advanced mode
-  if (!options?.force && item.buildingGroups.length > 1) {
+  if (!options?.force) {
     console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
     return
   }

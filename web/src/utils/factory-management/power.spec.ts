@@ -26,6 +26,61 @@ describe('power', () => {
     calculateFactories([factory], gameData)
   })
 
+  describe('addPowerProducerToFactory', () => {
+    // Reset it
+    beforeEach(() => {
+      factory = newFactory('My fuel plant clean')
+    })
+    it('should add a power producer to the factory via buildings', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 5,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      expect(factory.powerProducers[0].buildingCount).toBe(0) // Calculated after
+      expect(factory.powerProducers[0].buildingAmount).toBe(5)
+    })
+
+    it('should add a power producer to the factory via buildings', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        powerAmount: 250,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Power,
+      })
+
+      expect(factory.powerProducers[0].buildingCount).toBe(0) // Calculated after
+      expect(factory.powerProducers[0].powerProduced).toBe(0) // Calculated after
+      expect(factory.powerProducers[0].powerAmount).toBe(250)
+    })
+
+    it('should add a building group when added, with the requested buildings', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 5,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      const group = factory.powerProducers[0].buildingGroups[0]
+      expect(group.buildingCount).toBe(5)
+    })
+
+    it('should add a building group when added, with parts', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 5,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      const group = factory.powerProducers[0].buildingGroups[0]
+      expect(group.parts.LiquidFuel).toBe(100)
+    })
+  })
+
   describe('calculatePowerProducers', () => {
     it('should calculate the correct generator details', () => {
       expect(factory.powerProducers[0].building).toBe('generatorfuel')
@@ -66,7 +121,7 @@ describe('power', () => {
     })
 
     describe('Nuclear Power', () => {
-      beforeAll(() => {
+      beforeEach(() => {
         factory = newFactory('My nuclear plant')
         // Add one nuclear power plant
         addPowerProducerToFactory(factory, {

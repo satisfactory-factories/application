@@ -36,7 +36,6 @@ export const addProductToFactory = (
   })
 
   // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.
-
   calculateProductBuildings(factory, gameData)
 
   // Also push the first product building group

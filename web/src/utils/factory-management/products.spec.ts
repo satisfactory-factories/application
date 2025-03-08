@@ -55,6 +55,7 @@ describe('products', () => {
       expect(mockFactory.products.length).toBe(1)
       expect(mockFactory.products[0].id).toBe('IronIngot')
     })
+
     it('should add a product of different recipe to the factory', () => {
       const mockProductAlt = {
         id: 'IronIngot',
@@ -66,15 +67,46 @@ describe('products', () => {
       expect(mockFactory.products.length).toBe(2)
       expect(mockFactory.products[1].id).toBe('IronIngot')
     })
+
     it('should add a part to the factory', () => {
       expect(mockFactory.parts.IronIngot).toBeDefined()
     })
+
     it('should add proper display orders', () => {
       addProductToFactory(mockFactory, mockIngotIron)
       addProductToFactory(mockFactory, mockIngotCopper)
 
       expect(mockFactory.products[0].displayOrder).toBe(0)
       expect(mockFactory.products[1].displayOrder).toBe(1)
+    })
+
+    describe('building groups', () => {
+      beforeEach(() => {
+        mockFactory = newFactory('Iron Ingots')
+      })
+
+      it('should add a building group to a product, with the expected buildings of 0', () => {
+        addProductToFactory(mockFactory, {
+          id: 'IronIngot',
+          amount: 60,
+          recipe: 'IngotIron',
+        })
+
+        const group = mockFactory.products[0].buildingGroups[0]
+        expect(group.buildingCount).toBe(0)
+      })
+
+      it('should add a building group to a product, with the expected parts of 0', () => {
+        addProductToFactory(mockFactory, {
+          id: 'IronIngot',
+          amount: 60,
+          recipe: 'IngotIron',
+        })
+
+        const group = mockFactory.products[0].buildingGroups[0]
+        expect(group.parts.OreIron).toBe(0)
+        expect(group.parts.IronIngot).toBe(0)
+      })
     })
   })
 

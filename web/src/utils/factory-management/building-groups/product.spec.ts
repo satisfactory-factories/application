@@ -52,11 +52,10 @@ describe('productBuildingGroups', async () => {
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
-    it('should add a new group to the product with 1 building when asked', () => {
+    it('should add a new group to the product with 0 buildings', () => {
       addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
 
-      expect(buildingGroups.length).toBe(1)
-      expect(buildingGroups[0].buildingCount).toBe(1)
+      expect(buildingGroups[0].buildingCount).toBe(0)
     })
 
     it('should add a new group to the product with the correct parts', () => {
@@ -71,8 +70,8 @@ describe('productBuildingGroups', async () => {
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
-      expect(buildingGroups[1].parts.OreIron).toBe(30)
-      expect(buildingGroups[1].parts.IronIngot).toBe(30)
+      expect(buildingGroups[1].parts.OreIron).toBe(0)
+      expect(buildingGroups[1].parts.IronIngot).toBe(0)
     })
     it('should automatically add a group when a product is added to a factory', () => {
       addProductToFactory(mockFactory, {
