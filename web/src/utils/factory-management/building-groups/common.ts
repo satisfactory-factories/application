@@ -70,7 +70,7 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
     effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100
   }
 
-  return formatNumberFully(effectiveBuildingCount)
+  return formatNumberFully(effectiveBuildingCount, 4)
 }
 
 // Returns the total power usage of all building groups for a product

@@ -52,11 +52,11 @@ describe('productBuildingGroups', async () => {
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
-    it('should add a new group to the product with 0 buildings when asked', () => {
+    it('should add a new group to the product with 1 building when asked', () => {
       addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
 
       expect(buildingGroups.length).toBe(1)
-      expect(buildingGroups[0].buildingCount).toBe(0)
+      expect(buildingGroups[0].buildingCount).toBe(1)
     })
 
     it('should add a new group to the product with the correct parts', () => {
@@ -71,8 +71,8 @@ describe('productBuildingGroups', async () => {
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
-      expect(buildingGroups[1].parts.OreIron).toBe(0)
-      expect(buildingGroups[1].parts.IronIngot).toBe(0)
+      expect(buildingGroups[1].parts.OreIron).toBe(30)
+      expect(buildingGroups[1].parts.IronIngot).toBe(30)
     })
     it('should automatically add a group when a product is added to a factory', () => {
       addProductToFactory(mockFactory, {
@@ -264,8 +264,6 @@ describe('productBuildingGroups', async () => {
           plastic = overclockedFactory.products[1]
           plasticGroup = plastic.buildingGroups[0]
           plasticGroup.buildingCount = 1
-          addProductBuildingGroup(plastic, mockFactory, false) // Puts it into advanced mode
-          plastic.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
 
           calculateFactories([overclockedFactory], gameData)
         })
@@ -317,19 +315,16 @@ describe('productBuildingGroups', async () => {
         beforeEach(() => {
           addProductToFactory(overclockedFactory, {
             id: 'SpaceElevatorPart_5', // Adaptive Control Unit
-            amount: 123,
+            amount: 1, // 100% OC, building count 1
             recipe: 'SpaceElevatorPart_5',
           })
 
           product = overclockedFactory.products[0]
           group = product.buildingGroups[0]
-          group.buildingCount = 1
-          addProductBuildingGroup(product, mockFactory, false) // Puts it into advanced mode
-          product.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
         })
 
         it('should correctly overclock a ACU recipe', () => {
-          group.overclockPercent = 143.333
+          group.overclockPercent = 143.3333
 
           calculateFactories([overclockedFactory], gameData)
 
@@ -366,7 +361,7 @@ describe('productBuildingGroups', async () => {
 
       addProductToFactory(mockFactory, {
         id: 'Battery',
-        amount: 150,
+        amount: 20, // OC 100%
         recipe: 'Battery',
       })
       complexProduct = mockFactory.products[1]
@@ -395,13 +390,13 @@ describe('productBuildingGroups', async () => {
     it('should calculate for a secondary input part', () => {
       addProductToFactory(mockFactory, {
         id: 'IronIngot',
-        amount: 150,
+        amount: 195, // This makes the OC 100%
         recipe: 'Alternate_PureIronIngot',
       })
-      const product2 = mockFactory.products[1]
+      const product2 = mockFactory.products[2]
       const group2 = product2.buildingGroups[0]
-      expect(buildingsNeededForPartsProducts('Water', 60, complexProduct, group2)).toBe(3)
-      expect(buildingsNeededForPartsProducts('Water', 64, complexProduct, group2)).toBe(3.2)
+      expect(buildingsNeededForPartsProducts('Water', 40, product2, group2)).toBe(2)
+      expect(buildingsNeededForPartsProducts('Water', 46.154, product2, group2)).toBe(2.308)
     })
   })
 })

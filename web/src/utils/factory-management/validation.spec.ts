@@ -132,6 +132,7 @@ describe('validation', () => {
       buildingGroups: [],
       buildingGroupsTrayOpen: false,
       buildingGroupsHaveProblem: false,
+      buildingGroupItemSync: true,
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
 

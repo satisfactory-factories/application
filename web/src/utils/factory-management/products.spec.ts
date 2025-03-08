@@ -650,10 +650,8 @@ describe('products', () => {
         message: 'You cannot set an ingredient to be 0. Setting product amount to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
         type: 'warning',
       }
-      it('should throw if ingredient is missing', () => {
-        expect(() => {
-          updateProductAmountViaRequirement(product, 'NotAnIngredient')
-        }).toThrow(`products: updateProductAmountByRequirement: No ingredient part NotAnIngredient found for product ${product.id}!`)
+      it('should throw if ingredient is missing', async () => {
+        await expect(updateProductAmountViaRequirement(product, 'NotAnIngredient')).rejects.toThrow(`products: updateProductAmountByRequirement: No ingredient part NotAnIngredient found for product ${product.id}!`)
       })
       it('should correctly update the product amount via requirement', () => {
         product.requirements.Silica.amount = 100

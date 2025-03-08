@@ -44,9 +44,9 @@ describe('app-store', () => {
 
       addPowerProducerToFactory(factory, {
         building: 'generatorfuel',
-        ingredientAmount: 100,
+        buildingAmount: 5,
         recipe: 'GeneratorFuel_LiquidFuel',
-        updated: FactoryPowerChangeType.Ingredient,
+        updated: FactoryPowerChangeType.Building,
       })
 
       factories = [factory]
@@ -244,7 +244,6 @@ describe('app-store', () => {
 
         const producer = factory.powerProducers[0]
         const buildingGroup = producer.buildingGroups[0]
-        expect(buildingGroup).toBeDefined()
         expect(buildingGroup.buildingCount).toBe(5)
         expect(producer.buildingGroupsTrayOpen).toBe(false)
       })

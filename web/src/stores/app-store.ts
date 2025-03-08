@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab, GroupType } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -8,7 +8,6 @@ import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
-import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
@@ -296,8 +295,6 @@ export const useAppStore = defineStore('app', () => {
           product.buildingGroupItemSync = true
 
           addProductBuildingGroup(product, factory, true)
-          // Calculate the building group
-          rebalanceBuildingGroups(product, GroupType.Product, factory)
         }
 
         if (product.buildingGroupsHaveProblem === undefined) {
@@ -318,8 +315,6 @@ export const useAppStore = defineStore('app', () => {
           producer.buildingGroupItemSync = true
 
           addPowerProducerBuildingGroup(producer, factory, true)
-          // Calculate the building group
-          rebalanceBuildingGroups(producer, GroupType.Power, factory)
         }
 
         // Patch for #11 renaming ingredientAmount to fuelAmount
