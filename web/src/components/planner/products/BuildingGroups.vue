@@ -13,31 +13,63 @@
     />
   </div>
   <div class="mb-2 d-flex align-center">
-    <span :class="{ 'text-green': correct }">
-      <i class="fas fa-building" />
-      <span class="ml-1">
-        Effective Buildings: <b><span :id="`${factory.id}-effective-buildings`">
-          {{ effectiveBuildings }}
-        </span></b>
-        |
-        <span :id="`${factory.id}-buildings-remaining`">
-          {{ buildingsRemaining }}
-        </span> remaining
+    <div class="mr-2">
+      <span :class="{ 'text-green': correct }">
+        <i class="fas fa-building" />
+        <span class="ml-1">
+          Effective Buildings: <b><span :id="`${factory.id}-effective-buildings`">
+            {{ effectiveBuildings }}
+          </span></b>
+          |
+          <span :id="`${factory.id}-buildings-remaining`">
+            {{ buildingsRemaining }}
+          </span> remaining
+        </span>
       </span>
-    </span>
-    <div class="ml-2">
+    </div>
+    <div>
       <v-chip v-if="over" class="sf-chip red small">
         <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
       </v-chip>
       <v-chip v-if="under" class="sf-chip red small">
         <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
       </v-chip>
+      <v-chip v-if="!under && !over" class="sf-chip green small">
+        <i class="fas fa-check" /><span class="ml-2">Looking good Pioneer!</span>
+      </v-chip>
     </div>
-    <div class="mr-1">
-      <v-chip v-if="item.buildingGroups.length === 1" class="sf-chip small gray">Basic mode</v-chip>
-      <v-chip v-if="item.buildingGroups.length > 1" class="sf-chip small gray">Advanced mode</v-chip>
+    <div class="mr-2">|</div>
+    <div class="mr-2">
+      <span class="mr-2">Sync status <tooltip-info
+        :is-caption="true"
+        text="When Sync is enabled, the product is automatically updated with the total of the Building Groups, easing the user burden on doing math.<br>When a new building group is added, sync is disabled to prevent overriding the product's target while you are making adjustments.<br>When a new product is created, it is enabled automatically upon creation.<br>When building groups are reduced to 1, it is re-enabled.<br><br>It is synced in two ways:<br>1. When the <b>product</b> is updated, the building groups are updated <b>and rebalanced</b>.<br>2. When a <b>building group</b> is updated, the building counts are totalled across all groups and applied to the product."
+      /></span>
+      <v-btn
+        v-if="item.buildingGroupItemSync"
+        :id="`${factory.id}-${item.id}-toggle-sync`"
+        color="green"
+        size="small"
+        variant="flat"
+        @click="item.buildingGroupItemSync = false"
+      >
+        Enabled
+      </v-btn>
+      <v-btn
+        v-if="!item.buildingGroupItemSync"
+        :id="`${factory.id}-${item.id}-toggle-sync`"
+        color="amber"
+        size="small"
+        variant="flat"
+        @click="item.buildingGroupItemSync = true"
+      >
+        Disabled
+      </v-btn>
     </div>
-    <v-btn color="primary" size="small" variant="flat" @click="showTutorial">Show Tutorial</v-btn>
+    <div class="mr-2">|</div>
+    <v-btn color="primary" size="small" variant="flat" @click="showTutorial">
+      <v-icon icon="fas fa-graduation-cap" />
+      <span class="ml-2">Show Tutorial</span>
+    </v-btn>
   </div>
   <div class="d-flex align-center">
     <v-btn

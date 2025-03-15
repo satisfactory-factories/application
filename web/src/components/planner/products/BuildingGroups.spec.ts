@@ -245,7 +245,26 @@ describe('Component: BuildingGroups', () => {
           productBuildingCountElem = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         })
 
+        it('should be enabled by default', () => {
+          const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+
+          expect(product.buildingGroupItemSync).toBe(true)
+          expect(toggleSyncButton.text()).toBe('Enabled')
+        })
+
         describe('enabled', () => {
+          it('should enable the sync when reduced to a single group', async () => {
+          // Add a new group
+            await addGroupButton.trigger('click')
+            const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
+            await deleteButton.trigger('click')
+
+            const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+
+            expect(product.buildingGroupItemSync).toBe(true)
+            expect(toggleSyncButton.text()).toBe('Enabled')
+          })
+
           it('should sync be enabled, and a singular group, when product is edited group should be kept in sync', async () => {
             await productBuildingCountElem.setValue('2')
 
@@ -263,6 +282,15 @@ describe('Component: BuildingGroups', () => {
         })
 
         describe('disabled', () => {
+          it('should disable the sync when a second group is added', async () => {
+          // Add a new group
+            await addGroupButton.trigger('click')
+            const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+
+            expect(product.buildingGroupItemSync).toBe(false)
+            expect(toggleSyncButton.text()).toBe('Disabled')
+          })
+
           it('should sync be disabled, and a singular group, when product is edited group should NOT be kept in sync', async () => {
             await productBuildingCountElem.setValue('2')
 

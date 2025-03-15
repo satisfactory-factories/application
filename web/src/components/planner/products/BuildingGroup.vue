@@ -6,6 +6,7 @@
   >
     <div>
       <v-btn
+        :id="`${factory.id}-${group.id}-delete-building-group`"
         color="red rounded mr-1"
         :disabled="item.buildingGroups.length === 1"
         icon="fas fa-trash"
