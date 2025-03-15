@@ -59,29 +59,33 @@ describe('Component: BuildingGroups', () => {
 
   describe('product', () => {
     let product: FactoryItem
+    let addGroupButton: any
 
     beforeEach(() => {
       addProductToFactory(factory, {
         id: 'IronIngot',
-        amount: 30,
+        amount: 30, // 1 building
         recipe: 'IngotIron',
       })
       product = factory.products[0]
       product.buildingGroupsTrayOpen = true // This is needed otherwise nothing renders
       buildingGroup = product.buildingGroups[0]
+
       // This also adds the first building group
       calculateFactories([factory], gameData)
       subject = mountProduct(factory)
+
+      addGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
     })
 
-    describe('adding groups', () => {
+    describe('adding 2nd group', () => {
       let newBuildingGroup: BuildingGroup
       let oreIronElem: any
       let ironIngotElem: any
 
       beforeEach(async () => {
-        const button = subject.find(`[id="${factory.id}-add-building-group"]`)
-        await button.trigger('click')
+        // Adds a new group
+        await addGroupButton.trigger('click')
 
         // Get the ID of the new building group
         newBuildingGroup = product.buildingGroups[1]
@@ -95,25 +99,36 @@ describe('Component: BuildingGroups', () => {
         expect(count.attributes('value')).toBe('0')
       })
 
-      it('should add new group with zeroed metrics', async () => {
+      it('should add a 2nd group with zeroed metrics', async () => {
+        oreIronElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-OreIron-amount"]`)
+        ironIngotElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-IronIngot-amount"]`)
         expect(oreIronElem.attributes('value')).toBe('0')
         expect(ironIngotElem.attributes('value')).toBe('0')
       })
 
       it('should add a new group with 100% clock', async () => {
-        const clockElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+        const clockElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
         expect(clockElem.attributes('value')).toBe('100')
       })
 
       it('should not display power production for products', () => {
-        const power = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
+        const power = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-power"]`)
         expect(power.exists()).toBe(false)
       })
     })
 
     describe('editing groups', () => {
+      let count: any
+      let clock: any
+      let powerUsed: any
+
+      beforeEach(() => {
+        count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        clock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+        powerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
+      })
+
       it('should correctly update the building group when building count has changed', async () => {
-        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
         await count.setValue('2')
 
         expect(buildingGroup.buildingCount).toBe(2)
@@ -122,21 +137,104 @@ describe('Component: BuildingGroups', () => {
         expect(buildingGroup.parts.IronIngot).toBe(60)
       })
 
-      it('should correctly update the product building count when building count has changed when only one group', async () => {
-        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+      it('should update the product building count when there is a singular group', async () => {
         await count.setValue('2')
 
         expect(product.buildingRequirements.amount).toBe(2)
       })
 
-      it('should the clock the changed, the parts should update', async () => {
-        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-        await count.setValue('133.333')
+      it('should NOT update the product building count when there are multiple groups', async () => {
+        // Add a new group
+        await addGroupButton.trigger('click')
+        const newBuildingGroup = product.buildingGroups[1]
 
-        expect(buildingGroup.buildingCount).toBe(1)
-        expect(buildingGroup.overclockPercent).toBe(133.333)
+        const count = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-building-count"]`)
+        await count.setValue('3')
+
+        expect(product.buildingRequirements.amount).toBe(1) // Originally 1
+      })
+
+      it('should the clock be changed, the parts should update', async () => {
+        // Product originally starts off at 30 iron ingots.
+
+        await clock.setValue('200')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(buildingGroup.overclockPercent).toBe(200)
+        expect(buildingGroup.parts.OreIron).toBe(60)
+        expect(buildingGroup.parts.IronIngot).toBe(60)
+
+        await clock.setValue('133.3333')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(buildingGroup.overclockPercent).toBe(133.3333)
         expect(buildingGroup.parts.OreIron).toBe(39.999)
         expect(buildingGroup.parts.IronIngot).toBe(39.999)
+
+        await clock.setValue('50')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(buildingGroup.buildingCount).toBe(1)
+        expect(buildingGroup.overclockPercent).toBe(50)
+        expect(buildingGroup.parts.OreIron).toBe(15)
+        expect(buildingGroup.parts.IronIngot).toBe(15)
+      })
+
+      it('should the clock be changed, the group\'s power should update', async () => {
+        // Product originally starts off at 30 iron ingots.
+
+        // At 100%, we should be using 4MW
+        expect(powerUsed.text()).toBe('4 MW')
+
+        await clock.setValue('200')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(powerUsed.text()).toBe('10 MW') // Remember Power is not a linear calculation.
+      })
+
+      it('should the clock be changed, the group\'s underchips should be correct', async () => {
+        // Product originally starts off at 30 iron ingots.
+        const chipOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-OreIron"]`)
+        const chipIronIngot = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-IronIngot"]`)
+
+        // At 100%, we should be using 30/30
+        expect(chipOreIron.text()).toBe('30 / building')
+        expect(chipIronIngot.text()).toBe('30 / building')
+
+        await clock.setValue('200')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(chipOreIron.text()).toBe('60 / building')
+        expect(chipIronIngot.text()).toBe('60 / building')
+
+        await clock.setValue('55')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+
+        expect(chipOreIron.text()).toBe('16.5 / building')
+        expect(chipIronIngot.text()).toBe('16.5 / building')
+
+        // TODO: Resolve rounding issue
+        // await clock.setValue('133.3333')
+        // await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        //
+        // expect(chipOreIron.text()).toBe('39.999 / building')
+        // expect(chipIronIngot.text()).toBe('39.999 / building')
+      })
+
+      it('should the building count be changed, the group\'s underchips should be correct', async () => {
+        // Product originally starts off at 30 iron ingots.
+        const chipOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-OreIron"]`)
+        const chipIronIngot = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-IronIngot"]`)
+
+        // At 100%, we should be using 30/30
+        expect(chipOreIron.text()).toBe('300 / building')
+        expect(chipIronIngot.text()).toBe('300 / building')
+
+        await count.setValue('10')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(chipOreIron.text()).toBe('300 / building')
+        expect(chipIronIngot.text()).toBe('300 / building')
       })
     })
 
@@ -181,7 +279,7 @@ describe('Component: BuildingGroups', () => {
       subject = mountPowerProducer(factory)
     })
 
-    describe('adding groups', () => {
+    describe('adding 2nd group', () => {
       let newBuildingGroup: BuildingGroup
 
       beforeEach(async () => {
@@ -191,44 +289,39 @@ describe('Component: BuildingGroups', () => {
         newBuildingGroup = powerProducer.buildingGroups[1]
       })
 
-      it('should add a power producer with 1 building', () => {
+      it('should add a new power producer group with correct metrics', () => {
         const count = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-building-count"]`)
         expect(count.exists()).toBe(true)
-        expect(count.attributes('value')).toBe('1')
-      })
+        expect(count.attributes('value')).toBe('0')
 
-      it('should add a power producer with 1 building with 100% overclock', () => {
-        const clockElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+        const clockElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
         expect(clockElem.exists()).toBe(true)
         expect(clockElem.attributes('value')).toBe('100')
       })
 
-      it('should add a power producer with 1 building with the correct parts', () => {
-        const fuelRod = newBuildingGroup.parts.NuclearFuelRod
-        const fuelRodElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-NuclearFuelRod-amount"]`)
+      it('should add a power producer with the correct parts (zeroed)', () => {
+        const fuelRodElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearFuelRod-amount"]`)
 
         expect(fuelRodElem.exists()).toBe(true)
-        expect(fuelRodElem.attributes('value')).toBe(fuelRod.toString())
+        expect(fuelRodElem.attributes('value')).toBe('0')
 
-        const water = newBuildingGroup.parts.Water
         const waterElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-Water-amount"]`)
 
         expect(waterElem.exists()).toBe(true)
-        expect(waterElem.attributes('value')).toBe(water.toString())
+        expect(waterElem.attributes('value')).toBe('0')
 
-        const nuclearWaste = newBuildingGroup.parts.NuclearWaste
-        const nuclearWasteElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-NuclearWaste-amount"]`)
+        const nuclearWasteElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearWaste-amount"]`)
 
         expect(nuclearWasteElem.exists()).toBe(true)
-        expect(nuclearWasteElem.attributes('value')).toBe(nuclearWaste.toString())
+        expect(nuclearWasteElem.attributes('value')).toBe('0')
 
         // Expect there to only be one count of nuclear waste, it should not have multiple elements of the same ID
-        expect(subject.findAll(`[id="${factory.id}-${buildingGroup.id}-parts-NuclearWaste-amount"]`).length).toBe(1)
+        expect(subject.findAll(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearWaste-amount"]`).length).toBe(1)
       })
 
       it('should display power production', () => {
-        const power = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
-        const powerAmountCalculated = formatPower(buildingGroup.powerProduced)
+        const power = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-power"]`)
+        const powerAmountCalculated = formatPower(newBuildingGroup.powerProduced)
         const powerDisplay = `${powerAmountCalculated.value} ${powerAmountCalculated.unit}`
         expect(power.text()).toBe(powerDisplay)
       })

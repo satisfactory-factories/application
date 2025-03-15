@@ -146,7 +146,7 @@
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
         </v-chip>
-        <div class="underchip text-blue-darken-1">
+        <div :id="`${factory.id}-${group.id}-underchip-${part}`" class="underchip text-blue-darken-1">
           {{ formatNumberFully(group.parts[part] / group.buildingCount) ?? 0 }} / building
         </div>
       </div>
@@ -185,7 +185,11 @@
           </span>
         </v-chip>
 
-        <div class="underchip" :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'">
+        <div
+          :id="`${factory.id}-${group.id}-underchip-${part}`"
+          class="underchip"
+          :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'"
+        >
           {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
         </div>
       </div>
