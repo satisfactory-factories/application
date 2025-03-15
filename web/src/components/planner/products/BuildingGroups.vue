@@ -44,7 +44,7 @@
       :id="`${factory.id}-add-building-group`"
       color="primary"
       size="small"
-      @click="addBuildingGroupBasedOnType(item, type, factory, false)"
+      @click="addBuildingGroup(item, type, factory)"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -108,7 +108,7 @@
   import { formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
   import {
-    addBuildingGroupBasedOnType,
+    addBuildingGroup,
     calculateEffectiveBuildingCount,
     rebalanceBuildingGroups,
     remainderToLast,

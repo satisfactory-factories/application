@@ -1,8 +1,8 @@
 import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import {
-  addBuildingGroup,
   calculateBuildingGroupParts,
+  createBuildingGroup,
   rebalanceBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
@@ -10,12 +10,16 @@ import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
 
-export const addProductBuildingGroup = (product: FactoryItem, factory: Factory, addBuildings = true) => {
-  addBuildingGroup(product, GroupType.Product, addBuildings)
+export const addProductBuildingGroup = (
+  product: FactoryItem,
+  factory: Factory,
+  addBuildings: boolean
+) => {
+  createBuildingGroup(product, GroupType.Product, addBuildings)
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
-  if (product.buildingGroups.length === 1 && addBuildings) {
+  if (addBuildings) {
     rebalanceBuildingGroups(
       product,
       GroupType.Product,

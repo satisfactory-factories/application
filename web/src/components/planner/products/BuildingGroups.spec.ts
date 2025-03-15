@@ -47,7 +47,7 @@ const mountComponent = (factory: Factory, component: any) => {
   })
 }
 
-describe('BuildingGroups', () => {
+describe('Component: BuildingGroups', () => {
   let factory: Factory
   let subject: VueWrapper<{factory: Factory }>
   let buildingGroup: BuildingGroup
@@ -76,6 +76,8 @@ describe('BuildingGroups', () => {
 
     describe('adding groups', () => {
       let newBuildingGroup: BuildingGroup
+      let oreIronElem: any
+      let ironIngotElem: any
 
       beforeEach(async () => {
         const button = subject.find(`[id="${factory.id}-add-building-group"]`)
@@ -83,34 +85,24 @@ describe('BuildingGroups', () => {
 
         // Get the ID of the new building group
         newBuildingGroup = product.buildingGroups[1]
+
+        oreIronElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+        ironIngotElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
       })
 
-      it('should add a new building group of 1 building', async () => {
+      it('should add a new building group of 0 buildings', async () => {
         const count = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-building-count"]`)
-
-        expect(count.exists()).toBe(true)
-        expect(count.attributes('value')).toBe('1')
+        expect(count.attributes('value')).toBe('0')
       })
 
-      it('should add a new building group of 1 building with 100% overclock', async () => {
+      it('should add new group with zeroed metrics', async () => {
+        expect(oreIronElem.attributes('value')).toBe('0')
+        expect(ironIngotElem.attributes('value')).toBe('0')
+      })
+
+      it('should add a new group with 100% clock', async () => {
         const clockElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-
-        expect(clockElem.exists()).toBe(true)
         expect(clockElem.attributes('value')).toBe('100')
-      })
-
-      it('should add a new building group of 1 building with the correct parts', async () => {
-        const oreIron = newBuildingGroup.parts.OreIron
-        const oreIronElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
-
-        expect(oreIronElem.exists()).toBe(true)
-        expect(oreIronElem.attributes('value')).toBe(oreIron.toString())
-
-        const ironIngot = newBuildingGroup.parts.IronIngot
-        const ironIngotElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
-
-        expect(ironIngotElem.exists()).toBe(true)
-        expect(ironIngotElem.attributes('value')).toBe(ironIngot.toString())
       })
 
       it('should not display power production for products', () => {

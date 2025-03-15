@@ -13,7 +13,7 @@ vi.mock('@/utils/eventBus', () => ({
   },
 }))
 
-describe('BuildingGroup.ts', () => {
+describe('Component: BuildingGroup', () => {
   let mockFactory: Factory
   let product: FactoryItem
   let buildingGroup: BuildingGroup

@@ -18,23 +18,26 @@ import { increaseProductQtyViaBuilding } from '@/utils/factory-management/produc
 
 const gameData = await fetchGameData()
 
-export const addBuildingGroupBasedOnType = (
+export const addBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   type: GroupType,
   factory: Factory,
-  addBuildings = true
 ) => {
+  // If there is no building groups, grab the building requirements and add a building group.
+  // This is done from within each method as there's different ways of accessing the building counts.
+  const addBuildings = item.buildingGroups.length === 0
+
   if (type === GroupType.Product) {
     addProductBuildingGroup(item as FactoryItem, factory, addBuildings)
   } else if (type === GroupType.Power) {
     addPowerProducerBuildingGroup(item as FactoryPowerProducer, factory, addBuildings)
   } else {
-    throw new Error(`addBuildingGroupBasedOnType: Invalid group type: ${type}`)
+    throw new Error(`addBuildingGroup: Invalid group type: ${type}`)
   }
 }
 
 // @See ./product.ts, ./power.ts for usages
-export const addBuildingGroup = (
+export const createBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
   addBuildings = true

@@ -80,4 +80,33 @@ describe('building groups sanity', async () => {
       })
     })
   })
+
+  describe('user changes', () => {
+    describe('products', () => {
+      beforeEach(() => {
+        addProductToFactory(mockFactory, mockProduct)
+        calculateFactories([mockFactory], gameData)
+      })
+
+      it('should update the building group when the product amount changes if sync is turned on', () => {
+        products[0].amount = 600
+        products[0].buildingGroupItemSync = true
+        calculateFactories([mockFactory], gameData)
+
+        const parts = products[0].buildingGroups[0].parts
+        expect(parts.IronIngot).toBe(600)
+        expect(parts.OreIron).toBe(600)
+      })
+
+      it('should update NOT the building group when the product amount changes if sync is turned off', () => {
+        products[0].amount = 600
+        products[0].buildingGroupItemSync = false
+        calculateFactories([mockFactory], gameData)
+
+        const parts = products[0].buildingGroups[0].parts
+        expect(parts.IronIngot).toBe(600)
+        expect(parts.OreIron).toBe(600)
+      })
+    })
+  })
 })

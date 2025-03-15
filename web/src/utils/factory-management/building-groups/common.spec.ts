@@ -10,8 +10,8 @@ import { fetchGameData } from '@/utils/gameDataService'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
-import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import {
+  addBuildingGroup,
   calculateBuildingGroupParts,
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
@@ -60,28 +60,72 @@ describe('buildingGroupsCommon', async () => {
     powerBuildingGroups = mockFactory.powerProducers[0].buildingGroups
   })
 
-  describe('addGroup', () => {
-    beforeEach(() => {
-      product.buildingGroups = []
-      powerProducer.buildingGroups = []
+  describe('addBuildingGroup', () => {
+    describe('products', () => {
+      beforeEach(() => {
+        product.buildingGroups = []
+      })
+
+      it('should add an initial product group, and be correctly configured', () => {
+        addBuildingGroup(product, GroupType.Product, mockFactory)
+
+        const group = product.buildingGroups[0]
+
+        expect(group.type).toBe(GroupType.Product)
+        expect(group.buildingCount).toBe(5)
+        expect(group.overclockPercent).toBe(100)
+
+        // Parts
+        expect(group.parts.OreIron).toBe(150)
+        expect(group.parts.IronIngot).toBe(150)
+      })
+
+      it('should add a second product group and have zeroed metrics / buildings', () => {
+        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
+
+        const group = product.buildingGroups[1]
+
+        expect(product.buildingGroups.length).toBe(2)
+        expect(group.buildingCount).toBe(0)
+
+        // Parts
+        expect(group.parts.OreIron).toBe(0)
+        expect(group.parts.IronIngot).toBe(0)
+      })
     })
 
-    it('should add a product group', () => {
-      addProductBuildingGroup(product, mockFactory)
+    describe('power producers', () => {
+      beforeEach(() => {
+        powerProducer.buildingGroups = []
+      })
 
-      expect(productBuildingGroups.length).toBe(1)
-      expect(productBuildingGroups[0].type).toBe(GroupType.Product)
-      expect(productBuildingGroups[0].buildingCount).toBe(5)
-      expect(productBuildingGroups[0].overclockPercent).toBe(100)
-    })
+      it('should add an initial power producer group, and should be correct', () => {
+        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
 
-    it('should add a power producer group', () => {
-      addPowerProducerBuildingGroup(mockFactory.powerProducers[0], mockFactory)
+        const group = powerProducer.buildingGroups[0]
 
-      expect(powerBuildingGroups.length).toBe(1)
-      expect(powerBuildingGroups[0].type).toBe(GroupType.Power)
-      expect(powerBuildingGroups[0].buildingCount).toBe(4)
-      expect(powerBuildingGroups[0].overclockPercent).toBe(100)
+        expect(powerBuildingGroups.length).toBe(1)
+        expect(group.type).toBe(GroupType.Power)
+        expect(group.buildingCount).toBe(4)
+        expect(group.overclockPercent).toBe(100)
+
+        // Parts
+        expect(group.parts.LiquidFuel).toBe(80)
+      })
+
+      it('should add a second power producer group, and should be correct', () => {
+        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
+        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
+
+        const group = powerProducer.buildingGroups[1]
+
+        expect(group.buildingCount).toBe(0)
+        expect(group.overclockPercent).toBe(100)
+
+        // Parts
+        expect(group.parts.LiquidFuel).toBe(0)
+      })
     })
   })
 
@@ -90,7 +134,7 @@ describe('buildingGroupsCommon', async () => {
       let group1: BuildingGroup
 
       beforeEach(() => {
-        addProductBuildingGroup(product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
         group1 = product.buildingGroups[0]
 
         calculateFactories(factories, gameData)
@@ -128,7 +172,7 @@ describe('buildingGroupsCommon', async () => {
           let group2: BuildingGroup
 
           beforeEach(() => {
-            addProductBuildingGroup(product, mockFactory)
+            addBuildingGroup(product, GroupType.Product, mockFactory)
             group2 = product.buildingGroups[1]
           })
 
@@ -213,7 +257,7 @@ describe('buildingGroupsCommon', async () => {
 
       describe('product', () => {
         beforeEach(() => {
-          addProductBuildingGroup(product, mockFactory)
+          addBuildingGroup(product, GroupType.Product, mockFactory)
           calculateFactories(factories, gameData)
           group = product.buildingGroups[0]
         })
@@ -640,8 +684,8 @@ describe('buildingGroupsCommon', async () => {
       let group2: BuildingGroup
 
       beforeEach(() => {
-        addProductBuildingGroup(product, mockFactory)
-        addProductBuildingGroup(product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
         group1 = product.buildingGroups[0]
         group2 = product.buildingGroups[1]
       })
@@ -695,7 +739,7 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should NOT increase the product\'s quantity if it is multiple building groups', () => {
-        addProductBuildingGroup(product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
         productBuildingGroups[0].buildingCount = 1337
 
         checkForItemUpdate(product)
@@ -725,7 +769,7 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should make no changes to product quantity when multiple groups and overclocking', () => {
-        addProductBuildingGroup(product, mockFactory)
+        addBuildingGroup(product, GroupType.Product, mockFactory)
         productBuildingGroups[0].overclockPercent = 200
 
         checkForItemUpdate(product)
@@ -741,12 +785,12 @@ describe('buildingGroupsCommon', async () => {
     let group2: BuildingGroup
 
     beforeEach(() => {
-      addProductBuildingGroup(product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
       group1 = product.buildingGroups[0]
     })
 
     it('should properly calculate the effective building count across multiple groups', () => {
-      addProductBuildingGroup(product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
 
@@ -763,8 +807,8 @@ describe('buildingGroupsCommon', async () => {
     })
 
     it('should properly calculate the effective building count across multiple groups with precise percentages', () => {
-      addProductBuildingGroup(product, mockFactory)
-      addProductBuildingGroup(product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
       const group3 = product.buildingGroups[2]

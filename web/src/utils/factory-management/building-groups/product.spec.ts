@@ -93,8 +93,8 @@ describe('productBuildingGroups', async () => {
     let product: FactoryItem
     beforeEach(() => {
       product = mockFactory.products[0]
-      addProductBuildingGroup(product, mockFactory)
-      addProductBuildingGroup(product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
 
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
@@ -364,7 +364,7 @@ describe('productBuildingGroups', async () => {
         recipe: 'Battery',
       })
       complexProduct = mockFactory.products[1]
-      addProductBuildingGroup(product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
       addProductBuildingGroup(complexProduct, mockFactory)
       group = product.buildingGroups[0]
       groupComplex = complexProduct.buildingGroups[0]
