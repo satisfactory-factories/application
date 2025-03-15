@@ -155,15 +155,19 @@ describe('Component: BuildingGroups', () => {
       })
 
       it('should the clock be changed, the parts should update', async () => {
-        // Product originally starts off at 30 iron ingots.
+        const oreIronPartElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+        const ironIngotPartElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
 
         await buildingGroupClock.setValue('200')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(200)
         expect(buildingGroup.parts.OreIron).toBe(60)
+        expect(oreIronPartElem.attributes('value')).toBe('60')
         expect(buildingGroup.parts.IronIngot).toBe(60)
+        expect(ironIngotPartElem.attributes('value')).toBe('60')
 
+        // TODO: Resolve rounding issue
         await buildingGroupClock.setValue('133.3333')
         await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
         expect(buildingGroup.overclockPercent).toBe(133.3333)
@@ -225,16 +229,17 @@ describe('Component: BuildingGroups', () => {
         const chipOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-OreIron"]`)
         const chipIronIngot = subject.find(`[id="${factory.id}-${buildingGroup.id}-underchip-IronIngot"]`)
 
-        // At 100%, we should be using 30/30
-        expect(chipOreIron.text()).toBe('300 / building')
-        expect(chipIronIngot.text()).toBe('300 / building')
+        // At 1 building @100%, we should be using 30/30
+        expect(chipOreIron.text()).toBe('30 / building')
+        expect(chipIronIngot.text()).toBe('30 / building')
 
         await buildingGroupCount.setValue('10')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        expect(chipOreIron.text()).toBe('300 / building')
-        expect(chipIronIngot.text()).toBe('300 / building')
+        // The per building counts stay the same as the overclock is 100%
+        expect(chipOreIron.text()).toBe('30 / building')
+        expect(chipIronIngot.text()).toBe('30 / building')
       })
 
       describe('group<->product sync', () => {
@@ -309,7 +314,43 @@ describe('Component: BuildingGroups', () => {
       })
     })
 
-    describe('removing groups', () => {})
+    describe('deleting groups', () => {
+      beforeEach(async () => {
+        // Add a new group
+        await addGroupButton.trigger('click')
+      })
+
+      it('should remove the building group correctly', async () => {
+        const expectedGroupId = product.buildingGroups[1].id
+        const expectedGroupBuildingCountElem = subject.find(`[id="${factory.id}-${expectedGroupId}-building-count"]`)
+        const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
+
+        await deleteButton.trigger('click')
+
+        expect(product.buildingGroups.length).toBe(1)
+        expect(product.buildingGroups[0].id).toBe(expectedGroupId)
+        expect(expectedGroupBuildingCountElem.exists()).toBe(true)
+      })
+
+      it('should show correct sync status when deleting the 2nd to last remaining group', async () => {
+        // Add another group
+        await addGroupButton.trigger('click')
+
+        // Get the 2nd and 3rd group IDs and trigger their delete buttons
+        const secondGroupId = product.buildingGroups[1].id
+        const thirdGroupId = product.buildingGroups[2].id
+
+        const secondGroupDeleteButton = subject.find(`[id="${factory.id}-${secondGroupId}-delete-building-group"]`)
+        const thirdGroupDeleteButton = subject.find(`[id="${factory.id}-${thirdGroupId}-delete-building-group"]`)
+
+        await secondGroupDeleteButton.trigger('click')
+        await thirdGroupDeleteButton.trigger('click')
+
+        const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+        expect(toggleSyncButton.text()).toBe('Enabled')
+        expect(product.buildingGroupItemSync).toBe(true)
+      })
+    })
 
     describe('spot checks', () => {
       it('should display distilled silica which has an input that is also and byproduct (water)', () => {
@@ -398,14 +439,48 @@ describe('Component: BuildingGroups', () => {
       })
     })
 
-    describe('removing groups', () => {})
+    describe('group<->powerproducer sync', () => {
+      beforeEach(() => {
+        powerProducer.buildingGroupItemSync = true
+      })
 
-    describe('checks', () => {
-      it('should display power production for power producers and at the correct value', () => {
+      it('should be enabled by default', () => {
+        const toggleSyncButton = subject.find(`[id="${factory.id}-${powerProducer.id}-toggle-sync"]`)
+
+        expect(powerProducer.buildingGroupItemSync).toBe(true)
+        expect(toggleSyncButton.text()).toBe('Enabled')
+      })
+
+      it('should be disabled when a new group is added', async () => {
+        const button = subject.find(`[id="${factory.id}-add-building-group"]`)
+        await button.trigger('click')
+
+        const toggleSyncButton = subject.find(`[id="${factory.id}-${powerProducer.id}-toggle-sync"]`)
+
+        expect(powerProducer.buildingGroupItemSync).toBe(false)
+        expect(toggleSyncButton.text()).toBe('Disabled')
+      })
+
+      it('should sync be enabled and a new group added, sync should be disabled', async () => {
+        const button = subject.find(`[id="${factory.id}-add-building-group"]`)
+        await button.trigger('click')
+
+        const toggleSyncButton = subject.find(`[id="${factory.id}-${powerProducer.id}-toggle-sync"]`)
+        expect(powerProducer.buildingGroupItemSync).toBe(false)
+        expect(toggleSyncButton.text()).toBe('Disabled')
+      })
+    })
+
+    describe('power calculations', () => {
+      it('should display power production for power producers and at the correct value', async () => {
+        const buildingCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
         const power = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
 
-        expect(power.exists()).toBe(true)
-        expect(power.text()).toBe(`2.5 GW`)
+        await buildingCount.setValue('10')
+        expect(power.text()).toBe(`25 GW`)
+
+        await buildingCount.setValue('15')
+        expect(power.text()).toBe(`37.5 GW`)
       })
     })
   })

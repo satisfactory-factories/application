@@ -227,7 +227,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
-  import { updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
+  import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
@@ -270,10 +270,7 @@
   }
 
   const deleteGroup = (group: BuildingGroup) => {
-    let index = 0
-    index = props.item.buildingGroups.indexOf(group)
-
-    props.item.buildingGroups.splice(index, 1)
+    deleteBuildingGroup(props.item, group)
   }
 
   const hasByProduct = computed(() => {

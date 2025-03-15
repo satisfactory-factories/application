@@ -18,6 +18,7 @@ import {
   calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
   checkForItemUpdate,
+  deleteBuildingGroup,
   rebalanceBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -849,6 +850,32 @@ describe('buildingGroupsCommon', async () => {
       toggleBuildingGroupTray(product)
 
       expect(product.buildingGroupsTrayOpen).toBe(false)
+    })
+  })
+
+  describe('deleteBuildingGroup', () => {
+    it('should prevent deleting the only group remaining', () => {
+      deleteBuildingGroup(product, product.buildingGroups[0])
+      expect(product.buildingGroups.length).toBe(1)
+    })
+
+    it('should delete a building group', () => {
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+
+      const group2Id = product.buildingGroups[1].id
+
+      deleteBuildingGroup(product, product.buildingGroups[0])
+      expect(product.buildingGroups.length).toBe(1)
+      expect(product.buildingGroups[0].id).toBe(group2Id)
+    })
+
+    it('should delete a building group and set building group sync to enabled', () => {
+      addBuildingGroup(product, GroupType.Product, mockFactory) // Sync should be disabled by this
+      expect(product.buildingGroupItemSync).toBe(false)
+
+      deleteBuildingGroup(product, product.buildingGroups[0])
+      expect(product.buildingGroups.length).toBe(1)
+      expect(product.buildingGroupItemSync).toBe(true)
     })
   })
 })

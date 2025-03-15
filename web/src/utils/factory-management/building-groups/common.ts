@@ -27,6 +27,9 @@ export const addBuildingGroup = (
   // This is done from within each method as there's different ways of accessing the building counts.
   const addBuildings = item.buildingGroups.length === 0
 
+  // Since we're about to add a building group, disable product<->BG sync.
+  item.buildingGroupItemSync = false
+
   if (type === GroupType.Product) {
     addProductBuildingGroup(item as FactoryItem, factory, addBuildings)
   } else if (type === GroupType.Power) {
@@ -569,5 +572,24 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer) => 
     } else {
       throw new Error('Invalid type')
     }
+  }
+}
+
+export const deleteBuildingGroup = (
+  item: FactoryItem | FactoryPowerProducer,
+  group: BuildingGroup
+) => {
+  // If we only have 1 group, ignore the deletion.
+  if (item.buildingGroups.length === 1) {
+    return
+  }
+
+  // Find the index of the group and remove it
+  const index = item.buildingGroups.findIndex(g => g.id === group.id)
+  item.buildingGroups.splice(index, 1)
+
+  // Check if we're down to 1 group, if so re-enable sync
+  if (item.buildingGroups.length === 1) {
+    item.buildingGroupItemSync = true
   }
 }
