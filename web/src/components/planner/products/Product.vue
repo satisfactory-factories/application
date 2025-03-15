@@ -171,13 +171,13 @@
             <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>
           </span>
           <v-number-input
+            :id="`${factory.id}-${product.id}-building-count`"
             v-model.number="product.buildingRequirements.amount"
             class="inline-inputs ml-2"
             control-variant="stacked"
             density="compact"
             hide-details
             hide-spin-buttons
-            :name="`${product.id}.buildingAmount`"
             :product="product.id"
             width="120px"
             @update:model-value="changeBuildingAmount(product)"

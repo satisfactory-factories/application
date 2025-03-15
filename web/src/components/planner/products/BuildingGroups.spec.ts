@@ -118,18 +118,18 @@ describe('Component: BuildingGroups', () => {
     })
 
     describe('editing groups', () => {
-      let count: any
-      let clock: any
-      let powerUsed: any
+      let buildingGroupCount: any
+      let buildingGroupClock: any
+      let buildingGroupPowerUsed: any
 
       beforeEach(() => {
-        count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
-        clock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-        powerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
+        buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+        buildingGroupPowerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
       })
 
       it('should correctly update the building group when building count has changed', async () => {
-        await count.setValue('2')
+        await buildingGroupCount.setValue('2')
 
         expect(buildingGroup.buildingCount).toBe(2)
         expect(buildingGroup.overclockPercent).toBe(100)
@@ -138,7 +138,7 @@ describe('Component: BuildingGroups', () => {
       })
 
       it('should update the product building count when there is a singular group', async () => {
-        await count.setValue('2')
+        await buildingGroupCount.setValue('2')
 
         expect(product.buildingRequirements.amount).toBe(2)
       })
@@ -157,20 +157,20 @@ describe('Component: BuildingGroups', () => {
       it('should the clock be changed, the parts should update', async () => {
         // Product originally starts off at 30 iron ingots.
 
-        await clock.setValue('200')
+        await buildingGroupClock.setValue('200')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(200)
         expect(buildingGroup.parts.OreIron).toBe(60)
         expect(buildingGroup.parts.IronIngot).toBe(60)
 
-        await clock.setValue('133.3333')
+        await buildingGroupClock.setValue('133.3333')
         await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
         expect(buildingGroup.overclockPercent).toBe(133.3333)
         expect(buildingGroup.parts.OreIron).toBe(39.999)
         expect(buildingGroup.parts.IronIngot).toBe(39.999)
 
-        await clock.setValue('50')
+        await buildingGroupClock.setValue('50')
         await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
         expect(buildingGroup.buildingCount).toBe(1)
         expect(buildingGroup.overclockPercent).toBe(50)
@@ -182,12 +182,12 @@ describe('Component: BuildingGroups', () => {
         // Product originally starts off at 30 iron ingots.
 
         // At 100%, we should be using 4MW
-        expect(powerUsed.text()).toBe('4 MW')
+        expect(buildingGroupPowerUsed.text()).toBe('4 MW')
 
-        await clock.setValue('200')
+        await buildingGroupClock.setValue('200')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
-        expect(powerUsed.text()).toBe('10 MW') // Remember Power is not a linear calculation.
+        expect(buildingGroupPowerUsed.text()).toBe('10 MW') // Remember Power is not a linear calculation.
       })
 
       it('should the clock be changed, the group\'s underchips should be correct', async () => {
@@ -199,14 +199,14 @@ describe('Component: BuildingGroups', () => {
         expect(chipOreIron.text()).toBe('30 / building')
         expect(chipIronIngot.text()).toBe('30 / building')
 
-        await clock.setValue('200')
+        await buildingGroupClock.setValue('200')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         expect(chipOreIron.text()).toBe('60 / building')
         expect(chipIronIngot.text()).toBe('60 / building')
 
-        await clock.setValue('55')
+        await buildingGroupClock.setValue('55')
         await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
 
         expect(chipOreIron.text()).toBe('16.5 / building')
@@ -229,12 +229,55 @@ describe('Component: BuildingGroups', () => {
         expect(chipOreIron.text()).toBe('300 / building')
         expect(chipIronIngot.text()).toBe('300 / building')
 
-        await count.setValue('10')
+        await buildingGroupCount.setValue('10')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         expect(chipOreIron.text()).toBe('300 / building')
         expect(chipIronIngot.text()).toBe('300 / building')
+      })
+
+      describe('group<->product sync', () => {
+        let productBuildingCountElem: any
+
+        beforeEach(() => {
+          product.buildingGroupItemSync = true
+          productBuildingCountElem = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+        })
+
+        describe('enabled', () => {
+          it('should sync be enabled, and a singular group, when product is edited group should be kept in sync', async () => {
+            await productBuildingCountElem.setValue('2')
+
+            expect(product.buildingRequirements.amount).toBe(2)
+            expect(product.buildingGroups[0].buildingCount).toBe(2)
+            expect(buildingGroupCount.attributes('value')).toBe('2')
+          })
+
+          it('should sync be enabled, and a singular group, when building group is edited product should be kept in sync', async () => {
+            await buildingGroupCount.setValue('2')
+
+            expect(productBuildingCountElem.value).toBe('2')
+            expect(product.buildingRequirements.amount).toBe(2)
+          })
+        })
+
+        describe('disabled', () => {
+          it('should sync be disabled, and a singular group, when product is edited group should NOT be kept in sync', async () => {
+            await productBuildingCountElem.setValue('2')
+
+            expect(product.buildingRequirements.amount).toBe(2)
+            expect(product.buildingGroups[0].buildingCount).toBe(1)
+            expect(buildingGroupCount.attributes('value')).toBe('1')
+          })
+
+          it('should sync be disabled, and a singular group, when building group is edited product should NOT be kept in sync', async () => {
+            await buildingGroupCount.setValue('2')
+
+            expect(productBuildingCountElem.value).toBe('1')
+            expect(product.buildingRequirements.amount).toBe(1)
+          })
+        })
       })
     })
 
