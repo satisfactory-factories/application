@@ -408,15 +408,11 @@ export const remainderToNewGroup = (
     return // Nothing to do
   }
 
-  if (groupType === GroupType.Product) {
-    const subject = item as FactoryItem
-    addProductBuildingGroup(subject, factory)
-  } else if (groupType === GroupType.Power) {
-    const subject = item as FactoryPowerProducer
-    addPowerProducerBuildingGroup(subject, factory)
-  } else {
+  if (groupType !== GroupType.Product && groupType !== GroupType.Power) {
     throw new Error('productBuildingGroups: remainderToNewGroup: Invalid group type!')
   }
+
+  addBuildingGroup(item, groupType, factory)
 
   remainderToLast(item, groupType, factory)
   recalculateGroupMetrics(item, groupType, factory)
