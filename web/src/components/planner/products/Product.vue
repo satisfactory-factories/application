@@ -163,31 +163,6 @@
       >
         <p class="mr-2">Requires:</p>
         <v-chip
-          v-for="(requirement, part) in product.requirements"
-          :key="`ingredients-${part}`"
-          class="sf-chip input unit"
-          :class="factory.parts[part].isRaw ? 'cyan': 'blue'"
-          variant="tonal"
-        >
-          <tooltip :text="getPartDisplayName(part)">
-            <game-asset :subject="String(part)" type="item" />
-          </tooltip>
-          <v-number-input
-            v-model.number="requirement.amount"
-            class="inline-inputs"
-            control-variant="stacked"
-            density="compact"
-            hide-details
-            hide-spin-buttons
-            :min="0"
-            :name="`${product.id}.ingredients.${part}`"
-            :product="product.id"
-            width="120px"
-            @update:model-value="setProductQtyByRequirement(product, part.toString())"
-          />
-          <span>/min</span>
-        </v-chip>
-        <v-chip
           class="sf-chip orange input"
           variant="tonal"
         >
@@ -215,6 +190,31 @@
           <i class="fas fa-bolt" />
           <i class="fas fa-minus" />
           <span class="ml-2">{{ productPowerConsumed(product).value }} {{ productPowerConsumed(product).unit }}</span>
+        </v-chip>
+        <v-chip
+          v-for="(requirement, part) in product.requirements"
+          :key="`ingredients-${part}`"
+          class="sf-chip input unit"
+          :class="factory.parts[part].isRaw ? 'cyan': 'blue'"
+          variant="tonal"
+        >
+          <tooltip :text="getPartDisplayName(part)">
+            <game-asset :subject="String(part)" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="requirement.amount"
+            class="inline-inputs"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            :name="`${product.id}.ingredients.${part}`"
+            :product="product.id"
+            width="120px"
+            @update:model-value="setProductQtyByRequirement(product, part.toString())"
+          />
+          <span>/min</span>
         </v-chip>
       </div>
       <div v-if="product.buildingGroupsTrayOpen" class="mb-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
