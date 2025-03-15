@@ -80,8 +80,8 @@ describe('Component: BuildingGroups', () => {
 
     describe('adding 2nd group', () => {
       let newBuildingGroup: BuildingGroup
-      let oreIronElem: any
-      let ironIngotElem: any
+      let oreIronAmount: any
+      let ironIngotAmount: any
 
       beforeEach(async () => {
         // Adds a new group
@@ -90,8 +90,8 @@ describe('Component: BuildingGroups', () => {
         // Get the ID of the new building group
         newBuildingGroup = product.buildingGroups[1]
 
-        oreIronElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
-        ironIngotElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
+        oreIronAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+        ironIngotAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
       })
 
       it('should add a new building group of 0 buildings', async () => {
@@ -100,20 +100,20 @@ describe('Component: BuildingGroups', () => {
       })
 
       it('should add a 2nd group with zeroed metrics', async () => {
-        oreIronElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-OreIron-amount"]`)
-        ironIngotElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-IronIngot-amount"]`)
-        expect(oreIronElem.attributes('value')).toBe('0')
-        expect(ironIngotElem.attributes('value')).toBe('0')
+        oreIronAmount = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-OreIron-amount"]`)
+        ironIngotAmount = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-IronIngot-amount"]`)
+        expect(oreIronAmount.attributes('value')).toBe('0')
+        expect(ironIngotAmount.attributes('value')).toBe('0')
       })
 
       it('should add a new group with 100% clock', async () => {
-        const clockElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
-        expect(clockElem.attributes('value')).toBe('100')
+        const buildingGroupClock = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
+        expect(buildingGroupClock.attributes('value')).toBe('100')
       })
 
       it('should not display power production for products', () => {
-        const power = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-power"]`)
-        expect(power.exists()).toBe(false)
+        const buildingGroupPower = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-power"]`)
+        expect(buildingGroupPower.exists()).toBe(false)
       })
     })
 
@@ -155,17 +155,17 @@ describe('Component: BuildingGroups', () => {
       })
 
       it('should the clock be changed, the parts should update', async () => {
-        const oreIronPartElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
-        const ironIngotPartElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
+        const oreIronAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+        const ironIngotAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
 
         await buildingGroupClock.setValue('200')
         // We have baked in a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(200)
         expect(buildingGroup.parts.OreIron).toBe(60)
-        expect(oreIronPartElem.attributes('value')).toBe('60')
+        expect(oreIronAmount.attributes('value')).toBe('60')
         expect(buildingGroup.parts.IronIngot).toBe(60)
-        expect(ironIngotPartElem.attributes('value')).toBe('60')
+        expect(ironIngotAmount.attributes('value')).toBe('60')
 
         // TODO: Resolve rounding issue
         await buildingGroupClock.setValue('133.3333')
@@ -243,11 +243,11 @@ describe('Component: BuildingGroups', () => {
       })
 
       describe('group<->product sync', () => {
-        let productBuildingCountElem: any
+        let productBuildingCount: any
 
         beforeEach(() => {
           product.buildingGroupItemSync = true
-          productBuildingCountElem = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+          productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         })
 
         it('should be enabled by default', () => {
@@ -271,7 +271,7 @@ describe('Component: BuildingGroups', () => {
           })
 
           it('should sync be enabled, and a singular group, when product is edited group should be kept in sync', async () => {
-            await productBuildingCountElem.setValue('2')
+            await productBuildingCount.setValue('2')
 
             expect(product.buildingRequirements.amount).toBe(2)
             expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -281,8 +281,35 @@ describe('Component: BuildingGroups', () => {
           it('should sync be enabled, and a singular group, when building group is edited product should be kept in sync', async () => {
             await buildingGroupCount.setValue('2')
 
-            expect(productBuildingCountElem.value).toBe('2')
+            expect(productBuildingCount.value).toBe('2')
             expect(product.buildingRequirements.amount).toBe(2)
+          })
+
+          it('should update the product when enabled and the building count is changed (single group)', async () => {
+            const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+            await count.setValue('2')
+
+            const productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+            expect(productBuildingCount.attributes('value')).toBe('2')
+          })
+
+          it('should update the product when enabled and the building count is changed (multi-group)', async () => {
+            // Add another group
+            const addGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
+            await addGroupButton.trigger('click')
+
+            // Set new group's building counts to 10
+            const newGroupCount = subject.find(`[id="${factory.id}-${product.buildingGroups[1].id}-building-count"]`)
+            await newGroupCount.setValue('10')
+            expect(product.buildingGroups[1].buildingCount).toBe(10)
+
+            // Set original building count to 2, totalling to 12
+            const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+            await count.setValue('2')
+
+            const productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+            expect(productBuildingCount.attributes('value')).toBe('12')
+            expect(product.buildingRequirements.amount).toBe(12)
           })
         })
 
@@ -297,7 +324,7 @@ describe('Component: BuildingGroups', () => {
           })
 
           it('should sync be disabled, and a singular group, when product is edited group should NOT be kept in sync', async () => {
-            await productBuildingCountElem.setValue('2')
+            await productBuildingCount.setValue('2')
 
             expect(product.buildingRequirements.amount).toBe(2)
             expect(product.buildingGroups[0].buildingCount).toBe(1)
@@ -307,7 +334,7 @@ describe('Component: BuildingGroups', () => {
           it('should sync be disabled, and a singular group, when building group is edited product should NOT be kept in sync', async () => {
             await buildingGroupCount.setValue('2')
 
-            expect(productBuildingCountElem.value).toBe('1')
+            expect(productBuildingCount.value).toBe('1')
             expect(product.buildingRequirements.amount).toBe(1)
           })
         })
@@ -322,14 +349,14 @@ describe('Component: BuildingGroups', () => {
 
       it('should remove the building group correctly', async () => {
         const expectedGroupId = product.buildingGroups[1].id
-        const expectedGroupBuildingCountElem = subject.find(`[id="${factory.id}-${expectedGroupId}-building-count"]`)
+        const expectedGroupBuildingCount = subject.find(`[id="${factory.id}-${expectedGroupId}-building-count"]`)
         const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
 
         await deleteButton.trigger('click')
 
         expect(product.buildingGroups.length).toBe(1)
         expect(product.buildingGroups[0].id).toBe(expectedGroupId)
-        expect(expectedGroupBuildingCountElem.exists()).toBe(true)
+        expect(expectedGroupBuildingCount.exists()).toBe(true)
       })
 
       it('should show correct sync status when deleting the 2nd to last remaining group', async () => {
@@ -406,26 +433,25 @@ describe('Component: BuildingGroups', () => {
         expect(count.exists()).toBe(true)
         expect(count.attributes('value')).toBe('0')
 
-        const clockElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
-        expect(clockElem.exists()).toBe(true)
-        expect(clockElem.attributes('value')).toBe('100')
+        const clock = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-clock"]`)
+        expect(clock.attributes('value')).toBe('100')
       })
 
       it('should add a power producer with the correct parts (zeroed)', () => {
-        const fuelRodElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearFuelRod-amount"]`)
+        const fuelRodAmount = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearFuelRod-amount"]`)
 
-        expect(fuelRodElem.exists()).toBe(true)
-        expect(fuelRodElem.attributes('value')).toBe('0')
+        expect(fuelRodAmount.exists()).toBe(true)
+        expect(fuelRodAmount.attributes('value')).toBe('0')
 
-        const waterElem = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-Water-amount"]`)
+        const waterAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-Water-amount"]`)
 
-        expect(waterElem.exists()).toBe(true)
-        expect(waterElem.attributes('value')).toBe('0')
+        expect(waterAmount.exists()).toBe(true)
+        expect(waterAmount.attributes('value')).toBe('0')
 
-        const nuclearWasteElem = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearWaste-amount"]`)
+        const nuclearWasteAmount = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearWaste-amount"]`)
 
-        expect(nuclearWasteElem.exists()).toBe(true)
-        expect(nuclearWasteElem.attributes('value')).toBe('0')
+        expect(nuclearWasteAmount.exists()).toBe(true)
+        expect(nuclearWasteAmount.attributes('value')).toBe('0')
 
         // Expect there to only be one count of nuclear waste, it should not have multiple elements of the same ID
         expect(subject.findAll(`[id="${factory.id}-${newBuildingGroup.id}-parts-NuclearWaste-amount"]`).length).toBe(1)
@@ -461,13 +487,31 @@ describe('Component: BuildingGroups', () => {
         expect(toggleSyncButton.text()).toBe('Disabled')
       })
 
-      it('should sync be enabled and a new group added, sync should be disabled', async () => {
-        const button = subject.find(`[id="${factory.id}-add-building-group"]`)
-        await button.trigger('click')
+      it('should update the power producer when enabled and the building count is changed (single group)', async () => {
+        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        await count.setValue('2')
 
-        const toggleSyncButton = subject.find(`[id="${factory.id}-${powerProducer.id}-toggle-sync"]`)
-        expect(powerProducer.buildingGroupItemSync).toBe(false)
-        expect(toggleSyncButton.text()).toBe('Disabled')
+        const powerProducerBuildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
+        expect(powerProducerBuildingCount.attributes('value')).toBe('2')
+      })
+
+      it('should update the power producer when enabled and the building count is changed (multi-group)', async () => {
+        // Add another group
+        const addGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
+        await addGroupButton.trigger('click')
+
+        // Set new group's building counts to 10
+        const newGroupCount = subject.find(`[id="${factory.id}-${powerProducer.buildingGroups[1].id}-building-count"]`)
+        await newGroupCount.setValue('10')
+        expect(powerProducer.buildingGroups[1].buildingCount).toBe(10)
+
+        // Set original building count to 2, totalling to 12
+        const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        await count.setValue('2')
+
+        const powerProducerBuildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
+        expect(powerProducerBuildingCount.attributes('value')).toBe('12')
+        expect(powerProducer.buildingCount).toBe(12)
       })
     })
 

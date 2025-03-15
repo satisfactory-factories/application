@@ -197,6 +197,7 @@
               <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>
             <v-number-input
+              :id="`${factory.id}-${producer.id}-building-count`"
               v-model.number="producer.buildingAmount"
               class="inline-inputs ml-2"
               control-variant="stacked"
