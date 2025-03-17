@@ -1,9 +1,9 @@
-import { Factory, FactoryPowerChangeType, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, FactoryPowerProducer, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 
 // For internal testing use
 export const addPowerProducerToFactory = (
@@ -39,11 +39,10 @@ export const addPowerProducerToFactory = (
 
   if (options.building) {
     // Add the default building group for the producer when one is selected, otherwise we have to wait for the user to choose one
-    addPowerProducerBuildingGroup(
+    addBuildingGroup(
       factory.powerProducers[factory.powerProducers.length - 1],
+      GroupType.Power,
       factory,
-      true,
-      true,
     )
   }
 }

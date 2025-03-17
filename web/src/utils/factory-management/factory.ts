@@ -137,6 +137,9 @@ export const calculateFactory = (
     checkForItemUpdate(producer)
   })
 
+  // It's possible that the power producers have changed, so we need to recalculate the power.
+  calculatePowerProducers(factory, gameData)
+
   calculateFinalBuildingsAndPower(factory)
 
   // Check if the factory has any problems

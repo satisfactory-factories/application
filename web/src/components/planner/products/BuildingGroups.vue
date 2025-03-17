@@ -17,11 +17,14 @@
       <span :class="{ 'text-green': correct }">
         <i class="fas fa-building" />
         <span class="ml-1">
-          Effective Buildings: <b><span :id="`${factory.id}-effective-buildings`">
-            {{ effectiveBuildings }}
+          Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
+            {{ effectiveBuildings.toFixed(2) }}
           </span></b>
           |
-          <span :id="`${factory.id}-buildings-remaining`">
+          <span
+            :id="`${factory.id}-${item.id}-buildings-remaining`"
+            :key="`${factory.id}-${item.id}-buildings-remaining-${buildingsRemaining}`"
+          >
             {{ buildingsRemaining }}
           </span> remaining
         </span>
@@ -156,23 +159,33 @@
   }>()
 
   const effectiveBuildings = computed(() => {
-    return formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups)).toFixed(2)
+    return formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
   })
 
-  const buildingsRemaining = computed(() => {
-    const groupBuildings = calculateEffectiveBuildingCount(props.item.buildingGroups)
+  watch(() => props.item.buildingGroups, () => {
+    calculateBuildingsRemaining(props.factory)
+  }, { deep: true })
 
-    let subject: FactoryItem | FactoryPowerProducer
-    if (props.type === GroupType.Product) {
-      subject = props.item as FactoryItem
-      return formatNumberFully(subject.buildingRequirements.amount - groupBuildings)
-    } else if (props.type === GroupType.Power) {
-      subject = props.item as FactoryPowerProducer
-      return formatNumberFully(subject.buildingCount - groupBuildings)
+  const buildingsRemaining = ref(0)
+
+  const calculateBuildingsRemaining = (factory: Factory) => {
+    console.log('calculatingBuidlingsRemaining', props.item.id, factory, props.item)
+    if (factory.id !== props.factory.id) {
+      return
     }
 
-    throw new Error('BuildingGroups: buildingsRemaining: Invalid group type!')
-  })
+    let subject: FactoryItem | FactoryPowerProducer
+
+    if (props.type === GroupType.Product) {
+      subject = props.item as FactoryItem
+      buildingsRemaining.value = formatNumberFully(subject.buildingRequirements.amount - Number(effectiveBuildings.value))
+    } else if (props.type === GroupType.Power) {
+      subject = props.item as FactoryPowerProducer
+      buildingsRemaining.value = formatNumberFully(subject.buildingCount - Number(effectiveBuildings.value))
+    } else {
+      throw new Error('BuildingGroups: buildingsRemaining: Invalid group type!')
+    }
+  }
 
   const correct = computed(() => {
     return buildingsRemaining.value <= 0.1 && buildingsRemaining.value >= -0.1
@@ -211,6 +224,8 @@
   const isLast = (group: BuildingGroup, groups: BuildingGroup[]) => {
     return groups.indexOf(group) === groups.length - 1
   }
+
+  eventBus.on('buildingGroupUpdated', calculateBuildingsRemaining)
 </script>
 
 <style scoped lang="scss">

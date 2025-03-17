@@ -552,23 +552,25 @@ export const recalculateGroupMetrics = (
 
 // Updates the item if the building group has been updated under certain conditions
 export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer) => {
-  if (item.buildingGroups.length === 1) {
+  if (item.buildingGroupItemSync) {
     const group = item.buildingGroups[0]
+
+    const newBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups)
 
     // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
     if (group.type === GroupType.Product) {
       const subject = item as FactoryItem
 
       // We need to update the product via effective building count, not whole buildings.
-      subject.buildingRequirements.amount = calculateEffectiveBuildingCount([group])
+      subject.buildingRequirements.amount = newBuildingCount
 
       increaseProductQtyViaBuilding(subject, gameData)
     } else if (group.type === GroupType.Power) {
       const subject = item as FactoryPowerProducer
-      subject.buildingAmount = calculateEffectiveBuildingCount([group])
-      subject.updated = FactoryPowerChangeType.Building
 
-      // The factory update should then take over and change the rest
+      subject.buildingAmount = newBuildingCount
+      subject.buildingCount = newBuildingCount
+      subject.updated = FactoryPowerChangeType.Building
     } else {
       throw new Error('Invalid type')
     }

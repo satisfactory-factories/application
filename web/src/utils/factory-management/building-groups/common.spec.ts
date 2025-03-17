@@ -277,7 +277,7 @@ describe('buildingGroupsCommon', async () => {
         })
 
         it('should calculate for multiple groups', () => {
-          addProductBuildingGroup(product, mockFactory, false)
+          addBuildingGroup(product, GroupType.Product, mockFactory)
           const group2 = product.buildingGroups[1]
 
           // Assert the before
@@ -383,8 +383,8 @@ describe('buildingGroupsCommon', async () => {
             })
             calculateFactories([mockFactory], gameData)
 
-            addProductBuildingGroup(mockFactory.products[1], mockFactory)
-            addProductBuildingGroup(mockFactory.products[1], mockFactory) // Puts it in advanced mode
+            addBuildingGroup(mockFactory.products[1], GroupType.Product, mockFactory)
+            addBuildingGroup(mockFactory.products[1], GroupType.Product, mockFactory) // Puts it in advanced mode
             const group2 = mockFactory.products[1].buildingGroups[0]
 
             // Test 1: 150% overclock
@@ -777,6 +777,24 @@ describe('buildingGroupsCommon', async () => {
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
+      })
+
+      it('should increase the power producer\'s building amount if it is a singular building group', () => {
+        powerBuildingGroups[0].buildingCount = 10
+
+        checkForItemUpdate(powerProducer)
+
+        expect(powerProducer.buildingAmount).toBe(10)
+        expect(powerProducer.buildingCount).toBe(10)
+      })
+
+      it('should increase the power producer\'s building amount if it is a singular building group when calculated', () => {
+        powerProducer.buildingGroupItemSync = true
+        powerBuildingGroups[0].buildingCount = 10
+
+        calculateFactories([mockFactory], gameData)
+
+        expect(powerProducer.powerProduced).toBe(2500)
       })
     })
   })

@@ -229,6 +229,7 @@
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
   import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
+  import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
 
@@ -266,6 +267,7 @@
       updateFactory(props.factory)
       updatingOverclock.value = false
       console.log('Overclock updated')
+      eventBus.emit('buildingGroupUpdated', props.factory)
     }, 750)
   }
 
@@ -342,6 +344,7 @@
       )
       updatingPart.value = ''
       console.log(`Part ${part} updated`)
+      eventBus.emit('buildingGroupUpdated', props.factory)
     }, 750)
   }
 </script>
