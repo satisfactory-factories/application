@@ -126,6 +126,7 @@
         <v-chip
           v-if="part.toString() !== item.id"
           class="sf-chip blue input mx-1 text-body-1"
+          :class="chipColors(String(part))"
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(part)">
@@ -147,7 +148,11 @@
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
         </v-chip>
-        <div :id="`${factory.id}-${group.id}-underchip-${part}`" class="underchip text-blue-darken-1">
+        <div
+          :id="`${factory.id}-${group.id}-underchip-${part}`"
+          class="underchip"
+          :class="underchipColors(String(part))"
+        >
           {{ formatNumberFully(group.parts[part] / group.buildingCount) ?? 0 }} / building
         </div>
       </div>
@@ -189,7 +194,7 @@
         <div
           :id="`${factory.id}-${group.id}-underchip-${part}`"
           class="underchip"
-          :class="partIsByProduct(String(part), group.type) ? 'text-grey-lighten-2' : 'text-blue-darken-1'"
+          :class="underchipColors(String(part))"
         >
           {{ formatNumberFully(group.parts[part] / group.buildingCount) }} / building
         </div>
@@ -317,6 +322,14 @@
       cyan: isRaw && !partIsByProduct(part, props.group.type),
       blue: !isRaw && !partIsByProduct(part, props.group.type),
       nocolor: partIsByProduct(part, props.group.type),
+    }
+  }
+
+  const underchipColors = (part: string) => {
+    return {
+      'text-blue-darken-1': !partIsByProduct(part, props.group.type),
+      'text-cyan': props.factory.parts[part].isRaw && !partIsByProduct(part, props.group.type),
+      'text-grey-lighten-2': partIsByProduct(part, props.group.type),
     }
   }
 
