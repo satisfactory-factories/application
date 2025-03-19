@@ -13,7 +13,7 @@ const gameData = await fetchGameData()
 export const addProductBuildingGroup = (
   product: FactoryItem,
   factory: Factory,
-  addBuildings: boolean
+  addBuildings = false
 ) => {
   createBuildingGroup(product, GroupType.Product, addBuildings)
 

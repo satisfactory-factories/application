@@ -6,6 +6,7 @@ import {
   buildingsNeededForPartsProducts,
 } from '@/utils/factory-management/building-groups/product'
 import {
+  addBuildingGroup,
   calculateBuildingGroupParts,
   remainderToLast,
   remainderToNewGroup,
@@ -53,20 +54,14 @@ describe('productBuildingGroups', async () => {
     })
 
     it('should add a new group to the product with 0 buildings', () => {
-      addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
+      addProductBuildingGroup(mockFactory.products[0], mockFactory)
 
       expect(buildingGroups[0].buildingCount).toBe(0)
     })
 
-    it('should add a new group to the product with the correct parts', () => {
+    it('should add multiple groups each containing the correct part amounts', () => {
+      addProductBuildingGroup(mockFactory.products[0], mockFactory, true) // The first group should contain the full requirement
       addProductBuildingGroup(mockFactory.products[0], mockFactory)
-
-      expect(buildingGroups[0].parts.OreIron).toBe(150)
-      expect(buildingGroups[0].parts.IronIngot).toBe(150)
-    })
-    it('should add a multiple groups each containing the correct part amounts', () => {
-      addProductBuildingGroup(mockFactory.products[0], mockFactory) // The first group should contain the full requirement
-      addProductBuildingGroup(mockFactory.products[0], mockFactory, false)
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
