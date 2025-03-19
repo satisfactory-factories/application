@@ -551,7 +551,7 @@ export const recalculateGroupMetrics = (
 }
 
 // Updates the item if the building group has been updated under certain conditions
-export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer) => {
+export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, factory: Factory) => {
   if (item.buildingGroupItemSync) {
     const group = item.buildingGroups[0]
 
@@ -564,7 +564,7 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer) => 
       // We need to update the product via effective building count, not whole buildings.
       subject.buildingRequirements.amount = newBuildingCount
 
-      increaseProductQtyViaBuilding(subject, gameData)
+      increaseProductQtyViaBuilding(subject, factory, gameData)
     } else if (group.type === GroupType.Power) {
       const subject = item as FactoryPowerProducer
 

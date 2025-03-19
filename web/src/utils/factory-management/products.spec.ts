@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductToFactory,
   byProductAsProductCheck,
   fixProduct,
-  getProduct, getProductAmountByPart,
+  getProduct,
+  getProductAmountByPart,
+  increaseProductQtyViaBuilding,
   isPartByProductOfRecipe,
   recipeByproductPerMin,
   recipeIngredientPerMin,
@@ -22,6 +24,7 @@ import { create321Scenario } from '@/utils/factory-setups/321-product-byproduct-
 import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
 import eventBus from '@/utils/eventBus'
 import { getRecipe } from '@/utils/factory-management/common'
+import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 
 vi.mock('@/utils/eventBus', () => ({
   default: {
@@ -869,6 +872,65 @@ describe('products', () => {
 
       expect(buildingGroup.buildingCount).toBe(1)
       expect(buildingGroup.overclockPercent).toBe(5)
+    })
+  })
+
+  describe('increaseProductQtyViaBuilding', () => {
+    let product: FactoryItem
+
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      product.buildingGroups[0].buildingCount = 4
+      calculateFactories([mockFactory], gameData)
+      expect(product.buildingRequirements.amount).toBe(4)
+      product.buildingGroupItemSync = true // Enable building group sync
+    })
+
+    it('should change the product quantity when building count has changed', () => {
+      product.buildingRequirements.amount = 10
+
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.amount).toBe(300)
+    })
+
+    it('should rebalance building groups when sync is enabled', () => {
+      product.buildingRequirements.amount = 10
+      product.buildingGroups[0].buildingCount = 1
+
+      // First test with just one group
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(10)
+
+      // Add another group and expect it to be balanced
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+      product.buildingGroupItemSync = true // Re-enable as it's disabled when a new group added
+
+      product.buildingRequirements.amount = 14
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(7)
+      expect(product.buildingGroups[1].buildingCount).toBe(7)
+    })
+
+    it('should NOT rebalance building groups when sync is disabled', () => {
+      product.buildingRequirements.amount = 20
+      product.buildingGroups[0].buildingCount = 1
+
+      // First test with just one group
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(20)
+
+      // Add another group and expect it to NOT be balanced
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+
+      product.buildingRequirements.amount = 100
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(20) // Set by first test
+      expect(product.buildingGroups[1].buildingCount).toBe(0) // It was never changed
     })
   })
 })

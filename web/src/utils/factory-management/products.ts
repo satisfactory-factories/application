@@ -1,4 +1,10 @@
-import { BuildingRequirement, ByProductItem, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingRequirement,
+  ByProductItem,
+  Factory,
+  FactoryItem,
+  GroupType,
+} from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import {
   getPartDisplayNameWithoutDataStore,
@@ -8,6 +14,7 @@ import eventBus from '@/utils/eventBus'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
+import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
 
 const gameData = await fetchGameData()
 
@@ -393,7 +400,7 @@ export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInte
   product.id = recipe.products[0].part
 }
 
-export const increaseProductQtyViaBuilding = (product: FactoryItem, gameData: DataInterface) => {
+export const increaseProductQtyViaBuilding = (product: FactoryItem, factory: Factory, gameData: DataInterface) => {
   const newVal = product.buildingRequirements.amount
 
   if (newVal < 0 || !newVal) {
@@ -411,6 +418,14 @@ export const increaseProductQtyViaBuilding = (product: FactoryItem, gameData: Da
 
   // Set the new quantity of the product
   product.amount = recipe.products[0].perMin * newVal
+
+  // If item building group sync is enabled, rebalance it now.
+  if (product.buildingGroupItemSync) {
+    rebalanceBuildingGroups(product, GroupType.Product, factory, {
+      force: true,
+      changeBuildings: true,
+    })
+  }
 
   // Must call updateFactory!
 }

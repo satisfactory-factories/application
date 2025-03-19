@@ -225,7 +225,7 @@ describe('buildingGroupsCommon', async () => {
 
           it('should distribute and update the resources correctly', () => {
             product.buildingRequirements.amount = 4
-            increaseProductQtyViaBuilding(product, gameData)// Ensure it needs 4 buildings
+            increaseProductQtyViaBuilding(product, mockFactory, gameData)// Ensure it needs 4 buildings
 
             // Recalculate
             calculateFactories(factories, gameData)
@@ -724,7 +724,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the product\'s quantity if it is a singular building group', () => {
         productBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(product)
+        checkForItemUpdate(product, mockFactory)
 
         expect(product.buildingRequirements.amount).toBe(10)
         expect(product.amount).toBe(300)
@@ -743,7 +743,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, GroupType.Product, mockFactory)
         productBuildingGroups[0].buildingCount = 1337
 
-        checkForItemUpdate(product)
+        checkForItemUpdate(product, mockFactory)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -753,7 +753,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 50
 
-        checkForItemUpdate(product)
+        checkForItemUpdate(product, mockFactory)
 
         expect(product.amount).toBe(15)
       })
@@ -763,7 +763,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product)
+        checkForItemUpdate(product, mockFactory)
 
         expect(product.buildingRequirements.amount).toBe(1)
         expect(product.amount).toBe(45)
@@ -773,7 +773,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, GroupType.Product, mockFactory)
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product)
+        checkForItemUpdate(product, mockFactory)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -782,7 +782,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the power producer\'s building amount if it is a singular building group', () => {
         powerBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(powerProducer)
+        checkForItemUpdate(powerProducer, mockFactory)
 
         expect(powerProducer.buildingAmount).toBe(10)
         expect(powerProducer.buildingCount).toBe(10)

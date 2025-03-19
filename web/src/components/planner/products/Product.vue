@@ -384,7 +384,7 @@
       return
     }
 
-    increaseProductQtyViaBuilding(product, gameData)
+    increaseProductQtyViaBuilding(product, props.factory, gameData)
     updateFactory(props.factory)
   }
 
