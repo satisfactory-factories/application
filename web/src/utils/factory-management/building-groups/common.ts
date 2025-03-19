@@ -85,6 +85,22 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
   return formatNumberFully(effectiveBuildingCount, 4)
 }
 
+export const calculateRemainingBuildingCount = (item: FactoryItem | FactoryPowerProducer, groupType: GroupType) => {
+  let subject: FactoryItem | FactoryPowerProducer
+
+  const effectiveBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
+
+  if (groupType === GroupType.Product) {
+    subject = item as FactoryItem
+    return subject.buildingRequirements.amount - Number(effectiveBuildings)
+  } else if (groupType === GroupType.Power) {
+    subject = item as FactoryPowerProducer
+    return subject.buildingCount - Number(effectiveBuildings)
+  } else {
+    throw new Error('buildingGroupsCommon: calculateRemainingBuildingCount: Invalid group type!')
+  }
+}
+
 // Returns the total power usage of all building groups for a product
 export const calculateProductBuildingGroupPower = (
   buildingGroups: BuildingGroup[],

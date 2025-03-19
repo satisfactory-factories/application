@@ -17,6 +17,7 @@ import {
   calculateEffectiveBuildingCount,
   calculatePowerProducerBuildingGroupPower,
   calculateProductBuildingGroupPower,
+  calculateRemainingBuildingCount,
   checkForItemUpdate,
   deleteBuildingGroup,
   rebalanceBuildingGroups,
@@ -848,6 +849,37 @@ describe('buildingGroupsCommon', async () => {
       // Totalling 19.822
 
       expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.821)
+    })
+  })
+
+  describe('calculateRemainingBuildingCount', () => {
+    let group1: BuildingGroup
+    let group2: BuildingGroup
+
+    beforeEach(() => {
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, GroupType.Product, mockFactory)
+      group1 = product.buildingGroups[0]
+      group2 = product.buildingGroups[1]
+    })
+
+    it('should calculate the remaining building count correctly', () => {
+      // Make it so there's an effective of 10, zero buildings on the product
+      group1.buildingCount = 4
+      group2.buildingCount = 6
+
+      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(-10)
+
+      // Give the product some buildings
+      product.buildingRequirements.amount = 10
+
+      // It should equalize
+      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(0)
+
+      // Make the groups short
+      product.buildingRequirements.amount = 20
+
+      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(10)
     })
   })
 

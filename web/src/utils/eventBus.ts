@@ -2,7 +2,7 @@ import mitt from 'mitt'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 type Events = {
-  factoryUpdated: undefined; // No payload for this event
+  factoryUpdated: Factory;
   loggedIn: undefined;
   sessionExpired: undefined;
   dataSynced: undefined;

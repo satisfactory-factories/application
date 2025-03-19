@@ -68,6 +68,7 @@ describe('productBuildingGroups', async () => {
       expect(buildingGroups[1].parts.OreIron).toBe(0)
       expect(buildingGroups[1].parts.IronIngot).toBe(0)
     })
+
     it('should automatically add a group when a product is added to a factory', () => {
       addProductToFactory(mockFactory, {
         id: 'CopperIngot',

@@ -14,7 +14,7 @@
   </div>
   <div class="mb-2 d-flex align-center">
     <div class="mr-2">
-      <span :class="{ 'text-green': correct }">
+      <span :class="{ 'text-green': correct, 'text-red': !correct }">
         <i class="fas fa-building" />
         <span class="ml-1">
           Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
@@ -25,8 +25,11 @@
             :id="`${factory.id}-${item.id}-buildings-remaining`"
             :key="`${factory.id}-${item.id}-buildings-remaining-${buildingsRemaining}`"
           >
-            {{ buildingsRemaining }}
-          </span> remaining
+            {{ Math.abs(buildingsRemaining) }}
+            <span v-show="buildingsRemaining > 0">needed</span>
+            <span v-show="buildingsRemaining < 0">short</span>
+          </span>
+
         </span>
       </span>
     </div>
@@ -144,12 +147,13 @@
   import eventBus from '@/utils/eventBus'
   import {
     addBuildingGroup,
-    calculateEffectiveBuildingCount,
+    calculateEffectiveBuildingCount, calculateRemainingBuildingCount,
     rebalanceBuildingGroups,
     remainderToLast,
     remainderToNewGroup,
   } from '@/utils/factory-management/building-groups/common'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
+  import { build } from 'vite'
 
   const props = defineProps<{
     factory: Factory
@@ -158,33 +162,29 @@
     type: GroupType
   }>()
 
-  const effectiveBuildings = computed(() => {
-    return formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
-  })
-
   watch(() => props.item.buildingGroups, () => {
-    calculateBuildingsRemaining(props.factory)
+    recalculateMetrics(props.factory)
   }, { deep: true })
 
   const buildingsRemaining = ref(0)
+  const effectiveBuildings = ref(0)
 
-  const calculateBuildingsRemaining = (factory: Factory) => {
-    console.log('calculatingBuidlingsRemaining', props.item.id, factory, props.item)
-    if (factory.id !== props.factory.id) {
-      return
+  const recalculateMetrics = (factory: Factory) => {
+    // Filter out events for factories we don't care about
+    if (factory.id === props.factory.id) {
+      calculateEffectiveBuildings()
+      calculateBuildingsRemaining()
+      console.log('BuildingGroups: Metrics recalculated', props.item.id, props.factory.name)
     }
+  }
 
-    let subject: FactoryItem | FactoryPowerProducer
+  const calculateEffectiveBuildings = () => {
+    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
+  }
 
-    if (props.type === GroupType.Product) {
-      subject = props.item as FactoryItem
-      buildingsRemaining.value = formatNumberFully(subject.buildingRequirements.amount - Number(effectiveBuildings.value))
-    } else if (props.type === GroupType.Power) {
-      subject = props.item as FactoryPowerProducer
-      buildingsRemaining.value = formatNumberFully(subject.buildingCount - Number(effectiveBuildings.value))
-    } else {
-      throw new Error('BuildingGroups: buildingsRemaining: Invalid group type!')
-    }
+  const calculateBuildingsRemaining = () => {
+    console.log('BuildingGroups: calculateBuildingsRemaining', props.item.id, props.item)
+    buildingsRemaining.value = calculateRemainingBuildingCount(props.item, props.type)
   }
 
   const correct = computed(() => {
@@ -225,7 +225,7 @@
     return groups.indexOf(group) === groups.length - 1
   }
 
-  eventBus.on('buildingGroupUpdated', calculateBuildingsRemaining)
+  eventBus.on('factoryUpdated', recalculateMetrics)
 </script>
 
 <style scoped lang="scss">

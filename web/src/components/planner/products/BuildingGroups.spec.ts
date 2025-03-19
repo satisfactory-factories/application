@@ -383,7 +383,7 @@ describe('Component: BuildingGroups', () => {
             expect(toggleSyncButton.text()).toBe('Disabled')
           })
 
-          it('should sync be disabled, and a singular group, when product is edited group should NOT be kept in sync', async () => {
+          it('when singular group, when product is edited group should NOT be kept in sync', async () => {
             await productBuildingCount.setValue('2')
 
             expect(product.buildingRequirements.amount).toBe(2)
@@ -391,11 +391,39 @@ describe('Component: BuildingGroups', () => {
             expect(buildingGroupCount.attributes('value')).toBe('1')
           })
 
-          it('should sync be disabled, and a singular group, when building group is edited product should NOT be kept in sync', async () => {
+          it('when singular group, when building group is edited product should NOT be kept in sync', async () => {
             await buildingGroupCount.setValue('2')
 
             expect(productBuildingCount.value).toBe('1')
             expect(product.buildingRequirements.amount).toBe(1)
+          })
+
+          it('should update the effective buildings correctly (out of sync)', async () => {
+            const effectiveBuildingReading = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
+            const remainingReading = subject.find(`[id="${factory.id}-${product.id}-buildings-remaining"]`)
+            const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+            const productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+
+            // Put it in sync first so we can test the out of sync state
+            expect(product.buildingGroupItemSync).toBe(true)
+
+            // Update the product's building count
+            await productBuildingCount.setValue('13')
+
+            // It should have synced the building count to the building group
+            expect(effectiveBuildingReading.text()).toBe('13.00')
+
+            // Take it out of sync now
+            await toggleSyncButton.trigger('click')
+            expect(product.buildingGroupItemSync).toBe(false)
+
+            // Modify the product building count again
+            await productBuildingCount.setValue('15')
+
+            // Expect it not to have changed the effective buildings, and there should be a remainder
+
+            expect(effectiveBuildingReading.text()).toBe('13.00')
+            expect(remainingReading.text()).toBe('2')
           })
         })
       })

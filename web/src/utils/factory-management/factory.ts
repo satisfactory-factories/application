@@ -148,9 +148,9 @@ export const calculateFactory = (
   })
 
   // Emit an event that the data has been updated so it can be synced
-  eventBus.emit('factoryUpdated')
+  eventBus.emit('factoryUpdated', factory)
 
-  console.log('factory: calculateFactory completed', factory.name)
+  console.log(`factory: calculateFactory completed for factory: ${factory.name}`)
 
   return factory
 }
