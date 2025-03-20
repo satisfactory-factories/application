@@ -1,7 +1,7 @@
 import vuetify from '@/plugins/vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import Product from './Product.vue'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -46,7 +46,7 @@ describe('Product', () => {
     subject = mountSubject(factory)
   })
 
-  test('should update produced amount when requirement amount is changed', async () => {
+  it('should update produced amount when requirement amount is changed', async () => {
     calculateFactory(factory, [factory], gameData)
     subject = mountSubject(factory) // Remount the subject as things have changed
 
@@ -59,7 +59,7 @@ describe('Product', () => {
     expect(productionInput?.attributes?.()?.value).toBe('60')
   })
 
-  test('should update produced amount when byproduct amount is changed', async () => {
+  it('should update produced amount when byproduct amount is changed', async () => {
     addProductToFactory(factory, {
       id: 'LiquidFuel',
       amount: 40,
@@ -77,7 +77,7 @@ describe('Product', () => {
     expect(productionInput?.attributes?.()?.value).toBe('80')
   })
 
-  test('should prevent a breakage when the input amount is set to negative numbers', async () => {
+  it('should prevent a breakage when the input amount is set to negative numbers', async () => {
     const productionInput = subject.find('input[name="IronIngot.amount"]')
     await productionInput.setValue('-123')
     expect(productionInput?.attributes?.()?.value).toBe('1')
