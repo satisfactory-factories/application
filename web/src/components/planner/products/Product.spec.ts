@@ -28,7 +28,7 @@ const mountSubject = (factory: Factory) => {
   })
 }
 
-describe('Product', () => {
+describe('Component: Product', () => {
   let factory = newFactory('test')
   let subject: VueWrapper<{factory: Factory, helpText: boolean }>
 

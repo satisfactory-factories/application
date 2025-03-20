@@ -60,6 +60,7 @@
           />
         </span>
         <v-autocomplete
+          :id="`${factory.id}-${producer.id}-building`"
           v-model="producer.building"
           hide-details
           :items="autocompletePowerProducerGenerator()"
@@ -84,6 +85,7 @@
           <i class="fas fa-burn" style="width: 42px; height: 42px" />
         </span>
         <v-autocomplete
+          :id="`${factory.id}-${producer.id}-recipe`"
           v-model="producer.recipe"
           :disabled="!producer.building"
           hide-details
@@ -97,6 +99,7 @@
       </div>
       <div class="input-row d-flex align-center">
         <v-number-input
+          :id="`${factory.id}-${producer.id}-fuel-quantity`"
           v-model.number="producer.fuelAmount"
           control-variant="stacked"
           :disabled="!producer.recipe"
@@ -112,6 +115,7 @@
       <div class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
         <v-number-input
+          :id="`${factory.id}-${producer.id}-power-amount`"
           v-model.number="producer.powerAmount"
           control-variant="stacked"
           :disabled="!producer.recipe"
