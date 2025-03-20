@@ -93,7 +93,7 @@ export const useGameDataStore = defineStore('game-data', () => {
     })
   }
 
-  const getDefaultRecipeForPart = (part: string) => {
+  const getDefaultRecipeIdForPart = (part: string) => {
     const recipes = getRecipesForPart(part)
     if (recipes.length === 1) {
       return recipes[0].id
@@ -149,7 +149,7 @@ export const useGameDataStore = defineStore('game-data', () => {
     getPowerRecipeById,
     getRecipesForPart,
     getRecipesForPowerProducer,
-    getDefaultRecipeForPart,
+    getDefaultRecipeForPart: getDefaultRecipeIdForPart,
     getDefaultRecipeForPowerProducer,
     getGeneratorFuelRecipeByPart,
   }

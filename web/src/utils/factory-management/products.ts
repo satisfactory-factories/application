@@ -28,6 +28,17 @@ export const addProductToFactory = (
     displayOrder?: number,
   }
 ) => {
+  // If there is no amount set, set it up so that the building count is at least 1.
+  if (!options.amount) {
+    const recipe = getRecipe(options.recipe, gameData)
+    if (!recipe) {
+      console.warn('addProductToFactory: Recipe not found, cannot set amount to 1.')
+      return
+    }
+
+    options.amount = recipe.products[0].perMin
+  }
+
   factory.products.push({
     id: options.id ?? '',
     amount: options.amount ?? 1,

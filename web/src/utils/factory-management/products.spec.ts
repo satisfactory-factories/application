@@ -83,6 +83,15 @@ describe('products', () => {
       expect(mockFactory.products[1].displayOrder).toBe(1)
     })
 
+    it('should add a product at a building count of 1', () => {
+      addProductToFactory(mockFactory, {
+        id: 'IronIngot',
+        recipe: 'IngotIron',
+      })
+
+      expect(mockFactory.products[1].buildingRequirements.amount).toBe(1)
+    })
+
     describe('building groups', () => {
       beforeEach(() => {
         mockFactory = newFactory('Iron Ingots')

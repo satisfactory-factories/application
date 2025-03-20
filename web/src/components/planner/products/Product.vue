@@ -251,7 +251,7 @@
   import { Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
-  import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 
@@ -328,7 +328,17 @@
     }
 
     product.recipe = getDefaultRecipeForPart(product.id)
-    product.amount = 1
+
+    if (product.recipe) {
+      const recipe = getRecipe(product.recipe, gameData)
+      if (!recipe) {
+        console.warn(`Product: Unable to get recipe for ${product.id}!`)
+        product.amount = 1
+      } else {
+        product.amount = recipe.products[0].perMin
+      }
+    }
+
     // Blow the building groups away, updateFactory will regenerate them
     product.buildingGroups = []
 

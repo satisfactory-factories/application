@@ -864,7 +864,7 @@ describe('buildingGroupsCommon', async () => {
     })
 
     it('should calculate the remaining building count correctly', () => {
-      // Make it so there's an effective of 10, zero buildings on the product
+      // Make it so there's an effective 10 buildings, zero buildings on the product
       group1.buildingCount = 4
       group2.buildingCount = 6
 
