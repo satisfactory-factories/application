@@ -342,6 +342,10 @@
       ingredient.perMin = 0
     })
 
+    // Make it so that one building is added by default
+    producer.buildingAmount = 1
+    producer.updated = FactoryPowerChangeType.Building
+
     // Add a building group in
     addPowerProducerBuildingGroup(producer, factory, true)
 
