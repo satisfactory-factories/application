@@ -221,7 +221,7 @@
         />
       </div>
       <div v-if="producer.buildingGroupsHaveProblem && !producer.buildingGroupsTrayOpen" class="mb-2">
-        <v-btn color="red" @click="producer.buildingGroupsTrayOpen != producer.buildingGroupsTrayOpen">
+        <v-btn color="red" @click="toggleBuildingGroupTray(producer)">
           <i class="fas fa-exclamation-triangle" />
           <span class="ml-2">Building Groups have a problem!</span>
         </v-btn>
