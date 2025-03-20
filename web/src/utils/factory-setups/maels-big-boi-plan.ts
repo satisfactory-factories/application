@@ -26,6 +26,7 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
   }],
   byProducts: [],
   inputs: [],
@@ -131,6 +132,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   powerProducers: [],
@@ -237,6 +240,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   powerProducers: [],
@@ -356,6 +361,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'HighSpeedWire',
     amount: 3840,
@@ -375,6 +382,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [],
@@ -497,6 +506,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Wire',
     amount: 5400,
@@ -516,6 +527,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CopperDust',
     amount: 400,
@@ -535,6 +548,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Cable',
     amount: 2160,
@@ -554,6 +569,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'HeavyOilResidue',
     amount: 480,
@@ -573,6 +590,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'PolymerResin', amount: 240, byProductOf: 'HeavyOilResidue' }],
   inputs: [{ factoryId: 7869, outputPart: 'CopperIngot', amount: 5000 }, {
@@ -803,6 +822,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'LiquidFuel',
     amount: 960,
@@ -822,6 +843,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Rubber',
     amount: 240,
@@ -841,6 +864,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'FluidCanister',
     amount: 40,
@@ -860,6 +885,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Fuel',
     amount: 40,
@@ -879,6 +906,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'HeavyOilResidue', amount: 1460, byProductOf: 'Plastic' }],
   inputs: [],
@@ -1044,6 +1073,8 @@ const bigBoiPlan: Factory[] = [{
     buildingGroupsTrayOpen: false,
     id: '2738',
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   power: { consumed: 5232.3, produced: 0, difference: 0 },
   previousInputs: [],
@@ -1071,6 +1102,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'IronPlateReinforced',
     amount: 202.5,
@@ -1090,6 +1123,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 8489, outputPart: 'IronIngot', amount: 1440 }, {
@@ -1220,6 +1255,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'GunpowderMK2',
     amount: 20,
@@ -1239,6 +1276,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 1023, outputPart: 'HeavyOilResidue', amount: 10 }],
@@ -1369,6 +1408,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Silica',
     amount: 3780,
@@ -1388,6 +1429,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CrystalOscillator',
     amount: 24,
@@ -1407,6 +1450,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 7110, outputPart: 'Cable', amount: 336 }, {
@@ -1581,6 +1626,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'IronScrew',
     amount: 2000,
@@ -1600,6 +1647,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 8489, outputPart: 'IronIngot', amount: 1070 }],
@@ -1699,6 +1748,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SteelPipe',
     amount: 1200,
@@ -1718,6 +1769,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SteelPlate',
     amount: 720,
@@ -1737,6 +1790,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 8464, outputPart: 'Cement', amount: 2000 }, {
@@ -1892,6 +1947,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Rotor',
     amount: 90,
@@ -1911,6 +1968,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Motor',
     amount: 30,
@@ -1930,6 +1989,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 6471, outputPart: 'SteelPipe', amount: 810 }, {
@@ -2072,6 +2133,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 6471, outputPart: 'SteelPlate', amount: 432 }, {
@@ -2181,6 +2244,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'ModularFrameHeavy',
     amount: 14,
@@ -2205,6 +2270,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'ModularFrameFused',
     amount: 4.5,
@@ -2224,6 +2291,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 2657, outputPart: 'IronRod', amount: 504 }, {
@@ -2461,6 +2530,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CircuitBoardHighSpeed',
     amount: 90,
@@ -2480,6 +2551,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'HighSpeedConnector',
     amount: 25.5,
@@ -2499,6 +2572,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'Computer',
     amount: 60,
@@ -2518,6 +2593,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'ComputerSuper',
     amount: 8.5,
@@ -2542,6 +2619,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 7110, outputPart: 'CopperSheet', amount: 1230 }, {
@@ -2756,6 +2835,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_3',
     amount: 45,
@@ -2775,6 +2856,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_4',
     amount: 5,
@@ -2794,6 +2877,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_5',
     amount: 9,
@@ -2818,6 +2903,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_2',
     amount: 15,
@@ -2837,6 +2924,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 6620, outputPart: 'Motor', amount: 10 }, {
@@ -3189,6 +3278,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SAMFluctuator',
     amount: 20,
@@ -3208,6 +3299,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'DarkEnergy',
     amount: 1350,
@@ -3227,6 +3320,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 7110, outputPart: 'Wire', amount: 100 }, { factoryId: 6471, outputPart: 'SteelPipe', amount: 60 }],
@@ -3378,6 +3473,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AluminumScrap',
     amount: 3960,
@@ -3397,6 +3494,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AluminumIngot',
     amount: 2640,
@@ -3416,6 +3515,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AluminumPlate',
     amount: 720,
@@ -3435,6 +3536,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AluminumCasing',
     amount: 960,
@@ -3454,6 +3557,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AluminumPlateReinforced',
     amount: 90,
@@ -3473,6 +3578,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'Water', amount: 1320, byProductOf: 'AluminumScrap' }],
   inputs: [{ factoryId: 5445, outputPart: 'Silica', amount: 3300 }, {
@@ -3734,6 +3841,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CartridgeChaos',
     amount: 250,
@@ -3753,6 +3862,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'NobeliskExplosive',
     amount: 10,
@@ -3772,6 +3883,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 7110, outputPart: 'CopperSheet', amount: 30 }, {
@@ -3970,6 +4083,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SulfuricAcid',
     amount: 600,
@@ -3989,6 +4104,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 422, outputPart: 'IronPlate', amount: 60 }],
@@ -4139,6 +4256,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'LiquidFuel',
     amount: 378,
@@ -4158,6 +4277,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'LiquidTurboFuel',
     amount: 315,
@@ -4177,6 +4298,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'RocketFuel',
     amount: 500,
@@ -4196,6 +4319,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'PolymerResin', amount: 283.5, byProductOf: 'LiquidFuel' }, {
     id: 'CompactedCoal',
@@ -4388,6 +4513,8 @@ const bigBoiPlan: Factory[] = [{
     buildingGroupsTrayOpen: false,
     id: '8918',
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   power: { consumed: 1305.5, produced: 0, difference: 0 },
   previousInputs: [{ factoryId: 3816, outputPart: 'NitricAcid', amount: 50 }],
@@ -4415,6 +4542,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'ModularFrameLightweight',
     amount: 8,
@@ -4434,6 +4563,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CoolingSystem',
     amount: 14,
@@ -4458,6 +4589,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'MotorLightweight',
     amount: 2,
@@ -4482,6 +4615,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 5706, outputPart: 'Computer', amount: 8 }, {
@@ -4763,6 +4898,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_7',
     amount: 4.5,
@@ -4782,6 +4919,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_6',
     amount: 6,
@@ -4801,6 +4940,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_8',
     amount: 2,
@@ -4831,6 +4972,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 4295, outputPart: 'SpaceElevatorPart_4', amount: 5 }, {
@@ -5092,7 +5235,13 @@ const bigBoiPlan: Factory[] = [{
         isRequestSatisfied: true,
         difference: 0,
       },
-      SpaceElevatorPart_9: { part: 'SpaceElevatorPart_9', request: 1, supply: 2, isRequestSatisfied: true, difference: 1 },
+      SpaceElevatorPart_9: {
+        part: 'SpaceElevatorPart_9',
+        request: 1,
+        supply: 2,
+        isRequestSatisfied: true,
+        difference: 1,
+      },
     },
   },
   exportCalculator: {},
@@ -5153,6 +5302,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'UraniumCell',
     amount: 400,
@@ -5172,6 +5323,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'NuclearFuelRod',
     amount: 8,
@@ -5195,6 +5348,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'SulfuricAcid', amount: 160, byProductOf: 'UraniumCell' }],
   inputs: [{ factoryId: 6620, outputPart: 'Stator', amount: 96 }, {
@@ -5434,6 +5589,8 @@ const bigBoiPlan: Factory[] = [{
     buildingGroupsTrayOpen: false,
     id: '564',
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   power: { consumed: 2540, produced: 0, difference: 0 },
   previousInputs: [{ factoryId: 6620, outputPart: 'Stator', amount: 96 }, {
@@ -5481,6 +5638,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'PlutoniumPellet',
     amount: 120,
@@ -5500,6 +5659,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'PlutoniumCell',
     amount: 60,
@@ -5519,6 +5680,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'PlutoniumFuelRod',
     amount: 2,
@@ -5549,6 +5712,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'Water', amount: 120, byProductOf: 'NonFissibleUranium' }],
   inputs: [{ factoryId: 5445, outputPart: 'Silica', amount: 200 }, {
@@ -5818,6 +5983,8 @@ const bigBoiPlan: Factory[] = [{
     buildingGroupsTrayOpen: false,
     id: '1118',
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   power: { consumed: 1220.4, produced: 0, difference: 0 },
   previousInputs: [{ factoryId: 5445, outputPart: 'Silica', amount: 200 }, {
@@ -5868,6 +6035,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'TimeCrystal',
     amount: 48,
@@ -5887,6 +6056,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [],
@@ -5989,6 +6160,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'FicsiteMesh',
     amount: 360,
@@ -6008,6 +6181,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [],
   inputs: [{ factoryId: 4042, outputPart: 'SAMIngot', amount: 240 }, {
@@ -6126,6 +6301,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SingularityCell',
     amount: 10,
@@ -6150,6 +6327,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'QuantumEnergy',
     amount: 1000,
@@ -6169,6 +6348,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'QuantumOscillator',
     amount: 20,
@@ -6200,6 +6381,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'TemporalProcessor',
     amount: 4,
@@ -6231,6 +6414,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'CrystalShard',
     amount: 12,
@@ -6262,6 +6447,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'AlienPowerFuel',
     amount: 4,
@@ -6293,6 +6480,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'DarkEnergy', amount: 840, byProductOf: 'QuantumOscillator' }],
   inputs: [{ factoryId: 216, outputPart: 'Diamond', amount: 270 }, {
@@ -6680,6 +6869,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_11',
     amount: 2,
@@ -6710,6 +6901,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }, {
     id: 'SpaceElevatorPart_12',
     amount: 4,
@@ -6741,6 +6934,8 @@ const bigBoiPlan: Factory[] = [{
     }],
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+
   }],
   byProducts: [{ id: 'DarkEnergy', amount: 100, byProductOf: 'SpaceElevatorPart_12' }],
   inputs: [{ factoryId: 440, outputPart: 'FicsiteMesh', amount: 200 }, {

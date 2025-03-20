@@ -555,13 +555,9 @@ describe('Component: BuildingGroups', () => {
 
     describe('editing groups', () => {
       let buildingGroupCount: any
-      let buildingGroupClock: any
-      let buildingGroupPowerUsed: any
 
       beforeEach(() => {
         buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
-        buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-        buildingGroupPowerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
       })
 
       describe('group<->powerproducer sync', () => {

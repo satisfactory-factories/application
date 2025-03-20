@@ -168,6 +168,7 @@
         <v-chip
           v-if="producer.ingredients[1]"
           class="sf-chip blue input"
+          :class="factory.parts[producer.ingredients[1].part.toString()].isRaw ? 'cyan': 'blue'"
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(producer.ingredients[1].part)">

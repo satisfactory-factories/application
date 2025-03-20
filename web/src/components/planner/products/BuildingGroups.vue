@@ -153,7 +153,6 @@
     remainderToNewGroup,
   } from '@/utils/factory-management/building-groups/common'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
-  import { build } from 'vite'
 
   const props = defineProps<{
     factory: Factory
