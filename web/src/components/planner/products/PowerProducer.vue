@@ -179,13 +179,13 @@
             <game-asset :subject="producer.ingredients[1].part" type="item" />
           </tooltip>
           <v-number-input
+            :id="`${factory.id}-${producer.id}-${producer.ingredients[1].part.toString()}`"
             v-model.number="producer.ingredients[1].perMin"
             class="inline-inputs ml-2"
             control-variant="stacked"
             density="compact"
             hide-details
             hide-spin-buttons
-            :name="`${producer.id}.ingredient.${producer.ingredients[1].part.toString()}`"
             :producer="producer.id"
             width="120px"
             @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"

@@ -202,8 +202,8 @@
     rebalanceBuildingGroups(
       props.item,
       props.type,
-      props.factory,
-      { force: true })
+      props.factory
+    )
   }
 
   const resetClocks = (buildingGroups: BuildingGroup[]) => {
