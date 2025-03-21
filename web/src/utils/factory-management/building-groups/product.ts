@@ -24,7 +24,6 @@ export const addProductBuildingGroup = (
       product,
       GroupType.Product,
       factory,
-      { force: true, changeBuildings: true }
     )
   }
   calculateBuildingGroupParts([product], GroupType.Product, factory)
@@ -86,7 +85,6 @@ export const updateProductBuildingGroupParts = (
       product,
       GroupType.Product,
       factory,
-      { force: true, changeBuildings: false }
     )
   }
 

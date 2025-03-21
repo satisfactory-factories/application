@@ -184,6 +184,11 @@ describe('Component: PowerProducer', () => {
     it('should update the building group\'s building count', () => {
       buildingGroup.buildingCount = 4
     })
+
+    it('should also update the power producer\'s and factory power produced', () => {
+      expect(powerProducer.powerProduced).toBe(10000)
+      expect(factory.power.produced).toBe(10000)
+    })
   })
 
   describe('requirement part amount changes', () => {
@@ -191,16 +196,19 @@ describe('Component: PowerProducer', () => {
 
     beforeEach(async () => {
       requirementAmount = subject.find(`[id="${factory.id}-${powerProducer.id}-Water"]`)
-
       requirementAmount.setValue('480')
     })
 
+    it('should update the data model', () => {
+      expect(powerProducer.ingredients[1].perMin).toBe(480) // Was 240
+    })
+
     it('should update the building amount', () => {
-      expect(buildingCount.element.value).toBe('2')
+      expect(buildingCount.element.value).toBe('2') // Was 1
     })
 
     it('should update the power amount', () => {
-      expect(powerAmount.element.value).toBe('5000')
+      expect(powerAmount.element.value).toBe('5000') // Was 2500
     })
   })
 

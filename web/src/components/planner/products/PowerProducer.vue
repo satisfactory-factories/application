@@ -209,7 +209,6 @@
               density="compact"
               hide-details
               hide-spin-buttons
-              :name="`${producer.id}.buildingAmount`"
               :producer="producer.id"
               width="120px"
               @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"

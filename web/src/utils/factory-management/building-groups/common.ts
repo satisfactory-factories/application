@@ -267,39 +267,13 @@ export const calculateBuildingGroupProblems = (
   item.buildingGroupsHaveProblem = absDiff > 0.1
 }
 
-export interface RebalanceBuildingGroupOptions {
-  force?: boolean
-  changeBuildings?: boolean
-  forcePartCalculation?: boolean
-}
 // Takes the building groups and rebalances them based on the building count
 export const rebalanceBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
   factory: Factory,
-  options?: RebalanceBuildingGroupOptions
 ) => {
-  if (!options) {
-    options = {}
-  }
-  // Set defaults if not supplied
-  if (options?.force === undefined) {
-    options.force = false
-  }
-  if (options?.changeBuildings === undefined) {
-    options.changeBuildings = true
-  }
-
-  // If we're looking merely to rebalance, do it now, as there may be no changes needed to buildings but the parts may need update anyway.
-  if (options.forcePartCalculation) {
-    recalculateGroupMetrics(item, groupType, factory)
-  }
-
-  // Prevent rebalancing when in advanced mode
-  if (!options?.force) {
-    console.log('productBuildingGroups: rebalanceGroups: Rebalance skipped due to advanced mode')
-    return
-  }
+  recalculateGroupMetrics(item, groupType, factory)
 
   const targetBuildings = getBuildingCount(item, groupType)
   const groups = item.buildingGroups
@@ -312,9 +286,7 @@ export const rebalanceBuildingGroups = (
   groups.forEach(group => {
     // Even scenario: each group gets exactly the quotient.
     // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
-    if (options?.changeBuildings) {
-      group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
-    }
+    group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
 
     // Set overclock percentage.
     // Even: no adjustment needed (100%).

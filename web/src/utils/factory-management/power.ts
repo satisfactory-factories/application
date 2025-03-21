@@ -47,7 +47,7 @@ export const addPowerProducerToFactory = (
   }
 }
 
-// Depending on which value is updated, we need to recalculate the power generation.
+// Depending on which value is updated, we need to recalculate the power producer in a number of different ways.
 export const calculatePowerProducers = (
   factory: Factory,
   gameData: DataInterface
@@ -66,37 +66,20 @@ export const calculatePowerProducers = (
       producer.ingredients = recipe.ingredients
     }
 
-    if (producer.updated === FactoryPowerChangeType.Power) {
-      producer.powerProduced = producer.powerAmount // Simply replace it
-
-      // Now we need to calculate the amount of items produced per minute
-      producer.fuelAmount = producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0)
-
-      producer.ingredients[0].perMin = producer.fuelAmount
+    if (producer.updated === FactoryPowerChangeType.Building) {
+      updateViaBuilding(producer, recipe)
     }
 
     if (producer.updated === FactoryPowerChangeType.Fuel) {
-      producer.ingredients[0].perMin = producer.fuelAmount // Replace the ingredient directly
+      updateViaFuel(producer, recipe)
+    }
 
-      // Now we've handled the updated values, we can calculate the power generation again
-      producer.powerProduced = calculatePowerAmount(producer, recipe)
+    if (producer.updated === FactoryPowerChangeType.Power) {
+      updateViaPower(producer, recipe)
     }
 
     if (producer.updated === FactoryPowerChangeType.Ingredient) {
-      // producer.ingredients[1].perMin will have been changed directly, so we just run the calculation.
-      producer.powerProduced = calculatePowerAmount(producer, recipe)
-    }
-
-    if (producer.updated === FactoryPowerChangeType.Building) {
-      // Replace the building directly
-      producer.buildingCount = producer.buildingAmount
-
-      // Now we need to set the ingredients in a ratio equivalent of the amount of buildings
-      producer.ingredients[0].perMin = recipe.ingredients[0].perMin * producer.buildingCount
-      producer.fuelAmount = producer.ingredients[0].perMin
-
-      // Now we need to increase the power so the supplemental fuel is calculated correctly
-      producer.powerProduced = calculatePowerAmount(producer, recipe)
+      updateViaIngredient(producer, recipe)
     }
 
     // For supplemental fuels, we need to know the power produced in order to calculate them
@@ -141,6 +124,49 @@ export const calculatePowerProducers = (
     producer.powerAmount = producer.powerProduced
     producer.fuelAmount = producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0)
   })
+}
+
+export const updateViaBuilding = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+// Replace the building directly
+  producer.buildingCount = producer.buildingAmount
+
+  // Now we need to set the ingredients in a ratio equivalent of the amount of buildings
+  producer.ingredients[0].perMin = recipe.ingredients[0].perMin * producer.buildingCount
+  producer.fuelAmount = producer.ingredients[0].perMin
+
+  // Now we need to increase the power so the supplemental fuel is calculated correctly
+  producer.powerProduced = calculatePowerAmount(producer, recipe)
+}
+
+export const updateViaFuel = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+  producer.ingredients[0].perMin = producer.fuelAmount // Replace the ingredient directly
+
+  // Now we've handled the updated values, we can calculate the power generation again
+  producer.powerProduced = calculatePowerAmount(producer, recipe)
+}
+
+export const updateViaPower = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+  producer.powerProduced = producer.powerAmount // Simply replace it
+
+  // Now we need to calculate the amount of items produced per minute
+  producer.fuelAmount = producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0)
+
+  producer.ingredients[0].perMin = producer.fuelAmount
+}
+
+export const updateViaIngredient = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+  // supplementalRatio represents supplemental ingredient e.g. water per MW produced.
+  // Thus, powerProduced can be derived from the water input:
+  // water (perMin) = powerProduced * supplementalRatio  -> powerProduced = water / supplementalRatio
+  const supplementalRatio = recipe.ingredients[1].supplementalRatio ?? 0
+  producer.powerProduced = producer.ingredients[1].perMin / supplementalRatio
+
+  // Calculate fuel amount based on power produced.
+  const mwPerItem = recipe.ingredients[0].mwPerItem ?? 0
+  producer.fuelAmount = producer.powerProduced / mwPerItem
+
+  // Ensure the fuel ingredient matches the calculated fuel amount.
+  producer.ingredients[0].perMin = producer.fuelAmount
 }
 
 export const calculatePowerAmount = (

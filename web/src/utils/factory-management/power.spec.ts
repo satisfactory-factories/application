@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   BuildingGroup,
   Factory,
@@ -10,10 +10,10 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { gameData } from '@/utils/gameData'
 
-let factory: Factory
-
 describe('power', () => {
-  beforeAll(() => {
+  let factory: Factory
+
+  beforeEach(() => {
     // Initialize the factory
     factory = newFactory('My fuel plant')
     addProductToFactory(factory, { id: 'LiquidFuel', amount: 480, recipe: 'LiquidFuel' })
@@ -121,6 +121,8 @@ describe('power', () => {
     })
 
     describe('Nuclear Power', () => {
+      let powerProducer: FactoryPowerProducer
+
       beforeEach(() => {
         factory = newFactory('My nuclear plant')
         // Add one nuclear power plant
@@ -130,6 +132,7 @@ describe('power', () => {
           recipe: 'GeneratorNuclear_NuclearFuelRod',
           updated: FactoryPowerChangeType.Power,
         })
+        powerProducer = factory.powerProducers[0]
         calculateFactories([factory], gameData)
       })
 
@@ -210,18 +213,17 @@ describe('power', () => {
       })
 
       describe('updating', () => {
-        let powerProducer: FactoryPowerProducer
         let buildingGroup: BuildingGroup
 
         beforeEach(() => {
-          powerProducer = factory.powerProducers[0]
           buildingGroup = powerProducer.buildingGroups[0]
+          powerProducer.buildingGroupItemSync = true
         })
 
         describe('via building', () => {
           it('should update when the building count is updated', () => {
-            powerProducer.updated = FactoryPowerChangeType.Building
             powerProducer.buildingAmount = 2
+            powerProducer.updated = FactoryPowerChangeType.Building
 
             calculateFactories([factory], gameData)
 
@@ -229,10 +231,13 @@ describe('power', () => {
             expect(powerProducer.ingredients[0].perMin).toBe(0.4)
             expect(powerProducer.ingredients[1].perMin).toBe(480)
             expect(powerProducer.byproduct?.amount).toBe(20)
+            expect(powerProducer.fuelAmount).toBe(0.4)
             expect(powerProducer.powerProduced).toBe(5000)
             expect(buildingGroup.buildingCount).toBe(2)
+            expect(buildingGroup.overclockPercent).toBe(100)
 
             powerProducer.buildingAmount = 2.5
+            powerProducer.updated = FactoryPowerChangeType.Building
 
             calculateFactories([factory], gameData)
 
@@ -240,10 +245,13 @@ describe('power', () => {
             expect(powerProducer.ingredients[0].perMin).toBe(0.5)
             expect(powerProducer.ingredients[1].perMin).toBe(600)
             expect(powerProducer.byproduct?.amount).toBe(25)
+            expect(powerProducer.fuelAmount).toBe(0.5)
             expect(powerProducer.powerProduced).toBe(6250)
-            expect(buildingGroup.buildingCount).toBe(2.5)
+            expect(buildingGroup.buildingCount).toBe(3)
+            expect(buildingGroup.overclockPercent).toBe(83.333)
 
             powerProducer.buildingAmount = 2.775
+            powerProducer.updated = FactoryPowerChangeType.Building
 
             calculateFactories([factory], gameData)
 
@@ -251,15 +259,17 @@ describe('power', () => {
             expect(powerProducer.ingredients[0].perMin).toBe(0.555)
             expect(powerProducer.ingredients[1].perMin).toBe(666)
             expect(powerProducer.byproduct?.amount).toBe(27.75)
+            expect(powerProducer.fuelAmount).toBe(0.555)
             expect(powerProducer.powerProduced).toBe(6937.5)
-            expect(buildingGroup.buildingCount).toBe(2.775)
+            expect(buildingGroup.buildingCount).toBe(3)
+            expect(buildingGroup.overclockPercent).toBe(92.5)
           })
         })
 
         describe('via ingredient', () => {
           it('should update when the ingredient amount is updated', () => {
-            powerProducer.updated = FactoryPowerChangeType.Ingredient
             powerProducer.ingredients[1].perMin = 2400
+            powerProducer.updated = FactoryPowerChangeType.Ingredient
 
             calculateFactories([factory], gameData)
 
@@ -269,8 +279,10 @@ describe('power', () => {
             expect(powerProducer.byproduct?.amount).toBe(100)
             expect(powerProducer.powerProduced).toBe(25000)
             expect(buildingGroup.buildingCount).toBe(10)
+            expect(buildingGroup.overclockPercent).toBe(100)
 
             powerProducer.ingredients[1].perMin = 3060
+            powerProducer.updated = FactoryPowerChangeType.Ingredient // Gets changed back to building at some point in the calculations
 
             calculateFactories([factory], gameData)
 
@@ -279,14 +291,15 @@ describe('power', () => {
             expect(powerProducer.ingredients[1].perMin).toBe(3060)
             expect(powerProducer.byproduct?.amount).toBe(127.5)
             expect(powerProducer.powerProduced).toBe(31875)
-            expect(buildingGroup.buildingCount).toBe(12.75)
+            expect(buildingGroup.buildingCount).toBe(13)
+            expect(buildingGroup.overclockPercent).toBe(98.077)
           })
         })
 
         describe('via fuel', () => {
           it('should update when the fuel amount is updated', () => {
-            powerProducer.updated = FactoryPowerChangeType.Fuel
             powerProducer.fuelAmount = 1
+            powerProducer.updated = FactoryPowerChangeType.Fuel
 
             calculateFactories([factory], gameData)
 
@@ -296,8 +309,10 @@ describe('power', () => {
             expect(powerProducer.byproduct?.amount).toBe(50)
             expect(powerProducer.powerProduced).toBe(12500)
             expect(buildingGroup.buildingCount).toBe(5)
+            expect(buildingGroup.overclockPercent).toBe(100)
 
             powerProducer.fuelAmount = 1.222
+            powerProducer.updated = FactoryPowerChangeType.Fuel // Gets changed back to building at some point after calculations
 
             calculateFactories([factory], gameData)
 
@@ -306,14 +321,15 @@ describe('power', () => {
             expect(powerProducer.ingredients[1].perMin).toBe(1466.4)
             expect(powerProducer.byproduct?.amount).toBe(61.1)
             expect(powerProducer.powerProduced).toBe(15275)
-            expect(buildingGroup.buildingCount).toBe(6.11)
+            expect(buildingGroup.buildingCount).toBe(7)
+            expect(buildingGroup.overclockPercent).toBe(87.286)
           })
         })
 
         describe('via power', () => {
           it('should update when the power amount is updated', () => {
-            powerProducer.updated = FactoryPowerChangeType.Power
             powerProducer.powerAmount = 10000
+            powerProducer.updated = FactoryPowerChangeType.Power
 
             calculateFactories([factory], gameData)
 
@@ -323,8 +339,11 @@ describe('power', () => {
             expect(powerProducer.byproduct?.amount).toBe(40)
             expect(powerProducer.powerProduced).toBe(10000)
             expect(buildingGroup.buildingCount).toBe(4)
+            expect(buildingGroup.overclockPercent).toBe(100)
 
+            // More precise version
             powerProducer.powerAmount = 12345
+            powerProducer.updated = FactoryPowerChangeType.Power // For some reason it gets changed back to building, presumably building group stuff.
 
             calculateFactories([factory], gameData)
 
@@ -333,7 +352,8 @@ describe('power', () => {
             expect(powerProducer.ingredients[1].perMin).toBe(1185.12)
             expect(powerProducer.byproduct?.amount).toBe(49.38)
             expect(powerProducer.powerProduced).toBe(12345)
-            expect(buildingGroup.buildingCount).toBe(4.938)
+            expect(buildingGroup.buildingCount).toBe(5)
+            expect(buildingGroup.overclockPercent).toBe(98.76)
           })
         })
       })
