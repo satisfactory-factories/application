@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import Product from './Product.vue'
-import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
@@ -20,8 +20,8 @@ const mountSubject = (factory: Factory) => {
       plugins: [vuetify],
       provide: {
         getBuildingDisplayName: (x: any) => x,
-        updateFactory: (factory: any) => {
-          calculateFactory(factory, [factory], gameData)
+        updateFactory: (factory: any, modes: CalculationModes) => {
+          calculateFactory(factory, [factory], gameData, modes)
         },
       },
     },

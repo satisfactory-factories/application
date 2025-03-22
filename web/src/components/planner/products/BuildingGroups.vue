@@ -25,7 +25,7 @@
             :id="`${factory.id}-${item.id}-buildings-remaining`"
             :key="`${factory.id}-${item.id}-buildings-remaining-${buildingsRemaining}`"
           >
-            {{ Math.abs(buildingsRemaining) }}
+            {{ Math.abs(buildingsRemaining).toFixed(2) }}
             <span v-show="buildingsRemaining > 0">needed</span>
             <span v-show="buildingsRemaining < 0">short</span>
           </span>
