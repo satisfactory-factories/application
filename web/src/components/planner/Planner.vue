@@ -87,6 +87,7 @@
   import {
     calculateFactories,
     calculateFactory,
+    CalculationModes,
     findFac,
     newFactory,
     regenerateSortOrders, reorderFactory,
@@ -223,8 +224,8 @@
   }
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
-  const updateFactory = (factory: Factory) => {
-    calculateFactory(factory, getFactories(), gameData)
+  const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
+    calculateFactory(factory, getFactories(), gameData, modes)
   }
 
   const copyFactory = (originalFactory: Factory) => {

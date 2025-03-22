@@ -14,7 +14,7 @@ export const addPowerProducerBuildingGroup = (
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
-  if (producer.buildingGroups.length === 1 && addBuildings) {
+  if (addBuildings) {
     rebalanceBuildingGroups(producer, GroupType.Power, factory)
   }
   calculateBuildingGroupParts([producer], GroupType.Power, factory)

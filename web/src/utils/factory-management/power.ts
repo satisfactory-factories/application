@@ -22,7 +22,7 @@ export const addPowerProducerToFactory = (
     id: Math.floor(Math.random() * 10000).toString(),
     building: options.building ?? '',
     buildingAmount: options.buildingAmount ?? 0,
-    buildingCount: 0, // Calculated later
+    buildingCount: options.buildingAmount ?? 0, // Calculated later
     ingredients: [], // Calculated later
     fuelAmount: options.fuelAmount ?? 0,
     powerAmount: options.powerAmount ?? 0,

@@ -159,6 +159,7 @@
             density="compact"
             hide-details
             hide-spin-buttons
+            :min="0.001"
             :name="`${producer.id}.byproduct.${producer.byproduct.part.toString()}`"
             :producer="producer.id"
             width="120px"
@@ -186,6 +187,7 @@
             density="compact"
             hide-details
             hide-spin-buttons
+            :min="0.001"
             :producer="producer.id"
             width="120px"
             @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"
@@ -209,6 +211,7 @@
               density="compact"
               hide-details
               hide-spin-buttons
+              :min="0.001"
               :producer="producer.id"
               width="120px"
               @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"

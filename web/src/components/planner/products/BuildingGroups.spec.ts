@@ -4,7 +4,7 @@ import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import Product from './Product.vue'
 import PowerProducer from './PowerProducer.vue'
-import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   BuildingGroup,
@@ -36,8 +36,8 @@ const mountComponent = (factory: Factory, component: any) => {
     global: {
       plugins: [vuetify],
       provide: {
-        updateFactory: (factory: any) => {
-          calculateFactory(factory, [factory], gameData)
+        updateFactory: (factory: any, modes: CalculationModes) => {
+          calculateFactory(factory, [factory], gameData, modes)
         },
         updateOrder: (factory: any) => {
           return 'foo'

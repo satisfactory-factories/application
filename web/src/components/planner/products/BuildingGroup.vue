@@ -235,8 +235,9 @@
   import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
+  import { CalculationModes } from '@/utils/factory-management/factory'
 
-  const updateFactory = inject('updateFactory') as (factory: Factory) => void
+  const updateFactory = inject('updateFactory') as (factory: Factory, modes?: CalculationModes) => void
 
   // const timeout: NodeJS.Timeout | null = null
   const updatingPart = ref('')
@@ -257,7 +258,7 @@
     updateBuildingGroup(group)
 
     // Update the factory
-    updateFactory(props.factory)
+    updateFactory(props.factory, { useBuildingGroupBuildings: true })
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {

@@ -68,7 +68,7 @@ describe('power', () => {
       expect(group.buildingCount).toBe(5)
     })
 
-    it('should add a building group when added, with parts', () => {
+    it('should add a building group when added, with the correct buildings and parts', () => {
       addPowerProducerToFactory(factory, {
         building: 'generatorfuel',
         buildingAmount: 5,
@@ -76,8 +76,9 @@ describe('power', () => {
         updated: FactoryPowerChangeType.Building,
       })
 
-      const group = factory.powerProducers[0].buildingGroups[0]
-      expect(group.parts.LiquidFuel).toBe(100)
+      const buildingGroup = factory.powerProducers[0].buildingGroups[0]
+      expect(buildingGroup.buildingCount).toBe(5)
+      expect(buildingGroup.parts.LiquidFuel).toBe(100)
     })
   })
 
@@ -199,7 +200,7 @@ describe('power', () => {
         expect(factory.parts.Water).toEqual({
           amountRequired: 240,
           amountRequiredProduction: 0,
-          amountTeRequiredExports: 0,
+          amountRequiredExports: 0,
           amountRequiredPower: 240,
           amountSupplied: 240,
           amountSuppliedViaInput: 0,

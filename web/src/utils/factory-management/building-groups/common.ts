@@ -15,6 +15,7 @@ import eventBus from '@/utils/eventBus'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
+import { CalculationModes } from '@/utils/factory-management/factory'
 
 const gameData = await fetchGameData()
 
@@ -27,8 +28,13 @@ export const addBuildingGroup = (
   // This is done from within each method as there's different ways of accessing the building counts.
   const addBuildings = item.buildingGroups.length === 0
 
-  // Since we're about to add a building group, disable product<->BG sync.
-  item.buildingGroupItemSync = false
+  // We always want sync enabled for the first group.
+  item.buildingGroupItemSync = true
+
+  // If we have a second group, we need to disable sync.
+  if (item.buildingGroups.length > 0) {
+    item.buildingGroupItemSync = false
+  }
 
   if (type === GroupType.Product) {
     addProductBuildingGroup(item as FactoryItem, factory, addBuildings)
@@ -152,6 +158,7 @@ export const getBuildingCount = (
   groupType: GroupType
 ) => {
   let buildingCount = 0
+
   if (groupType === GroupType.Product) {
     const product = item as FactoryItem
     buildingCount = product.buildingRequirements.amount
@@ -202,6 +209,7 @@ export const calculateBuildingGroupParts = (
 
     // Get target amount, and set the item ID
     const parts: { [key: string]: number } = {}
+
     if (type === GroupType.Product) {
       const subject = item as FactoryItem
 
@@ -219,6 +227,15 @@ export const calculateBuildingGroupParts = (
     } else if (type === GroupType.Power) {
       const subject = item as FactoryPowerProducer
 
+      // If ingredients are missing, fill them now
+      if (subject.ingredients.length === 0) {
+        const recipe = getPowerRecipe(subject.recipe, gameData)
+        if (!recipe) {
+          throw new Error('productBuildingGroups: calculateBuildingGroupParts: Recipe not found!')
+        }
+        subject.ingredients = recipe.ingredients
+      }
+
       subject.ingredients.forEach(ingredient => {
         parts[ingredient.part] = ingredient.perMin
       })
@@ -229,6 +246,7 @@ export const calculateBuildingGroupParts = (
       }
     }
 
+    // Now we have the parts, we can calculate the parts per building
     for (const group of item.buildingGroups) {
       Object.entries(parts).forEach(([partKey, amount]) => {
         if (partKey === exclude) {
@@ -272,10 +290,19 @@ export const rebalanceBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
   factory: Factory,
+  modes: CalculationModes = {}
 ) => {
+  // Ensure the math is right before we rebalance
   recalculateGroupMetrics(item, groupType, factory)
 
-  const targetBuildings = getBuildingCount(item, groupType)
+  let targetBuildings = 0
+
+  // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
+  if (modes.useBuildingGroupBuildings) {
+    targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
+  } else {
+    targetBuildings = getBuildingCount(item, groupType)
+  }
   const groups = item.buildingGroups
 
   // Divide the target equally among groups.

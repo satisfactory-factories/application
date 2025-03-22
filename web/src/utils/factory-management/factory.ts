@@ -85,12 +85,17 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
   }
 }
 
+export interface CalculationModes {
+  loadMode?: boolean
+  useBuildingGroupBuildings?: boolean
+}
+
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
 export const calculateFactory = (
   factory: Factory,
   allFactories: Factory[],
   gameData: DataInterface,
-  loadMode = false,
+  modes: CalculationModes = {},
 ) => {
   console.log('factory: calculateFactory started', factory.name)
 
@@ -115,7 +120,7 @@ export const calculateFactory = (
   calculateFactoryBuildingsAndPower(factory, gameData)
 
   // Calculate the dependencies for just this factory.
-  calculateFactoryDependencies(factory, allFactories, gameData, loadMode)
+  calculateFactoryDependencies(factory, allFactories, gameData, modes.loadMode)
 
   // Calculate the dependency metrics for the factory.
   calculateDependencyMetrics(factory)
@@ -129,11 +134,11 @@ export const calculateFactory = (
   // Calculate / synchronise the factory building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    rebalanceBuildingGroups(product, GroupType.Product, factory)
+    rebalanceBuildingGroups(product, GroupType.Product, factory, modes)
     checkForItemUpdate(product, factory)
   })
   factory.powerProducers.forEach(producer => {
-    rebalanceBuildingGroups(producer, GroupType.Power, factory)
+    rebalanceBuildingGroups(producer, GroupType.Power, factory, modes)
     checkForItemUpdate(producer, factory)
   })
 
@@ -155,19 +160,25 @@ export const calculateFactory = (
   return factory
 }
 
-export const calculateFactories = (factories: Factory[], gameData: DataInterface): void => {
+// The beating heart of the entire app...
+// This function is called to calculate all factories in the planner.
+export const calculateFactories = (
+  factories: Factory[],
+  gameData: DataInterface,
+  modes: CalculationModes = {}
+): void => {
   console.log('factory: Calculating factories', factories)
   // We need to do this twice to ensure all the part dependency metrics are calculated, before we then check for invalid dependencies
   // loadMode flag passed here to ensure we don't nuke inputs due to no part data.
   // This generates the Part metrics for the factories, which is then used by calculateDependencies to generate the dependency metrics.
   // While we are running the calculations twice, they are very quick, <20ms even for the largest plans.
-  factories.forEach(factory => calculateFactory(factory, factories, gameData, true))
+  factories.forEach(factory => calculateFactory(factory, factories, gameData, { ...modes, loadMode: true }))
 
   // Now calculate the dependencies for all factories, removing any invalid inputs.
   calculateAllDependencies(factories, gameData)
 
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
-  factories.forEach(factory => calculateFactory(factory, factories, gameData))
+  factories.forEach(factory => calculateFactory(factory, factories, gameData, modes))
 
   console.log('factory: Calculations completed')
 

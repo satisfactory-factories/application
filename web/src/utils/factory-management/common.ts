@@ -39,7 +39,10 @@ export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe
     return
   }
 
-  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? undefined
+  const recipeData = gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? undefined
+
+  // Create a structured clone of the recipe so no changes are made to the original data
+  return JSON.parse(JSON.stringify(recipeData))
 }
 
 export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataInterface): string => {
