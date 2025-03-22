@@ -156,11 +156,17 @@ describe('Component: BuildingGroups', () => {
       let buildingGroupCount: any
       let buildingGroupClock: any
       let buildingGroupPowerUsed: any
+      let effectiveBuildings: any
+      let buildingsRemaining: any
+      let productBuildingCount: any
 
       beforeEach(() => {
         buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
         buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
         buildingGroupPowerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
+        effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
+        buildingsRemaining = subject.find(`[id="${factory.id}-${product.id}-buildings-remaining"]`)
+        productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
       })
 
       it('should correctly update the building group when building count has changed', async () => {
@@ -215,6 +221,34 @@ describe('Component: BuildingGroups', () => {
         expect(buildingGroup.overclockPercent).toBe(50)
         expect(buildingGroup.parts.OreIron).toBe(15)
         expect(buildingGroup.parts.IronIngot).toBe(15)
+      })
+
+      it('should the clock be changed, the building number should not change but update effective buildings correctly', async () => {
+        await buildingGroupClock.setValue('200')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(buildingGroup.overclockPercent).toBe(200)
+        expect(buildingGroup.buildingCount).toBe(1)
+        expect(effectiveBuildings.text()).toBe('2.00')
+
+        await buildingGroupClock.setValue('250')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(buildingGroup.overclockPercent).toBe(250)
+        expect(buildingGroup.buildingCount).toBe(1)
+      })
+
+      it('should the clock be changed, the product buildings should also be updated', async () => {
+        await buildingGroupCount.setValue('1')
+        await buildingGroupClock.setValue('200')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(productBuildingCount.element.value).toBe('2')
+
+        await buildingGroupClock.setValue('250')
+        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        expect(productBuildingCount.element.value).toBe('2.5')
       })
 
       it('should the clock be changed, the group\'s power should update', async () => {
@@ -360,16 +394,14 @@ describe('Component: BuildingGroups', () => {
           })
 
           it('should update the effective buildings correctly when a building group is synced', async () => {
-            const effectiveBuildingReading = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
-            const remainingReading = subject.find(`[id="${factory.id}-${product.id}-buildings-remaining"]`)
             // This tests for a weird condition where if you update the building count, it lags behind by one change
             await buildingGroupCount.setValue('2')
-            expect(effectiveBuildingReading.text()).toBe('2.00')
-            expect(remainingReading.text()).toBe('0')
+            expect(effectiveBuildings.text()).toBe('2.00')
+            expect(buildingsRemaining.text()).toBe('0')
 
             await buildingGroupCount.setValue('10')
-            expect(effectiveBuildingReading.text()).toBe('10.00')
-            expect(remainingReading.text()).toBe('0')
+            expect(effectiveBuildings.text()).toBe('10.00')
+            expect(buildingsRemaining.text()).toBe('0')
           })
         })
 
@@ -399,7 +431,6 @@ describe('Component: BuildingGroups', () => {
           })
 
           it('should update the effective buildings correctly (out of sync)', async () => {
-            const effectiveBuildingReading = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
             const remainingReading = subject.find(`[id="${factory.id}-${product.id}-buildings-remaining"]`)
             const toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
             const productBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
@@ -411,7 +442,7 @@ describe('Component: BuildingGroups', () => {
             await productBuildingCount.setValue('13')
 
             // It should have synced the building count to the building group
-            expect(effectiveBuildingReading.text()).toBe('13.00')
+            expect(effectiveBuildings.text()).toBe('13.00')
 
             // Take it out of sync now
             await toggleSyncButton.trigger('click')
@@ -422,7 +453,7 @@ describe('Component: BuildingGroups', () => {
 
             // Expect it not to have changed the effective buildings, and there should be a remainder
 
-            expect(effectiveBuildingReading.text()).toBe('13.00')
+            expect(effectiveBuildings.text()).toBe('13.00')
             expect(remainingReading.text()).toBe('2')
           })
         })
@@ -614,18 +645,18 @@ describe('Component: BuildingGroups', () => {
       })
 
       it('should update the effective buildings correctly when a building group is synced', async () => {
-        const effectiveBuildingReading = subject.find(`[id="${factory.id}-${powerProducer.id}-effective-buildings"]`)
+        const effectiveBuildings = subject.find(`[id="${factory.id}-${powerProducer.id}-effective-buildings"]`)
         const remainingReading = subject.find(`[id="${factory.id}-${powerProducer.id}-buildings-remaining"]`)
         // This tests for a weird condition where if you update the building count, it lags behind by one change
         await buildingGroupCount.setValue('3')
 
         // There's a debounce delay of 750ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
-        expect(effectiveBuildingReading.text()).toBe('3.00')
+        expect(effectiveBuildings.text()).toBe('3.00')
         expect(remainingReading.text()).toBe('0')
 
         await buildingGroupCount.setValue('13')
-        expect(effectiveBuildingReading.text()).toBe('13.00')
+        expect(effectiveBuildings.text()).toBe('13.00')
         expect(remainingReading.text()).toBe('0')
       })
     })

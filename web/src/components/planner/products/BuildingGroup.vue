@@ -270,7 +270,7 @@
     timeout.value = setTimeout(() => {
       console.log('Updating building group overclock')
       updateBuildingGroup(group)
-      updateFactory(props.factory)
+      updateFactory(props.factory, { useBuildingGroupBuildings: true, allowOverclockImbalance: true })
       updatingOverclock.value = false
       console.log('Overclock updated')
       eventBus.emit('buildingGroupUpdated', props.factory)

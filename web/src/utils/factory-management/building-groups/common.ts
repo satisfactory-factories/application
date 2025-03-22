@@ -292,6 +292,11 @@ export const rebalanceBuildingGroups = (
   factory: Factory,
   modes: CalculationModes = {}
 ) => {
+  // If we only have one group, we don't need to rebalance, unless it's forced.
+  if (item.buildingGroups.length === 1 && !modes.forceRebalance) {
+    return
+  }
+
   // Ensure the math is right before we rebalance
   recalculateGroupMetrics(item, groupType, factory)
 

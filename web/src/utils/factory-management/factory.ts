@@ -88,6 +88,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
 export interface CalculationModes {
   loadMode?: boolean
   useBuildingGroupBuildings?: boolean
+  forceRebalance?: boolean
 }
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
