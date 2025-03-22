@@ -51,7 +51,7 @@ export const createBuildingGroup = (
   groupType: GroupType,
   addBuildings = true
 ) => {
-  let buildingCount = 0
+  let buildingCount = item.buildingGroups.length === 0 ? 1 : 0
 
   if (addBuildings) {
     if (groupType === GroupType.Product) {
