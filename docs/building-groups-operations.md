@@ -15,17 +15,19 @@ Ref: BG-C-D
 
 | Operation                                                                     | Ref       | Implemented | Unit Tested? | Eyeballed | Notes                                                             |
 |-------------------------------------------------------------------------------|-----------|-------------|--------------|-----------|-------------------------------------------------------------------|
-| Create a new building group                                                   | BG-C-D-1  | Y           |              | Y         |
-| Create a new building group with preexisting groups disables item sync        | BG-C-D-2  | Y           |              | Y         |
-| Create multiple building groups, with 0 building default                      | BG-C-D-3  | Y           |              | Y         |
-| Prevent deletion of a building group when last remaining                      | BG-C-D-4  | Y           |              | Y         |
-| Deletion of a building group with multiple groups                             | BG-C-D-5  | Y           |              | Y         |
-| Deletion of the product removes the building groups                           | BG-C-D-6  | Y           |              | Y         |
-| Deletion of the product removes the part difference from the factory          | BG-C-D-7  | Y           |              | Y         | A bit wonky right now as part calculations are delayed, but works |
-| Deletion of building groups updates the factory parts                         | BG-C-D-8  |             |              | ?         |
-| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-9  |             |              | Y         |
-| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-10 | Y           |              | Y         |
-| Deletion of building groups should disable sync                               | BG-C-D-11 |             |              | B         |
+| Create a new building group upon product addition                             | BG-C-D-1  | Y           | Y            | Y         |
+| Create a second building group                                                | BG-C-D-2  | Y           | Y            | Y         |
+| Upon creating new product, creates a BG count with the expected building size | BG-C-D-3  | Y           | Y            | Y         |
+| Create a new building group with preexisting groups disables item sync        | BG-C-D-4  | Y           |              | Y         |
+| Create multiple building groups, with 0 building default                      | BG-C-D-5  | Y           |              | Y         |
+| Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           |              | Y         |
+| Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           |              | Y         |
+| Deletion of the product removes the building groups                           | BG-C-D-8  | Y           |              | Y         |
+| Deletion of the product removes the part difference from the factory          | BG-C-D-9  | Y           |              | Y         | A bit wonky right now as part calculations are delayed, but works |
+| Deletion of building groups updates the factory parts                         | BG-C-D-10 |             |              | ?         |
+| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-11 |             |              | Y         |
+| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-12 | Y           |              | Y         |
+| Deletion of building groups should disable sync                               | BG-C-D-13 |             |              | B         |
 
 ## Building Groups Editing - Action Buttons (Products)
 Ref: BG-E-AB-PROD
