@@ -18,8 +18,8 @@ Ref: BG-C-D
 | Create a new building group upon product addition                             | BG-C-D-1  | Y           | Y            | Y         |
 | Create a second building group                                                | BG-C-D-2  | Y           | Y            | Y         |
 | Upon creating new product, creates a BG count with the expected building size | BG-C-D-3  | Y           | Y            | Y         |
-| Create a new building group with preexisting groups disables item sync        | BG-C-D-4  | Y           |              | Y         |
-| Create multiple building groups, with 0 building default                      | BG-C-D-5  | Y           |              | Y         |
+| Creating a new building group with preexisting groups disables item sync      | BG-C-D-4  | Y           | Y            | Y         |
+| Create multiple building groups, with 0 building default count                | BG-C-D-5  | Y           | Y            | Y         |
 | Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           |              | Y         |
 | Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           |              | Y         |
 | Deletion of the product removes the building groups                           | BG-C-D-8  | Y           |              | Y         |
@@ -32,22 +32,25 @@ Ref: BG-C-D
 ## Building Groups Editing - Action Buttons (Products)
 Ref: BG-E-AB-PROD
 
-| Operation                                                                                       | Ref               | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
-|-------------------------------------------------------------------------------------------------|-------------------|-------------|--------------|-----------|-----------------------------------------------------------|
-| Disable Evenly Balance button for singular building group                                       | BG-E-AB-PROD-1    |             |              | Y         |
-| Enable Evenly Balance button when multiple building groups WITHOUT need of remainder            | BG-E-AB-PROD-2    |             |              | B         | Is disabled when balanced                                 |
-| Disable Evenly Balance button if all building groups have the same building counts and clocks   | BG-E-AB-PROD-3    |             |              | B         | Does not check the count and clock                        |
-| When effective is under balanced, "Under Producing!" is shown                                   | BG-E-AB-PROD-4    |             |              | Y         |
-| When effective is over balanced, "Over Producing!" is shown                                     | BG-E-AB-PROD-5    |             |              | Y         |
-| When effective is balanced, "Looking good, Pioneer!" is shown                                   | BG-E-AB-PROD-6    |             |              | Y         |
-| When effective is balanced, Evenly Balance button should still be enabled                       | BG-E-AB-PROD-7    |             |              | B         | Is disabled when balanced                                 |
-| When effective is balanced, disable Remainder to Last button                                    | BG-E-AB-PROD-8    |             |              | Y         |
-| When effective is balanced, disable Remainder to New Group button                               | BG-E-AB-PROD-9    |             |              | Y         |
-| When effective is imbalanced, enable Remainder to Last button for multiple building groups      | BG-E-AB-PROD-10   |             |              | ?         | Can't properly test due to forced rebalance bug           |
-| When effective is imbalanced, enable Remainder to New Group button for singular building group  | BG-E-AB-PROD-11   |             |              | ?         | Can't properly test due to forced rebalance bug           |
-| When effective is imbalanced, enable Remainder to New Group button for multiple building groups | BG-E-AB-PROD-12   |             |              | ?         | Can't properly test due to forced rebalance bug           |
-| When any group has clock of !== 100%, show OC @ 100% button                                     | BG-E-AB-PROD-13   |             |              | Y         | Works but may only be working due to forced rebalance     |
-| Pressing "Remainder to new group" creates a new group with the remainder                        | BG-E-AB-PROD-14   |             |              | P         | Works but not convinced fully due to forced rebalance bug |
+| Operation                                                                                       | Ref             | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
+|-------------------------------------------------------------------------------------------------|-----------------|-------------|--------------|-----------|-----------------------------------------------------------|
+| Disable Evenly Balance button for singular building group                                       | BG-E-AB-PROD-1  |             |              | Y         |
+| Enable Evenly Balance button when multiple building groups WITHOUT need of remainder            | BG-E-AB-PROD-2  |             |              | B         | Is disabled when balanced                                 |
+| Disable Evenly Balance button if all building groups have the same building counts and clocks   | BG-E-AB-PROD-3  |             |              | B         | Does not check the count and clock                        |
+| When effective is under balanced, "Under Producing!" is shown                                   | BG-E-AB-PROD-4  |             |              | Y         |
+| When effective is over balanced, "Over Producing!" is shown                                     | BG-E-AB-PROD-5  |             |              | Y         |
+| When effective is balanced, "Looking good, Pioneer!" is shown                                   | BG-E-AB-PROD-6  |             |              | Y         |
+| When effective is balanced, Evenly Balance button should still be enabled                       | BG-E-AB-PROD-7  |             |              | B         | Is disabled when balanced                                 |
+| When effective is balanced, disable Remainder to Last button                                    | BG-E-AB-PROD-8  |             |              | Y         |
+| When effective is balanced, disable Remainder to New Group button                               | BG-E-AB-PROD-9  |             |              | Y         |
+| When effective is imbalanced, enable Remainder to Last button for multiple building groups      | BG-E-AB-PROD-10 |             |              | ?         | Can't properly test due to forced rebalance bug           |
+| When effective is imbalanced, enable Remainder to New Group button for singular building group  | BG-E-AB-PROD-11 |             |              | ?         | Can't properly test due to forced rebalance bug           |
+| When effective is imbalanced, enable Remainder to New Group button for multiple building groups | BG-E-AB-PROD-12 |             |              | ?         | Can't properly test due to forced rebalance bug           |
+| When any group has clock of !== 100%, show OC @ 100% button                                     | BG-E-AB-PROD-13 |             |              | Y         | Works but may only be working due to forced rebalance     |
+| Pressing "Remainder to new group" creates a new group with the remainder                        | BG-E-AB-PROD-14 |             |              | P         | Works but not convinced fully due to forced rebalance bug |
+| Sync is shown as enabled upon creating a new product                                            | BG-E-AB-PROD-15 | Y           | Y            | Y         |
+| Pressing "Sync" disables sync for the item when enabled                                         | BG-E-AB-PROD-16 | Y           | Y            | Y         |
+| Pressing "Sync" enables sync for the item when disabled                                         | BG-E-AB-PROD-17 | Y           | Y            | Y         |
 
 ## Building Groups Editing - Buildings (Products)
 Ref: BG-E-B-PROD
