@@ -258,7 +258,7 @@
     updateBuildingGroup(group)
 
     // Update the factory
-    updateFactory(props.factory, { useBuildingGroupBuildings: true })
+    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {
@@ -270,7 +270,7 @@
     timeout.value = setTimeout(() => {
       console.log('Updating building group overclock')
       updateBuildingGroup(group)
-      updateFactory(props.factory, { useBuildingGroupBuildings: true, allowOverclockImbalance: true })
+      updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
       updatingOverclock.value = false
       console.log('Overclock updated')
       eventBus.emit('buildingGroupUpdated', props.factory)

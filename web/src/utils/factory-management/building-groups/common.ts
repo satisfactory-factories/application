@@ -49,11 +49,11 @@ export const addBuildingGroup = (
 export const createBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: GroupType,
-  addBuildings = true
+  matchBuildings = true
 ) => {
   let buildingCount = item.buildingGroups.length === 0 ? 1 : 0
 
-  if (addBuildings) {
+  if (matchBuildings) {
     if (groupType === GroupType.Product) {
       buildingCount = (item as FactoryItem).buildingRequirements.amount
     } else if (groupType === GroupType.Power) {

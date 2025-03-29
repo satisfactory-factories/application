@@ -32,10 +32,9 @@ export const addProductToFactory = (
   if (!options.amount) {
     const recipe = getRecipe(options.recipe, gameData)
     if (!recipe) {
-      console.warn('addProductToFactory: Recipe not found, cannot set amount to 1.')
+      console.warn('addProductToFactory: Recipe not found!')
       return
     }
-
     options.amount = recipe.products[0].perMin
   }
 
@@ -56,8 +55,12 @@ export const addProductToFactory = (
   // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.
   calculateProductBuildings(factory, gameData)
 
-  // Also push the first product building group
-  addProductBuildingGroup(factory.products[factory.products.length - 1], factory)
+  // Also push the first product building group, telling it to match the building count of the product.
+  addProductBuildingGroup(
+    factory.products[factory.products.length - 1],
+    factory,
+    true
+  )
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
@@ -433,8 +436,7 @@ export const increaseProductQtyViaBuilding = (product: FactoryItem, factory: Fac
   // If item building group sync is enabled, rebalance it now.
   if (product.buildingGroupItemSync) {
     rebalanceBuildingGroups(product, GroupType.Product, factory, {
-      force: true,
-      changeBuildings: true,
+      forceRebalance: true,
     })
   }
 
