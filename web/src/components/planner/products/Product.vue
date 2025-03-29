@@ -296,13 +296,8 @@
     return width
   })
 
-  const deleteProduct = (outputIndex: number, factory: Factory) => {
-    factory.products.splice(outputIndex, 1)
-
-    // We need to loop through each one in order and fix their ordering with the running count
-    factory.products.forEach((product, index) => {
-      product.displayOrder = index
-    })
+  const deleteProduct = (index: number, factory: Factory) => {
+    deleteItem(index, ItemType.Product, factory)
     updateFactory(factory)
   }
 

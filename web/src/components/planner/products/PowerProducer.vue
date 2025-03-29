@@ -265,12 +265,7 @@
   }>()
 
   const deletePowerProducer = (index: number, factory: Factory) => {
-    factory.powerProducers.splice(index, 1)
-
-    // We need to loop through each one in order and fix their ordering with the running count
-    factory.powerProducers.forEach((producer, index) => {
-      producer.displayOrder = index
-    })
+    deleteItem(index, ItemType.Power, factory)
     updateFactory(factory)
   }
 

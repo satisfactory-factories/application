@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 
@@ -79,4 +79,24 @@ export const getBuildingDisplayName = (building: string) => {
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`
+}
+
+export const deleteItem = (index: number, type: ItemType, factory: Factory) => {
+  if (type === ItemType.Product) {
+    factory.products.splice(index, 1)
+
+    // We need to loop through each one in order and fix their ordering with the running count
+    factory.products.forEach((product, index) => {
+      product.displayOrder = index
+    })
+  } else if (type === ItemType.Power) {
+    factory.powerProducers.splice(index, 1)
+
+    // We need to loop through each one in order and fix their ordering with the running count
+    factory.powerProducers.forEach((producer, index) => {
+      producer.displayOrder = index
+    })
+  }
+
+  // Must call updateFactory!
 }
