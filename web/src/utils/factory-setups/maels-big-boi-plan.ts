@@ -1,4 +1,4 @@
-import { Factory, FactoryPowerChangeType, GroupType } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
 
 export const createMaelsBigBoiPlan = (): Factory[] => {
   return bigBoiPlan
@@ -17,7 +17,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7110,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 48,
       overclockPercent: 100,
       parts: { Stone: 5760, Water: 4800, Cement: 3840 },
@@ -123,7 +123,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6308,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 72,
       overclockPercent: 100,
       parts: { OreIron: 2520, Water: 1440, IronIngot: 4680 },
@@ -231,7 +231,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8985,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 168,
       overclockPercent: 100,
       parts: { OreCopper: 2520, Water: 1680, CopperIngot: 6300 },
@@ -352,7 +352,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5514,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 125,
       overclockPercent: 100,
       parts: { OreGold: 3000, Water: 3000, GoldIngot: 1500 },
@@ -373,7 +373,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1225,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 64,
       overclockPercent: 100,
       parts: { GoldIngot: 768, HighSpeedWire: 3840 },
@@ -497,7 +497,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8323,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 75,
       overclockPercent: 100,
       parts: { CopperIngot: 1687.5, Water: 1687.5, CopperSheet: 1687.5 },
@@ -518,7 +518,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 602,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 60,
       overclockPercent: 100,
       parts: { CopperIngot: 720, GoldIngot: 180, Wire: 5400 },
@@ -539,7 +539,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8010,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 8,
       overclockPercent: 100,
       parts: { CopperIngot: 2400, CopperDust: 400 },
@@ -560,7 +560,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7082,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 32,
       overclockPercent: 100,
       parts: { Wire: 1200, HeavyOilResidue: 480, Cable: 2160 },
@@ -581,7 +581,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'PolymerResin', byProductOf: 'HeavyOilResidue', amount: 240 }],
     buildingGroups: [{
       id: 1282,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 12,
       overclockPercent: 100,
       parts: { LiquidOil: 360, HeavyOilResidue: 480, PolymerResin: 240 },
@@ -813,7 +813,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'HeavyOilResidue', byProductOf: 'Plastic', amount: 1460 }],
     buildingGroups: [{
       id: 3879,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 146,
       overclockPercent: 100,
       parts: { LiquidOil: 4380, Plastic: 2920, HeavyOilResidue: 1460 },
@@ -834,7 +834,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 34,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { HeavyOilResidue: 1440, LiquidFuel: 960 },
@@ -855,7 +855,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5580,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 100,
       parts: { Plastic: 120, LiquidFuel: 120, Rubber: 240 },
@@ -876,7 +876,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9659,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 66.667,
       parts: { Plastic: 20, FluidCanister: 40 },
@@ -897,7 +897,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5066,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: { LiquidFuel: 40, FluidCanister: 40, Fuel: 40 },
@@ -1063,7 +1063,7 @@ const bigBoiPlan: Factory[] = [{
     updated: FactoryPowerChangeType.Ingredient,
     buildingGroups: [{
       id: 347,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 40,
       overclockPercent: 100,
       parts: { LiquidFuel: 32000 },
@@ -1093,7 +1093,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9478,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 48,
       overclockPercent: 100,
       parts: { IronIngot: 1440, IronPlate: 960 },
@@ -1114,7 +1114,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 208,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 36,
       overclockPercent: 100,
       parts: { IronPlate: 675, Wire: 1350, IronPlateReinforced: 202.5 },
@@ -1246,7 +1246,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 851,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: { Coal: 30, Sulfur: 30, Gunpowder: 60 },
@@ -1267,7 +1267,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8060,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: { Gunpowder: 20, HeavyOilResidue: 10, GunpowderMK2: 20 },
@@ -1399,7 +1399,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4710,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 32,
       overclockPercent: 100,
       parts: { RawQuartz: 1200, QuartzCrystal: 720 },
@@ -1420,7 +1420,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4076,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 72,
       overclockPercent: 100,
       parts: { RawQuartz: 1620, Stone: 2700, Silica: 3780 },
@@ -1441,7 +1441,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2825,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { QuartzCrystal: 432, Cable: 336, IronPlateReinforced: 60, CrystalOscillator: 24 },
@@ -1617,7 +1617,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9337,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 38,
       overclockPercent: 100,
       parts: { IronIngot: 570, IronRod: 570 },
@@ -1638,7 +1638,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1096,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 40,
       overclockPercent: 100,
       parts: { IronIngot: 500, IronScrew: 2000 },
@@ -1739,7 +1739,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6306,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 54,
       overclockPercent: 100,
       parts: { IronIngot: 2160, Coal: 2160, SteelIngot: 3240 },
@@ -1760,7 +1760,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7838,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { SteelIngot: 1200, Cement: 720, SteelPipe: 1200 },
@@ -1781,7 +1781,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6382,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 16,
       overclockPercent: 100,
       parts: { SteelIngot: 1920, Cement: 1280, SteelPlate: 720 },
@@ -1938,7 +1938,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8306,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 42,
       overclockPercent: 100,
       parts: { SteelPipe: 630, Wire: 1680, Stator: 210 },
@@ -1959,7 +1959,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2335,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 18,
       overclockPercent: 100,
       parts: { SteelPipe: 180, Wire: 540, Rotor: 90 },
@@ -1980,7 +1980,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2928,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 6,
       overclockPercent: 100,
       parts: { Rotor: 60, Stator: 60, Motor: 30 },
@@ -2124,7 +2124,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9979,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { SteelPlate: 432, Cement: 864, SteelPlateReinforced: 144 },
@@ -2235,7 +2235,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2895,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 42,
       overclockPercent: 100,
       parts: { IronPlateReinforced: 126, IronRod: 504, ModularFrame: 84 },
@@ -2261,7 +2261,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4173,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 7,
       overclockPercent: 100,
       parts: { ModularFrame: 70, SteelPipe: 280, SteelPlateReinforced: 70, IronScrew: 1680, ModularFrameHeavy: 14 },
@@ -2282,7 +2282,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1944,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 3,
       overclockPercent: 100,
       parts: { ModularFrameHeavy: 4.5, AluminumCasing: 225, NitrogenGas: 112.5, ModularFrameFused: 4.5 },
@@ -2521,7 +2521,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2196,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 52,
       overclockPercent: 100,
       parts: { CopperSheet: 780, Plastic: 1560, CircuitBoard: 390 },
@@ -2542,7 +2542,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5017,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 18,
       overclockPercent: 100,
       parts: { CopperSheet: 450, HighSpeedWire: 1800, CircuitBoardHighSpeed: 90 },
@@ -2563,7 +2563,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4002,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 7,
       overclockPercent: 97.143,
       parts: { HighSpeedWire: 1428.002, Cable: 255, CircuitBoard: 25.5, HighSpeedConnector: 25.5 },
@@ -2584,7 +2584,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6138,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { CircuitBoard: 240, Cable: 480, Plastic: 960, Computer: 60 },
@@ -2610,7 +2610,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2162,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 90.667,
       parts: { Computer: 34, CircuitBoardHighSpeed: 17, HighSpeedConnector: 25.5, Plastic: 238.001, ComputerSuper: 8.5 },
@@ -2826,7 +2826,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8807,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 100,
       parts: { IronPlateReinforced: 10, Rotor: 10, SpaceElevatorPart_1: 10 },
@@ -2847,7 +2847,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2268,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 18,
       overclockPercent: 100,
       parts: { Stator: 45, Cable: 900, SpaceElevatorPart_3: 45 },
@@ -2868,7 +2868,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4381,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 100,
       parts: { Motor: 10, Rubber: 75, SpaceElevatorPart_1: 10, SpaceElevatorPart_4: 5 },
@@ -2894,7 +2894,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9526,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 9,
       overclockPercent: 100,
       parts: { SpaceElevatorPart_3: 45, CircuitBoard: 45, ModularFrameHeavy: 9, Computer: 18, SpaceElevatorPart_5: 9 },
@@ -2915,7 +2915,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 559,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 3,
       overclockPercent: 100,
       parts: { ModularFrame: 7.5, SteelPlate: 90, SpaceElevatorPart_2: 15 },
@@ -3269,7 +3269,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1216,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 36,
       overclockPercent: 100,
       parts: { SAM: 4320, SAMIngot: 1080 },
@@ -3290,7 +3290,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1067,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: { SAMIngot: 120, Wire: 100, SteelPipe: 60, SAMFluctuator: 20 },
@@ -3311,7 +3311,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 3103,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 14,
       overclockPercent: 96.429,
       parts: { SAMIngot: 675.003, DarkEnergy: 1350.006 },
@@ -3464,7 +3464,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6371,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 11,
       overclockPercent: 100,
       parts: { OreBauxite: 2200, Water: 2200, AluminaSolution: 2640 },
@@ -3485,7 +3485,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'Water', byProductOf: 'AluminumScrap', amount: 1320 }],
     buildingGroups: [{
       id: 4186,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 11,
       overclockPercent: 100,
       parts: { AluminaSolution: 2640, Coal: 1320, AluminumScrap: 3960, Water: 1320 },
@@ -3506,7 +3506,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9725,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 44,
       overclockPercent: 100,
       parts: { AluminumScrap: 3960, Silica: 3300, AluminumIngot: 2640 },
@@ -3527,7 +3527,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2912,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 24,
       overclockPercent: 100,
       parts: { AluminumIngot: 720, CopperIngot: 240, AluminumPlate: 720 },
@@ -3548,7 +3548,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6853,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 16,
       overclockPercent: 100,
       parts: { AluminumIngot: 1440, AluminumCasing: 960 },
@@ -3569,7 +3569,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 3821,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 12,
       overclockPercent: 100,
       parts: { AluminumPlate: 450, CopperSheet: 270, AluminumPlateReinforced: 90 },
@@ -3832,7 +3832,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7361,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: { CopperSheet: 30, GunpowderMK2: 20, CartridgeStandard: 150 },
@@ -3853,7 +3853,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4820,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: { CartridgeStandard: 125, AluminumCasing: 15, LiquidTurboFuel: 15, CartridgeChaos: 250 },
@@ -3874,7 +3874,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4378,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: { Gunpowder: 20, SteelPipe: 20, NobeliskExplosive: 10 },
@@ -4074,7 +4074,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7805,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 6,
       overclockPercent: 100,
       parts: { NitrogenGas: 720, Water: 180, IronPlate: 60, NitricAcid: 180 },
@@ -4095,7 +4095,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8537,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 12,
       overclockPercent: 100,
       parts: { Sulfur: 600, Water: 600, SulfuricAcid: 600 },
@@ -4247,7 +4247,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2584,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 10,
       overclockPercent: 100,
       parts: { Coal: 250, Sulfur: 250, CompactedCoal: 250 },
@@ -4268,7 +4268,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'PolymerResin', byProductOf: 'LiquidFuel', amount: 283.5 }],
     buildingGroups: [{
       id: 1563,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 10,
       overclockPercent: 94.5,
       parts: { LiquidOil: 567, LiquidFuel: 378, PolymerResin: 283.5 },
@@ -4289,7 +4289,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1941,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 17,
       overclockPercent: 98.824,
       parts: { LiquidFuel: 378.002, CompactedCoal: 252.001, LiquidTurboFuel: 315.002 },
@@ -4310,7 +4310,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'CompactedCoal', byProductOf: 'RocketFuel', amount: 50 }],
     buildingGroups: [{
       id: 7960,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 100,
       parts: { LiquidTurboFuel: 300, NitricAcid: 50, RocketFuel: 500, CompactedCoal: 50 },
@@ -4503,7 +4503,7 @@ const bigBoiPlan: Factory[] = [{
     updated: FactoryPowerChangeType.Ingredient,
     buildingGroups: [{
       id: 5442,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 120,
       overclockPercent: 100,
       parts: { RocketFuel: 60000 },
@@ -4533,7 +4533,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6712,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: { ModularFrameFused: 2, ModularFrameLightweight: 4, PressureConversionCube: 2 },
@@ -4554,7 +4554,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6072,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 80,
       parts: { AluminumCasing: 128, CrystalOscillator: 4, Computer: 8, ModularFrameLightweight: 8 },
@@ -4580,7 +4580,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 7859,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 3,
       overclockPercent: 77.778,
       parts: { AluminumPlateReinforced: 28, Rubber: 28, Water: 70, NitrogenGas: 350.001, CoolingSystem: 14 },
@@ -4606,7 +4606,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6964,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 53.333,
       parts: { CoolingSystem: 8, ModularFrameLightweight: 4, Motor: 8, Rubber: 48, MotorLightweight: 2 },
@@ -4889,7 +4889,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9396,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 100,
       parts: { CopperDust: 400, PressureConversionCube: 2, SpaceElevatorPart_9: 2 },
@@ -4910,7 +4910,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5493,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 6,
       overclockPercent: 100,
       parts: { SpaceElevatorPart_5: 9, ComputerSuper: 4.5, SpaceElevatorPart_7: 4.5 },
@@ -4931,7 +4931,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6210,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 6,
       overclockPercent: 100,
       parts: { SpaceElevatorPart_2: 15, ElectromagneticControlRod: 6, SpaceElevatorPart_6: 6 },
@@ -4957,7 +4957,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 3608,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: {
@@ -5293,7 +5293,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5244,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 16,
       overclockPercent: 100,
       parts: { Stator: 96, CircuitBoardHighSpeed: 64, ElectromagneticControlRod: 64 },
@@ -5314,7 +5314,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'SulfuricAcid', byProductOf: 'UraniumCell', amount: 160 }],
     buildingGroups: [{
       id: 4775,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 16,
       overclockPercent: 100,
       parts: { OreUranium: 800, Cement: 240, SulfuricAcid: 160, UraniumCell: 400 },
@@ -5339,7 +5339,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9855,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 20,
       overclockPercent: 100,
       parts: { UraniumCell: 400, SteelPlateReinforced: 24, ElectromagneticControlRod: 40, NuclearFuelRod: 8 },
@@ -5579,7 +5579,7 @@ const bigBoiPlan: Factory[] = [{
     updated: FactoryPowerChangeType.Ingredient,
     buildingGroups: [{
       id: 7181,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 40,
       overclockPercent: 100,
       parts: { NuclearFuelRod: 320, Water: 0, NuclearWaste: 400 },
@@ -5629,7 +5629,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'Water', byProductOf: 'NonFissibleUranium', amount: 120 }],
     buildingGroups: [{
       id: 5216,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 8,
       overclockPercent: 100,
       parts: { NuclearWaste: 300, Silica: 200, NitricAcid: 120, SulfuricAcid: 120, NonFissibleUranium: 400, Water: 120 },
@@ -5650,7 +5650,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 4156,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 100,
       parts: { NonFissibleUranium: 400, NuclearWaste: 100, PlutoniumPellet: 120 },
@@ -5671,7 +5671,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 1611,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 12,
       overclockPercent: 100,
       parts: { PlutoniumPellet: 120, Cement: 240, PlutoniumCell: 60 },
@@ -5697,7 +5697,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 354,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 8,
       overclockPercent: 100,
       parts: {
@@ -5973,7 +5973,7 @@ const bigBoiPlan: Factory[] = [{
     updated: FactoryPowerChangeType.Ingredient,
     buildingGroups: [{
       id: 3796,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 20,
       overclockPercent: 100,
       parts: { PlutoniumFuelRod: 40, Water: 0, PlutoniumWaste: 20 },
@@ -6026,7 +6026,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 5200,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 10,
       overclockPercent: 100,
       parts: { LiquidOil: 2000, Diamond: 400 },
@@ -6047,7 +6047,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8544,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 8,
       overclockPercent: 100,
       parts: { Diamond: 96, TimeCrystal: 48 },
@@ -6151,7 +6151,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 8150,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 100,
       parts: { SAMIngot: 240, AluminumIngot: 480, FicsiteIngot: 120 },
@@ -6172,7 +6172,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 9876,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 12,
       overclockPercent: 100,
       parts: { FicsiteIngot: 120, FicsiteMesh: 360 },
@@ -6292,7 +6292,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 3042,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 9,
       overclockPercent: 100,
       parts: { Diamond: 270, DarkEnergy: 1350, DarkMatter: 270 },
@@ -6318,7 +6318,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 2616,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: { SpaceElevatorPart_9: 1, DarkMatter: 20, IronPlate: 100, Cement: 200, SingularityCell: 10 },
@@ -6339,7 +6339,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 6790,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 100,
       parts: { QuantumEnergy: 1000 },
@@ -6365,7 +6365,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'DarkEnergy', byProductOf: 'QuantumOscillator', amount: 500 }],
     buildingGroups: [{
       id: 4600,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 4,
       overclockPercent: 100,
       parts: {
@@ -6398,7 +6398,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'DarkEnergy', byProductOf: 'TemporalProcessor', amount: 100 }],
     buildingGroups: [{
       id: 3652,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 66.667,
       parts: {
@@ -6431,7 +6431,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'DarkEnergy', byProductOf: 'CrystalShard', amount: 144 }],
     buildingGroups: [{
       id: 9202,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 3,
       overclockPercent: 80,
       parts: {
@@ -6464,7 +6464,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'DarkEnergy', byProductOf: 'AlienPowerFuel', amount: 96 }],
     buildingGroups: [{
       id: 9865,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 80,
       parts: {
@@ -6860,7 +6860,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 3115,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 5,
       overclockPercent: 100,
       parts: { SpaceElevatorPart_7: 2.5, FicsiteMesh: 200, Water: 50, SpaceElevatorPart_10: 10 },
@@ -6886,7 +6886,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [],
     buildingGroups: [{
       id: 328,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 2,
       overclockPercent: 100,
       parts: {
@@ -6918,7 +6918,7 @@ const bigBoiPlan: Factory[] = [{
     byProducts: [{ id: 'DarkEnergy', byProductOf: 'SpaceElevatorPart_12', amount: 100 }],
     buildingGroups: [{
       id: 8581,
-      type: GroupType.Product,
+      type: ItemType.Product,
       buildingCount: 1,
       overclockPercent: 100,
       parts: {

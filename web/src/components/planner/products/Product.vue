@@ -222,7 +222,7 @@
           :building="product.buildingRequirements.name"
           :factory="factory"
           :item="product"
-          :type="GroupType.Product"
+          :type="ItemType.Product"
         />
       </div>
       <div v-if="product.buildingGroupsHaveProblem && !product.buildingGroupsTrayOpen" class="mb-2">
@@ -248,10 +248,10 @@
   } from '@/utils/factory-management/products'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatPower } from '@/utils/numberFormatter'
-  import { Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
-  import { getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
+  import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 

@@ -3,7 +3,7 @@ import {
   Factory,
   FactoryDependency,
   FactoryPower,
-  GroupType,
+  ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
@@ -135,11 +135,11 @@ export const calculateFactory = (
   // Calculate / synchronise the factory building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    rebalanceBuildingGroups(product, GroupType.Product, factory, modes)
+    rebalanceBuildingGroups(product, ItemType.Product, factory, modes)
     checkForItemUpdate(product, factory)
   })
   factory.powerProducers.forEach(producer => {
-    rebalanceBuildingGroups(producer, GroupType.Power, factory, modes)
+    rebalanceBuildingGroups(producer, ItemType.Power, factory, modes)
     checkForItemUpdate(producer, factory)
   })
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductToFactory,
@@ -913,7 +913,7 @@ describe('products', () => {
       expect(product.buildingGroups[0].buildingCount).toBe(10)
 
       // Add another group and expect it to be balanced
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
       product.buildingGroupItemSync = true // Re-enable as it's disabled when a new group added
 
       product.buildingRequirements.amount = 14
@@ -933,7 +933,7 @@ describe('products', () => {
       expect(product.buildingGroups[0].buildingCount).toBe(20)
 
       // Add another group and expect it to NOT be balanced
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
 
       product.buildingRequirements.amount = 100
       increaseProductQtyViaBuilding(product, mockFactory, gameData)

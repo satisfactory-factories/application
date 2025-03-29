@@ -4,7 +4,7 @@ import {
   FactoryItem,
   FactoryPowerChangeType,
   FactoryPowerProducer,
-  GroupType,
+  ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -69,11 +69,11 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should add an initial product group, and be correctly configured', () => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
 
         const group = product.buildingGroups[0]
 
-        expect(group.type).toBe(GroupType.Product)
+        expect(group.type).toBe(ItemType.Product)
         expect(group.buildingCount).toBe(5)
         expect(group.overclockPercent).toBe(100)
 
@@ -83,8 +83,8 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should add a second product group and have zeroed metrics / buildings', () => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
 
         const group = product.buildingGroups[1]
 
@@ -103,12 +103,12 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should add an initial power producer group, and should be correct', () => {
-        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
+        addBuildingGroup(powerProducer, ItemType.Power, mockFactory)
 
         const group = powerProducer.buildingGroups[0]
 
         expect(powerBuildingGroups.length).toBe(1)
-        expect(group.type).toBe(GroupType.Power)
+        expect(group.type).toBe(ItemType.Power)
         expect(group.buildingCount).toBe(4)
         expect(group.overclockPercent).toBe(100)
 
@@ -117,8 +117,8 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should add a second power producer group, and should be correct', () => {
-        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
-        addBuildingGroup(powerProducer, GroupType.Power, mockFactory)
+        addBuildingGroup(powerProducer, ItemType.Power, mockFactory)
+        addBuildingGroup(powerProducer, ItemType.Power, mockFactory)
 
         const group = powerProducer.buildingGroups[1]
 
@@ -136,7 +136,7 @@ describe('buildingGroupsCommon', async () => {
       let group1: BuildingGroup
 
       beforeEach(() => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
         group1 = product.buildingGroups[0]
 
         calculateFactories(factories, gameData)
@@ -146,7 +146,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply an underclock to the group if the building count is not whole', () => {
           product.buildingRequirements.amount = 5.5
 
-          rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
+          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(6)
           expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
@@ -155,7 +155,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply an underclock to the group if the building count is not whole', () => {
           product.buildingRequirements.amount = 5.7
 
-          rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
+          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(6)
           expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
@@ -164,7 +164,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply no clock changes on whole buildings', () => {
           product.buildingRequirements.amount = 4
 
-          rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
+          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(4)
           expect(group1.overclockPercent).toBe(100)
@@ -174,7 +174,7 @@ describe('buildingGroupsCommon', async () => {
           let group2: BuildingGroup
 
           beforeEach(() => {
-            addBuildingGroup(product, GroupType.Product, mockFactory)
+            addBuildingGroup(product, ItemType.Product, mockFactory)
             group2 = product.buildingGroups[1]
           })
 
@@ -184,7 +184,7 @@ describe('buildingGroupsCommon', async () => {
             expect(group2.buildingCount).toBe(5)
             product.buildingRequirements.amount = 20
 
-            rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
+            rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
 
             // Nothing should have changed
             expect(group1.buildingCount).toBe(5)
@@ -194,7 +194,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the building count evenly', () => {
             product.buildingRequirements.amount = 6
 
-            rebalanceBuildingGroups(product, GroupType.Product, mockFactory, { force: true })
+            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(3)
             expect(group2.buildingCount).toBe(3)
@@ -203,7 +203,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
             product.buildingRequirements.amount = 5
 
-            rebalanceBuildingGroups(product, GroupType.Product, mockFactory, { force: true })
+            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(3)
             expect(group2.buildingCount).toBe(3)
@@ -215,7 +215,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the fractional group with an underclock', () => {
             product.buildingRequirements.amount = 3
 
-            rebalanceBuildingGroups(product, GroupType.Product, mockFactory, { force: true })
+            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(2)
             expect(group2.buildingCount).toBe(2)
@@ -236,13 +236,13 @@ describe('buildingGroupsCommon', async () => {
             group2.buildingCount = 3
 
             // Calculate, it should be properly imbalanced
-            calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
             expect(group2.parts.OreIron).toBe(90)
             expect(group2.parts.IronIngot).toBe(90)
 
             // Now rebalance and recalculate, it should distribute evenly.
-            rebalanceBuildingGroups(product, GroupType.Product, mockFactory, { force: true })
+            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(2)
             expect(group2.buildingCount).toBe(2)
@@ -259,7 +259,7 @@ describe('buildingGroupsCommon', async () => {
 
       describe('product', () => {
         beforeEach(() => {
-          addBuildingGroup(product, GroupType.Product, mockFactory)
+          addBuildingGroup(product, ItemType.Product, mockFactory)
           calculateFactories(factories, gameData)
           group = product.buildingGroups[0]
         })
@@ -271,14 +271,14 @@ describe('buildingGroupsCommon', async () => {
 
           group.buildingCount = 10 // This should force a recalculation, originally it's 5
 
-          calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+          calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
           expect(group.parts.OreIron).toBe(300)
           expect(group.parts.IronIngot).toBe(300)
         })
 
         it('should calculate for multiple groups', () => {
-          addBuildingGroup(product, GroupType.Product, mockFactory)
+          addBuildingGroup(product, ItemType.Product, mockFactory)
           const group2 = product.buildingGroups[1]
 
           // Assert the before
@@ -290,7 +290,7 @@ describe('buildingGroupsCommon', async () => {
           group.buildingCount = 11.5
           group2.buildingCount = 5.5
 
-          calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+          calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
           expect(group.parts.OreIron).toBe(345)
           expect(group.parts.IronIngot).toBe(345)
@@ -304,7 +304,7 @@ describe('buildingGroupsCommon', async () => {
 
           group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
 
-          calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+          calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
           expect(group.overclockPercent).toBe(100)
         })
@@ -330,7 +330,7 @@ describe('buildingGroupsCommon', async () => {
           group.buildingCount = 10 // This forces a recalculation
           group.overclockPercent = 100
 
-          calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+          calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
           expect(group.overclockPercent).toBe(100)
           expect(group.parts.AlienPowerFuel).toBe(25) // Product
@@ -346,7 +346,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 150
 
-            calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
             // 30 (ore) * 1.5 (clock) = 45 (ore) * 10 (buildings) = 450
             expect(group.parts.OreIron).toBe(450)
@@ -357,7 +357,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 50
 
-            calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
             // 30 (ore) * 0.5 (clock) = 15 (ore) * 10 (buildings) = 150
             expect(group.parts.OreIron).toBe(150)
@@ -368,7 +368,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 133.3333
 
-            calculateBuildingGroupParts([product], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([product], ItemType.Product, mockFactory)
 
             // 30 (ore) * 1.333333 (clock) = 39.9999 (ore) * 10 (buildings) = 399.999
             // 400 rounded
@@ -384,15 +384,15 @@ describe('buildingGroupsCommon', async () => {
             })
             calculateFactories([mockFactory], gameData)
 
-            addBuildingGroup(mockFactory.products[1], GroupType.Product, mockFactory)
-            addBuildingGroup(mockFactory.products[1], GroupType.Product, mockFactory) // Puts it in advanced mode
+            addBuildingGroup(mockFactory.products[1], ItemType.Product, mockFactory)
+            addBuildingGroup(mockFactory.products[1], ItemType.Product, mockFactory) // Puts it in advanced mode
             const group2 = mockFactory.products[1].buildingGroups[0]
 
             // Test 1: 150% overclock
             group2.buildingCount = 1
             group2.overclockPercent = 150
 
-            calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([mockFactory.products[1]], ItemType.Product, mockFactory)
 
             expect(group2.parts.OreCopper).toBe(22.5)
             expect(group2.parts.Water).toBe(15)
@@ -401,7 +401,7 @@ describe('buildingGroupsCommon', async () => {
             // Test 2: 212.55% overclock, also testing the precision of the parts
             group2.overclockPercent = 212.55
 
-            calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([mockFactory.products[1]], ItemType.Product, mockFactory)
 
             expect(group2.parts.OreCopper).toBe(31.883)
             expect(group2.parts.Water).toBe(21.255)
@@ -410,7 +410,7 @@ describe('buildingGroupsCommon', async () => {
             // Test 3: 113.4933% overclock, testing to maximum precision
             group2.overclockPercent = 113.6666
 
-            calculateBuildingGroupParts([mockFactory.products[1]], GroupType.Product, mockFactory)
+            calculateBuildingGroupParts([mockFactory.products[1]], ItemType.Product, mockFactory)
 
             expect(group2.parts.OreCopper).toBe(17.05)
             expect(group2.parts.Water).toBe(11.367)
@@ -432,7 +432,7 @@ describe('buildingGroupsCommon', async () => {
 
           group.buildingCount = 8 // This should force a recalculation, originally it's 4
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(160)
         })
@@ -448,7 +448,7 @@ describe('buildingGroupsCommon', async () => {
           group.buildingCount = 11.5
           group2.buildingCount = 5.5
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(230)
           expect(group2.parts.LiquidFuel).toBe(110)
@@ -460,7 +460,7 @@ describe('buildingGroupsCommon', async () => {
 
           group.buildingCount = 11.5 // This requires 12 buildings and one at 50%
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.overclockPercent).toBe(100)
         })
@@ -470,7 +470,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 150
 
-            calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+            calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
             // 20 (fuel) * 1.5 (150% OC) = 30 (fuel) * 10 (buildings) = 300 (fuel)
             expect(group.parts.LiquidFuel).toBe(300)
@@ -480,7 +480,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 50
 
-            calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+            calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
             // 20 (fuel) * 0.5 (50% OC) = 10 (fuel) * 10 (buildings) = 100 (fuel)
             expect(group.parts.LiquidFuel).toBe(100)
@@ -490,7 +490,7 @@ describe('buildingGroupsCommon', async () => {
             group.buildingCount = 10
             group.overclockPercent = 133.3333
 
-            calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+            calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
             // 20 (fuel) * 1.33333 (133.3333% OC) = 26.666 (fuel) * 10 (buildings) = 266.666 (fuel)
             // 266.667 rounded
@@ -686,8 +686,8 @@ describe('buildingGroupsCommon', async () => {
       let group2: BuildingGroup
 
       beforeEach(() => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
         group1 = product.buildingGroups[0]
         group2 = product.buildingGroups[1]
       })
@@ -697,7 +697,7 @@ describe('buildingGroupsCommon', async () => {
         group1.buildingCount = 1
         group2.buildingCount = 3
 
-        calculateBuildingGroupProblems(product, GroupType.Product)
+        calculateBuildingGroupProblems(product, ItemType.Product)
 
         expect(product.buildingGroupsHaveProblem).toBe(true)
       })
@@ -707,7 +707,7 @@ describe('buildingGroupsCommon', async () => {
         group1.buildingCount = 1
         group2.buildingCount = 3
 
-        calculateBuildingGroupProblems(product, GroupType.Product)
+        calculateBuildingGroupProblems(product, ItemType.Product)
 
         expect(product.buildingGroupsHaveProblem).toBe(true)
 
@@ -715,7 +715,7 @@ describe('buildingGroupsCommon', async () => {
         group1.buildingCount = 2
         group2.buildingCount = 3
 
-        calculateBuildingGroupProblems(product, GroupType.Product)
+        calculateBuildingGroupProblems(product, ItemType.Product)
 
         expect(product.buildingGroupsHaveProblem).toBe(false)
       })
@@ -741,7 +741,7 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should NOT increase the product\'s quantity if it is multiple building groups', () => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].buildingCount = 1337
 
         checkForItemUpdate(product, mockFactory)
@@ -771,7 +771,7 @@ describe('buildingGroupsCommon', async () => {
       })
 
       it('should make no changes to product quantity when multiple groups and overclocking', () => {
-        addBuildingGroup(product, GroupType.Product, mockFactory)
+        addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].overclockPercent = 200
 
         checkForItemUpdate(product, mockFactory)
@@ -805,12 +805,12 @@ describe('buildingGroupsCommon', async () => {
     let group2: BuildingGroup
 
     beforeEach(() => {
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
       group1 = product.buildingGroups[0]
     })
 
     it('should properly calculate the effective building count across multiple groups', () => {
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
 
@@ -827,8 +827,8 @@ describe('buildingGroupsCommon', async () => {
     })
 
     it('should properly calculate the effective building count across multiple groups with precise percentages', () => {
-      addBuildingGroup(product, GroupType.Product, mockFactory)
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
       const group3 = product.buildingGroups[2]
@@ -857,8 +857,8 @@ describe('buildingGroupsCommon', async () => {
     let group2: BuildingGroup
 
     beforeEach(() => {
-      addBuildingGroup(product, GroupType.Product, mockFactory)
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
     })
@@ -868,18 +868,18 @@ describe('buildingGroupsCommon', async () => {
       group1.buildingCount = 4
       group2.buildingCount = 6
 
-      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(-10)
+      expect(calculateRemainingBuildingCount(product, ItemType.Product)).toBe(-10)
 
       // Give the product some buildings
       product.buildingRequirements.amount = 10
 
       // It should equalize
-      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(0)
+      expect(calculateRemainingBuildingCount(product, ItemType.Product)).toBe(0)
 
       // Make the groups short
       product.buildingRequirements.amount = 20
 
-      expect(calculateRemainingBuildingCount(product, GroupType.Product)).toBe(10)
+      expect(calculateRemainingBuildingCount(product, ItemType.Product)).toBe(10)
     })
   })
 
@@ -910,7 +910,7 @@ describe('buildingGroupsCommon', async () => {
     })
 
     it('should delete a building group', () => {
-      addBuildingGroup(product, GroupType.Product, mockFactory)
+      addBuildingGroup(product, ItemType.Product, mockFactory)
 
       const group2Id = product.buildingGroups[1].id
 
@@ -920,7 +920,7 @@ describe('buildingGroupsCommon', async () => {
     })
 
     it('should delete a building group and set building group sync to enabled', () => {
-      addBuildingGroup(product, GroupType.Product, mockFactory) // Sync should be disabled by this
+      addBuildingGroup(product, ItemType.Product, mockFactory) // Sync should be disabled by this
       expect(product.buildingGroupItemSync).toBe(false)
 
       deleteBuildingGroup(product, product.buildingGroups[0])
@@ -1005,14 +1005,14 @@ describe('powerProducer simplified cases', async () => {
         it('should correctly scale ingredients based on an overclock', () => {
           group.overclockPercent = 150
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(22.5)
           expect(group.parts.Water).toBe(67.5) // Ingame 68, seems the game rounds it to 0 decimals
 
           group.overclockPercent = 222.2222
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(33.333)
           expect(group.parts.Water).toBe(100)
@@ -1021,14 +1021,14 @@ describe('powerProducer simplified cases', async () => {
         it('should correctly scale ingredients based on an underclock', () => {
           group.overclockPercent = 55.223
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(8.283) // 8.28 in game
           expect(group.parts.Water).toBe(24.85) // Ingame 25, game rounds it up
 
           group.overclockPercent = 13.37
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(2.005) // 2.01 in game
           expect(group.parts.Water).toBe(6.017) // Ingame 6, game rounds it
@@ -1038,21 +1038,21 @@ describe('powerProducer simplified cases', async () => {
           // Start off at 100% clock
           group.buildingCount = 5
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(75)
           expect(group.parts.Water).toBe(225)
 
           group.overclockPercent = 150
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(112.5)
           expect(group.parts.Water).toBe(337.5)
 
           group.overclockPercent = 55
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.Coal).toBe(41.25)
           expect(group.parts.Water).toBe(123.75)
@@ -1076,13 +1076,13 @@ describe('powerProducer simplified cases', async () => {
         it('should correctly scale ingredients based on an overclock', () => {
           group.overclockPercent = 127.5555
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(25.511) // 25.51 in game
 
           group.overclockPercent = 222.2222
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(44.444) // 44.44 in game
         })
@@ -1090,13 +1090,13 @@ describe('powerProducer simplified cases', async () => {
         it('should correctly scale ingredients based on an underclock', () => {
           group.overclockPercent = 55.223
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(11.045) // 11.04 in game
 
           group.overclockPercent = 13.37
 
-          calculateBuildingGroupParts([powerProducer], GroupType.Power, mockFactory)
+          calculateBuildingGroupParts([powerProducer], ItemType.Power, mockFactory)
 
           expect(group.parts.LiquidFuel).toBe(2.674) // 2.67 in game
         })
@@ -1131,7 +1131,7 @@ describe('powerProducer simplified cases', async () => {
         // For n = 1: candidate clock = ceil(1.33 * 100) = 134 (>100%).
         // For n = 2: candidate clock = ceil((1.33/2) * 100) = ceil(66.5) = 67 (≤100%).
         // We expect the function to choose buildings = 2 and clock = 67.
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'IronIngot', 20)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 20)
           expect(group.buildingCount).toBe(2)
           expect(group.overclockPercent).toBe(67)
         })
@@ -1140,7 +1140,7 @@ describe('powerProducer simplified cases', async () => {
         // For baseRate = 15, if we update the part amount to 10:
         // targetEffective = 10/15 ≈ 0.666666666666667 (0.667 rounded to 3 precision).
         // Because it is sub 1, we expect a building count of the minimum of 1 and with an underclock.
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'IronIngot', 10)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 10)
           expect(group.buildingCount).toBe(1)
           expect(group.overclockPercent).toBe(66.667)
         })
@@ -1148,7 +1148,7 @@ describe('powerProducer simplified cases', async () => {
         it('should update a product group when the part is a decimal', () => {
         // For baseRate = 15, if we update the part amount to 7.5:
         // targetEffective = 7.5/15 = 0.5.
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'IronIngot', 7.5)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 7.5)
           expect(group.buildingCount).toBe(1)
           expect(group.overclockPercent).toBe(50)
         })
@@ -1156,7 +1156,7 @@ describe('powerProducer simplified cases', async () => {
         it('should update a product group when the part is a decimal with high precision', () => {
         // For baseRate = 15, if we update the part amount to 7.5:
         // targetEffective = 7.555/15 = 0.503666666666667.
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'IronIngot', 7.555)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 7.555)
           expect(group.buildingCount).toBe(1)
           expect(group.overclockPercent).toBe(50.367)
         })
@@ -1175,7 +1175,7 @@ describe('powerProducer simplified cases', async () => {
           calculateFactories([mockFactory], gameData) // Needed for item requirements.
         })
         it('should update a product group when the part is an ingredient AND update all parts', () => {
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'SAMFluctuator', 120)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'SAMFluctuator', 120)
 
           expect(group.buildingCount).toBe(10)
           expect(group.overclockPercent).toBe(96)
@@ -1188,7 +1188,7 @@ describe('powerProducer simplified cases', async () => {
         })
 
         it('should update a product group when the part is a byproduct', () => {
-          updateBuildingGroupViaPart(group, product, GroupType.Product, mockFactory, 'DarkEnergy', 120)
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'DarkEnergy', 120)
 
           expect(group.buildingCount).toBe(2)
           expect(group.overclockPercent).toBe(100)
@@ -1216,7 +1216,7 @@ describe('powerProducer simplified cases', async () => {
       // Assume that for the "GeneratorFuel_LiquidFuel" recipe, the ingredient "LiquidFuel" has perMin = 20.
       // If we update "LiquidFuel" to 10, then targetEffective = 10 / 20 = 0.5.
       // The result should be 1 building with an underclock of 50%.
-        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, mockFactory, 'LiquidFuel', 10)
+        updateBuildingGroupViaPart(group, powerProducer, ItemType.Power, mockFactory, 'LiquidFuel', 10)
         expect(group.buildingCount).toBe(1)
         expect(group.overclockPercent).toBeCloseTo(50, 0)
       })
@@ -1233,7 +1233,7 @@ describe('powerProducer simplified cases', async () => {
         group = powerProducer.buildingGroups[0]
         calculateFactories([mockFactory], gameData) // Needed for ingredient data
 
-        updateBuildingGroupViaPart(group, powerProducer, GroupType.Power, mockFactory, 'NuclearWaste', 100)
+        updateBuildingGroupViaPart(group, powerProducer, ItemType.Power, mockFactory, 'NuclearWaste', 100)
 
         expect(group.buildingCount).toBe(10)
         expect(group.overclockPercent).toBe(100)

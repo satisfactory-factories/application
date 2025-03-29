@@ -1,4 +1,4 @@
-import { Factory, FactoryPowerChangeType, FactoryPowerProducer, GroupType } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
@@ -41,7 +41,7 @@ export const addPowerProducerToFactory = (
     // Add the default building group for the producer when one is selected, otherwise we have to wait for the user to choose one
     addBuildingGroup(
       factory.powerProducers[factory.powerProducers.length - 1],
-      GroupType.Power,
+      ItemType.Power,
       factory,
     )
   }

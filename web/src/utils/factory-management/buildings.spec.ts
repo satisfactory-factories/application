@@ -5,7 +5,7 @@ import {
   FactoryItem,
   FactoryPowerChangeType,
   FactoryPowerProducer,
-  GroupType,
+  ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -17,7 +17,7 @@ import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(product, GroupType.Product, mockFactory)
+  rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
 }
 
 describe('buildings', () => {

@@ -141,7 +141,7 @@
     Factory,
     FactoryItem,
     FactoryPowerProducer,
-    GroupType,
+    ItemType,
   } from '@/interfaces/planner/FactoryInterface'
   import { formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
@@ -158,7 +158,7 @@
     factory: Factory
     item: FactoryItem | FactoryPowerProducer
     building: string
-    type: GroupType
+    type: ItemType
   }>()
 
   watch(() => props.item.buildingGroups, () => {

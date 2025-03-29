@@ -30,7 +30,7 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
-export enum GroupType {
+export enum ItemType {
   Power = 'Power',
   Product = 'Product',
 }
@@ -43,7 +43,7 @@ export interface BuildingGroup {
   powerUsage: number
   powerProduced: number
   somersloops?: number
-  type: GroupType
+  type: ItemType
 }
 
 export interface FactoryItem {

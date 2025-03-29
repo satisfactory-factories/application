@@ -1,4 +1,4 @@
-import { BuildingGroup, Factory, FactoryItem, GroupType } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import {
   calculateBuildingGroupParts,
@@ -15,18 +15,18 @@ export const addProductBuildingGroup = (
   factory: Factory,
   matchBuildings = false
 ) => {
-  createBuildingGroup(product, GroupType.Product, matchBuildings)
+  createBuildingGroup(product, ItemType.Product, matchBuildings)
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
   if (matchBuildings) {
     rebalanceBuildingGroups(
       product,
-      GroupType.Product,
+      ItemType.Product,
       factory,
     )
   }
-  calculateBuildingGroupParts([product], GroupType.Product, factory)
+  calculateBuildingGroupParts([product], ItemType.Product, factory)
 }
 
 export const buildingsNeededForPartsProducts = (
@@ -68,7 +68,7 @@ export const updateProductBuildingGroupParts = (
   factory: Factory,
   part: string
 ) => {
-  if (buildingGroup.type !== GroupType.Product) {
+  if (buildingGroup.type !== ItemType.Product) {
     throw new Error('buildingGroupProducts: updateProductBuildingGroupParts: Group is not a product group!')
   }
   // Loop each of the parts, calculating each one. If the calculated size of the building has changed, we update the building group, and if it's a singular building group, the product's building requirements as well.
@@ -83,11 +83,11 @@ export const updateProductBuildingGroupParts = (
     product.buildingRequirements.amount = newBuildingCount // With this one we don't care about overclocking.
     rebalanceBuildingGroups(
       product,
-      GroupType.Product,
+      ItemType.Product,
       factory,
     )
   }
 
   // Since the building count has changed, we need to recalculate the parts for the group so the rest of them remain in sync.
-  calculateBuildingGroupParts([product], GroupType.Product, factory)
+  calculateBuildingGroupParts([product], ItemType.Product, factory)
 }

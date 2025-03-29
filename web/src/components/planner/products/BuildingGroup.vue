@@ -72,7 +72,7 @@
       </v-chip>
       <div class="underchip text-yellow-darken-2">
         <span
-          v-if="group.type !== GroupType.Power"
+          v-if="group.type !== ItemType.Power"
           :id="`${factory.id}-${group.id}-group-power`"
         >
           Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
@@ -84,7 +84,7 @@
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
-    <template v-if="group.type === GroupType.Product">
+    <template v-if="group.type === ItemType.Product">
       <div>
         <v-chip
           class="sf-chip input sloop mx-1"
@@ -113,7 +113,7 @@
         </div>
       </div>
     </template>
-    <template v-if="group.type === GroupType.Product">
+    <template v-if="group.type === ItemType.Product">
       <div :class="{'w-100': partCount > 4 && lgAndDown}" />
       <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
         <div>+</div>
@@ -202,7 +202,7 @@
     </template>
 
     <!-- Power production -->
-    <template v-if="group.type === GroupType.Power">
+    <template v-if="group.type === ItemType.Power">
       <div>
         <v-chip
           class="sf-chip yellow ml-1"
@@ -227,7 +227,7 @@
     Factory,
     FactoryItem,
     FactoryPowerProducer,
-    GroupType,
+    ItemType,
   } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
@@ -285,12 +285,12 @@
     return isByProduct(props.group.type)
   })
 
-  const isByProduct = (groupType: GroupType) => {
+  const isByProduct = (groupType: ItemType) => {
     let subject: FactoryItem | FactoryPowerProducer
-    if (groupType === GroupType.Product) {
+    if (groupType === ItemType.Product) {
       subject = props.item as FactoryItem
       return subject.byProducts && subject.byProducts.length > 0 && subject.byProducts[0].id
-    } else if (groupType === GroupType.Power) {
+    } else if (groupType === ItemType.Power) {
       subject = props.item as FactoryPowerProducer
       return subject.byproduct
     } else {
@@ -298,17 +298,17 @@
     }
   }
 
-  const partIsByProduct = (part: string, groupType: GroupType) => {
+  const partIsByProduct = (part: string, groupType: ItemType) => {
     if (!hasByProduct.value) return false
     let subject = props.item as FactoryItem | FactoryPowerProducer
 
-    if (groupType === GroupType.Product) {
+    if (groupType === ItemType.Product) {
       subject = props.item as FactoryItem
       if (!subject.byProducts?.length) {
         throw new Error('BuildingGroup: Somehow checking for byproduct on a FactoryItem that does not exist!')
       }
       return part === subject.byProducts[0].id
-    } else if (groupType === GroupType.Power) {
+    } else if (groupType === ItemType.Power) {
       subject = props.item as FactoryPowerProducer
       return part === subject.byproduct?.part
     } else {

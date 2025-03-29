@@ -3,7 +3,7 @@ import {
   ByProductItem,
   Factory,
   FactoryItem,
-  GroupType,
+  ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import {
@@ -435,7 +435,7 @@ export const increaseProductQtyViaBuilding = (product: FactoryItem, factory: Fac
 
   // If item building group sync is enabled, rebalance it now.
   if (product.buildingGroupItemSync) {
-    rebalanceBuildingGroups(product, GroupType.Product, factory, {
+    rebalanceBuildingGroups(product, ItemType.Product, factory, {
       forceRebalance: true,
     })
   }
