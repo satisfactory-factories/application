@@ -20,10 +20,10 @@ Ref: BG-C-D
 | Upon creating new product, creates a BG count with the expected building size | BG-C-D-3  | Y           | Y            | Y         |
 | Creating a new building group with preexisting groups disables item sync      | BG-C-D-4  | Y           | Y            | Y         |
 | Create multiple building groups, with 0 building default count                | BG-C-D-5  | Y           | Y            | Y         |
-| Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           |              | Y         |
-| Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           |              | Y         |
-| Deletion of the product removes the building groups                           | BG-C-D-8  | Y           |              | Y         |
-| Deletion of the product removes the part difference from the factory          | BG-C-D-9  | Y           |              | Y         | A bit wonky right now as part calculations are delayed, but works |
+| Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           | Y            | Y         |
+| Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           | Y            | Y         |
+| Deletion of the product removes the building groups                           | BG-C-D-8  | Y           | Y            | Y         |
+| Deletion of the product removes the part difference from the factory          | BG-C-D-9  | Y           | Y            | Y         | A bit wonky right now as part calculations are delayed, but works |
 | Deletion of building groups updates the factory parts                         | BG-C-D-10 |             |              | ?         |
 | Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-11 |             |              | Y         |
 | Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-12 | Y           |              | Y         |

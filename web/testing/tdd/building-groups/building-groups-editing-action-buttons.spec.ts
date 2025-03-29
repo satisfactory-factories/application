@@ -1,5 +1,5 @@
 import vuetify from '@/plugins/vuetify'
-import { BaseWrapper, DOMWrapper, mount, VueWrapper } from '@vue/test-utils'
+import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '@/components/planner/products/Product.vue'
 import PowerProducer from '@/components/planner/products/PowerProducer.vue'
@@ -9,11 +9,8 @@ import {
   BuildingGroup,
   Factory,
   FactoryItem,
-  FactoryPowerChangeType,
-  FactoryPowerProducer, GroupType,
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
-import { addBuildingGroup } from '../../../src/utils/factory-management/building-groups/common'
 
 const gameData = await fetchGameData()
 
