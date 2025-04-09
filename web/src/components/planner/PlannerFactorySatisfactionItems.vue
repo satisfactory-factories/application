@@ -200,7 +200,9 @@
                 class="sf-chip small"
                 :class="part.satisfied ? 'green' : 'red'"
               >
-                <b>{{ formatNumber(part.amountRemaining) }}/min {{ getSatisfactionLabel(part.amountRemaining) }}</b>
+                <b>
+                  <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
+                </b>
               </v-chip>
               <template v-if="showRawChip(factory, partId.toString())">
                 <v-tooltip bottom>

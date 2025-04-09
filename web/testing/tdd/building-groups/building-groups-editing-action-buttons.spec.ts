@@ -1,9 +1,8 @@
-import vuetify from '@/plugins/vuetify'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '@/components/planner/products/Product.vue'
 import PowerProducer from '@/components/planner/products/PowerProducer.vue'
-import { calculateFactories, calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   BuildingGroup,
@@ -11,35 +10,16 @@ import {
   FactoryItem,
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
+import { mountItem } from '../../helpers'
 
 const gameData = await fetchGameData()
 
 const mountProduct = (factory: Factory) => {
-  return mountComponent(factory, Product)
+  return mountItem(factory, Product)
 }
 
 const mountPowerProducer = (factory: Factory) => {
-  return mountComponent(factory, PowerProducer)
-}
-
-const mountComponent = (factory: Factory, component: any) => {
-  return mount(component, {
-    propsData: {
-      factory,
-      helpText: false,
-    },
-    global: {
-      plugins: [vuetify],
-      provide: {
-        updateFactory: (factory: any, modes: CalculationModes) => {
-          calculateFactory(factory, [factory], gameData, modes)
-        },
-        updateOrder: (factory: any) => {
-          return 'foo'
-        },
-      },
-    },
-  })
+  return mountItem(factory, PowerProducer)
 }
 
 describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => {

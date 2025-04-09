@@ -1,5 +1,4 @@
-import vuetify from '@/plugins/vuetify'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '@/components/planner/products/Product.vue'
 import PowerProducer from '@/components/planner/products/PowerProducer.vue'
@@ -9,35 +8,16 @@ import { BuildingGroup, Factory, FactoryItem, ItemType } from '@/interfaces/plan
 import { fetchGameData } from '@/utils/gameDataService'
 import { addBuildingGroup, deleteBuildingGroup } from '../../../src/utils/factory-management/building-groups/common'
 import { deleteItem } from '../../../src/utils/factory-management/common'
+import { mountItem, mountSatisfaction } from '../../helpers'
 
 const gameData = await fetchGameData()
 
 const mountProduct = (factory: Factory) => {
-  return mountComponent(factory, Product)
+  return mountItem(factory, Product)
 }
 
 const mountPowerProducer = (factory: Factory) => {
-  return mountComponent(factory, PowerProducer)
-}
-
-const mountComponent = (factory: Factory, component: any) => {
-  return mount(component, {
-    propsData: {
-      factory,
-      helpText: false,
-    },
-    global: {
-      plugins: [vuetify],
-      provide: {
-        updateFactory: (factory: any, modes: CalculationModes) => {
-          calculateFactory(factory, [factory], gameData, modes)
-        },
-        updateOrder: (factory: any) => {
-          return 'foo'
-        },
-      },
-    },
-  })
+  return mountItem(factory, PowerProducer)
 }
 
 describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
@@ -241,26 +221,33 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(factory.parts.IronIngot?.amountSupplied).toBe(30) // 1 building
     })
 
-    // TODO: Not complete
     test('BG-C-D-9: Deletion of the product removes the part difference from the factory (multi products) via UI', async () => {
-      // // Add another product of the same item so the parts won't be undefined
-      // addProductToFactory(factory, {
-      //   id: 'IronIngot',
-      //   amount: 30, // 1 Building
-      //   recipe: 'IngotIron',
-      // })
-      //
-      // calculateFactories([factory], gameData)
-      //
-      // // Assert the part list before
-      // expect(factory.parts.IronIngot.amountSupplied).toBe(90) // 2+1 buildings
-      //
-      // // Delete the original product
-      // deleteItem(0, ItemType.Product, factory)
-      // // Perform what the UI would and recalculate the factory
-      // calculateFactories([factory], gameData)
-      //
-      // expect(factory.parts.IronIngot?.amountSupplied).toBe(30) // 1 building
+      // Add another product of the same item so the parts won't be undefined
+      addProductToFactory(factory, {
+        id: 'IronIngot',
+        amount: 30, // 1 Building
+        recipe: 'IngotIron',
+      })
+
+      // Calculate to ensure everything is updated.
+      calculateFactories([factory], gameData)
+
+      // Remount as the UI will have been updated.
+      subject.unmount()
+      subject = mountProduct(factory)
+      // Also mount the Satisfaction component to get the details
+      const satisfactionSubject = mountSatisfaction(factory)
+
+      // Assert the part list before
+      expect(factory.parts.IronIngot.amountRemaining).toBe(90) // 2+1 buildings
+      const ironIngotsElem = satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`)
+      expect(ironIngotsElem.text()).toBe('90')
+
+      const deleteItemButton = subject.find(`[id="${factory.id}-item-1-delete"]`)
+      await deleteItemButton.trigger('click')
+
+      // Assert the part list after
+      expect(factory.parts.IronIngot?.amountRemaining).toBe(60) // 2 buildings from original product
     })
   })
 })

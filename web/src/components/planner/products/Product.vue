@@ -38,6 +38,7 @@
         @click="updateProductOrder('down', product)"
       />
       <v-btn
+        :id="`${factory.id}-item-${productIndex}-delete`"
         color="red"
         icon="fas fa-trash"
         size="small"
