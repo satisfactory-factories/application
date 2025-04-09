@@ -1,10 +1,12 @@
+import { vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import vuetify from '../src/plugins/vuetify'
 import { calculateFactory, CalculationModes } from '../src/utils/factory-management/factory'
 import { Factory } from '../src/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '../src/utils/gameDataService'
-import PlannerFactorySatisfaction from '@/components/planner/PlannerFactorySatisfaction.vue'
+import PlannerFactorySatisfaction from '../src/components/planner/PlannerFactorySatisfaction.vue'
 
+// @ts-ignore // this is fine, it works, stop moaning
 const gameData = await fetchGameData()
 
 export const mountItem = (factory: Factory, component: any) => {
@@ -19,9 +21,7 @@ export const mountItem = (factory: Factory, component: any) => {
         updateFactory: (factory: any, modes: CalculationModes) => {
           calculateFactory(factory, [factory], gameData, modes)
         },
-        updateOrder: (factory: any) => {
-          return 'foo'
-        },
+        updateOrder: () => vi.fn(),
       },
     },
   })
@@ -39,9 +39,7 @@ export const mountSatisfaction = (factory: Factory) => {
         updateFactory: (factory: any, modes: CalculationModes) => {
           calculateFactory(factory, [factory], gameData, modes)
         },
-        findFactory: (id: string) => {
-          return factory
-        },
+        findFactory: () => vi.fn(),
       },
     },
   })

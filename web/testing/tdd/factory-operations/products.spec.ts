@@ -1,13 +1,14 @@
 import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
-import Product from '@/components/planner/products/Product.vue'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
-import { addProductToFactory } from '@/utils/factory-management/products'
-import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
-import { fetchGameData } from '@/utils/gameDataService'
+import Product from '../../../src/components/planner/products/Product.vue'
+import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
+import { addProductToFactory } from '../../../src/utils/factory-management/products'
+import { Factory, FactoryItem, ItemType } from '../../../src/interfaces/planner/FactoryInterface'
+import { fetchGameData } from '../../../src/utils/gameDataService'
 import { deleteItem } from '../../../src/utils/factory-management/common'
 import { mountItem, mountSatisfaction } from '../../helpers'
 
+// @ts-ignore // this is fine, it works, stop moaning
 const gameData = await fetchGameData()
 
 const mountProduct = (factory: Factory) => {

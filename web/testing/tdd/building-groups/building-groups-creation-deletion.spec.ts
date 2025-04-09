@@ -1,15 +1,16 @@
 import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
-import Product from '@/components/planner/products/Product.vue'
-import PowerProducer from '@/components/planner/products/PowerProducer.vue'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
-import { addProductToFactory } from '@/utils/factory-management/products'
-import { BuildingGroup, Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
-import { fetchGameData } from '@/utils/gameDataService'
+import Product from '../../../src/components/planner/products/Product.vue'
+import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
+import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
+import { addProductToFactory } from '../../../src/utils/factory-management/products'
+import { BuildingGroup, Factory, FactoryItem, ItemType } from '../../../src/interfaces/planner/FactoryInterface'
+import { fetchGameData } from '../../../src/utils/gameDataService'
 import { addBuildingGroup, deleteBuildingGroup } from '../../../src/utils/factory-management/building-groups/common'
-import { deleteItem } from '@/utils/factory-management/common'
+import { deleteItem } from '../../../src/utils/factory-management/common'
 import { mountItem } from '../../helpers'
 
+// @ts-ignore // this is fine, it works, stop moaning
 const gameData = await fetchGameData()
 
 const mountProduct = (factory: Factory) => {
