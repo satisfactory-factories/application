@@ -1,7 +1,5 @@
 // test/global-setup.ts
 
-// Construct the absolute path to your JSON file.
-// Adjust the relative path as needed based on the location of this file.
 import path from 'path'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
