@@ -23,11 +23,10 @@ Ref: BG-C-D
 | Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           | Y            | Y         |
 | Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           | Y            | Y         |
 | Deletion of the product removes the building groups                           | BG-C-D-8  | Y           | Y            | Y         |
-| Deletion of the product removes the part difference from the factory          | BG-C-D-9  | Y           | Y            | Y         | A bit wonky right now as part calculations are delayed, but works |
-| Deletion of building groups updates the factory parts                         | BG-C-D-10 |             |              | ?         |
-| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-11 |             |              | Y         |
-| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-12 | Y           |              | Y         |
-| Deletion of building groups should disable sync                               | BG-C-D-13 |             |              | B         |
+| Deletion of building groups updates the factory parts                         | BG-C-D-9  |             |              | ?         |
+| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-10 |             |              | Y         |
+| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-11 | Y           |              | Y         |
+| Deletion of building groups should disable sync                               | BG-C-D-12 |             |              | B         |
 
 ## Building Groups Editing - Action Buttons (Products)
 Ref: BG-E-AB-PROD
