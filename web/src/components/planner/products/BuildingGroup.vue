@@ -6,7 +6,7 @@
   >
     <div>
       <v-btn
-        :id="`${factory.id}-${group.id}-delete-building-group`"
+        :id="`${factory.id}-${group.id}-delete`"
         color="red rounded mr-1"
         :disabled="item.buildingGroups.length === 1"
         icon="fas fa-trash"
@@ -279,6 +279,9 @@
 
   const deleteGroup = (group: BuildingGroup) => {
     deleteBuildingGroup(props.item, group)
+
+    // We need to now update the factory as the parts will be out of sync.
+    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
   }
 
   const hasByProduct = computed(() => {

@@ -606,6 +606,9 @@ export const deleteBuildingGroup = (
     return
   }
 
+  // Disable the sync if we are deleting a group as otherwise it will malform the product.
+  item.buildingGroupItemSync = false
+
   // Find the index of the group and remove it
   const index = item.buildingGroups.findIndex(g => g.id === group.id)
   item.buildingGroups.splice(index, 1)
@@ -614,4 +617,6 @@ export const deleteBuildingGroup = (
   if (item.buildingGroups.length === 1) {
     item.buildingGroupItemSync = true
   }
+
+  // Must call calculateFactory or the parts are now out of sync!
 }

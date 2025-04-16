@@ -122,7 +122,7 @@ describe('Component: BuildingGroups', () => {
       buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
       buildingGroupPowerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
       effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
-      buildingsRemaining = subject.find(`[id="${factory.id}-${product.id}-buildings-remaining"]`)
+      buildingsRemaining = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
       itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
       toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
     })
@@ -323,7 +323,7 @@ describe('Component: BuildingGroups', () => {
           it('should enable the sync when reduced to a single group', async () => {
           // Add a new group
             await addGroupButton.trigger('click')
-            const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
+            const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
             await deleteButton.trigger('click')
 
             expect(product.buildingGroupItemSync).toBe(true)
@@ -453,7 +453,7 @@ describe('Component: BuildingGroups', () => {
       it('should remove the building group correctly', async () => {
         const expectedGroupId = product.buildingGroups[1].id
         const expectedGroupBuildingCount = subject.find(`[id="${factory.id}-${expectedGroupId}-building-count"]`)
-        const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
+        const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
 
         await deleteButton.trigger('click')
 
@@ -470,8 +470,8 @@ describe('Component: BuildingGroups', () => {
         const secondGroupId = product.buildingGroups[1].id
         const thirdGroupId = product.buildingGroups[2].id
 
-        const secondGroupDeleteButton = subject.find(`[id="${factory.id}-${secondGroupId}-delete-building-group"]`)
-        const thirdGroupDeleteButton = subject.find(`[id="${factory.id}-${thirdGroupId}-delete-building-group"]`)
+        const secondGroupDeleteButton = subject.find(`[id="${factory.id}-${secondGroupId}-delete"]`)
+        const thirdGroupDeleteButton = subject.find(`[id="${factory.id}-${thirdGroupId}-delete"]`)
 
         await secondGroupDeleteButton.trigger('click')
         await thirdGroupDeleteButton.trigger('click')
@@ -525,7 +525,7 @@ describe('Component: BuildingGroups', () => {
       buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
       buildingGroupPowerUsed = subject.find(`[id="${factory.id}-${buildingGroup.id}-power"]`)
       effectiveBuildings = subject.find(`[id="${factory.id}-${powerProducer.id}-effective-buildings"]`)
-      buildingsRemaining = subject.find(`[id="${factory.id}-${powerProducer.id}-buildings-remaining"]`)
+      buildingsRemaining = subject.find(`[id="${factory.id}-${powerProducer.id}-remaining-buildings"]`)
       itemBuildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
       toggleSyncButton = subject.find(`[id="${factory.id}-${powerProducer.id}-toggle-sync"]`)
     })

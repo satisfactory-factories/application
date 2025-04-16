@@ -1,4 +1,5 @@
 import { VueWrapper } from '@vue/test-utils'
+import { reactive } from 'vue'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
@@ -41,7 +42,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       amount: 60, // 2 Buildings
       recipe: 'IngotIron',
     })
-    product = factory.products[0]
+    product = reactive(factory.products[0])
     product.buildingGroupsTrayOpen = true // This is needed otherwise nothing renders
     buildingGroup = product.buildingGroups[0]
     calculateFactories([factory], gameData)
@@ -144,8 +145,8 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
     test('BG-C-D-6: Prevent deletion of a building group when last remaining via UI', async () => {
       await addBuildingGroupButton.trigger('click')
 
-      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
-      const deleteButtonNewGroup = subject.find(`[id="${factory.id}-${product.buildingGroups[1].id}-delete-building-group"]`)
+      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
+      const deleteButtonNewGroup = subject.find(`[id="${factory.id}-${product.buildingGroups[1].id}-delete"]`)
       expect(deleteButton.attributes('disabled')).toBe(undefined)
 
       await deleteButton.trigger('click')
@@ -167,7 +168,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       await addBuildingGroupButton.trigger('click')
       expect(product.buildingGroups.length).toBe(2)
 
-      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete-building-group"]`)
+      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
       await deleteButton.trigger('click')
 
       expect(product.buildingGroups.length).toBe(1)
@@ -180,6 +181,79 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       deleteItem(0, ItemType.Product, factory)
 
       expect(factory.products[0]?.buildingGroups).toBeUndefined()
+    })
+
+    test('BC-C-D-8: Deleting a building group removes it from the product data model', async () => {
+      // Add a second building group
+      addBuildingGroup(product, ItemType.Product, factory)
+
+      expect(product.buildingGroups.length).toBe(2)
+
+      // Delete the original building group
+      deleteBuildingGroup(product, product.buildingGroups[0])
+
+      expect(product.buildingGroups.length).toBe(1)
+    })
+
+    test('BC-C-D-8: Deleting a building group removes it from the product via UI', async () => {
+      // Add a second building group
+      await addBuildingGroupButton.trigger('click')
+      const buildingGroup2 = product.buildingGroups[1]
+
+      // Remount the product
+      subject.unmount()
+      subject = mountProduct(factory)
+
+      // Check for existence of both building groups
+      expect(product.buildingGroups.length).toBe(2)
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).exists()).toBe(true)
+      expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).exists()).toBe(true)
+
+      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
+      await deleteButton.trigger('click')
+
+      // Check the UI shows it removed
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).exists()).toBe(false)
+      expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).exists()).toBe(true)
+
+      expect(product.buildingGroups.length).toBe(1)
+    })
+
+    test('BC-C-D-9: Deleting a building group causes a building group imbalance via UI', async () => {
+      // Add a second building group
+      await addBuildingGroupButton.trigger('click')
+      const buildingGroup2 = product.buildingGroups[1]
+      expect(product.buildingGroupItemSync).toBe(false)
+
+      const effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
+      const remainingBuildings = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
+
+      // Check the amount of effective buildings and remaining buildings, it should still be 2 as provided by default
+      expect(effectiveBuildings.text()).toBe('2.00')
+      expect(remainingBuildings.text()).toBe('0.00')
+
+      // Enable sync, need to re-mount the button for some reason
+      toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+      await toggleSyncButton.trigger('click')
+      expect(product.buildingGroupItemSync).toBe(true)
+
+      // Update the product amount to create a balance of 2 groups with 1 building
+      const productAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
+      await productAmountInput.setValue('120')
+
+      // Check the current state of the building groups balance, it should be 4
+      expect(effectiveBuildings.text()).toBe('4.00')
+      expect(remainingBuildings.text()).toBe('0.00')
+
+      // Now we delete a group
+      const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
+      await deleteButton.trigger('click')
+
+      // Check the current state of the building groups balance, it should be 2 with 2 remaining
+      expect(effectiveBuildings.text()).toBe('2.00')
+      expect(remainingBuildings.text()).toBe('2.00') // Thus, imbalance.
+      // Product should still have an amount of 4
+      expect(product.buildingRequirements.amount).toBe(4)
     })
   })
 })

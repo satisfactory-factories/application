@@ -22,14 +22,13 @@
           </span></b>
           |
           <span
-            :id="`${factory.id}-${item.id}-buildings-remaining`"
-            :key="`${factory.id}-${item.id}-buildings-remaining-${buildingsRemaining}`"
+            :id="`${factory.id}-${item.id}-remaining-buildings`"
+            :key="`${factory.id}-${item.id}-remaining-buildings-${buildingsRemaining}`"
           >
             {{ Math.abs(buildingsRemaining).toFixed(2) }}
-            <span v-show="buildingsRemaining > 0">needed</span>
-            <span v-show="buildingsRemaining < 0">short</span>
           </span>
-
+          <span v-show="buildingsRemaining > 0"> short</span>
+          <span v-show="buildingsRemaining < 0"> over</span>
         </span>
       </span>
     </div>
@@ -147,7 +146,8 @@
   import eventBus from '@/utils/eventBus'
   import {
     addBuildingGroup,
-    calculateEffectiveBuildingCount, calculateRemainingBuildingCount,
+    calculateEffectiveBuildingCount,
+    calculateRemainingBuildingCount,
     rebalanceBuildingGroups,
     remainderToLast,
     remainderToNewGroup,

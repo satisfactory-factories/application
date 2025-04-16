@@ -87,11 +87,11 @@
       </div>
       <div class="input-row d-flex align-center">
         <v-number-input
+          :id="`${factory.id}-${product.id}-amount`"
           v-model="product.amount"
           control-variant="stacked"
           hide-details
           label="Qty /min"
-          :name="`${product.id}.amount`"
           variant="outlined"
           :width="smAndDown ? undefined : '130px'"
           @update:model-value="updateProductQty(product, factory)"
