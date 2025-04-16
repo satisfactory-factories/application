@@ -300,7 +300,7 @@ export const rebalanceBuildingGroups = (
   // Ensure the math is right before we rebalance
   recalculateGroupMetrics(item, groupType, factory)
 
-  let targetBuildings = 0
+  let targetBuildings: number
 
   // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
   if (modes.useBuildingGroupBuildings) {

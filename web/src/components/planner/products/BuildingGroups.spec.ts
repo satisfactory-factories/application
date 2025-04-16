@@ -39,7 +39,7 @@ const mountComponent = (factory: Factory, component: any) => {
         updateFactory: (factory: any, modes: CalculationModes) => {
           calculateFactory(factory, [factory], gameData, modes)
         },
-        updateOrder: (factory: any) => {
+        updateOrder: () => {
           return 'foo'
         },
       },
