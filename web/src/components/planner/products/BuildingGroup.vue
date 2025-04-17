@@ -73,9 +73,9 @@
       <div class="underchip text-yellow-darken-2">
         <span
           v-if="group.type !== ItemType.Power"
-          :id="`${factory.id}-${group.id}-group-power`"
         >
-          Group Power: {{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}
+          Group Power:
+          <span :id="`${factory.id}-${group.id}-group-power`">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
         </span>
         <span v-else>&nbsp;</span>
       </div>
