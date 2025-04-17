@@ -165,31 +165,46 @@
             <div v-if="satisfactionBreakdowns">
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Production</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-production`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaProduction) }}/min
                 </span>
               </div>
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Supply from Imports</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-supply-input`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaInput ) }}/min
                 </span>
               </div>
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Supply from Raw</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-supply-raw`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaRaw ) }}/min
                 </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Internal Consumption</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-production`"
+                  class="align-self-end text-right"
+                >
                   -{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min
                 </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-exports`"
+                  class="align-self-end text-right"
+                >
                   -{{ formatNumber(part.amountRequiredExports ) }}/min
                 </span>
               </div>

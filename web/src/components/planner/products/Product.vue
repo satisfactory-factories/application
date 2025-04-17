@@ -203,6 +203,7 @@
             <game-asset :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
+            :id="`${factory.id}-${product.id}-${part}-amount`"
             v-model.number="requirement.amount"
             class="inline-inputs"
             control-variant="stacked"
@@ -210,7 +211,6 @@
             hide-details
             hide-spin-buttons
             :min="0"
-            :name="`${product.id}.ingredients.${part}`"
             :product="product.id"
             width="120px"
             @update:model-value="setProductQtyByRequirement(product, part.toString())"
