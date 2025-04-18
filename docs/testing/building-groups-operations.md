@@ -51,14 +51,14 @@ Ref: BG-E-AB-PROD
 | Pressing "Sync" disables sync for the item when enabled                                         | BG-E-AB-PROD-16 | Y           | Y            | Y         |
 | Pressing "Sync" enables sync for the item when disabled                                         | BG-E-AB-PROD-17 | Y           | Y            | Y         |
 
-## Building Groups Editing - Buildings (Products)
+## Building Groups Editing - Buildings single group (Products)
 Ref: BG-E-B-PROD
 
 | Operation                                                                           | Ref            | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
 |-------------------------------------------------------------------------------------|----------------|-------------|--------------|-----------|-----------------------------------------------------------|
 | Allows editing the building count                                                   | BG-E-B-PROD-1  | Y           | Y            | Y         |                                                           |
-| Editing building count updates the effective buildings                              | BG-E-B-PROD-2  | Y           | Y            | Y         |                                                           |
-| Editing building count updates the remaining buildings                              | BG-E-B-PROD-3  | Y           | Y            | Y         |                                                           |
+| Editing building count updates the effective buildings                              | BG-E-B-PROD-2  | Y           | F/CALC       | Y         |                                                           |
+| Editing building count updates the remaining buildings                              | BG-E-B-PROD-3  | Y           | F/CALC       | Y         |                                                           |
 | Editing building count updates the group part production                            | BG-E-B-PROD-4  | Y           | Y            | Y         |                                                           |
 | Editing building count updates the group ingredient consumption                     | BG-E-B-PROD-5  | Y           | F            | F         | Ingredients lag by 1 change                               |
 | Editing building count updates the item's part amount                               | BG-E-B-PROD-6  | Y           | Y            | Y         |                                                           |
@@ -68,22 +68,25 @@ Ref: BG-E-B-PROD
 | Editing building count updates the group power used                                 | BG-E-B-PROD-10 | Y           | Y            | Y         | 
 | Editing building count updates the factory power used                               | BG-E-B-PROD-11 | Y           | Y            | Y         | 
 | Editing building count updates the factory total buildings                          | BG-E-B-PROD-12 | Y           | Y            | Y         |                                                           |
-| Multi Group: Editing group building count does NOT rebalance the building groups    | BG-E-B-PROD-13 |             |              | F         | A rebalance is forced, messes everything up               |
-| Using multiple groups, does NOT adjust overclocks                                   | BG-E-B-PROD-14 |             |              | F         | Ditto                                                     |
-| Building count is NOT rounded, and exactly matches what the user entered            | BG-E-B-PROD-15 |             |              | Y         | User prevented from entering decimals                     |
-| Sync ON: Updating a BG's building only updates in whole buildings, no clocks change | BG-E-B-PROD-16 |             |              | Y         |                                                           |
-| Sync ON: Updating count with clock, updates the product's buildings into decimal    | BG-E-B-PROD-17 |             |              | Y         |                                                           |
-| Sync ON: Effective buildings equally match the item's total buildings               | BG-E-B-PROD-18 |             |              | Y         |                                                           |
-| Sync ON: Remaining buildings always should be 0                                     | BG-E-B-PROD-19 |             |              | Y         |                                                           |
-| Sync ON: Colours for remaining status should be green                               | BG-E-B-PROD-20 |             |              | Y         |                                                           |
-| Sync ON: Updating via the BG should not force a balance                             | BG-E-B-PROD-21 |             |              | F         |                                                           |
-| Sync ON: Updating via the product SHOULD force a balance                            | BG-E-B-PROD-22 |             |              | F         |                                                           |
-| Sync OFF: Does NOT affect the item's total buildings                                | BG-E-B-PROD-23 |             |              |           |                                                           |
-| Sync OFF: Enables asymmetrical building groups (not forced balanced)                | BG-E-B-PROD-24 |             |              | B         | Being forced balanced                                     |
-| Sync OFF: Does affect the factory parts produced                                    | BG-E-B-PROD-25 |             |              | ?         | Unknown due to the fact part updates are generally broken |
-| Sync OFF: Effective buildings correctly detecting BG -> Item mismatch               | BG-E-B-PROD-26 |             |              | Y         |                                                           |
-| Sync OFF: Remaining buildings correctly updated                                     | BG-E-B-PROD-27 |             |              | Y         |                                                           |
-| Sync OFF: Colours for remaining status be correct                                   | BG-E-B-PROD-28 |             |              | Y         |                                                           |
+
+## Building Groups Editing - Buildings multiple groups (Products)
+Ref: BG-E-BMULTI-PROD
+
+| Operation                                                                                 | Ref                 | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
+|-------------------------------------------------------------------------------------------|---------------------|-------------|--------------|-----------|-----------------------------------------------------------|
+| Sync ON: Editing group building count does not trigger a rebalance and matches user input | BG-E-BMULTI-PROD-1  | Y           | F            | F         | Force rebalanced                                          |
+| Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2  | Y           | F            | F         | Ditto                                                     |
+| Sync ON: Editing group building count updates the item's building counts                  | BG-E-BMULTI-PROD-3  | Y           | F            | F         | Ditto                                                     |
+| Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4  | Y           | F            | F         |
+| Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5  | Y           | F/CALC       | Y         |                                                           |
+| Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6  | Y           | F/CALC       | Y         |                                                           |
+| Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7  | Y           | F/CALC       | Y         |                                                           |
+| Sync ON: Updating via the item SHOULD force a rebalance of group building counts          | BG-E-BMULTI-PROD-8  | Y           | Y            | F         |                                                           |
+| Sync OFF: Editing groups does NOT affect the item's total buildings                       | BG-E-BMULTI-PROD-9  | Y           | Y            | Y         | Technically passes, but force balanced.                   |
+| Sync OFF: Editing groups does NOT force a rebalance                                       | BG-E-BMULTI-PROD-10 | Y           | F            | F         | Being force balanced                                      |
+| Sync OFF: Editing item buildings does NOT affect group buildings                          | BG-E-BMULTI-PROD-11 |             | F            | F         | Being force balanced                                      |
+| Sync OFF: Editing groups does NOT affect factory parts                                    | BG-E-BMULTI-PROD-12 | Y           | Y            | ?         | 
+| Sync OFF: Effective and remaining buildings correctly calculated                          | BG-E-BMULTI-PROD-13 | Y           | F/CALC       | Y         |                                                           |
 
 ## Building Groups Editing - Clocks (Products)
 Ref: BG-E-C-PROD
@@ -104,7 +107,6 @@ Ref: BG-E-C-PROD
 | Sync OFF: DOES NOT update the product's total buildings                 | BG-E-C-PROD-12  |             |              | Y         |
 | Sync ON: Effective buildings equally match the item's total buildings   | BG-E-C-PROD-13  |             |              | Y         |
 | Sync OFF: Effective buildings DOES NOT match the item's total buildings | BG-E-C-PROD-14  |             |              | Y         |
-| Sync OFF: Upon imbalance, remaining buildings should be showing in red  | BG-E-C-PROD-15  |             |              | Y         |
 
 ## Building Groups Editing - Sommersloops (Products)
 Ref: BG-E-S-PROD

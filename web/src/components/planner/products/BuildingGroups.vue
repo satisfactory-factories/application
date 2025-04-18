@@ -14,7 +14,7 @@
   </div>
   <div class="mb-2 d-flex align-center">
     <div class="mr-2">
-      <span :class="{ 'text-green': correct, 'text-red': !correct }">
+      <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
         <i class="fas fa-building" />
         <span class="ml-1">
           Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
@@ -32,7 +32,7 @@
         </span>
       </span>
     </div>
-    <div>
+    <div :id="`${factory.id}-${item.id}-buildings-status-indicator`" class="ml-2" :isRed="over || under">
       <v-chip v-if="over" class="sf-chip red small">
         <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
       </v-chip>
@@ -50,24 +50,13 @@
         text="When Sync is enabled, the product is automatically updated with the total of the Building Groups, easing the user burden on doing math.<br>When a new building group is added, sync is disabled to prevent overriding the product's target while you are making adjustments.<br>When a new product is created, it is enabled automatically upon creation.<br>When building groups are reduced to 1, it is re-enabled.<br><br>It is synced in two ways:<br>1. When the <b>product</b> is updated, the building groups are updated <b>and rebalanced</b>.<br>2. When a <b>building group</b> is updated, the building counts are totalled across all groups and applied to the product."
       /></span>
       <v-btn
-        v-if="item.buildingGroupItemSync"
         :id="`${factory.id}-${item.id}-toggle-sync`"
-        color="green"
+        :color="item.buildingGroupItemSync ? 'green' : 'amber'"
         size="small"
         variant="flat"
-        @click="item.buildingGroupItemSync = false"
+        @click="item.buildingGroupItemSync = !item.buildingGroupItemSync"
       >
-        Enabled
-      </v-btn>
-      <v-btn
-        v-if="!item.buildingGroupItemSync"
-        :id="`${factory.id}-${item.id}-toggle-sync`"
-        color="amber"
-        size="small"
-        variant="flat"
-        @click="item.buildingGroupItemSync = true"
-      >
-        Disabled
+        {{ item.buildingGroupItemSync ? 'Enabled' : 'Disabled' }}
       </v-btn>
     </div>
     <div class="mr-2">|</div>
