@@ -89,6 +89,7 @@ export interface CalculationModes {
   loadMode?: boolean
   useBuildingGroupBuildings?: boolean
   forceRebalance?: boolean
+  origin?: 'buildingGroup' | 'item'
 }
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
@@ -132,14 +133,19 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
-  // Calculate / synchronise the factory building groups.
+  // Calculate / synchronize the factory building groups.
+  // ONLY rebalance though if the origin point is from the product itself, not the building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    rebalanceBuildingGroups(product, ItemType.Product, factory, modes)
+    if (modes.origin !== 'buildingGroup') {
+      rebalanceBuildingGroups(product, ItemType.Product, factory, modes)
+    }
     checkForItemUpdate(product, factory)
   })
   factory.powerProducers.forEach(producer => {
-    rebalanceBuildingGroups(producer, ItemType.Power, factory, modes)
+    if (modes.origin !== 'buildingGroup') {
+      rebalanceBuildingGroups(producer, ItemType.Power, factory, modes)
+    }
     checkForItemUpdate(producer, factory)
   })
 

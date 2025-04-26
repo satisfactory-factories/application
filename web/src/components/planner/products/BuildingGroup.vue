@@ -258,7 +258,11 @@
     updateBuildingGroup(group)
 
     // Update the factory
-    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
+    updateFactory(props.factory, {
+      useBuildingGroupBuildings: true,
+      forceRebalance: false,
+      origin: 'buildingGroup',
+    })
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {

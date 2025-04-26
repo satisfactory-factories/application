@@ -414,7 +414,12 @@ export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInte
   product.id = recipe.products[0].part
 }
 
-export const increaseProductQtyViaBuilding = (product: FactoryItem, factory: Factory, gameData: DataInterface) => {
+export const increaseProductQtyViaBuilding = (
+  product: FactoryItem,
+  factory: Factory,
+  gameData: DataInterface,
+  origin: 'buildingGroup' | 'item' = 'item'
+) => {
   const newVal = product.buildingRequirements.amount
 
   if (newVal < 0 || !newVal) {
@@ -434,7 +439,7 @@ export const increaseProductQtyViaBuilding = (product: FactoryItem, factory: Fac
   product.amount = recipe.products[0].perMin * newVal
 
   // If item building group sync is enabled, rebalance it now.
-  if (product.buildingGroupItemSync) {
+  if (product.buildingGroupItemSync && origin !== 'buildingGroup') {
     rebalanceBuildingGroups(product, ItemType.Product, factory, {
       forceRebalance: true,
     })

@@ -584,7 +584,11 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
       // We need to update the product via effective building count, not whole buildings.
       subject.buildingRequirements.amount = newBuildingCount
 
-      increaseProductQtyViaBuilding(subject, factory, gameData)
+      increaseProductQtyViaBuilding(
+        subject,
+        factory, gameData,
+        'buildingGroup'
+      )
     } else if (group.type === ItemType.Power) {
       const subject = item as FactoryPowerProducer
 

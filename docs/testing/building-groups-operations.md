@@ -74,8 +74,8 @@ Ref: BG-E-BMULTI-PROD
 
 | Operation                                                                                 | Ref                 | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
 |-------------------------------------------------------------------------------------------|---------------------|-------------|--------------|-----------|-----------------------------------------------------------|
-| Sync ON: Editing group building count does not trigger a rebalance and matches user input | BG-E-BMULTI-PROD-1  | Y           | F            | F         | Force rebalanced                                          |
-| Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2  | Y           | F            | F         | Ditto                                                     |
+| Sync ON: Editing group building count does not trigger a rebalance and matches user input | BG-E-BMULTI-PROD-1  | Y           | Y            | F         | Force rebalanced                                          |
+| Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2  | Y           | y            | F         | Ditto                                                     |
 | Sync ON: Editing group building count updates the item's building counts                  | BG-E-BMULTI-PROD-3  | Y           | F            | F         | Ditto                                                     |
 | Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4  | Y           | F            | F         |
 | Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5  | Y           | F/CALC       | Y         |                                                           |
