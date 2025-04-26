@@ -171,16 +171,16 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       expect(itemIngredientAmount.element.value).toBe('90')
 
       // Increase
-      await buildingGroupCount.setValue(4)
-      expect(itemIngredientAmount.element.value).toBe('120')
-      expect(product.requirements.OreIron.amount).toBe(120)
+      await buildingGroupCount.setValue(10)
+      expect(itemIngredientAmount.element.value).toBe('300')
+      expect(product.requirements.OreIron.amount).toBe(300)
 
       // Reduce
       await buildingGroupCount.setValue(2)
       expect(itemIngredientAmount.element.value).toBe('60')
       expect(product.requirements.OreIron.amount).toBe(60)
 
-      // Wait a second to see if there's any dangling updates
+      // Wait a second to see if there are any dangling updates
       await new Promise(resolve => setTimeout(resolve, 1000))
       expect(itemIngredientAmount.element.value).toBe('60')
     })
@@ -407,7 +407,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         expect(buildingsRemaining.element.value).toBe('10') // TODO: Component calculation issue
       })
 
-      test('BG-E-BMULTI-PROD-8: Updating via the item SHOULD force a rebalance of group building counts ', async () => {
+      test('BG-E-BMULTI-PROD-8: Updating via the item SHOULD force a rebalance of group building counts', async () => {
         // First disable sync
         await toggleSyncButton.trigger('click')
         expect(product.buildingGroupItemSync).toBe(false)
@@ -424,6 +424,25 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         await itemBuildingCount.setValue(30)
         expect(buildingGroupCount.element.value).toBe('15')
         expect(buildingGroup2Count.element.value).toBe('15')
+      })
+
+      test('BG-E-BMULTI-PROD-8.1: Updating via the item SHOULD rebalance AND not cause fractions incrementing by 1', async () => {
+        expect(product.buildingGroupItemSync).toBe(true)
+
+        await itemBuildingCount.setValue(20)
+        expect(buildingGroupCount.element.value).toBe('10')
+        expect(buildingGroup2Count.element.value).toBe('10')
+        expect(itemBuildingCount.element.value).toBe('20')
+
+        // Weirdly, going from 20 to 21 causes weird fractional issues
+        await itemBuildingCount.setValue(21)
+        expect(buildingGroupCount.element.value).toBe('11')
+        expect(buildingGroup2Count.element.value).toBe('11')
+        expect(itemBuildingCount.element.value).toBe('21') // It was presenting 21.0001, in this case we really should round down
+
+        // It should be managed via clocks
+        expect(buildingGroupClock.element.value).toBe('95.455')
+        expect(buildingGroup2Clock.element.value).toBe('95.455')
       })
     })
 

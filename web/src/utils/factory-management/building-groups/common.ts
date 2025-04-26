@@ -85,7 +85,7 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
     // Remember it is a percentage so we need to divide by 100
-    effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100
+    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100)
   }
 
   return formatNumberFully(effectiveBuildingCount, 4)
