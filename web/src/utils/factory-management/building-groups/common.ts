@@ -286,17 +286,12 @@ export const calculateBuildingGroupProblems = (
 }
 
 // Takes the building groups and rebalances them based on the building count
-export const rebalanceBuildingGroups = (
+export const syncBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
   factory: Factory,
   modes: CalculationModes = {}
 ) => {
-  // If we only have one group, we don't need to rebalance, unless it's forced.
-  if (item.buildingGroups.length === 1 && !modes.forceRebalance) {
-    return
-  }
-
   // Ensure the math is right in all cases
   recalculateGroupMetrics(item, groupType, factory)
 

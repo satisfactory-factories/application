@@ -137,9 +137,9 @@
     addBuildingGroup,
     calculateEffectiveBuildingCount,
     calculateRemainingBuildingCount,
-    rebalanceBuildingGroups,
     remainderToLast,
     remainderToNewGroup,
+    syncBuildingGroups,
   } from '@/utils/factory-management/building-groups/common'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
 
@@ -188,7 +188,7 @@
   })
 
   const rebalance = () => {
-    rebalanceBuildingGroups(
+    syncBuildingGroups(
       props.item,
       props.type,
       props.factory

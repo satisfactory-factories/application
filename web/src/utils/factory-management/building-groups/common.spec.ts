@@ -20,7 +20,7 @@ import {
   calculateRemainingBuildingCount,
   checkForItemUpdate,
   deleteBuildingGroup,
-  rebalanceBuildingGroups,
+  syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
 } from '@/utils/factory-management/building-groups/common'
@@ -132,7 +132,7 @@ describe('buildingGroupsCommon', async () => {
   })
 
   describe('factory calculations', () => {
-    describe('rebalanceBuildingGroups', () => {
+    describe('syncBuildingGroups', () => {
       let group1: BuildingGroup
 
       beforeEach(() => {
@@ -146,7 +146,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply an underclock to the group if the building count is not whole', () => {
           product.buildingRequirements.amount = 5.5
 
-          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
+          syncBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(6)
           expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
@@ -155,7 +155,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply an underclock to the group if the building count is not whole', () => {
           product.buildingRequirements.amount = 5.7
 
-          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
+          syncBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(6)
           expect(group1.overclockPercent).toBe(95) // 6 * 0.95 = 5.7
@@ -164,7 +164,7 @@ describe('buildingGroupsCommon', async () => {
         it('should apply no clock changes on whole buildings', () => {
           product.buildingRequirements.amount = 4
 
-          rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
+          syncBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(4)
           expect(group1.overclockPercent).toBe(100)
@@ -184,7 +184,7 @@ describe('buildingGroupsCommon', async () => {
             expect(group2.buildingCount).toBe(5)
             product.buildingRequirements.amount = 20
 
-            rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
+            syncBuildingGroups(product, ItemType.Product, mockFactory)
 
             // Nothing should have changed
             expect(group1.buildingCount).toBe(5)
@@ -194,7 +194,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the building count evenly', () => {
             product.buildingRequirements.amount = 6
 
-            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
+            syncBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(3)
             expect(group2.buildingCount).toBe(3)
@@ -203,7 +203,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the building count evenly with odd numbers resulting in an underclock', () => {
             product.buildingRequirements.amount = 5
 
-            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
+            syncBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(3)
             expect(group2.buildingCount).toBe(3)
@@ -215,7 +215,7 @@ describe('buildingGroupsCommon', async () => {
           it('should distribute the fractional group with an underclock', () => {
             product.buildingRequirements.amount = 3
 
-            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
+            syncBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(2)
             expect(group2.buildingCount).toBe(2)
@@ -242,7 +242,7 @@ describe('buildingGroupsCommon', async () => {
             expect(group2.parts.IronIngot).toBe(90)
 
             // Now rebalance and recalculate, it should distribute evenly.
-            rebalanceBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
+            syncBuildingGroups(product, ItemType.Product, mockFactory, { force: true })
 
             expect(group1.buildingCount).toBe(2)
             expect(group2.buildingCount).toBe(2)

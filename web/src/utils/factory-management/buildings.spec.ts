@@ -12,12 +12,12 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { gameData } from '@/utils/gameData'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
-import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 const doProductCalculations = (mockFactory: Factory, product: FactoryItem) => {
   calculateFactoryBuildingsAndPower(mockFactory, gameData)
-  rebalanceBuildingGroups(product, ItemType.Product, mockFactory)
+  syncBuildingGroups(product, ItemType.Product, mockFactory)
 }
 
 describe('buildings', () => {

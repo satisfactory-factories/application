@@ -14,7 +14,7 @@ import eventBus from '@/utils/eventBus'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
-import { rebalanceBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 
 const gameData = await fetchGameData()
 
@@ -440,8 +440,9 @@ export const increaseProductQtyViaBuilding = (
 
   // If item building group sync is enabled, rebalance it now.
   if (product.buildingGroupItemSync && origin !== 'buildingGroup') {
-    rebalanceBuildingGroups(product, ItemType.Product, factory, {
+    syncBuildingGroups(product, ItemType.Product, factory, {
       forceRebalance: true,
+      origin: 'item',
     })
   }
 

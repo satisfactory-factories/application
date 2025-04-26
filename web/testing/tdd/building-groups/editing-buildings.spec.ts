@@ -132,17 +132,17 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       expect(buildingGroup.parts.IronIngot).toBe(60)
     })
 
-    test('BG-E-B-PROD-5: Editing building count updates the group ingredient consumption', () => {
+    test('BG-E-B-PROD-5: Editing building count updates the group ingredient consumption', async () => {
       // Test beforeEach change
       expect(groupOreIron.element.value).toBe('90')
 
       // Increases
-      buildingGroupCount.setValue(4)
+      await buildingGroupCount.setValue(4)
       expect(groupOreIron.element.value).toBe('120')
       expect(buildingGroup.parts.OreIron).toBe(120)
 
       // Reductions
-      buildingGroupCount.setValue(2)
+      await buildingGroupCount.setValue(2)
       expect(groupOreIron.element.value).toBe('60')
       expect(buildingGroup.parts.OreIron).toBe(60)
     })
