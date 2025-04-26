@@ -297,40 +297,44 @@ export const rebalanceBuildingGroups = (
     return
   }
 
-  // Ensure the math is right before we rebalance
+  // Ensure the math is right in all cases
   recalculateGroupMetrics(item, groupType, factory)
 
-  let targetBuildings: number
+  // If originating from the item, cause a rebalance.
+  if (modes.origin === 'item') {
+    let targetBuildings: number
 
-  // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
-  if (modes.useBuildingGroupBuildings) {
-    targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
-  } else {
-    targetBuildings = getBuildingCount(item, groupType)
-  }
-  const groups = item.buildingGroups
+    // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
+    if (modes.useBuildingGroupBuildings) {
+      targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
+    } else {
+      targetBuildings = getBuildingCount(item, groupType)
+    }
+    const groups = item.buildingGroups
 
-  // Divide the target equally among groups.
-  const targetPerGroup = targetBuildings / groups.length
-  const remainder = targetBuildings % groups.length
-  const hasRemainder = remainder ? 1 : 0
+    // Divide the target equally among groups.
+    const targetPerGroup = targetBuildings / groups.length
+    const remainder = targetBuildings % groups.length
+    const hasRemainder = remainder ? 1 : 0
 
-  groups.forEach(group => {
+    groups.forEach(group => {
     // Even scenario: each group gets exactly the quotient.
     // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
-    group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
+      group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
 
-    // Set overclock percentage.
-    // Even: no adjustment needed (100%).
-    // Odd: underclock so that effective production is exactly targetPerGroup.
-    if (hasRemainder) {
-      group.overclockPercent = formatNumberFully((targetPerGroup / group.buildingCount) * 100)
-    } else {
-      group.overclockPercent = 100
-    }
-  })
+      // Set overclock percentage.
+      // Even: no adjustment needed (100%).
+      // Odd: underclock so that effective production is exactly targetPerGroup.
+      if (hasRemainder) {
+        group.overclockPercent = formatNumberFully((targetPerGroup / group.buildingCount) * 100)
+      } else {
+        group.overclockPercent = 100
+      }
+    })
 
-  recalculateGroupMetrics(item, groupType, factory)
+    // Recalculate the group metrics after the rebalance.
+    recalculateGroupMetrics(item, groupType, factory)
+  }
 }
 
 // Brought to you courtesy of ChatGPT o3-mini-high.

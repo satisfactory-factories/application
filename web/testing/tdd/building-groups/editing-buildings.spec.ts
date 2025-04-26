@@ -298,6 +298,8 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
       buildingGroup2Clock = subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`)
       itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+      itemIngredientAmount = subject.find(`[id="${factory.id}-${product.id}-OreIron-amount"]`)
+      groupOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
 
       // Assert sync is enabled
       expect(product.buildingGroupItemSync).toBe(true)
@@ -343,13 +345,18 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       })
 
       test("BG-E-BMULTI-PROD-3: Editing group building count updates the item's building counts", async () => {
-      // In all cases the building counts should be updated on the item.
-
-        // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(41)
 
         // Item building counts should be the sum of the building groups
         expect(itemBuildingCount.element.value).toBe('44') // 41+3
+      })
+
+      test("BG-E-BMULTI-PROD-3.1: Editing group building count updates the item's ingredients", async () => {
+        // Simulate a user editing the building count for the second group
+        await buildingGroup2Count.setValue(41)
+
+        // Item ingredients should match expected
+        expect(itemIngredientAmount.element.value).toBe('1320') // 44*30
       })
 
       test('BG-E-BMULTI-PROD-4: Editing building count updates the group ingredients correctly', async () => {

@@ -72,21 +72,22 @@ Ref: BG-E-B-PROD
 ## Building Groups Editing - Buildings multiple groups (Products)
 Ref: BG-E-BMULTI-PROD
 
-| Operation                                                                                 | Ref                 | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
-|-------------------------------------------------------------------------------------------|---------------------|-------------|--------------|-----------|-----------------------------------------------------------|
-| Sync ON: Editing group building count does not trigger a rebalance and matches user input | BG-E-BMULTI-PROD-1  | Y           | Y            | F         | Force rebalanced                                          |
-| Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2  | Y           | y            | F         | Ditto                                                     |
-| Sync ON: Editing group building count updates the item's building counts                  | BG-E-BMULTI-PROD-3  | Y           | F            | F         | Ditto                                                     |
-| Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4  | Y           | F            | F         |
-| Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5  | Y           | F/CALC       | Y         |                                                           |
-| Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6  | Y           | F/CALC       | Y         |                                                           |
-| Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7  | Y           | F/CALC       | Y         |                                                           |
-| Sync ON: Updating via the item SHOULD force a rebalance of group building counts          | BG-E-BMULTI-PROD-8  | Y           | Y            | F         |                                                           |
-| Sync OFF: Editing groups does NOT affect the item's total buildings                       | BG-E-BMULTI-PROD-9  | Y           | Y            | Y         | Technically passes, but force balanced.                   |
-| Sync OFF: Editing groups does NOT force a rebalance                                       | BG-E-BMULTI-PROD-10 | Y           | F            | F         | Being force balanced                                      |
-| Sync OFF: Editing item buildings does NOT affect group buildings                          | BG-E-BMULTI-PROD-11 |             | F            | F         | Being force balanced                                      |
-| Sync OFF: Editing groups does NOT affect factory parts                                    | BG-E-BMULTI-PROD-12 | Y           | Y            | ?         | 
-| Sync OFF: Effective and remaining buildings correctly calculated                          | BG-E-BMULTI-PROD-13 | Y           | F/CALC       | Y         |                                                           |
+| Operation                                                                                 | Ref                  | Implemented | Unit Tested? | Eyeballed | Notes                                   |
+|-------------------------------------------------------------------------------------------|----------------------|-------------|--------------|-----------|-----------------------------------------|
+| Sync ON: Editing group building count does not trigger a rebalance and matches user input | BG-E-BMULTI-PROD-1   | Y           | Y            | Y         |                                         |
+| Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2   | Y           | Y            | Y         |                                         |
+| Sync ON: Editing group building count updates the item's building counts                  | BG-E-BMULTI-PROD-3   | Y           | Y            | Y         |                                         |
+| Sync ON: Editing group building count updates the item's ingredients                      | BG-E-BMULTI-PROD-3.1 | Y           | Y            | Y         |                                         |
+| Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4   | Y           | F            | Y         |                                         |
+| Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5   | Y           | F/CALC       | Y         |                                         |
+| Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6   | Y           | F/CALC       | Y         |                                         |
+| Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7   | Y           | F/CALC       | Y         |                                         |
+| Sync ON: Updating via the item SHOULD force a rebalance of group building counts          | BG-E-BMULTI-PROD-8   | Y           | Y            | F         |                                         |
+| Sync OFF: Editing groups does NOT affect the item's total buildings                       | BG-E-BMULTI-PROD-9   | Y           | Y            | Y         | Technically passes, but force balanced. |
+| Sync OFF: Editing groups does NOT force a rebalance                                       | BG-E-BMULTI-PROD-10  | Y           | F            | F         | Being force balanced                    |
+| Sync OFF: Editing item buildings does NOT affect group buildings                          | BG-E-BMULTI-PROD-11  |             | F            | F         | Being force balanced                    |
+| Sync OFF: Editing groups does NOT affect factory parts                                    | BG-E-BMULTI-PROD-12  | Y           | Y            | ?         | 
+| Sync OFF: Effective and remaining buildings correctly calculated                          | BG-E-BMULTI-PROD-13  | Y           | F/CALC       | Y         |                                         |
 
 ## Building Groups Editing - Clocks (Products)
 Ref: BG-E-C-PROD

@@ -137,15 +137,11 @@ export const calculateFactory = (
   // ONLY rebalance though if the origin point is from the product itself, not the building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
   factory.products.forEach(product => {
-    if (modes.origin !== 'buildingGroup') {
-      rebalanceBuildingGroups(product, ItemType.Product, factory, modes)
-    }
+    rebalanceBuildingGroups(product, ItemType.Product, factory, modes)
     checkForItemUpdate(product, factory)
   })
   factory.powerProducers.forEach(producer => {
-    if (modes.origin !== 'buildingGroup') {
-      rebalanceBuildingGroups(producer, ItemType.Power, factory, modes)
-    }
+    rebalanceBuildingGroups(producer, ItemType.Power, factory, modes)
     checkForItemUpdate(producer, factory)
   })
 
