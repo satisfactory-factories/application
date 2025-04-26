@@ -10,5 +10,6 @@ export default async function globalTeardown () {
       })
     })
     console.log('Test server closed')
+    delete (global as any).__TEST_SERVER__
   }
 }

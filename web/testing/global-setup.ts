@@ -1,5 +1,4 @@
 // test/global-setup.ts
-
 import path from 'path'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
@@ -19,8 +18,9 @@ try {
 let server: http.Server
 
 export default async function globalSetup () {
-  // Start an HTTP server that listens on a known port (e.g. 3001)
-  await new Promise<void>((resolve, reject) => {
+  // If server is already running, skip starting a new one
+  // Start an HTTP server that listens on port 3001
+  await new Promise<void>(resolve => {
     server = http.createServer((req, res) => {
       if (req.url === '/gameData.json') {
         res.setHeader('Content-Type', 'application/json')
@@ -29,13 +29,18 @@ export default async function globalSetup () {
         res.statusCode = 404
         res.end()
       }
-    }).listen(3001, (err?: Error) => {
-      if (err) return reject(err)
+    })
+    server.once('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log('Port 3001 already in use, skipping test server startup')
+        resolve()
+      }
+    })
+    server.listen(3001, () => {
       console.log('Test server started on port 3001')
       resolve()
     })
-  })
-
-  // Attach the server instance to a global variable for cleanup in global-teardown
-  ;(global as any).__TEST_SERVER__ = server
+  });
+  // Store for teardown
+  (global as any).__TEST_SERVER__ = server
 }
