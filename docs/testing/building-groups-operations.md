@@ -71,6 +71,7 @@ Ref: BG-E-B-PROD
 | Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | Y           |              | F         | 
 | Sync OFF: Updating item amount should NOT trigger a rebalance         | BG-E-B-PROD-14 | Y           |              | F         | 
 | It should be possible to use 0.0001 ratios for item amount            | BE-E-B-PROD-15 | N           |              | F         |
+| It should display overclocks at a .0001 precision                     | BG-E-B-PROD-16 | N           |              | F         | Currently displaying at a 0.001 (3) precision         |
 
 ## Building Groups Editing - Buildings multiple groups (Products)
 Ref: BG-E-BMULTI-PROD

@@ -2,6 +2,7 @@ import eventBus from '@/utils/eventBus'
 import {
   BuildingGroup,
 } from '@/interfaces/planner/FactoryInterface'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export const updateBuildingGroup = (group: BuildingGroup) => {
   if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {
@@ -23,8 +24,15 @@ export const updateBuildingGroup = (group: BuildingGroup) => {
     group.buildingCount = Math.floor(group.buildingCount)
   }
 
-  // If the user is trying to use more than .0001 precision for overclock, truncate it and alert them.
-  const clock = group.overclockPercent.toString().split('.')[0]
+  const precision = group.overclockPercent.toString().split('.')[1]
+  if (precision?.length > 4) {
+    // Truncate the overclock to 4 decimal places
+    group.overclockPercent = formatNumberFully(group.overclockPercent, 4)
+    eventBus.emit('toast', {
+      message: 'The game does not allow you to provide more than 4 decimal places for clocks. It has been truncated to 4 decimal places.',
+      type: 'warning',
+    })
+  }
 
   if (group.overclockPercent <= 0) {
     eventBus.emit('toast', {
@@ -40,15 +48,5 @@ export const updateBuildingGroup = (group: BuildingGroup) => {
       type: 'warning',
     })
     group.overclockPercent = 250
-  }
-
-  const precision = group.overclockPercent.toString().split('.')[1]
-  if (precision?.length > 4) {
-    // Truncate the overclock to 4 decimal places
-    group.overclockPercent = Number(`${clock}.${precision.slice(0, 4)}`)
-    eventBus.emit('toast', {
-      message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
-      type: 'warning',
-    })
   }
 }

@@ -1295,6 +1295,14 @@ describe('bestEffortUpdateBuildingCount', () => {
       expect(buildingGroup.overclockPercent).toBe(66.6667)
     })
 
+    it('should calculate franctionals of products', () => {
+      product.amount = 166.6666
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(6)
+      expect(buildingGroup.overclockPercent).toBe(92.5926)
+    })
+
     it('should allow user to be utterly bonkers with their requirements', () => {
       product.amount = 40.0001
       bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
