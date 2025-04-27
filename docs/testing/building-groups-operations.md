@@ -54,20 +54,23 @@ Ref: BG-E-AB-PROD
 ## Building Groups Editing - Buildings single group (Products)
 Ref: BG-E-B-PROD
 
-| Operation                                                                           | Ref            | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
-|-------------------------------------------------------------------------------------|----------------|-------------|--------------|-----------|-----------------------------------------------------------|
-| Allows editing the building count                                                   | BG-E-B-PROD-1  | Y           | Y            | Y         |                                                           |
-| Editing building count updates the effective buildings                              | BG-E-B-PROD-2  | Y           | F/CALC       | Y         |                                                           |
-| Editing building count updates the remaining buildings                              | BG-E-B-PROD-3  | Y           | F/CALC       | Y         |                                                           |
-| Editing building count updates the group part production                            | BG-E-B-PROD-4  | Y           | Y            | Y         |                                                           |
-| Editing building count updates the group ingredient consumption                     | BG-E-B-PROD-5  | Y           | Y/???        | F         | Ingredients lag by 1 change                               |
-| Editing building count updates the item's part amount                               | BG-E-B-PROD-6  | Y           | Y            | Y         |                                                           |
-| Editing building count updates the item's ingredient amount                         | BG-E-B-PROD-7  | Y           | Y/??         | F         | Product parts are updated, but lag behind by 1 change     |
-| Editing building count updates the factory parts produced                           | BG-E-B-PROD-8  | Y           | Y/??         | F         | Lags by 1 change                                          |
-| Editing building count updates the factory parts consumed                           | BG-E-B-PROD-9  | Y           | Y/??         | F         | Lags by 1 change                                          | 
-| Editing building count updates the group power used                                 | BG-E-B-PROD-10 | Y           | Y            | Y         | 
-| Editing building count updates the factory power used                               | BG-E-B-PROD-11 | Y           | Y            | Y         | 
-| Editing building count updates the factory total buildings                          | BG-E-B-PROD-12 | Y           | Y            | Y         |                                                           |
+| Operation                                                             | Ref            | Implemented | Unit Tested? | Eyeballed | Notes                                                 |
+|-----------------------------------------------------------------------|----------------|-------------|--------------|-----------|-------------------------------------------------------|
+| Allows editing the building count                                     | BG-E-B-PROD-1  | Y           | Y            | Y         |                                                       |
+| Editing building count updates the effective buildings                | BG-E-B-PROD-2  | Y           | F/CALC       | Y         |                                                       |
+| Editing building count updates the remaining buildings                | BG-E-B-PROD-3  | Y           | F/CALC       | Y         |                                                       |
+| Editing building count updates the group part production              | BG-E-B-PROD-4  | Y           | Y            | Y         |                                                       |
+| Editing building count updates the group ingredient consumption       | BG-E-B-PROD-5  | Y           | Y/???        | F         | Ingredients lag by 1 change                           |
+| Editing building count updates the item's part amount                 | BG-E-B-PROD-6  | Y           | Y            | Y         |                                                       |
+| Editing building count updates the item's ingredient amount           | BG-E-B-PROD-7  | Y           | Y/??         | F         | Product parts are updated, but lag behind by 1 change |
+| Editing building count updates the factory parts produced             | BG-E-B-PROD-8  | Y           | Y/??         | F         | Lags by 1 change                                      |
+| Editing building count updates the factory parts consumed             | BG-E-B-PROD-9  | Y           | Y/??         | F         | Lags by 1 change                                      | 
+| Editing building count updates the group power used                   | BG-E-B-PROD-10 | Y           | Y            | Y         | 
+| Editing building count updates the factory power used                 | BG-E-B-PROD-11 | Y           | Y            | Y         | 
+| Editing building count updates the factory total buildings            | BG-E-B-PROD-12 | Y           | Y            | Y         |    
+| Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | Y           |              | F         | 
+| Sync OFF: Updating item amount should NOT trigger a rebalance         | BG-E-B-PROD-14 | Y           |              | F         | 
+| It should be possible to use 0.0001 ratios for item amount            | BE-E-B-PROD-15 | N           |              | F         |
 
 ## Building Groups Editing - Buildings multiple groups (Products)
 Ref: BG-E-BMULTI-PROD
@@ -83,7 +86,8 @@ Ref: BG-E-BMULTI-PROD
 | Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6   | Y           | F/CALC       | Y         |       |
 | Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7   | Y           | F/CALC       | Y         |       |
 | Sync ON: Updating via the item SHOULD force a rebalance of group building counts          | BG-E-BMULTI-PROD-8   | Y           | Y            | Y         |       |
-| Sync ON: Updating via the item SHOULD rebalance AND not cause fractions incrementing by 1 | BG-E-BMULTI-PROD-8.1 | Y           | Y            | Y         |       |
+| Sync ON: Updating via the item SHOULD not cause fractions                                 | BG-E-BMULTI-PROD-8.1 | Y           | Y            | Y         |       |
+| Sync ON: Updating via the item's amount should rebalance correctly                        | BG-E-BMULTI-PROD-8.2 | Y           | Y            | Y         |       |
 | Sync OFF: Editing groups does NOT affect the item's total buildings                       | BG-E-BMULTI-PROD-9   | Y           | Y            | Y         |       |
 | Sync OFF: Editing groups does NOT force a rebalance                                       | BG-E-BMULTI-PROD-10  | Y           | Y            | Y         |       |
 | Sync OFF: Editing item buildings does NOT affect group buildings                          | BG-E-BMULTI-PROD-11  | Y           | Y            | Y         |       |
@@ -145,7 +149,7 @@ Ref: BG-I-E-PROD
 |----------------------------------------------------------------------------------------------------------|-----------------|-------------|--------------|-----------|----------------------------------------------------------------|
 | Editing the product's item recreates the building group @ 1 building                                     | BG-I-E-PROD-1   |             |              | Y         |
 | Editing the product's recipe recreates the building group @ 1 building                                   | BG-I-E-PROD-2   |             |              | P/B       | Updates the group but not the item's buildings                 |
-| Editing the product's quantity has a debounce                                                            | BG-I-E-PROD-3   |             |              | B         |
+| Editing the product's quantity has a debounce                                                            | BG-I-E-PROD-3   | P           |              | B         |
 | Editing the product's buildings has a debounce                                                           | BG-I-E-PROD-4   |             |              | B         |
 | Editing the product's byproducts has a debounce                                                          | BG-I-E-PROD-5   |             |              | B         |
 | Editing the product's ingredients has a debounce                                                         | BG-I-E-PROD-6   |             |              | B         |

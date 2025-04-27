@@ -296,7 +296,7 @@ export const syncBuildingGroups = (
   recalculateGroupMetrics(item, groupType, factory)
 
   // If originating from the item, cause a rebalance.
-  if (modes.origin === 'item') {
+  if (modes.origin !== 'buildingGroup') {
     let targetBuildings: number
 
     // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
@@ -332,61 +332,80 @@ export const syncBuildingGroups = (
   }
 }
 
-// Brought to you courtesy of ChatGPT o3-mini-high.
+// Scenario:
+// 1. The user has a product with a single building group.
+// 2. We are trying to calculate the number of buildings and clock speed required.
+// 3. We are trying to match the target building count, but we cannot use overclocking, we must underclock.
+// 4. E.g. we have 2.5 buildings (effectiveExcludingTarget), we need to use 3 buildings and underclock all of them to 83.333333333% to spread to 2.5.
+// 5. This is a best effort attempt to fulfil the needs of the item by spreading it over the building group(s).
+// 6. The user will be informed that their clock is not computationally precise elsewhere. This is a best effort solution.
+
 // This function attempts to match the target building count via both over-allocating buildings and underclocking the remainder.
+// This is an best effort attempt to fulfil the needs of the item by spreading it over the building group(s). This is also in effect the rebalance function.
 export const bestEffortUpdateBuildingCount = (
   item: FactoryItem | FactoryPowerProducer,
   group: BuildingGroup,
   groups: BuildingGroup[],
   type: ItemType,
 ) => {
-  // Compute the effective building count for all groups EXCEPT the target.
-  const effectiveExcludingTarget = groups
-    .slice(0, -1)
-    .reduce((total, group) => {
-      const percent = group.overclockPercent ?? 100
-      return total + group.buildingCount * (percent / 100)
-    }, 0)
-
-  const targetEffective = getBuildingCount(item, type)
-  const desiredFraction = targetEffective - effectiveExcludingTarget
-
-  // If no gap, nothing to do.
-  if (desiredFraction === 0) return
-
-  // Handle overproduction (gap negative)
-  if (desiredFraction < 0) {
-    group.buildingCount = 1
-    group.overclockPercent = formatNumberFully((1 + desiredFraction) * 100)
-    return
+  let targetAmount = 0
+  if (type === ItemType.Product) {
+    const subject = item as FactoryItem
+    targetAmount = subject.amount
+  } else if (type === ItemType.Power) {
+    const subject = item as FactoryPowerProducer
+    targetAmount = subject.fuelAmount
+  } else {
+    throw new Error('productBuildingGroups: bestEffortUpdateBuildingCount: Invalid group type!')
   }
 
+  if (targetAmount <= 0) {
+    // If the item has no amount, this shouldn't happen
+    throw new Error('productBuildingGroups: bestEffortUpdateBuildingCount: Item amount is 0!')
+  }
+
+  // To handle imprecision, we have to get the original ratio out of the recipe so we have more precise numbers to play with.
+  const recipeUsed = item.recipe
+  let perMin = 1
+  let recipe: Recipe | PowerRecipe | undefined
+  if (type === ItemType.Product) {
+    recipe = getRecipe(recipeUsed, gameData)
+  } else if (type === ItemType.Power) {
+    recipe = getPowerRecipe(recipeUsed, gameData)
+  }
+
+  if (!recipe) {
+    throw new Error('bestEffortUpdateBuildingCount: Recipe not found!')
+  }
+
+  if (type === ItemType.Product) {
+    const productRecipe = recipe as Recipe
+    perMin = productRecipe?.products[0].perMin
+  } else if (type === ItemType.Power) {
+    const powerRecipe = recipe as PowerRecipe
+    perMin = powerRecipe?.ingredients[0].perMin
+  }
+
+  // Go through each group, and allocate the best building count and clock speeds, across the groups.
+  // Firstly though we need to understand what the calculation of the clock speed is, when spread across the groups.
+  const numberOfGroups = groups.length
+  const amountPerGroup = targetAmount / numberOfGroups
+  const buildingsPerGroup = amountPerGroup / perMin
+
   /*
-    For a positive gap, instead of defaulting to a single building,
-    we consider using multiple buildings if the gap exceeds 1 effective building.
-    We try candidate building counts (n) and compute the required overclock per building:
-
-    candidateClock = Math.ceil((desiredFraction / n) * 100)
-
-    We then pick the candidate for which candidateClock is as close as possible to 100.
-    (We use Math.ceil so any tiny fractional remainder pushes the clock upward slightly.)
-
-    Also, if candidateClock would exceed 250, that candidate is invalid.
+    For a positive gap, instead of defaulting to a single building and overclocking it, we try to find a better solution using less buildings.
+    We will loop each time until the desired clock is less than 100%, then based off that calculate the number of buildings at a sub 100% clock to achieve the end result.
   */
-  const maxN = Math.ceil(desiredFraction) + 1 // a reasonable search range
+  const maxN = Math.ceil(buildingsPerGroup) // a reasonable search range
   let bestBuildingCount: number | null = null
-  let bestClock: number | null = null
-  let bestDiff = Number.POSITIVE_INFINITY
+  let bestClock: number = Number.POSITIVE_INFINITY
 
-  for (let n = 1; n <= maxN; n++) {
-    const rawClock = (desiredFraction / n) * 100
-    const candidateClock = Math.ceil(rawClock)
-    if (candidateClock > 250) continue // game cap: skip any candidate over 250%
-    const diff = Math.abs(candidateClock - 100)
-    if (diff < bestDiff) {
-      bestDiff = diff
-      bestBuildingCount = n
+  for (let candidateBuildings = 1; candidateBuildings <= maxN; candidateBuildings++) {
+    const candidateClock = (buildingsPerGroup / candidateBuildings) * 100
+    if (candidateClock <= 100) {
+      bestBuildingCount = candidateBuildings
       bestClock = candidateClock
+      break
     }
   }
 
@@ -396,8 +415,11 @@ export const bestEffortUpdateBuildingCount = (
     bestClock = 250
   }
 
-  group.buildingCount = bestBuildingCount
-  group.overclockPercent = formatNumberFully(bestClock)
+  // Apply the best building count and clock speed to the group(s)
+  for (const group of groups) {
+    group.buildingCount = bestBuildingCount
+    group.overclockPercent = formatNumberFully(bestClock, 4)
+  }
 }
 
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.

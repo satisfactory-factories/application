@@ -96,6 +96,9 @@
           :width="smAndDown ? undefined : '130px'"
           @update:model-value="updateProductQty(product, factory)"
         />
+        <span v-if="debouncingProduct === product.id && debouncing === 'amount'">
+          <v-icon>fas fa-sync fa-spin</v-icon>
+        </span>
       </div>
       <div class="input-row d-flex align-center">
         <v-btn
@@ -248,16 +251,21 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { formatPower } from '@/utils/numberFormatter'
+  import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
+  import { debounce } from '@/components/planner/products/ItemCommon'
+  import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
+
+  const debouncing = ref('')
+  const debouncingProduct = ref('')
 
   const { smAndDown, mdAndDown } = useDisplay()
   const {
@@ -352,12 +360,48 @@
     updateFactory(factory)
   }
 
-  const updateProductQty = (product: FactoryItem, factory: Factory) => {
+  let updateQtyCallCounter = 0
+  const updateProductQty = async (product: FactoryItem, factory: Factory) => {
     if (product.amount === 0) {
       // The user may be typing a decimal point starting with zero, so leave them alone
       return
     }
+
+    // Get a unique call ID for the update
+    const callId = ++updateQtyCallCounter
+    console.log('updateProductQty: callId', callId)
+
+    // Show debouncing to user
+    debouncingProduct.value = product.id
+    debouncing.value = 'amount'
+
+    // Copy the input value
+    const oldAmount = formatNumberFully(JSON.parse(JSON.stringify(product.amount)))
+
+    await debounce()
+
+    // If the call ID is not the latest, ignore this call
+    if (callId !== updateQtyCallCounter) {
+      console.log('updateProductQty: ignoring call as not latest', callId)
+      return
+    }
+
     updateFactory(factory)
+    debouncing.value = ''
+    debouncingProduct.value = ''
+
+    const newAmount = formatNumberFully(product.amount)
+
+    console.log('amounts', oldAmount, newAmount, oldAmount !== newAmount)
+
+    // If the amount was not what the user entered, show a toast
+    if (oldAmount !== newAmount) {
+      eventBus.emit('toast', {
+        message: `Amount you entered is incalculable under current conditions e.g. building group could not be split evenly. Updated to closest possible.`,
+        type: 'warning',
+        timeout: 3000,
+      })
+    }
   }
 
   // Enables the user to move the order of the byproduct up or down
@@ -424,5 +468,4 @@
 
     return formatPower(totalPower ?? 0)
   }
-
 </script>

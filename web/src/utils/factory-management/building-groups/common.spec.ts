@@ -12,6 +12,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import {
   addBuildingGroup,
+  bestEffortUpdateBuildingCount,
   calculateBuildingGroupParts,
   calculateBuildingGroupProblems,
   calculateEffectiveBuildingCount,
@@ -26,6 +27,7 @@ import {
 } from '@/utils/factory-management/building-groups/common'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 
 describe('buildingGroupsCommon', async () => {
   let mockFactory: Factory
@@ -1245,6 +1247,222 @@ describe('powerProducer simplified cases', async () => {
         // Also check the power
         expect(group.powerProduced).toBe(25000)
       })
+    })
+  })
+})
+
+describe('bestEffortUpdateBuildingCount', () => {
+  let mockFactory: Factory
+  let buildingGroup: BuildingGroup
+
+  beforeEach(() => {
+    mockFactory = newFactory('Best Effort')
+  })
+
+  describe('Products', () => {
+    let product: FactoryItem
+    beforeEach(() => {
+      addProductToFactory(mockFactory, {
+        id: 'IronIngot',
+        amount: 60,
+        recipe: 'IngotIron',
+      })
+      product = mockFactory.products[0]
+      buildingGroup = product.buildingGroups[0]
+    })
+
+    it('should calculate normal ratios', () => {
+      product.buildingRequirements.amount = 2
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroup.overclockPercent).toBe(100)
+    })
+
+    it('should calculate ratios of 1:1.5', () => {
+      product.amount = 45
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroup.overclockPercent).toBe(75)
+    })
+
+    it('should allow fractionals of 0.0001', () => {
+      product.amount = 40
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroup.overclockPercent).toBe(66.6667)
+    })
+
+    it('should allow user to be utterly bonkers with their requirements', () => {
+      product.amount = 40.0001
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroup.overclockPercent).toBe(66.6668)
+    })
+
+    it('should allow user to enter lower than 100% for one building', () => {
+      product.amount = 15
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.overclockPercent).toBe(50)
+    })
+
+    it('should calculate properly for multiple building groups', () => {
+      addProductBuildingGroup(product, mockFactory)
+      const buildingGroup2 = product.buildingGroups[1]
+
+      buildingGroup.buildingCount = 1
+      buildingGroup2.buildingCount = 1
+      product.amount = 306
+
+      bestEffortUpdateBuildingCount(product, buildingGroup, [buildingGroup, buildingGroup2], ItemType.Product)
+
+      // Should result in 12 buildings, because we have multiple groups, each group would result in a flat .2 extra buildings
+      // So we need to add 1 to each group (to make it 6 rather than 5), and underclock ALL groups to make it even.
+      // 306/30 = 10.2, 12 buildings = 85%
+      expect(buildingGroup.buildingCount).toBe(6)
+      expect(buildingGroup.overclockPercent).toBe(85)
+      expect(buildingGroup2.buildingCount).toBe(6)
+      expect(buildingGroup2.overclockPercent).toBe(85)
+    })
+
+    it('should calculate properly for multiple building groups, bonkers style :D', () => {
+    // Make 19 groups
+      for (let i = 0; i < 19; i++) {
+        addProductBuildingGroup(product, mockFactory)
+      }
+
+      product.amount = 600
+
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.overclockPercent).toBe(100)
+      expect(product.buildingGroups[9].buildingCount).toBe(1)
+      expect(product.buildingGroups[9].overclockPercent).toBe(100)
+
+      product.amount = 666
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      // Calculations:
+      // 666 / 20 = 33.3 per building group
+      // 33.3 / 30 = 1.1 buildings, so 2 buildings
+      // 1.11 * 100 = 111% OC
+      // 111 / 2 = 55.5% UC
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroup.overclockPercent).toBe(55.5)
+      expect(product.buildingGroups[9].buildingCount).toBe(2)
+      expect(product.buildingGroups[9].overclockPercent).toBe(55.5)
+    })
+
+    it('should handle really low inputs', () => {
+      product.amount = 0.3
+
+      bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.overclockPercent).toBe(1)
+    })
+
+    it('should handle invalid inputs', () => {
+      product.amount = -1
+
+      // An exception should be thrown
+      expect(() => {
+        bestEffortUpdateBuildingCount(product, buildingGroup, product.buildingGroups, ItemType.Product)
+      }).toThrow('productBuildingGroups: bestEffortUpdateBuildingCount: Item amount is 0!')
+    })
+  })
+
+  describe('powerProducer', () => {
+    let powerProducer: any
+
+    beforeEach(() => {
+      addPowerProducerToFactory(mockFactory, {
+        building: 'generatornuclear',
+        fuelAmount: 1,
+        recipe: 'GeneratorNuclear_NuclearFuelRod',
+        updated: FactoryPowerChangeType.Building,
+      })
+      powerProducer = mockFactory.powerProducers[0]
+      buildingGroup = powerProducer.buildingGroups[0]
+    })
+
+    it('should calculate based off one building group with nice ratios', () => {
+      bestEffortUpdateBuildingCount(powerProducer, buildingGroup, powerProducer.buildingGroups, ItemType.Power)
+
+      expect(buildingGroup.buildingCount).toBe(5)
+      expect(buildingGroup.overclockPercent).toBe(100)
+    })
+
+    it('should calculate based off one building group with spicy ratios', () => {
+      powerProducer.fuelAmount = 1.25
+      bestEffortUpdateBuildingCount(powerProducer, buildingGroup, powerProducer.buildingGroups, ItemType.Power)
+
+      expect(buildingGroup.buildingCount).toBe(7)
+      expect(buildingGroup.overclockPercent).toBe(89.2857)
+
+      // Calculation
+      // 1.25 / 1 = 1.25 per building group
+      // 1.25 / 0.2 = 6.25 effective buildings -> 7 buildings
+      // (6.25 * 100) / 7 = 89.28571429 UC
+    })
+
+    it('should calculate based off one building group with spicy-a-meateball ratios', () => {
+      powerProducer.fuelAmount = 1.3333
+      bestEffortUpdateBuildingCount(powerProducer, buildingGroup, powerProducer.buildingGroups, ItemType.Power)
+
+      expect(buildingGroup.buildingCount).toBe(7)
+      expect(buildingGroup.overclockPercent).toBe(95.2357)
+
+      // Calculation
+      // 1.3333 / 1 = 1.3333 per building group
+      // 1.3333 / 0.2 = 6.6665 effective buildings -> 7 buildings
+      // (6.6665 * 100) / 7 = 95.23571429 UC
+    })
+
+    it('should calculate based off multiple building groups', () => {
+      addPowerProducerBuildingGroup(powerProducer, mockFactory)
+      const buildingGroup2 = powerProducer.buildingGroups[1]
+
+      powerProducer.fuelAmount = 1.3333
+      bestEffortUpdateBuildingCount(powerProducer, buildingGroup, powerProducer.buildingGroups, ItemType.Power)
+
+      expect(buildingGroup.buildingCount).toBe(4)
+      expect(buildingGroup.overclockPercent).toBe(83.3312)
+
+      expect(buildingGroup2.buildingCount).toBe(4)
+      expect(buildingGroup2.overclockPercent).toBe(83.3312)
+
+      // Calculation
+      // 1.3333 / 2 = 0.66665 per building group
+      // 0.66665 / 0.2 = 3.33325 effective buildings -> 4 buildings
+      // (3.33325 * 100) / 4 = 83.33125 UC
+    })
+
+    it('should calculate based off a bonkers amount of building groups', () => {
+      // Make 19 more groups
+      for (let i = 0; i < 19; i++) {
+        addPowerProducerBuildingGroup(powerProducer, mockFactory)
+      }
+
+      powerProducer.fuelAmount = 20.5
+      bestEffortUpdateBuildingCount(powerProducer, buildingGroup, powerProducer.buildingGroups, ItemType.Power)
+
+      expect(buildingGroup.buildingCount).toBe(6)
+      expect(buildingGroup.overclockPercent).toBe(85.4167)
+
+      expect(powerProducer.buildingGroups[9].buildingCount).toBe(6)
+      expect(powerProducer.buildingGroups[9].overclockPercent).toBe(85.4167)
+
+      // Calculation
+      // 20.5 / 20 = 1.025 per building group
+      // 1.025 / 0.2 = 5.125 effective buildings -> 6 buildings
+      // (5.125 * 100) / 6 = 85.41666667 UC
     })
   })
 })

@@ -30,8 +30,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   let addBuildingGroupButton: any
   let toggleSyncButton: any
   let buildingGroupCount: any
+  let buildingGroupClock: any
   let itemAmount: any
   let itemIngredientAmount: any
+  let itemBuildings: any
   let effectiveBuildings: any
   let buildingsRemaining: any
 
@@ -56,8 +58,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
     addBuildingGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
     toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
     buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+    buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     itemAmount = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
     itemIngredientAmount = subject.find(`[id="${factory.id}-${product.id}-OreIron-amount"]`)
+    itemBuildings = subject.find(`[id="${factory.id}-${product.id}-buildings"]`)
     effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
     buildingsRemaining = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
 
@@ -271,6 +275,19 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       await buildingGroupCount.setValue(2)
       expect(factoryBuildings.text()).toBe('2')
     })
+
+    // Test that we can calculate to 0.0001 clock speed, the lowest unit, e.g. 40 iron ingots resulting in 66.6667% clock with two buildings
+    test('BG-E-B-PROD-15: It should be possible to use 0.0001 ratios for item amount', async () => {
+      await itemAmount.setValue(40)
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      expect(itemAmount.element.value).toBe('40')
+      expect(itemBuildings.element.value).toBe('1.3333')
+      expect(buildingGroupCount.element.value).toBe('2')
+      expect(buildingGroupClock.element.value).toBe('66.6667')
+    })
   })
 
   describe('BG-E-BMULTI-PROD: Building Groups Editing - Buildings multiple groups (Products)', () => {
@@ -297,6 +314,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       buildingGroup2Count = subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`)
       buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
       buildingGroup2Clock = subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`)
+      itemAmount = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
       itemIngredientAmount = subject.find(`[id="${factory.id}-${product.id}-OreIron-amount"]`)
       groupOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
@@ -426,7 +444,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         expect(buildingGroup2Count.element.value).toBe('15')
       })
 
-      test('BG-E-BMULTI-PROD-8.1: Updating via the item SHOULD rebalance AND not cause fractions incrementing by 1', async () => {
+      test('BG-E-BMULTI-PROD-8.1: Updating via the item SHOULD not cause fractions', async () => {
         expect(product.buildingGroupItemSync).toBe(true)
 
         await itemBuildingCount.setValue(20)
@@ -443,6 +461,34 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         // It should be managed via clocks
         expect(buildingGroupClock.element.value).toBe('95.455')
         expect(buildingGroup2Clock.element.value).toBe('95.455')
+      })
+
+      test('BG-E-BMULTI-PROD-8.2: Updating via the item\'s amount should rebalance correctly', async () => {
+        expect(product.buildingGroupItemSync).toBe(true)
+
+        // Nice even one first
+        await itemAmount.setValue(120)
+        expect(buildingGroupCount.element.value).toBe('2')
+        expect(buildingGroup2Count.element.value).toBe('2')
+        expect(buildingGroupClock.element.value).toBe('100')
+        expect(buildingGroup2Clock.element.value).toBe('100')
+        expect(itemBuildingCount.element.value).toBe('4')
+
+        // A spicy one
+        await itemAmount.setValue(130)
+        expect(buildingGroupCount.element.value).toBe('3')
+        expect(buildingGroup2Count.element.value).toBe('3')
+        expect(itemBuildingCount.element.value).toBe('4.3333')
+        expect(buildingGroupClock.element.value).toBe('83.333')
+        expect(buildingGroup2Clock.element.value).toBe('83.333')
+
+        // A spicy meat-a-balla
+        await itemAmount.setValue(130.555)
+        expect(buildingGroupCount.element.value).toBe('3')
+        expect(buildingGroup2Count.element.value).toBe('3')
+        expect(itemBuildingCount.element.value).toBe('4.3518')
+        expect(buildingGroupClock.element.value).toBe('84.167')
+        expect(buildingGroup2Clock.element.value).toBe('84.167')
       })
     })
 
