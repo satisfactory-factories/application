@@ -57,6 +57,19 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
     itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
   })
 
+  describe('evenly balance button', () => {
+    let evenlyBalanceButton: any
+    beforeEach(() => {
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+    })
+
+    test('BG-E-AB-PROD-1: Disable Evenly Balance button for singular building group', () => {
+      // With a single group the button should be disabled.
+      // We need to check for the "v-btn--disabled" class
+      expect(evenlyBalanceButton.classes()).toContain('v-btn--disabled')
+    })
+  })
+
   describe('sync', () => {
     test('BG-E-AB-PROD-15: Sync is shown as enabled upon creating a new product', () => {
       expect(product.buildingGroupItemSync).toBe(true)

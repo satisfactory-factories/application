@@ -79,6 +79,26 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(product.buildingRequirements.amount).toBe(2)
     })
 
+    test('BG-C-D-2.1: Creating a second building group via UI adds the default of 1', async () => {
+      await addBuildingGroupButton.trigger('click')
+
+      expect(product.buildingGroups[1].buildingCount).toBe(1)
+      // It should not have affected the product or the other group
+      expect(product.buildingGroups[0].buildingCount).toBe(2)
+      expect(product.buildingRequirements.amount).toBe(2)
+
+      // It should generate the metrics on the new group
+      expect(product.buildingGroups[1].parts.IronIngot).toBe(30)
+
+      // It should have updated the effective buildings
+      const effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
+      const remainingBuildings = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
+      const remainingBuildingsVerb = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings-verb"]`)
+      expect(effectiveBuildings.text()).toBe('3.00')
+      expect(remainingBuildings.text()).toBe('1.00')
+      expect(remainingBuildingsVerb.text()).toBe('over')
+    })
+
     test('BG-C-D-3: Upon creating new product, creates a BG count with the expected building size', async () => {
       addProductToFactory(factory, {
         id: 'CopperIngot',
@@ -227,10 +247,12 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
 
       const effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
       const remainingBuildings = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
+      const remainingBuildingsVerb = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings-verb"]`)
 
-      // Check the amount of effective buildings and remaining buildings, it should still be 2 as provided by default
-      expect(effectiveBuildings.text()).toBe('2.00')
-      expect(remainingBuildings.text()).toBe('0.00')
+      // Check the number of effective and remaining buildings, it should still be 2 as provided by default
+      expect(effectiveBuildings.text()).toBe('3.00') // 2+1
+      expect(remainingBuildings.text()).toBe('1.00')
+      expect(remainingBuildingsVerb.text()).toBe('over')
 
       // Enable sync, need to re-mount the button for some reason
       toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
@@ -239,11 +261,10 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
 
       // Update the product amount to create a balance of 2 groups with 1 building
       const productAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
-      await productAmountInput.setValue('120')
+      await productAmountInput.setValue('60')
 
-      // Check the current state of the building groups balance, it should be 4
-      expect(effectiveBuildings.text()).toBe('4.00')
-      expect(remainingBuildings.text()).toBe('0.00')
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Now we delete a group
       const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)

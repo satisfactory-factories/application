@@ -13,20 +13,21 @@ Key:
 ## Building Groups Creation / Deletion
 Ref: BG-C-D
 
-| Operation                                                                     | Ref       | Implemented | Unit Tested? | Eyeballed | Notes                                                             |
-|-------------------------------------------------------------------------------|-----------|-------------|--------------|-----------|-------------------------------------------------------------------|
-| Create a new building group upon product addition                             | BG-C-D-1  | Y           | Y            | Y         |
-| Create a second building group                                                | BG-C-D-2  | Y           | Y            | Y         |
-| Upon creating new product, creates a BG count with the expected building size | BG-C-D-3  | Y           | Y            | Y         |
-| Creating a new building group with preexisting groups disables item sync      | BG-C-D-4  | Y           | Y            | Y         |
-| Create multiple building groups, with 0 building default count                | BG-C-D-5  | Y           | Y            | Y         |
-| Prevent deletion of a building group when last remaining                      | BG-C-D-6  | Y           | Y            | Y         |
-| Deletion of a building group with multiple groups                             | BG-C-D-7  | Y           | Y            | Y         |
-| Deletion of the product removes the building groups                           | BG-C-D-8  | Y           | Y            | Y         |
-| Deletion of building groups causes a building group imbalance                 | BG-C-D-9  | N           | F            | F         |
-| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-10 |             |              | Y         |
-| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-11 | Y           |              | Y         |
-| Deletion of building groups should disable sync                               | BG-C-D-12 |             |              | B         |
+| Operation                                                                     | Ref        | Implemented | Unit Tested? | Eyeballed | Notes                                                             |
+|-------------------------------------------------------------------------------|------------|-------------|--------------|-----------|-------------------------------------------------------------------|
+| Create a new building group upon product addition                             | BG-C-D-1   | Y           | Y            | Y         |
+| Create a second building group                                                | BG-C-D-2   | Y           | Y            | Y         |
+| Creating a second building group sets the new group's count to 1              | BG-C-D-2.1 | Y           | Y            | Y         |
+| Upon creating new product, creates a BG count with the expected building size | BG-C-D-3   | Y           | Y            | Y         |
+| Creating a new building group with preexisting groups disables item sync      | BG-C-D-4   | Y           | Y            | Y         |
+| Create multiple building groups, with 0 building default count                | BG-C-D-5   | Y           | Y            | Y         |
+| Prevent deletion of a building group when last remaining                      | BG-C-D-6   | Y           | Y            | Y         |
+| Deletion of a building group with multiple groups                             | BG-C-D-7   | Y           | Y            | Y         |
+| Deletion of the product removes the building groups                           | BG-C-D-8   | Y           | Y            | Y         |
+| Deletion of building groups causes a building group imbalance                 | BG-C-D-9   | N           | F            | F         |
+| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-10  |             |              | Y         |
+| Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-11  | Y           |              | Y         |
+| Deletion of building groups should disable sync                               | BG-C-D-12  |             |              | B         |
 
 ## Building Groups Editing - Action Buttons (Products)
 Ref: BG-E-AB-PROD
@@ -146,45 +147,45 @@ TO ADD MORE
 ## Item Editing - Products
 Ref: BG-I-E-PROD
 
-| Operation                                                                                                | Ref             | Implemented | Unit Tested? | Eyeballed | Notes                                                          |
-|----------------------------------------------------------------------------------------------------------|-----------------|-------------|--------------|-----------|----------------------------------------------------------------|
-| Editing the product's item recreates the building group @ 1 building                                     | BG-I-E-PROD-1   |             |              | Y         |
-| Editing the product's recipe recreates the building group @ 1 building                                   | BG-I-E-PROD-2   |             |              | P/B       | Updates the group but not the item's buildings                 |
-| Editing the product's quantity has a debounce                                                            | BG-I-E-PROD-3   | P           |              | B         |
-| Editing the product's buildings has a debounce                                                           | BG-I-E-PROD-4   |             |              | B         |
-| Editing the product's byproducts has a debounce                                                          | BG-I-E-PROD-5   |             |              | B         |
-| Editing the product's ingredients has a debounce                                                         | BG-I-E-PROD-6   |             |              | B         |
-| SYNC ON: Singular group: Changing the product quantity updates the building group's building count       | BG-I-E-PROD-7   |             |              | B         | Does not change the group at all                               |
-| SYNC ON: Multiple groups: Changing the product quantity triggers a rebalance                             | BG-I-E-PROD-8   |             |              | B         | Does not change the groups at all                              |
-| SYNC ON: Single group: Changing the product's Building count changes the building group's building count | BG-I-E-PROD-9   |             |              | B         | Does not accept input from the user                            |
-| SYNC ON: Multiple: Changing the product's Building count triggers a rebalance                            | BG-I-E-PROD-10  |             |              | Y/?       | Likely only working due to the rebalance bug, needs checking   |
-| SYNC ON: Single group: Changing the product's byproducts changes the building group's building count     | BG-I-E-PROD-11  |             |              | B         | Does not change the group at all                               |
-| SYNC ON: Multiple: Changing the product's byproducts triggers a rebalance                                | BG-I-E-PROD-12  |             |              | B         | Does not change the groups at all                              |
-| SYNC ON: Single group: Changing the product's Ingredient changes the building group's building count     | BG-I-E-PROD-13  |             |              |           | Does not change the group at all                               |
-| SYNC ON: Multiple groups: Changing the product's Ingredient triggers a rebalance                         | BG-I-E-PROD-14  |             |              |           | Does not change the groups at all                              |
-| SYNC OFF: Changing the product quantity does NOT trigger a rebalance or makes any edits                  | BG-I-E-PROD-15  |             |              | Y         |
-| SYNC OFF: Changing the product byproducts does NOT trigger a rebalance or makes any edits                | BG-I-E-PROD-16  |             |              | Y         |
-| SYNC OFF: Changing the product's Ingredient DOES NOT trigger a rebalance or makes any edits              | BG-I-E-PROD-17  |             |              | Y         | Is also updating remaining                                     |
-| SYNC OFF: Making changes to the product updates the effective buildings readout                          | BG-I-E-PROD-18  |             |              | Y         |
-| SYNC OFF: Making changes to the product updates the remaining buildings readout                          | BG-I-E-PROD-19  |             |              | Y         |
-| SYNC OFF: Making changes to the product updates the status colors                                        | BG-I-E-PROD-20  |             |              | B         | The colours are not updating with new effective building state |
+| Operation                                                                                            | Ref            | Implemented | Unit Tested? | Eyeballed | Notes                                                          |
+|------------------------------------------------------------------------------------------------------|----------------|-------------|--------------|-----------|----------------------------------------------------------------|
+| Editing the product item recreates the building group @ 1 building                                   | BG-I-E-PROD-1  |             |              | Y         |
+| Editing the product recipe recreates the building group @ 1 building                                 | BG-I-E-PROD-2  |             |              | P/B       | Updates the group but not the item buildings                   |
+| Editing the product quantity has a debounce                                                          | BG-I-E-PROD-3  | Y           |              | B         |
+| Editing the product buildings has a debounce                                                         | BG-I-E-PROD-4  | N           |              | B         |
+| Editing the product byproducts has a debounce                                                        | BG-I-E-PROD-5  | N           |              | B         |
+| Editing the product ingredients has a debounce                                                       | BG-I-E-PROD-6  | N           |              | B         |
+| SYNC ON: Single group: Changing the product quantity updates the building group building count       | BG-I-E-PROD-7  | Y           | Y            | Y         | 
+| SYNC ON: Single group: Changing the product Building count changes the building group building count | BG-I-E-PROD-8  | Y           | Y            | Y         | 
+| SYNC ON: Single group: Changing the product byproducts changes the building group building count     | BG-I-E-PROD-9  |             |              | B         | Does not change the group at all                               |
+| SYNC ON: Single group: Changing the product Ingredient changes the building group building count     | BG-I-E-PROD-10 |             |              |           | Does not change the group at all                               |
+| SYNC ON: Multiple groups: Changing the product quantity triggers a rebalance                         | BG-I-E-PROD-11 |             |              | B         | Does not change the groups at all                              |
+| SYNC ON: Multiple: Changing the product Building count triggers a rebalance                          | BG-I-E-PROD-12 |             |              | Y/?       | Likely only working due to the rebalance bug, needs checking   |
+| SYNC ON: Multiple: Changing the product byproducts triggers a rebalance                              | BG-I-E-PROD-13 |             |              | B         | Does not change the groups at all                              |
+| SYNC ON: Multiple groups: Changing the product Ingredient triggers a rebalance                       | BG-I-E-PROD-14 |             |              |           | Does not change the groups at all                              |
+| SYNC OFF: Changing the product quantity does NOT trigger a rebalance or makes any edits              | BG-I-E-PROD-15 |             |              | Y         |
+| SYNC OFF: Changing the product byproducts does NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-16 |             |              | Y         |
+| SYNC OFF: Changing the product Ingredient DOES NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-17 |             |              | Y         | Is also updating remaining                                     |
+| SYNC OFF: Making changes to the product updates the effective buildings readout                      | BG-I-E-PROD-18 |             |              | Y         |
+| SYNC OFF: Making changes to the product updates the remaining buildings readout                      | BG-I-E-PROD-19 |             |              | Y         |
+| SYNC OFF: Making changes to the product updates the status colors                                    | BG-I-E-PROD-20 |             |              | B         | The colours are not updating with new effective building state |
 
 ## Item Editing - Power Producers
 Ref: BG-I-E-POW
 
-| Operation                                                                                                                         | Ref           | Implemented | Unit Tested? | Eyeballed |
-|-----------------------------------------------------------------------------------------------------------------------------------|---------------|-------------|--------------|-----------|
-| Editing the power producer's generator recreates the building group @ 1 building                                                  | BG-I-E-POW-1  |             |              |           |
-| Editing the power producer's fuel recipe recreates the building group @ 1 building                                                | BG-I-E-POW-2  |             |              |           |
-| Editing the power producer's buildings count has a debounce                                                                       | BG-I-E-POW-3  |             |              |           |
-| Editing the power producer's byproduct has a debounce                                                                             | BG-I-E-POW-4  |             |              |           |
-| Editing the power producer's supplemental fuel has a debounce                                                                     | BG-I-E-POW-5  |             |              |           |
-| Editing the power producer's power MW production has a debounce                                                                   | BG-I-E-POW-6  |             |              |           |
-| SYNC ON: Increasing the power producer's fuel quantity increases the building group's buildings AND rebalances                    | BG-I-E-POW-7  |             |              |           |
-| SYNC ON: Decreasing the power producer's fuel quantity decreases the building group's buildings AND rebalances                    | BG-I-E-POW-8  |             |              |           |
-| SYNC ON: Changing the power producer's buildings changes the building group's buildings (single group)                            | BG-I-E-POW-9  |             |              |           |
-| SYNC ON: Changing the power producer's buildings changes AND rebalances the building group's buildings (multiple groups)          | BG-I-E-POW-10 |             |              |           |
-| SYNC ON: Changing the power producer's byproduct quantity changes the building group's buildings (single group)                   | BG-I-E-POW-11 |             |              |           |
-| SYNC ON: Changing the power producer's byproduct quantity changes AND rebalances the building group's buildings (multiple groups) | BG-I-E-POW-12 |             |              |           |
-| SYNC ON: Changing the power producer's supplemental fuel changes the building group's buildings (single group)                    | BG-I-E-POW-13 |             |              |           |
-| SYNC ON: Changing the power producer's supplemental fuel changes AND rebalances the building group's buildings (multiple groups)  | BG-I-E-POW-14 |             |              |           |
+| Operation                                                                                                                     | Ref           | Implemented | Unit Tested? | Eyeballed |
+|-------------------------------------------------------------------------------------------------------------------------------|---------------|-------------|--------------|-----------|
+| Editing the power producer generator recreates the building group @ 1 building                                                | BG-I-E-POW-1  |             |              |           |
+| Editing the power producer fuel recipe recreates the building group @ 1 building                                              | BG-I-E-POW-2  |             |              |           |
+| Editing the power producer buildings count has a debounce                                                                     | BG-I-E-POW-3  |             |              |           |
+| Editing the power producer byproduct has a debounce                                                                           | BG-I-E-POW-4  |             |              |           |
+| Editing the power producer supplemental fuel has a debounce                                                                   | BG-I-E-POW-5  |             |              |           |
+| Editing the power producer power MW production has a debounce                                                                 | BG-I-E-POW-6  |             |              |           |
+| SYNC ON: Increasing the power producer fuel quantity increases the building group buildings AND rebalances                    | BG-I-E-POW-7  |             |              |           |
+| SYNC ON: Decreasing the power producer fuel quantity decreases the building group buildings AND rebalances                    | BG-I-E-POW-8  |             |              |           |
+| SYNC ON: Changing the power producer buildings changes the building group buildings (single group)                            | BG-I-E-POW-9  |             |              |           |
+| SYNC ON: Changing the power producer buildings changes AND rebalances the building group buildings (multiple groups)          | BG-I-E-POW-10 |             |              |           |
+| SYNC ON: Changing the power producer byproduct quantity changes the building group buildings (single group)                   | BG-I-E-POW-11 |             |              |           |
+| SYNC ON: Changing the power producer byproduct quantity changes AND rebalances the building group buildings (multiple groups) | BG-I-E-POW-12 |             |              |           |
+| SYNC ON: Changing the power producer supplemental fuel changes the building group buildings (single group)                    | BG-I-E-POW-13 |             |              |           |
+| SYNC ON: Changing the power producer supplemental fuel changes AND rebalances the building group buildings (multiple groups)  | BG-I-E-POW-14 |             |              |           |

@@ -43,6 +43,16 @@ export const addBuildingGroup = (
   } else {
     throw new Error(`addBuildingGroup: Invalid group type: ${type}`)
   }
+
+  // Ensure the building group always contains 1 building so we don't create invalid groups.
+  // Get the last group and set the building count to 1.
+  const lastGroup = item.buildingGroups[item.buildingGroups.length - 1]
+  if (lastGroup) {
+    lastGroup.buildingCount = 1
+  }
+
+  // Recalculate the group metrics
+  recalculateGroupMetrics(item, type, factory)
 }
 
 // @See ./product.ts, ./power.ts for usages

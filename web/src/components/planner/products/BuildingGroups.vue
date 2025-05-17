@@ -27,8 +27,8 @@
           >
             {{ Math.abs(buildingsRemaining).toFixed(2) }}
           </span>
-          <span v-show="buildingsRemaining > 0"> short</span>
-          <span v-show="buildingsRemaining < 0"> over</span>
+          <span v-if="buildingsRemaining > 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> short</span>
+          <span v-if="buildingsRemaining < 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> over</span>
         </span>
       </span>
     </div>
@@ -76,6 +76,7 @@
       <span class="ml-2">Add Building Group</span>
     </v-btn>
     <v-btn
+      :id="`${factory.id}-${item.id}-evenly-balance`"
       class="ml-2"
       color="secondary"
       :disabled="item.buildingGroups.length === 1 || correct"
