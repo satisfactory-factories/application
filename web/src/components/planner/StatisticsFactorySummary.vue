@@ -76,6 +76,7 @@
                       <game-asset
                         :subject="buildingData.name"
                         type="building"
+                        clickable
                       />
                       <span class="ml-1">
                         <b>{{
@@ -98,6 +99,7 @@
                         v-if="part.id"
                         :subject="part.id"
                         type="item"
+                        clickable
                       />
                     </span>
                     <span>
@@ -135,6 +137,7 @@
                       :subject="totals.outputPart"
                       type="item"
                       width="32"
+                      clickable
                     />
                     <span class="ml-2">
                       <b>{{ getPartDisplayName(totals.outputPart) }}:</b>
@@ -158,6 +161,7 @@
                       :subject="totals.part"
                       type="item"
                       width="32"
+                      clickable
                     />
                     <span class="ml-2">
                       <b>{{ getPartDisplayName(totals.part) }}:</b>

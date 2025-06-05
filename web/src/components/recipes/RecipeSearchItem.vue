@@ -6,6 +6,7 @@
         :subject="recipe.products[0].part"
         type="item"
         width="48"
+        clickable
       />
       <span class="ml-3 text-h6">{{ recipe.displayName }}</span>
     </v-expansion-panel-title>

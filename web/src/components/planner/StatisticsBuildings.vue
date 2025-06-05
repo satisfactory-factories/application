@@ -10,7 +10,7 @@
   <div v-if="totalBuildingsByType.length > 0">
     <span v-for="(building, type) in totalBuildingsByType" :key="type">
       <v-chip class="sf-chip orange" variant="tonal">
-        <game-asset :subject="building.name" type="building" />
+        <game-asset :subject="building.name" type="building" clickable />
         <span class="ml-1">
           <b>{{ getBuildingDisplayName(building.name) ?? "UNKNOWN" }}</b>: {{ formatNumber(building.totalAmount) ?? 0 }}x
         </span>

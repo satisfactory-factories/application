@@ -40,6 +40,7 @@
             :key="`${buildingIndex}-${buildingData.name}`"
             :subject="buildingData.name"
             type="building"
+            clickable
           />
           <span class="ml-2">
             <b>{{ getBuildingDisplayName(buildingData.name) ?? 'UNKNOWN' }}</b>: {{ formatNumber(buildingData.amount) ?? 0 }}x

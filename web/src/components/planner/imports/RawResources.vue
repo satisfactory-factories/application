@@ -12,7 +12,7 @@
         :key="resourceKey"
         class="sf-chip cyan"
       >
-        <game-asset :subject="resourceKey.toString() ?? 'unknown'" type="item" />
+        <game-asset :subject="resourceKey.toString() ?? 'unknown'" type="item" clickable />
         <span class="ml-2">
           <b>{{ getPartDisplayName(resourceKey.toString()) }}</b>: {{ formatNumber(resource.amount) }}/min
         </span>

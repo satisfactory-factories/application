@@ -16,6 +16,7 @@
             :subject="product.id"
             type="item"
             width="42px"
+            clickable
           />
         </span>
         <v-autocomplete
@@ -120,7 +121,7 @@
           :key="byProduct.id"
         >
           <v-chip class="sf-chip">
-            <game-asset :subject="byProduct.id" type="item" />
+            <game-asset :subject="byProduct.id" type="item" clickable />
             <span class="ml-2">
               <b>{{ getPartDisplayName(byProduct.id) }}</b>:
             </span>
@@ -157,7 +158,7 @@
           :class="factory.parts[part].isRaw ? 'cyan': 'blue'"
           variant="tonal"
         >
-          <game-asset :subject="part.toString()" type="item" />
+          <game-asset :subject="part.toString()" type="item" clickable />
           <span class="ml-2">
             <b>{{ getPartDisplayName(part.toString()) }}</b>:
           </span>
@@ -180,7 +181,7 @@
           class="sf-chip orange"
           variant="tonal"
         >
-          <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
+          <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" clickable />
           <span class="ml-2">
             <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>:
           </span>

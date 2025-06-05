@@ -176,6 +176,7 @@
                       :subject="input.outputPart"
                       type="item"
                       width="32"
+                      clickable
                     />
                     <span class="ml-2"><b>{{ getPartDisplayName(input.outputPart) }}:</b> {{ formatNumber(input.amount) }}/min</span>
                   </v-chip>
@@ -199,6 +200,7 @@
                     :subject="resource.id"
                     type="item"
                     width="32"
+                    clickable
                   />
                   <span class="ml-2"><b>{{ getPartDisplayName(resource.id) }}:</b> {{ formatNumber(resource.amount) }}/min</span>
                 </v-chip>
@@ -224,6 +226,7 @@
                       v-if="part.id"
                       :subject="part.id"
                       type="item"
+                      clickable
                     />
                   </span>
                   <span>
@@ -266,6 +269,7 @@
                     :subject="part.part"
                     type="item"
                     width="32"
+                    clickable
                   />
                   <span class="ml-2"><b>{{ getPartDisplayName(part.part) }}:</b> {{ formatNumber(part.amount) }}/min</span>
                 </v-chip>

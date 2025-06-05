@@ -15,7 +15,7 @@
       class="sf-chip blue"
     >
       <span class="mr-2">
-        <game-asset :subject="product.id" type="item" />
+        <game-asset :subject="product.id" type="item" clickable />
       </span>
       <span>
         <b>{{ getPartDisplayName(product.id) }}</b>: {{ formatNumber(product.amountSupplied) }}/min

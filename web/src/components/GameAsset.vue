@@ -1,21 +1,50 @@
 <template>
-  <v-img
-    v-if="!ficsmas && !unknown"
-    :alt="subject"
-    aspect-ratio="1/1"
-    :max-height="heightPx"
-    :max-width="widthPx"
-    :min-height="heightPx"
-    :min-width="widthPx"
-    :src="imgUrl"
-  />
-  <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
-  <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  <div
+    v-if="clickable && (type === 'item' || type === 'item_id' || type === 'building')"
+    class="game-asset-clickable"
+    :style="{ cursor: 'pointer', display: 'inline-block' }"
+    @click="handleClick"
+    @keydown.enter="handleClick"
+    @keydown.space="handleClick"
+    role="button"
+    tabindex="0"
+    :title="`Open ${displayName} on Satisfactory Wiki`"
+  >
+    <v-img
+      v-if="!ficsmas && !unknown"
+      :alt="subject"
+      aspect-ratio="1/1"
+      :max-height="heightPx"
+      :max-width="widthPx"
+      :min-height="heightPx"
+      :min-width="widthPx"
+      :src="imgUrl"
+    />
+    <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+    <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  </div>
+  <div v-else>
+    <v-img
+      v-if="!ficsmas && !unknown"
+      :alt="subject"
+      aspect-ratio="1/1"
+      :max-height="heightPx"
+      :max-width="widthPx"
+      :min-height="heightPx"
+      :min-width="widthPx"
+      :src="imgUrl"
+    />
+    <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+    <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  </div>
 </template>
 
 <script setup lang="ts">
-  import { defineProps } from 'vue'
+  import { defineProps, computed, ref } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { openWikiLink } from '@/utils/wiki-links'
+  import { getPartDisplayName } from '@/utils/helpers'
+  import { getBuildingDisplayName } from '@/utils/factory-management/common'
 
   useGameDataStore()
   const gameData = useGameDataStore().getGameData()
@@ -31,7 +60,23 @@
     height?: string | number | undefined
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
+    clickable?: boolean
   }>()
+
+  const displayName = computed(() => {
+    if (props.type === 'item' || props.type === 'item_id') {
+      return getPartDisplayName(props.subject)
+    } else if (props.type === 'building') {
+      return getBuildingDisplayName(props.subject)
+    }
+    return props.subject
+  })
+
+  const handleClick = () => {
+    if (props.clickable && (props.type === 'item' || props.type === 'item_id' || props.type === 'building')) {
+      openWikiLink(displayName.value)
+    }
+  }
 
   const sluggify = (subject: string): string => {
     // Converts CamelCase to kebab-case without adding dash at the beginning
@@ -95,3 +140,24 @@
   const imgSize = widthPx > 64 || heightPx > 64 ? 'big' : 'small'
   const imgUrl = getIcon(props.subject, props.type, imgSize)
 </script>
+
+<style scoped>
+.game-asset-clickable {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.game-asset-clickable:hover {
+  transform: scale(1.05);
+  opacity: 0.8;
+}
+
+.game-asset-clickable:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.game-asset-clickable:active {
+  transform: scale(0.95);
+}
+</style>
