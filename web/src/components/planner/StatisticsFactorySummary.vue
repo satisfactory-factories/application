@@ -74,9 +74,9 @@
                   >
                     <v-chip class="sf-chip small no-margin orange" variant="tonal">
                       <game-asset
+                        clickable
                         :subject="buildingData.name"
                         type="building"
-                        clickable
                       />
                       <span class="ml-1">
                         <b>{{
@@ -97,9 +97,9 @@
                     <span class="mr-2">
                       <game-asset
                         v-if="part.id"
+                        clickable
                         :subject="part.id"
                         type="item"
-                        clickable
                       />
                     </span>
                     <span>
@@ -133,11 +133,11 @@
                   >
                     <game-asset
                       v-if="totals.outputPart"
+                      clickable
                       height="32"
                       :subject="totals.outputPart"
                       type="item"
                       width="32"
-                      clickable
                     />
                     <span class="ml-2">
                       <b>{{ getPartDisplayName(totals.outputPart) }}:</b>
@@ -157,11 +157,11 @@
                   >
                     <game-asset
                       v-if="totals.part"
+                      clickable
                       height="32"
                       :subject="totals.part"
                       type="item"
                       width="32"
-                      clickable
                     />
                     <span class="ml-2">
                       <b>{{ getPartDisplayName(totals.part) }}:</b>

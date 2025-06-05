@@ -22,11 +22,11 @@
             <div class="d-flex justify-space-between">
               <div class="d-flex align-center" :class="classes(part)">
                 <game-asset
+                  clickable
                   height="48"
                   :subject="partId.toString()"
                   type="item"
                   width="48"
-                  clickable
                 />
                 <span v-if="part.satisfied" class="ml-2">
                   <v-icon icon="fas fa-check" />

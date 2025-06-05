@@ -12,11 +12,11 @@
         <span v-if="producer.building" class="mr-2">
           <game-asset
             :key="`${producerIndex}-${producer.building}`"
+            clickable
             height="42px"
             :subject="producer.building"
             type="building"
             width="42px"
-            clickable
           />
         </span>
         <v-autocomplete
@@ -34,11 +34,11 @@
         <span v-if="producer.recipe" class="mr-2">
           <game-asset
             :key="producer.recipe"
+            clickable
             height="42px"
             :subject="getItemFromFuelRecipe(producer.recipe)"
             type="item"
             width="42px"
-            clickable
           />
         </span>
         <span v-else class="mr-2">
@@ -134,7 +134,7 @@
       >
         <p class="mr-2">Byproduct:</p>
         <v-chip class="sf-chip">
-          <game-asset :subject="producer.byproduct.part" type="item" clickable />
+          <game-asset clickable :subject="producer.byproduct.part" type="item" />
           <span class="ml-2">
             <b>{{ getPartDisplayName(producer.byproduct.part) }}</b>: {{ formatNumber(producer.byproduct.amount ?? 0) }}/min
           </span>
@@ -147,7 +147,7 @@
           class="sf-chip blue"
           variant="tonal"
         >
-          <game-asset :subject="producer.ingredients[1].part" type="item" clickable />
+          <game-asset clickable :subject="producer.ingredients[1].part" type="item" />
           <span class="ml-2">
             <b>{{ getPartDisplayName(producer.ingredients[1].part.toString()) }}</b>: {{ formatNumber(producer.ingredients[1].perMin) }}/min
           </span>
@@ -157,7 +157,7 @@
             class="sf-chip orange"
             variant="tonal"
           >
-            <game-asset :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" clickable />
+            <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />
             <span class="ml-2">
               <b>{{ getBuildingDisplayName(producer.building) }}</b>:
             </span>

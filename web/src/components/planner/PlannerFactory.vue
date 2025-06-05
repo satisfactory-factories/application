@@ -172,11 +172,11 @@
                   >
                     <game-asset
                       v-if="input.outputPart"
+                      clickable
                       height="32"
                       :subject="input.outputPart"
                       type="item"
                       width="32"
-                      clickable
                     />
                     <span class="ml-2"><b>{{ getPartDisplayName(input.outputPart) }}:</b> {{ formatNumber(input.amount) }}/min</span>
                   </v-chip>
@@ -196,11 +196,11 @@
                 >
                   <game-asset
                     v-if="resource.id"
+                    clickable
                     height="32"
                     :subject="resource.id"
                     type="item"
                     width="32"
-                    clickable
                   />
                   <span class="ml-2"><b>{{ getPartDisplayName(resource.id) }}:</b> {{ formatNumber(resource.amount) }}/min</span>
                 </v-chip>
@@ -224,9 +224,9 @@
                   <span class="mr-2">
                     <game-asset
                       v-if="part.id"
+                      clickable
                       :subject="part.id"
                       type="item"
-                      clickable
                     />
                   </span>
                   <span>
@@ -265,11 +265,11 @@
                 >
                   <game-asset
                     v-if="part.part"
+                    clickable
                     height="32"
                     :subject="part.part"
                     type="item"
                     width="32"
-                    clickable
                   />
                   <span class="ml-2"><b>{{ getPartDisplayName(part.part) }}:</b> {{ formatNumber(part.amount) }}/min</span>
                 </v-chip>

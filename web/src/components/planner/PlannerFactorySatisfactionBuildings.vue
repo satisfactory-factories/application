@@ -38,9 +38,9 @@
         >
           <game-asset
             :key="`${buildingIndex}-${buildingData.name}`"
+            clickable
             :subject="buildingData.name"
             type="building"
-            clickable
           />
           <span class="ml-2">
             <b>{{ getBuildingDisplayName(buildingData.name) ?? 'UNKNOWN' }}</b>: {{ formatNumber(buildingData.amount) ?? 0 }}x

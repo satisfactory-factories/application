@@ -8,9 +8,9 @@
         class="sf-chip"
       >
         <game-asset
+          clickable
           :subject="ingredient.part"
           type="item"
-          clickable
         />
         <span class="ml-2">
           <b>{{ getPartDisplayName(ingredient.part) }}:</b> x{{ ingredient.amount }}
@@ -25,9 +25,9 @@
         class="sf-chip"
       >
         <game-asset
+          clickable
           :subject="product.part"
           type="item"
-          clickable
         />
         <span class="ml-2">
           <b>{{ getPartDisplayName(product.part) }}:</b> x{{ product.amount }}
