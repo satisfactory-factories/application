@@ -2,13 +2,13 @@
   <div
     v-if="clickable && (type === 'item' || type === 'item_id' || type === 'building')"
     class="game-asset-clickable"
+    role="button"
     :style="{ cursor: 'pointer', display: 'inline-block' }"
+    tabindex="0"
+    :title="`Open ${displayName} on Satisfactory Wiki`"
     @click="handleClick"
     @keydown.enter="handleClick"
     @keydown.space="handleClick"
-    role="button"
-    tabindex="0"
-    :title="`Open ${displayName} on Satisfactory Wiki`"
   >
     <v-img
       v-if="!ficsmas && !unknown"
@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, computed } from 'vue'
+  import { computed, defineProps } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { openWikiLink } from '@/utils/wiki-links'
   import { getPartDisplayName } from '@/utils/helpers'
