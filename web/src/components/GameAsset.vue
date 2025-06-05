@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, computed, ref } from 'vue'
+  import { defineProps, computed } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { openWikiLink } from '@/utils/wiki-links'
   import { getPartDisplayName } from '@/utils/helpers'
