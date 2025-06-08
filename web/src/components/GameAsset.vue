@@ -133,23 +133,23 @@
   const imgUrl = getIcon(props.subject, props.type, imgSize)
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .game-asset-clickable {
   transition: transform 0.1s ease, opacity 0.1s ease;
-}
-
-.game-asset-clickable:hover {
-  transform: scale(1.05);
-  opacity: 0.8;
-}
-
-.game-asset-clickable:focus {
-  outline: 2px solid #1976d2;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.game-asset-clickable:active {
-  transform: scale(0.95);
+  
+  :hover {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  
+  :focus {
+    outline: 2px solid #1976d2;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  
+  :active {
+    transform: scale(0.95);
+  }
 }
 </style>
