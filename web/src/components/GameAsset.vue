@@ -1,11 +1,11 @@
 <template>
   <a
     v-if="clickable && (type === 'item' || type === 'item_id' || type === 'building')"
-    :href="getWikiUrl(displayName)"
-    target="_blank"
-    rel="noopener noreferrer"
     class="game-asset-clickable"
+    :href="getWikiUrl(displayName)"
+    rel="noopener noreferrer"
     :style="{ cursor: 'pointer', display: 'inline-block', textDecoration: 'none' }"
+    target="_blank"
     :title="`Open ${displayName} on Satisfactory Wiki`"
   >
     <v-img

@@ -14,7 +14,7 @@ const testCases = [
 ]
 
 // Manual URL generation test (since we can't import TypeScript directly)
-const manualGetWikiUrl = (displayName) => {
+const manualGetWikiUrl = displayName => {
   if (!displayName) return ''
   const wikiName = displayName.replace(/\s+/g, '_')
   return `https://satisfactory.wiki.gg/wiki/${wikiName}`
