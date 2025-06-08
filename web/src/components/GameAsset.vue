@@ -136,18 +136,18 @@
 <style scoped lang="scss">
 .game-asset-clickable {
   transition: transform 0.1s ease, opacity 0.1s ease;
-  
+
   :hover {
     transform: scale(1.05);
     opacity: 0.8;
   }
-  
+
   :focus {
     outline: 2px solid #1976d2;
     outline-offset: 2px;
     border-radius: 4px;
   }
-  
+
   :active {
     transform: scale(0.95);
   }
