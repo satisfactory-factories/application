@@ -15,14 +15,3 @@ export const getWikiUrl = (displayName: string): string => {
 
   return `https://satisfactory.wiki.gg/wiki/${wikiName}`
 }
-
-/**
- * Opens a wiki URL in a new tab
- * @param displayName The display name of the part
- */
-export const openWikiLink = (displayName: string): void => {
-  const url = getWikiUrl(displayName)
-  if (url) {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
-}

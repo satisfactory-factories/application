@@ -1,14 +1,12 @@
 <template>
-  <div
+  <a
     v-if="clickable && (type === 'item' || type === 'item_id' || type === 'building')"
+    :href="getWikiUrl(displayName)"
+    target="_blank"
+    rel="noopener noreferrer"
     class="game-asset-clickable"
-    role="button"
-    :style="{ cursor: 'pointer', display: 'inline-block' }"
-    tabindex="0"
+    :style="{ cursor: 'pointer', display: 'inline-block', textDecoration: 'none' }"
     :title="`Open ${displayName} on Satisfactory Wiki`"
-    @click="handleClick"
-    @keydown.enter="handleClick"
-    @keydown.space="handleClick"
   >
     <v-img
       v-if="!ficsmas && !unknown"
@@ -22,7 +20,7 @@
     />
     <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
     <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
-  </div>
+  </a>
   <div v-else>
     <v-img
       v-if="!ficsmas && !unknown"
@@ -42,7 +40,7 @@
 <script setup lang="ts">
   import { computed, defineProps } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { openWikiLink } from '@/utils/wiki-links'
+  import { getWikiUrl } from '@/utils/wiki-links'
   import { getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
 
@@ -71,12 +69,6 @@
     }
     return props.subject
   })
-
-  const handleClick = () => {
-    if (props.clickable && (props.type === 'item' || props.type === 'item_id' || props.type === 'building')) {
-      openWikiLink(displayName.value)
-    }
-  }
 
   const sluggify = (subject: string): string => {
     // Converts CamelCase to kebab-case without adding dash at the beginning
