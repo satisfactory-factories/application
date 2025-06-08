@@ -11,7 +11,7 @@ export const getWikiUrl = (displayName: string): string => {
   // Convert display name to wiki format:
   // - Replace spaces with underscores
   // - Keep the original casing as wiki URLs are case-sensitive
-  const wikiName = displayName.replace(/\s+/g, '_')
+  const wikiName = encodeURIComponent(displayName.replace(/\s+/g, '_'))
 
   return `https://satisfactory.wiki.gg/wiki/${wikiName}`
 }
