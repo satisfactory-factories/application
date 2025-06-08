@@ -55,7 +55,7 @@ pnpm install
 ./start.sh
 ```
 
-API will be available on http://localhost:3001.
+API will be available on http://localhost:3010.
 
 There are no tests currently available for the backend project.
 

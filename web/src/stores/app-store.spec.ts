@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
+import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
 import { useAppStore } from '@/stores/app-store'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -9,6 +9,7 @@ import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -39,6 +40,13 @@ describe('app-store', () => {
         id: 'CopperIngot',
         amount: 1337,
         recipe: 'IngotCopper',
+      })
+
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 5,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
       })
 
       factories = [factory]
@@ -197,6 +205,88 @@ describe('app-store', () => {
 
       // Expect alerto to have thrown
       expect(window.alert).toHaveBeenCalledWith('Error validating factories: ' + error.message)
+    })
+
+    describe('building groups', () => {
+      it('should ensure factories have product building groups and it has initialized it correctly when undefined', () => {
+      // @ts-ignore
+        factory.products[0].buildingGroups = undefined
+
+        appStore.initFactories(factories)
+
+        const buildingGroup = factory.products[0].buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(45)
+        expect(buildingGroup.overclockPercent).toBe(99.037)
+        expect(factory.products[0].buildingGroupsHaveProblem).toBe(false)
+        expect(factory.products[0].buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have product building groups and it has initialized it correctly when on an empty array', () => {
+      // @ts-ignore
+        factory.products[0].buildingGroups = []
+
+        appStore.initFactories(factories)
+
+        const buildingGroup = factory.products[0].buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(45)
+        expect(buildingGroup.overclockPercent).toBe(99.037)
+        expect(factory.products[0].buildingGroupsHaveProblem).toBe(false)
+        expect(factory.products[0].buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have power producer building groups and it has initialized it correctly when undefined', () => {
+      // @ts-ignore
+        factory.powerProducers[0].buildingGroups = undefined
+
+        appStore.initFactories(factories)
+
+        const producer = factory.powerProducers[0]
+        const buildingGroup = producer.buildingGroups[0]
+        expect(buildingGroup.buildingCount).toBe(5)
+        expect(producer.buildingGroupsTrayOpen).toBe(false)
+      })
+
+      it('should ensure factories have power producer building groups and it has initialized it correctly with a blank array', () => {
+      // @ts-ignore
+        factory.powerProducers[0].buildingGroups = []
+
+        appStore.initFactories(factories)
+
+        const producer = factory.powerProducers[0]
+        const buildingGroup = producer.buildingGroups[0]
+        expect(buildingGroup).toBeDefined()
+        expect(buildingGroup.buildingCount).toBe(5)
+        expect(producer.buildingGroupsTrayOpen).toBe(false)
+      })
+    })
+
+    it('should add id to powerProducers', () => {
+      // @ts-ignore
+      delete factory.powerProducers[0].id
+
+      appStore.initFactories(factories)
+
+      expect(factory.powerProducers[0].id).toBeDefined()
+    })
+
+    it('should add buildingGroupsHaveProblem to power producers', () => {
+      // @ts-ignore
+      delete factory.powerProducers[0].buildingGroupsHaveProblem
+
+      appStore.initFactories(factories)
+
+      expect(factory.powerProducers[0].buildingGroupsHaveProblem).toBeDefined()
+    })
+
+    it('should add buildingGroupsHaveProblem to products', () => {
+      // @ts-ignore
+      delete factory.products[0].buildingGroupsHaveProblem
+
+      appStore.initFactories(factories)
+
+      expect(factory.products[0].buildingGroupsHaveProblem).toBeDefined()
     })
   })
 

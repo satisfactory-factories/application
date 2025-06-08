@@ -18,7 +18,7 @@ import {Factory} from "./interfaces/FactoryInterface";
 
 dotenv.config();
 
-const PORT = 3001;
+const PORT = 3010;
 
 // *************************************************
 // Setup Express

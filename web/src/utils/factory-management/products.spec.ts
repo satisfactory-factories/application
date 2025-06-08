@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
   addProductToFactory,
   byProductAsProductCheck,
   fixProduct,
-  getProduct, getProductAmountByPart,
+  getProduct,
+  getProductAmountByPart,
+  increaseProductQtyViaBuilding,
   isPartByProductOfRecipe,
   recipeByproductPerMin,
   recipeIngredientPerMin,
@@ -22,10 +24,12 @@ import { create321Scenario } from '@/utils/factory-setups/321-product-byproduct-
 import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
 import eventBus from '@/utils/eventBus'
 import { getRecipe } from '@/utils/factory-management/common'
+import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 
 vi.mock('@/utils/eventBus', () => ({
   default: {
     emit: vi.fn(),
+    on: vi.fn(),
   },
 }))
 
@@ -54,6 +58,7 @@ describe('products', () => {
       expect(mockFactory.products.length).toBe(1)
       expect(mockFactory.products[0].id).toBe('IronIngot')
     })
+
     it('should add a product of different recipe to the factory', () => {
       const mockProductAlt = {
         id: 'IronIngot',
@@ -65,15 +70,55 @@ describe('products', () => {
       expect(mockFactory.products.length).toBe(2)
       expect(mockFactory.products[1].id).toBe('IronIngot')
     })
+
     it('should add a part to the factory', () => {
       expect(mockFactory.parts.IronIngot).toBeDefined()
     })
+
     it('should add proper display orders', () => {
       addProductToFactory(mockFactory, mockIngotIron)
       addProductToFactory(mockFactory, mockIngotCopper)
 
       expect(mockFactory.products[0].displayOrder).toBe(0)
       expect(mockFactory.products[1].displayOrder).toBe(1)
+    })
+
+    it('should add a product at a building count of 1', () => {
+      addProductToFactory(mockFactory, {
+        id: 'IronIngot',
+        recipe: 'IngotIron',
+      })
+
+      expect(mockFactory.products[1].buildingRequirements.amount).toBe(1)
+    })
+
+    describe('building groups', () => {
+      beforeEach(() => {
+        mockFactory = newFactory('Iron Ingots')
+      })
+
+      it('should add a building group to a product, with the expected buildings of 0', () => {
+        addProductToFactory(mockFactory, {
+          id: 'IronIngot',
+          amount: 60,
+          recipe: 'IngotIron',
+        })
+
+        const group = mockFactory.products[0].buildingGroups[0]
+        expect(group.buildingCount).toBe(0)
+      })
+
+      it('should add a building group to a product, with the expected parts of 0', () => {
+        addProductToFactory(mockFactory, {
+          id: 'IronIngot',
+          amount: 60,
+          recipe: 'IngotIron',
+        })
+
+        const group = mockFactory.products[0].buildingGroups[0]
+        expect(group.parts.OreIron).toBe(0)
+        expect(group.parts.IronIngot).toBe(0)
+      })
     })
   })
 
@@ -649,14 +694,12 @@ describe('products', () => {
         message: 'You cannot set an ingredient to be 0. Setting product amount to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
         type: 'warning',
       }
-      it('should throw if ingredient is missing', () => {
-        expect(() => {
-          updateProductAmountViaRequirement(product, 'NotAnIngredient', gameData)
-        }).toThrow(`products: updateProductAmountByRequirement: No ingredient part NotAnIngredient found for product ${product.id}!`)
+      it('should throw if ingredient is missing', async () => {
+        await expect(updateProductAmountViaRequirement(product, 'NotAnIngredient')).rejects.toThrow(`products: updateProductAmountByRequirement: No ingredient part NotAnIngredient found for product ${product.id}!`)
       })
       it('should correctly update the product amount via requirement', () => {
         product.requirements.Silica.amount = 100
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         expect(product.amount).toBe(200)
@@ -665,7 +708,7 @@ describe('products', () => {
       })
       it('should prevent negative values', () => {
         product.requirements.Silica.amount = -123
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
@@ -681,7 +724,7 @@ describe('products', () => {
       // Reset the mock to ensure a clean slate
         if (!product.byProducts) throw new Error('Product has no byproducts')
         product.requirements.Silica.amount = 0
-        updateProductAmountViaRequirement(product, 'Silica', gameData)
+        updateProductAmountViaRequirement(product, 'Silica')
         calculateFactories([factory], gameData)
 
         // Ensure the event bus fired
@@ -820,6 +863,83 @@ describe('products', () => {
         type: 'info',
         timeout: 10000,
       })
+    })
+  })
+
+  describe('building groups', () => {
+    it('when a product is added, the correct building count and underclock should be applied', () => {
+      const mockFactory = newFactory('Batteries')
+      addProductToFactory(mockFactory, {
+        id: 'Battery',
+        amount: 1,
+        recipe: 'Battery',
+      })
+      const product = mockFactory.products[0]
+      const buildingGroup = product.buildingGroups[0]
+
+      expect(buildingGroup).toBeDefined()
+
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.overclockPercent).toBe(5)
+    })
+  })
+
+  describe('increaseProductQtyViaBuilding', () => {
+    let product: FactoryItem
+
+    beforeEach(() => {
+      product = mockFactory.products[0]
+      product.buildingGroups[0].buildingCount = 4
+      calculateFactories([mockFactory], gameData)
+      expect(product.buildingRequirements.amount).toBe(4)
+      product.buildingGroupItemSync = true // Enable building group sync
+    })
+
+    it('should change the product quantity when building count has changed', () => {
+      product.buildingRequirements.amount = 10
+
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.amount).toBe(300)
+    })
+
+    it('should rebalance building groups when sync is enabled', () => {
+      product.buildingRequirements.amount = 10
+      product.buildingGroups[0].buildingCount = 1
+
+      // First test with just one group
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(10)
+
+      // Add another group and expect it to be balanced
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      product.buildingGroupItemSync = true // Re-enable as it's disabled when a new group added
+
+      product.buildingRequirements.amount = 14
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(7)
+      expect(product.buildingGroups[1].buildingCount).toBe(7)
+    })
+
+    it('should NOT rebalance building groups when sync is disabled', () => {
+      product.buildingRequirements.amount = 20
+      product.buildingGroups[0].buildingCount = 1
+
+      // First test with just one group
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(20)
+
+      // Add another group and expect it to NOT be balanced
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+
+      product.buildingRequirements.amount = 100
+      increaseProductQtyViaBuilding(product, mockFactory, gameData)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(20) // Set by first test
+      expect(product.buildingGroups[1].buildingCount).toBe(0) // It was never changed
     })
   })
 })

@@ -8,6 +8,6 @@ WORKDIR /app
 
 RUN pnpm install
 
-EXPOSE 3001
+EXPOSE 3010
 
 CMD ["pnpm", "start"]
