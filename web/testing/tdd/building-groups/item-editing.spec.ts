@@ -58,6 +58,24 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
     itemAmount = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
   })
 
+  describe('Editing', () => {
+    test('BG-I-E-PROD-1: Editing the product item recreates the building group @ 1 building', async () => {
+      // Assert the before
+      expect(buildingGroup.buildingCount).toBe(2)
+      expect(buildingGroupCount.attributes('value')).toBe('2')
+      expect(itemBuildingCount.attributes('value')).toBe('2')
+
+      const productItem = subject.find(`[id="${factory.id}-${product.id}-item"]`)
+      // Update the item to Copper Ingots
+      await productItem.setValue('Copper Ingot')
+
+      // Wait for the UI to update
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      expect(product.id).toBe('CopperIngot')
+      expect(product.recipe).toBe('IngotCopper')
+    })
+  })
+
   describe('Sync on', () => {
     beforeEach(() => {
       product.buildingGroupItemSync = true

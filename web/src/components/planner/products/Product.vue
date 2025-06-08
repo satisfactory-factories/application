@@ -61,6 +61,7 @@
           />
         </span>
         <v-autocomplete
+          :id="`${factory.id}-${product.id}-item`"
           v-model="product.id"
           hide-details
           :items="autocompletePartItems"
