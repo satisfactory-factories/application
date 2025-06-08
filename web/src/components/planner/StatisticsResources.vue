@@ -1,8 +1,4 @@
 <template>
-  <game-asset clickable :subject="resource.id.toString()" type="item" />
-  <span class="ml-2">
-    <b>{{ getPartDisplayName(resource.id) }}</b>: {{ formatNumber(resource.amount) }}/min
-  </span> Raw Resources Area -->
   <h1 class="text-h5">
     <i class="fas fa-globe" />
     <span class="ml-3">Raw Resources</span>
