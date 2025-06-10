@@ -29,7 +29,7 @@ Visit http://localhost:3000 to view the project. You may need to load it twice.
 There are tests for the frontend project, run them with `pnpm test`. Tests must pass for PRs to be accepted. Note as of writing the coverage isn't 100%.
 
 ### Parsing
-The parser is responsible for processing the `Docs.json` from the game and reconstructing a more readable version for our use, since the game's docs file is overwhelmingly large and not very human-readable. The file is located under `X\steamapps\common\Satisfactory\CommunityResources` on Windows. Replace X with where you have installed your steam library.
+The parser is responsible for processing the `Docs.json` from the game and reconstructing a more readable version for our use, since the game's docs file is overwhelmingly large and not very human-readable. The file is located under `X\steamapps\common\Satisfactory\CommunityResources\Docs` on Windows. Replace X with where you have installed your steam library (usually `C:\Program Files (x86)\Steam`).
 
 #### Running the parser and updating the gameData
 To run the parser:
