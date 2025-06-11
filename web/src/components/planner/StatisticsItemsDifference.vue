@@ -19,7 +19,7 @@
         'red': product.amountRemaining < 0,
       }"
     >
-      <game-asset :subject="product.id" type="item" />
+      <game-asset clickable :subject="product.id" type="item" />
       <span class="ml-2">
         <b>{{ getPartDisplayName(product.id) }}</b>: {{ formatNumber(product.amountRemaining) }}/min
       </span>

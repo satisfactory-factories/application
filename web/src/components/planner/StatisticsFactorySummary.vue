@@ -74,6 +74,7 @@
                   >
                     <v-chip class="sf-chip small no-margin orange" variant="tonal">
                       <game-asset
+                        clickable
                         :subject="buildingData.name"
                         type="building"
                       />
@@ -96,6 +97,7 @@
                     <span class="mr-2">
                       <game-asset
                         v-if="part.id"
+                        clickable
                         :subject="part.id"
                         type="item"
                       />
@@ -131,6 +133,7 @@
                   >
                     <game-asset
                       v-if="totals.outputPart"
+                      clickable
                       height="32"
                       :subject="totals.outputPart"
                       type="item"
@@ -154,6 +157,7 @@
                   >
                     <game-asset
                       v-if="totals.part"
+                      clickable
                       height="32"
                       :subject="totals.part"
                       type="item"
