@@ -13,13 +13,25 @@
         <div v-for="building in buildings" :key="building.name" class="machine sub-card border">
           <div class="flex-row align-center" style="display: flex;gap: 50px;">
             <div>
-              <game-asset height="120" :subject="building.name" type="building" width="120" />
+              <game-asset
+                clickable
+                height="120"
+                :subject="building.name"
+                type="building"
+                width="120"
+              />
               <!-- <p>{{ building.name }}</p> -->
             </div>
             <v-icon icon="fas fa-arrow-right" />
             <div style="display: flex;flex-direction: column;gap: 8px;">
               <div v-for="product in building.products" :key="product.id">
-                <game-asset height="50" :subject="product" type="item" width="50" />
+                <game-asset
+                  clickable
+                  height="50"
+                  :subject="product"
+                  type="item"
+                  width="50"
+                />
                 <!-- <p>{{ product }}</p> -->
               </div>
             </div>
@@ -27,11 +39,23 @@
 
           <div class="flex-row align-center" style="display: flex;gap: 50px;">
             <div class="column">
-              <game-asset height="50" subject="somersloop-trinket" type="item_id" width="50" />
+              <game-asset
+                clickable
+                height="50"
+                subject="somersloop-trinket"
+                type="item_id"
+                width="50"
+              />
               <p style="opacity: 0.8;font-weight: bold;">{{ building.slots.somersloops }}</p>
             </div>
             <div class="column">
-              <game-asset height="50" subject="power-shard" type="item_id" width="50" />
+              <game-asset
+                clickable
+                height="50"
+                subject="power-shard"
+                type="item_id"
+                width="50"
+              />
               <p style="opacity: 0.8;font-weight: bold;">{{ building.slots.powershards }}</p>
             </div>
           </div>

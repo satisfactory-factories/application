@@ -15,6 +15,7 @@ declare module 'vue' {
     FactoryImports: typeof import('./components/planner/imports/FactoryImports.vue')['default']
     FactoryNode: typeof import('./components/graph/FactoryNode.vue')['default']
     GameAsset: typeof import('./components/GameAsset.vue')['default']
+    GameAssetContent: typeof import('./components/GameAssetContent.vue')['default']
     Graph: typeof import('./components/graph/Graph.vue')['default']
     Imports: typeof import('./components/planner/imports/Imports.vue')['default']
     Introduction: typeof import('./components/planner/Introduction.vue')['default']
