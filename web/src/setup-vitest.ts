@@ -4,6 +4,12 @@ import { readFileSync } from 'node:fs'
 import { config } from '@/config/config'
 import { createPinia, setActivePinia } from 'pinia'
 
+// Mock window.alert for JSDOM environment
+Object.defineProperty(window, 'alert', {
+  value: vi.fn(),
+  writable: true,
+})
+
 let gameData: any = null
 let gameDataVersion: string | null = null
 
