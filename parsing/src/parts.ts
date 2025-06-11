@@ -178,15 +178,6 @@ function getItems(data: any[]): ParserItemDataInterface {
                     isFicsmas: false,
                     energyGeneratedInMJ: 0
                 }; 
-            } else if (entry.ClassName === "Desc_OreUranium_C") { 
-                // This one fixes a bug with the current extraction, where a product is called Uranium Ore, but the part is called Uranium
-                parts["OreUranium"] = {
-                    name: "Uranium",
-                    stackSize: 100, //SS_MEDIUM
-                    isFluid: false,
-                    isFicsmas: false,
-                    energyGeneratedInMJ: 0
-                }; 
             }
 
             if (!entry.ClassName) return;
