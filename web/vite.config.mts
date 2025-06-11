@@ -79,7 +79,7 @@ export default defineConfig(() => ({
   test: {
     globals: true,
     environment: 'jsdom',
-    pool: 'vmThreads',
+    pool: 'forks',
     setupFiles: ['src/setup-vitest.ts'],
     css: true,
     deps: {
