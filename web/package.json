@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --fix --ignore-path .gitignore",
     "lint-check": "eslint . --ignore-path .gitignore",
-    "test": "vitest --silent --coverage"
+    "test": "vitest --silent --coverage --pool=forks"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",

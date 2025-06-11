@@ -81,5 +81,9 @@ export default defineConfig(() => ({
     environment: 'jsdom',
     pool: 'vmThreads',
     setupFiles: ['src/setup-vitest.ts'],
+    css: true,
+    deps: {
+      inline: ['vuetify'],
+    },
   },
 }))
