@@ -24,17 +24,17 @@ Ref: BG-C-D
 | Prevent deletion of a building group when last remaining                      | BG-C-D-6   | Y           | Y            | Y         |
 | Deletion of a building group with multiple groups                             | BG-C-D-7   | Y           | Y            | Y         |
 | Deletion of the product removes the building groups                           | BG-C-D-8   | Y           | Y            | Y         |
-| Deletion of building groups causes a building group imbalance                 | BG-C-D-9   | N           | F            | F         |
-| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-10  |             |              | Y         |
+| Deletion of building groups causes a building group imbalance                 | BG-C-D-9   | N           | B            | B         |
+| Deletion of building groups to 1 remaining disables the delete group button   | BG-C-D-10  | Y           |              | Y         |
 | Deletion of building groups to 1 remaining disables the evenly balance button | BG-C-D-11  | Y           |              | Y         |
-| Deletion of building groups should disable sync                               | BG-C-D-12  |             |              | B         |
+| Deletion of building groups should disable sync                               | BG-C-D-12  | N           |              | B         |
 
 ## Building Groups Editing - Action Buttons (Products)
 Ref: BG-E-AB-PROD
 
 | Operation                                                                                       | Ref             | Implemented | Unit Tested? | Eyeballed | Notes                                                     |
 |-------------------------------------------------------------------------------------------------|-----------------|-------------|--------------|-----------|-----------------------------------------------------------|
-| Disable Evenly Balance button for singular building group                                       | BG-E-AB-PROD-1  |             |              | Y         |
+| Disable Evenly Balance button for singular building group                                       | BG-E-AB-PROD-1  | Y           |              | Y         |
 | Enable Evenly Balance button when multiple building groups WITHOUT need of remainder            | BG-E-AB-PROD-2  |             |              | B         | Is disabled when balanced                                 |
 | Disable Evenly Balance button if all building groups have the same building counts and clocks   | BG-E-AB-PROD-3  |             |              | B         | Does not check the count and clock                        |
 | When effective is under balanced, "Under Producing!" is shown                                   | BG-E-AB-PROD-4  |             |              | Y         |
@@ -58,21 +58,21 @@ Ref: BG-E-B-PROD
 | Operation                                                             | Ref            | Implemented | Unit Tested? | Eyeballed | Notes                                                 |
 |-----------------------------------------------------------------------|----------------|-------------|--------------|-----------|-------------------------------------------------------|
 | Allows editing the building count                                     | BG-E-B-PROD-1  | Y           | Y            | Y         |                                                       |
-| Editing building count updates the effective buildings                | BG-E-B-PROD-2  | Y           | F/CALC       | Y         |                                                       |
-| Editing building count updates the remaining buildings                | BG-E-B-PROD-3  | Y           | F/CALC       | Y         |                                                       |
+| Editing building count updates the effective buildings                | BG-E-B-PROD-2  | Y           | B/CALC       | Y         |                                                       |
+| Editing building count updates the remaining buildings                | BG-E-B-PROD-3  | Y           | B/CALC       | Y         |                                                       |
 | Editing building count updates the group part production              | BG-E-B-PROD-4  | Y           | Y            | Y         |                                                       |
-| Editing building count updates the group ingredient consumption       | BG-E-B-PROD-5  | Y           | Y/???        | F         | Ingredients lag by 1 change                           |
+| Editing building count updates the group ingredient consumption       | BG-E-B-PROD-5  | Y           | Y/???        | B         | Ingredients lag by 1 change                           |
 | Editing building count updates the item's part amount                 | BG-E-B-PROD-6  | Y           | Y            | Y         |                                                       |
-| Editing building count updates the item's ingredient amount           | BG-E-B-PROD-7  | Y           | Y/??         | F         | Product parts are updated, but lag behind by 1 change |
-| Editing building count updates the factory parts produced             | BG-E-B-PROD-8  | Y           | Y/??         | F         | Lags by 1 change                                      |
-| Editing building count updates the factory parts consumed             | BG-E-B-PROD-9  | Y           | Y/??         | F         | Lags by 1 change                                      | 
+| Editing building count updates the item's ingredient amount           | BG-E-B-PROD-7  | Y           | Y/??         | B         | Product parts are updated, but lag behind by 1 change |
+| Editing building count updates the factory parts produced             | BG-E-B-PROD-8  | Y           | Y/??         | B         | Lags by 1 change                                      |
+| Editing building count updates the factory parts consumed             | BG-E-B-PROD-9  | Y           | Y/??         | B         | Lags by 1 change                                      | 
 | Editing building count updates the group power used                   | BG-E-B-PROD-10 | Y           | Y            | Y         | 
 | Editing building count updates the factory power used                 | BG-E-B-PROD-11 | Y           | Y            | Y         | 
 | Editing building count updates the factory total buildings            | BG-E-B-PROD-12 | Y           | Y            | Y         |    
-| Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | Y           |              | F         | 
-| Sync OFF: Updating item amount should NOT trigger a rebalance         | BG-E-B-PROD-14 | Y           |              | F         | 
-| It should be possible to use 0.0001 ratios for item amount            | BE-E-B-PROD-15 | N           |              | F         |
-| It should display overclocks at a .0001 precision                     | BG-E-B-PROD-16 | N           |              | F         | Currently displaying at a 0.001 (3) precision         |
+| Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | Y           |              | B         | 
+| Sync OFF: Updating item amount should NOT trigger a rebalance         | BG-E-B-PROD-14 | Y           |              | B         | 
+| It should be possible to use 0.0001 ratios for item amount            | BE-E-B-PROD-15 | N           |              | B         |
+| It should display overclocks at a .0001 precision                     | BG-E-B-PROD-16 | N           |              | B         | Currently displaying at a 0.001 (3) precision         |
 
 ## Building Groups Editing - Buildings multiple groups (Products)
 Ref: BG-E-BMULTI-PROD
@@ -83,10 +83,10 @@ Ref: BG-E-BMULTI-PROD
 | Sync ON: Editing group building count does not affect clocks                              | BG-E-BMULTI-PROD-2   | Y           | Y            | Y         |       |
 | Sync ON: Editing group building count updates the item's building counts                  | BG-E-BMULTI-PROD-3   | Y           | Y            | Y         |       |
 | Sync ON: Editing group building count updates the item's ingredients                      | BG-E-BMULTI-PROD-3.1 | Y           | Y            | Y         |       |
-| Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4   | Y           | F            | Y         |       |
-| Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5   | Y           | F/CALC       | Y         |       |
-| Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6   | Y           | F/CALC       | Y         |       |
-| Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7   | Y           | F/CALC       | Y         |       |
+| Sync ON: Editing building count updates the group ingredients correctly                   | BG-E-BMULTI-PROD-4   | Y           | B            | Y         |       |
+| Sync ON: Effective buildings equally match the item's total buildings                     | BG-E-BMULTI-PROD-5   | Y           | B/CALC       | Y         |       |
+| Sync ON: Remaining buildings always should be 0                                           | BG-E-BMULTI-PROD-6   | Y           | B/CALC       | Y         |       |
+| Sync ON: Remainder error state should be indicated to the user                            | BG-E-BMULTI-PROD-7   | Y           | B/CALC       | Y         |       |
 | Sync ON: Updating via the item SHOULD force a rebalance of group building counts          | BG-E-BMULTI-PROD-8   | Y           | Y            | Y         |       |
 | Sync ON: Updating via the item SHOULD not cause fractions                                 | BG-E-BMULTI-PROD-8.1 | Y           | Y            | Y         |       |
 | Sync ON: Updating via the item's amount should rebalance correctly                        | BG-E-BMULTI-PROD-8.2 | Y           | Y            | Y         |       |
