@@ -172,6 +172,7 @@
                   >
                     <game-asset
                       v-if="input.outputPart"
+                      clickable
                       height="32"
                       :subject="input.outputPart"
                       type="item"
@@ -195,6 +196,7 @@
                 >
                   <game-asset
                     v-if="resource.id"
+                    clickable
                     height="32"
                     :subject="resource.id"
                     type="item"
@@ -222,6 +224,7 @@
                   <span class="mr-2">
                     <game-asset
                       v-if="part.id"
+                      clickable
                       :subject="part.id"
                       type="item"
                     />
@@ -262,6 +265,7 @@
                 >
                   <game-asset
                     v-if="part.part"
+                    clickable
                     height="32"
                     :subject="part.part"
                     type="item"

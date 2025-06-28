@@ -22,6 +22,7 @@
             <div class="d-flex justify-space-between">
               <div class="d-flex align-center" :class="classes(part)">
                 <game-asset
+                  clickable
                   height="48"
                   :subject="partId.toString()"
                   type="item"

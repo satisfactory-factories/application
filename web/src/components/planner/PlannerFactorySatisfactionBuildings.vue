@@ -43,6 +43,7 @@
         >
           <game-asset
             :key="`${buildingIndex}-${buildingData.name}`"
+            clickable
             :subject="buildingData.name"
             type="building"
           />

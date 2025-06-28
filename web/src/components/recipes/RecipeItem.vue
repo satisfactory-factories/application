@@ -8,6 +8,7 @@
         class="sf-chip"
       >
         <game-asset
+          clickable
           :subject="ingredient.part"
           type="item"
         />
@@ -24,6 +25,7 @@
         class="sf-chip"
       >
         <game-asset
+          clickable
           :subject="product.part"
           type="item"
         />

@@ -54,6 +54,7 @@
         <span v-if="product.id" class="mr-2">
           <game-asset
             :key="product.id"
+            clickable
             height="42px"
             :subject="product.id"
             type="item"
@@ -140,7 +141,7 @@
         >
           <v-chip class="sf-chip input unit">
             <tooltip :text="getPartDisplayName(byProduct.id)">
-              <game-asset :subject="String(byProduct.id)" type="item" />
+              <game-asset clickable :subject="String(byProduct.id)" type="item" />
             </tooltip>
             <v-number-input
               v-model.number="byProduct.amount"
@@ -171,7 +172,7 @@
           class="sf-chip orange input"
           variant="tonal"
         >
-          <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
+          <game-asset clickable :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
           <span>
             <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>
           </span>

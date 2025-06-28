@@ -53,6 +53,7 @@
         <span v-if="producer.building" class="mr-2">
           <game-asset
             :key="`${producerIndex}-${producer.building}`"
+            clickable
             height="42px"
             :subject="producer.building"
             type="building"
@@ -75,6 +76,7 @@
         <span v-if="producer.recipe" class="mr-2">
           <game-asset
             :key="producer.recipe"
+            clickable
             height="42px"
             :subject="getItemFromFuelRecipe(producer.recipe)"
             type="item"
@@ -150,7 +152,7 @@
         <p class="mr-2">Byproduct:</p>
         <v-chip class="sf-chip input">
           <tooltip :text="getPartDisplayName(producer.byproduct.part)">
-            <game-asset :subject="producer.byproduct.part" type="item" />
+            <game-asset clickable :subject="producer.byproduct.part" type="item" />
           </tooltip>
           <v-number-input
             v-model.number="producer.byproduct.amount"
@@ -177,7 +179,7 @@
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(producer.ingredients[1].part)">
-            <game-asset :subject="producer.ingredients[1].part" type="item" />
+            <game-asset clickable :subject="producer.ingredients[1].part" type="item" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${producer.id}-${producer.ingredients[1].part.toString()}`"
@@ -199,7 +201,7 @@
             class="sf-chip orange input"
             variant="tonal"
           >
-            <game-asset :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" />
+            <game-asset clickable :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" />
             <span>
               <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>

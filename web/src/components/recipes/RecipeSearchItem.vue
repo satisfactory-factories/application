@@ -2,6 +2,7 @@
   <v-expansion-panel>
     <v-expansion-panel-title>
       <game-asset
+        clickable
         height="48"
         :subject="recipe.products[0].part"
         type="item"
