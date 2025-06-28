@@ -9,7 +9,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3001:3001"
+      - "3010:3010"
     volumes:
       - .:/app
     command: pnpm start

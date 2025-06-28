@@ -10,7 +10,7 @@ services:
     environment:
       - MONGO_URI=mongodb://sf-db:27017/factory_planner
     ports:
-      - "4000:3001"
+      - "4000:3010"
     command: pnpm start
   mongo:
     image: mongo:8.0.3

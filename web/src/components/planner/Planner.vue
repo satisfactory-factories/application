@@ -3,6 +3,7 @@
   <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
   <world-data v-if="showWorldData" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
+  <building-group-tutorial />
   <div class="planner-container">
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
       <planner-factory-list
@@ -86,12 +87,14 @@
   import {
     calculateFactories,
     calculateFactory,
+    CalculationModes,
     findFac,
     newFactory,
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
+  import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -221,8 +224,8 @@
   }
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
-  const updateFactory = (factory: Factory) => {
-    calculateFactory(factory, getFactories(), gameData)
+  const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
+    calculateFactory(factory, getFactories(), gameData, modes)
   }
 
   const copyFactory = (originalFactory: Factory) => {

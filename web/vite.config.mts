@@ -15,6 +15,7 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   build: {
+    target: 'esnext', // Adds support for top level awaits
     minify: false,
     terserOptions: {
       compress: false,
@@ -81,6 +82,8 @@ export default defineConfig(() => ({
     environment: 'jsdom',
     pool: 'forks',
     setupFiles: ['src/setup-vitest.ts'],
+    globalSetup: './testing/global-setup.ts',
+    globalTeardown: './testing/global-teardown.ts',
     css: true,
     deps: {
       inline: ['vuetify'],

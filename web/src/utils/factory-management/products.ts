@@ -1,7 +1,22 @@
-import { BuildingRequirement, ByProductItem, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingRequirement,
+  ByProductItem,
+  Factory,
+  FactoryItem,
+  ItemType,
+} from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPartDisplayNameWithoutDataStore, getRecipe } from '@/utils/factory-management/common'
+import {
+  getPartDisplayNameWithoutDataStore,
+  getRecipe,
+} from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import { fetchGameData } from '@/utils/gameDataService'
+import { calculateProductBuildings } from '@/utils/factory-management/buildings'
+import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
+
+const gameData = await fetchGameData()
 
 export const addProductToFactory = (
   factory: Factory,
@@ -13,6 +28,16 @@ export const addProductToFactory = (
     displayOrder?: number,
   }
 ) => {
+  // If there is no amount set, set it up so that the building count is at least 1.
+  if (!options.amount) {
+    const recipe = getRecipe(options.recipe, gameData)
+    if (!recipe) {
+      console.warn('addProductToFactory: Recipe not found!')
+      return
+    }
+    options.amount = recipe.products[0].perMin
+  }
+
   factory.products.push({
     id: options.id ?? '',
     amount: options.amount ?? 1,
@@ -21,7 +46,21 @@ export const addProductToFactory = (
     requirements: options.requirements ?? {},
     buildingRequirements: {} as BuildingRequirement,
     byProducts: [],
+    buildingGroups: [],
+    buildingGroupsTrayOpen: false,
+    buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
   })
+
+  // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.
+  calculateProductBuildings(factory, gameData)
+
+  // Also push the first product building group, telling it to match the building count of the product.
+  addProductBuildingGroup(
+    factory.products[factory.products.length - 1],
+    factory,
+    true
+  )
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
@@ -184,7 +223,7 @@ export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) =>
   return partRequired <= 0
 }
 
-export const fixProduct = (product: FactoryItem | ByProductItem, factory: Factory): void => {
+export const fixProduct = (product: FactoryItem, factory: Factory): void => {
   // If the product is not found, throw
   if (!product.id) {
     const error = 'products: fixPart: Product ID is missing!'
@@ -206,8 +245,9 @@ export const fixProduct = (product: FactoryItem | ByProductItem, factory: Factor
   const required = partData.amountRequired
   const diff = required - produced
 
-  // Whatever calls this MUST then trigger a calculation.
   product.amount = diff + product.amount
+
+  // updateFactory must be called!
 }
 
 export const getProduct = (
@@ -240,7 +280,7 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
   product.amount = getProductAmountByPart(product, part, 'byproduct', byProduct.amount, gameData)
 
   if (product.amount <= 0) {
-    console.warn('product: setProductQtyByByproduct: product amount is less than 0, force setting to 0.1')
+    console.warn('product: setProductQtyByByproduct: product amount is less than 0.1, force setting to 0.1')
     eventBus.emit('toast', {
       message: 'You cannot set a byproduct to be 0. Setting product amount to 0.1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, use your cursor to do so.',
       type: 'warning',
@@ -251,7 +291,7 @@ export const updateProductAmountViaByproduct = (product: FactoryItem, part: stri
   // Must call update factory!
 }
 
-export const updateProductAmountViaRequirement = (product: FactoryItem, part: string, gameData: DataInterface) => {
+export const updateProductAmountViaRequirement = async (product: FactoryItem, part: string) => {
   const ingredient = product.requirements[part]
 
   if (!ingredient) {
@@ -260,7 +300,13 @@ export const updateProductAmountViaRequirement = (product: FactoryItem, part: st
     throw new Error(error)
   }
 
-  product.amount = getProductAmountByPart(product, part, 'requirement', ingredient.amount, gameData)
+  product.amount = getProductAmountByPart(
+    product,
+    part,
+    'requirement',
+    ingredient.amount,
+    gameData
+  )
 
   if (product.amount <= 0) {
     console.warn('product: setProductQtyByRequirement: product amount is less than 0, force setting to 0.1')
@@ -274,6 +320,7 @@ export const updateProductAmountViaRequirement = (product: FactoryItem, part: st
   // Must call update factory!
 }
 
+// This function gets the amount of a product based off the new amount wanted for the part and recipe used.
 export const getProductAmountByPart = (
   product: FactoryItem,
   part: string,
@@ -365,4 +412,39 @@ export const byProductAsProductCheck = (product: FactoryItem, gameData: DataInte
     timeout: 10000,
   })
   product.id = recipe.products[0].part
+}
+
+export const increaseProductQtyViaBuilding = (
+  product: FactoryItem,
+  factory: Factory,
+  gameData: DataInterface,
+  origin: 'buildingGroup' | 'item' = 'item'
+) => {
+  const newVal = product.buildingRequirements.amount
+
+  if (newVal < 0 || !newVal) {
+    product.buildingRequirements.amount = 0 // Prevents the product being totally deleted
+    return
+  }
+
+  // Get the recipe for the product in order to get the new quantity
+  const recipe = getRecipe(product.recipe, gameData)
+
+  if (!recipe) {
+    console.error('No recipe found for product!', product)
+    throw new Error('No recipe found for product!')
+  }
+
+  // Set the new quantity of the product
+  product.amount = recipe.products[0].perMin * newVal
+
+  // If item building group sync is enabled, rebalance it now.
+  if (product.buildingGroupItemSync && origin !== 'buildingGroup') {
+    syncBuildingGroups(product, ItemType.Product, factory, {
+      forceRebalance: true,
+      origin: 'item',
+    })
+  }
+
+  // Must call updateFactory!
 }

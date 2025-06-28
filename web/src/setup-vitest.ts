@@ -38,3 +38,17 @@ vi.mock('./stores/local-game-data-loader.ts', () => {
 // Create pinia so that stores that are created during module don't throw
 // errors because pinia is not set up.
 setActivePinia(createPinia())
+
+// window polyfills, required by components that use some special vuetify components.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+  })
+}
