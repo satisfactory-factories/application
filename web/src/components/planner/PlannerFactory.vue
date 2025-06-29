@@ -34,8 +34,8 @@
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <v-btn
-                    icon
                     class="ml-2"
+                    icon
                     size="x-small"
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
@@ -49,8 +49,8 @@
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <v-btn
-                    icon
                     class="ml-2"
+                    icon
                     size="x-small"
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
