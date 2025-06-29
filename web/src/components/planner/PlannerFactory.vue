@@ -35,8 +35,8 @@
                   <span class="ml-2">In sync with game</span>
                   <v-btn
                     icon
-                    size="x-small"
                     class="ml-2"
+                    size="x-small"
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
                   >
@@ -50,8 +50,8 @@
                   <span class="ml-2">Out of sync with game</span>
                   <v-btn
                     icon
-                    size="x-small"
                     class="ml-2"
+                    size="x-small"
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
                   >
