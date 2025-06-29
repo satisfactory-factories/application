@@ -35,7 +35,7 @@
         class="ml-4"
         color="primary"
         hide-details
-        label="Hide Internal Products"
+        label="Hide Internal Products & Raw"
       />
     </div>
     <v-row v-if="hasParts">
