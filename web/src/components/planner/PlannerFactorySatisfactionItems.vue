@@ -16,7 +16,7 @@
       </tr>
     </thead>
     <tbody>
-      <template v-for="(part, partId) in factory.parts" :key="partId">
+      <template v-for="(part, partId) in filteredParts" :key="partId">
         <tr>
           <td class="border-e-md name" :class="satisfactionShading(part)">
             <div class="d-flex justify-space-between">
@@ -279,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-  import { inject } from 'vue'
+  import { computed, inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
     Factory,
@@ -317,10 +317,27 @@
   const satisfactionBreakdowns = appStore.getSatisfactionBreakdowns()
   const calculatorShow = ref(false)
 
-  defineProps<{
+  const props = defineProps<{
     factory: Factory;
     helpText: boolean;
+    showSurplusOutputs?: boolean;
   }>()
+
+  const filteredParts = computed(() => {
+    if (!props.showSurplusOutputs) return props.factory.parts
+    const result: Record<string, PartMetrics> = {}
+    for (const [partId, part] of Object.entries(props.factory.parts)) {
+      // Surplus: amountRemaining > 0
+      // Output: exported to another factory
+      // Shortage: amountRemaining < 0
+      const hasSurplusOrShortage = part.amountRemaining !== 0
+      const isExported = getPartExportRequests(props.factory, partId).length > 0
+      if (hasSurplusOrShortage || isExported) {
+        result[partId] = part
+      }
+    }
+    return result
+  })
 
   const classes = (part: PartMetrics) => {
     return {
