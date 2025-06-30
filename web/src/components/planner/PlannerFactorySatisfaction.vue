@@ -30,12 +30,20 @@
         :model-value="showSatisfactionBreakdowns"
         @change="changeSatisfactionBreakdowns"
       />
+      <v-switch
+        v-model="hideInternalOutputs"
+        class="ml-4"
+        color="primary"
+        hide-details
+        label="Hide Internal Products & Raw"
+      />
     </div>
     <v-row v-if="hasParts">
       <v-col class="pb-1" cols="12">
         <planner-factory-satisfaction-items
           :factory="factory"
           :help-text="helpText"
+          :show-surplus-outputs="hideInternalOutputs"
         />
       </v-col>
       <v-col cols="12">
@@ -53,7 +61,7 @@
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
 
   import PlannerFactorySatisfactionBuildings from '@/components/planner/PlannerFactorySatisfactionBuildings.vue'
   import PlannerFactorySatisfactionItems from '@/components/planner/PlannerFactorySatisfactionItems.vue'
@@ -75,5 +83,5 @@
 
   // Reactive factory parts check
   const hasParts = computed(() => Object.keys(props.factory.parts).length > 0)
-
+  const hideInternalOutputs = ref(false)
 </script>
