@@ -39,15 +39,21 @@ export const calculateSyncState = (factory: Factory) => {
 export const checkProductSyncState = (factory: Factory) => {
   // Scan the products and determine if they are in sync with the syncState.
   // If there are no products, mark the factory out of sync, if already in sync.
+  // Exception: fuel-only factories (no products but have power producers) should remain in sync.
   if (!factory.products.length) {
-    if (factory.inSync) {
+    // Only mark as out of sync if this is not a fuel-only factory
+    if (factory.inSync && !factory.powerProducers.length) {
       factory.inSync = false
     }
   }
 
   // If the number of products is different from the syncState, mark the factory as out of sync.
+  // Exception: fuel-only factories can have 0 products and 0 syncState entries, which is valid.
   if (factory.products.length !== Object.keys(factory.syncState).length) {
-    factory.inSync = false
+    // Only mark as out of sync if this is not a valid fuel-only factory scenario
+    if (!(factory.products.length === 0 && Object.keys(factory.syncState).length === 0 && factory.powerProducers.length > 0)) {
+      factory.inSync = false
+    }
   }
 
   factory.products.forEach(product => {

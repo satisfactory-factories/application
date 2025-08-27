@@ -238,6 +238,82 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(true)
       })
+
+      it('should remain in sync for fuel-only factories (no products, only power producers)', () => {
+        // Create a fuel-only factory (coal power plant scenario)
+        const fuelOnlyFactory = newFactory('Coal Power Plant')
+
+        // Add only power producer, no products
+        addPowerProducerToFactory(fuelOnlyFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 1,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+
+        // Set sync state
+        setSyncState(fuelOnlyFactory)
+        expect(fuelOnlyFactory.inSync).toBe(true)
+        expect(fuelOnlyFactory.products.length).toBe(0)
+        expect(fuelOnlyFactory.powerProducers.length).toBe(1)
+
+        // Calculate sync state - should remain in sync since power configuration hasn't changed
+        calculateSyncState(fuelOnlyFactory)
+        expect(fuelOnlyFactory.inSync).toBe(true)
+      })
+
+      it('should go out of sync for empty factories (no products, no power producers)', () => {
+        // Create an empty factory
+        const emptyFactory = newFactory('Empty Factory')
+
+        // Set sync state first (simulating it was previously in sync)
+        emptyFactory.inSync = true
+        emptyFactory.syncState = {}
+        emptyFactory.syncStatePower = {}
+
+        expect(emptyFactory.inSync).toBe(true)
+        expect(emptyFactory.products.length).toBe(0)
+        expect(emptyFactory.powerProducers.length).toBe(0)
+
+        // Calculate sync state - should go out of sync since factory is truly empty
+        calculateSyncState(emptyFactory)
+        expect(emptyFactory.inSync).toBe(false)
+      })
+
+      it('should reproduce the issue: deleting a factory should not reset sync state of fuel-only factories', () => {
+        // Step 1: Create a coal power plant factory (fuel-only)
+        const coalPowerPlant = newFactory('Coal Power Plant')
+        addPowerProducerToFactory(coalPowerPlant, {
+          building: 'generatorfuel',
+          buildingAmount: 1,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+
+        // Step 2: Mark the coal power plant as in sync with the game
+        setSyncState(coalPowerPlant)
+        expect(coalPowerPlant.inSync).toBe(true)
+
+        // Step 3: Create a new factory (simulate adding a new factory)
+        const newFactory2 = newFactory('New Factory')
+        addProductToFactory(newFactory2, {
+          id: 'IronIngot',
+          amount: 50,
+          recipe: 'IngotIron',
+        })
+
+        // Step 4: Simulate the calculateFactories call that happens after deleting a factory
+        // This is what was causing the sync state to be reset
+        const factories = [coalPowerPlant, newFactory2]
+        factories.forEach(factory => {
+          calculateSyncState(factory)
+        })
+
+        // Step 5: Verify coal power plant remains in sync
+        expect(coalPowerPlant.inSync).toBe(true)
+        expect(coalPowerPlant.products.length).toBe(0)
+        expect(coalPowerPlant.powerProducers.length).toBe(1)
+      })
     })
   })
 })
