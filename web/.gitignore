@@ -15,9 +15,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Package manager lock files (project uses pnpm)
-package-lock.json
-
 # Editor directories and files
 .idea
 .vscode
