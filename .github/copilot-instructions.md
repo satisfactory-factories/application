@@ -7,6 +7,7 @@ This project is a Satisfactory game planner and calculator web application. It u
 
 - Use semantic / conventional commit structure in your commit messages, e.g. `feat: I made a new feature` or `fix: I fixed a bug`. Reference github issue numbers where applicable.
 - **Only create TypeScript files.**
+- Use `pnpm` ONLY for your initialisation and code activities. Do NOT use `npm` or run `npm install`.
 - All new source files must use the `.ts` or `.vue` (with `<script lang="ts">`) extension.
 - Do not generate JavaScript (`.js`) files for new code, tests, or utilities.
 - Use TypeScript for all utility, store, and test files (e.g., `.ts`, `.spec.ts`).
