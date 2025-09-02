@@ -48,8 +48,9 @@
 
   // Apply the layout to organize nodes after generation
   function initializeGraph () {
-    nodes.value = generateNodes(appStore.getFactories())
-    edges.value = generateEdges(appStore.getFactories(), nodes.value)
+    const generatedNodes: CustomNode[] = generateNodes(appStore.getFactories())
+    nodes.value = generatedNodes
+    edges.value = generateEdges(appStore.getFactories(), generatedNodes)
   }
 
   // Handle node rendered and nodesInitialized events
@@ -63,8 +64,10 @@
   function onNodesInitialized () {
     console.log('Nodes initialized')
     // All nodes have rendered, apply Dagre layout
-    const updatedNodes = layout(nodes.value, edges.value, 'LR')
-    nodes.value = [...updatedNodes]
+    const currentNodes = nodes.value
+    const currentEdges = edges.value
+    const updatedNodes = layout(currentNodes, currentEdges, 'LR')
+    nodes.value = updatedNodes
     console.log('All nodes rendered, updated with Dagre layout:', nodes.value)
   }
 
