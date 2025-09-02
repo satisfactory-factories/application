@@ -32,26 +32,28 @@ export const calculateSyncState = (factory: Factory) => {
     return
   }
 
-  checkProductSyncState(factory)
-  checkPowerProducerSyncState(factory)
+  checkFactorySyncState(factory)
 }
 
-export const checkProductSyncState = (factory: Factory) => {
-  // If factory has no products or power producers, mark as out of sync.
-    if (factory.inSync) {
-      factory.inSync = false
-    }
+export const checkFactorySyncState = (factory: Factory) => {
+  // Early return for completely empty factories - nothing to sync
+  if (!factory.products.length && !factory.powerProducers.length) {
+    factory.inSync = false
+    return
   }
 
-  // If the number of products differs from syncState, mark as out of sync.
-  // Exception: fuel-only factories (no products, no syncState, but have power producers) remain in sync.
+  // Check if factory is fuel-only (no products but has power producers AND no product sync state)
+  const isFuelOnlyFactory = factory.products.length === 0 && factory.powerProducers.length > 0 && Object.keys(factory.syncState).length === 0
+
+  // If the number of products differs from syncState, mark as out of sync
+  // Exception: fuel-only factories legitimately have no products but should remain in sync
   if (factory.products.length !== Object.keys(factory.syncState).length) {
-    const isFuelOnlyFactory = factory.products.length === 0 && Object.keys(factory.syncState).length === 0 && factory.powerProducers.length > 0
     if (!isFuelOnlyFactory) {
       factory.inSync = false
     }
   }
 
+  // Check product sync state
   factory.products.forEach(product => {
     // If the product has no syncState, skip.
     if (!factory.syncState[product.id]) {
@@ -71,10 +73,9 @@ export const checkProductSyncState = (factory: Factory) => {
       factory.inSync = false
     }
   })
-}
 
-export const checkPowerProducerSyncState = (factory: Factory) => {
-  // If all power producers have been deleted, OOS the factory.
+  // Check power producer sync state
+  // If all power producers have been deleted, mark factory as out of sync
   if (!factory.powerProducers.length && Object.keys(factory.syncStatePower).length) {
     factory.inSync = false
     return // Nothing else to do
@@ -114,4 +115,13 @@ export const checkPowerProducerSyncState = (factory: Factory) => {
       factory.inSync = false
     }
   })
+}
+
+// Legacy function exports for backwards compatibility
+export const checkProductSyncState = (factory: Factory) => {
+  checkFactorySyncState(factory)
+}
+
+export const checkPowerProducerSyncState = (factory: Factory) => {
+  checkFactorySyncState(factory)
 }
