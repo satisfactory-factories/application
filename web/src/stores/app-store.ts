@@ -1,7 +1,7 @@
 // Utilities
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -365,12 +365,27 @@ export const useAppStore = defineStore('app', () => {
     factory.displayOrder = factories.value.length
     factories.value.push(factory)
     console.log('appStore: addFactory: Factory added', factories.value)
+    
+    // If this is the first factory and no active factory is set, make it active
+    if (factories.value.length === 1 && !activeFactoryId.value) {
+      activeFactoryId.value = factory.id
+      console.log('appStore: addFactory: Set first factory as active:', factory.id)
+    }
   }
 
   const removeFactory = (id: number) => {
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
+      const wasActive = activeFactoryId.value === id
       factories.value.splice(index, 1)
+      
+      // If the removed factory was active, select a new one
+      if (wasActive && factories.value.length > 0) {
+        activeFactoryId.value = factories.value[0].id
+        console.log('appStore: removeFactory: Active factory removed, selecting new active:', factories.value[0].id)
+      } else if (factories.value.length === 0) {
+        activeFactoryId.value = null
+      }
     }
 
     regenerateSortOrders(getFactories())
@@ -385,13 +400,10 @@ export const useAppStore = defineStore('app', () => {
 
   // ==== ACTIVE FACTORY MANAGEMENT
   const getActiveFactory = (): Factory | null => {
-    console.log('Debug: getActiveFactory called', { activeId: activeFactoryId.value, factoriesLength: factories.value.length })
     if (!activeFactoryId.value) {
-      console.log('Debug: No active factory ID')
       return null
     }
     const factory = factories.value.find(factory => factory.id === activeFactoryId.value)
-    console.log('Debug: Found factory:', factory ? factory.name : 'null')
     return factory || null
   }
 
@@ -405,7 +417,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Initialize active factory to first factory when factories change
-  watch(factories, (newFactories) => {
+  watch(factories, newFactories => {
     if (newFactories.length > 0 && !activeFactoryId.value) {
       activeFactoryId.value = newFactories[0].id
       console.log('appStore: Auto-selecting first factory as active:', activeFactoryId.value)
