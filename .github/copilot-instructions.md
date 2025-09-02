@@ -5,6 +5,7 @@ This project is a Satisfactory game planner and calculator web application. It u
 
 ## Copilot Directives
 
+- Use semantic / conventional commit structure in your commit messages, e.g. `feat: I made a new feature` or `fix: I fixed a bug`. Reference github issue numbers where applicable.
 - **Only create TypeScript files.**
 - All new source files must use the `.ts` or `.vue` (with `<script lang="ts">`) extension.
 - Do not generate JavaScript (`.js`) files for new code, tests, or utilities.
