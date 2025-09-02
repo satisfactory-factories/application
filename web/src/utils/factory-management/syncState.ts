@@ -48,11 +48,11 @@ export const checkFactorySyncState = (factory: Factory) => {
   }
 
   // Step 1: Check if products or power producers no longer match their syncState object counts
-  const isFuelOnlyFactory = factory.products.length === 0 && factory.powerProducers.length > 0 && Object.keys(factory.syncState).length === 0
 
   // Check if the number of products differs from syncState
   // Exception: fuel-only factories legitimately have no products but should remain in sync
   if (factory.products.length !== Object.keys(factory.syncState).length) {
+    const isFuelOnlyFactory = factory.products.length === 0 && factory.powerProducers.length > 0 && Object.keys(factory.syncState).length === 0
     if (!isFuelOnlyFactory) {
       factory.inSync = false
       return // Count mismatch detected, no need to check individual items
