@@ -38,8 +38,9 @@ export const calculateSyncState = (factory: Factory) => {
 
 export const checkProductSyncState = (factory: Factory) => {
   // If factory has no products or power producers, mark as out of sync.
-  if (!factory.products.length && !factory.powerProducers.length) {
-    factory.inSync = false
+    if (factory.inSync) {
+      factory.inSync = false
+    }
   }
 
   // If the number of products differs from syncState, mark as out of sync.
