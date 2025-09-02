@@ -385,10 +385,14 @@ export const useAppStore = defineStore('app', () => {
 
   // ==== ACTIVE FACTORY MANAGEMENT
   const getActiveFactory = (): Factory | null => {
+    console.log('Debug: getActiveFactory called', { activeId: activeFactoryId.value, factoriesLength: factories.value.length })
     if (!activeFactoryId.value) {
+      console.log('Debug: No active factory ID')
       return null
     }
-    return factories.value.find(factory => factory.id === activeFactoryId.value) || null
+    const factory = factories.value.find(factory => factory.id === activeFactoryId.value)
+    console.log('Debug: Found factory:', factory ? factory.name : 'null')
+    return factory || null
   }
 
   const setActiveFactory = (factoryId: number | null) => {
