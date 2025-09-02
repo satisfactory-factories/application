@@ -36,6 +36,11 @@ export const calculateSyncState = (factory: Factory) => {
 }
 
 export const checkFactorySyncState = (factory: Factory) => {
+  // Only check factories that are currently marked as in sync - we only care about factories dropping OUT of sync
+  if (!factory.inSync) {
+    return
+  }
+
   // Early return for completely empty factories - nothing to sync
   if (!factory.products.length && !factory.powerProducers.length) {
     factory.inSync = false
@@ -115,13 +120,4 @@ export const checkFactorySyncState = (factory: Factory) => {
       factory.inSync = false
     }
   })
-}
-
-// Legacy function exports for backwards compatibility
-export const checkProductSyncState = (factory: Factory) => {
-  checkFactorySyncState(factory)
-}
-
-export const checkPowerProducerSyncState = (factory: Factory) => {
-  checkFactorySyncState(factory)
 }
