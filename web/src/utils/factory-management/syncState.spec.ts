@@ -280,7 +280,7 @@ describe('syncState', () => {
         expect(emptyFactory.inSync).toBe(false)
       })
 
-      it('should reproduce the issue: deleting a factory should not reset sync state of fuel-only factories', () => {
+      it('should not throw fuel-only factories out of sync when another factory has been deleted', () => {
         // Step 1: Create a coal power plant factory (fuel-only)
         const coalPowerPlant = newFactory('Coal Power Plant')
         addPowerProducerToFactory(coalPowerPlant, {
@@ -290,26 +290,28 @@ describe('syncState', () => {
           updated: 'power',
         })
 
-        // Step 2: Mark the coal power plant as in sync with the game
-        setSyncState(coalPowerPlant)
-        expect(coalPowerPlant.inSync).toBe(true)
-
-        // Step 3: Create a new factory (simulate adding a new factory)
-        const newFactory2 = newFactory('New Factory')
-        addProductToFactory(newFactory2, {
+        // Step 2: Create another factory that will be "deleted"
+        const ironFactory = newFactory('Iron Factory')
+        addProductToFactory(ironFactory, {
           id: 'IronIngot',
           amount: 50,
           recipe: 'IngotIron',
         })
 
-        // Step 4: Simulate the calculateFactories call that happens after deleting a factory
-        // This is what was causing the sync state to be reset
-        const factories = [coalPowerPlant, newFactory2]
-        factories.forEach(factory => {
+        // Step 3: Mark both factories as in sync with the game
+        setSyncState(coalPowerPlant)
+        setSyncState(ironFactory)
+        expect(coalPowerPlant.inSync).toBe(true)
+        expect(ironFactory.inSync).toBe(true)
+
+        // Step 4: Simulate deleting the iron factory by removing it from the factories array
+        // and recalculating sync state for remaining factories (this is what happens in the real app)
+        const remainingFactories = [coalPowerPlant] // ironFactory has been "deleted"
+        remainingFactories.forEach(factory => {
           calculateSyncState(factory)
         })
 
-        // Step 5: Verify coal power plant remains in sync
+        // Step 5: Verify coal power plant remains in sync after the other factory was deleted
         expect(coalPowerPlant.inSync).toBe(true)
         expect(coalPowerPlant.products.length).toBe(0)
         expect(coalPowerPlant.powerProducers.length).toBe(1)

@@ -37,32 +37,16 @@ export const calculateSyncState = (factory: Factory) => {
 }
 
 export const checkProductSyncState = (factory: Factory) => {
-  // Scan the products and determine if they are in sync with the syncState.
-  // If there are no products, mark the factory out of sync, if already in sync.
-  // Exception: fuel-only factories (no products but have power producers) should remain in sync.
-  if (!factory.products.length) {
-    // Only mark as out of sync if this is not a fuel-only factory.
-    // Fuel-only factories (coal plants, nuclear plants, etc.) legitimately have no products
-    // but do have power producers. They consume fuel inputs and produce only power, not items.
-    // We check if there are no power producers to distinguish between:
-    // 1. A genuinely empty factory (should be out of sync)
-    // 2. A fuel-only factory (should remain in sync)
-    if (factory.inSync && !factory.powerProducers.length) {
-      factory.inSync = false
-    }
+  // If factory has no products or power producers, mark as out of sync.
+  if (!factory.products.length && !factory.powerProducers.length) {
+    factory.inSync = false
   }
 
-  // If the number of products is different from the syncState, mark the factory as out of sync.
-  // Exception: fuel-only factories can have 0 products and 0 syncState entries, which is valid.
+  // If the number of products differs from syncState, mark as out of sync.
+  // Exception: fuel-only factories (no products, no syncState, but have power producers) remain in sync.
   if (factory.products.length !== Object.keys(factory.syncState).length) {
-    // Only mark as out of sync if this is not a valid fuel-only factory scenario.
-    // A valid fuel-only factory has:
-    // - 0 products (they don't produce items, only power)
-    // - 0 syncState entries (no product sync state to track)
-    // - 1+ power producers (coal plants, nuclear plants, biomass burners, etc.)
-    // This condition allows fuel-only factories to remain in sync when they have
-    // no products and no product sync state, which is their normal operational state.
-    if (!(factory.products.length === 0 && Object.keys(factory.syncState).length === 0 && factory.powerProducers.length > 0)) {
+    const isFuelOnlyFactory = factory.products.length === 0 && Object.keys(factory.syncState).length === 0 && factory.powerProducers.length > 0
+    if (!isFuelOnlyFactory) {
       factory.inSync = false
     }
   }
