@@ -52,20 +52,65 @@
       <v-col v-if="planVisible" class="border-s-lg pa-3 main-content">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
-        <planner-factory
-          v-for="(factory) in getFactories()"
-          :key="factory.id"
-          :factory="factory"
-          :help-text="helpText"
-          :total-factories="getFactories().length"
-        />
-        <div class="mt-4 text-center">
+        
+        <!-- Single Active Factory Rendering -->
+        <div v-if="getActiveFactory()">
+          <planner-factory
+            :key="getActiveFactory()!.id"
+            :factory="getActiveFactory()!"
+            :help-text="helpText"
+            :total-factories="getFactories().length"
+          />
+          
+          <!-- Navigation controls for switching between factories -->
+          <div class="factory-navigation mt-4">
+            <v-row justify="center">
+              <v-col cols="auto">
+                <v-btn
+                  v-if="getPreviousFactory()"
+                  color="primary"
+                  prepend-icon="fas fa-arrow-left"
+                  variant="outlined"
+                  @click="navigateToPreviousFactory()"
+                >
+                  {{ getPreviousFactory()?.name }}
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn
+                  color="primary"
+                  prepend-icon="fas fa-plus"
+                  size="large"
+                  @click="createFactory()"
+                >Add Factory</v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn
+                  v-if="getNextFactory()"
+                  color="primary"
+                  append-icon="fas fa-arrow-right"
+                  variant="outlined"
+                  @click="navigateToNextFactory()"
+                >
+                  {{ getNextFactory()?.name }}
+                </v-btn>
+              </v-col>
+            </v-row>
+          </div>
+        </div>
+        
+        <!-- Show message when no factories exist -->
+        <div v-else class="text-center mt-8">
+          <v-icon size="64" color="grey">fas fa-industry</v-icon>
+          <h3 class="mt-4 text-h5">No Factories Created</h3>
+          <p class="text-body-1 mt-2">Create your first factory to get started with planning your production chains.</p>
           <v-btn
             color="primary"
             prepend-icon="fas fa-plus"
             size="large"
+            class="mt-4"
             @click="createFactory()"
-          >Add Factory</v-btn>
+          >Create Your First Factory</v-btn>
         </div>
       </v-col>
     </v-row>
@@ -96,7 +141,7 @@
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
+  const { getFactories, setFactories, clearFactories, addFactory, getActiveFactory, setActiveFactory } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -307,17 +352,53 @@
       console.error(`navigateToFactory: Factory ${factoryId} not found!`)
       return
     }
-    // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
-    factory.hidden = false
+    
+    // Set the factory as active instead of scrolling to it
+    setActiveFactory(facId)
+    
+    // If there's a subsection, we can still scroll to it within the active factory
+    if (subsection) {
+      setTimeout(() => {
+        const factoryElement = document.getElementById(subsection)
+        if (factoryElement) {
+          factoryElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 50)
+    }
+  }
 
-    // Wait a bit for the factory to unhide fully. Hack but works well.
-    setTimeout(() => {
-      // Navigate to it
-      const factoryElement = document.getElementById(subsection ?? `${factoryId}`)
-      if (factoryElement) {
-        factoryElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 50)
+  const getPreviousFactory = (): Factory | null => {
+    const currentFactory = getActiveFactory()
+    if (!currentFactory) return null
+    
+    const sortedFactories = [...getFactories()].sort((a, b) => a.displayOrder - b.displayOrder)
+    const currentIndex = sortedFactories.findIndex(f => f.id === currentFactory.id)
+    
+    return currentIndex > 0 ? sortedFactories[currentIndex - 1] : null
+  }
+
+  const getNextFactory = (): Factory | null => {
+    const currentFactory = getActiveFactory()
+    if (!currentFactory) return null
+    
+    const sortedFactories = [...getFactories()].sort((a, b) => a.displayOrder - b.displayOrder)
+    const currentIndex = sortedFactories.findIndex(f => f.id === currentFactory.id)
+    
+    return currentIndex < sortedFactories.length - 1 ? sortedFactories[currentIndex + 1] : null
+  }
+
+  const navigateToPreviousFactory = () => {
+    const prevFactory = getPreviousFactory()
+    if (prevFactory) {
+      navigateToFactory(prevFactory.id)
+    }
+  }
+
+  const navigateToNextFactory = () => {
+    const nextFactory = getNextFactory()
+    if (nextFactory) {
+      navigateToFactory(nextFactory.id)
+    }
   }
 
   const moveFactory = (factory: Factory, direction: string) => {

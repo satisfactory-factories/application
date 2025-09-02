@@ -78,6 +78,9 @@ export const useAppStore = defineStore('app', () => {
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
 
+  // Track the currently active factory for single-factory rendering
+  const activeFactoryId = ref<number | null>(null)
+
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
   }
@@ -376,7 +379,42 @@ export const useAppStore = defineStore('app', () => {
   const clearFactories = () => {
     factories.value.length = 0
     factories.value = []
+    // Reset active factory when clearing all factories
+    activeFactoryId.value = null
   }
+
+  // ==== ACTIVE FACTORY MANAGEMENT
+  const getActiveFactory = (): Factory | null => {
+    if (!activeFactoryId.value) {
+      return null
+    }
+    return factories.value.find(factory => factory.id === activeFactoryId.value) || null
+  }
+
+  const setActiveFactory = (factoryId: number | null) => {
+    console.log('appStore: setActiveFactory:', factoryId)
+    activeFactoryId.value = factoryId
+  }
+
+  const getActiveFactoryId = () => {
+    return activeFactoryId.value
+  }
+
+  // Initialize active factory to first factory when factories change
+  watch(factories, (newFactories) => {
+    if (newFactories.length > 0 && !activeFactoryId.value) {
+      activeFactoryId.value = newFactories[0].id
+      console.log('appStore: Auto-selecting first factory as active:', activeFactoryId.value)
+    } else if (newFactories.length === 0) {
+      activeFactoryId.value = null
+    } else if (activeFactoryId.value && !newFactories.some(f => f.id === activeFactoryId.value)) {
+      // If active factory was deleted, select first available factory
+      activeFactoryId.value = newFactories[0].id
+      console.log('appStore: Active factory was deleted, selecting first available:', activeFactoryId.value)
+    }
+  }, { immediate: true })
+  // ==== END ACTIVE FACTORY MANAGEMENT
+
   // ==== END FACTORY MANAGEMENT
 
   // ==== TAB MANAGEMENT
@@ -475,6 +513,9 @@ export const useAppStore = defineStore('app', () => {
     addFactory,
     removeFactory,
     clearFactories,
+    getActiveFactory,
+    setActiveFactory,
+    getActiveFactoryId,
     getTabs,
     addTab,
     removeCurrentTab,
