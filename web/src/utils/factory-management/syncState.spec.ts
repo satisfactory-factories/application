@@ -316,6 +316,40 @@ describe('syncState', () => {
         expect(coalPowerPlant.products.length).toBe(0)
         expect(coalPowerPlant.powerProducers.length).toBe(1)
       })
+
+      it('should mark factory as out of sync when a power producer is deleted from a multi-producer factory', () => {
+        // Create factory with 2 power producers
+        const multiPowerFactory = newFactory('Multi Power Factory')
+        addPowerProducerToFactory(multiPowerFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 2,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+        addPowerProducerToFactory(multiPowerFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_UraniumFuelRod',
+          updated: 'power',
+        })
+
+        // Set sync state
+        setSyncState(multiPowerFactory)
+        expect(multiPowerFactory.inSync).toBe(true)
+        expect(multiPowerFactory.powerProducers.length).toBe(2)
+        expect(Object.keys(multiPowerFactory.syncStatePower).length).toBe(2)
+
+        // Delete one power producer (simulate user removing it)
+        multiPowerFactory.powerProducers = multiPowerFactory.powerProducers.filter(
+          producer => producer.building !== 'generatornuclear'
+        )
+
+        // Calculate sync state - should go out of sync due to count mismatch
+        calculateSyncState(multiPowerFactory)
+        expect(multiPowerFactory.inSync).toBe(false)
+        expect(multiPowerFactory.powerProducers.length).toBe(1)
+        expect(Object.keys(multiPowerFactory.syncStatePower).length).toBe(2) // Still has sync state for deleted producer
+      })
     })
   })
 })
