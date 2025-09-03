@@ -5,8 +5,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-// Import types from express-serve-static-core for better type safety
-import { Send } from "express-serve-static-core";
+// TypedResponse interface with proper Express typing
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { generateSlug } from "random-word-slugs";
@@ -70,7 +69,7 @@ export interface TypedRequestBody<T> extends Express.Request {
 }
 
 export interface TypedResponse<ResBody> extends Express.Response {
-  json: Send<ResBody, this>;
+  json: (body: ResBody) => this;
 }
 
 // *************************************************
