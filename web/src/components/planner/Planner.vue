@@ -53,11 +53,11 @@
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
 
-        <!-- Single Active Factory Rendering -->
-        <div v-if="getActiveFactory()">
+        <!-- Single Displayed Factory Rendering -->
+        <div v-if="getDisplayedFactory()">
           <planner-factory
-            :key="getActiveFactory()!.id"
-            :factory="getActiveFactory()!"
+            :key="getDisplayedFactory()!.id"
+            :factory="getDisplayedFactory()!"
             :help-text="helpText"
             :total-factories="getFactories().length"
           />
@@ -141,7 +141,7 @@
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
-  const { getFactories, setFactories, clearFactories, addFactory, getActiveFactory, setActiveFactory } = useAppStore()
+  const { getFactories, setFactories, clearFactories, addFactory, getDisplayedFactory, setDisplayedFactory } = useAppStore()
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -353,8 +353,8 @@
       return
     }
 
-    // Set the factory as active instead of scrolling to it
-    setActiveFactory(facId)
+    // Set the factory as displayed instead of scrolling to it
+    setDisplayedFactory(facId)
 
     // If there's a subsection, we can still scroll to it within the active factory
     if (subsection) {
@@ -368,7 +368,7 @@
   }
 
   const getPreviousFactory = (): Factory | null => {
-    const currentFactory = getActiveFactory()
+    const currentFactory = getDisplayedFactory()
     if (!currentFactory) return null
 
     const sortedFactories = [...getFactories()].sort((a, b) => a.displayOrder - b.displayOrder)
@@ -378,7 +378,7 @@
   }
 
   const getNextFactory = (): Factory | null => {
-    const currentFactory = getActiveFactory()
+    const currentFactory = getDisplayedFactory()
     if (!currentFactory) return null
 
     const sortedFactories = [...getFactories()].sort((a, b) => a.displayOrder - b.displayOrder)

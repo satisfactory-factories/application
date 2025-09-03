@@ -105,7 +105,7 @@
   import eventBus from '@/utils/eventBus'
   import { useAppStore } from '@/stores/app-store'
 
-  const { getActiveFactoryId } = useAppStore()
+  const { getDisplayedFactoryId } = useAppStore()
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
 
   // eslint-disable-next-line func-call-spacing
@@ -138,7 +138,7 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
-      'active-factory': getActiveFactoryId() === factory.id,
+      'active-factory': getDisplayedFactoryId() === factory.id,
       problem: factory.hasProblem,
       needsSync: !factory.hasProblem && factory.inSync === false,
     }
