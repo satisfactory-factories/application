@@ -201,6 +201,13 @@ export const useAppStore = defineStore('app', () => {
 
   const loadingCompleted = () => {
     console.log('appStore: ============= LOADING COMPLETED =============', factories.value)
+
+    // Ensure first factory is set as active if no active factory is set and factories exist
+    if (factories.value.length > 0 && !activeFactoryId.value) {
+      activeFactoryId.value = factories.value[0].id
+      console.log('appStore: loadingCompleted: Set first factory as active:', factories.value[0].id)
+    }
+
     eventBus.emit('loadingCompleted')
     isLoaded.value = true
 
@@ -365,7 +372,7 @@ export const useAppStore = defineStore('app', () => {
     factory.displayOrder = factories.value.length
     factories.value.push(factory)
     console.log('appStore: addFactory: Factory added', factories.value)
-    
+
     // If this is the first factory and no active factory is set, make it active
     if (factories.value.length === 1 && !activeFactoryId.value) {
       activeFactoryId.value = factory.id
@@ -378,7 +385,7 @@ export const useAppStore = defineStore('app', () => {
     if (index !== -1) {
       const wasActive = activeFactoryId.value === id
       factories.value.splice(index, 1)
-      
+
       // If the removed factory was active, select a new one
       if (wasActive && factories.value.length > 0) {
         activeFactoryId.value = factories.value[0].id
