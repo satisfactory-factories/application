@@ -33,12 +33,30 @@
                 <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
+                  <v-btn
+                    class="ml-2"
+                    icon
+                    size="x-small"
+                    title="Reset sync status"
+                    @click.stop="resetSyncState(factory)"
+                  >
+                    <i class="fas fa-times" />
+                  </v-btn>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
                 <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
+                  <v-btn
+                    class="ml-2"
+                    icon
+                    size="x-small"
+                    title="Reset sync status"
+                    @click.stop="resetSyncState(factory)"
+                  >
+                    <i class="fas fa-times" />
+                  </v-btn>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
@@ -326,6 +344,10 @@
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
       (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
+  }
+
+  const resetSyncState = (factory: Factory) => {
+    factory.inSync = null
   }
 </script>
 

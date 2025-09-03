@@ -5,7 +5,9 @@ This project is a Satisfactory game planner and calculator web application. It u
 
 ## Copilot Directives
 
+- Use semantic / conventional commit structure in your commit messages, e.g. `feat: I made a new feature` or `fix: I fixed a bug`. Reference github issue numbers where applicable.
 - **Only create TypeScript files.**
+- Use `pnpm` ONLY for your initialisation and code activities. Do NOT use `npm` or run `npm install`.
 - All new source files must use the `.ts` or `.vue` (with `<script lang="ts">`) extension.
 - Do not generate JavaScript (`.js`) files for new code, tests, or utilities.
 - Use TypeScript for all utility, store, and test files (e.g., `.ts`, `.spec.ts`).
@@ -19,6 +21,8 @@ This project is a Satisfactory game planner and calculator web application. It u
 - All new code must be type-safe and leverage TypeScript's type system.
 - Do not use JavaScript-specific features that are not compatible with TypeScript.
 - All new files must include appropriate type annotations and interfaces.
+- Whenever you introduce changes, you MUST run tests in every instance before you complete your work.
+- Where appropiate, make or update tests reflecting your proposed changes.
 
 ## Example
 - ✅ `src/utils/my-util.ts` (TypeScript utility)

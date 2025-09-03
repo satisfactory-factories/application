@@ -238,6 +238,118 @@ describe('syncState', () => {
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(true)
       })
+
+      it('should remain in sync for fuel-only factories (no products, only power producers)', () => {
+        // Create a fuel-only factory (coal power plant scenario)
+        const fuelOnlyFactory = newFactory('Coal Power Plant')
+
+        // Add only power producer, no products
+        addPowerProducerToFactory(fuelOnlyFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 1,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+
+        // Set sync state
+        setSyncState(fuelOnlyFactory)
+        expect(fuelOnlyFactory.inSync).toBe(true)
+        expect(fuelOnlyFactory.products.length).toBe(0)
+        expect(fuelOnlyFactory.powerProducers.length).toBe(1)
+
+        // Calculate sync state - should remain in sync since power configuration hasn't changed
+        calculateSyncState(fuelOnlyFactory)
+        expect(fuelOnlyFactory.inSync).toBe(true)
+      })
+
+      it('should go out of sync for empty factories (no products, no power producers)', () => {
+        // Create an empty factory
+        const emptyFactory = newFactory('Empty Factory')
+
+        // Set sync state first (simulating it was previously in sync)
+        emptyFactory.inSync = true
+        emptyFactory.syncState = {}
+        emptyFactory.syncStatePower = {}
+
+        expect(emptyFactory.inSync).toBe(true)
+        expect(emptyFactory.products.length).toBe(0)
+        expect(emptyFactory.powerProducers.length).toBe(0)
+
+        // Calculate sync state - should go out of sync since factory is truly empty
+        calculateSyncState(emptyFactory)
+        expect(emptyFactory.inSync).toBe(false)
+      })
+
+      it('should not throw fuel-only factories out of sync when another factory has been deleted', () => {
+        // Step 1: Create a coal power plant factory (fuel-only)
+        const coalPowerPlant = newFactory('Coal Power Plant')
+        addPowerProducerToFactory(coalPowerPlant, {
+          building: 'generatorfuel',
+          buildingAmount: 1,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+
+        // Step 2: Create another factory that will be "deleted"
+        const ironFactory = newFactory('Iron Factory')
+        addProductToFactory(ironFactory, {
+          id: 'IronIngot',
+          amount: 50,
+          recipe: 'IngotIron',
+        })
+
+        // Step 3: Mark both factories as in sync with the game
+        setSyncState(coalPowerPlant)
+        setSyncState(ironFactory)
+        expect(coalPowerPlant.inSync).toBe(true)
+        expect(ironFactory.inSync).toBe(true)
+
+        // Step 4: Simulate deleting the iron factory by removing it from the factories array
+        // and recalculating sync state for remaining factories (this is what happens in the real app)
+        const remainingFactories = [coalPowerPlant] // ironFactory has been "deleted"
+        remainingFactories.forEach(factory => {
+          calculateSyncState(factory)
+        })
+
+        // Step 5: Verify coal power plant remains in sync after the other factory was deleted
+        expect(coalPowerPlant.inSync).toBe(true)
+        expect(coalPowerPlant.products.length).toBe(0)
+        expect(coalPowerPlant.powerProducers.length).toBe(1)
+      })
+
+      it('should mark factory as out of sync when a power producer is deleted from a multi-producer factory', () => {
+        // Create factory with 2 power producers
+        const multiPowerFactory = newFactory('Multi Power Factory')
+        addPowerProducerToFactory(multiPowerFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 2,
+          recipe: 'GeneratorFuel_Coal',
+          updated: 'power',
+        })
+        addPowerProducerToFactory(multiPowerFactory, {
+          building: 'generatornuclear',
+          buildingAmount: 1,
+          recipe: 'GeneratorNuclear_UraniumFuelRod',
+          updated: 'power',
+        })
+
+        // Set sync state
+        setSyncState(multiPowerFactory)
+        expect(multiPowerFactory.inSync).toBe(true)
+        expect(multiPowerFactory.powerProducers.length).toBe(2)
+        expect(Object.keys(multiPowerFactory.syncStatePower).length).toBe(2)
+
+        // Delete one power producer (simulate user removing it)
+        multiPowerFactory.powerProducers = multiPowerFactory.powerProducers.filter(
+          producer => producer.building !== 'generatornuclear'
+        )
+
+        // Calculate sync state - should go out of sync due to count mismatch
+        calculateSyncState(multiPowerFactory)
+        expect(multiPowerFactory.inSync).toBe(false)
+        expect(multiPowerFactory.powerProducers.length).toBe(1)
+        expect(Object.keys(multiPowerFactory.syncStatePower).length).toBe(2) // Still has sync state for deleted producer
+      })
     })
   })
 })
