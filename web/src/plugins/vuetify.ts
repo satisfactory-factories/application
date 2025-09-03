@@ -9,7 +9,7 @@ import 'vuetify/styles'
 
 // Composables
 import { createVuetify } from 'vuetify'
-import { VNumberInput } from 'vuetify/labs/VNumberInput'
+import { VNumberInput } from 'vuetify/components/VNumberInput'
 import { aliases, fa } from 'vuetify/iconsets/fa'
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides

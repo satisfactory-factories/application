@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-// @ts-expect-error Types exist???
+// Import types from express-serve-static-core for better type safety
 import { Send } from "express-serve-static-core";
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -157,7 +157,7 @@ app.post('/register', async (req: TypedRequestBody<{ username: string; password:
 });
 
 // Login Endpoint
-app.post('/login', async (req: TypedRequestBody<{ username: string; password: string }>, res: TypedResponse<{ token: string }>) => {
+app.post('/login', async (req: TypedRequestBody<{ username: string; password: string }>, res: TypedResponse<{ token: string } | { message: string } | { message: string; error: any }>) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
