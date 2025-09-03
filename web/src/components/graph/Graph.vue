@@ -66,11 +66,9 @@
     // All nodes have rendered, apply Dagre layout
     const currentNodes = nodes.value
     const currentEdges = edges.value
-    // TODO: Temporary workaround for TypeScript type inference issue
-    // const updatedNodes = layout(currentNodes, currentEdges, 'LR') as typeof currentNodes
-    // nodes.value = [...updatedNodes]
-    nodes.value = [...currentNodes] // Temporarily disable layout until types are fixed
-    console.log('All nodes rendered, layout disabled temporarily:', nodes.value)
+    const updatedNodes = layout(currentNodes, currentEdges, 'LR')
+    nodes.value = [...updatedNodes]
+    console.log('All nodes rendered, updated with Dagre layout:', nodes.value)
   }
 
   // Apply initial layout after the component mounts
