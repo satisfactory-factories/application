@@ -80,6 +80,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Track the currently active factory for single-factory rendering
   const activeFactoryId = ref<number | null>(null)
+  const ACTIVE_FACTORY_STORAGE_KEY = 'activeFactoryId'
 
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
@@ -89,6 +90,10 @@ export const useAppStore = defineStore('app', () => {
   watch(currentFactoryTabIndex, () => {
     requestAnimationFrame(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
+
+      // Clear active factory localStorage when switching tabs
+      localStorage.removeItem(ACTIVE_FACTORY_STORAGE_KEY)
+
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
 
       // Update localstorage with the tab index
@@ -202,10 +207,31 @@ export const useAppStore = defineStore('app', () => {
   const loadingCompleted = () => {
     console.log('appStore: ============= LOADING COMPLETED =============', factories.value)
 
-    // Ensure first factory is set as active if no active factory is set and factories exist
-    if (factories.value.length > 0 && !activeFactoryId.value) {
-      activeFactoryId.value = factories.value[0].id
-      console.log('appStore: loadingCompleted: Set first factory as active:', factories.value[0].id)
+    // Try to restore previously selected factory from localStorage
+    const savedActiveFactoryId = localStorage.getItem(ACTIVE_FACTORY_STORAGE_KEY)
+    let factoryToActivate: number | null = null
+
+    if (savedActiveFactoryId && factories.value.length > 0) {
+      const savedId = parseInt(savedActiveFactoryId, 10)
+      const factoryExists = factories.value.some(f => f.id === savedId)
+
+      if (factoryExists) {
+        factoryToActivate = savedId
+        console.log('appStore: loadingCompleted: Restored active factory from localStorage:', savedId)
+      } else {
+        // Factory doesn't exist anymore, clear localStorage and use first factory
+        localStorage.removeItem(ACTIVE_FACTORY_STORAGE_KEY)
+        factoryToActivate = factories.value[0].id
+        console.log('appStore: loadingCompleted: Saved factory not found, defaulting to first factory:', factories.value[0].id)
+      }
+    } else if (factories.value.length > 0) {
+      // No saved factory or no factories, use first factory
+      factoryToActivate = factories.value[0].id
+      console.log('appStore: loadingCompleted: No saved factory, using first factory:', factories.value[0].id)
+    }
+
+    if (factoryToActivate) {
+      setActiveFactory(factoryToActivate)
     }
 
     eventBus.emit('loadingCompleted')
@@ -417,6 +443,13 @@ export const useAppStore = defineStore('app', () => {
   const setActiveFactory = (factoryId: number | null) => {
     console.log('appStore: setActiveFactory:', factoryId)
     activeFactoryId.value = factoryId
+
+    // Save to localStorage when setting active factory
+    if (factoryId !== null) {
+      localStorage.setItem(ACTIVE_FACTORY_STORAGE_KEY, factoryId.toString())
+    } else {
+      localStorage.removeItem(ACTIVE_FACTORY_STORAGE_KEY)
+    }
   }
 
   const getActiveFactoryId = () => {
