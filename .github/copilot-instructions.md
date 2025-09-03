@@ -21,6 +21,8 @@ This project is a Satisfactory game planner and calculator web application. It u
 - All new code must be type-safe and leverage TypeScript's type system.
 - Do not use JavaScript-specific features that are not compatible with TypeScript.
 - All new files must include appropriate type annotations and interfaces.
+- Whenever you introduce changes, you MUST run tests in every instance before you complete your work.
+- Where appropiate, make or update tests reflecting your proposed changes.
 
 ## Example
 - ✅ `src/utils/my-util.ts` (TypeScript utility)
