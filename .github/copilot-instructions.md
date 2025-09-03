@@ -5,9 +5,10 @@ This project is a Satisfactory game planner and calculator web application. It u
 
 ## Copilot Directives
 
-- Use semantic / conventional commit structure in your commit messages, e.g. `feat: I made a new feature` or `fix: I fixed a bug`. Reference github issue numbers where applicable.
+- Use semantic / conventional commit structure in your commit messages, e.g. `feat: I made a new feature` or `fix: I fixed a bug`. Reference github issue or your PR numbers where applicable.
 - **Only create TypeScript files.**
 - Use `pnpm` ONLY for your initialisation and code activities. Do NOT use `npm` or run `npm install`.
+  - Do not, under **ANY** cicumstances, create a `package-lock.json` file in your final code. We use `pnpm` here, we do not use `npm`. Add a step to ensure you are not introducing this file, or your PR will be rejected.
 - All new source files must use the `.ts` or `.vue` (with `<script lang="ts">`) extension.
 - Do not generate JavaScript (`.js`) files for new code, tests, or utilities.
 - Use TypeScript for all utility, store, and test files (e.g., `.ts`, `.spec.ts`).
