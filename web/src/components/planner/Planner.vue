@@ -46,10 +46,10 @@
         </v-container>
       </v-col>
       <!-- Main Content Area -->
-      <v-col v-if="!planVisible" class="border-s-lg pa-3 main-content">
+      <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
         <planner-factory-placeholder-list />
       </v-col>
-      <v-col v-if="planVisible" class="border-s-lg pa-3 main-content">
+      <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
 
