@@ -151,9 +151,10 @@ export const importFactorySelections = (
   const remainingFactories = new Map(importCandidates.map(fac => [fac.id, fac]))
 
   // Inject the already selected factory otherwise it'll break the selector.
-  if (factory.inputs[inputIndex]?.factoryId) {
+  const selectedFactoryId = factory.inputs[inputIndex]?.factoryId
+  if (selectedFactoryId) {
     remainingFactories.set(
-      factory.inputs[inputIndex].factoryId, findFac(factory.inputs[inputIndex].factoryId, allFactories)
+      selectedFactoryId, findFac(selectedFactoryId, allFactories)
     )
   }
 
