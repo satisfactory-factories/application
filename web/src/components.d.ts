@@ -50,6 +50,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SaveLoader: typeof import('./components/SaveLoader.vue')['default']
     ShareButton: typeof import('./components/ShareButton.vue')['default']
+    SidebarNav: typeof import('./components/planner/SidebarNav.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
     StatisticsBuildings: typeof import('./components/planner/StatisticsBuildings.vue')['default']

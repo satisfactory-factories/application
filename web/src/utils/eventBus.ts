@@ -31,6 +31,7 @@ type Events = {
   // Building Groups
   openBuildingGroupTutorial: undefined;
   buildingGroupUpdated: Factory;
+  toggleSidebar: undefined;
 };
 
 const eventBus = mitt<Events>()

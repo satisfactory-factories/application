@@ -31,6 +31,7 @@
       <slot name="append" />
     </template>
   </v-toolbar>
+
   <v-navigation-drawer
     v-model="isDrawerOpen"
     class="pa-2"
