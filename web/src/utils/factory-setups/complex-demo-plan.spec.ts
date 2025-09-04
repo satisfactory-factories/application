@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
 import { getPartExportRequests } from '@/utils/factory-management/exports'
@@ -51,7 +51,7 @@ describe('Complex Demo Plan', () => {
         recipe: 'GeneratorFuel_LiquidFuel',
         byproduct: null,
         displayOrder: 0,
-        updated: 'power',
+        updated: FactoryPowerChangeType.Power,
         ingredients: [{
           part: 'LiquidFuel',
           perMin: 40,
@@ -306,7 +306,7 @@ describe('Complex Demo Plan', () => {
           part: 'NuclearWaste',
           amount: 100,
         },
-        updated: 'power',
+        updated: FactoryPowerChangeType.Power,
         ingredients: [{
           part: 'NuclearFuelRod',
           perMin: 2,

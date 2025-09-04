@@ -13,7 +13,7 @@ export interface RawResource {
 }
 
 export interface DataInterface {
-  buildings: { [key: string]: string };
+  buildings: { [key: string]: number };
   items: {
     parts: { [key: string]: Part };
     rawResources: { [key: string]: RawResource };

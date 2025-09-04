@@ -3,6 +3,8 @@
 // This is therefore a great candidate to test current and figure migrations on.
 
 // Since this template is badly malformed, we are specifying any[] here as it breaks the interface, heavily.
+import { FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
+
 export const create317Scenario = (): any[] => {
   return [{
     id: 5257,
@@ -1841,7 +1843,7 @@ export const create317Scenario = (): any[] => {
       recipe: 'GeneratorFuel_LiquidFuel',
       byproduct: null,
       displayOrder: 0,
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     }],
     inputs: [],
     previousInputs: [],

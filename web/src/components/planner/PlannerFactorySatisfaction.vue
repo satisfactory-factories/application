@@ -23,6 +23,7 @@
         <span class="ml-3">Satisfaction</span>
       </h2>
       <v-switch
+        :id="`${factory.id}-satisfaction-breakdown-toggle`"
         class="ml-4"
         color="primary"
         hide-details

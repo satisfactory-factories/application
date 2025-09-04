@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 
@@ -34,6 +34,17 @@ export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | unde
   return recipe
 }
 
+export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | undefined => {
+  if (!gameData || !id) {
+    return
+  }
+
+  const recipeData = gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? undefined
+
+  // Create a structured clone of the recipe so no changes are made to the original data
+  return JSON.parse(JSON.stringify(recipeData))
+}
+
 export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataInterface): string => {
   if (!part) {
     return 'NO PART!!!'
@@ -45,14 +56,6 @@ export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataI
   return gameData.items.rawResources[part]?.name ||
     gameData.items.parts[part]?.name ||
     `UNKNOWN PART ${part}!`
-}
-
-export const getPowerRecipeById = (id: string, gameData: DataInterface): PowerRecipe | null => {
-  if (!gameData || !id) {
-    return null
-  }
-
-  return gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? null
 }
 
 export const getBuildingDisplayName = (building: string) => {
@@ -76,4 +79,24 @@ export const getBuildingDisplayName = (building: string) => {
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`
+}
+
+export const deleteItem = (index: number, type: ItemType, factory: Factory) => {
+  if (type === ItemType.Product) {
+    factory.products.splice(index, 1)
+
+    // We need to loop through each one in order and fix their ordering with the running count
+    factory.products.forEach((product, index) => {
+      product.displayOrder = index
+    })
+  } else if (type === ItemType.Power) {
+    factory.powerProducers.splice(index, 1)
+
+    // We need to loop through each one in order and fix their ordering with the running count
+    factory.powerProducers.forEach((producer, index) => {
+      producer.displayOrder = index
+    })
+  }
+
+  // Must call updateFactory!
 }

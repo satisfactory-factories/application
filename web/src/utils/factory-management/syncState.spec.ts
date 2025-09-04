@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { calculateSyncState, setSyncState } from '@/utils/factory-management/syncState'
@@ -19,7 +19,7 @@ describe('syncState', () => {
       building: 'generatorfuel',
       buildingAmount: 1,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'power',
+      updated: FactoryPowerChangeType.Power,
     })
     setSyncState(mockFactory)
   })
@@ -177,7 +177,7 @@ describe('syncState', () => {
 
       it('should OSS when fuel amount is adjusted', () => {
       // Adjust the power building
-        mockFactory.powerProducers[0].ingredientAmount = 1234
+        mockFactory.powerProducers[0].fuelAmount = 1234
 
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)
@@ -211,7 +211,7 @@ describe('syncState', () => {
           building: 'generatorfuel',
           buildingAmount: 1,
           recipe: 'GeneratorFuel_LiquidFuel',
-          updated: 'power',
+          updated: FactoryPowerChangeType.Power,
         })
 
         calculateSyncState(mockFactory)

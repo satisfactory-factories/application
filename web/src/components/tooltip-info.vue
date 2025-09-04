@@ -1,5 +1,5 @@
 <template>
-  <span class="ml-2 text-caption text-grey" :class="classes">
+  <span class="ml-2" :class="classOverrides()">
     <v-tooltip>
       <template #activator="{ props }">
         <span v-bind="props">
@@ -14,10 +14,21 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps } from 'vue'
+  import { defineProps, withDefaults } from 'vue'
 
-  defineProps<{
+  const propsComp = withDefaults(defineProps<{
     text: string
     classes?: string
-  }>()
+    isCaption?: boolean
+  }>(), {
+    isCaption: true,
+  })
+
+  const classOverrides = () => {
+    return {
+      'text-caption': propsComp.isCaption ?? true,
+      'text-grey': propsComp.isCaption ?? true,
+      ...(propsComp.classes ? propsComp.classes.split(' ').reduce((acc, cur) => ({ ...acc, [cur]: true }), {}) : {}),
+    }
+  }
 </script>

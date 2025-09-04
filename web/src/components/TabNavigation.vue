@@ -1,6 +1,11 @@
 <template>
-  <div>
-    <div class="border-t-md d-flex bg-grey-darken-3 align-center justify-space-between w-100">
+  <div class="border-t-md d-flex bg-grey-darken-3 align-center justify-space-between w-100">
+    <div class="d-flex align-center">
+      <v-btn
+        class="mx-1"
+        prepend-icon="fas fa-bars"
+        @click="toggleSidebar()"
+      >Sidebar</v-btn>
       <div class="d-flex align-center" style="min-width: 0">
         <v-tabs
           v-model="appStore.currentFactoryTabIndex"
@@ -42,18 +47,18 @@
           @click="appStore.addTab()"
         />
       </div>
+    </div>
 
-      <div class="d-flex align-center h-100 ga-2 mr-1">
-        <ShareButton />
-        <v-btn
-          v-if="appStore.factoryTabs.length > 1"
-          color="red rounded"
-          icon="fas fa-trash"
-          size="small"
-          variant="flat"
-          @click="confirmDelete() && appStore.removeCurrentTab()"
-        />
-      </div>
+    <div class="d-flex align-center h-100 ga-2 mr-1">
+      <ShareButton />
+      <v-btn
+        v-if="appStore.factoryTabs.length > 1"
+        color="red rounded"
+        icon="fas fa-trash"
+        size="small"
+        variant="flat"
+        @click="confirmDelete() && appStore.removeCurrentTab()"
+      />
     </div>
   </div>
 </template>
@@ -61,6 +66,7 @@
 <script setup lang="ts">
   import { useAppStore } from '@/stores/app-store'
   import { confirmDialog } from '@/utils/helpers'
+  import eventBus from '@/utils/eventBus'
 
   const appStore = useAppStore()
 
@@ -86,5 +92,9 @@
       return confirmDialog('Are you sure you wish to delete this tab? This action is irreversible!')
     }
     return true
+  }
+
+  const toggleSidebar = () => {
+    eventBus.emit('toggleSidebar')
   }
 </script>

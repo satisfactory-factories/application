@@ -7,6 +7,8 @@ import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -284,6 +286,57 @@ export const useAppStore = defineStore('app', () => {
         factory.syncStatePower = {}
       }
 
+      factory.products.forEach(product => {
+        // Patch for #11
+        if (product.buildingGroups === undefined || product.buildingGroups.length === 0) {
+          product.buildingGroups = []
+          product.buildingGroupsTrayOpen = false
+          product.buildingGroupsHaveProblem = false
+          product.buildingGroupItemSync = true
+
+          addProductBuildingGroup(product, factory, true)
+        }
+
+        if (product.buildingGroupsHaveProblem === undefined) {
+          product.buildingGroupsHaveProblem = false
+        }
+
+        if (product.buildingGroupsTrayOpen === undefined) {
+          product.buildingGroupsTrayOpen = false
+        }
+      })
+
+      factory.powerProducers.forEach(producer => {
+        // Patch for #11
+        if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
+          producer.buildingGroups = []
+          producer.buildingGroupsTrayOpen = false
+          producer.buildingGroupsHaveProblem = false
+          producer.buildingGroupItemSync = true
+
+          addPowerProducerBuildingGroup(producer, factory, true)
+        }
+
+        // Patch for #11 renaming ingredientAmount to fuelAmount
+        // @ts-ignore
+        if (producer.ingredientAmount !== undefined) {
+          // @ts-ignore
+          producer.fuelAmount = producer.ingredientAmount
+          // @ts-ignore
+          delete producer.ingredientAmount
+        }
+
+        // Patch for #11 adding IDs
+        if (producer.id === undefined) {
+          producer.id = Math.floor(Math.random() * 10000).toString()
+        }
+
+        // Patch for #11 adding Building Groups have problems
+        if (producer.buildingGroupsHaveProblem === undefined) {
+          producer.buildingGroupsHaveProblem = false
+        }
+      })
+
       // Delete keys that no longer exist
       // @ts-ignore
       if (factory.internalProducts) delete factory.internalProducts
@@ -295,7 +348,7 @@ export const useAppStore = defineStore('app', () => {
       if (factory.exports) delete factory.exports
 
       // Update data version
-      factory.dataVersion = '2025-01-22'
+      factory.dataVersion = '2025-02-20'
     })
 
     if (needsCalculation) {

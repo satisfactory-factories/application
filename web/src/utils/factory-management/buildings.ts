@@ -1,7 +1,8 @@
 // Calculates what buildings are required to produce the products.
 import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipeById, getRecipe } from '@/utils/factory-management/common'
+import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -56,7 +57,7 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
 export const calculatePowerProducerBuildings = (factory: Factory, gameData: DataInterface) => {
   // Loop through each power producer and add up the buildings
   factory.powerProducers.forEach(producer => {
-    const recipe = getPowerRecipeById(producer.recipe, gameData)
+    const recipe = getPowerRecipe(producer.recipe, gameData)
 
     if (!recipe) {
       console.warn(`calculatePowerProducerBuildingRequirements: Recipe with ID ${producer.recipe} not found. It could be the user has not yet selected one.`)
@@ -86,25 +87,68 @@ export const calculatePowerProducerBuildings = (factory: Factory, gameData: Data
   })
 }
 
-// Sums up all of the building data to create an aggregate value of power and building requirements
+// Sums up all building data to create an aggregate value of power and building requirements
 export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: DataInterface) => {
   factory.buildingRequirements = {}
   // First tot up all building and power requirements for products and power generators
   calculateProductBuildings(factory, gameData)
   calculatePowerProducerBuildings(factory, gameData)
+}
 
+// This is called later on in the calculation process to get the final values using the building groups, which will be actually what the player needs to build.
+export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   factory.power = {
     consumed: 0,
     produced: 0,
     difference: 0,
   }
 
-  // Then sum up the total power
-  Object.keys(factory.buildingRequirements).forEach(key => {
-    const building = factory.buildingRequirements[key]
-    factory.power.consumed += building.powerConsumed ?? 0
-    factory.power.produced += building.powerProduced ?? 0
+  // Sum up the power consumption using the building groups.
+  const products = factory.products
+  let consumed = 0
+
+  products.forEach(product => {
+    product.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      consumed += group.powerUsage
+    })
   })
 
-  factory.power.difference = factory.power.produced - factory.power.consumed
+  factory.power.consumed = formatNumberFully(consumed, 1)
+
+  // Sum up all power production
+  const powerProducers = factory.powerProducers
+  let produced = 0
+
+  powerProducers.forEach(producer => {
+    producer.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      produced += group.powerProduced
+    })
+  })
+
+  factory.power.produced = formatNumberFully(produced, 1)
+
+  // Set all factory building counts to 0.
+  Object.keys(factory.buildingRequirements).forEach(key => {
+    factory.buildingRequirements[key].amount = 0
+  })
+
+  // Sum up the buildings
+  products.forEach(product => {
+    product.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      const building = product.buildingRequirements.name
+
+      const buildingData = factory.buildingRequirements[building] // It should be present by the time this is run (from calculateFactoryBuildingsAndPower)
+      if (!buildingData) {
+        throw new Error(`buildings: calculateFinalBuildingsAndPower: Building data not found for ${building} when it should exist!`)
+      }
+
+      buildingData.amount += group.buildingCount
+    })
+  })
 }

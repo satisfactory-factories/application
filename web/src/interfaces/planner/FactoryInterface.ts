@@ -30,6 +30,22 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
+export enum ItemType {
+  Power = 'Power',
+  Product = 'Product',
+}
+
+export interface BuildingGroup {
+  id: number;
+  buildingCount: number
+  overclockPercent: number
+  parts: {[key: string]: number}
+  powerUsage: number
+  powerProduced: number
+  somersloops?: number
+  type: ItemType
+}
+
 export interface FactoryItem {
   id: string;
   recipe: string;
@@ -38,6 +54,10 @@ export interface FactoryItem {
   requirements: { [key: string]: { amount: number } };
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
+  buildingGroups: BuildingGroup[]
+  buildingGroupsTrayOpen: boolean
+  buildingGroupsHaveProblem: boolean
+  buildingGroupItemSync: boolean
 }
 
 export interface FactoryDependencyRequest {
@@ -102,18 +122,30 @@ export interface FactoryTask {
   completed: boolean
 }
 
+export enum FactoryPowerChangeType {
+  Building = 'building',
+  Fuel = 'fuel',
+  Ingredient = 'ingredient',
+  Power = 'power',
+}
+
 export interface FactoryPowerProducer {
+  id: string;
   building: string;
   buildingAmount: number; // Amount of buildings requested by the user
   buildingCount: number; // Amount of buildings actually needed to produce the power requested by the user
   ingredients: PowerItem[],
-  ingredientAmount: number; // Enables the user to specify the quantity of fuel to use.
+  fuelAmount: number; // Enables the user to specify the quantity of fuel to use.
   byproduct: { part: string, amount: number } | null; // E.g. uranium waste, which is added as a product back into the factory.parts to be dealt with via export or re-use.
   powerAmount: number; // Amount of energy user is requesting to be generated.
   powerProduced: number; // Amount of energy actually produced calculated from requested ingredientAmount and powerAmount.
   recipe: string;
   displayOrder: number;
-  updated: string | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
+  updated: FactoryPowerChangeType | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
+  buildingGroups: BuildingGroup[]
+  buildingGroupsTrayOpen: boolean
+  buildingGroupsHaveProblem: boolean
+  buildingGroupItemSync: boolean
 }
 
 export interface FactoryPower {

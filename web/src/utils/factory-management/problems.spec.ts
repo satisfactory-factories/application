@@ -34,14 +34,14 @@ describe('problems', () => {
     test('should have problem if requirements are not fully satisfied', () => {
       mockFactory.requirementsSatisfied = false
 
-      calculateHasProblem([mockFactory])
+      calculateHasProblem(mockFactory)
       expect(mockFactory.hasProblem).toBe(true)
     })
 
     test('should not have problem if requirements are satisfied', () => {
       mockFactory.requirementsSatisfied = true
 
-      calculateHasProblem([mockFactory])
+      calculateHasProblem(mockFactory)
       expect(mockFactory.hasProblem).toBe(false)
     })
 
@@ -50,7 +50,7 @@ describe('problems', () => {
 
       mockFactory.dependencies.metrics.IronIngot.isRequestSatisfied = false
 
-      calculateHasProblem([mockFactory])
+      calculateHasProblem(mockFactory)
       expect(mockFactory.hasProblem).toBe(true)
     })
   })

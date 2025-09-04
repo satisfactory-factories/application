@@ -1,5 +1,5 @@
 node_modules
 .idea
 
-// for Visual Studio Code users
+# For Visual Studio Code users
 .vs/*
