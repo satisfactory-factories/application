@@ -1,7 +1,7 @@
 // Utilities
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -78,6 +78,9 @@ export const useAppStore = defineStore('app', () => {
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
 
+  // Track the currently displayed factory for single-factory rendering
+  const displayedFactoryId = ref<number | null>(null)
+
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
   }
@@ -86,6 +89,7 @@ export const useAppStore = defineStore('app', () => {
   watch(currentFactoryTabIndex, () => {
     requestAnimationFrame(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
+
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
 
       // Update localstorage with the tab index
@@ -198,6 +202,33 @@ export const useAppStore = defineStore('app', () => {
 
   const loadingCompleted = () => {
     console.log('appStore: ============= LOADING COMPLETED =============', factories.value)
+
+    // Try to restore previously selected factory from the current tab
+    const savedDisplayedFactoryId = currentFactoryTab.value.displayedFactoryId
+    let factoryToActivate: number | null = null
+
+    if (savedDisplayedFactoryId && factories.value.length > 0) {
+      const factoryExists = factories.value.some(f => f.id === savedDisplayedFactoryId)
+
+      if (factoryExists) {
+        factoryToActivate = savedDisplayedFactoryId
+        console.log('appStore: loadingCompleted: Restored displayed factory from tab:', savedDisplayedFactoryId)
+      } else {
+        // Factory doesn't exist anymore, clear tab selection and use first factory
+        currentFactoryTab.value.displayedFactoryId = undefined
+        factoryToActivate = factories.value[0].id
+        console.log('appStore: loadingCompleted: Saved factory not found, defaulting to first factory:', factories.value[0].id)
+      }
+    } else if (factories.value.length > 0) {
+      // No saved factory or no factories, use first factory
+      factoryToActivate = factories.value[0].id
+      console.log('appStore: loadingCompleted: No saved factory, using first factory:', factories.value[0].id)
+    }
+
+    if (factoryToActivate) {
+      setDisplayedFactory(factoryToActivate)
+    }
+
     eventBus.emit('loadingCompleted')
     isLoaded.value = true
 
@@ -362,12 +393,27 @@ export const useAppStore = defineStore('app', () => {
     factory.displayOrder = factories.value.length
     factories.value.push(factory)
     console.log('appStore: addFactory: Factory added', factories.value)
+
+    // If this is the first factory and no active factory is set, make it active
+    if (factories.value.length === 1 && !displayedFactoryId.value) {
+      displayedFactoryId.value = factory.id
+      console.log('appStore: addFactory: Set first factory as active:', factory.id)
+    }
   }
 
   const removeFactory = (id: number) => {
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
+      const wasActive = displayedFactoryId.value === id
       factories.value.splice(index, 1)
+
+      // If the removed factory was active, select a new one
+      if (wasActive && factories.value.length > 0) {
+        displayedFactoryId.value = factories.value[0].id
+        console.log('appStore: removeFactory: Displayed factory removed, selecting new displayed:', factories.value[0].id)
+      } else if (factories.value.length === 0) {
+        displayedFactoryId.value = null
+      }
     }
 
     regenerateSortOrders(getFactories())
@@ -376,7 +422,48 @@ export const useAppStore = defineStore('app', () => {
   const clearFactories = () => {
     factories.value.length = 0
     factories.value = []
+    // Reset displayed factory when clearing all factories
+    displayedFactoryId.value = null
   }
+
+  // ==== DISPLAYED FACTORY MANAGEMENT
+  const getDisplayedFactory = (): Factory | null => {
+    if (!displayedFactoryId.value) {
+      return null
+    }
+    const factory = factories.value.find(factory => factory.id === displayedFactoryId.value)
+    return factory || null
+  }
+
+  const setDisplayedFactory = (factoryId: number | null) => {
+    console.log('appStore: setDisplayedFactory:', factoryId)
+    displayedFactoryId.value = factoryId
+
+    // Save to current tab when setting displayed factory
+    if (currentFactoryTab.value) {
+      currentFactoryTab.value.displayedFactoryId = factoryId !== null ? factoryId : undefined
+    }
+  }
+
+  const getDisplayedFactoryId = () => {
+    return displayedFactoryId.value
+  }
+
+  // Initialize displayed factory to first factory when factories change
+  watch(factories, newFactories => {
+    if (newFactories.length > 0 && !displayedFactoryId.value) {
+      displayedFactoryId.value = newFactories[0].id
+      console.log('appStore: Auto-selecting first factory as displayed:', displayedFactoryId.value)
+    } else if (newFactories.length === 0) {
+      displayedFactoryId.value = null
+    } else if (displayedFactoryId.value && !newFactories.some(f => f.id === displayedFactoryId.value)) {
+      // If displayed factory was deleted, select first available factory
+      displayedFactoryId.value = newFactories[0].id
+      console.log('appStore: Displayed factory was deleted, selecting first available:', displayedFactoryId.value)
+    }
+  }, { immediate: true })
+  // ==== END DISPLAYED FACTORY MANAGEMENT
+
   // ==== END FACTORY MANAGEMENT
 
   // ==== TAB MANAGEMENT
@@ -475,6 +562,9 @@ export const useAppStore = defineStore('app', () => {
     addFactory,
     removeFactory,
     clearFactories,
+    getDisplayedFactory,
+    setDisplayedFactory,
+    getDisplayedFactoryId,
     getTabs,
     addTab,
     removeCurrentTab,

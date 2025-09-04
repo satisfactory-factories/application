@@ -92,26 +92,6 @@
               @click="moveFactory(factory, 'down')"
             />
             <v-btn
-              v-show="!factory.hidden"
-              class="mr-2 rounded"
-              color="secondary"
-              icon="fas fa-compress-alt"
-              size="small"
-              title="Collapse Factory"
-              variant="outlined"
-              @click="factory.hidden = true"
-            />
-            <v-btn
-              v-show="factory.hidden"
-              class="mr-2 rounded"
-              color="secondary"
-              icon="fas fa-expand-alt"
-              size="small"
-              title="Expand Factory"
-              variant="outlined"
-              @click="factory.hidden = false"
-            />
-            <v-btn
               class="mr-2"
               color="orange rounded"
               icon="fas fa-copy"
