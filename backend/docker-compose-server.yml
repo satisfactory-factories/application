@@ -1,29 +1,27 @@
 services:
   backend:
     image: ghcr.io/maelstromeous/satisfactory-factories:backend-latest
+    restart: always
     container_name: sf-backend
-    pull_policy: missing  # Ensures that the latest image is always pulled
     networks:
       - backend
     env_file:
-      - .env
-    environment:
-      - MONGO_URI=mongodb://sf-db:27017/factory_planner
+      - sf.env
     ports:
-      - "4000:3001"
+      - "3001:3001"
     command: pnpm start
   mongo:
     image: mongo:8.0.3
     container_name: sf-db
+    restart: always
     ports:
       - "27117:27017"
     networks:
       - backend
     env_file:
-      - .env
+      - sf.env
     volumes:
       - ./data:/data/db
-      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
 
 networks:
   backend:
