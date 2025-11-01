@@ -8,7 +8,7 @@ export function useLayout () {
   const graph = ref(new dagre.graphlib.Graph())
   const previousDirection = ref('LR')
 
-  function layout (nodes: CustomNode[], edges: Edge[], direction = 'LR') {
+  function layout (nodes: CustomNode[], edges: Edge[], direction = 'LR'): CustomNode[] {
     // Create a new graph instance to ensure it is fresh and does not have stale nodes/edges
     console.log('Initializing new dagre graph')
     const dagreGraph = new dagre.graphlib.Graph({ multigraph: true })

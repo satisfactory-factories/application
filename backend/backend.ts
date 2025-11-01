@@ -5,8 +5,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-// @ts-expect-error Types exist???
-import { Send } from "express-serve-static-core";
+// TypedResponse interface with proper Express typing
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { generateSlug } from "random-word-slugs";
@@ -70,7 +69,7 @@ export interface TypedRequestBody<T> extends Express.Request {
 }
 
 export interface TypedResponse<ResBody> extends Express.Response {
-  json: Send<ResBody, this>;
+  json: (body: ResBody) => this;
 }
 
 // *************************************************
@@ -157,7 +156,7 @@ app.post('/register', async (req: TypedRequestBody<{ username: string; password:
 });
 
 // Login Endpoint
-app.post('/login', async (req: TypedRequestBody<{ username: string; password: string }>, res: TypedResponse<{ token: string }>) => {
+app.post('/login', async (req: TypedRequestBody<{ username: string; password: string }>, res: TypedResponse<{ token: string } | { message: string } | { message: string; error: any }>) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });

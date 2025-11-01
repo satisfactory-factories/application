@@ -48,8 +48,9 @@
 
   // Apply the layout to organize nodes after generation
   function initializeGraph () {
-    nodes.value = generateNodes(appStore.getFactories())
-    edges.value = generateEdges(appStore.getFactories(), nodes.value)
+    const nodeData = generateNodes(appStore.getFactories())
+    nodes.value = nodeData
+    edges.value = generateEdges(appStore.getFactories(), nodeData)
   }
 
   // Handle node rendered and nodesInitialized events
@@ -63,7 +64,8 @@
   function onNodesInitialized () {
     console.log('Nodes initialized')
     // All nodes have rendered, apply Dagre layout
-    const updatedNodes = layout(nodes.value, edges.value, 'LR')
+    // Workaround for TS 5.7 excessive type instantiation depth
+    const updatedNodes = layout(nodes.value as any, edges.value as any, 'LR') as CustomNode[]
     nodes.value = [...updatedNodes]
     console.log('All nodes rendered, updated with Dagre layout:', nodes.value)
   }
