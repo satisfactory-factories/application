@@ -578,4 +578,118 @@ describe('app-store', () => {
       })
     })
   })
+
+  describe('active factory management', () => {
+    let factory1: Factory
+    let factory2: Factory
+
+    beforeEach(() => {
+      resetAppStore()
+      factory1 = newFactory('Factory 1', 1)
+      factory2 = newFactory('Factory 2', 2)
+    })
+
+    describe('setDisplayedFactory', () => {
+      it('should set the displayed factory ID and save it to the current tab', () => {
+        appStore.setDisplayedFactory(factory1.id)
+
+        expect(appStore.getDisplayedFactoryId()).toBe(factory1.id)
+        expect(appStore.currentFactoryTab?.displayedFactoryId).toBe(factory1.id)
+      })
+
+      it('should clear the displayed factory ID when set to null', () => {
+        appStore.setDisplayedFactory(factory1.id)
+        appStore.setDisplayedFactory(null)
+
+        expect(appStore.getDisplayedFactoryId()).toBe(null)
+        expect(appStore.currentFactoryTab?.displayedFactoryId).toBeUndefined()
+      })
+    })
+
+    describe('loadingCompleted with displayed factory persistence', () => {
+      beforeEach(() => {
+        vi.spyOn(eventBus, 'emit')
+      })
+
+      it('should restore displayed factory from tab when it exists', async () => {
+        // Set up factories in the store
+        appStore.setFactories([factory1, factory2])
+
+        // Simulate saved displayed factory in tab
+        appStore.currentFactoryTab.displayedFactoryId = factory2.id
+
+        // Manually trigger loadingCompleted to test the restoration
+        await appStore.beginLoading([factory1, factory2])
+
+        expect(appStore.getDisplayedFactoryId()).toBe(factory2.id)
+      })
+
+      it('should fallback to first factory when saved factory no longer exists', async () => {
+        // Set up only factory1, but save factory2 id in tab (which doesn't exist)
+        appStore.currentFactoryTab.displayedFactoryId = factory2.id
+
+        await appStore.beginLoading([factory1])
+
+        expect(appStore.getDisplayedFactoryId()).toBe(factory1.id)
+        expect(appStore.currentFactoryTab?.displayedFactoryId).toBe(factory1.id)
+      })
+
+      it('should set first factory as displayed when no saved factory exists', async () => {
+        // No saved displayedFactoryId in tab
+        await appStore.beginLoading([factory1, factory2])
+
+        expect(appStore.getDisplayedFactoryId()).toBe(factory1.id)
+        expect(appStore.currentFactoryTab?.displayedFactoryId).toBe(factory1.id)
+      })
+
+      it('should emit loadingCompleted event after setting displayed factory', async () => {
+        await appStore.beginLoading([factory1])
+
+        expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+        expect(appStore.getDisplayedFactoryId()).toBe(factory1.id)
+      })
+    })
+
+    describe('tab switching preserves displayed factory per tab', () => {
+      it('should save displayed factory ID to current tab', () => {
+        // Test basic functionality first
+        appStore.setDisplayedFactory(factory1.id)
+
+        expect(appStore.getDisplayedFactoryId()).toBe(factory1.id)
+        expect(appStore.getCurrentTab().displayedFactoryId).toBe(factory1.id)
+      })
+
+      it('should maintain different displayed factories for different tabs', () => {
+        // Set up first tab with factory1 displayed
+        appStore.addFactory(factory1)
+        appStore.setDisplayedFactory(factory1.id)
+
+        expect(appStore.getCurrentTab().displayedFactoryId).toBe(factory1.id)
+
+        // Add a new tab but don't trigger watchers by directly manipulating state
+        const newTab: FactoryTab = {
+          id: 'tab-2',
+          name: 'Tab 2',
+          factories: [factory2],
+        }
+        appStore.factoryTabs.push(newTab)
+
+        // Manually switch to new tab without triggering watchers
+        appStore.currentFactoryTabIndex = 1
+        appStore.currentFactoryTab = newTab
+
+        // Set displayed factory for new tab
+        appStore.setDisplayedFactory(factory2.id)
+        expect(newTab.displayedFactoryId).toBe(factory2.id)
+
+        // Switch back to first tab manually
+        const firstTab = appStore.factoryTabs[0]
+        appStore.currentFactoryTabIndex = 0
+        appStore.currentFactoryTab = firstTab
+
+        // First tab should still have its saved displayedFactoryId
+        expect(firstTab.displayedFactoryId).toBe(factory1.id)
+      })
+    })
+  })
 })

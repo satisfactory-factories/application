@@ -103,7 +103,9 @@
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
+  import { useAppStore } from '@/stores/app-store'
 
+  const { getDisplayedFactoryId } = useAppStore()
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
 
   // eslint-disable-next-line func-call-spacing
@@ -136,6 +138,7 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
+      'active-factory': getDisplayedFactoryId() === factory.id,
       problem: factory.hasProblem,
       needsSync: !factory.hasProblem && factory.inSync === false,
     }
@@ -170,6 +173,13 @@
   .factory-card {
     .header {
       border-bottom: 0 !important;
+    }
+
+    &.active-factory {
+      .header {
+        background-color: rgba(33, 150, 243, 0.15) !important;
+        border-left: 4px solid #2196F3 !important;
+      }
     }
   }
 }
