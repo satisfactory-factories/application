@@ -54,7 +54,7 @@
                 "energyGeneratedInMJ": 0
             },
             "AluminumIngot": {
-                "name": "Alternate: Pure Aluminum Ingot",
+                "name": "Aluminum Ingot",
                 "stackSize": 100,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -901,7 +901,7 @@
                 "energyGeneratedInMJ": 0
             },
             "Silica": {
-                "name": "Alumina Solution",
+                "name": "Silica",
                 "stackSize": 200,
                 "isFluid": false,
                 "isFicsmas": false,
