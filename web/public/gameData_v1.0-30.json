@@ -3,23 +3,30 @@
         "assemblermk1": 15,
         "blender": 75,
         "constructormk1": 4,
-        "converter": 0,
+        "converter": 0.1,
         "foundrymk1": 16,
         "generatorbiomass": 0,
         "generatorcoal": 0,
         "generatorfuel": 0,
         "generatornuclear": 0,
-        "hadroncollider": 0,
+        "hadroncollider": 0.1,
         "manufacturermk1": 55,
         "oilrefinery": 30,
         "packager": 10,
-        "quantumencoder": 0,
+        "quantumencoder": 0.1,
         "smeltermk1": 4
     },
     "items": {
         "parts": {
             "AlienDNACapsule": {
                 "name": "Alien DNA Capsule",
+                "stackSize": 50,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "AlienPowerFuel": {
+                "name": "Alien Power Matrix",
                 "stackSize": 50,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -47,7 +54,7 @@
                 "energyGeneratedInMJ": 0
             },
             "AluminumIngot": {
-                "name": "Alternate: Pure Aluminum Ingot",
+                "name": "Aluminum Ingot",
                 "stackSize": 100,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -235,8 +242,22 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
+            "DarkEnergy": {
+                "name": "Dark Matter Residue",
+                "stackSize": 0,
+                "isFluid": true,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
             "DarkMatter": {
                 "name": "Dark Matter Crystal",
+                "stackSize": 200,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "Diamond": {
+                "name": "Diamonds",
                 "stackSize": 200,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -276,6 +297,20 @@
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
+            },
+            "Ficsonium": {
+                "name": "Ficsonium",
+                "stackSize": 100,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "FicsoniumFuelRod": {
+                "name": "Ficsonium Fuel Rod",
+                "stackSize": 50,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 150000
             },
             "Filter": {
                 "name": "Gas Filter",
@@ -746,6 +781,13 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
+            "PlutoniumWaste": {
+                "name": "Plutonium Waste",
+                "stackSize": 500,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
             "PolymerResin": {
                 "name": "Polymer Resin",
                 "stackSize": 200,
@@ -764,6 +806,13 @@
                 "name": "Pressure Conversion Cube",
                 "stackSize": 50,
                 "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "QuantumEnergy": {
+                "name": "Excited Photonic Matter",
+                "stackSize": 0,
+                "isFluid": true,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
@@ -852,7 +901,7 @@
                 "energyGeneratedInMJ": 0
             },
             "Silica": {
-                "name": "Alumina Solution",
+                "name": "Silica",
                 "stackSize": 200,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -895,6 +944,13 @@
             },
             "SpaceElevatorPart_11": {
                 "name": "Ballistic Warp Drive",
+                "stackSize": 50,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "SpaceElevatorPart_12": {
+                "name": "AI Expansion Server",
                 "stackSize": 50,
                 "isFluid": false,
                 "isFicsmas": false,
@@ -1030,6 +1086,20 @@
                 "name": "Sulfuric Acid",
                 "stackSize": 0,
                 "isFluid": true,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "TemporalProcessor": {
+                "name": "Neural-Quantum Processor",
+                "stackSize": 100,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "TimeCrystal": {
+                "name": "Time Crystal",
+                "stackSize": 200,
+                "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
@@ -1266,6 +1336,54 @@
             "isFicsmas": false
         },
         {
+            "id": "SpaceElevatorPart_12",
+            "displayName": "AI Expansion Server",
+            "ingredients": [
+                {
+                    "part": "SpaceElevatorPart_6",
+                    "amount": 1,
+                    "perMin": 4
+                },
+                {
+                    "part": "TemporalProcessor",
+                    "amount": 1,
+                    "perMin": 4
+                },
+                {
+                    "part": "QuantumOscillator",
+                    "amount": 1,
+                    "perMin": 4
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 25,
+                    "perMin": 100
+                }
+            ],
+            "products": [
+                {
+                    "part": "SpaceElevatorPart_12",
+                    "amount": 1,
+                    "perMin": 4,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 25,
+                    "perMin": 100,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "AILimiter",
             "displayName": "AI Limiter",
             "ingredients": [
@@ -1346,6 +1464,54 @@
             "building": {
                 "name": "constructormk1",
                 "power": 4
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "AlienPowerFuel",
+            "displayName": "Alien Power Matrix",
+            "ingredients": [
+                {
+                    "part": "SAMFluctuator",
+                    "amount": 5,
+                    "perMin": 12.5
+                },
+                {
+                    "part": "CrystalShard",
+                    "amount": 3,
+                    "perMin": 7.5
+                },
+                {
+                    "part": "QuantumOscillator",
+                    "amount": 3,
+                    "perMin": 7.5
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 24,
+                    "perMin": 60
+                }
+            ],
+            "products": [
+                {
+                    "part": "AlienPowerFuel",
+                    "amount": 1,
+                    "perMin": 2.5,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 24,
+                    "perMin": 60,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -1851,6 +2017,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Alternate_Diamond_Cloudy",
+            "displayName": "Alternate: Cloudy Diamonds",
+            "ingredients": [
+                {
+                    "part": "Coal",
+                    "amount": 12,
+                    "perMin": 240
+                },
+                {
+                    "part": "Stone",
+                    "amount": 24,
+                    "perMin": 480
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 1,
+                    "perMin": 20,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
             "id": "Alternate_CoatedCable",
             "displayName": "Alternate: Coated Cable",
             "ingredients": [
@@ -2151,6 +2349,103 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_DarkMatter_Crystallization",
+            "displayName": "Alternate: Dark Matter Crystallization",
+            "ingredients": [
+                {
+                    "part": "DarkEnergy",
+                    "amount": 10,
+                    "perMin": 200
+                }
+            ],
+            "products": [
+                {
+                    "part": "DarkMatter",
+                    "amount": 1,
+                    "perMin": 20,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 750,
+                "minPower": 500,
+                "maxPower": 1000
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_DarkMatter_Trap",
+            "displayName": "Alternate: Dark Matter Trap",
+            "ingredients": [
+                {
+                    "part": "TimeCrystal",
+                    "amount": 1,
+                    "perMin": 30
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 5,
+                    "perMin": 150
+                }
+            ],
+            "products": [
+                {
+                    "part": "DarkMatter",
+                    "amount": 2,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 750,
+                "minPower": 500,
+                "maxPower": 1000
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_IonizedFuel_Dark",
+            "displayName": "Alternate: Dark-Ion Fuel",
+            "ingredients": [
+                {
+                    "part": "PackagedRocketFuel",
+                    "amount": 12,
+                    "perMin": 240
+                },
+                {
+                    "part": "DarkMatter",
+                    "amount": 4,
+                    "perMin": 80
+                }
+            ],
+            "products": [
+                {
+                    "part": "IonizedFuel",
+                    "amount": 10,
+                    "perMin": 200,
+                    "isByProduct": false
+                },
+                {
+                    "part": "CompactedCoal",
+                    "amount": 2,
+                    "perMin": 40,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": true,
             "isFicsmas": false
@@ -2865,6 +3160,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Alternate_InstantPlutoniumCell",
+            "displayName": "Alternate: Instant Plutonium Cell",
+            "ingredients": [
+                {
+                    "part": "NonFissibleUranium",
+                    "amount": 150,
+                    "perMin": 75
+                },
+                {
+                    "part": "AluminumCasing",
+                    "amount": 20,
+                    "perMin": 10
+                }
+            ],
+            "products": [
+                {
+                    "part": "PlutoniumCell",
+                    "amount": 20,
+                    "perMin": 10,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
             "id": "Alternate_InstantScrap",
             "displayName": "Alternate: Instant Scrap",
             "ingredients": [
@@ -3277,6 +3604,92 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_Diamond_OilBased",
+            "displayName": "Alternate: Oil-Based Diamonds",
+            "ingredients": [
+                {
+                    "part": "LiquidOil",
+                    "amount": 10,
+                    "perMin": 200
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 2,
+                    "perMin": 40,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_Diamond_Petroleum",
+            "displayName": "Alternate: Petroleum Diamonds",
+            "ingredients": [
+                {
+                    "part": "PetroleumCoke",
+                    "amount": 24,
+                    "perMin": 720
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 1,
+                    "perMin": 30,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
+            "id": "Alternate_Diamond_Pink",
+            "displayName": "Alternate: Pink Diamonds",
+            "ingredients": [
+                {
+                    "part": "Coal",
+                    "amount": 8,
+                    "perMin": 120
+                },
+                {
+                    "part": "QuartzCrystal",
+                    "amount": 3,
+                    "perMin": 45
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 1,
+                    "perMin": 15,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": true,
             "isFicsmas": false
@@ -4369,6 +4782,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Alternate_Diamond_Turbo",
+            "displayName": "Alternate: Turbo Diamonds",
+            "ingredients": [
+                {
+                    "part": "Coal",
+                    "amount": 30,
+                    "perMin": 600
+                },
+                {
+                    "part": "PackagedTurboFuel",
+                    "amount": 2,
+                    "perMin": 40
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 3,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": true,
+            "isFicsmas": false
+        },
+        {
             "id": "Alternate_TurboMotor_1",
             "displayName": "Alternate: Turbo Electric Motor",
             "ingredients": [
@@ -4817,6 +5262,70 @@
             "isFicsmas": false
         },
         {
+            "id": "Bauxite_Caterium",
+            "displayName": "Bauxite (Caterium)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreGold",
+                    "amount": 15,
+                    "perMin": 150
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreBauxite",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Bauxite_Copper",
+            "displayName": "Bauxite (Copper)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreCopper",
+                    "amount": 18,
+                    "perMin": 180
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreBauxite",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "SpaceElevatorPart_10",
             "displayName": "Biochemical Sculptor",
             "ingredients": [
@@ -5082,6 +5591,70 @@
             "isFicsmas": false
         },
         {
+            "id": "Caterium_Copper",
+            "displayName": "Caterium Ore (Copper)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreCopper",
+                    "amount": 15,
+                    "perMin": 150
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreGold",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Caterium_Quartz",
+            "displayName": "Caterium Ore (Quartz)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "RawQuartz",
+                    "amount": 12,
+                    "perMin": 120
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreGold",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "CircuitBoard",
             "displayName": "Circuit Board",
             "ingredients": [
@@ -5137,6 +5710,70 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Coal_Iron",
+            "displayName": "Coal (Iron)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreIron",
+                    "amount": 18,
+                    "perMin": 180
+                }
+            ],
+            "products": [
+                {
+                    "part": "Coal",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Coal_Limestone",
+            "displayName": "Coal (Limestone)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Stone",
+                    "amount": 36,
+                    "perMin": 360
+                }
+            ],
+            "products": [
+                {
+                    "part": "Coal",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5297,6 +5934,70 @@
             "isFicsmas": false
         },
         {
+            "id": "Copper_Quartz",
+            "displayName": "Copper Ore (Quartz)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "RawQuartz",
+                    "amount": 10,
+                    "perMin": 100
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Copper_Sulfur",
+            "displayName": "Copper Ore (Sulfur)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Sulfur",
+                    "amount": 12,
+                    "perMin": 120
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "CopperDust",
             "displayName": "Copper Powder",
             "ingredients": [
@@ -5377,6 +6078,92 @@
             "building": {
                 "name": "manufacturermk1",
                 "power": 55
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "DarkMatter",
+            "displayName": "Dark Matter Crystal",
+            "ingredients": [
+                {
+                    "part": "Diamond",
+                    "amount": 1,
+                    "perMin": 30
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 5,
+                    "perMin": 150
+                }
+            ],
+            "products": [
+                {
+                    "part": "DarkMatter",
+                    "amount": 1,
+                    "perMin": 30,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 750,
+                "minPower": 500,
+                "maxPower": 1000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "DarkEnergy",
+            "displayName": "Dark Matter Residue",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 5,
+                    "perMin": 50
+                }
+            ],
+            "products": [
+                {
+                    "part": "DarkEnergy",
+                    "amount": 10,
+                    "perMin": 100,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Diamond",
+            "displayName": "Diamonds",
+            "ingredients": [
+                {
+                    "part": "Coal",
+                    "amount": 20,
+                    "perMin": 600
+                }
+            ],
+            "products": [
+                {
+                    "part": "Diamond",
+                    "amount": 1,
+                    "perMin": 30,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5563,6 +6350,27 @@
             "isFicsmas": false
         },
         {
+            "id": "QuantumEnergy",
+            "displayName": "Excited Photonic Matter",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 10,
+                    "perMin": 200,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Rebar_Explosive",
             "displayName": "Explosive Rebar",
             "ingredients": [
@@ -5656,6 +6464,102 @@
             },
             "isAlternate": false,
             "isFicsmas": true
+        },
+        {
+            "id": "FicsiteIngot_AL",
+            "displayName": "Ficsite Ingot (Aluminum)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 2,
+                    "perMin": 60
+                },
+                {
+                    "part": "AluminumIngot",
+                    "amount": 4,
+                    "perMin": 120
+                }
+            ],
+            "products": [
+                {
+                    "part": "FicsiteIngot",
+                    "amount": 1,
+                    "perMin": 30,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "FicsiteIngot_CAT",
+            "displayName": "Ficsite Ingot (Caterium)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 3,
+                    "perMin": 45
+                },
+                {
+                    "part": "GoldIngot",
+                    "amount": 4,
+                    "perMin": 60
+                }
+            ],
+            "products": [
+                {
+                    "part": "FicsiteIngot",
+                    "amount": 1,
+                    "perMin": 15,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "FicsiteIngot_Iron",
+            "displayName": "Ficsite Ingot (Iron)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 4,
+                    "perMin": 40
+                },
+                {
+                    "part": "IronIngot",
+                    "amount": 24,
+                    "perMin": 240
+                }
+            ],
+            "products": [
+                {
+                    "part": "FicsiteIngot",
+                    "amount": 1,
+                    "perMin": 10,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
         },
         {
             "id": "FicsiteMesh",
@@ -5846,6 +6750,91 @@
             },
             "isAlternate": false,
             "isFicsmas": true
+        },
+        {
+            "id": "Ficsonium",
+            "displayName": "Ficsonium",
+            "ingredients": [
+                {
+                    "part": "PlutoniumWaste",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "SingularityCell",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 20,
+                    "perMin": 200
+                }
+            ],
+            "products": [
+                {
+                    "part": "Ficsonium",
+                    "amount": 1,
+                    "perMin": 10,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 750,
+                "minPower": 500,
+                "maxPower": 1000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "FicsoniumFuelRod",
+            "displayName": "Ficsonium Fuel Rod",
+            "ingredients": [
+                {
+                    "part": "Ficsonium",
+                    "amount": 2,
+                    "perMin": 5
+                },
+                {
+                    "part": "ElectromagneticControlRod",
+                    "amount": 2,
+                    "perMin": 5
+                },
+                {
+                    "part": "FicsiteMesh",
+                    "amount": 40,
+                    "perMin": 100
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 20,
+                    "perMin": 50
+                }
+            ],
+            "products": [
+                {
+                    "part": "FicsoniumFuelRod",
+                    "amount": 1,
+                    "perMin": 2.5,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 20,
+                    "perMin": 50,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
         },
         {
             "id": "LiquidFuel",
@@ -6290,6 +7279,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Iron_Limestone",
+            "displayName": "Iron Ore (Limestone)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Stone",
+                    "amount": 24,
+                    "perMin": 240
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreIron",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "IronPlate",
             "displayName": "Iron Plate",
             "ingredients": [
@@ -6360,6 +7381,38 @@
             "building": {
                 "name": "constructormk1",
                 "power": 4
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Limestone_Sulfur",
+            "displayName": "Limestone (Sulfur)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Sulfur",
+                    "amount": 2,
+                    "perMin": 20
+                }
+            ],
+            "products": [
+                {
+                    "part": "Stone",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -6520,6 +7573,54 @@
             "isFicsmas": false
         },
         {
+            "id": "TemporalProcessor",
+            "displayName": "Neural-Quantum Processor",
+            "ingredients": [
+                {
+                    "part": "TimeCrystal",
+                    "amount": 5,
+                    "perMin": 15
+                },
+                {
+                    "part": "ComputerSuper",
+                    "amount": 1,
+                    "perMin": 3
+                },
+                {
+                    "part": "FicsiteMesh",
+                    "amount": 15,
+                    "perMin": 45
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 25,
+                    "perMin": 75
+                }
+            ],
+            "products": [
+                {
+                    "part": "TemporalProcessor",
+                    "amount": 1,
+                    "perMin": 3,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 25,
+                    "perMin": 75,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "NitricAcid",
             "displayName": "Nitric Acid",
             "ingredients": [
@@ -6550,6 +7651,70 @@
             "building": {
                 "name": "blender",
                 "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Nitrogen_Bauxite",
+            "displayName": "Nitrogen Gas (Bauxite)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreBauxite",
+                    "amount": 10,
+                    "perMin": 100
+                }
+            ],
+            "products": [
+                {
+                    "part": "NitrogenGas",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Nitrogen_Caterium",
+            "displayName": "Nitrogen Gas (Caterium)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreGold",
+                    "amount": 12,
+                    "perMin": 120
+                }
+            ],
+            "products": [
+                {
+                    "part": "NitrogenGas",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -6626,6 +7791,38 @@
             "building": {
                 "name": "blender",
                 "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "SpaceElevatorPart_9",
+            "displayName": "Nuclear Pasta",
+            "ingredients": [
+                {
+                    "part": "CopperDust",
+                    "amount": 200,
+                    "perMin": 100
+                },
+                {
+                    "part": "PressureConversionCube",
+                    "amount": 1,
+                    "perMin": 0.5
+                }
+            ],
+            "products": [
+                {
+                    "part": "SpaceElevatorPart_9",
+                    "amount": 1,
+                    "perMin": 0.5,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 750,
+                "minPower": 500,
+                "maxPower": 1000
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7127,6 +8324,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Plutonium",
+            "displayName": "Plutonium Pellet",
+            "ingredients": [
+                {
+                    "part": "NonFissibleUranium",
+                    "amount": 100,
+                    "perMin": 100
+                },
+                {
+                    "part": "NuclearWaste",
+                    "amount": 25,
+                    "perMin": 25
+                }
+            ],
+            "products": [
+                {
+                    "part": "PlutoniumPellet",
+                    "amount": 30,
+                    "perMin": 30,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "hadroncollider",
+                "power": 375,
+                "minPower": 250,
+                "maxPower": 500
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "PowerCrystalShard_1",
             "displayName": "Power Shard (1)",
             "ingredients": [
@@ -7342,6 +8571,70 @@
             "building": {
                 "name": "manufacturermk1",
                 "power": 55
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Quartz_Bauxite",
+            "displayName": "Raw Quartz (Bauxite)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreBauxite",
+                    "amount": 10,
+                    "perMin": 100
+                }
+            ],
+            "products": [
+                {
+                    "part": "RawQuartz",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Quartz_Coal",
+            "displayName": "Raw Quartz (Coal)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Coal",
+                    "amount": 24,
+                    "perMin": 240
+                }
+            ],
+            "products": [
+                {
+                    "part": "RawQuartz",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -8124,6 +9417,70 @@
             "isFicsmas": false
         },
         {
+            "id": "Sulfur_Coal",
+            "displayName": "Sulfur (Coal)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Coal",
+                    "amount": 20,
+                    "perMin": 200
+                }
+            ],
+            "products": [
+                {
+                    "part": "Sulfur",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Sulfur_Iron",
+            "displayName": "Sulfur (Iron)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreIron",
+                    "amount": 30,
+                    "perMin": 300
+                }
+            ],
+            "products": [
+                {
+                    "part": "Sulfur",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "SulfuricAcid",
             "displayName": "Sulfuric Acid",
             "ingredients": [
@@ -8194,6 +9551,54 @@
             "isFicsmas": false
         },
         {
+            "id": "SuperpositionOscillator",
+            "displayName": "Superposition Oscillator",
+            "ingredients": [
+                {
+                    "part": "DarkMatter",
+                    "amount": 6,
+                    "perMin": 30
+                },
+                {
+                    "part": "CrystalOscillator",
+                    "amount": 1,
+                    "perMin": 5
+                },
+                {
+                    "part": "AluminumPlate",
+                    "amount": 9,
+                    "perMin": 45
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 25,
+                    "perMin": 125
+                }
+            ],
+            "products": [
+                {
+                    "part": "QuantumOscillator",
+                    "amount": 1,
+                    "perMin": 5,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 25,
+                    "perMin": 125,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Fireworks_01",
             "displayName": "Sweet Fireworks",
             "ingredients": [
@@ -8222,6 +9627,54 @@
             },
             "isAlternate": false,
             "isFicsmas": true
+        },
+        {
+            "id": "SyntheticPowerShard",
+            "displayName": "Synthetic Power Shard",
+            "ingredients": [
+                {
+                    "part": "TimeCrystal",
+                    "amount": 2,
+                    "perMin": 10
+                },
+                {
+                    "part": "DarkMatter",
+                    "amount": 2,
+                    "perMin": 10
+                },
+                {
+                    "part": "QuartzCrystal",
+                    "amount": 12,
+                    "perMin": 60
+                },
+                {
+                    "part": "QuantumEnergy",
+                    "amount": 12,
+                    "perMin": 60
+                }
+            ],
+            "products": [
+                {
+                    "part": "CrystalShard",
+                    "amount": 1,
+                    "perMin": 5,
+                    "isByProduct": false
+                },
+                {
+                    "part": "DarkEnergy",
+                    "amount": 12,
+                    "perMin": 60,
+                    "isByProduct": true
+                }
+            ],
+            "building": {
+                "name": "quantumencoder",
+                "power": 1000,
+                "minPower": 0,
+                "maxPower": 2000
+            },
+            "isAlternate": false,
+            "isFicsmas": false
         },
         {
             "id": "SpaceElevatorPart_8",
@@ -8259,6 +9712,33 @@
             "building": {
                 "name": "manufacturermk1",
                 "power": 55
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "TimeCrystal",
+            "displayName": "Time Crystal",
+            "ingredients": [
+                {
+                    "part": "Diamond",
+                    "amount": 2,
+                    "perMin": 12
+                }
+            ],
+            "products": [
+                {
+                    "part": "TimeCrystal",
+                    "amount": 1,
+                    "perMin": 6,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -8811,6 +10291,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Uranium_Bauxite",
+            "displayName": "Uranium Ore (Bauxite)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "OreBauxite",
+                    "amount": 48,
+                    "perMin": 480
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreUranium",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "SpaceElevatorPart_2",
             "displayName": "Versatile Framework",
             "ingredients": [
@@ -9104,6 +10616,27 @@
             "building": {
                 "name": "generatorfuel",
                 "power": 250
+            }
+        },
+        {
+            "id": "GeneratorNuclear_FicsoniumFuelRod",
+            "displayName": "Nuclear Power Plant (Ficsonium Fuel Rod)",
+            "ingredients": [
+                {
+                    "part": "FicsoniumFuelRod",
+                    "perMin": 1,
+                    "mwPerItem": 2500
+                },
+                {
+                    "part": "Water",
+                    "perMin": 240,
+                    "supplementalRatio": 0.096
+                }
+            ],
+            "byproduct": null,
+            "building": {
+                "name": "generatornuclear",
+                "power": 2500
             }
         },
         {
