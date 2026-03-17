@@ -216,6 +216,10 @@ function getPowerGeneratingRecipes(
             fuels.forEach((fuel: any) => {
                 const primaryFuel = getPartName(fuel.mFuelClass);
                 const primaryFuelPart = parts.parts[primaryFuel];
+                if (!primaryFuelPart) {
+                    console.warn(`Skipping power recipe fuel with missing part data: ${primaryFuel}`);
+                    return;
+                }
 
                 const burnDurationInMins = primaryFuelPart.energyGeneratedInMJ / burnRateMJ;
                 const burnDurationInS = burnDurationInMins * 60; // Convert to seconds
