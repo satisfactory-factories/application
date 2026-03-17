@@ -32,6 +32,9 @@ function getProducingBuildings(data: any[]): string[] {
                     .filter((buildingName: string | null) => buildingName !== null);  // Filter out null values
 
                 if (producedInBuildings) {
+                    // The 1.2 game data references non-production buildings (e.g. BuildGun,
+                    // WorkBench) in mProducedIn. Exclude them so they don't inflate the
+                    // building map or pull in equipment/tool recipes downstream.
                     producedInBuildings
                         .filter((buildingName: string) => !nonProductionBuildings.has(buildingName))
                         .forEach((buildingName: string) => producingBuildingsSet.add(buildingName));
