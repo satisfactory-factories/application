@@ -3,7 +3,7 @@ import path from 'path'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 
-const dataFilePath = path.join(__dirname, '../public/gameData_v1.0-28.json')
+const dataFilePath = path.join(__dirname, '../public/gameData_v1.0-29.json')
 let gameData: string
 
 try {
