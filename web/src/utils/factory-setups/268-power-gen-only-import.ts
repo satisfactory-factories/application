@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -26,7 +26,7 @@ export const create268Scenraio = (): { getFactories: () => Factory[] } => {
       building: 'generatorfuel',
       ingredientAmount: 100,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
   }
 

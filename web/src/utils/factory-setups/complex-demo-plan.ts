@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { newFactory } from '@/utils/factory-management/factory'
@@ -44,7 +44,7 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
       building: 'generatorfuel',
       powerAmount: 500,
       recipe: 'GeneratorFuel_LiquidFuel',
-      updated: 'power',
+      updated: FactoryPowerChangeType.Power,
     })
     oilFac.notes = 'This factory is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
     oilFac.syncState = {
@@ -179,7 +179,7 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
       building: 'generatornuclear',
       powerAmount: 25000,
       recipe: 'GeneratorNuclear_NuclearFuelRod',
-      updated: 'power',
+      updated: FactoryPowerChangeType.Power,
     })
     uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.'
     uraniumFac.tasks.push(

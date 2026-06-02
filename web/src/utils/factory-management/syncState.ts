@@ -19,7 +19,7 @@ export const setSyncState = (factory: Factory) => {
       powerAmount: powerProducer.powerAmount,
       buildingAmount: powerProducer.buildingAmount,
       recipe: powerProducer.recipe,
-      ingredientAmount: powerProducer.ingredientAmount,
+      ingredientAmount: powerProducer.fuelAmount,
     }
   })
 
@@ -125,7 +125,7 @@ export const checkFactorySyncState = (factory: Factory) => {
     }
 
     // If fuel ingredient amount doesn't match
-    if (syncState.ingredientAmount !== powerProducer.ingredientAmount) {
+    if (syncState.ingredientAmount !== powerProducer.fuelAmount) {
       factory.inSync = false
       return
     }

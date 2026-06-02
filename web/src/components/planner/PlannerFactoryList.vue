@@ -15,7 +15,7 @@
         >
           <v-row class="d-flex flex-nowrap ma-0">
             <v-spacer class="d-flex align-center text-body-1 pa-2">
-              <i class="fas fa-bars text-grey-darken-1 mr-2" />
+              <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
               <i class="fas fa-industry mr-2" />
               <span>{{ truncateFactoryName(element.name) }}</span>
             </v-spacer>

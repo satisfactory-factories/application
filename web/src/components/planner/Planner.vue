@@ -3,7 +3,10 @@
   <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
   <world-data v-if="showWorldData" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
+
+  <building-group-tutorial />
   <div class="planner-container">
+    <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
       <planner-factory-list
         :factories="getFactories()"
@@ -22,9 +25,11 @@
         @toggle-help-text="toggleHelp()"
       />
     </Teleport>
-    <v-row class="two-pane-container">
+
+    <!-- Main Content Area -->
+    <v-row class="ma-0">
       <!-- Sticky Sidebar for Desktop -->
-      <v-col class="d-none d-lg-flex sticky-sidebar">
+      <v-col v-show="showSidebar" class="d-none d-lg-flex sticky-sidebar">
         <v-container class="pa-0">
           <planner-factory-list
             :factories="getFactories()"
@@ -86,12 +91,14 @@
   import {
     calculateFactories,
     calculateFactory,
+    CalculationModes,
     findFac,
     newFactory,
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
+  import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -107,6 +114,9 @@
   const showImportWorldPopup = ref<boolean>(false)
   const showWorldData = ref<boolean>(false)
 
+  const showSidebar = ref<boolean>(true)
+
+  // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
   eventBus.on('plannerShow', (show: boolean) => {
     if (!show) {
@@ -124,6 +134,21 @@
     showPlan()
   })
 
+  eventBus.on('worldDataShow', (value: boolean) => {
+    showWorldData.value = value
+  })
+
+  eventBus.on('navigationReady', () => {
+    console.log('Planner: Received navigationReady event, teleporting factory list')
+    navigationReady.value = true
+  })
+
+  eventBus.on('toggleSidebar', () => {
+    showSidebar.value = !showSidebar.value
+    console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
+  })
+  // #############s
+
   // ==== WATCHES
   watch(helpText, newValue => {
     localStorage.setItem('helpText', JSON.stringify(newValue))
@@ -137,11 +162,6 @@
   const hidePlan = () => {
     planVisible.value = false
   }
-
-  eventBus.on('navigationReady', () => {
-    console.log('Planner: Received navigationReady event, teleporting factory list')
-    navigationReady.value = true
-  })
 
   const createFactory = () => {
     const factory = newFactory()
@@ -221,8 +241,8 @@
   }
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
-  const updateFactory = (factory: Factory) => {
-    calculateFactory(factory, getFactories(), gameData)
+  const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
+    calculateFactory(factory, getFactories(), gameData, modes)
   }
 
   const copyFactory = (originalFactory: Factory) => {
@@ -282,10 +302,6 @@
   const closeWorldImport = () => {
     showImportWorldPopup.value = false
   }
-
-  eventBus.on('worldDataShow', (value: boolean) => {
-    showWorldData.value = value
-  })
 
   const clearAll = () => {
     clearFactories()
@@ -357,10 +373,6 @@
 
   @media screen and (min-width: 2560px) {
     margin-left: calc((100vw - 2050px)/2) !important;
-  }
-
-  .two-pane-container {
-    margin: 0;
   }
 
   .sticky-sidebar {
