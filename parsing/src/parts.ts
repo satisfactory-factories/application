@@ -355,6 +355,7 @@ function fixItemNames(items: ParserItemDataInterface): void {
     // Go through the item names and do some manual fixes, e.g. renaming "Residual Plastic" to "Plastic"
     const fixItems: Record<string, string> = {
         "AlienProtein": "Alien Protein",
+        "AluminumIngot": "Aluminum Ingot", // the parser uses the recipe display name instead of the part descriptor name. The "Alternate: Pure Aluminum Ingot" recipe produces AluminumIngot, so the part gets that recipe name instead of "Aluminum Ingot"
         "CompactedCoal": "Compacted Coal",
         "DarkEnergy": "Dark Matter Residue",
         "HeavyOilResidue": "Heavy Oil Residue",
@@ -362,6 +363,7 @@ function fixItemNames(items: ParserItemDataInterface): void {
         "Plastic": "Plastic",
         "PolymerResin": "Polymer Resin",
         "Rubber": "Rubber",
+        "Silica": "Silica", // the parser uses the recipe display name instead of the part descriptor name. The "Alumina Solution" recipe produces both AluminaSolution and Silica as products — so when Silica was processed as a product of that recipe, it inherited the recipe name "Alumina Solution" instead of its own name "Silica"
         "Snow": "Snow",
         "Water": "Water",
     };

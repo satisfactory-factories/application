@@ -42,7 +42,7 @@ function getProductionRecipes(
             // Process all buildings and check if any match the producingBuildings map
             const validBuilding = rawBuildingKeys.some((rawBuilding: string) => {
                 const buildingKey: string = rawBuilding.replace(/\//g, '').replace(/\./g, '').toLowerCase().replace('build_', '');
-                return producingBuildings[buildingKey];
+                return typeof producingBuildings[buildingKey] === 'number';
             })
 
             return validBuilding;
@@ -112,7 +112,7 @@ function getProductionRecipes(
             if (validBuildings.length > 0) {
                 // Sum up power for all valid buildings
                 powerPerBuilding = validBuildings.reduce((totalPower: number, building: string | number) => {
-                    if (producingBuildings[building]) {
+                    if (typeof producingBuildings[building] === 'number') {
                         const buildingPower: number = producingBuildings[building]
                         selectedBuilding = selectedBuilding || building; // Set the first valid building as selected
                         return totalPower + buildingPower; // Add power for this building
@@ -216,6 +216,10 @@ function getPowerGeneratingRecipes(
             fuels.forEach((fuel: any) => {
                 const primaryFuel = getPartName(fuel.mFuelClass);
                 const primaryFuelPart = parts.parts[primaryFuel];
+                if (!primaryFuelPart) {
+                    console.warn(`Skipping power recipe fuel with missing part data: ${primaryFuel}`);
+                    return;
+                }
 
                 const burnDurationInMins = primaryFuelPart.energyGeneratedInMJ / burnRateMJ;
                 const burnDurationInS = burnDurationInMins * 60; // Convert to seconds

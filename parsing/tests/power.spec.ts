@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, it } from '@jest/globals'
 
 import { processFile } from '../src/processor'
+import { getPowerGeneratingRecipes } from '../src/recipes'
 import {ParserPowerRecipe} from "../src/interfaces/ParserPowerRecipe";
+import {ParserItemDataInterface} from "../src/interfaces/ParserPart";
 
 describe('Power Parsing', () => {
     let results: any;
@@ -143,6 +145,68 @@ describe('Power Parsing', () => {
             expect(recipe.byproduct).toBe(null);
             expect(recipe.building.name).toBe('generatornuclear');
             expect(recipe.building.power).toBe(2500);
+        })
+    })
+
+    describe('Missing fuel part handling', () => {
+        it('should skip a fuel whose part is missing from items.parts and warn', () => {
+            const fakeData = [
+                {
+                    Classes: [
+                        {
+                            ClassName: "Build_GeneratorFake_C",
+                            mPowerProduction: "100.000000",
+                            mSupplementalToPowerRatio: "0",
+                            mFuel: [
+                                {
+                                    mFuelClass: "Desc_KnownFuel_C",
+                                    mSupplementalResourceClass: "",
+                                    mByproduct: "",
+                                    mByproductAmount: "",
+                                },
+                                {
+                                    mFuelClass: "Desc_MissingFuel_C",
+                                    mSupplementalResourceClass: "",
+                                    mByproduct: "",
+                                    mByproductAmount: "",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const items: ParserItemDataInterface = {
+                parts: {
+                    KnownFuel: {
+                        name: "Known Fuel",
+                        stackSize: 100,
+                        isFluid: false,
+                        isFicsmas: false,
+                        energyGeneratedInMJ: 600,
+                    },
+                    // MissingFuel is deliberately absent
+                },
+                rawResources: {},
+            };
+
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            let recipes: ParserPowerRecipe[];
+            expect(() => {
+                recipes = getPowerGeneratingRecipes(fakeData, items);
+            }).not.toThrow();
+
+            // The known fuel should produce a recipe; the missing one should be skipped
+            expect(recipes!.length).toBe(1);
+            expect(recipes![0].ingredients[0].part).toBe('KnownFuel');
+
+            // Verify the warning was emitted for the missing part
+            expect(warnSpy).toHaveBeenCalledWith(
+                'Skipping power recipe fuel with missing part data: MissingFuel'
+            );
+
+            warnSpy.mockRestore();
         })
     })
 })

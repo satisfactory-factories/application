@@ -9784,41 +9784,6 @@
             "isFicsmas": false
         },
         {
-            "id": "CartridgeChaos_Packaged",
-            "displayName": "Turbo Rifle Ammo",
-            "ingredients": [
-                {
-                    "part": "CartridgeStandard",
-                    "amount": 25,
-                    "perMin": 125
-                },
-                {
-                    "part": "AluminumCasing",
-                    "amount": 3,
-                    "perMin": 15
-                },
-                {
-                    "part": "PackagedTurboFuel",
-                    "amount": 3,
-                    "perMin": 15
-                }
-            ],
-            "products": [
-                {
-                    "part": "CartridgeChaos",
-                    "amount": 50,
-                    "perMin": 250,
-                    "isByProduct": false
-                }
-            ],
-            "building": {
-                "name": "manufacturermk1",
-                "power": 55
-            },
-            "isAlternate": false,
-            "isFicsmas": false
-        },
-        {
             "id": "CartridgeChaos",
             "displayName": "Turbo Rifle Ammo",
             "ingredients": [
@@ -9849,6 +9814,41 @@
             "building": {
                 "name": "blender",
                 "power": 75
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "CartridgeChaos_Packaged",
+            "displayName": "Turbo Rifle Ammo",
+            "ingredients": [
+                {
+                    "part": "CartridgeStandard",
+                    "amount": 25,
+                    "perMin": 125
+                },
+                {
+                    "part": "AluminumCasing",
+                    "amount": 3,
+                    "perMin": 15
+                },
+                {
+                    "part": "PackagedTurboFuel",
+                    "amount": 3,
+                    "perMin": 15
+                }
+            ],
+            "products": [
+                {
+                    "part": "CartridgeChaos",
+                    "amount": 50,
+                    "perMin": 250,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "manufacturermk1",
+                "power": 55
             },
             "isAlternate": false,
             "isFicsmas": false

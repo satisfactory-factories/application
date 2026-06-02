@@ -2,6 +2,15 @@
 // Function to extract all buildings that produce something
 import {getPowerProducerBuildingName} from "./common";
 
+// Buildings that appear in mProducedIn but are not actual production buildings
+const nonProductionBuildings = new Set([
+    'bp_buildgun',
+    'bp_workbenchcomponent',
+    'bp_workshopcomponent',
+    'automatedworkbench',
+    'factorygame',
+]);
+
 function getProducingBuildings(data: any[]): string[] {
     const producingBuildingsSet = new Set<string>();
 
@@ -23,7 +32,12 @@ function getProducingBuildings(data: any[]): string[] {
                     .filter((buildingName: string | null) => buildingName !== null);  // Filter out null values
 
                 if (producedInBuildings) {
-                    producedInBuildings.forEach((buildingName: string) => producingBuildingsSet.add(buildingName));
+                    // The 1.2 game data references non-production buildings (e.g. BuildGun,
+                    // WorkBench) in mProducedIn. Exclude them so they don't inflate the
+                    // building map or pull in equipment/tool recipes downstream.
+                    producedInBuildings
+                        .filter((buildingName: string) => !nonProductionBuildings.has(buildingName))
+                        .forEach((buildingName: string) => producingBuildingsSet.add(buildingName));
                 }
             }
             // If a power generator
@@ -59,6 +73,20 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
                 }
             }
         });
+
+    // Variable power buildings (e.g. Hadron Collider, Converter, Quantum Encoder) may
+    // have mPowerConsumption of 0 or lack it entirely. Use a sentinel value (0.1) so
+    // downstream recipe filtering still includes them. The actual power is calculated
+    // per-recipe from mVariablePowerConsumption fields. Power generators (which also
+    // have 0 power) are excluded — they legitimately produce power rather than consume it.
+    const generatorPrefix = 'generator';
+    producingBuildings.forEach((buildingName: string) => {
+        if (!Object.prototype.hasOwnProperty.call(buildingsPowerMap, buildingName)) {
+            buildingsPowerMap[buildingName] = buildingName.startsWith(generatorPrefix) ? 0 : 0.1;
+        } else if (buildingsPowerMap[buildingName] === 0 && !buildingName.startsWith(generatorPrefix)) {
+            buildingsPowerMap[buildingName] = 0.1;
+        }
+    });
 
     // Finally sort the map by key
     const sortedMap: { [key: string]: number } = {};
