@@ -40,6 +40,41 @@ This application is a specialized tool for players of the video game **Satisfact
 ### Parsing (`/parsing`)
 - Specialized tool to convert game `Docs.json` into a readable `gameData.json` used by the frontend.
 
+## Setup & Installation
+
+### 1. Environment Preparation
+The project requires specific versions of Node.js and pnpm. It is highly recommended to use `nvm`.
+- **Node.js**: > 20.17.0
+- **pnpm**: > 9.14.4
+- **Docker**: Required for backend services.
+
+**Agent Tip**: In many CI/container environments, you may need to source nvm before running commands:
+```bash
+source ~/.nvm/nvm.sh && nvm use 20.17
+```
+
+### 2. Frontend Setup
+```bash
+cd web
+pnpm install
+pnpm dev # Start dev server on http://localhost:3000
+pnpm test # Run Vitest suites
+```
+
+### 3. Backend Setup
+```bash
+cd backend
+pnpm install
+./start.sh # Spins up Docker environment
+```
+
+### 4. Parsing Tool Setup
+```bash
+cd parsing
+pnpm install
+pnpm dev
+```
+
 ## Key Workflows
 
 ### 1. Updating Game Data
@@ -50,15 +85,12 @@ When the game updates recipes or items:
 4. Delete the old version from `/web/public/`.
 
 ### 2. Frontend Development
-- Navigate to `/web`.
-- Use `pnpm dev` for local development.
-- Use `pnpm test` to run Vitest suites.
 - **Note**: Ensure Pinia stores are properly mocked/tested using `@pinia/testing`.
+- Use `pnpm dev` for local development and `pnpm test` for running tests.
 
 ### 3. Backend Development
-- Navigate to `/backend`.
-- Use `./start.sh` to spin up the Docker-based environment.
 - The entry point is `backend.ts`.
+- Use `./start.sh` in the `/backend` directory to spin up the environment.
 
 ## Guidelines for AI Agents (Claude Sonnet 4.6)
 - **Primary Agent**: This project is optimized for work with Claude Sonnet 4.6.
@@ -71,8 +103,3 @@ When the game updates recipes or items:
     - Write tests for new features in the frontend using Vitest.
     - If modifying Pinia stores, update the corresponding tests.
 - **Documentation**: Update `CHANGELOG.md` when making significant changes.
-
-## Environment Requirements
-- Node.js > 20.17.0 (Recommended: use `nvm`)
-- pnpm > 9.14.4
-- Docker (for backend services)
