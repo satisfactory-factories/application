@@ -62,17 +62,19 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
     test('BG-I-E-PROD-1: Editing the product item recreates the building group @ 1 building', async () => {
       // Assert the before
       expect(buildingGroup.buildingCount).toBe(2)
-      expect(buildingGroupCount.attributes('value')).toBe('2')
-      expect(itemBuildingCount.attributes('value')).toBe('2')
+      expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('2')
 
-      const productItem = subject.find(`[id="${factory.id}-${product.id}-item"]`)
+      const productItem = subject.findComponent({ name: 'VAutocomplete' })
       // Update the item to Copper Ingots
-      await productItem.setValue('Copper Ingot')
+      productItem.vm.$emit('update:modelValue', 'CopperIngot')
 
       // Wait for the UI to update
       await new Promise(resolve => setTimeout(resolve, 1000))
       expect(product.id).toBe('CopperIngot')
       expect(product.recipe).toBe('IngotCopper')
+      // Building groups should have been reset to 1
+      expect(product.buildingGroups.length).toBe(1)
+      expect(product.buildingGroups[0].buildingCount).toBe(1)
     })
   })
 
@@ -86,38 +88,72 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       beforeEach(() => {
         // Assert the before
         expect(buildingGroup.buildingCount).toBe(2)
-        expect(buildingGroupCount.attributes('value')).toBe('2')
-        expect(itemBuildingCount.attributes('value')).toBe('2')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('2')
       })
       test('BG-I-E-PROD-7: Changing the product quantity updates the building group building count', async () => {
         // Update the product quantity, after debounce it should have updated the building group and effective buildings
-        await itemAmount.setValue(120)
+        const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
+        await itemAmountInput.setValue(120)
 
         // Wait for debounce
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         // Assert the after
-        expect(buildingGroup.buildingCount).toBe(4)
-        expect(buildingGroupCount.attributes('value')).toBe('4')
-        expect(itemBuildingCount.attributes('value')).toBe('4')
+        expect(product.buildingGroups[0].buildingCount).toBe(4)
+        expect(subject.find(`[id="${factory.id}-${product.buildingGroups[0].id}-building-count"]`).element.value).toBe('4')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4')
       })
 
       test('BG-I-E-PROD-8: Changing the product building count updates the building group building count', async () => {
         // Update the product building count, after debounce it should have updated the building group and effective buildings
-        await itemBuildingCount.setValue(4)
+        const itemBCountInput = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+        await itemBCountInput.setValue(4)
 
         // Wait for debounce
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         // Assert the after
-        expect(buildingGroup.buildingCount).toBe(4)
-        expect(buildingGroupCount.attributes('value')).toBe('4')
-        expect(itemBuildingCount.attributes('value')).toBe('4')
+        expect(product.buildingGroups[0].buildingCount).toBe(4)
+        expect(subject.find(`[id="${factory.id}-${product.buildingGroups[0].id}-building-count"]`).element.value).toBe('4')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4')
       })
     })
 
     describe('Multiple groups', () => {
+      beforeEach(async () => {
+        // Add a second building group
+        await addBuildingGroupButton.trigger('click')
+        expect(product.buildingGroups.length).toBe(2)
+        // Set sync back to ON
+        product.buildingGroupItemSync = true
+        // Set amount back to 120 (4 buildings) then back to 60 (2 buildings) to force rebalance
+        const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
+        await itemAmountInput.setValue(120)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await itemAmountInput.setValue(60)
+        await new Promise(resolve => setTimeout(resolve, 1000))
 
+        expect(product.buildingGroups[0].buildingCount).toBe(1)
+        expect(product.buildingGroups[1].buildingCount).toBe(1)
+      })
+
+      test('BG-I-E-PROD-11: Changing the product quantity triggers a rebalance', async () => {
+        const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
+        await itemAmountInput.setValue(120) // 4 buildings
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(product.buildingGroups[0].buildingCount).toBe(2)
+        expect(product.buildingGroups[1].buildingCount).toBe(2)
+      })
+
+      test('BG-I-E-PROD-12: Changing the product building count triggers a rebalance', async () => {
+        const itemBCountInput = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+        await itemBCountInput.setValue(4)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(product.buildingGroups[0].buildingCount).toBe(2)
+        expect(product.buildingGroups[1].buildingCount).toBe(2)
+      })
     })
   })
 })

@@ -172,21 +172,21 @@
           class="sf-chip orange input"
           variant="tonal"
         >
-          <game-asset clickable :key="`${product.id}-${product.buildingRequirements.name}`" :subject="product.buildingRequirements.name" type="building" />
+          <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" clickable :subject="product.buildingRequirements.name" type="building" />
           <span>
             <b>{{ getBuildingDisplayName(product.buildingRequirements.name) }}</b>
           </span>
           <v-number-input
             :id="`${factory.id}-${product.id}-building-count`"
-            v-model.number="product.buildingRequirements.amount"
             class="inline-inputs ml-2"
             control-variant="stacked"
             density="compact"
             hide-details
             hide-spin-buttons
+            :model-value="formatNumberFully(product.buildingRequirements.amount)"
             :product="product.id"
             width="120px"
-            @update:model-value="changeBuildingAmount(product)"
+            @update:model-value="changeBuildingAmountInput(product, $event)"
           />
         </v-chip>
         <v-chip
@@ -369,6 +369,11 @@
       return
     }
 
+    // Negative amounts break the calculations, clamp them to a sane minimum.
+    if (product.amount < 0) {
+      product.amount = 1
+    }
+
     // Get a unique call ID for the update
     const callId = ++updateQtyCallCounter
     console.log('updateProductQty: callId', callId)
@@ -438,6 +443,13 @@
 
     increaseProductQtyViaBuilding(product, props.factory, gameData)
     updateFactory(props.factory)
+  }
+
+  // The input displays a formatted value (the raw one carries float noise like
+  // 1.3333333333333333), so user edits must be written back to the data here.
+  const changeBuildingAmountInput = (product: FactoryItem, value: number | string) => {
+    product.buildingRequirements.amount = Number(value)
+    changeBuildingAmount(product)
   }
 
   const doFixProduct = (product: FactoryItem, factory: Factory) => {

@@ -98,14 +98,17 @@ describe('building groups sanity', async () => {
         expect(parts.OreIron).toBe(600)
       })
 
-      it('should update NOT the building group when the product amount changes if sync is turned off', () => {
+      it('should NOT update the building group when the product amount changes if sync is turned off', () => {
         products[0].amount = 600
         products[0].buildingGroupItemSync = false
         calculateFactories([mockFactory], gameData)
 
+        // The group is the user's manual ground truth with sync off:
+        // it keeps its 10 buildings and thus produces 300, regardless of the item's new 600.
         const parts = products[0].buildingGroups[0].parts
-        expect(parts.IronIngot).toBe(600)
-        expect(parts.OreIron).toBe(600)
+        expect(parts.IronIngot).toBe(300)
+        expect(parts.OreIron).toBe(300)
+        expect(products[0].buildingGroups[0].buildingCount).toBe(10)
       })
     })
   })

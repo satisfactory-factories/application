@@ -24,7 +24,8 @@ export const addPowerProducerToFactory = (
     buildingAmount: options.buildingAmount ?? 0,
     buildingCount: options.buildingAmount ?? 0, // Calculated later
     ingredients: [], // Calculated later
-    fuelAmount: options.fuelAmount ?? 0,
+    // ingredientAmount is the fuel (ingredients[0]) rate — same mapping as syncState.
+    fuelAmount: options.fuelAmount ?? options.ingredientAmount ?? 0,
     powerAmount: options.powerAmount ?? 0,
     powerProduced: 0, // Calculated later
     recipe: options.recipe,
@@ -155,6 +156,12 @@ export const updateViaPower = (producer: FactoryPowerProducer, recipe: PowerReci
 }
 
 export const updateViaIngredient = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+  // If we don't have a second ingredient, then we can't update via it, so fallback to fuel.
+  if (!recipe.ingredients[1]) {
+    updateViaFuel(producer, recipe)
+    return
+  }
+
   // supplementalRatio represents supplemental ingredient e.g. water per MW produced.
   // Thus, powerProduced can be derived from the water input:
   // water (perMin) = powerProduced * supplementalRatio  -> powerProduced = water / supplementalRatio

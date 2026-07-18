@@ -37,7 +37,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
   let itemBuildingCount: any
 
   beforeEach(() => {
-    factory = newFactory('BC-E-AB-PROD Factory')
+    factory = reactive(newFactory('BC-E-AB-PROD Factory'))
     addProductToFactory(factory, {
       id: 'IronIngot',
       amount: 60, // 2 Buildings
@@ -67,6 +67,80 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       // With a single group the button should be disabled.
       // We need to check for the "v-btn--disabled" class
       expect(evenlyBalanceButton.classes()).toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-2: Enable Evenly Balance button when multiple building groups WITHOUT need of remainder', async () => {
+      // Add a second group
+      await addBuildingGroupButton.trigger('click')
+      // re-find the balance button
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+
+      // By default they are NOT evenly balanced (2 and 1)
+      expect(evenlyBalanceButton.classes()).not.toContain('v-btn--disabled')
+
+      // Now balance them
+      await evenlyBalanceButton.trigger('click')
+      // Re-find
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+      expect(evenlyBalanceButton.classes()).toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-3: Disable Evenly Balance button if all building groups have the same building counts and clocks', async () => {
+      await addBuildingGroupButton.trigger('click')
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+
+      // Set them to be the same
+      product.buildingGroups[0].buildingCount = 1
+      product.buildingGroups[1].buildingCount = 1
+      product.buildingGroups[0].overclockPercent = 100
+      product.buildingGroups[1].overclockPercent = 100
+
+      await subject.vm.$nextTick()
+
+      // Re-find
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+      expect(evenlyBalanceButton.classes()).toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-4: When effective is under balanced, "Under Producing!" is shown', async () => {
+      // Set to under-producing
+      product.buildingGroups[0].buildingCount = 1
+      product.buildingGroupItemSync = false
+      // Requirement is 2 (amount 60)
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Under producing!')
+    })
+
+    test('BG-E-AB-PROD-5: When effective is over balanced, "Over Producing!" is shown', async () => {
+      // Set to over-producing
+      product.buildingGroups[0].buildingCount = 3
+      product.buildingGroupItemSync = false
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Over producing!')
+    })
+
+    test('BG-E-AB-PROD-6: When effective is balanced, "Looking good, Pioneer!" is shown', async () => {
+      // Balanced is 2 buildings
+      product.buildingGroups[0].buildingCount = 2
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Looking good Pioneer!')
+    })
+
+    test('BG-E-AB-PROD-13: When any group has clock of !== 100%, show OC @ 100% button', async () => {
+      product.buildingGroups[0].overclockPercent = 50
+      await subject.vm.$nextTick()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const ocButton = subject.find('button:has(.fa-history)')
+      expect(ocButton.exists()).toBe(true)
+      expect(ocButton.classes()).not.toContain('v-btn--disabled')
+
+      await ocButton.trigger('click')
+      await subject.vm.$nextTick()
+      expect(product.buildingGroups[0].overclockPercent).toBe(100)
     })
   })
 

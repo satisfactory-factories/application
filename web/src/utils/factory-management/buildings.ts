@@ -151,4 +151,19 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       buildingData.amount += group.buildingCount
     })
   })
+
+  // And the power producers' buildings, which are also derived from their groups.
+  // The entry may be legitimately absent (producer not yet calculated), so skip rather than throw.
+  powerProducers.forEach(producer => {
+    producer.buildingGroups.forEach(group => {
+      if (!group.buildingCount) return
+
+      const buildingData = factory.buildingRequirements[producer.building]
+      if (!buildingData) {
+        return
+      }
+
+      buildingData.amount += group.buildingCount
+    })
+  })
 }

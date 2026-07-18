@@ -81,7 +81,7 @@ describe('Component: BuildingGroup', () => {
       updateBuildingGroup(buildingGroup)
 
       expect(eventBus.emit).toHaveBeenCalledWith('toast', {
-        message: 'The game does not allow you to provide more than 4 decimal places for clocks.',
+        message: 'The game does not allow you to provide more than 4 decimal places for clocks. It has been truncated to 4 decimal places.',
         type: 'warning',
       })
       expect(buildingGroup.overclockPercent).toBe(123.3333)

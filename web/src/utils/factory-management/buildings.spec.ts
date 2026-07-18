@@ -59,12 +59,13 @@ describe('buildings', () => {
 
           expect(productGroup.powerUsage).toBe(32)
           expect(mockFactory.power.consumed).toBe(32)
-          expect(mockFactory.power.produced).toBe(0)
+          expect(mockFactory.power.produced).toBe(1000) // 4 fuel generators @ 250MW
           expect(mockFactory.power.consumed).toBe(32)
         })
 
         it('should calculate the correct power usage for an overclocked product', () => {
-          addProductBuildingGroup(product, mockFactory, true) // Sets it into advanced mode so it doesn't do auto-rebalancing. We technically break our product here, but it's ok for testing.
+          addProductBuildingGroup(product, mockFactory, true) // We technically break our product here, but it's ok for testing.
+          product.buildingGroupItemSync = false // Advanced mode: prevent the rebalance stomping our manual group setup
           const group2 = product.buildingGroups[1]
           productGroup.buildingCount = 0 // Set this so we have full control over the 2nd group
           group2.overclockPercent = 200
@@ -79,6 +80,7 @@ describe('buildings', () => {
 
         it('should calculate the correct power usage across multiple groups for one product', () => {
           addProductBuildingGroup(product, mockFactory, true)
+          product.buildingGroupItemSync = false // Advanced mode: prevent the rebalance stomping our manual group setup
           const group2 = product.buildingGroups[1]
           productGroup.buildingCount = 5
           group2.overclockPercent = 200
@@ -114,7 +116,8 @@ describe('buildings', () => {
           const product2 = mockFactory.products[1]
           const group2 = product2.buildingGroups[0]
           group2.buildingCount = 0
-          addProductBuildingGroup(product2, mockFactory, false) // Sets it into advanced mode
+          addProductBuildingGroup(product2, mockFactory, false)
+          product2.buildingGroupItemSync = false // Advanced mode: prevent the rebalance stomping our manual group setup
           product2.buildingGroups[1].buildingCount = 0
           group2.buildingCount = 5
 
@@ -190,6 +193,10 @@ describe('buildings', () => {
           addProductBuildingGroup(product2, mockFactory, false)
           const group2p2 = product2.buildingGroups[1]
 
+          // Advanced mode: prevent the rebalance stomping our manual group setup
+          product.buildingGroupItemSync = false
+          product2.buildingGroupItemSync = false
+
           // Set the building counts
           productGroup.buildingCount = 5
           group2.buildingCount = 10
@@ -202,9 +209,8 @@ describe('buildings', () => {
         })
       })
 
-      describe('powerProducers', () => {
-
-      })
+      // powerProducer group building counts are not yet TDD-tested (see BG-E-B-POW in
+      // docs/testing/building-groups-operations.md). An empty describe fails the suite.
     })
   })
 })

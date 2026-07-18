@@ -50,13 +50,13 @@ describe('Component: Product', () => {
     calculateFactory(factory, [factory], gameData)
     subject = mountSubject(factory) // Remount the subject as things have changed
 
-    const productionInput = subject.find('input[name="IronIngot.amount"]')
-    expect(productionInput?.attributes?.()?.value).toBe('30')
-    const ironOreInput = subject.find('input[name="IronIngot.ingredients.OreIron"]')
-    expect(ironOreInput?.attributes?.()?.value).toBe('30')
+    const productionInput = subject.find(`[id="${factory.id}-IronIngot-amount"]`)
+    expect((productionInput.element as HTMLInputElement).value).toBe('30')
+    const ironOreInput = subject.find(`[id="${factory.id}-IronIngot-OreIron-amount"]`)
+    expect((ironOreInput.element as HTMLInputElement).value).toBe('30')
 
     await ironOreInput.setValue('60')
-    expect(productionInput?.attributes?.()?.value).toBe('60')
+    expect((productionInput.element as HTMLInputElement).value).toBe('60')
   })
 
   it('should update produced amount when byproduct amount is changed', async () => {
@@ -68,18 +68,22 @@ describe('Component: Product', () => {
     calculateFactory(factory, [factory], gameData)
     subject = mountSubject(factory) // Remount the subject as things have changed
 
-    const productionInput = subject.find('input[name="LiquidFuel.amount"]')
-    expect(productionInput?.attributes?.()?.value).toBe('40')
+    const productionInput = subject.find(`[id="${factory.id}-LiquidFuel-amount"]`)
+    expect((productionInput.element as HTMLInputElement).value).toBe('40')
     const byProductInput = subject.find('input[name="LiquidFuel.byProducts.PolymerResin"]')
-    expect(byProductInput?.attributes?.()?.value).toBe('30')
+    expect((byProductInput.element as HTMLInputElement).value).toBe('30')
 
     await byProductInput.setValue('60')
-    expect(productionInput?.attributes?.()?.value).toBe('80')
+    expect((productionInput.element as HTMLInputElement).value).toBe('80')
   })
 
   it('should prevent a breakage when the input amount is set to negative numbers', async () => {
-    const productionInput = subject.find('input[name="IronIngot.amount"]')
+    const productionInput = subject.find(`[id="${factory.id}-IronIngot-amount"]`)
     await productionInput.setValue('-123')
-    expect(productionInput?.attributes?.()?.value).toBe('1')
+
+    // The amount input is debounced (750ms)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    expect((productionInput.element as HTMLInputElement).value).toBe('1')
   })
 })

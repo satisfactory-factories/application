@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Implemented `isEvenlyBalanced` logic for Product Groups to improve user feedback and action button states.
+- Added comprehensive TDD tests for Building Groups: Creation, Deletion, Action Buttons, and Item Editing.
+
+### Fixed
+- Fixed critical bug where `syncBuildingGroups` ignored the `buildingGroupItemSync` flag, causing unwanted rebalances.
+- Fixed `deleteBuildingGroup` logic to maintain sync disabled after multiple groups are reduced to one, ensuring intentional imbalances are preserved.
+- Fixed `BuildingGroups.vue` to ensure metrics are recalculated immediately on mount and on all relevant factory updates.
+- Fixed several test-only issues related to stale DOM elements and floating point precision.
+- Corrected default building count for newly added building groups to match current UI design (default 1).
+- Updated "Evenly balance" button to work even when sync is disabled, providing better manual control.
+- Fixed group→item writeback (`checkForItemUpdate`) running on every recalculation, which replaced exact user-entered amounts with float-degraded values (e.g. 123 → 122.999…) and stomped the power producer's `updated` direction. It now only runs for edits originating from a building group.
+- Fixed `addPowerProducerToFactory` dropping the `ingredientAmount` option — it now seeds the fuel rate, matching the syncState mapping.
+- Fixed power producer building groups being excluded from the factory's total building requirements.
+- Fixed the product building count input displaying raw float noise (e.g. 1.3333333333333333); it now displays at 3dp while keeping the underlying value precise.
+- Product building count edits with negative values are now clamped to 1.
+- `getPowerRecipe` no longer crashes on an unknown recipe id.
+- Items from old saves without a `buildingGroups` field no longer crash the parts calculation before migration runs.
+
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
 ## [0.2.1](https://github.com/Maelstromeous/satisfactory-factories/compare/v0.2.0...v0.2.1) (2024-11-17)

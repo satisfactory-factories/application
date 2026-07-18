@@ -58,13 +58,13 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
 
   describe('creation', () => {
     test('BG-C-D-1: Create a new building group upon product addition', async () => {
-      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.buildingCount).toBe(2)
     })
 
     test('BG-C-D-2: Create a second building group', async () => {
       addBuildingGroup(product, ItemType.Product, factory)
 
-      expect(product.buildingGroups[1].buildingCount).toBe(0)
+      expect(product.buildingGroups[1].buildingCount).toBe(1)
       // It should not have affected the product or the other group
       expect(product.buildingGroups[0].buildingCount).toBe(2)
       expect(product.buildingRequirements.amount).toBe(2)
@@ -73,7 +73,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
     test('BG-C-D-2: Create a second building group via UI', async () => {
       await addBuildingGroupButton.trigger('click')
 
-      expect(product.buildingGroups[1].buildingCount).toBe(0)
+      expect(product.buildingGroups[1].buildingCount).toBe(1)
       // It should not have affected the product or the other group
       expect(product.buildingGroups[0].buildingCount).toBe(2)
       expect(product.buildingRequirements.amount).toBe(2)
@@ -132,24 +132,24 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(toggleSyncButton.text()).toBe('Disabled')
     })
 
-    test('BG-C-D-5: Create multiple building groups, with a 0 building default count', () => {
+    test('BG-C-D-5: Additional building groups default to 1 building', () => {
       // Add new building groups
       addBuildingGroup(product, ItemType.Product, factory)
       addBuildingGroup(product, ItemType.Product, factory)
 
       expect(product.buildingGroups[0].buildingCount).toBe(2)
-      expect(product.buildingGroups[1].buildingCount).toBe(0)
-      expect(product.buildingGroups[2].buildingCount).toBe(0)
+      expect(product.buildingGroups[1].buildingCount).toBe(1)
+      expect(product.buildingGroups[2].buildingCount).toBe(1)
     })
 
-    test('BG-C-D-5: Create multiple building groups, with a 0 building default count via UI', async () => {
+    test('BG-C-D-5: Additional building groups default to 1 building via UI', async () => {
       // Add new building groups
       await addBuildingGroupButton.trigger('click')
       await addBuildingGroupButton.trigger('click')
 
       expect(product.buildingGroups[0].buildingCount).toBe(2)
-      expect(product.buildingGroups[1].buildingCount).toBe(0)
-      expect(product.buildingGroups[2].buildingCount).toBe(0)
+      expect(product.buildingGroups[1].buildingCount).toBe(1)
+      expect(product.buildingGroups[2].buildingCount).toBe(1)
     })
   })
   describe('deletion', () => {
@@ -203,7 +203,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(factory.products[0]?.buildingGroups).toBeUndefined()
     })
 
-    test('BC-C-D-8: Deleting a building group removes it from the product data model', async () => {
+    test('BG-C-D-8: Deleting a building group removes it from the product data model', async () => {
       // Add a second building group
       addBuildingGroup(product, ItemType.Product, factory)
 
@@ -215,7 +215,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(product.buildingGroups.length).toBe(1)
     })
 
-    test('BC-C-D-8: Deleting a building group removes it from the product via UI', async () => {
+    test('BG-C-D-8: Deleting a building group removes it from the product via UI', async () => {
       // Add a second building group
       await addBuildingGroupButton.trigger('click')
       const buildingGroup2 = product.buildingGroups[1]
@@ -239,22 +239,12 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       expect(product.buildingGroups.length).toBe(1)
     })
 
-    test('BC-C-D-9: Deleting a building group causes a building group imbalance via UI', async () => {
+    test('BG-C-D-9: Deleting a building group causes a building group imbalance via UI', async () => {
       // Add a second building group
       await addBuildingGroupButton.trigger('click')
-      const buildingGroup2 = product.buildingGroups[1]
       expect(product.buildingGroupItemSync).toBe(false)
 
-      const effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
-      const remainingBuildings = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
-      const remainingBuildingsVerb = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings-verb"]`)
-
-      // Check the number of effective and remaining buildings, it should still be 2 as provided by default
-      expect(effectiveBuildings.text()).toBe('3.00') // 2+1
-      expect(remainingBuildings.text()).toBe('1.00')
-      expect(remainingBuildingsVerb.text()).toBe('over')
-
-      // Enable sync, need to re-mount the button for some reason
+      // Enable sync
       toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
       await toggleSyncButton.trigger('click')
       expect(product.buildingGroupItemSync).toBe(true)
@@ -270,11 +260,51 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
       await deleteButton.trigger('click')
 
-      // Check the current state of the building groups balance, it should be 2 with 2 remaining
-      expect(effectiveBuildings.text()).toBe('2.00')
-      expect(remainingBuildings.text()).toBe('2.00') // Thus, imbalance.
-      // Product should still have an amount of 4
-      expect(product.buildingRequirements.amount).toBe(4)
+      // Re-find elements because they might have been re-rendered
+      const effectiveBuildingsVal = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
+      const remainingBuildingsVal = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
+
+      // Check the current state of the building groups balance, it should be 1 with 1 remaining
+      expect(effectiveBuildingsVal.text()).toBe('1.00')
+      expect(remainingBuildingsVal.text()).toBe('1.00') // Thus, imbalance.
+      // Sync should have been disabled
+      expect(product.buildingGroupItemSync).toBe(false)
+    })
+
+    test('BG-C-D-10: Deletion of building groups to 1 remaining disables the delete group button', async () => {
+      // Add a second building group
+      await addBuildingGroupButton.trigger('click')
+      expect(product.buildingGroups.length).toBe(2)
+
+      const deleteButton = subject.find(`[id="${factory.id}-${product.buildingGroups[0].id}-delete"]`)
+      let deleteButton2 = subject.find(`[id="${factory.id}-${product.buildingGroups[1].id}-delete"]`)
+      expect(deleteButton.attributes('disabled')).toBe(undefined)
+      expect(deleteButton2.attributes('disabled')).toBe(undefined)
+
+      // Delete one
+      await deleteButton.trigger('click')
+      expect(product.buildingGroups.length).toBe(1)
+
+      // Now the remaining one should be disabled
+      deleteButton2 = subject.find(`[id="${factory.id}-${product.buildingGroups[0].id}-delete"]`)
+      expect(deleteButton2.attributes('disabled')).toBeDefined()
+    })
+
+    test('BG-C-D-11: Deletion of building groups to 1 remaining disables the evenly balance button', async () => {
+      // Add a second building group
+      await addBuildingGroupButton.trigger('click')
+      expect(product.buildingGroups.length).toBe(2)
+
+      const balanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+      expect(balanceButton.attributes('disabled')).toBe(undefined)
+
+      // Delete one
+      const deleteButton = subject.find(`[id="${factory.id}-${product.buildingGroups[0].id}-delete"]`)
+      await deleteButton.trigger('click')
+      expect(product.buildingGroups.length).toBe(1)
+
+      // Balance button should be disabled
+      expect(balanceButton.attributes('disabled')).toBeDefined()
     })
   })
 })

@@ -39,7 +39,7 @@ describe('power', () => {
         updated: FactoryPowerChangeType.Building,
       })
 
-      expect(factory.powerProducers[0].buildingCount).toBe(0) // Calculated after
+      expect(factory.powerProducers[0].buildingCount).toBe(5) // Seeded from buildingAmount, refined on calculation
       expect(factory.powerProducers[0].buildingAmount).toBe(5)
     })
 
@@ -75,6 +75,9 @@ describe('power', () => {
         recipe: 'GeneratorFuel_LiquidFuel',
         updated: FactoryPowerChangeType.Building,
       })
+
+      // The fuel rate is only scaled to the building count during calculation
+      calculateFactories([factory], gameData)
 
       const buildingGroup = factory.powerProducers[0].buildingGroups[0]
       expect(buildingGroup.buildingCount).toBe(5)
@@ -365,12 +368,13 @@ describe('power', () => {
         // Given we calculate that we to consume 25 waste per minute to produce 0.5 fuel rods per minute
 
         factory = newFactory('My nuclear plant')
-        // Add one nuclear power plant
+        // Add one nuclear power plant. ingredientAmount is the fuel (rods) rate,
+        // so the Fuel change type expresses "the user set the rod rate".
         addPowerProducerToFactory(factory, {
           building: 'generatornuclear',
           ingredientAmount: 0.5,
           recipe: 'GeneratorNuclear_NuclearFuelRod',
-          updated: FactoryPowerChangeType.Ingredient,
+          updated: FactoryPowerChangeType.Fuel,
         })
 
         calculateFactories([factory], gameData)

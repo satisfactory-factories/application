@@ -99,8 +99,6 @@ export const calculateFactory = (
   gameData: DataInterface,
   modes: CalculationModes = {},
 ) => {
-  console.log('factory: calculateFactory started', factory.name)
-
   // Scan for invalid inputs as the user may have changed an input's factoryID.
   // Yes we are running this multiple times especially from calculateFactories,
   // but it's a very quick operation, and it ensures integrity.
@@ -136,13 +134,21 @@ export const calculateFactory = (
   // Calculate / synchronize the factory building groups.
   // ONLY rebalance though if the origin point is from the product itself, not the building groups.
   // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
+  // Only write group totals back up to the item when the edit actually originated
+  // from a building group. Doing it on every recalc replaces the user's exact item
+  // amounts with float-degraded recomputations (e.g. 123 -> 122.999...) and stomps
+  // the power producer's `updated` direction.
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
-    checkForItemUpdate(product, factory)
+    if (modes.origin === 'buildingGroup') {
+      checkForItemUpdate(product, factory)
+    }
   })
   factory.powerProducers.forEach(producer => {
     syncBuildingGroups(producer, ItemType.Power, factory, modes)
-    checkForItemUpdate(producer, factory)
+    if (modes.origin === 'buildingGroup') {
+      checkForItemUpdate(producer, factory)
+    }
   })
 
   // It's possible that the power producers have changed, so we need to recalculate the power.

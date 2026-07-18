@@ -30,6 +30,7 @@ describe('buildingGroupsPower', async () => {
       recipe: 'IngotIron',
     })
     product = mockFactory.products[0]
+    product.buildingRequirements = { amount: 5, name: 'smeltermk1' }
 
     addPowerProducerToFactory(mockFactory, {
       building: 'generatorfuel',
@@ -41,8 +42,8 @@ describe('buildingGroupsPower', async () => {
 
     // Calculate factory to get some extra contextual info, then blow the building groups away
     calculateFactories(factories, gameData)
-    product.buildingGroups = []
-    powerProducer.buildingGroups = []
+    product.buildingGroups.splice(0)
+    powerProducer.buildingGroups.splice(0)
 
     productBuildingGroups = product.buildingGroups
     powerBuildingGroups = powerProducer.buildingGroups
@@ -60,18 +61,17 @@ describe('buildingGroupsPower', async () => {
       expect(powerBuildingGroups[0].buildingCount).toBe(4)
     })
 
-    it('should add a new group to the power producer with 0 buildings when asked', () => {
+    it('should add a new group to the power producer with 1 building when not matching buildings', () => {
       addPowerProducerBuildingGroup(powerProducer, mockFactory, false)
 
       expect(powerBuildingGroups.length).toBe(1)
-      expect(powerBuildingGroups[0].buildingCount).toBe(0)
+      expect(powerBuildingGroups[0].buildingCount).toBe(1)
     })
 
     it('should add a new group to the power producer with the correct parts', () => {
       addPowerProducerBuildingGroup(powerProducer, mockFactory)
 
-      expect(powerBuildingGroups[0].parts.OreIron).toBe(150)
-      expect(powerBuildingGroups[0].parts.IronIngot).toBe(150)
+      expect(powerBuildingGroups[0].parts.LiquidFuel).toBe(80)
     })
     // it('should add a multiple groups each containing the correct part amounts', () => {
     //   addPowerProducerBuildingGroup(product) // The first group should contain the full requirement

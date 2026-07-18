@@ -41,6 +41,10 @@ export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe
 
   const recipeData = gameData.powerGenerationRecipes.find(recipe => recipe.id === id) ?? undefined
 
+  if (!recipeData) {
+    return undefined // JSON.parse would otherwise crash on "undefined"
+  }
+
   // Create a structured clone of the recipe so no changes are made to the original data
   return JSON.parse(JSON.stringify(recipeData))
 }

@@ -33,9 +33,8 @@ describe('TDD: FAC-PROD: Factory Products', () => {
     subject = mountProduct(factory)
   })
 
-  describe('FAC-PROD-CD: creation', () => {
-
-  })
+  // FAC-PROD-CD creation operations (FAC-PROD-CD-1..3) are not yet TDD-tested.
+  // An empty describe block here makes vitest fail with "No test found in suite".
   describe('FAC-PROD-CD: deletion', () => {
     test('FAC-PROD-CD-4: Deletion of the product removes the part difference from the factory (single product) via data model', async () => {
       // Assert the part list before

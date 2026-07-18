@@ -97,18 +97,18 @@ describe('products', () => {
         mockFactory = newFactory('Iron Ingots')
       })
 
-      it('should add a building group to a product, with the expected buildings of 0', () => {
+      it('should add a building group to a product, with the expected buildings', () => {
         addProductToFactory(mockFactory, {
           id: 'IronIngot',
-          amount: 60,
+          amount: 60, // 2 buildings
           recipe: 'IngotIron',
         })
 
         const group = mockFactory.products[0].buildingGroups[0]
-        expect(group.buildingCount).toBe(0)
+        expect(group.buildingCount).toBe(2)
       })
 
-      it('should add a building group to a product, with the expected parts of 0', () => {
+      it('should add a building group to a product, with the expected parts', () => {
         addProductToFactory(mockFactory, {
           id: 'IronIngot',
           amount: 60,
@@ -116,8 +116,9 @@ describe('products', () => {
         })
 
         const group = mockFactory.products[0].buildingGroups[0]
-        expect(group.parts.OreIron).toBe(0)
-        expect(group.parts.IronIngot).toBe(0)
+        expect(group.parts.IronIngot).toBe(60)
+        // Ingredients are not known until the factory has been calculated
+        expect(group.parts.OreIron).toBeUndefined()
       })
     })
   })
@@ -144,7 +145,9 @@ describe('products', () => {
       expect(mockFactory.parts.IronIngot.amountSupplied).toBe(123)
       expect(mockFactory.parts.IronIngot.amountRemaining).toBe(123)
       expect(mockFactory.parts.IronIngot.satisfied).toBe(true)
-      expect(mockFactory.power.consumed).toBe(32.382) // 4.1x iron ingot smelters + 4.1x copper ingot smelters
+      // Power comes from the building groups: each product needs 4.1 smelters, realised as
+      // 5 smelters @ 82% = 5 * 4MW * 0.82^1.321928 = 15.4MW, times two products.
+      expect(mockFactory.power.consumed).toBe(30.8)
 
       // Expect the raw resources to exist
       expect(mockFactory.rawResources.OreIron).toBeDefined()
@@ -316,18 +319,14 @@ describe('products', () => {
         recipe: 'IronPlate',
       }
 
-      vi.spyOn(eventBus, 'emit')
       addProductToFactory(mockFactory, mockProduct)
       calculateFactories([mockFactory], gameData)
 
-      expect(eventBus.emit).toHaveBeenCalledWith('toast', {
-        message: 'You cannot set a product quantity to be <=0. Setting to 1 to prevent calculation errors. <br>If you need to enter 0.x of numbers, enter a period then the number e.g. ".5".',
-        type: 'warning',
-      })
-
-      expect(mockFactory.parts.IronPlate.amountSupplied).toBe(1)
-      expect(mockFactory.parts.IronPlate.amountRemaining).toBe(1)
-      expect(mockFactory.parts.IronIngot.amountRequired).toBe(1.5)
+      // A 0 amount product is normalised at creation to 1 building's worth of output (20/min for Iron Plate)
+      expect(mockFactory.products[0].amount).toBe(20)
+      expect(mockFactory.parts.IronPlate.amountSupplied).toBe(20)
+      expect(mockFactory.parts.IronPlate.amountRemaining).toBe(20)
+      expect(mockFactory.parts.IronIngot.amountRequired).toBe(30)
     })
   })
 
@@ -889,7 +888,8 @@ describe('products', () => {
 
     beforeEach(() => {
       product = mockFactory.products[0]
-      product.buildingGroups[0].buildingCount = 4
+      // The item is authoritative on a bare recalc, so drive the requirement via the amount
+      product.amount = 120 // 4 buildings
       calculateFactories([mockFactory], gameData)
       expect(product.buildingRequirements.amount).toBe(4)
       product.buildingGroupItemSync = true // Enable building group sync
@@ -939,7 +939,7 @@ describe('products', () => {
       increaseProductQtyViaBuilding(product, mockFactory, gameData)
 
       expect(product.buildingGroups[0].buildingCount).toBe(20) // Set by first test
-      expect(product.buildingGroups[1].buildingCount).toBe(0) // It was never changed
+      expect(product.buildingGroups[1].buildingCount).toBe(1) // Created with the default of 1, never rebalanced
     })
   })
 })

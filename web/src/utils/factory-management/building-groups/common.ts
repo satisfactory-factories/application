@@ -28,12 +28,12 @@ export const addBuildingGroup = (
   // This is done from within each method as there's different ways of accessing the building counts.
   const addBuildings = item.buildingGroups.length === 0
 
-  // We always want sync enabled for the first group.
-  item.buildingGroupItemSync = true
-
   // If we have a second group, we need to disable sync.
   if (item.buildingGroups.length > 0) {
     item.buildingGroupItemSync = false
+  } else {
+    // We always want sync enabled for the first group.
+    item.buildingGroupItemSync = true
   }
 
   if (type === ItemType.Product) {
@@ -42,13 +42,6 @@ export const addBuildingGroup = (
     addPowerProducerBuildingGroup(item as FactoryPowerProducer, factory, addBuildings)
   } else {
     throw new Error(`addBuildingGroup: Invalid group type: ${type}`)
-  }
-
-  // Ensure the building group always contains 1 building so we don't create invalid groups.
-  // Get the last group and set the building count to 1.
-  const lastGroup = item.buildingGroups[item.buildingGroups.length - 1]
-  if (lastGroup) {
-    lastGroup.buildingCount = 1
   }
 
   // Recalculate the group metrics
@@ -61,7 +54,7 @@ export const createBuildingGroup = (
   groupType: ItemType,
   matchBuildings = true
 ) => {
-  let buildingCount = item.buildingGroups.length === 0 ? 1 : 0
+  let buildingCount = 0
 
   if (matchBuildings) {
     if (groupType === ItemType.Product) {
@@ -75,6 +68,12 @@ export const createBuildingGroup = (
         buildingCount = subject.buildingAmount
       }
     }
+  }
+
+  // New groups always contain at least 1 building — a 0-building group is useless
+  // to the user and invites division by zero in the part calculations.
+  if (buildingCount === 0) {
+    buildingCount = 1
   }
 
   item.buildingGroups.push({
@@ -131,7 +130,8 @@ export const calculateProductBuildingGroupPower = (
     const consumptionPerBuilding = gameData.buildings[building]
 
     if (consumptionPerBuilding === undefined) {
-      throw new Error(`productBuildingGroups: calculateProductBuildingGroupPower: Building not found! ${building}`)
+      // throw new Error(`productBuildingGroups: calculateProductBuildingGroupPower: Building not found! ${building}`)
+      return
     }
 
     // Now, using the formula above, we calculate the power usage.
@@ -198,9 +198,14 @@ export const calculateBuildingGroupParts = (
   // Handle any group part quantity changes.
   // Loop through all the building groups buildings and use that as relative to update each part quantities.
   for (const item of items) {
-  // Firstly, check if the item needs any building groups as the user may have changed the product.
-    if (item.id === '' || item.recipe === '') {
+    // Items from old saves may predate the buildingGroups field (migration runs later in load).
+    if (!item.buildingGroups) {
       item.buildingGroups = []
+    }
+
+    // Firstly, check if the item needs any building groups as the user may have changed the product.
+    if (item.id === '' || item.recipe === '') {
+      item.buildingGroups.splice(0)
       continue // Skip this product
     }
 
@@ -264,7 +269,10 @@ export const calculateBuildingGroupParts = (
         }
 
         // Calculate the amount of parts per building, based off total building count to get the per building amount
-        const partPerBuilding = amount / totalBuildingCount
+        let partPerBuilding = 0
+        if (totalBuildingCount > 0) {
+          partPerBuilding = amount / totalBuildingCount
+        }
 
         // Now multiply the per building amount by the number of buildings in the group to get the true amount.
         group.parts[partKey] = (partPerBuilding * group.buildingCount)
@@ -306,7 +314,7 @@ export const syncBuildingGroups = (
   recalculateGroupMetrics(item, groupType, factory)
 
   // If originating from the item, cause a rebalance.
-  if (modes.origin !== 'buildingGroup') {
+  if (modes.forceRebalance || (modes.origin !== 'buildingGroup' && item.buildingGroupItemSync)) {
     let targetBuildings: number
 
     // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
@@ -355,23 +363,14 @@ export const syncBuildingGroups = (
 export const bestEffortUpdateBuildingCount = (
   item: FactoryItem | FactoryPowerProducer,
   group: BuildingGroup,
-  groups: BuildingGroup[],
+  targetAmountForGroup: number,
   type: ItemType,
 ) => {
-  let targetAmount = 0
-  if (type === ItemType.Product) {
-    const subject = item as FactoryItem
-    targetAmount = subject.amount
-  } else if (type === ItemType.Power) {
-    const subject = item as FactoryPowerProducer
-    targetAmount = subject.fuelAmount
-  } else {
-    throw new Error('productBuildingGroups: bestEffortUpdateBuildingCount: Invalid group type!')
-  }
-
-  if (targetAmount <= 0) {
-    // If the item has no amount, this shouldn't happen
-    throw new Error('productBuildingGroups: bestEffortUpdateBuildingCount: Item amount is 0!')
+  if (targetAmountForGroup <= 0) {
+    // If the group should have no amount, just set it to 0
+    group.buildingCount = 0
+    group.overclockPercent = 0
+    return
   }
 
   // To handle imprecision, we have to get the original ratio out of the recipe so we have more precise numbers to play with.
@@ -398,20 +397,18 @@ export const bestEffortUpdateBuildingCount = (
 
   // Go through each group, and allocate the best building count and clock speeds, across the groups.
   // Firstly though we need to understand what the calculation of the clock speed is, when spread across the groups.
-  const numberOfGroups = groups.length
-  const amountPerGroup = targetAmount / numberOfGroups
-  const buildingsPerGroup = amountPerGroup / perMin
+  const buildingsNeeded = targetAmountForGroup / perMin
 
   /*
     For a positive gap, instead of defaulting to a single building and overclocking it, we try to find a better solution using less buildings.
     We will loop each time until the desired clock is less than 100%, then based off that calculate the number of buildings at a sub 100% clock to achieve the end result.
   */
-  const maxN = Math.ceil(buildingsPerGroup) // a reasonable search range
+  const maxN = Math.ceil(buildingsNeeded) // a reasonable search range
   let bestBuildingCount: number | null = null
   let bestClock: number = Number.POSITIVE_INFINITY
 
   for (let candidateBuildings = 1; candidateBuildings <= maxN; candidateBuildings++) {
-    const candidateClock = (buildingsPerGroup / candidateBuildings) * 100
+    const candidateClock = (buildingsNeeded / candidateBuildings) * 100
     if (candidateClock <= 100) {
       bestBuildingCount = candidateBuildings
       bestClock = candidateClock
@@ -425,11 +422,9 @@ export const bestEffortUpdateBuildingCount = (
     bestClock = 250
   }
 
-  // Apply the best building count and clock speed to the group(s)
-  for (const group of groups) {
-    group.buildingCount = bestBuildingCount
-    group.overclockPercent = formatNumberFully(bestClock, 4)
-  }
+  // Apply the best building count and clock speed to the group
+  group.buildingCount = bestBuildingCount
+  group.overclockPercent = formatNumberFully(bestClock, 4)
 }
 
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
@@ -443,8 +438,29 @@ export const remainderToLast = (
 
   // The last group is the one we adjust.
   const lastGroup = groups[groups.length - 1]
+  const otherGroups = groups.slice(0, -1)
+  const otherEffective = Number(calculateEffectiveBuildingCount(otherGroups))
 
-  bestEffortUpdateBuildingCount(item, lastGroup, groups, groupType)
+  // Calculate total target amount
+  let totalTargetAmount = 0
+  let perMin = 0
+  const recipeUsed = item.recipe
+  if (groupType === ItemType.Product) {
+    const subject = item as FactoryItem
+    totalTargetAmount = subject.amount
+    const recipe = getRecipe(recipeUsed, gameData)
+    perMin = recipe?.products[0].perMin ?? 1
+  } else {
+    const subject = item as FactoryPowerProducer
+    totalTargetAmount = subject.fuelAmount
+    const recipe = getPowerRecipe(recipeUsed, gameData)
+    perMin = recipe?.ingredients[0].perMin ?? 1
+  }
+
+  const otherAmount = otherEffective * perMin
+  const lastTargetAmount = totalTargetAmount - otherAmount
+
+  bestEffortUpdateBuildingCount(item, lastGroup, lastTargetAmount, groupType)
 
   recalculateGroupMetrics(item, groupType, factory)
 }
@@ -647,11 +663,6 @@ export const deleteBuildingGroup = (
   // Find the index of the group and remove it
   const index = item.buildingGroups.findIndex(g => g.id === group.id)
   item.buildingGroups.splice(index, 1)
-
-  // Check if we're down to 1 group, if so re-enable sync
-  if (item.buildingGroups.length === 1) {
-    item.buildingGroupItemSync = true
-  }
 
   // Must call calculateFactory or the parts are now out of sync!
 }

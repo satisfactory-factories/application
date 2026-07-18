@@ -79,9 +79,9 @@
       :id="`${factory.id}-${item.id}-evenly-balance`"
       class="ml-2"
       color="secondary"
-      :disabled="item.buildingGroups.length === 1 || correct"
+      :disabled="item.buildingGroups.length === 1 || isEvenlyBalanced"
       size="small"
-      :variant="item.buildingGroups.length === 1 || correct ? 'outlined' : 'flat'"
+      :variant="item.buildingGroups.length === 1 || isEvenlyBalanced ? 'outlined' : 'flat'"
       @click="rebalance()"
     >
       <i class="fas fa-balance-scale" />
@@ -151,12 +151,17 @@
     type: ItemType
   }>()
 
-  watch(() => props.item.buildingGroups, () => {
-    recalculateMetrics(props.factory)
-  }, { deep: true })
-
   const buildingsRemaining = ref(0)
   const effectiveBuildings = ref(0)
+
+  const calculateEffectiveBuildings = () => {
+    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
+  }
+
+  const calculateBuildingsRemaining = () => {
+    console.log('BuildingGroups: calculateBuildingsRemaining', props.item.id, props.item)
+    buildingsRemaining.value = calculateRemainingBuildingCount(props.item, props.type)
+  }
 
   const recalculateMetrics = (factory: Factory) => {
     // Filter out events for factories we don't care about
@@ -167,14 +172,9 @@
     }
   }
 
-  const calculateEffectiveBuildings = () => {
-    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
-  }
-
-  const calculateBuildingsRemaining = () => {
-    console.log('BuildingGroups: calculateBuildingsRemaining', props.item.id, props.item)
-    buildingsRemaining.value = calculateRemainingBuildingCount(props.item, props.type)
-  }
+  watch(() => props.item.buildingGroups, () => {
+    recalculateMetrics(props.factory)
+  }, { deep: true, immediate: true })
 
   const correct = computed(() => {
     return buildingsRemaining.value <= 0.1 && buildingsRemaining.value >= -0.1
@@ -192,7 +192,8 @@
     syncBuildingGroups(
       props.item,
       props.type,
-      props.factory
+      props.factory,
+      { forceRebalance: true }
     )
   }
 
@@ -205,6 +206,15 @@
   const areAllClocks100 = (buildingGroups: BuildingGroup[]) => {
     return buildingGroups.every(group => group.overclockPercent === 100)
   }
+
+  const isEvenlyBalanced = computed(() => {
+    if (props.item.buildingGroups.length <= 1) return true
+    const first = props.item.buildingGroups[0]
+    return props.item.buildingGroups.every(g =>
+      g.buildingCount === first.buildingCount &&
+      g.overclockPercent === first.overclockPercent
+    )
+  })
 
   const showTutorial = () => {
     eventBus.emit('openBuildingGroupTutorial')

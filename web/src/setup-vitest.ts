@@ -49,6 +49,6 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     removeListener: () => {},
     addEventListener: () => {},
     removeEventListener: () => {},
-    dispatchEvent: () => {},
+    dispatchEvent: () => true,
   })
 }

@@ -247,8 +247,8 @@ describe('syncState', () => {
         addPowerProducerToFactory(fuelOnlyFactory, {
           building: 'generatorfuel',
           buildingAmount: 1,
-          recipe: 'GeneratorFuel_Coal',
-          updated: 'power',
+          recipe: 'GeneratorCoal_Coal',
+          updated: FactoryPowerChangeType.Power,
         })
 
         // Set sync state
@@ -286,8 +286,8 @@ describe('syncState', () => {
         addPowerProducerToFactory(coalPowerPlant, {
           building: 'generatorfuel',
           buildingAmount: 1,
-          recipe: 'GeneratorFuel_Coal',
-          updated: 'power',
+          recipe: 'GeneratorCoal_Coal',
+          updated: FactoryPowerChangeType.Power,
         })
 
         // Step 2: Create another factory that will be "deleted"
@@ -323,14 +323,14 @@ describe('syncState', () => {
         addPowerProducerToFactory(multiPowerFactory, {
           building: 'generatorfuel',
           buildingAmount: 2,
-          recipe: 'GeneratorFuel_Coal',
-          updated: 'power',
+          recipe: 'GeneratorCoal_Coal',
+          updated: FactoryPowerChangeType.Power,
         })
         addPowerProducerToFactory(multiPowerFactory, {
           building: 'generatornuclear',
           buildingAmount: 1,
-          recipe: 'GeneratorNuclear_UraniumFuelRod',
-          updated: 'power',
+          recipe: 'GeneratorNuclear_NuclearFuelRod',
+          updated: FactoryPowerChangeType.Power,
         })
 
         // Set sync state

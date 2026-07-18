@@ -274,7 +274,7 @@
     timeout.value = setTimeout(() => {
       console.log('Updating building group overclock')
       updateBuildingGroup(group)
-      updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
+      updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
       updatingOverclock.value = false
       console.log('Overclock updated')
       eventBus.emit('buildingGroupUpdated', props.factory)
@@ -285,7 +285,7 @@
     deleteBuildingGroup(props.item, group)
 
     // We need to now update the factory as the parts will be out of sync.
-    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false })
+    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
   }
 
   const hasByProduct = computed(() => {
@@ -363,6 +363,7 @@
         part,
         props.group.parts[part],
       )
+      updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
       updatingPart.value = ''
       console.log(`Part ${part} updated`)
       eventBus.emit('buildingGroupUpdated', props.factory)

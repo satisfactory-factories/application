@@ -47,26 +47,26 @@ describe('productBuildingGroups', async () => {
 
   describe('addProductBuildingGroup', () => {
     it('should add a new group to the product with the correct building count', () => {
-      addProductBuildingGroup(mockFactory.products[0], mockFactory)
+      addProductBuildingGroup(mockFactory.products[0], mockFactory, true)
 
       expect(buildingGroups.length).toBe(1)
       expect(buildingGroups[0].buildingCount).toBe(5)
     })
 
-    it('should add a new group to the product with 0 buildings', () => {
+    it('should add a new group to the product with 1 buildings', () => {
       addProductBuildingGroup(mockFactory.products[0], mockFactory)
 
-      expect(buildingGroups[0].buildingCount).toBe(0)
+      expect(buildingGroups[0].buildingCount).toBe(1)
     })
 
     it('should add multiple groups each containing the correct part amounts', () => {
       addProductBuildingGroup(mockFactory.products[0], mockFactory, true) // The first group should contain the full requirement
-      addProductBuildingGroup(mockFactory.products[0], mockFactory)
+      addProductBuildingGroup(mockFactory.products[0], mockFactory) // Additional groups default to 1 building
 
       expect(buildingGroups[0].parts.OreIron).toBe(150)
       expect(buildingGroups[0].parts.IronIngot).toBe(150)
-      expect(buildingGroups[1].parts.OreIron).toBe(0)
-      expect(buildingGroups[1].parts.IronIngot).toBe(0)
+      expect(buildingGroups[1].parts.OreIron).toBe(30)
+      expect(buildingGroups[1].parts.IronIngot).toBe(30)
     })
 
     it('should automatically add a group when a product is added to a factory', () => {
@@ -87,10 +87,41 @@ describe('productBuildingGroups', async () => {
     let group1: BuildingGroup
     let group2: BuildingGroup
     let product: FactoryItem
-    beforeEach(() => {
-      product = mockFactory.products[0]
-      addBuildingGroup(product, ItemType.Product, mockFactory)
-      addBuildingGroup(product, ItemType.Product, mockFactory)
+
+    beforeEach(async () => {
+      const factory = newFactory('Test Factory')
+      addProductToFactory(factory, {
+        id: 'IronIngot',
+        amount: 150,
+        recipe: 'IngotIron',
+      })
+      product = factory.products[0]
+      product.buildingRequirements = { amount: 5, name: 'smeltermk1' }
+
+      product.buildingGroups.splice(0)
+      // Pass false to ensure they don't try to match buildings, which we want to test manually
+      const group1Mock = {
+        id: 1,
+        type: ItemType.Product,
+        buildingCount: 3,
+        overclockPercent: 100,
+        parts: { OreIron: 90, IronIngot: 90 },
+        powerUsage: 0,
+        powerProduced: 0,
+      }
+      const group2Mock = {
+        id: 2,
+        type: ItemType.Product,
+        buildingCount: 1,
+        overclockPercent: 100,
+        parts: { OreIron: 30, IronIngot: 30 },
+        powerUsage: 0,
+        powerProduced: 0,
+      }
+      product.buildingGroups.push(group1Mock, group2Mock)
+
+      // Ensure sync is disabled so we can manually adjust values
+      product.buildingGroupItemSync = false
 
       group1 = product.buildingGroups[0]
       group2 = product.buildingGroups[1]
@@ -101,7 +132,9 @@ describe('productBuildingGroups', async () => {
         product.buildingRequirements.amount = 5
 
         group1.buildingCount = 3
+        group1.overclockPercent = 100
         group2.buildingCount = 1 // Missing 1
+        group2.overclockPercent = 100
 
         remainderToLast(product, ItemType.Product, mockFactory)
 
@@ -113,9 +146,12 @@ describe('productBuildingGroups', async () => {
 
       it('should properly add the remainder to the last group when not a full number', () => {
         product.buildingRequirements.amount = 131.1
+        product.amount = 3933 // 131.1 buildings * 30/min
 
         group1.buildingCount = 131
+        group1.overclockPercent = 100
         group2.buildingCount = 1 // Which will need a 10% overclock
+        group2.overclockPercent = 0
 
         remainderToLast(product, ItemType.Product, mockFactory)
 
@@ -127,8 +163,10 @@ describe('productBuildingGroups', async () => {
 
       it('should properly add the remainder to the last group when it already has a overclock', () => {
         product.buildingRequirements.amount = 131.1
+        product.amount = 3933 // 131.1 buildings * 30/min
 
         group1.buildingCount = 131
+        group1.overclockPercent = 100
         group2.buildingCount = 1 // Which will need a 10% overclock
         group2.overclockPercent = 50 // 40% too high
 
@@ -142,8 +180,10 @@ describe('productBuildingGroups', async () => {
 
       it('should properly adjust the group to account for massive disparities and underclock the result', () => {
         product.buildingRequirements.amount = 5.5
+        product.amount = 165 // 5.5 buildings * 30/min
 
         group1.buildingCount = 2
+        group1.overclockPercent = 100
         group2.buildingCount = 1
         group2.overclockPercent = 10
 
@@ -154,7 +194,7 @@ describe('productBuildingGroups', async () => {
         expect(group1.buildingCount).toBe(2)
         expect(group1.overclockPercent).toBe(100)
         expect(group2.buildingCount).toBe(4)
-        expect(group2.overclockPercent).toBe(88)
+        expect(group2.overclockPercent).toBe(87.5)
       })
     })
 
@@ -163,7 +203,9 @@ describe('productBuildingGroups', async () => {
         product.buildingRequirements.amount = 5
 
         group1.buildingCount = 3
+        group1.overclockPercent = 100
         group2.buildingCount = 1 // Missing 1
+        group2.overclockPercent = 100
 
         remainderToNewGroup(product, ItemType.Product, mockFactory)
 
@@ -174,9 +216,12 @@ describe('productBuildingGroups', async () => {
 
       it('should properly add the remainder to a new group when a fractional', () => {
         product.buildingRequirements.amount = 5.5
+        product.amount = 165 // 5.5 buildings * 30/min
 
         group1.buildingCount = 3
+        group1.overclockPercent = 100
         group2.buildingCount = 2 // Missing 0.5
+        group2.overclockPercent = 100
 
         remainderToNewGroup(product, ItemType.Product, mockFactory)
 
@@ -187,9 +232,12 @@ describe('productBuildingGroups', async () => {
 
       it('should do nothing when the remainder is negative', () => {
         product.buildingRequirements.amount = 5.5
+        product.amount = 165 // 5.5 buildings * 30/min
 
         group1.buildingCount = 3
+        group1.overclockPercent = 100
         group2.buildingCount = 3 // 0.5 too many
+        group2.overclockPercent = 100
 
         remainderToNewGroup(product, ItemType.Product, mockFactory)
 
@@ -246,9 +294,10 @@ describe('productBuildingGroups', async () => {
             recipe: 'Alternate_PureCopperIngot',
           })
           copperIngots = overclockedFactory.products[0]
+          copperIngots.buildingGroupItemSync = false
           copperIngotsGroup = copperIngots.buildingGroups[0]
           copperIngotsGroup.buildingCount = 1
-          addProductBuildingGroup(copperIngots, mockFactory, false) // Puts it into advanced mode
+          addProductBuildingGroup(copperIngots, overclockedFactory, false) // Puts it into advanced mode
           copperIngots.buildingGroups[1].buildingCount = 0 // Force the 2nd group to be 0
 
           addProductToFactory(overclockedFactory, {
@@ -257,6 +306,7 @@ describe('productBuildingGroups', async () => {
             recipe: 'Plastic',
           })
           plastic = overclockedFactory.products[1]
+          plastic.buildingGroupItemSync = false
           plasticGroup = plastic.buildingGroups[0]
           plasticGroup.buildingCount = 1
 
@@ -315,6 +365,7 @@ describe('productBuildingGroups', async () => {
           })
 
           product = overclockedFactory.products[0]
+          product.buildingGroupItemSync = false
           group = product.buildingGroups[0]
         })
 

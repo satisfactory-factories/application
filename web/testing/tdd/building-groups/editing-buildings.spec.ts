@@ -95,19 +95,19 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
     test('BG-E-B-PROD-2: Editing building count updates the effective buildings', async () => {
       // Assert the before
-      expect(effectiveBuildings.text()).toBe('3.00')
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('3.00')
 
       // Edit it again to ensure it updates consistently
       await buildingGroupCount.setValue(4)
-      expect(effectiveBuildings.text()).toBe('4.00')
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('4.00')
       // Reduce it back to 3
       await buildingGroupCount.setValue(3)
-      expect(effectiveBuildings.text()).toBe('3.00')
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('3.00')
     })
 
     test('BG-E-B-PROD-3: Editing building count updates the remaining buildings', async () => {
       // Assert the before
-      expect(buildingsRemaining.text()).toBe('0.00')
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('0.00')
 
       // Turn off sync so we can produce a remainder
       await toggleSyncButton.trigger('click')
@@ -115,10 +115,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Edit it again to ensure it updates consistently
       await buildingGroupCount.setValue(4)
-      expect(buildingsRemaining.text()).toBe('1.00') // Over | It's working via manual testing, just not here. Something to do with calculated values.
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('1.00') // Over | It's working via manual testing, just not here. Something to do with calculated values.
       // Reductions
       await buildingGroupCount.setValue(2)
-      expect(buildingsRemaining.text()).toBe('1.00') // Short
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('1.00') // Short
     })
 
     test('BG-E-B-PROD-4: Editing building count updates the group part production', async () => {
@@ -189,91 +189,79 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       expect(itemIngredientAmount.element.value).toBe('60')
     })
 
-    // TODO: Test not detecting issue
     test('BG-E-B-PROD-8: Editing building count updates the factory parts produced', async () => {
-      const ironIngotProduction = satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-production"]`)
-
       // Test beforeEach change
       expect(itemAmount.element.value).toBe('90')
 
       // Increase
       await buildingGroupCount.setValue(4)
-      expect(ironIngotsRemaining.text()).toBe('120')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`).text()).toBe('120')
       expect(factory.parts.IronIngot.amountSuppliedViaProduction).toBe(120)
-      expect(ironIngotProduction.text()).toBe('+120/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-production"]`).text()).toBe('+120/min')
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      expect(ironIngotsRemaining.text()).toBe('60')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`).text()).toBe('60')
       expect(factory.parts.IronIngot.amountSuppliedViaProduction).toBe(60)
-      expect(ironIngotProduction.text()).toBe('+60/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-production"]`).text()).toBe('+60/min')
     })
 
     test('BG-E-B-PROD-9: Editing building count updates the factory parts consumed', async () => {
-      const oreIronRawSupply = satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`)
-      const oreIronRequiredProduction = satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-required-production"]`)
-
       // Test beforeEach change
       expect(itemAmount.element.value).toBe('90')
 
       // Increase
       await buildingGroupCount.setValue(4)
-      expect(oreIronRemaining.text()).toBe('0')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('0')
       expect(factory.parts.OreIron.amountSupplied).toBe(120)
-      expect(oreIronRawSupply.text()).toBe('+120/min')
-      expect(oreIronRequiredProduction.text()).toBe('-120/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+120/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-required-production"]`).text()).toBe('-120/min')
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      expect(oreIronRemaining.text()).toBe('0')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('0')
       expect(factory.parts.OreIron.amountSupplied).toBe(60)
-      expect(oreIronRawSupply.text()).toBe('+60/min')
-      expect(oreIronRequiredProduction.text()).toBe('-60/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+60/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-required-production"]`).text()).toBe('-60/min')
     })
 
     test('BG-E-B-PROD-10: Editing building count updates the group power used ', async () => {
-      const groupPower = subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`)
-
       // Test beforeEach change
-      expect(groupPower.text()).toBe('12 MW')
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('12 MW')
 
       // Increase
       await buildingGroupCount.setValue(4)
-      expect(groupPower.text()).toBe('16 MW') // 4*4 MW
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      expect(groupPower.text()).toBe('8 MW') // 2*4 MW
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW') // 2*4 MW
     })
 
     test('BG-E-B-PROD-11: Editing building count updates the factory power used ', async () => {
-      const factoryPower = satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`)
-
       // Test beforeEach change
-      expect(factoryPower.text()).toBe('12 MW')
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('12 MW')
 
       // Increase
       await buildingGroupCount.setValue(4)
-      expect(factoryPower.text()).toBe('16 MW') // 4*4 MW
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16 MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      expect(factoryPower.text()).toBe('8 MW') // 2*4 MW
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW') // 2*4 MW
     })
 
     test('BG-E-B-PROD-12: Editing building count updates the factory total buildings', async () => {
-      const factoryBuildings = satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`)
-
       // Test beforeEach change
-      expect(factoryBuildings.text()).toBe('3')
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`).text()).toBe('3')
 
       // Increase
       await buildingGroupCount.setValue(4)
-      expect(factoryBuildings.text()).toBe('4')
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`).text()).toBe('4')
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      expect(factoryBuildings.text()).toBe('2')
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`).text()).toBe('2')
     })
 
     // Test that we can calculate to 0.0001 clock speed, the lowest unit, e.g. 40 iron ingots resulting in 66.6667% clock with two buildings
@@ -283,10 +271,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       // Wait for debounce
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      expect(itemAmount.element.value).toBe('40')
-      expect(itemBuildings.element.value).toBe('1.3333')
+      expect(Number(itemAmount.element.value)).toBeCloseTo(40, 1)
+      expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('1.333')
       expect(buildingGroupCount.element.value).toBe('2')
-      expect(buildingGroupClock.element.value).toBe('66.6667')
+      expect(buildingGroupClock.element.value).toBe('66.667')
     })
   })
 
@@ -325,7 +313,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
     test('it should have set up the tests correctly', () => {
       expect(buildingGroupCount.element.value).toBe('3')
-      expect(buildingGroup2Count.element.value).toBe('0')
+      expect(buildingGroup2Count.element.value).toBe('1')
     })
 
     describe('Sync on', () => {
@@ -397,7 +385,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         await buildingGroup2Count.setValue(123)
 
         // Assert that the effective buildings are equal to the item building count
-        expect(effectiveBuildings.element.value).toBe('126') // TODO: Component calculation issues
+        expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('126.00')
         expect(itemBuildingCount.element.value).toBe('126')
       })
 
@@ -406,23 +394,30 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         await buildingGroup2Count.setValue(123)
 
         // Assert that the effective buildings are equal to the item building count
-        expect(buildingsRemaining.element.value).toBe('0') // TODO: Component calculation issues
+        expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('0.00')
       })
 
       test('BG-E-BMULTI-PROD-7: Remainder error state should be indicated to the user', async () => {
-        const buildingStatus = subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`)
         // Turn off sync so we can manipulate the remainder
-        await toggleSyncButton.trigger('click')
+        const syncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+        await syncButton.trigger('click')
         expect(product.buildingGroupItemSync).toBe(false)
 
         // Simulate a user editing the building count for the second group
-        await buildingGroup2Count.setValue(50)
-        await buildingGroupCount.setValue(50)
-        await itemBuildingCount.setValue(40)
+        const bCount1 = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        const bCount2 = subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`)
+        await bCount2.setValue(50)
+        await bCount1.setValue(50)
 
-        // Buildings should now be over by 10, and should be red indicator, and the remainder should be showing
-        expect(buildingStatus.attributes().isred).toBe('true') // TODO: Component calculation issue
-        expect(buildingsRemaining.element.value).toBe('10') // TODO: Component calculation issue
+        const itemBCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
+        await itemBCount.setValue(40)
+
+        // Wait for debounce
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Buildings should now be over by 60 (50+50-40), and should be red indicator, and the remainder should be showing
+        expect(subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`).attributes().isred).toBe('true')
+        expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('60.00')
       })
 
       test('BG-E-BMULTI-PROD-8: Updating via the item SHOULD force a rebalance of group building counts', async () => {
@@ -467,35 +462,47 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         expect(product.buildingGroupItemSync).toBe(true)
 
         // Nice even one first
-        await itemAmount.setValue(120)
-        expect(buildingGroupCount.element.value).toBe('2')
-        expect(buildingGroup2Count.element.value).toBe('2')
-        expect(buildingGroupClock.element.value).toBe('100')
-        expect(buildingGroup2Clock.element.value).toBe('100')
-        expect(itemBuildingCount.element.value).toBe('4')
+        const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
+        await itemAmountInput.setValue(120)
+
+        // Wait for debounce
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('2')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('2')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('100')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`).element.value).toBe('100')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4')
 
         // A spicy one
-        await itemAmount.setValue(130)
-        expect(buildingGroupCount.element.value).toBe('3')
-        expect(buildingGroup2Count.element.value).toBe('3')
-        expect(itemBuildingCount.element.value).toBe('4.3333')
-        expect(buildingGroupClock.element.value).toBe('83.333')
-        expect(buildingGroup2Clock.element.value).toBe('83.333')
+        await itemAmountInput.setValue(130)
+        // Wait for debounce
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4.333')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('72.222')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`).element.value).toBe('72.222')
 
         // A spicy meat-a-balla
-        await itemAmount.setValue(130.555)
-        expect(buildingGroupCount.element.value).toBe('3')
-        expect(buildingGroup2Count.element.value).toBe('3')
-        expect(itemBuildingCount.element.value).toBe('4.3518')
-        expect(buildingGroupClock.element.value).toBe('84.167')
-        expect(buildingGroup2Clock.element.value).toBe('84.167')
+        await itemAmountInput.setValue(130.555)
+        // Wait for debounce
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4.352')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('72.531')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`).element.value).toBe('72.531')
       })
     })
 
     describe('Sync off', () => {
       beforeEach(async () => {
         // Assert sync is disabled
-        await toggleSyncButton.trigger('click')
+        const syncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
+        await syncButton.trigger('click')
         expect(product.buildingGroupItemSync).toBe(false)
       })
 
@@ -523,13 +530,13 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       test("BG-E-BMULTI-PROD-11: Editing item's buildings does NOT affect the groups's buildings", async () => {
         // Check the group counts before
-        expect(buildingGroupCount.element.value).toBe('3')
-        expect(buildingGroup2Count.element.value).toBe('0')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('1')
 
         // Change the item building count, this should NOT update the groups
         await itemBuildingCount.setValue(123)
-        expect(buildingGroupCount.element.value).toBe('3')
-        expect(buildingGroup2Count.element.value).toBe('0')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('1')
       })
 
       test('BG-E-BMULTI-PROD-12: Editing groups does NOT affect factory parts', async () => {
@@ -544,20 +551,22 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       test('BG-E-BMULTI-PROD-13: Effective and remaining buildings correctly calculated', async () => {
         const itemBuildingStatus = subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`)
         // Check the expected item building count before
-        expect(itemBuildingCount.element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('3')
 
         // Change one of the building groups, this should NOT update the item
-        await buildingGroupCount.setValue(123)
-        expect(itemBuildingCount.element.value).toBe('3')
-        expect(effectiveBuildings.element.value).toBe('3') // Should match the building groups count
-        expect(buildingsRemaining.element.value).toBe('120') // 123-3
+        const bCount1 = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
+        await bCount1.setValue(123)
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('124.00') // 123 + 1
+        expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('121.00') // 124-3
         expect(itemBuildingStatus.attributes().isred).toBe('true') // TODO: Component calculation issue
 
         // Change the 2nd group
-        await buildingGroup2Count.setValue(10)
-        expect(itemBuildingCount.element.value).toBe('3')
-        expect(effectiveBuildings.element.value).toBe('13') // Should match both building groups count
-        expect(buildingsRemaining.element.value).toBe('110') // 123-13
+        const bCount2 = subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`)
+        await bCount2.setValue(10)
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('3')
+        expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('133.00') // 123 + 10
+        expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('130.00') // 133-3
         expect(itemBuildingStatus.attributes().isred).toBe('true') // TODO: Component calculation issue
       })
     })

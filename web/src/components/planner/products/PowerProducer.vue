@@ -201,7 +201,7 @@
             class="sf-chip orange input"
             variant="tonal"
           >
-            <game-asset clickable :key="`${producerIndex}-${producer.building}`" :subject="producer.building" type="building" />
+            <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />
             <span>
               <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>
