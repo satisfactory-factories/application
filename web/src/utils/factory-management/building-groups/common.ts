@@ -16,6 +16,11 @@ import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { CalculationModes } from '@/utils/factory-management/factory'
+import {
+  getSomersloopIngredientFactor,
+  getSomersloopOutputMultiplier,
+  getSomersloopPowerMultiplier,
+} from '@/utils/factory-management/building-groups/somersloops'
 
 const gameData = await fetchGameData()
 
@@ -81,20 +86,32 @@ export const createBuildingGroup = (
     type: groupType,
     buildingCount,
     overclockPercent: 100,
+    somersloops: 0,
     parts: {},
     powerUsage: 0,
     powerProduced: 0,
   })
 }
 
+// Resolves the physical building name for an item, used for somersloop slot lookups.
+export const getItemBuilding = (item: FactoryItem | FactoryPowerProducer, groupType: ItemType): string => {
+  if (groupType === ItemType.Product) {
+    return (item as FactoryItem).buildingRequirements?.name ?? ''
+  }
+  return (item as FactoryPowerProducer).building ?? ''
+}
+
 // This takes the building groups and:
 // 1. Calculates the total building count
 // 2. Applies the overclocking to the building count to process the effective building count
-export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[]) => {
+// 3. Applies the somersloop output multiplier, so "effective" means output-effective:
+//    a fully slooped smelter at 100% counts as 2 effective buildings' worth of production.
+export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[], building = '') => {
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
+    const sloopMultiplier = getSomersloopOutputMultiplier(group, building)
     // Remember it is a percentage so we need to divide by 100
-    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100)
+    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100 * sloopMultiplier)
   }
 
   return formatNumberFully(effectiveBuildingCount, 4)
@@ -103,7 +120,7 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[])
 export const calculateRemainingBuildingCount = (item: FactoryItem | FactoryPowerProducer, groupType: ItemType) => {
   let subject: FactoryItem | FactoryPowerProducer
 
-  const effectiveBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
+  const effectiveBuildings = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, groupType))
 
   if (groupType === ItemType.Product) {
     subject = item as FactoryItem
@@ -135,7 +152,11 @@ export const calculateProductBuildingGroupPower = (
     }
 
     // Now, using the formula above, we calculate the power usage.
-    const totalConsumption = consumptionPerBuilding * Math.pow(group.overclockPercent / 100, 1.321928)
+    // Somersloops stack multiplicatively: power x (1 + filled/slots)^2, so a fully
+    // slooped building at 250% clock draws ~13.43x its base power.
+    const totalConsumption = consumptionPerBuilding *
+      Math.pow(group.overclockPercent / 100, 1.321928) *
+      getSomersloopPowerMultiplier(group, building)
 
     // Now multiply it by number of buildings
     group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
@@ -225,6 +246,9 @@ export const calculateBuildingGroupParts = (
     // Get target amount, and set the item ID
     const parts: { [key: string]: number } = {}
 
+    // Track which parts are outputs — somersloops amplify outputs only, never ingredients.
+    const outputParts = new Set<string>()
+
     if (type === ItemType.Product) {
       const subject = item as FactoryItem
 
@@ -236,8 +260,10 @@ export const calculateBuildingGroupParts = (
 
       // Also add the product and byproduct
       parts[subject.id] = subject.amount
+      outputParts.add(subject.id)
       if (subject.byProducts && subject.byProducts.length > 0) {
         parts[subject.byProducts[0].id] = subject.byProducts[0].amount
+        outputParts.add(subject.byProducts[0].id)
       }
     } else if (type === ItemType.Power) {
       const subject = item as FactoryPowerProducer
@@ -261,6 +287,13 @@ export const calculateBuildingGroupParts = (
       }
     }
 
+    const building = getItemBuilding(item, type)
+
+    // The item's ingredient requirements carry the somersloop ingredient discount
+    // (see calculateProducts). Dividing it back out here means the per-building split
+    // below always works with plain recipe rates for ingredients.
+    const ingredientFactor = getSomersloopIngredientFactor(item.buildingGroups, building)
+
     // Now we have the parts, we can calculate the parts per building
     for (const group of item.buildingGroups) {
       Object.entries(parts).forEach(([partKey, amount]) => {
@@ -274,15 +307,23 @@ export const calculateBuildingGroupParts = (
           partPerBuilding = amount / totalBuildingCount
         }
 
+        if (!outputParts.has(partKey)) {
+          partPerBuilding = partPerBuilding / ingredientFactor
+        }
+
         // Now multiply the per building amount by the number of buildings in the group to get the true amount.
         group.parts[partKey] = (partPerBuilding * group.buildingCount)
       })
 
       const overclockMulti = group.overclockPercent / 100
 
+      // Somersloops amplify the group's outputs only; ingredient consumption is untouched.
+      const sloopMultiplier = getSomersloopOutputMultiplier(group, building)
+
       // Now apply the overclock multiplier for all parts in the group
       for (const part in group.parts) {
-        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti, 3)
+        const outputMulti = outputParts.has(part) ? sloopMultiplier : 1
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti * outputMulti, 3)
       }
     }
   }
@@ -294,7 +335,7 @@ export const calculateBuildingGroupProblems = (
   groupType: ItemType
 ) => {
   // Get the effective building count
-  const effectiveBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups)
+  const effectiveBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, groupType))
 
   // If the effective building count is out of whack between -0.1 and 0.1, we mark it as having a problem.
   const buildingCount = getBuildingCount(item, groupType)
@@ -315,33 +356,35 @@ export const syncBuildingGroups = (
 
   // If originating from the item, cause a rebalance.
   if (modes.forceRebalance || (modes.origin !== 'buildingGroup' && item.buildingGroupItemSync)) {
+    const building = getItemBuilding(item, groupType)
     let targetBuildings: number
 
     // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
     if (modes.useBuildingGroupBuildings) {
-      targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups)
+      targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups, building)
     } else {
       targetBuildings = getBuildingCount(item, groupType)
     }
     const groups = item.buildingGroups
 
-    // Divide the target equally among groups.
+    // Divide the target equally among groups. The target is in output-effective
+    // buildings, so a group's somersloop boost reduces the physical buildings it needs.
     const targetPerGroup = targetBuildings / groups.length
-    const remainder = targetBuildings % groups.length
-    const hasRemainder = remainder ? 1 : 0
 
     groups.forEach(group => {
-    // Even scenario: each group gets exactly the quotient.
-    // Odd scenario: each group gets one more building than the quotient (i.e., ceil).
-      group.buildingCount = hasRemainder ? Math.ceil(targetPerGroup) : Math.floor(targetPerGroup)
+      const physicalTarget = targetPerGroup / getSomersloopOutputMultiplier(group, building)
 
-      // Set overclock percentage.
-      // Even: no adjustment needed (100%).
-      // Odd: underclock so that effective production is exactly targetPerGroup.
-      if (hasRemainder) {
-        group.overclockPercent = formatNumberFully((targetPerGroup / group.buildingCount) * 100)
-      } else {
+      // Whole scenario: the group gets exactly the physical target at 100%.
+      // Fractional scenario: round the buildings up and underclock so that
+      // effective production is exactly targetPerGroup.
+      const isWhole = Math.abs(physicalTarget - Math.round(physicalTarget)) < 1e-9
+
+      if (isWhole) {
+        group.buildingCount = Math.round(physicalTarget)
         group.overclockPercent = 100
+      } else {
+        group.buildingCount = Math.ceil(physicalTarget)
+        group.overclockPercent = formatNumberFully((physicalTarget / group.buildingCount) * 100)
       }
     })
 
@@ -397,7 +440,9 @@ export const bestEffortUpdateBuildingCount = (
 
   // Go through each group, and allocate the best building count and clock speeds, across the groups.
   // Firstly though we need to understand what the calculation of the clock speed is, when spread across the groups.
-  const buildingsNeeded = targetAmountForGroup / perMin
+  // A slooped group produces more per building, so it needs proportionally fewer physical buildings.
+  const sloopMultiplier = getSomersloopOutputMultiplier(group, getItemBuilding(item, type))
+  const buildingsNeeded = targetAmountForGroup / (perMin * sloopMultiplier)
 
   /*
     For a positive gap, instead of defaulting to a single building and overclocking it, we try to find a better solution using less buildings.
@@ -439,7 +484,7 @@ export const remainderToLast = (
   // The last group is the one we adjust.
   const lastGroup = groups[groups.length - 1]
   const otherGroups = groups.slice(0, -1)
-  const otherEffective = Number(calculateEffectiveBuildingCount(otherGroups))
+  const otherEffective = Number(calculateEffectiveBuildingCount(otherGroups, getItemBuilding(item, groupType)))
 
   // Calculate total target amount
   let totalTargetAmount = 0
@@ -472,7 +517,7 @@ export const remainderToNewGroup = (
 ) => {
   const buildingCount = getBuildingCount(item, groupType)
 
-  const remaining = buildingCount - calculateEffectiveBuildingCount(item.buildingGroups)
+  const remaining = buildingCount - calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, groupType))
 
   if (remaining <= 0) {
     return // Nothing to do
@@ -529,11 +574,13 @@ export const updateBuildingGroupViaPart = (
   // For Product recipes, check ingredients and then products.
   // For Power recipes, check ingredients first and then byproduct.
   let recipePart: any
+  let partIsOutput = false
   if (groupType === ItemType.Product) {
     const productRecipe = recipe as Recipe
     recipePart = productRecipe.ingredients.find(i => i.part === part)
     if (!recipePart) {
       recipePart = productRecipe.products.find(i => i.part === part)
+      partIsOutput = !!recipePart
     }
   } else if (groupType === ItemType.Power) {
     recipePart = recipe.ingredients.find(i => i.part === part)
@@ -547,9 +594,14 @@ export const updateBuildingGroupViaPart = (
   }
 
   // 4. Use the recipe item's "perMin" value as the baseline rate for one building running at 100%.
-  const baseRate = recipePart.perMin
+  // Somersloops amplify outputs, so a slooped building's baseline output rate is higher —
+  // ingredient rates are unaffected.
+  let baseRate = recipePart.perMin
   if (!baseRate) {
     throw new Error(`updateBuildingGroupViaPart: perMin value for part '${part}' is not defined!`)
+  }
+  if (partIsOutput) {
+    baseRate = baseRate * getSomersloopOutputMultiplier(group, getItemBuilding(item, groupType))
   }
 
   // 5. Calculate the target effective building count for this group.
@@ -622,7 +674,7 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
   if (item.buildingGroupItemSync) {
     const group = item.buildingGroups[0]
 
-    const newBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups)
+    const newBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, group.type))
 
     // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
     if (group.type === ItemType.Product) {

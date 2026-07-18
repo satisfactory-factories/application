@@ -15,6 +15,7 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { getSomersloopIngredientFactor } from '@/utils/factory-management/building-groups/somersloops'
 
 const gameData = await fetchGameData()
 
@@ -86,6 +87,10 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       })
     }
 
+    // Somersloops boost output without extra ingredient cost, so amount-derived
+    // ingredient demand is discounted by the groups' physical/output effective ratio.
+    const sloopIngredientFactor = getSomersloopIngredientFactor(product.buildingGroups, product.buildingRequirements?.name ?? '')
+
     // Calculate the ingredients needed to make this product.
     recipe.ingredients.forEach(ingredient => {
       if (isNaN(ingredient.amount)) {
@@ -95,7 +100,7 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
 
       // === Now we need to calculate the parts required per min to make the product ===
       const productIngredientRatio = product.amount / recipe.products[0].perMin // This formula should have no rounding - the decimal points are important here for the floating point calculations
-      let ingredientRequired = ingredient.perMin * productIngredientRatio
+      let ingredientRequired = ingredient.perMin * productIngredientRatio * sloopIngredientFactor
       ingredientRequired = Math.round(ingredientRequired * 1000) / 1000
 
       // Handle the ingredients

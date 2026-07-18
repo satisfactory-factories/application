@@ -99,17 +99,20 @@
             class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
-            disabled
+            :disabled="somersloopSlots === 0"
             hide-details
             hide-spin-buttons
+            :max="somersloopSlots"
             :min="0"
             type="number"
             width="80px"
-            @update:model-value="updateGroup(group)"
+            @update:model-value="updateGroupSomersloops(group)"
           />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
-          Coming soon!
+          <span v-if="somersloopSlots === 0">Cannot be amplified</span>
+          <span v-else-if="(group.somersloops ?? 0) > 0">+{{ somersloopBoostPercent }}% output / building</span>
+          <span v-else>{{ somersloopSlots }} slot{{ somersloopSlots > 1 ? 's' : '' }} / building</span>
         </div>
       </div>
     </template>
@@ -233,6 +236,11 @@
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
   import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
+  import {
+    getSomersloopOutputMultiplier,
+    getSomersloopSlots,
+    sanitizeGroupSomersloops,
+  } from '@/utils/factory-management/building-groups/somersloops'
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
@@ -263,6 +271,26 @@
       forceRebalance: false,
       origin: 'buildingGroup',
     })
+  }
+
+  const somersloopSlots = computed(() => getSomersloopSlots(props.building))
+
+  const somersloopBoostPercent = computed(() => {
+    return formatNumberFully((getSomersloopOutputMultiplier(props.group, props.building) - 1) * 100)
+  })
+
+  const updateGroupSomersloops = (group: BuildingGroup) => {
+    const requested = group.somersloops ?? 0
+    const clamped = sanitizeGroupSomersloops(group, props.building)
+
+    if (requested > clamped) {
+      eventBus.emit('toast', {
+        message: `This building only has ${somersloopSlots.value} somersloop slot(s) per building.`,
+        type: 'warning',
+      })
+    }
+
+    updateGroup(group)
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {

@@ -6,6 +6,7 @@ import {
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
+import { getSomersloopOutputMultiplier } from '@/utils/factory-management/building-groups/somersloops'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -54,8 +55,9 @@ export const buildingsNeededForPartsProducts = (
   }
 
   if (isProduct && !isIngredient) {
-    // This is a product
-    const perMinOverclocked = isProduct.perMin * buildingGroup.overclockPercent / 100
+    // This is a product — somersloops amplify output, so fewer buildings are needed.
+    const sloopMultiplier = getSomersloopOutputMultiplier(buildingGroup, product.buildingRequirements?.name ?? '')
+    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * sloopMultiplier
     return formatNumberFully(amount / perMinOverclocked)
   }
 

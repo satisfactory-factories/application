@@ -1,6 +1,6 @@
 # Building groups (overclocking & somersloops)
 
-> Status snapshot below reflects branch `11-product-building-groups` as of 2026-07-17 with uncommitted changes in the working tree. The living per-operation status sheet is `docs/testing/building-groups-operations.md`.
+> Status snapshot below reflects branch `11-product-building-groups` as of 2026-07-18 with uncommitted changes in the working tree. The living per-operation status sheet is `docs/testing/building-groups-operations.md`.
 
 ## What a building group is
 
@@ -15,7 +15,7 @@ interface BuildingGroup {
   parts: { [part: string]: number }   // this group's per-part throughput (ingredients + outputs)
   powerUsage: number                  // products
   powerProduced: number               // power producers
-  somersloops?: number                // modeled but NOT implemented — UI slot is disabled ("Coming soon!")
+  somersloops?: number                // somersloops PER BUILDING in the group (0..slots), clamped by building type
   type: ItemType                      // Product | Power
 }
 ```
@@ -24,9 +24,10 @@ Items also carry three flags: `buildingGroupsTrayOpen` (UI), `buildingGroupsHave
 
 ## Core arithmetic (`web/src/utils/factory-management/building-groups/common.ts`)
 
-- **Effective buildings** = Σ `buildingCount × overclock/100`. Overclock is a *linear* production multiplier. "Remaining" = item's required buildings − effective (negative = over-producing).
-- **Power**: product groups use the true game formula `basePower × (clock/100)^1.321928 × count`; power-producer groups scale linearly.
-- **Group parts** (`calculateBuildingGroupParts`): the item's parts split proportionally per building, times the clock multiplier.
+- **Effective buildings** = Σ `buildingCount × overclock/100 × sloopBoost`. Overclock is a *linear* production multiplier; so is the somersloop boost, making "effective" mean *output*-effective. "Remaining" = item's required buildings − effective (negative = over-producing).
+- **Power**: product groups use the true game formula `basePower × (clock/100)^1.321928 × (1 + sloops/slots)² × count`; power-producer groups scale linearly (and cannot be amplified).
+- **Group parts** (`calculateBuildingGroupParts`): the item's parts split proportionally per building, times the clock multiplier. Somersloops multiply *outputs only* (product + byproducts) by `1 + sloops/slots`; ingredients are never amplified.
+- **Somersloops** (`building-groups/somersloops.ts`): slot counts per building are hardcoded there (not in gamedata): smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/hadroncollider/quantumencoder 4, packager & generators 0. `somersloops` is per building in the group (a group is N *identical* machines — mixed sloop configs mean multiple groups). Because sloops boost output without extra input, the item's amount-derived ingredient demand is discounted by `getSomersloopIngredientFactor` (= physical-effective ÷ output-effective across groups; exactly 1 with no sloops) in `calculateProducts`, and that factor is divided back out inside the group part split so group ingredient rates stay recipe-exact. Fully slooped at 250% clock draws ~13.43× base power (wiki-validated).
 - **Best-effort solving** (`bestEffortUpdateBuildingCount`): given a target amount, search whole building counts preferring **clock ≤ 100%** (more buildings beats overclocking — power shards are scarce). Reverse edits (user types a part amount → derive count + clock) live in `updateBuildingGroupViaPart`, capping clock at 250%.
 - **Balancing actions**: `syncBuildingGroups` (even split; remainder handled by ceiling buildings and underclocking so effective output matches target), `remainderToLast`, `remainderToNewGroup`, "OC @ 100%".
 
@@ -45,7 +46,7 @@ The engine hook: `calculateFactory` calls `syncBuildingGroups(...)` per item, wh
 ## UI (`web/src/components/planner/products/`)
 
 - `BuildingGroups.vue` — container: group list, "Effective Buildings | N short/over" status line with an over/under/"Looking good, Pioneer!" chip, sync toggle, and action buttons (Add group, Evenly balance, Remainder to last, Remainder to new group, OC @ 100%, Tutorial). Button enablement is driven by balance state (`isEvenlyBalanced`).
-- `BuildingGroup.vue` — one row: building count, overclock % (debounced 750 ms, max 250), disabled somersloop slot, editable per-part chips (editing a part reverse-solves count+clock), per-group power, delete (disabled when it's the last group).
+- `BuildingGroup.vue` — one row: building count, overclock % (debounced 750 ms, max 250), somersloop input (enabled, clamped to the building's slot count, underchip shows slots / current boost; disabled with "Cannot be amplified" for 0-slot buildings), editable per-part chips (editing a part reverse-solves count+clock), per-group power, delete (disabled when it's the last group).
 - Group edits call `updateFactory(factory, { useBuildingGroupBuildings: true, origin: 'buildingGroup' })`.
 
 ## Testing
@@ -61,7 +62,7 @@ Substantially built and mostly green (~112/119 unit, ~57/69 TDD passing), mid-re
 2. **Remainder refactor unreconciled**: `bestEffortUpdateBuildingCount` changed signature (explicit per-group target instead of dividing the item total); `remainderToLast`/`remainderToNewGroup` unit tests fail on clock percentages and a 0-vs-1 building count.
 3. **Power-producer group creation**: 2 failing unit tests (building count, parts).
 4. **Sync-off leak**: one case where a product amount change still updates groups with sync off; clock-edit TDD (`BG-E-C-PROD-2/11/12`) also failing.
-5. **Somersloops**: pure stub — field exists, UI disabled, no math. (The status sheet section `BG-E-S-PROD` says "NOT IMPLEMENTED".)
+5. **Somersloops**: implemented 2026-07-18 — full math (output boost, squared power penalty, overclock stacking, ingredient discount), enabled UI, unit suite (`somersloops.spec.ts`) and TDD suite (`tdd/building-groups/somersloops.spec.ts`). See status sheet section `BG-E-S-PROD`. No factory-wide somersloop count readout yet.
 6. Working-tree artifacts: `product_spec_full.txt` at repo root is **captured vitest console output**, not a spec — a stale debugging artifact; `.DS_Store` files.
 
 The `power.ts` change on this branch (outside building-groups): `updateViaIngredient` falls back to `updateViaFuel` when a power recipe has no supplemental ingredient.

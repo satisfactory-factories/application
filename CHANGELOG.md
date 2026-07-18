@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Implemented Somersloops (production amplification) on product building groups: per-building somersloop input clamped to each building's slot count (smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/particle accelerator/quantum encoder 4; packager and generators cannot be amplified). Output (product + byproducts) is boosted by `1 + filled/slots`, power by `(1 + filled/slots)²`, both stacking with overclocking per the wiki formulas (fully slooped at 250% ≈ 13.43× base power). Ingredient consumption is never amplified — the item's ingredient demand is discounted to what the machines actually consume, and effective/remaining buildings, rebalancing, part reverse-solving and remainder actions are all somersloop-aware. Covered by a new unit suite (`building-groups/somersloops.spec.ts`) and TDD suite (`tdd/building-groups/somersloops.spec.ts`, refs `BG-E-S-PROD`).
 - Implemented `isEvenlyBalanced` logic for Product Groups to improve user feedback and action button states.
 - Added comprehensive TDD tests for Building Groups: Creation, Deletion, Action Buttons, and Item Editing.
 

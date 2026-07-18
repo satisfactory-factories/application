@@ -4,7 +4,7 @@ The amount of user operations and interactions that the building groups add to t
 
 Therefore, the tables below list all possible operations that the user could perform on the building groups and items, their current status, and a reference to the automated test(s) covering them.
 
-> Last synced: 2026-07-17. All referenced tests were passing at time of sync
+> Last synced: 2026-07-18. All referenced tests were passing at time of sync
 > (`web/src/utils/factory-management/building-groups/*` unit specs and `web/testing/tdd/building-groups/*` TDD specs).
 
 Key:
@@ -24,6 +24,8 @@ Test file locations (referenced by shorthand below):
 - **tdd:buildings** = `web/testing/tdd/building-groups/editing-buildings.spec.ts`
 - **tdd:clocks** = `web/testing/tdd/building-groups/clocks-ingredients.spec.ts`
 - **tdd:item** = `web/testing/tdd/building-groups/item-editing.spec.ts`
+- **unit:sloops** = `web/src/utils/factory-management/building-groups/somersloops.spec.ts`
+- **tdd:sloops** = `web/testing/tdd/building-groups/somersloops.spec.ts`
 
 TDD test names contain the operation Ref (e.g. `BG-C-D-2`), so you can find a test with a plain grep of the Ref.
 
@@ -140,7 +142,32 @@ Ref: BG-E-C-PROD
 ## Building Groups Editing - Sommersloops (Products)
 Ref: BG-E-S-PROD
 
-NOT IMPLEMENTED — data model field and disabled UI slot exist only ("Coming soon!").
+Implemented 2026-07-18 (was a stub). Mechanics per the wiki (Production amplifier):
+`somersloops` is stored **per building in the group** (a group is N identical machines);
+output ×(1 + filled/slots), power ×(1 + filled/slots)², stacking multiplicatively with the
+overclock power exponent. Slots: smelter/constructor 1; assembler/foundry/refinery/converter 2;
+manufacturer/blender/particle accelerator/quantum encoder 4; packager & generators 0 (input disabled).
+Only outputs (product + byproducts) are amplified — the item's ingredient demand is discounted
+accordingly (`getSomersloopIngredientFactor`), and "effective buildings" is output-effective.
+The maths live in `web/src/utils/factory-management/building-groups/somersloops.ts`.
+
+| Operation                                                              | Ref            | Status | Test reference        | Notes                                                        |
+|------------------------------------------------------------------------|----------------|--------|-----------------------|--------------------------------------------------------------|
+| Somersloop input is enabled and editable                               | BG-E-S-PROD-1  | Y      | tdd:sloops            | Disabled only for buildings with 0 slots                     |
+| Amplifies the group output without changing ingredient consumption     | BG-E-S-PROD-2  | Y      | tdd:sloops, unit:sloops |                                                            |
+| Updates the group power with the (1 + filled/slots)² penalty           | BG-E-S-PROD-3  | Y      | tdd:sloops, unit:sloops | Fully slooped = 4× power                                   |
+| Updates the effective buildings readout                                | BG-E-S-PROD-4  | Y      | tdd:sloops, unit:sloops | Effective = count × clock × sloop boost                    |
+| Clamps somersloops to the building's slot count                        | BG-E-S-PROD-5  | Y      | tdd:sloops, unit:sloops | Also rounds fractions, zeroes on non-amplifiable buildings; toast on clamp |
+| Sync ON: updates the product amount and building count                 | BG-E-S-PROD-6  | Y      | tdd:sloops, unit:sloops | Item ingredient demand discounted to actual consumption    |
+| Sync OFF: does NOT update the product; shows over-production           | BG-E-S-PROD-7  | Y      | tdd:sloops, unit:sloops |                                                            |
+| Somersloops PLUS overclocking generate the proper combined numbers     | BG-E-S-PROD-8  | Y      | tdd:sloops, unit:sloops | e.g. 250% + full sloop = ~13.43× power (wiki-validated)    |
+| Rebalance accounts for sloop boost (fewer physical buildings needed)   | BG-E-S-PROD-9  | Y      | unit:sloops           | Fractional physical targets underclock as usual              |
+| Editing a group part reverse-solves with the boosted output rate       | BG-E-S-PROD-10 | Y      | unit:sloops           | Ingredient edits use the unboosted rate                      |
+| Remainder to new group only covers the unamplified shortfall           | BG-E-S-PROD-11 | Y      | unit:sloops           |                                                              |
+| Power producers (generators) cannot be amplified                       | BG-E-S-PROD-12 | Y      | unit:sloops           | Stray somersloops on generator groups are sanitized to 0     |
+| Fractional boosts on multi-slot buildings (1 of 2 slots = +50%)        | BG-E-S-PROD-13 | Y      | unit:sloops           | Assembler recipe covered                                     |
+| Group somersloop underchip shows slots / current boost                 | BG-E-S-PROD-14 | E      | —                     | "+N% output / building" when slooped                         |
+| Factory total somersloop count readout                                 | BG-E-S-PROD-15 | N      | —                     | Not designed yet — no aggregate display exists               |
 
 ## Building Groups Editing - Ingredients (Products)
 Ref: BG-E-I-PROD
@@ -233,4 +260,5 @@ Untested areas needing coverage:
 3. All of power producers' group editing + item editing (BG-E-B-POW, BG-I-E-POW).
 
 Not implemented at all:
-1. Somersloops (BG-E-S-PROD) — stub only.
+1. Factory-wide somersloop count readout (BG-E-S-PROD-15) — the per-group somersloop feature itself
+   was implemented 2026-07-18 (see BG-E-S-PROD).

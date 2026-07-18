@@ -155,7 +155,7 @@
   const effectiveBuildings = ref(0)
 
   const calculateEffectiveBuildings = () => {
-    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups))
+    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups, props.building))
   }
 
   const calculateBuildingsRemaining = () => {
