@@ -39,6 +39,18 @@
         </p>
 
         <v-divider class="mb-4" />
+
+        <h2 class="text-h5 mb-2">
+          <i class="fas fa-hat-chef" /><span class="ml-2">🆕 Parts &amp; Recipes page</span>
+        </h2>
+        <p class="mb-2">
+          The Recipes page has been reworked into <b>Parts &amp; Recipes</b>. Browse by part to see every recipe that produces it (with rates, building and power info), alternate recipes in their own dropdown, and everything the part is used in.
+        </p>
+        <p class="mb-4">
+          It's plan-aware too: parts you already produce show an <b>"In Plan"</b> badge with your total output, chips jump you straight to the producing factory, and every recipe can be added to any factory (or a new one) via the <b>Add to Planner</b> button.
+        </p>
+
+        <v-divider class="mb-4" />
         <h2 class="text-h5 mb-2">
           <i class="fas fa-wrench" /><span class="ml-2">Bugfixes</span>
         </h2>

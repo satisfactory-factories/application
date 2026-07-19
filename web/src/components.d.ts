@@ -7,6 +7,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AddShortageDialog: typeof import('./components/planner/satisfaction/AddShortageDialog.vue')['default']
+    AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']
@@ -28,6 +30,8 @@ declare module 'vue' {
     Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     Notice: typeof import('./components/planner/Notice.vue')['default']
+    PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
+    PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']
     Planner: typeof import('./components/planner/Planner.vue')['default']
     PlannerFactory: typeof import('./components/planner/PlannerFactory.vue')['default']
@@ -44,6 +48,7 @@ declare module 'vue' {
     Product: typeof import('./components/planner/products/Product.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
     RawResources: typeof import('./components/planner/imports/RawResources.vue')['default']
+    RecipeCard: typeof import('./components/parts/RecipeCard.vue')['default']
     RecipeItem: typeof import('./components/recipes/RecipeItem.vue')['default']
     Recipes: typeof import('./components/recipes/Recipes.vue')['default']
     RecipeSearchItem: typeof import('./components/recipes/RecipeSearchItem.vue')['default']

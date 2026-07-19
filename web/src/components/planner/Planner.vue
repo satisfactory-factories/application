@@ -228,6 +228,13 @@
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
+
+    // If another page (e.g. Parts & Recipes) requested a jump to a factory, honour it once rendered.
+    const pendingNav = sessionStorage.getItem('navigateToFactory')
+    if (pendingNav) {
+      sessionStorage.removeItem('navigateToFactory')
+      setTimeout(() => navigateToFactory(pendingNav), 250)
+    }
   }
 
   const hidePlan = () => {

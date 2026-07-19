@@ -1,18 +1,10 @@
 <template>
-  <v-container>
-    <recipes v-if="data" :game-data="data" />
-  </v-container>
+  <v-container />
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
-  import { DataInterface } from '@/interfaces/DataInterface'
-  import { useGameDataStore } from '@/stores/game-data-store'
-  import Recipes from '@/components/recipes/Recipes.vue'
+  // Legacy route: the recipes page is now the item-centric parts browser.
+  import { useRouter } from 'vue-router'
 
-  const data = ref<DataInterface | null>(null)
-
-  // The route guard ensures that the game data is always loaded by the time it gets here.
-  const gameDataStore = useGameDataStore()
-  data.value = gameDataStore.getGameData()
+  useRouter().replace('/parts')
 </script>

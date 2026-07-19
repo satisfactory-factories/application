@@ -22,6 +22,7 @@ declare module 'vue-router/auto-routes' {
     '/changelog': RouteRecordInfo<'/changelog', '/changelog', Record<never, never>, Record<never, never>>,
     '/error': RouteRecordInfo<'/error', '/error', Record<never, never>, Record<never, never>>,
     '/graph': RouteRecordInfo<'/graph', '/graph', Record<never, never>, Record<never, never>>,
+    '/parts': RouteRecordInfo<'/parts', '/parts', Record<never, never>, Record<never, never>>,
     '/recipes': RouteRecordInfo<'/recipes', '/recipes', Record<never, never>, Record<never, never>>,
     '/share/[id]': RouteRecordInfo<'/share/[id]', '/share/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
   }

@@ -37,6 +37,25 @@
         <p>The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</p>
 
         <v-divider class="subsection" />
+
+        <h2>🆕 Parts &amp; Recipes page</h2>
+        <p>The old Recipes page has been completely reworked into <b>Parts &amp; Recipes</b>. Instead of a flat list of recipes, you now browse by <b>part</b> — open any part to see:</p>
+        <ul>
+          <li><b>Produced by</b>: every recipe that makes the part, now showing the products and rates per minute (previously missing entirely!), plus the building it's made in and its power usage.</li>
+          <li><b>Alternate Recipes</b>: tucked into their own dropdown per part, no more wading through them in the main list.</li>
+          <li><b>Used in</b>: every recipe that consumes the part, so you can see what it feeds at a glance.</li>
+        </ul>
+        <p>It's also plan-aware! Parts you're already producing show an <b>"In Plan - X/min"</b> badge totalling your production across all factories, with clickable per-factory chips that jump you straight to that factory in the Planner. A <b>"Produced in Plan"</b> filter narrows the list to just the parts your plan produces.</p>
+        <p>Every recipe has an <b>Add to Planner</b> button, which opens a dialog listing your factories — highlighting the ones that already produce or use the part — so you can drop the recipe into any of them (or a brand new factory) at 1 building @ 100% clock, then jump to the Planner.</p>
+        <p>Searching is now fuzzy, fast, and much more accurate to boot.</p>
+
+        <v-divider class="subsection" />
+        <h2>👍 Quality of Life</h2>
+        <ul>
+          <li>🆕 <b>Send shortages to other factories</b> - Shortages in the Satisfaction section now show two buttons underneath the shortage chip: <b>[+ New]</b> creates a brand new factory producing the missing amount, and <b>[+ Existing]</b> lets you pick one of your existing factories to produce it (highlighting factories that already make the part). Both automatically set up the import back into the factory with the shortage, resolving the deficit.</li>
+        </ul>
+
+        <v-divider class="subsection" />
         <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul>
           <li>Unpackaged liquids that are also a Raw Ingredient e.g. Crude Oil / Water were counted twice as both Raw Import and Production. <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
