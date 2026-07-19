@@ -114,6 +114,37 @@ describe('app-store', () => {
       expect(factory.parts.CopperIngot.exportable).toBe(true)
     })
 
+    it('#431: should recalculate factories with double counted raw resource supply', () => {
+      const oilFactory = newFactory('Consumer')
+      addProductToFactory(oilFactory, {
+        id: 'HeavyOilResidue',
+        amount: 400,
+        recipe: 'Alternate_HeavyOilResidue',
+      })
+      addProductToFactory(oilFactory, {
+        id: 'LiquidOil',
+        amount: 300,
+        recipe: 'UnpackageOil',
+      })
+      const oilFactories = [oilFactory]
+      calculateFactory(oilFactory, oilFactories, gameData)
+
+      // Recreate the stale save data where the crude oil supplied by unpackaging was also
+      // counted as supplied via raw extraction, showing a phantom 300 surplus.
+      oilFactory.parts.LiquidOil.amountSuppliedViaRaw = 300
+      oilFactory.parts.LiquidOil.amountSupplied = 600
+      oilFactory.parts.LiquidOil.amountRemaining = 300
+      oilFactory.rawResources.LiquidOil = { id: 'LiquidOil', name: 'Crude Oil', amount: 300 }
+
+      appStore.initFactories(oilFactories)
+
+      // The migration should have detected the over-supply and recalculated
+      expect(oilFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(oilFactory.parts.LiquidOil.amountSupplied).toBe(300)
+      expect(oilFactory.parts.LiquidOil.amountRemaining).toBe(0)
+      expect(oilFactory.rawResources.LiquidOil).toBeUndefined()
+    })
+
     it('#180: should initialize factories with missing power data', () => {
       // @ts-ignore
       delete factory.powerProducers

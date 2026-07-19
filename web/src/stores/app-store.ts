@@ -258,6 +258,22 @@ export const useAppStore = defineStore('app', () => {
           factory.parts[part].exportable = true
           needsCalculation = true
         }
+
+        // Patch for #431
+        // Raw resource supply used to be double counted when the part was also supplied via
+        // inputs or production (e.g. unpackaging Packaged Oil into Crude Oil). Detect the
+        // stale over-supply in saved plans and force a recalculation.
+        const partData = factory.parts[part]
+        if (partData.isRaw && partData.amountSuppliedViaRaw > 0) {
+          const rawShortfall = Math.max(0,
+            (partData.amountRequired ?? 0) -
+            (partData.amountSuppliedViaInput ?? 0) -
+            (partData.amountSuppliedViaProduction ?? 0)
+          )
+          if (partData.amountSuppliedViaRaw > rawShortfall) {
+            needsCalculation = true
+          }
+        }
       })
 
       // Patch for #250

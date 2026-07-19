@@ -8,6 +8,7 @@ import {
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
   showSatisfactionItemButton,
+  showUnpackagedChip,
 } from '@/utils/factory-management/satisfaction'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
@@ -309,6 +310,15 @@ describe('satisfaction', () => {
     })
   })
   describe('chips', () => {
+    // Adds an Unpackage Oil product covering the factory's entire crude oil demand
+    const addUnpackagedOilToCoverDemand = (factory: Factory) => {
+      addProductToFactory(factory, {
+        id: 'LiquidOil',
+        amount: factory.parts.LiquidOil.amountRequired,
+        recipe: 'UnpackageOil',
+      })
+    }
+
     beforeEach(() => {
       factories = create338Scenario().getFactories()
       mockFactory = factories[0]
@@ -390,6 +400,40 @@ describe('satisfaction', () => {
       })
       it('should NOT show for an imported part', () => {
         expect(showRawChip(mockFactory, 'SteelPlate')).toBe(false)
+      })
+      // #431: unpackaging supplies the raw part, so there is no genuine raw import
+      it('should NOT show for a raw part fully supplied by unpackaging', () => {
+        addUnpackagedOilToCoverDemand(mockFactory)
+        calculateFactories(factories, gameData)
+
+        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+      it('should show for a raw part only partially supplied by unpackaging', () => {
+        // Cover only part of the crude oil demand, the rest still comes from raw supply
+        addProductToFactory(mockFactory, {
+          id: 'LiquidOil',
+          amount: 30,
+          recipe: 'UnpackageOil',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBeGreaterThan(0)
+        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(true)
+      })
+    })
+
+    describe('showUnpackagedChip', () => {
+      it('should show for a raw part supplied by unpackaging', () => {
+        addUnpackagedOilToCoverDemand(mockFactory)
+        calculateFactories(factories, gameData)
+
+        expect(showUnpackagedChip(mockFactory, 'LiquidOil')).toBe(true)
+      })
+      it('should NOT show for a raw part supplied from the world', () => {
+        expect(showUnpackagedChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+      it('should NOT show for a non-raw product', () => {
+        expect(showUnpackagedChip(mockFactory, 'Plastic')).toBe(false)
       })
     })
 

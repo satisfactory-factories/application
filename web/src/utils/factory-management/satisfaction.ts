@@ -109,7 +109,17 @@ export const showImportedChip = (factory: Factory, partId: string) => {
   return getAllInputs(factory, partId).length > 0
 }
 export const showRawChip = (factory: Factory, partId: string) => {
-  return factory.parts[partId].isRaw
+  const part = factory.parts[partId]
+  // Only show when raw supply is actually being drawn from the world. A raw part fully
+  // supplied by unpackaging (e.g. Packaged Oil -> Crude Oil) is not a raw import. #431
+  return part.isRaw && part.amountSuppliedViaRaw > 0
+}
+export const showUnpackagedChip = (factory: Factory, partId: string) => {
+  const part = factory.parts[partId]
+  if (!part.isRaw) {
+    return false
+  }
+  return factory.products.some(product => product.id === partId && product.recipe.startsWith('Unpackage'))
 }
 export const showInternalChip = (factory: Factory, partId: string) => {
   const product = getProduct(factory, partId, true) as FactoryItem

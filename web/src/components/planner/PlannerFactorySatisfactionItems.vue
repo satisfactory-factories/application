@@ -50,6 +50,9 @@
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
                     Raw
                   </v-chip>
+                  <v-chip v-if="showUnpackagedChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
+                    Unpackaged
+                  </v-chip>
                   <v-chip v-if="showInternalChip(factory, partId.toString())" class="sf-chip green x-small mr-2">
                     Internal
                   </v-chip>
@@ -230,6 +233,16 @@
                   <span>Raw Items e.g. Iron Ore are always satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.</span>
                 </v-tooltip>
               </template>
+              <template v-if="showUnpackagedChip(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props }">
+                    <v-chip v-bind="props" class="sf-chip cyan small">
+                      <span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
+                    </v-chip>
+                  </template>
+                  <span>This fluid is supplied by unpackaging within this factory rather than being drawn from raw resources.</span>
+                </v-tooltip>
+              </template>
             </div>
           </td>
           <td :class="satisfactionShading(part)">
@@ -315,6 +328,7 @@
     showProductChip,
     showRawChip,
     showSatisfactionItemButton,
+    showUnpackagedChip,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'

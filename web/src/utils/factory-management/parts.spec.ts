@@ -120,6 +120,139 @@ describe('parts', () => {
     })
   })
 
+  // https://github.com/satisfactory-factories/application/issues/431
+  describe('unpackaged raw resources (issue #431)', () => {
+    let mockFactory: Factory
+
+    beforeEach(() => {
+      mockFactory = newFactory('Oil Factory')
+    })
+
+    it('should not double count a raw resource that is fully supplied by unpackaging', () => {
+      // Unpackage Oil produces 60 Crude Oil (LiquidOil) per min
+      addProductToFactory(mockFactory, {
+        id: 'LiquidOil',
+        amount: 60,
+        recipe: 'UnpackageOil',
+      })
+      // Plastic consumes 60 Crude Oil per min at 40 Plastic per min
+      addProductToFactory(mockFactory, {
+        id: 'Plastic',
+        amount: 40,
+        recipe: 'Plastic',
+      })
+
+      calculateFactories([mockFactory], gameData)
+
+      expect(mockFactory.parts.LiquidOil.amountRequired).toBe(60)
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaProduction).toBe(60)
+      // The demand is already met by unpackaging, no raw supply should be assumed
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(60)
+      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(0)
+      expect(mockFactory.parts.LiquidOil.satisfied).toBe(true)
+
+      // It also should not be listed as a raw resource requirement
+      expect(mockFactory.rawResources.LiquidOil).toBeUndefined()
+    })
+
+    it('should top up with raw supply when unpackaging only partially covers demand', () => {
+      // Unpackage Oil produces 30 Crude Oil per min
+      addProductToFactory(mockFactory, {
+        id: 'LiquidOil',
+        amount: 30,
+        recipe: 'UnpackageOil',
+      })
+      // Plastic demands 60 Crude Oil per min
+      addProductToFactory(mockFactory, {
+        id: 'Plastic',
+        amount: 40,
+        recipe: 'Plastic',
+      })
+
+      calculateFactories([mockFactory], gameData)
+
+      expect(mockFactory.parts.LiquidOil.amountRequired).toBe(60)
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaProduction).toBe(30)
+      // Only the shortfall is assumed to be supplied raw
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(30)
+      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(60)
+      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(0)
+      expect(mockFactory.parts.LiquidOil.satisfied).toBe(true)
+
+      // The raw resources list should only show the shortfall
+      expect(mockFactory.rawResources.LiquidOil.amount).toBe(30)
+    })
+
+    it('should fully satisfy internal demand via unpackaged imports with no raw import and no surplus', () => {
+      // Replicates the faulty plan from the issue:
+      // "Packaged Oil" packages raw crude oil, using canisters sent back from "Consumer".
+      const packagerFactory = newFactory('Packaged Oil', 0, 9887)
+      addProductToFactory(packagerFactory, {
+        id: 'PackagedOil',
+        amount: 300,
+        recipe: 'PackagedCrudeOil',
+      })
+
+      // "Consumer" imports the Packaged Oil, unpackages it and refines all of the crude oil.
+      const consumerFactory = newFactory('Consumer', 1, 1151)
+      addProductToFactory(consumerFactory, {
+        id: 'HeavyOilResidue',
+        amount: 400,
+        recipe: 'Alternate_HeavyOilResidue',
+      })
+      addProductToFactory(consumerFactory, {
+        id: 'LiquidOil',
+        amount: 300,
+        recipe: 'UnpackageOil',
+      })
+
+      addInputToFactory(consumerFactory, {
+        factoryId: packagerFactory.id,
+        outputPart: 'PackagedOil',
+        amount: 300,
+      })
+      addInputToFactory(packagerFactory, {
+        factoryId: consumerFactory.id,
+        outputPart: 'FluidCanister',
+        amount: 300,
+      })
+
+      calculateFactories([packagerFactory, consumerFactory], gameData)
+
+      // The packager genuinely draws raw crude oil from the world
+      expect(packagerFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(300)
+      expect(packagerFactory.rawResources.LiquidOil.amount).toBe(300)
+
+      // The consumer's crude oil demand is fully met by unpackaging - no raw import, no surplus
+      const liquidOil = consumerFactory.parts.LiquidOil
+      expect(liquidOil.amountRequired).toBe(300)
+      expect(liquidOil.amountSuppliedViaProduction).toBe(300)
+      expect(liquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(liquidOil.amountSupplied).toBe(300)
+      expect(liquidOil.amountRemaining).toBe(0)
+      expect(liquidOil.satisfied).toBe(true)
+      expect(consumerFactory.rawResources.LiquidOil).toBeUndefined()
+    })
+
+    it('should count excess unpackaged raw resource as surplus once, not twice', () => {
+      // Unpackage Oil produces 60 Crude Oil per min with no demand
+      addProductToFactory(mockFactory, {
+        id: 'LiquidOil',
+        amount: 60,
+        recipe: 'UnpackageOil',
+      })
+
+      calculateFactories([mockFactory], gameData)
+
+      expect(mockFactory.parts.LiquidOil.amountRequired).toBe(0)
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(60)
+      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(60)
+      expect(mockFactory.rawResources.LiquidOil).toBeUndefined()
+    })
+  })
+
   it('should properly remove part data with no name', () => {
     const mockFactory = newFactory('Test Factory')
     addProductToFactory(mockFactory, {
