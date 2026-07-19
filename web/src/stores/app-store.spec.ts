@@ -698,5 +698,71 @@ describe('app-store', () => {
         expect(appStore.getCurrentTab()).toEqual(originalTab)
       })
     })
+
+    describe('tab sync events', () => {
+      it('addTab should emit tabChanged with the new tab id', () => {
+        const emitSpy = vi.spyOn(eventBus, 'emit')
+
+        appStore.addTab({ id: 'tab-abc', name: 'New Tab', factories: [] })
+
+        expect(emitSpy).toHaveBeenCalledWith('tabChanged', { tabId: 'tab-abc' })
+      })
+
+      it('removeCurrentTab should emit tabRemoved with the removed tab id', () => {
+        appStore.addTab({ id: 'tab-doomed', name: 'Doomed', factories: [] })
+        const emitSpy = vi.spyOn(eventBus, 'emit')
+
+        appStore.removeCurrentTab()
+
+        expect(emitSpy).toHaveBeenCalledWith('tabRemoved', { tabId: 'tab-doomed' })
+      })
+    })
+
+    describe('setTabs', () => {
+      it('should replace all tabs and land the user on the first one', () => {
+        appStore.addTab({ id: 'old-extra', name: 'Old Extra', factories: [] })
+
+        const newTabs: FactoryTab[] = [
+          { id: 'remote-1', name: 'Remote One', factories: [] },
+          { id: 'remote-2', name: 'Remote Two', factories: [] },
+        ]
+        appStore.setTabs(newTabs)
+
+        expect(appStore.getTabs().map(tab => tab.id)).toEqual(['remote-1', 'remote-2'])
+        expect(appStore.currentFactoryTabIndex).toBe(0)
+        expect(appStore.getCurrentTab().id).toBe('remote-1')
+        expect(appStore.getTab('old-extra')).toBeUndefined()
+      })
+
+      it('should keep persisting to localStorage after the replacement', async () => {
+        appStore.setTabs([{ id: 'remote-1', name: 'Remote One', factories: [] }])
+
+        // Mutate the new tab and check that the deep watcher still fires
+        appStore.getCurrentTab().name = 'Renamed after replace'
+        await new Promise(resolve => setTimeout(resolve, 50))
+
+        const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+        expect(stored[0].name).toBe('Renamed after replace')
+      })
+    })
+
+    describe('handleTabsReordered', () => {
+      it('should re-resolve the current tab index by id and emit tabsReordered', async () => {
+        appStore.addTab({ id: 'tab-b', name: 'B', factories: [] })
+        // Let the index watcher's requestAnimationFrame settle so currentFactoryTab points at tab-b
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+
+        // Simulate vuedraggable moving the active tab (index 1) to the front
+        const moved = appStore.factoryTabs.splice(1, 1)[0]
+        appStore.factoryTabs.splice(0, 0, moved)
+
+        const emitSpy = vi.spyOn(eventBus, 'emit')
+        appStore.handleTabsReordered()
+
+        expect(appStore.currentFactoryTabIndex).toBe(0)
+        expect(appStore.getCurrentTab().id).toBe('tab-b')
+        expect(emitSpy).toHaveBeenCalledWith('tabsReordered')
+      })
+    })
   })
 })

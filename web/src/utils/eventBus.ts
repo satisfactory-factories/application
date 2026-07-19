@@ -7,6 +7,11 @@ type Events = {
   sessionExpired: undefined;
   dataSynced: undefined;
   dataOutOfSync: undefined;
+  dataMergeRequired: undefined;
+  // Tab lifecycle changes that need syncing
+  tabChanged: { tabId: string };
+  tabRemoved: { tabId: string };
+  tabsReordered: undefined;
   toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
   // Initial factory loading dialog
   loadingCompleted: undefined;
