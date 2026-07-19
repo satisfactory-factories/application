@@ -17,28 +17,23 @@
         <h1>Alpha v0.5 - The "Overclocked" Update</h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
 
-        <h2>🆕 Building Groups</h2>
+        <h2>🆕 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups</span></h2>
         <p>The headline feature of this update! Each product and power generator can now be split into <b>Building Groups</b>, letting you plan how your production lines are physically laid out in your world. Each group has its own building count and clock speed, and the planner keeps them in sync with your production targets.</p>
         <p>Open them via the new "Open Building Groups" bar underneath each product. With them come two long-requested features:</p>
 
         <h3 class="d-flex align-center">
-          <game-asset height="24px" subject="power-shard" type="item_id" width="24px" /><span class="ml-2">Overclocking</span>
+          <game-asset height="24px" subject="power-shard" type="item_id" width="24px" /><span class="ml-2">Overclocking</span><span class="mx-2">&amp;</span><game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
         </h3>
-        <p>Set a clock speed per group (up to 250%), and the planner will work out the power usage and the number of buildings you need. The Power Shards required are totalled up for you at a glance.</p>
-
-        <h3 class="d-flex align-center">
-          <game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
-        </h3>
-        <p>Slot Somersloops into your building groups to amplify production, doubling output when fully slooped. The planner correctly boosts output (not ingredient consumption!), applies the increased power draw, and totals your Somersloop usage — so you know exactly how many of those precious items you're using!</p>
+        <p>Set a clock speed per group and the planner works out the power usage and the number of buildings you need. Slot Somersloops into your groups to amplify production — the planner correctly boosts output (not ingredient consumption!) and applies the increased power draw. The Power Shards and Somersloops required are totalled up for you at a glance.</p>
+        <v-img
+          alt="Overclocking and Somersloops"
+          max-width="1200"
+          src="/assets/changelog/alpha5/overclocking.png"
+        />
 
         <v-divider class="subsection" />
 
-        <h2><i class="fas fa-expand" /> Collapsible &amp; resizable sidebar</h2>
-        <p>The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</p>
-
-        <v-divider class="subsection" />
-
-        <h2>🆕 Parts &amp; Recipes page</h2>
+        <h2>🆕 <i class="fas fa-hat-chef ml-1" /><span class="ml-2">Parts &amp; Recipes page</span></h2>
         <p>The old Recipes page has been completely reworked into <b>Parts &amp; Recipes</b>. Instead of a flat list of recipes, you now browse by <b>part</b> — open any part to see:</p>
         <ul>
           <li><b>Produced by</b>: every recipe that makes the part, now showing the products and rates per minute (previously missing entirely!), plus the building it's made in and its power usage.</li>
@@ -52,6 +47,7 @@
         <v-divider class="subsection" />
         <h2>👍 Quality of Life</h2>
         <ul>
+          <li>🆕 <b>Collapsible &amp; resizable sidebar</b> - The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</li>
           <li>🆕 <b>Send shortages to other factories</b> - Shortages in the Satisfaction section now show two buttons underneath the shortage chip: <b>[+ New]</b> creates a brand new factory producing the missing amount, and <b>[+ Existing]</b> lets you pick one of your existing factories to produce it (highlighting factories that already make the part). Both automatically set up the import back into the factory with the shortage, resolving the deficit.</li>
         </ul>
         <v-img

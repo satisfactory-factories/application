@@ -6,7 +6,7 @@
         <p class="text-center mb-4">At long last, Overclocking &amp; Slooping has arrived!</p>
 
         <h2 class="text-h5 mb-2">
-          <i class="fas fa-layer-group" /><span class="ml-2">🆕 Building Groups</span>
+          🆕 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups</span>
         </h2>
         <p class="mb-2">
           The headline feature of this update! Each product and power generator can now be split into <b>Building Groups</b>, letting you plan how your production lines are physically laid out in your world. Each group has its own building count and clock speed, and the planner keeps them in sync with your production targets.
@@ -16,32 +16,22 @@
         </p>
 
         <h3 class="text-h6 mb-2 d-flex align-center">
-          <game-asset height="24px" subject="power-shard" type="item_id" width="24px" /><span class="ml-2">Overclocking</span>
+          <game-asset height="24px" subject="power-shard" type="item_id" width="24px" /><span class="ml-2">Overclocking</span><span class="mx-2">&amp;</span><game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
         </h3>
-        <p class="mb-4">
-          Set a clock speed per group (up to 250%), and the planner will work out the power usage and the number of buildings you need. The Power Shards required are totalled up for you at a glance.
+        <p class="mb-2">
+          Set a clock speed per group and the planner works out the power usage and the number of buildings you need. Slot Somersloops into your groups to amplify production — the planner correctly boosts output (not ingredient consumption!) and applies the increased power draw. The Power Shards and Somersloops required are totalled up for you at a glance.
         </p>
-
-        <h3 class="text-h6 mb-2 d-flex align-center">
-          <game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
-        </h3>
-        <p class="mb-4">
-          Slot Somersloops into your building groups to amplify production, doubling output when fully slooped. The planner correctly boosts output (not ingredient consumption!), applies the increased power draw, and totals your Somersloop usage so you know exactly how many of those precious items you're using!
-        </p>
+        <v-img
+          alt="Overclocking and Somersloops"
+          class="mb-4"
+          max-width="1200"
+          src="/assets/changelog/alpha5/overclocking.png"
+        />
 
         <v-divider class="mb-4" />
 
         <h2 class="text-h5 mb-2">
-          <i class="fas fa-expand" /><span class="ml-2">Collapsible &amp; resizable sidebar</span>
-        </h2>
-        <p class="mb-4">
-          The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.
-        </p>
-
-        <v-divider class="mb-4" />
-
-        <h2 class="text-h5 mb-2">
-          <i class="fas fa-hat-chef" /><span class="ml-2">🆕 Parts &amp; Recipes page</span>
+          🆕 <i class="fas fa-hat-chef ml-1" /><span class="ml-2">Parts &amp; Recipes page</span>
         </h2>
         <p class="mb-2">
           The Recipes page has been reworked into <b>Parts &amp; Recipes</b>. Browse by part to see every recipe that produces it (with rates, building and power info), alternate recipes in their own dropdown, and everything the part is used in.
@@ -49,6 +39,17 @@
         <p class="mb-4">
           It's plan-aware too: parts you already produce show an <b>"In Plan"</b> badge with your total output, chips jump you straight to the producing factory, and every recipe can be added to any factory (or a new one) via the <b>Add to Planner</b> button.
         </p>
+
+        <v-divider class="mb-4" />
+
+        <h2 class="text-h5 mb-2">
+          <i class="fas fa-thumbs-up" /><span class="ml-2">Quality of Life</span>
+        </h2>
+        <ul class="ml-6 mb-4">
+          <li>The factory list sidebar can now be resized, or collapsed entirely.</li>
+          <li>Shortages in the Satisfaction section now have buttons to send them to a new or existing factory.</li>
+        </ul>
+        <p class="mb-4">Check the Change Log for further details.</p>
 
         <v-divider class="mb-4" />
         <h2 class="text-h5 mb-2">
