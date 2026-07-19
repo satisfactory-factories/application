@@ -1,18 +1,26 @@
-import { BuildingRequirement, Factory, FactoryDependency, FactoryPower } from '@/interfaces/planner/FactoryInterface'
+import {
+  BuildingRequirement,
+  Factory,
+  FactoryDependency,
+  FactoryPower,
+  ItemType,
+} from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
-import { calculateFactoryBuildingsAndPower } from '@/utils/factory-management/buildings'
+import { calculateFactoryBuildingsAndPower, calculateFinalBuildingsAndPower } from '@/utils/factory-management/buildings'
 import { calculateParts } from '@/utils/factory-management/parts'
 import {
   calculateAllDependencies,
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
-  calculateFactoryDependencies, flushInvalidRequests,
+  calculateFactoryDependencies,
+  flushInvalidRequests,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculatePowerProducers } from '@/utils/factory-management/power'
+import { checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -77,15 +85,20 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
   }
 }
 
+export interface CalculationModes {
+  loadMode?: boolean
+  useBuildingGroupBuildings?: boolean
+  forceRebalance?: boolean
+  origin?: 'buildingGroup' | 'item'
+}
+
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
 export const calculateFactory = (
   factory: Factory,
   allFactories: Factory[],
   gameData: DataInterface,
-  loadMode = false,
+  modes: CalculationModes = {},
 ) => {
-  console.log('factory: calculateFactory started', factory.name)
-
   // Scan for invalid inputs as the user may have changed an input's factoryID.
   // Yes we are running this multiple times especially from calculateFactories,
   // but it's a very quick operation, and it ensures integrity.
@@ -107,7 +120,7 @@ export const calculateFactory = (
   calculateFactoryBuildingsAndPower(factory, gameData)
 
   // Calculate the dependencies for just this factory.
-  calculateFactoryDependencies(factory, allFactories, gameData, loadMode)
+  calculateFactoryDependencies(factory, allFactories, gameData, modes.loadMode)
 
   // Calculate the dependency metrics for the factory.
   calculateDependencyMetrics(factory)
@@ -118,32 +131,65 @@ export const calculateFactory = (
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)
 
+  // Calculate / synchronize the factory building groups.
+  // ONLY rebalance though if the origin point is from the product itself, not the building groups.
+  // This has a hard dependency on calculateFactoryBuildingsAndPower as it uses the building amounts per product.
+  // Only write group totals back up to the item when the edit actually originated
+  // from a building group. Doing it on every recalc replaces the user's exact item
+  // amounts with float-degraded recomputations (e.g. 123 -> 122.999...) and stomps
+  // the power producer's `updated` direction.
+  factory.products.forEach(product => {
+    syncBuildingGroups(product, ItemType.Product, factory, modes)
+    if (modes.origin === 'buildingGroup') {
+      checkForItemUpdate(product, factory)
+    }
+  })
+  factory.powerProducers.forEach(producer => {
+    syncBuildingGroups(producer, ItemType.Power, factory, modes)
+    if (modes.origin === 'buildingGroup') {
+      checkForItemUpdate(producer, factory)
+    }
+  })
+
+  // It's possible that the power producers have changed, so we need to recalculate the power.
+  calculatePowerProducers(factory, gameData)
+
+  calculateFinalBuildingsAndPower(factory)
+
   // Check if the factory has any problems
-  calculateHasProblem(allFactories)
+  allFactories.forEach(fac => {
+    calculateHasProblem(fac)
+  })
 
   // Emit an event that the data has been updated so it can be synced
-  eventBus.emit('factoryUpdated')
+  eventBus.emit('factoryUpdated', factory)
 
-  console.log('factory: calculateFactory completed', factory.name)
+  console.log(`factory: calculateFactory completed for factory: ${factory.name}`)
 
   return factory
 }
 
-export const calculateFactories = (factories: Factory[], gameData: DataInterface): void => {
+// The beating heart of the entire app...
+// This function is called to calculate all factories in the planner.
+export const calculateFactories = (
+  factories: Factory[],
+  gameData: DataInterface,
+  modes: CalculationModes = {}
+): void => {
   console.log('factory: Calculating factories', factories)
   // We need to do this twice to ensure all the part dependency metrics are calculated, before we then check for invalid dependencies
   // loadMode flag passed here to ensure we don't nuke inputs due to no part data.
   // This generates the Part metrics for the factories, which is then used by calculateDependencies to generate the dependency metrics.
   // While we are running the calculations twice, they are very quick, <20ms even for the largest plans.
-  factories.forEach(factory => calculateFactory(factory, factories, gameData, true))
+  factories.forEach(factory => calculateFactory(factory, factories, gameData, { ...modes, loadMode: true }))
 
   // Now calculate the dependencies for all factories, removing any invalid inputs.
   calculateAllDependencies(factories, gameData)
 
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
-  factories.forEach(factory => calculateFactory(factory, factories, gameData))
+  factories.forEach(factory => calculateFactory(factory, factories, gameData, modes))
 
-  console.log('factory: Calculations completed', factories)
+  console.log('factory: Calculations completed')
 
   eventBus.emit('calculationsCompleted')
 }

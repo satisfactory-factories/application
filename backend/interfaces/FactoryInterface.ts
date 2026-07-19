@@ -30,6 +30,13 @@ export interface ByProductItem {
   byProductOf: string; // Product ID
 }
 
+export interface ProductBuildingGroup {
+  id: number;
+  buildingCount: number
+  overclockPercent: number
+  somersloops: number
+}
+
 export interface FactoryItem {
   id: string;
   recipe: string;
@@ -38,6 +45,8 @@ export interface FactoryItem {
   requirements: { [key: string]: { amount: number } };
   buildingRequirements: BuildingRequirement
   byProducts?: ByProductItem[];
+  buildingGroups: ProductBuildingGroup[]
+  buildingGroupTrayOpen: boolean
 }
 
 export interface FactoryDependencyRequest {
@@ -56,6 +65,9 @@ export interface FactoryDependencyMetrics {
 
 export interface ExportCalculatorFactorySettings {
   trainTime: number;
+  droneTime: number;
+  truckTime: number;
+  tractorTime: number;
 }
 
 export interface ExportCalculatorSettings {
@@ -82,14 +94,16 @@ export interface FactoryInput {
   amount: number
 }
 
-export interface FactoryInternalProduct {
-  id: string;
-  amount: number
-}
-
 export interface FactorySyncState {
   amount: number
   recipe: string
+}
+
+export interface FactoryPowerSyncState {
+  buildingAmount: number
+  powerAmount: number
+  recipe: string // And also the fuel used
+  ingredientAmount: number
 }
 
 export interface FactoryTask {
@@ -99,8 +113,8 @@ export interface FactoryTask {
 
 export interface FactoryPowerProducer {
   building: string;
-  buildingAmount: number;
-  buildingCount: number;
+  buildingAmount: number; // Amount of buildings requested by the user
+  buildingCount: number; // Amount of buildings actually needed to produce the power requested by the user
   ingredients: PowerItem[],
   ingredientAmount: number; // Enables the user to specify the quantity of fuel to use.
   byproduct: { part: string, amount: number } | null; // E.g. uranium waste, which is added as a product back into the factory.parts to be dealt with via export or re-use.
@@ -137,9 +151,11 @@ export interface Factory {
   hasProblem: boolean
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
+  syncStatePower: { [key: string]: FactoryPowerSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  dataVersion: string
 }
 
 export interface FactoryTab {

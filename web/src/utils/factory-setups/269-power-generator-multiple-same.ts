@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
@@ -13,13 +13,13 @@ export const create269Scenario = (): { getFactories: () => Factory[] } => {
     building: 'generatorfuel',
     powerAmount: 1000,
     recipe: 'GeneratorFuel_LiquidFuel',
-    updated: 'power',
+    updated: FactoryPowerChangeType.Power,
   })
   addPowerProducerToFactory(fuelFac, {
     building: 'generatorfuel',
     powerAmount: 1000,
     recipe: 'GeneratorFuel_LiquidFuel',
-    updated: 'power',
+    updated: FactoryPowerChangeType.Power,
   })
 
   // Return an object with a method to access the factories

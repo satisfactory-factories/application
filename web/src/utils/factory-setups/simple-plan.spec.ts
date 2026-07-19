@@ -86,7 +86,9 @@ describe('Simple factory plan', () => {
       expect(ingotFac.usingRawResourcesOnly).toBe(true)
     })
     it('should have the correct total power', () => {
-      expect(ingotFac.power.consumed).toBe(12.936)
+      // Power is now derived from the building groups (whole buildings, underclocked)
+      // rather than the fractional building count.
+      expect(ingotFac.power.consumed).toBe(12.6)
     })
     it('should have a single dependency', () => {
       const ironPlateFac = findFacByName('Iron Plates', factories)

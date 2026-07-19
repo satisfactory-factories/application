@@ -14,9 +14,11 @@
         <i class="fas fa-bolt" />
         <i class="fas fa-minus" />
         <span class="ml-2">
-          Consumes: {{ formatPower(factory.power.consumed).value }} {{ formatPower(factory.power.consumed).unit }}
-        </span>
-      </v-chip>
+          Consumes:
+          <span :id="`${factory.id}-buildings-power-consumed`">
+            {{ formatPower(factory.power.consumed).value }} {{ formatPower(factory.power.consumed).unit }}
+          </span>
+        </span></v-chip>
       <v-chip
         class="sf-chip yellow"
         variant="tonal"
@@ -24,7 +26,10 @@
         <i class="fas fa-bolt" />
         <i class="fas fa-plus" />
         <span class="ml-2">
-          Produces: {{ formatPower(factory.power.produced).value }} {{ formatPower(factory.power.produced).unit }}
+          Produces:
+          <span :id="`${factory.id}-buildings-power-produced`">
+            {{ formatPower(factory.power.produced).value }} {{ formatPower(factory.power.produced).unit }}
+          </span>
         </span>
       </v-chip>
       <div
@@ -43,10 +48,13 @@
             type="building"
           />
           <span class="ml-2">
-            <b>{{ getBuildingDisplayName(buildingData.name) ?? 'UNKNOWN' }}</b>: {{ formatNumber(buildingData.amount) ?? 0 }}x
+            <b>{{ getBuildingDisplayName(buildingData.name) ?? 'UNKNOWN' }}</b>:
+            <span
+              :id="`${factory.id}-buildings-building-${buildingData.name}`"
+            >
+              {{ formatNumber(buildingData.amount) ?? 0 }}</span>x
           </span>
         </v-chip>
-
       </div>
     </v-card-text>
   </v-card>

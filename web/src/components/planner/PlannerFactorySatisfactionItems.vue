@@ -166,31 +166,46 @@
             <div v-if="satisfactionBreakdowns">
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Production</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-production`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaProduction) }}/min
                 </span>
               </div>
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Supply from Imports</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-supply-input`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaInput ) }}/min
                 </span>
               </div>
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Supply from Raw</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-supply-raw`"
+                  class="align-self-end text-right"
+                >
                   +{{ formatNumber(part.amountSuppliedViaRaw ) }}/min
                 </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Internal Consumption</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-production`"
+                  class="align-self-end text-right"
+                >
                   -{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min
                 </span>
               </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
-                <span class="align-self-end text-right">
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-exports`"
+                  class="align-self-end text-right"
+                >
                   -{{ formatNumber(part.amountRequiredExports ) }}/min
                 </span>
               </div>
@@ -201,7 +216,9 @@
                 class="sf-chip small"
                 :class="part.satisfied ? 'green' : 'red'"
               >
-                <b>{{ formatNumber(part.amountRemaining) }}/min {{ getSatisfactionLabel(part.amountRemaining) }}</b>
+                <b>
+                  <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
+                </b>
               </v-chip>
               <template v-if="showRawChip(factory, partId.toString())">
                 <v-tooltip bottom>
@@ -282,7 +299,7 @@
   import { computed, inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
-    Factory,
+    Factory, FactoryItem, FactoryPowerChangeType,
     PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
@@ -377,7 +394,7 @@
       building: 'generatornuclear',
       ingredientAmount: 1,
       recipe: recipe.id,
-      updated: 'ingredient',
+      updated: FactoryPowerChangeType.Ingredient,
     })
 
     updateFactory(factory)
@@ -385,7 +402,7 @@
     // Get the producer which should be the latest one in the array
     const producer = factory.powerProducers[factory.powerProducers.length - 1]
 
-    producer.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    producer.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 
@@ -474,7 +491,7 @@
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {
-    const product = getProduct(factory, partId)
+    const product = getProduct(factory, partId) as FactoryItem
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')
@@ -500,7 +517,7 @@
       return
     }
 
-    generator.ingredientAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
+    generator.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
   }
 

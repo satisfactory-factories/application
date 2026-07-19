@@ -1,6 +1,6 @@
 {
   "name": "satisfactory-factories",
-  "version": "0.2.1",
+  "version": "0.5.0",
   "description": "A tool for planning production chains with dependency management within the game Satisfactory.",
   "author": "Matt Cavanagh",
   "license": "AGPL-3.0-or-later",

@@ -3,7 +3,10 @@
   <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
   <world-data v-if="showWorldData" />
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
+
+  <building-group-tutorial />
   <div class="planner-container">
+    <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
       <planner-factory-list
         :factories="getFactories()"
@@ -22,10 +25,24 @@
         @toggle-help-text="toggleHelp()"
       />
     </Teleport>
-    <v-row class="two-pane-container">
+
+    <!-- Main Content Area -->
+    <v-row class="ma-0">
+      <!-- Hot zone to peek the sidebar when it's collapsed -->
+      <div
+        v-if="!showSidebar"
+        class="d-none d-lg-block sidebar-hover-zone"
+        @mouseenter="sidebarPeek = true"
+      />
       <!-- Sticky Sidebar for Desktop -->
-      <v-col class="d-none d-lg-flex sticky-sidebar">
-        <v-container class="pa-0">
+      <v-col
+        class="d-none d-lg-flex sticky-sidebar"
+        :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
+        :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
+        @animationend.self="onNudgeEnd"
+        @mouseleave="sidebarPeek = false"
+      >
+        <v-container class="pa-0 sidebar-content">
           <planner-factory-list
             :factories="getFactories()"
             loaded-from="planner"
@@ -44,6 +61,12 @@
             @toggle-help-text="toggleHelp()"
           />
         </v-container>
+        <div
+          v-if="showSidebar"
+          class="sidebar-resize-handle"
+          :class="{ resizing: isResizingSidebar }"
+          @mousedown.prevent="startSidebarResize"
+        />
       </v-col>
       <!-- Main Content Area -->
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
@@ -86,12 +109,14 @@
   import {
     calculateFactories,
     calculateFactory,
+    CalculationModes,
     findFac,
     newFactory,
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
+  import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -107,6 +132,46 @@
   const showImportWorldPopup = ref<boolean>(false)
   const showWorldData = ref<boolean>(false)
 
+  const showSidebar = ref<boolean>(localStorage.getItem('sidebarOpen') !== 'false')
+  const sidebarPeek = ref<boolean>(false)
+
+  const sidebarNudge = ref<boolean>(false)
+  const onNudgeEnd = () => {
+    sidebarNudge.value = false
+    localStorage.setItem('sidebarNudgeShown', 'true')
+  }
+
+  const defaultSidebarWidth = 375
+  const minSidebarWidth = 150
+  const sidebarWidth = ref<number>(parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
+  const isResizingSidebar = ref<boolean>(false)
+
+  const startSidebarResize = (event: MouseEvent) => {
+    isResizingSidebar.value = true
+    const startX = event.clientX
+    const startWidth = sidebarWidth.value
+
+    // Lock the cursor and text selection for the duration of the drag
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = startWidth + (moveEvent.clientX - startX)
+      sidebarWidth.value = Math.min(Math.max(newWidth, minSidebarWidth), window.innerWidth / 2)
+    }
+    const onMouseUp = () => {
+      isResizingSidebar.value = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      localStorage.setItem('sidebarWidth', String(Math.round(sidebarWidth.value)))
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
+
+  // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
   eventBus.on('plannerShow', (show: boolean) => {
     if (!show) {
@@ -124,9 +189,40 @@
     showPlan()
   })
 
+  eventBus.on('worldDataShow', (value: boolean) => {
+    showWorldData.value = value
+  })
+
+  eventBus.on('navigationReady', () => {
+    console.log('Planner: Received navigationReady event, teleporting factory list')
+    navigationReady.value = true
+  })
+
+  eventBus.on('toggleSidebar', () => {
+    showSidebar.value = !showSidebar.value
+    sidebarPeek.value = false
+    console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
+
+    if (showSidebar.value) {
+      sidebarNudge.value = false
+    } else if (localStorage.getItem('sidebarNudgeShown') !== 'true') {
+      // First ever hide: once the collapse slide finishes, nudge the sidebar
+      // out briefly so the user learns the hover zone exists.
+      setTimeout(() => {
+        sidebarNudge.value = true
+      }, 300)
+    }
+  })
+  // #############s
+
   // ==== WATCHES
   watch(helpText, newValue => {
     localStorage.setItem('helpText', JSON.stringify(newValue))
+  })
+
+  watch(showSidebar, newValue => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(newValue))
+    eventBus.emit('sidebarChanged', newValue)
   })
 
   const showPlan = () => {
@@ -137,11 +233,6 @@
   const hidePlan = () => {
     planVisible.value = false
   }
-
-  eventBus.on('navigationReady', () => {
-    console.log('Planner: Received navigationReady event, teleporting factory list')
-    navigationReady.value = true
-  })
 
   const createFactory = () => {
     const factory = newFactory()
@@ -221,8 +312,8 @@
   }
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
-  const updateFactory = (factory: Factory) => {
-    calculateFactory(factory, getFactories(), gameData)
+  const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
+    calculateFactory(factory, getFactories(), gameData, modes)
   }
 
   const copyFactory = (originalFactory: Factory) => {
@@ -282,10 +373,6 @@
   const closeWorldImport = () => {
     showImportWorldPopup.value = false
   }
-
-  eventBus.on('worldDataShow', (value: boolean) => {
-    showWorldData.value = value
-  })
 
   const clearAll = () => {
     clearFactories()
@@ -359,19 +446,60 @@
     margin-left: calc((100vw - 2050px)/2) !important;
   }
 
-  .two-pane-container {
-    margin: 0;
+  .sidebar-hover-zone {
+    position: fixed;
+    top: calc(64px + 50px);
+    left: 0;
+    width: 16px;
+    height: calc(100vh - 64px - 50px);
+    z-index: 99;
   }
 
   .sticky-sidebar {
-    width: 375px;
-    max-width: 375px;
+    position: relative; // Anchor for the resize handle
     max-height: calc(100vh - 64px - 50px); // For some reason this is not relative to the planner container
-    overflow-y: auto; /* Make it scrollable */
+    overflow: hidden; // Scrolling happens inside .sidebar-content so the handle spans the full height
 
-    @media screen and (max-width: 1500px) {
-      width: 275px;
-      max-width: 275px;
+    .sidebar-content {
+      max-height: 100%;
+      overflow-y: auto;
+    }
+
+    .sidebar-resize-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      border-right: 2px solid rgba(255, 255, 255, 0.12);
+
+      &:hover, &.resizing {
+        border-right-color: rgb(var(--v-theme-primary));
+      }
+    }
+
+    // Collapsed: taken out of the layout flow and parked off-screen so the
+    // main content takes the full width. Peek slides it back over the content.
+    &.collapsed {
+      position: fixed;
+      top: calc(64px + 50px);
+      left: 0;
+      height: calc(100vh - 64px - 50px);
+      background: rgb(var(--v-theme-background));
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      z-index: 100;
+    }
+
+    &.collapsed.peek {
+      transform: translateX(0);
+      box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+    }
+
+    // First-hide hint: pop out a little, wiggle, slide back
+    &.collapsed.nudge {
+      animation: sidebar-nudge 1.1s ease-in-out;
     }
   }
 
@@ -388,5 +516,11 @@
       padding-right: calc(100vw - 1800px - 20vw) !important;
     }
   }
+}
+
+@keyframes sidebar-nudge {
+  0%, 100% { transform: translateX(-100%); }
+  15%, 45%, 75% { transform: translateX(calc(-100% + 56px)); }
+  30%, 60% { transform: translateX(calc(-100% + 32px)); }
 }
 </style>

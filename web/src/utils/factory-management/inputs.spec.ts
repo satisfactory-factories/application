@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import * as factoryUtils from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -24,6 +24,7 @@ import eventBus from '@/utils/eventBus'
 vi.mock('@/utils/eventBus', () => ({
   default: {
     emit: vi.fn(),
+    on: vi.fn(),
   },
 }))
 
@@ -32,8 +33,10 @@ describe('inputs', () => {
   let mockDependantFactory: Factory
 
   beforeEach(() => {
-    mockFactory = newFactory('Iron Ingots')
-    mockDependantFactory = newFactory('Iron Plates')
+    // Explicit ids — newFactory otherwise assigns random ids, which can collide
+    // across mock factories and make input-existence checks flake.
+    mockFactory = newFactory('Iron Ingots', 0, 101)
+    mockDependantFactory = newFactory('Iron Plates', 0, 102)
   })
 
   describe('addInputToFactory', () => {
@@ -389,7 +392,7 @@ describe('inputs', () => {
           building: 'generatorfuel',
           ingredientAmount: 100,
           recipe: 'GeneratorFuel_LiquidFuel',
-          updated: 'ingredient',
+          updated: FactoryPowerChangeType.Ingredient,
         })
       })
       it('should return noProductsOrProducers if the factory has no products AND no power producers', () => {
@@ -486,7 +489,7 @@ describe('inputs', () => {
     describe('Internal production', () => {
       let mockFactory2: Factory
       beforeEach(() => {
-        mockFactory2 = newFactory('Iron Plates')
+        mockFactory2 = newFactory('Iron Plates', 0, 103)
         addProductToFactory(mockFactory, {
           id: 'IronIngot',
           amount: 1000,
@@ -533,7 +536,7 @@ describe('inputs', () => {
       describe('Other imports', () => {
         let mockFactory3: Factory
         beforeEach(() => {
-          mockFactory3 = newFactory('Iron Ingots 2')
+          mockFactory3 = newFactory('Iron Ingots 2', 0, 104)
           addProductToFactory(mockFactory3, {
             id: 'IronIngot',
             amount: 1000,
@@ -581,7 +584,7 @@ describe('inputs', () => {
         })
 
         it('should handle more than 2 inputs correctly', () => {
-          const mockFactory4 = newFactory('Iron Ingots 3')
+          const mockFactory4 = newFactory('Iron Ingots 3', 0, 105)
           addProductToFactory(mockFactory4, {
             id: 'IronIngot',
             amount: 1000,
@@ -724,7 +727,7 @@ describe('inputs', () => {
 
     it('should not affect other factory dependency pairs', () => {
       // Add a third factory that requires Iron Ingots
-      const ironPlateFac2 = newFactory('Iron Plates 2')
+      const ironPlateFac2 = newFactory('Iron Plates 2', 0, 106)
       addProductToFactory(ironPlateFac2, {
         id: 'IronPlate',
         amount: 1000,

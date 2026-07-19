@@ -36,7 +36,7 @@ export const create338Scenario = (): { getFactories: () => Factory[] } => {
   addProductToFactory(steelFac, {
     id: 'SteelPlate',
     amount: 1000,
-    recipe: 'SteelPlate',
+    recipe: 'SteelBeam',
   })
   addInputToFactory(mockFactory, {
     factoryId: steelFac.id,

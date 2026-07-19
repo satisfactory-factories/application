@@ -1,9 +1,34 @@
 <template>
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
-    :key="producerIndex"
-    class="powerProducer px-4 my-2 border-md rounded sub-card"
+    :key="`${factory.id}-${producerIndex}`"
+    class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
   >
+    <div class="factory-item-controls">
+      <v-btn
+        :color="producer.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
+        :disabled="producer.displayOrder === 0"
+        icon="fas fa-arrow-up"
+        size="small"
+        variant="flat"
+        @click="updatePowerProducerOrder('up', producer)"
+      />
+      <v-btn
+        :color="producer.displayOrder === factory.powerProducers.length - 1 ? 'light-blue-darken-4' : 'blue'"
+        :disabled="producer.displayOrder === factory.powerProducers.length - 1"
+        icon="fas fa-arrow-down"
+        size="small"
+        variant="flat"
+        @click="updatePowerProducerOrder('down', producer)"
+      />
+      <v-btn
+        color="red"
+        icon="fas fa-trash"
+        size="small"
+        variant="flat"
+        @click="deletePowerProducer(producerIndex, factory)"
+      />
+    </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
       <div class="input-row d-flex align-center">
         <span v-show="!producer.building" class="mr-2">
@@ -20,6 +45,7 @@
           />
         </span>
         <v-autocomplete
+          :id="`${factory.id}-${producer.id}-building`"
           v-model="producer.building"
           hide-details
           :items="autocompletePowerProducerGenerator()"
@@ -27,7 +53,7 @@
           max-width="250px"
           variant="outlined"
           width="250px"
-          @update:model-value="updatePowerProducerSelection('building', producer, factory)"
+          @update:model-value="updatePowerProducerSelection(FactoryPowerChangeType.Building, producer, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -45,6 +71,7 @@
           <i class="fas fa-burn" style="width: 42px; height: 42px" />
         </span>
         <v-autocomplete
+          :id="`${factory.id}-${producer.id}-recipe`"
           v-model="producer.recipe"
           :disabled="!producer.building"
           hide-details
@@ -57,60 +84,34 @@
         />
       </div>
       <div class="input-row d-flex align-center">
-        <v-text-field
-          v-model.number="producer.ingredientAmount"
+        <v-number-input
+          :id="`${factory.id}-${producer.id}-fuel-quantity`"
+          v-model.number="producer.fuelAmount"
+          control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
           label="Fuel Qty/min"
-          :max-width="smAndDown ? undefined : '110px'"
-          min="0"
-          :min-width="smAndDown ? undefined : '100px'"
+          :min="0"
           type="number"
           variant="outlined"
-          @update:model-value="updatePowerProducerFigures('ingredient', producer, factory)"
+          :width="smAndDown ? undefined : '130px'"
+          @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Fuel, producer, factory)"
         />
       </div>
       <div class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
-        <v-text-field
+        <v-number-input
+          :id="`${factory.id}-${producer.id}-power-amount`"
           v-model.number="producer.powerAmount"
+          control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
           label="MW"
-          :max-width="smAndDown ? undefined : '110px'"
-          min="0"
-          :min-width="smAndDown ? undefined : '100px'"
+          :min="0"
           type="number"
           variant="outlined"
-          @update:model-value="updatePowerProducerFigures('power', producer, factory)"
-        />
-      </div>
-      <div class="input-row d-flex align-center">
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="producer.displayOrder === 0"
-          icon="fas fa-arrow-up"
-          size="small"
-          variant="outlined"
-          @click="updatePowerProducerOrder('up', producer)"
-        />
-        <v-btn
-          class="rounded mr-2"
-          color="blue"
-          :disabled="producer.displayOrder === factory.powerProducers.length - 1"
-          icon="fas fa-arrow-down"
-          size="small"
-          variant="outlined"
-          @click="updatePowerProducerOrder('down', producer)"
-        />
-        <v-btn
-          class="rounded"
-          color="red"
-          icon="fas fa-trash"
-          size="small"
-          variant="outlined"
-          @click="deletePowerProducer(producerIndex, factory)"
+          :width="smAndDown ? undefined : '130px'"
+          @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Power, producer, factory)"
         />
       </div>
       <div class="input-row d-flex align-center">
@@ -133,60 +134,124 @@
         class="d-flex align-center"
       >
         <p class="mr-2">Byproduct:</p>
-        <v-chip class="sf-chip">
-          <game-asset clickable :subject="producer.byproduct.part" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(producer.byproduct.part) }}</b>: {{ formatNumber(producer.byproduct.amount ?? 0) }}/min
-          </span>
+        <v-chip class="sf-chip input">
+          <tooltip :text="getPartDisplayName(producer.byproduct.part)">
+            <game-asset clickable :subject="producer.byproduct.part" type="item" />
+          </tooltip>
+          <v-number-input
+            v-model.number="producer.byproduct.amount"
+            class="inline-inputs ml-2"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0.001"
+            :name="`${producer.id}.byproduct.${producer.byproduct.part.toString()}`"
+            :producer="producer.id"
+            width="120px"
+            @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"
+          />
+          <span>/min</span>
         </v-chip>
       </div>
       <div class="d-flex align-center">
         <p class="mr-2">Requires:</p>
         <v-chip
           v-if="producer.ingredients[1]"
-          class="sf-chip blue"
+          class="sf-chip blue input"
+          :class="factory.parts[producer.ingredients[1].part.toString()].isRaw ? 'cyan': 'blue'"
           variant="tonal"
         >
-          <game-asset clickable :subject="producer.ingredients[1].part" type="item" />
-          <span class="ml-2">
-            <b>{{ getPartDisplayName(producer.ingredients[1].part.toString()) }}</b>: {{ formatNumber(producer.ingredients[1].perMin) }}/min
-          </span>
+          <tooltip :text="getPartDisplayName(producer.ingredients[1].part)">
+            <game-asset clickable :subject="producer.ingredients[1].part" type="item" />
+          </tooltip>
+          <v-number-input
+            :id="`${factory.id}-${producer.id}-${producer.ingredients[1].part.toString()}`"
+            v-model.number="producer.ingredients[1].perMin"
+            class="inline-inputs ml-2"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0.001"
+            :producer="producer.id"
+            width="120px"
+            @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Ingredient, producer, factory)"
+          />
+          <span>/min</span>
         </v-chip>
         <span>
           <v-chip
-            class="sf-chip orange"
+            class="sf-chip orange input"
             variant="tonal"
           >
             <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />
-            <span class="ml-2">
-              <b>{{ getBuildingDisplayName(producer.building) }}</b>:
+            <span>
+              <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>
-            <v-text-field
+            <v-number-input
+              :id="`${factory.id}-${producer.id}-building-count`"
               v-model.number="producer.buildingAmount"
-              class="inline-inputs"
-              flat
+              class="inline-inputs ml-2"
+              control-variant="stacked"
+              density="compact"
               hide-details
               hide-spin-buttons
-              min="0"
-              type="number"
-              width="60px"
-              @input="updatePowerProducerFigures('building', producer, factory)"
+              :min="0.001"
+              :producer="producer.id"
+              width="120px"
+              @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
             />
           </v-chip>
         </span>
       </div>
     </div>
+    <div v-if="producer.building" class="mb-2">
+      <v-btn
+        :id="`${factory.id}-power-${producerIndex}-building-groups-toggle`"
+        block
+        :color="producer.buildingGroupsHaveProblem ? 'red' : 'green'"
+        size="small"
+        variant="tonal"
+        @click="toggleBuildingGroupTray(producer)"
+      >
+        <v-icon left>{{ producer.buildingGroupsTrayOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up' }}</v-icon>
+        <span v-if="producer.buildingGroupsHaveProblem" class="ml-2">
+          <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
+        </span>
+        <span v-else class="ml-2">
+          {{ producer.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ producer.buildingGroups.length }})
+          <tooltip-info v-if="!producer.buildingGroupsTrayOpen" :is-caption="false" text="Building Groups turn this producer's abstract building count into the real generators you'd build in-game: sets of identical buildings, each group with its own building count and overclock %.<br>Use them to plan your exact layout and see true per-group fuel rates and power output." />
+        </span>
+        <span class="ml-3 d-inline-flex align-center">
+          <tooltip text="Total Power Shards needed by this producer's Building Groups (1 per building per 50% clock above 100%)">
+            <game-asset height="18px" subject="power-shard" type="item_id" width="18px" />
+          </tooltip>
+          <span :id="`${factory.id}-power-${producerIndex}-power-shards-total`" class="ml-1">{{ getTotalPowerShards(producer.buildingGroups) }}</span>
+        </span>
+      </v-btn>
+      <div v-if="producer.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
+        <building-groups
+          :building="producer.building"
+          :factory="factory"
+          :item="producer"
+          :type="ItemType.Power"
+        />
+      </div>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
-  import { formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatPower } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { Factory, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryPowerChangeType, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
-  import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
@@ -205,12 +270,7 @@
   }>()
 
   const deletePowerProducer = (index: number, factory: Factory) => {
-    factory.powerProducers.splice(index, 1)
-
-    // We need to loop through each one in order and fix their ordering with the running count
-    factory.powerProducers.forEach((producer, index) => {
-      producer.displayOrder = index
-    })
+    deleteItem(index, ItemType.Power, factory)
     updateFactory(factory)
   }
 
@@ -259,6 +319,9 @@
   }
 
   const updatePowerProducerSelection = (source: 'building' | 'recipe', producer: FactoryPowerProducer, factory: Factory) => {
+    // Since the user has selected a new building, we need to reset the building groups
+    producer.buildingGroups = []
+
     // Hmmm tastes like chicken!
     let originalRecipe: PowerRecipe | null = JSON.parse(JSON.stringify(getDefaultRecipeForPowerProducer(producer.building)))
 
@@ -278,7 +341,7 @@
     producer.recipe = recipe.id
     producer.ingredients = recipe.ingredients
     producer.powerAmount = 0
-    producer.ingredientAmount = 0
+    producer.fuelAmount = 0
     producer.byproduct = null
 
     // Patch the ingredients to be zeroed
@@ -286,15 +349,26 @@
       ingredient.perMin = 0
     })
 
+    // Make it so that one building is added by default
+    producer.buildingAmount = 1
+    producer.updated = FactoryPowerChangeType.Building
+
+    // Add a building group in
+    addPowerProducerBuildingGroup(producer, factory, true)
+
     updateFactory(factory)
   }
 
-  const updatePowerProducerFigures = (type: 'ingredient' | 'power' | 'building', producer: FactoryPowerProducer, factory: Factory) => {
+  const updatePowerProducerFigures = (
+    type: FactoryPowerChangeType,
+    producer: FactoryPowerProducer,
+    factory: Factory
+  ) => {
     producer.updated = type
 
     // If user has tried to enter zeros for any inputs, zero it
-    if (producer.ingredientAmount < 0) {
-      producer.ingredientAmount = 0
+    if (producer.fuelAmount < 0) {
+      producer.fuelAmount = 0
     }
     if (producer.powerAmount < 0) {
       producer.powerAmount = 0

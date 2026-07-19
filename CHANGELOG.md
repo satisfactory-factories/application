@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Implemented Somersloops (production amplification) on product building groups: per-building somersloop input clamped to each building's slot count (smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/particle accelerator/quantum encoder 4; packager and generators cannot be amplified). Output (product + byproducts) is boosted by `1 + filled/slots`, power by `(1 + filled/slots)²`, both stacking with overclocking per the wiki formulas (fully slooped at 250% ≈ 13.43× base power). Ingredient consumption is never amplified — the item's ingredient demand is discounted to what the machines actually consume, and effective/remaining buildings, rebalancing, part reverse-solving and remainder actions are all somersloop-aware. Covered by a new unit suite (`building-groups/somersloops.spec.ts`) and TDD suite (`tdd/building-groups/somersloops.spec.ts`, refs `BG-E-S-PROD`).
+- The "Open/Close Building Groups" bar now shows the total Somersloops (products) and Power Shards (products + power producers) the item's groups consume, always visible with 0 when unused — both resources are rare, so their usage needs to be visible at a glance. Shards follow the game rule of 1 per building per 50% clock above 100% (150% = 1, 200% = 2, 250% = 3).
+- The "Open Building Groups" bar is disabled while the product has no item/recipe selected.
+- Implemented `isEvenlyBalanced` logic for Product Groups to improve user feedback and action button states.
+- Added comprehensive TDD tests for Building Groups: Creation, Deletion, Action Buttons, and Item Editing.
+
+### Changed
+- Reworked how Building Groups are opened: the toggle moved from the cramped top-right control strip to a full-width "Open/Close Building Groups" bar underneath each product and power producer (chevron up when closed, down when open), which expands the groups as a tray below it (red with a warning when the groups have a problem). Inside the tray, the action buttons (Evenly balance, Remainder to last/new group, OC @ 100%) sit at the very top, followed by the status/sync row, then the groups, with "Add Building Group" centered at the bottom.
+- Rewrote the Building Groups intro tooltip (shown on the closed toggle) to actually explain what Building Groups do, and shortened the Sync status tooltip (which also wrongly claimed sync re-enables when groups are reduced to 1 — it stays off).
+
+### Fixed
+- Fixed the "Building Groups have a problem!" state falsely triggering when editing a group with sync ON (e.g. adding a Somersloop): the problem flag was computed before the group→item writeback and never refreshed, so a single calculation pass (what the UI runs) left it stuck red against stale item data. It is now recomputed after the writeback.
+- Fixed critical bug where `syncBuildingGroups` ignored the `buildingGroupItemSync` flag, causing unwanted rebalances.
+- Fixed `deleteBuildingGroup` logic to maintain sync disabled after multiple groups are reduced to one, ensuring intentional imbalances are preserved.
+- Fixed `BuildingGroups.vue` to ensure metrics are recalculated immediately on mount and on all relevant factory updates.
+- Fixed several test-only issues related to stale DOM elements and floating point precision.
+- Corrected default building count for newly added building groups to match current UI design (default 1).
+- Updated "Evenly balance" button to work even when sync is disabled, providing better manual control.
+- Fixed group→item writeback (`checkForItemUpdate`) running on every recalculation, which replaced exact user-entered amounts with float-degraded values (e.g. 123 → 122.999…) and stomped the power producer's `updated` direction. It now only runs for edits originating from a building group.
+- Fixed `addPowerProducerToFactory` dropping the `ingredientAmount` option — it now seeds the fuel rate, matching the syncState mapping.
+- Fixed power producer building groups being excluded from the factory's total building requirements.
+- Fixed the product building count input displaying raw float noise (e.g. 1.3333333333333333); it now displays at 3dp while keeping the underlying value precise.
+- Product building count edits with negative values are now clamped to 1.
+- `getPowerRecipe` no longer crashes on an unknown recipe id.
+- Items from old saves without a `buildingGroups` field no longer crash the parts calculation before migration runs.
+
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
 ## [0.2.1](https://github.com/Maelstromeous/satisfactory-factories/compare/v0.2.0...v0.2.1) (2024-11-17)

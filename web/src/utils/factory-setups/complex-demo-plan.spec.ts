@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
 import { getPartExportRequests } from '@/utils/factory-management/exports'
@@ -41,17 +41,18 @@ describe('Complex Demo Plan', () => {
       expect(oilFac.products[0].amount).toBe(640)
       expect(oilFac.products[1].id).toBe('LiquidFuel')
       expect(oilFac.products[1].amount).toBe(40)
-      expect(oilFac.powerProducers[0]).toEqual({
+      // toMatchObject: the producer also carries building group state not asserted here
+      expect(oilFac.powerProducers[0]).toMatchObject({
         building: 'generatorfuel',
         buildingCount: 2,
         buildingAmount: 2,
         powerProduced: 500,
         powerAmount: 500,
-        ingredientAmount: 40,
+        fuelAmount: 40,
         recipe: 'GeneratorFuel_LiquidFuel',
         byproduct: null,
         displayOrder: 0,
-        updated: 'power',
+        updated: FactoryPowerChangeType.Power,
         ingredients: [{
           part: 'LiquidFuel',
           perMin: 40,
@@ -293,20 +294,21 @@ describe('Complex Demo Plan', () => {
       expect(uraniumFac.products[4].amount).toBe(100)
 
       expect(uraniumFac.powerProducers.length).toBe(1)
-      expect(uraniumFac.powerProducers[0]).toEqual({
+      // toMatchObject: the producer also carries building group state not asserted here
+      expect(uraniumFac.powerProducers[0]).toMatchObject({
         building: 'generatornuclear',
         buildingCount: 10,
         buildingAmount: 10,
         powerProduced: 25000,
         powerAmount: 25000,
-        ingredientAmount: 2,
+        fuelAmount: 2,
         recipe: 'GeneratorNuclear_NuclearFuelRod',
         displayOrder: 0,
         byproduct: {
           part: 'NuclearWaste',
           amount: 100,
         },
-        updated: 'power',
+        updated: FactoryPowerChangeType.Power,
         ingredients: [{
           part: 'NuclearFuelRod',
           perMin: 2,
