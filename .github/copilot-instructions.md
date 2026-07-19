@@ -12,8 +12,8 @@ Satisfactory Factories is a Vue 3 + TypeScript web application for planning prod
 ## Build & Development Requirements
 
 ### Prerequisites
-- **Node.js**: Version 20.17+ (current: 20.19.4) - Use `nvm install 20.17 && nvm use 20.17`
-- **pnpm**: Version 9.14.4+ - Install with `npm install -g pnpm`
+- **Node.js**: Version 24 (Node 26+ not supported - removes `SlowBuffer`, breaking `jsonwebtoken`) - Use `nvm install 24 && nvm use 24`
+- **pnpm**: Version 11.3+ - Install with `npm install -g pnpm`
 - **Docker**: Required for backend database operations
 - **NEVER CANCEL builds or long-running commands** - Build processes can take 5+ minutes
 
@@ -159,7 +159,7 @@ cd backend && pnpm lint-check && pnpm build
 ## Troubleshooting
 
 ### Build Failures
-1. Ensure Node.js 20.17+ and pnpm 9.14.4+ are installed
+1. Ensure Node.js 24 and pnpm 11.3+ are installed
 2. Clear node_modules and reinstall: `rm -rf node_modules pnpm-lock.yaml && pnpm install`
 3. Check for TypeScript compilation errors - fix before proceeding
 4. NEVER CANCEL running builds - wait for natural completion

@@ -4,9 +4,10 @@
   "description": "A tool for planning production chains with dependency management within the game Satisfactory.",
   "author": "Matt Cavanagh",
   "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@11.3.0",
   "engines": {
-    "node": ">=20.17.0",
-    "pnpm": ">=9.14.4"
+    "node": ">=24.0.0",
+    "pnpm": ">=11.3.0"
   },
   "scripts": {
     "dev": "pnpm db:up && pnpm --parallel --filter web --filter backend run dev",

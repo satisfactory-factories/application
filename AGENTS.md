@@ -44,13 +44,13 @@ This application is a specialized tool for players of the video game **Satisfact
 
 ### 1. Environment Preparation
 The project requires specific versions of Node.js and pnpm. It is highly recommended to use `nvm`.
-- **Node.js**: > 20.17.0
-- **pnpm**: > 9.14.4
+- **Node.js**: >= 24 (Node 26+ is not supported — it removes `SlowBuffer`, which `jsonwebtoken` depends on transitively, crashing the backend)
+- **pnpm**: >= 11.3
 - **Docker**: Required for backend services.
 
 **Agent Tip**: In many CI/container environments, you may need to source nvm before running commands:
 ```bash
-source ~/.nvm/nvm.sh && nvm use 20.17
+source ~/.nvm/nvm.sh && nvm use 24
 ```
 
 ### 2. Frontend Setup
