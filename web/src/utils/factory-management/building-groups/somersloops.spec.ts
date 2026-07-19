@@ -15,6 +15,7 @@ import {
   getSomersloopOutputMultiplier,
   getSomersloopPowerMultiplier,
   getSomersloopSlots,
+  getTotalSomersloops,
   sanitizeGroupSomersloops,
 } from '@/utils/factory-management/building-groups/somersloops'
 import {
@@ -148,6 +149,34 @@ describe('somersloops', () => {
         makeGroup({ id: 2, buildingCount: 1 }),
       ]
       expect(getSomersloopIngredientFactor(groups, 'smeltermk1')).toBeCloseTo(2 / 3, 10)
+    })
+  })
+
+  describe('getTotalSomersloops', () => {
+    it('should return 0 for no groups or unslooped groups', () => {
+      expect(getTotalSomersloops(undefined)).toBe(0)
+      expect(getTotalSomersloops([])).toBe(0)
+      expect(getTotalSomersloops([makeGroup({ buildingCount: 5 })])).toBe(0)
+    })
+
+    it('should multiply per-building somersloops by the group building count', () => {
+      expect(getTotalSomersloops([makeGroup({ buildingCount: 3, somersloops: 2 })])).toBe(6)
+    })
+
+    it('should sum across groups', () => {
+      const groups = [
+        makeGroup({ buildingCount: 2, somersloops: 1 }),
+        makeGroup({ id: 2, buildingCount: 4, somersloops: 2 }),
+      ]
+      expect(getTotalSomersloops(groups)).toBe(10)
+    })
+
+    it('should ignore groups with non-finite counts', () => {
+      const groups = [
+        makeGroup({ buildingCount: NaN, somersloops: 1 }),
+        makeGroup({ id: 2, buildingCount: 2, somersloops: 1 }),
+      ]
+      expect(getTotalSomersloops(groups)).toBe(2)
     })
   })
 

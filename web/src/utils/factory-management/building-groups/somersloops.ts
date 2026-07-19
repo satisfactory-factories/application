@@ -65,6 +65,24 @@ export const getSomersloopPowerMultiplier = (group: BuildingGroup, building: str
   return Math.pow(getSomersloopOutputMultiplier(group, building), 2)
 }
 
+// Total somersloops physically consumed by an item's groups. `somersloops` is stored
+// per building, so a group of N buildings uses N × somersloops of them.
+export const getTotalSomersloops = (buildingGroups: BuildingGroup[] | undefined): number => {
+  if (!buildingGroups?.length) {
+    return 0
+  }
+
+  let total = 0
+  for (const group of buildingGroups) {
+    const perGroup = (group.somersloops ?? 0) * group.buildingCount
+    if (Number.isFinite(perGroup)) {
+      total += perGroup
+    }
+  }
+
+  return total
+}
+
 // Somersloops boost outputs without increasing ingredient consumption, so an item's
 // amount-derived ingredient demand over-states what the (partially) slooped machines
 // actually eat. This returns physical-effective / output-effective buildings across the

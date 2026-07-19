@@ -86,4 +86,22 @@ describe('Component: Product', () => {
 
     expect((productionInput.element as HTMLInputElement).value).toBe('1')
   })
+
+  it('should open and close the building groups tray via the full-width toggle button', async () => {
+    const product = factory.products[0]
+    const toggle = subject.find(`[id="${factory.id}-${product.id}-building-groups-toggle"]`)
+    expect(toggle.exists()).toBe(true)
+    expect(toggle.text()).toContain('Open Building Groups (1)')
+    expect(product.buildingGroupsTrayOpen).toBe(false)
+
+    await toggle.trigger('click')
+    expect(product.buildingGroupsTrayOpen).toBe(true)
+    expect(toggle.text()).toContain('Close Building Groups')
+    // The tray content should now be rendered
+    expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(product.buildingGroupsTrayOpen).toBe(false)
+    expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(false)
+  })
 })

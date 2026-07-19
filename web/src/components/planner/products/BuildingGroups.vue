@@ -1,83 +1,7 @@
 <template>
-  <div
-    v-for="group in item.buildingGroups"
-    :key="group.id"
-    class="buildingGroup"
-    :class="isLast(group, item.buildingGroups) ? 'last' : ''"
-  >
-    <BuildingGroupComponent
-      :building="building"
-      :factory="factory"
-      :group="group"
-      :item="item"
-    />
-  </div>
   <div class="mb-2 d-flex align-center">
-    <div class="mr-2">
-      <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
-        <i class="fas fa-building" />
-        <span class="ml-1">
-          Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
-            {{ effectiveBuildings.toFixed(2) }}
-          </span></b>
-          |
-          <span
-            :id="`${factory.id}-${item.id}-remaining-buildings`"
-            :key="`${factory.id}-${item.id}-remaining-buildings-${buildingsRemaining}`"
-          >
-            {{ Math.abs(buildingsRemaining).toFixed(2) }}
-          </span>
-          <span v-if="buildingsRemaining > 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> short</span>
-          <span v-if="buildingsRemaining < 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> over</span>
-        </span>
-      </span>
-    </div>
-    <div :id="`${factory.id}-${item.id}-buildings-status-indicator`" class="ml-2" :isRed="over || under">
-      <v-chip v-if="over" class="sf-chip red small">
-        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
-      </v-chip>
-      <v-chip v-if="under" class="sf-chip red small">
-        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
-      </v-chip>
-      <v-chip v-if="!under && !over" class="sf-chip green small">
-        <i class="fas fa-check" /><span class="ml-2">Looking good Pioneer!</span>
-      </v-chip>
-    </div>
-    <div class="mr-2">|</div>
-    <div class="mr-2">
-      <span class="mr-2">Sync status <tooltip-info
-        :is-caption="true"
-        text="When Sync is enabled, the product is automatically updated with the total of the Building Groups, easing the user burden on doing math.<br>When a new building group is added, sync is disabled to prevent overriding the product's target while you are making adjustments.<br>When a new product is created, it is enabled automatically upon creation.<br>When building groups are reduced to 1, it is re-enabled.<br><br>It is synced in two ways:<br>1. When the <b>product</b> is updated, the building groups are updated <b>and rebalanced</b>.<br>2. When a <b>building group</b> is updated, the building counts are totalled across all groups and applied to the product."
-      /></span>
-      <v-btn
-        :id="`${factory.id}-${item.id}-toggle-sync`"
-        :color="item.buildingGroupItemSync ? 'green' : 'amber'"
-        size="small"
-        variant="flat"
-        @click="item.buildingGroupItemSync = !item.buildingGroupItemSync"
-      >
-        {{ item.buildingGroupItemSync ? 'Enabled' : 'Disabled' }}
-      </v-btn>
-    </div>
-    <div class="mr-2">|</div>
-    <v-btn color="primary" size="small" variant="flat" @click="showTutorial">
-      <v-icon icon="fas fa-graduation-cap" />
-      <span class="ml-2">Show Tutorial</span>
-    </v-btn>
-  </div>
-  <div class="d-flex align-center">
-    <v-btn
-      :id="`${factory.id}-add-building-group`"
-      color="primary"
-      size="small"
-      @click="addBuildingGroup(item, type, factory)"
-    >
-      <i class="fas fa-plus" />
-      <span class="ml-2">Add Building Group</span>
-    </v-btn>
     <v-btn
       :id="`${factory.id}-${item.id}-evenly-balance`"
-      class="ml-2"
       color="secondary"
       :disabled="item.buildingGroups.length === 1 || isEvenlyBalanced"
       size="small"
@@ -120,6 +44,83 @@
     >
       <i class="fas fa-history" />
       <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
+    </v-btn>
+  </div>
+  <div class="mb-2 d-flex align-center">
+    <div class="mr-2">
+      <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
+        <i class="fas fa-building" />
+        <span class="ml-1">
+          Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
+            {{ effectiveBuildings.toFixed(2) }}
+          </span></b>
+          |
+          <span
+            :id="`${factory.id}-${item.id}-remaining-buildings`"
+            :key="`${factory.id}-${item.id}-remaining-buildings-${buildingsRemaining}`"
+          >
+            {{ Math.abs(buildingsRemaining).toFixed(2) }}
+          </span>
+          <span v-if="buildingsRemaining > 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> short</span>
+          <span v-if="buildingsRemaining < 0" :id="`${factory.id}-${item.id}-remaining-buildings-verb`"> over</span>
+        </span>
+      </span>
+    </div>
+    <div :id="`${factory.id}-${item.id}-buildings-status-indicator`" class="ml-2" :isRed="over || under">
+      <v-chip v-if="over" class="sf-chip red small">
+        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
+      </v-chip>
+      <v-chip v-if="under" class="sf-chip red small">
+        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
+      </v-chip>
+      <v-chip v-if="!under && !over" class="sf-chip green small">
+        <i class="fas fa-check" /><span class="ml-2">Looking good Pioneer!</span>
+      </v-chip>
+    </div>
+    <div class="mr-2">|</div>
+    <div class="mr-2">
+      <span class="mr-2">Sync:</span>
+      <v-btn
+        :id="`${factory.id}-${item.id}-toggle-sync`"
+        :color="item.buildingGroupItemSync ? 'green' : 'amber'"
+        size="small"
+        variant="flat"
+        @click="item.buildingGroupItemSync = !item.buildingGroupItemSync"
+      >
+        {{ item.buildingGroupItemSync ? 'Enabled' : 'Disabled' }}
+      </v-btn>
+      <span><tooltip-info
+        :is-caption="true"
+        text="Sync keeps this item and its Building Groups aligned:<br>• Editing the <b>item</b> rebalances the groups evenly.<br>• Editing a <b>group</b> updates the item's totals.<br><br>Adding a second group turns sync off so your manual adjustments aren't overwritten (it stays off after deleting groups).<br>Re-enable it any time to restore automatic syncing."
+      /></span>
+    </div>
+    <div class="mr-2">|</div>
+    <v-btn color="primary" size="small" variant="flat" @click="showTutorial">
+      <v-icon icon="fas fa-graduation-cap" />
+      <span class="ml-2">Show Tutorial</span>
+    </v-btn>
+  </div>
+  <div
+    v-for="group in item.buildingGroups"
+    :key="group.id"
+    class="buildingGroup"
+    :class="isLast(group, item.buildingGroups) ? 'last' : ''"
+  >
+    <BuildingGroupComponent
+      :building="building"
+      :factory="factory"
+      :group="group"
+      :item="item"
+    />
+  </div>
+  <div class="d-flex justify-center mb-2">
+    <v-btn
+      :id="`${factory.id}-add-building-group`"
+      color="primary"
+      @click="addBuildingGroup(item, type, factory)"
+    >
+      <i class="fas fa-plus" />
+      <span class="ml-2">Add Building Group</span>
     </v-btn>
   </div>
 </template>

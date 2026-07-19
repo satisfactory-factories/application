@@ -45,7 +45,7 @@ The engine hook: `calculateFactory` calls `syncBuildingGroups(...)` per item, wh
 
 ## UI (`web/src/components/planner/products/`)
 
-- `BuildingGroups.vue` — container: group list, "Effective Buildings | N short/over" status line with an over/under/"Looking good, Pioneer!" chip, sync toggle, and action buttons (Add group, Evenly balance, Remainder to last, Remainder to new group, OC @ 100%, Tutorial). Button enablement is driven by balance state (`isEvenlyBalanced`).
+- `BuildingGroups.vue` — container, rendered as a tray under the item behind a full-width "Open/Close Building Groups" toggle bar (in `Product.vue`/`PowerProducer.vue`; chevron up closed / down open; red + warning text when groups have a problem). Tray order: action buttons first (Evenly balance, Remainder to last, Remainder to new group, OC @ 100%), then the "Effective Buildings | N short/over" status line with an over/under/"Looking good, Pioneer!" chip + sync toggle + Tutorial, then the group rows, then "Add Building Group" centered at the bottom. Button enablement is driven by balance state (`isEvenlyBalanced`).
 - `BuildingGroup.vue` — one row: building count, overclock % (debounced 750 ms, max 250), somersloop input (enabled, clamped to the building's slot count, underchip shows slots / current boost; disabled with "Cannot be amplified" for 0-slot buildings), editable per-part chips (editing a part reverse-solves count+clock), per-group power, delete (disabled when it's the last group).
 - Group edits call `updateFactory(factory, { useBuildingGroupBuildings: true, origin: 'buildingGroup' })`.
 

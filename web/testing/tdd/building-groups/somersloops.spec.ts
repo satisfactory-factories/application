@@ -123,6 +123,20 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings-verb"]`).text()).toBe('over')
   })
 
+  test('BG-E-S-PROD-16: Toggle bar shows the item\'s total somersloop usage', async () => {
+    // No sloops used: the counter should not render at all
+    expect(subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`).exists()).toBe(false)
+
+    const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
+    await sloopInput.setValue(1)
+    await waitForUpdate()
+
+    // 2 buildings x 1 somersloop each = 2 in total
+    const total = subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`)
+    expect(total.exists()).toBe(true)
+    expect(total.text()).toBe('2')
+  })
+
   test('BG-E-S-PROD-8: Somersloops PLUS overclocking generate the proper combined numbers', async () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)

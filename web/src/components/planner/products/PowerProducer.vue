@@ -6,22 +6,6 @@
   >
     <div class="factory-item-controls">
       <v-btn
-        :color="producer.buildingGroupsHaveProblem ? 'red' : 'green'"
-        size="small"
-        variant="flat"
-        @click="toggleBuildingGroupTray(producer)"
-      >
-        <span v-if="!producer.buildingGroupsTrayOpen">
-          <v-icon left>fas fa-arrow-down</v-icon>
-        </span>
-        <span v-if="producer.buildingGroupsTrayOpen">
-          <v-icon left>fas fa-arrow-up</v-icon>
-        </span>
-        <span class="ml-2">Building Groups ({{ producer.buildingGroups.length }})
-          <tooltip-info :is-caption="false" text="Open to see Building Groups, enabling you to overclock generators." />
-        </span>
-      </v-btn>
-      <v-btn
         :color="producer.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
         :disabled="producer.displayOrder === 0"
         icon="fas fa-arrow-up"
@@ -221,19 +205,32 @@
           </v-chip>
         </span>
       </div>
-      <div v-if="producer.buildingGroupsTrayOpen && producer.building" class="mb-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
+    </div>
+    <div v-if="producer.building" class="mb-2">
+      <v-btn
+        :id="`${factory.id}-power-${producerIndex}-building-groups-toggle`"
+        block
+        :color="producer.buildingGroupsHaveProblem ? 'red' : 'green'"
+        size="small"
+        variant="tonal"
+        @click="toggleBuildingGroupTray(producer)"
+      >
+        <v-icon left>{{ producer.buildingGroupsTrayOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up' }}</v-icon>
+        <span v-if="producer.buildingGroupsHaveProblem" class="ml-2">
+          <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
+        </span>
+        <span v-else class="ml-2">
+          {{ producer.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ producer.buildingGroups.length }})
+          <tooltip-info v-if="!producer.buildingGroupsTrayOpen" :is-caption="false" text="Building Groups turn this producer's abstract building count into the real generators you'd build in-game: sets of identical buildings, each group with its own building count and overclock %.<br>Use them to plan your exact layout and see true per-group fuel rates and power output." />
+        </span>
+      </v-btn>
+      <div v-if="producer.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
         <building-groups
           :building="producer.building"
           :factory="factory"
           :item="producer"
           :type="ItemType.Power"
         />
-      </div>
-      <div v-if="producer.buildingGroupsHaveProblem && !producer.buildingGroupsTrayOpen" class="mb-2">
-        <v-btn color="red" @click="toggleBuildingGroupTray(producer)">
-          <i class="fas fa-exclamation-triangle" />
-          <span class="ml-2">Building Groups have a problem!</span>
-        </v-btn>
       </div>
     </div>
   </div>

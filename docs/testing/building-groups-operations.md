@@ -168,6 +168,7 @@ The maths live in `web/src/utils/factory-management/building-groups/somersloops.
 | Fractional boosts on multi-slot buildings (1 of 2 slots = +50%)        | BG-E-S-PROD-13 | Y      | unit:sloops           | Assembler recipe covered                                     |
 | Group somersloop underchip shows slots / current boost                 | BG-E-S-PROD-14 | E      | —                     | "+N% output / building" when slooped                         |
 | Factory total somersloop count readout                                 | BG-E-S-PROD-15 | N      | —                     | Not designed yet — no aggregate display exists               |
+| Toggle bar shows the item's total somersloop usage                     | BG-E-S-PROD-16 | Y      | tdd:sloops, unit:sloops | Somersloop icon + count on the Open/Close bar; hidden at 0 (`getTotalSomersloops`) |
 
 ## Building Groups Editing - Ingredients (Products)
 Ref: BG-E-I-PROD

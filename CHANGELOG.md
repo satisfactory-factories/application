@@ -3,8 +3,13 @@
 ## [Unreleased]
 ### Added
 - Implemented Somersloops (production amplification) on product building groups: per-building somersloop input clamped to each building's slot count (smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/particle accelerator/quantum encoder 4; packager and generators cannot be amplified). Output (product + byproducts) is boosted by `1 + filled/slots`, power by `(1 + filled/slots)²`, both stacking with overclocking per the wiki formulas (fully slooped at 250% ≈ 13.43× base power). Ingredient consumption is never amplified — the item's ingredient demand is discounted to what the machines actually consume, and effective/remaining buildings, rebalancing, part reverse-solving and remainder actions are all somersloop-aware. Covered by a new unit suite (`building-groups/somersloops.spec.ts`) and TDD suite (`tdd/building-groups/somersloops.spec.ts`, refs `BG-E-S-PROD`).
+- The "Open/Close Building Groups" bar on products now shows the total Somersloops the item's groups consume (somersloop icon + count, hidden when zero) — sloops are rare, so their usage needs to be visible at a glance.
 - Implemented `isEvenlyBalanced` logic for Product Groups to improve user feedback and action button states.
 - Added comprehensive TDD tests for Building Groups: Creation, Deletion, Action Buttons, and Item Editing.
+
+### Changed
+- Reworked how Building Groups are opened: the toggle moved from the cramped top-right control strip to a full-width "Open/Close Building Groups" bar underneath each product and power producer (chevron up when closed, down when open), which expands the groups as a tray below it (red with a warning when the groups have a problem). Inside the tray, the action buttons (Evenly balance, Remainder to last/new group, OC @ 100%) sit at the very top, followed by the status/sync row, then the groups, with "Add Building Group" centered at the bottom.
+- Rewrote the Building Groups intro tooltip (shown on the closed toggle) to actually explain what Building Groups do, and shortened the Sync status tooltip (which also wrongly claimed sync re-enables when groups are reduced to 1 — it stays off).
 
 ### Fixed
 - Fixed critical bug where `syncBuildingGroups` ignored the `buildingGroupItemSync` flag, causing unwanted rebalances.
