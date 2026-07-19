@@ -11,33 +11,41 @@
           v-model="appStore.currentFactoryTabIndex"
           color="deep-orange"
         >
-          <v-tab
-            v-for="(item, index) in appStore.getTabs()"
-            :key="item.id"
-            class="text-none"
-            :ripple="!isCurrentTab(index)"
-            :slim="isCurrentTab(index)"
-            :value="index"
+          <draggable
+            class="d-flex"
+            item-key="id"
+            :list="appStore.factoryTabs"
+            @end="appStore.handleTabsReordered()"
           >
-            <input
-              v-if="isCurrentTab(index) && isEditingName"
-              v-model="currentTabName"
-              class="pa-1 rounded border bg-grey-darken-2"
-              @keyup.enter="onClickEditTabName"
-            >
-            <span v-else>
-              {{ item.name }}
-            </span>
-            <v-btn
-              v-if="isCurrentTab(index)"
-              :key="`${isEditingName}`"
-              color="grey-darken-3"
-              :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
-              size="x-small"
-              variant="flat"
-              @click="onClickEditTabName"
-            />
-          </v-tab>
+            <template #item="{ element: item, index }">
+              <v-tab
+                :key="item.id"
+                class="text-none"
+                :ripple="!isCurrentTab(index)"
+                :slim="isCurrentTab(index)"
+                :value="index"
+              >
+                <input
+                  v-if="isCurrentTab(index) && isEditingName"
+                  v-model="currentTabName"
+                  class="pa-1 rounded border bg-grey-darken-2"
+                  @keyup.enter="onClickEditTabName"
+                >
+                <span v-else>
+                  {{ item.name }}
+                </span>
+                <v-btn
+                  v-if="isCurrentTab(index)"
+                  :key="`${isEditingName}`"
+                  color="grey-darken-3"
+                  :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
+                  size="x-small"
+                  variant="flat"
+                  @click="onClickEditTabName"
+                />
+              </v-tab>
+            </template>
+          </draggable>
         </v-tabs>
         <v-btn
           color="grey-darken-3"
@@ -64,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+  import draggable from 'vuedraggable'
   import { useAppStore } from '@/stores/app-store'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
@@ -79,6 +88,7 @@
     isEditingName.value = !isEditingName.value
     if (!isEditingName.value) {
       appStore.currentFactoryTab.name = currentTabName.value
+      eventBus.emit('tabChanged', { tabId: appStore.currentFactoryTab.id })
     }
   }
 

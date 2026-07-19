@@ -85,6 +85,10 @@ export const useAppStore = defineStore('app', () => {
     return factories.filter(factory => !factory.hidden).length
   }
 
+  // Set when the tab index changes for bookkeeping reasons only (e.g. drag-reorder moved the
+  // active tab to a new position) — the plan contents haven't changed so no reload is needed.
+  let skipNextTabLoad = false
+
   // Watch the tab index, if it changes we need to throw up a loading
   watch(currentFactoryTabIndex, () => {
     requestAnimationFrame(() => {
@@ -94,12 +98,18 @@ export const useAppStore = defineStore('app', () => {
       // Update localstorage with the tab index
       localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
 
+      if (skipNextTabLoad) {
+        skipNextTabLoad = false
+        return
+      }
+
       prepareLoader(currentFactoryTab.value.factories)
     })
   })
 
-  // Watch the factories array for changes
-  watch(factoryTabs.value, () => {
+  // Watch the factories array for changes. Watch the ref (not ref.value) so persistence
+  // survives the tabs array being replaced wholesale (e.g. by setTabs on login).
+  watch(factoryTabs, () => {
     localStorage.setItem('factoryTabs', JSON.stringify(factoryTabs.value))
     setLastEdit() // Update last edit time whenever the data changes, from any source.
   }, { deep: true })
@@ -479,17 +489,53 @@ export const useAppStore = defineStore('app', () => {
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
+
+    eventBus.emit('tabChanged', { tabId: id })
   }
 
   const removeCurrentTab = async () => {
     if (factoryTabs.value.length === 1) return
 
+    // Resolve via the index, not the currentFactoryTab ref — the ref is only re-pointed
+    // on the next animation frame after a tab switch and can briefly lag behind.
+    const removedTabId = factoryTabs.value[currentFactoryTabIndex.value].id
+
     factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
     currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
+
+    eventBus.emit('tabRemoved', { tabId: removedTabId })
 
     // We now need to force a load of the factories, because the tab index may not change, but the factories will have.
     console.log('appStore: removeCurrentTab: Tab removed, preparing loader.')
     prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
+  }
+
+  // Replaces all tabs wholesale (login pull / merge). Mutates the array in place so the
+  // persistence watcher keeps firing, and lands the user on the first tab.
+  const setTabs = (tabs: FactoryTab[]) => {
+    console.log('appStore: setTabs: Replacing all tabs', tabs)
+    factoryTabs.value.splice(0, factoryTabs.value.length, ...tabs)
+
+    if (currentFactoryTabIndex.value !== 0) {
+      // The index watcher fires and reloads the plan
+      currentFactoryTabIndex.value = 0
+    } else {
+      currentFactoryTab.value = factoryTabs.value[0]
+      prepareLoader(currentFactoryTab.value.factories)
+    }
+  }
+
+  // Called after a drag-reorder has moved the tabs around in the array (vuedraggable mutates
+  // it in place). Re-resolves the active tab's index so the user stays on the same tab —
+  // without reloading the plan, since only positions changed.
+  const handleTabsReordered = () => {
+    const newIndex = factoryTabs.value.findIndex(tab => tab.id === currentFactoryTab.value.id)
+    if (newIndex !== -1 && newIndex !== currentFactoryTabIndex.value) {
+      skipNextTabLoad = true
+      currentFactoryTabIndex.value = newIndex
+    }
+
+    eventBus.emit('tabsReordered')
   }
   // ==== END TAB MANAGEMENT
 
@@ -555,6 +601,8 @@ export const useAppStore = defineStore('app', () => {
     getTabs,
     addTab,
     removeCurrentTab,
+    setTabs,
+    handleTabsReordered,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
     prepareLoader,
