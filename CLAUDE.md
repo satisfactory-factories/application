@@ -35,7 +35,7 @@ Per-package (from inside `web/`, `backend/`, or `parsing/`):
 - Backend has **no tests**.
 - `web` build runs `vue-tsc --noEmit` first, so a type error fails the build.
 
-Node **>= 24 but not >= 26** — Node 26 removes `SlowBuffer`, which `jsonwebtoken` needs transitively (crashes the backend). pnpm **>= 11.3**.
+Node **>= 24** (Node 26 works since jsonwebtoken 9.0.3 dropped its transitive `SlowBuffer` dependency). pnpm **>= 11.3**.
 
 ## Architecture
 

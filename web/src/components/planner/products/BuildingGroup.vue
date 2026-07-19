@@ -25,7 +25,7 @@
         <game-asset :subject="building" type="building" />
         <v-number-input
           :id="`${factory.id}-${group.id}-building-count`"
-          v-model.number="group.buildingCount"
+          v-model="group.buildingCount"
           class="inline-inputs ml-0"
           control-variant="stacked"
           density="compact"
@@ -53,7 +53,7 @@
         </tooltip>
         <v-number-input
           :id="`${factory.id}-${group.id}-clock`"
-          v-model.number="group.overclockPercent"
+          v-model="group.overclockPercent"
           class="inline-inputs ml-0"
           control-variant="stacked"
           density="compact"
@@ -95,14 +95,13 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-somersloops`"
-            v-model.number="group.somersloops"
+            v-model="group.somersloops"
             class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             :disabled="somersloopSlots === 0"
             hide-details
             hide-spin-buttons
-            :max="somersloopSlots"
             :min="0"
             type="number"
             width="80px"
@@ -137,7 +136,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-parts-${part}-amount`"
-            v-model.number="group.parts[part]"
+            v-model="group.parts[part]"
             class="inline-inputs"
             control-variant="stacked"
             density="compact"
@@ -179,7 +178,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-parts-${part}-amount`"
-            v-model.number="group.parts[part]"
+            v-model="group.parts[part]"
             class="inline-inputs"
             control-variant="stacked"
             density="compact"

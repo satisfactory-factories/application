@@ -7,7 +7,7 @@
       <v-icon icon="fas fa-tire fa-spin" />
     </span>
     <v-number-input
-      v-model.number="factorySettings.tractorTime"
+      v-model="factorySettings.tractorTime"
       control-variant="stacked"
       density="compact"
       hide-details

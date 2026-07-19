@@ -50,7 +50,7 @@
         </div>
         <div class="input-row d-flex align-center">
           <v-number-input
-            v-model.number="input.amount"
+            v-model="input.amount"
             control-variant="stacked"
             :disabled="!input.outputPart"
             hide-details

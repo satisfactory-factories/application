@@ -128,7 +128,7 @@
               <game-asset clickable :subject="String(byProduct.id)" type="item" />
             </tooltip>
             <v-number-input
-              v-model.number="byProduct.amount"
+              v-model="byProduct.amount"
               class="inline-inputs"
               control-variant="stacked"
               density="compact"
@@ -193,7 +193,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${product.id}-${part}-amount`"
-            v-model.number="requirement.amount"
+            v-model="requirement.amount"
             class="inline-inputs"
             control-variant="stacked"
             density="compact"

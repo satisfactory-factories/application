@@ -7,7 +7,7 @@
       <v-icon icon="fas fa-tire-rugged fa-spin" />
     </span>
     <v-number-input
-      v-model.number="factorySettings.truckTime"
+      v-model="factorySettings.truckTime"
       control-variant="stacked"
       density="compact"
       hide-details

@@ -7,7 +7,7 @@
       <v-icon icon="fas fa-sync fa-spin" />
     </span>
     <v-number-input
-      v-model.number="factorySettings.trainTime"
+      v-model="factorySettings.trainTime"
       control-variant="stacked"
       density="compact"
       hide-details

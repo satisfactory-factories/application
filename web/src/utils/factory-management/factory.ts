@@ -90,6 +90,9 @@ export interface CalculationModes {
   useBuildingGroupBuildings?: boolean
   forceRebalance?: boolean
   origin?: 'buildingGroup' | 'item'
+  // Internal: set when calculateFactory re-runs itself after a building-group
+  // sync changed item amounts, to prevent further recursion.
+  groupResync?: boolean
 }
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
@@ -98,7 +101,7 @@ export const calculateFactory = (
   allFactories: Factory[],
   gameData: DataInterface,
   modes: CalculationModes = {},
-) => {
+): Factory => {
   // Scan for invalid inputs as the user may have changed an input's factoryID.
   // Yes we are running this multiple times especially from calculateFactories,
   // but it's a very quick operation, and it ensures integrity.
@@ -138,6 +141,10 @@ export const calculateFactory = (
   // from a building group. Doing it on every recalc replaces the user's exact item
   // amounts with float-degraded recomputations (e.g. 123 -> 122.999...) and stomps
   // the power producer's `updated` direction.
+  const preSyncAmounts = JSON.stringify([
+    factory.products.map(product => product.amount),
+    factory.powerProducers.map(producer => [producer.buildingAmount, producer.powerAmount, producer.fuelAmount]),
+  ])
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
     if (modes.origin === 'buildingGroup') {
@@ -150,6 +157,19 @@ export const calculateFactory = (
       checkForItemUpdate(producer, factory)
     }
   })
+
+  // The group sync above can write new amounts back onto the items (e.g. editing
+  // a group's building count updates the product's amount). Every pass before
+  // this point ran against the old amounts, so requirements, parts and power are
+  // now stale. Re-run the calculation once so the factory is self-consistent;
+  // groupResync guards against further recursion.
+  const postSyncAmounts = JSON.stringify([
+    factory.products.map(product => product.amount),
+    factory.powerProducers.map(producer => [producer.buildingAmount, producer.powerAmount, producer.fuelAmount]),
+  ])
+  if (modes.origin === 'buildingGroup' && !modes.groupResync && preSyncAmounts !== postSyncAmounts) {
+    return calculateFactory(factory, allFactories, gameData, { ...modes, groupResync: true })
+  }
 
   // It's possible that the power producers have changed, so we need to recalculate the power.
   calculatePowerProducers(factory, gameData)

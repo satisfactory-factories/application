@@ -12,6 +12,13 @@ const vuetify = createVuetify({
   theme: {
     defaultTheme: 'dark',
   },
+  defaults: {
+    // Keep in sync with src/plugins/vuetify.ts: stable VNumberInput rounds to
+    // integers by default; null restores unrestricted decimals.
+    VNumberInput: {
+      precision: null,
+    },
+  },
 })
 
 /**

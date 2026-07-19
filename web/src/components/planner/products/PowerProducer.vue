@@ -86,7 +86,7 @@
       <div class="input-row d-flex align-center">
         <v-number-input
           :id="`${factory.id}-${producer.id}-fuel-quantity`"
-          v-model.number="producer.fuelAmount"
+          v-model="producer.fuelAmount"
           control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
@@ -102,7 +102,7 @@
       <div class="input-row d-flex align-center">
         <v-number-input
           :id="`${factory.id}-${producer.id}-power-amount`"
-          v-model.number="producer.powerAmount"
+          v-model="producer.powerAmount"
           control-variant="stacked"
           :disabled="!producer.recipe"
           hide-details
@@ -139,7 +139,7 @@
             <game-asset clickable :subject="producer.byproduct.part" type="item" />
           </tooltip>
           <v-number-input
-            v-model.number="producer.byproduct.amount"
+            v-model="producer.byproduct.amount"
             class="inline-inputs ml-2"
             control-variant="stacked"
             density="compact"
@@ -167,7 +167,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${producer.id}-${producer.ingredients[1].part.toString()}`"
-            v-model.number="producer.ingredients[1].perMin"
+            v-model="producer.ingredients[1].perMin"
             class="inline-inputs ml-2"
             control-variant="stacked"
             density="compact"
@@ -191,7 +191,7 @@
             </span>
             <v-number-input
               :id="`${factory.id}-${producer.id}-building-count`"
-              v-model.number="producer.buildingAmount"
+              v-model="producer.buildingAmount"
               class="inline-inputs ml-2"
               control-variant="stacked"
               density="compact"

@@ -44,7 +44,7 @@ This application is a specialized tool for players of the video game **Satisfact
 
 ### 1. Environment Preparation
 The project requires specific versions of Node.js and pnpm. It is highly recommended to use `nvm`.
-- **Node.js**: >= 24 (Node 26+ is not supported — it removes `SlowBuffer`, which `jsonwebtoken` depends on transitively, crashing the backend)
+- **Node.js**: >= 24 (Node 26 works since jsonwebtoken 9.0.3 dropped its transitive `SlowBuffer` dependency)
 - **pnpm**: >= 11.3
 - **Docker**: Required for backend services.
 
