@@ -1,0 +1,12 @@
+packages:
+  - 'web'
+  - 'backend'
+  - 'parsing'
+
+sharedWorkspaceLockfile: false
+
+onlyBuiltDependencies:
+  - core-js
+  - esbuild
+  - unrs-resolver
+  - vue-demi

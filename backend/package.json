@@ -1,5 +1,5 @@
 {
-  "name": "factory-planner-backend",
+  "name": "backend",
   "description": "Backend for Factory Planner with authentication and data sync",
   "author": "Matt Cavanagh",
   "main": "backend.ts",
@@ -7,6 +7,8 @@
   "scripts": {
     "start": "ts-node backend.ts",
     "dev": "nodemon backend.ts",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
     "build": "tsc",
     "lint": "eslint . --fix --ignore-path .gitignore",
     "lint-check": "eslint . --ignore-path .gitignore",

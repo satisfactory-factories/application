@@ -4,7 +4,21 @@
   "description": "A tool for planning production chains with dependency management within the game Satisfactory.",
   "author": "Matt Cavanagh",
   "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20.17.0",
+    "pnpm": ">=9.14.4"
+  },
   "scripts": {
+    "dev": "pnpm db:up && pnpm --parallel --filter web --filter backend run dev",
+    "dev:web": "pnpm --filter web run dev",
+    "dev:backend": "pnpm db:up && pnpm --filter backend run dev",
+    "dev:parsing": "pnpm --filter parsing run dev",
+    "db:up": "pnpm --filter backend run db:up",
+    "db:down": "pnpm --filter backend run db:down",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "lint-check": "pnpm --recursive run lint-check",
+    "test": "pnpm --recursive run test",
     "release": "commit-and-tag-version",
     "release-dry": "commit-and-tag-version --dry-run",
     "release-patch": "commit-and-tag-version --release-as patch",

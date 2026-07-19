@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo:8.0.3
+    image: mongo:8.3.4
     container_name: sf-db
     ports:
       - "27017:27017"
@@ -9,3 +9,14 @@ services:
     volumes:
       - ./data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    # Mongo has a kernel bug with TCMalloc introduced in linux kernel 6.19. The below environment variable in effect turns it off and passes it. Performance impact, but at least it works. For local dev, who cares. Production is fine.
+    # https://jira.mongodb.org/browse/SERVER-121912
+    # The issue is closed but for some reason for me on CachyOS it's still an issue.
+    environment:
+      - GLIBC_TUNABLES=glibc.pthread.rseq=1
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
