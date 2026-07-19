@@ -248,7 +248,7 @@
     updateFactory(factory)
   }
 
-  const autocompletePowerProducerGenerator = (): {title: string, value: string}[] => {
+  const autocompletePowerProducerGenerator = (): { title: string, value: string }[] => {
     // Loop through all the power production recipes and extrapolate a list of buildings.
     // We're going to use a set here to ensure the list is unique.
     const buildings = new Set<string>()

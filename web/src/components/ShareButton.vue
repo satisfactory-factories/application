@@ -70,7 +70,7 @@
     let token: string
     try {
       token = await authStore.getToken()
-    } catch (error) {
+    } catch {
       // Do nothing
       token = ''
     }

@@ -92,7 +92,11 @@
 
   eventBus.on('introToggle', (show: boolean) => {
     console.log('Introduction: Got introToggle event', show)
-    show ? open() : close()
+    if (show) {
+      open()
+    } else {
+      close()
+    }
   })
 
   const open = () => {

@@ -107,7 +107,7 @@
   const disableRecalc = ref(false)
 
   defineProps<{ helpTextShown: boolean }>()
-  // eslint-disable-next-line func-call-spacing
+
   const emit = defineEmits<{
     (event: 'hide-all'): void;
     (event: 'show-all'): void;

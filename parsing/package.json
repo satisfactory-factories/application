@@ -9,29 +9,26 @@
     "start": "node dist/index.js game-docs.json gameData.json",
     "dev": "ts-node src/index.ts game-docs.json gameData.json",
     "test": "jest --silent --coverage",
-    "lint": "eslint . --fix --ignore-path .gitignore",
-    "lint-check": "eslint . --ignore-path .gitignore"
+    "lint": "eslint . --fix",
+    "lint-check": "eslint ."
   },
   "dependencies": {
     "fs-extra": "^10.1.0",
     "iconv-lite": "^0.6.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@jest/globals": "^29.7.0",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.5.14",
-    "@typescript-eslint/eslint-plugin": "catalog:",
-    "@typescript-eslint/parser": "catalog:",
     "eslint": "catalog:",
-    "eslint-config-standard": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
-    "eslint-plugin-import": "catalog:",
-    "eslint-plugin-n": "catalog:",
-    "eslint-plugin-node": "catalog:",
-    "eslint-plugin-promise": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "globals": "^17.7.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.4.11",
     "ts-node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }

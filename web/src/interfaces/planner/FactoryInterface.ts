@@ -32,14 +32,14 @@ export interface ByProductItem {
 
 export enum ItemType {
   Power = 'Power',
-  Product = 'Product',
+  Product = 'Product'
 }
 
 export interface BuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
-  parts: {[key: string]: number}
+  parts: { [key: string]: number }
   powerUsage: number
   powerProduced: number
   somersloops?: number
@@ -84,7 +84,7 @@ export interface ExportCalculatorFactorySettings {
 export interface ExportCalculatorSettings {
   selected: string | null;
   factorySettings: {
-    [key: string] : ExportCalculatorFactorySettings
+    [key: string]: ExportCalculatorFactorySettings
   }
 }
 
@@ -126,7 +126,7 @@ export enum FactoryPowerChangeType {
   Building = 'building',
   Fuel = 'fuel',
   Ingredient = 'ingredient',
-  Power = 'power',
+  Power = 'power'
 }
 
 export interface FactoryPowerProducer {

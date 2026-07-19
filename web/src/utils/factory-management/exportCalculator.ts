@@ -6,7 +6,7 @@ export enum TransportMethod {
   Train = 'train_solid',
   Drone = 'drone',
   Truck = 'truck',
-  Tractor = 'tractor',
+  Tractor = 'tractor'
 }
 
 export const initializeCalculatorFactoryPart = (factory: Factory, part: string) => {

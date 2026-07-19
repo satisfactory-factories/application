@@ -10,8 +10,8 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "build": "tsc",
-    "lint": "eslint . --fix --ignore-path .gitignore",
-    "lint-check": "eslint . --ignore-path .gitignore"
+    "lint": "eslint . --fix",
+    "lint-check": "eslint ."
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -24,21 +24,18 @@
     "random-word-slugs": "^0.1.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
     "@types/jsonwebtoken": "^9.0.10",
-    "@typescript-eslint/eslint-plugin": "catalog:",
-    "@typescript-eslint/parser": "catalog:",
     "eslint": "catalog:",
-    "eslint-config-standard": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
-    "eslint-plugin-import": "catalog:",
-    "eslint-plugin-n": "catalog:",
-    "eslint-plugin-node": "catalog:",
-    "eslint-plugin-promise": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "globals": "^17.7.0",
     "nodemon": "^3.1.14",
     "ts-node": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }

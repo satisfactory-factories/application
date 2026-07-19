@@ -3,7 +3,7 @@ import { getInventorySlots } from './worldParser'
 // THE FUNCTIONS IN THIS FILE ARE CURRENTLY NOT IN USE, BUT ARE READY FOR FUTURE WORLD FACTORY IMPORT/SYNC
 
 // get object connection data (what factory is connected where)
-export function getConnections (objects: {[key: string]: any[]}) {
+export function getConnections (objects: { [key: string]: any[] }) {
   const connections: any = {}
   const objectConnections = objects['/Script/FactoryGame.FGFactoryConnectionComponent']
   objectConnections.forEach(con => {
@@ -24,7 +24,7 @@ export function getConnections (objects: {[key: string]: any[]}) {
 }
 
 // get input/output items per minute for each machine (starting from extractors)
-export function getIOItems (objects: {[key: string]: any[]}) {
+export function getIOItems (objects: { [key: string]: any[] }) {
   const connections = getConnections(objects)
 
   const extractors = ['MinerMK1', 'MinerMk2', 'MinerMk3', 'WaterPump', 'OilPump']
@@ -71,7 +71,7 @@ function getIOSlots (components: any[]) {
   return { inputs, outputs }
 }
 
-function findConnectedEnd (id: string, resource: string, itemsPerMinute: number, objects: {[key: string]: any[]}, connections: any) {
+function findConnectedEnd (id: string, resource: string, itemsPerMinute: number, objects: { [key: string]: any[] }, connections: any) {
   const parentId = id.slice(0, id.lastIndexOf('.'))
   const startConnection = connections[parentId]?.[id]
   if (!startConnection) return

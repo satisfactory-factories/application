@@ -41,7 +41,7 @@ let fuelQuantity: any
 let powerAmount: any
 let buildingCount: any
 let factory: Factory
-let subject: VueWrapper<{factory: Factory, helpText: boolean }>
+let subject: VueWrapper<{ factory: Factory, helpText: boolean }>
 
 const updateElements = (powerProducer: FactoryPowerProducer) => {
   // Elements

@@ -106,7 +106,6 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
 
-  // eslint-disable-next-line func-call-spacing
   const emit = defineEmits<{
     (event: 'createFactory'): void;
     (event: 'updateFactories', factories: Factory[]): void;

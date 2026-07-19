@@ -204,7 +204,7 @@
     )
   }
 
-  const getImportPartSelections = (inputIndex: number): { title: string, value: string}[] => {
+  const getImportPartSelections = (inputIndex: number): { title: string, value: string }[] => {
     // Get selected factory from input
     const input = props.factory.inputs[inputIndex]
     if (!input.factoryId) {

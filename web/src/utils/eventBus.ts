@@ -33,7 +33,7 @@ type Events = {
   buildingGroupUpdated: Factory;
   toggleSidebar: undefined;
   sidebarChanged: boolean;
-};
+}
 
 const eventBus = mitt<Events>()
 

@@ -49,7 +49,7 @@ const mountComponent = (factory: Factory, component: any) => {
 
 describe('Component: BuildingGroups', () => {
   let factory: Factory
-  let subject: VueWrapper<{factory: Factory }>
+  let subject: VueWrapper<{ factory: Factory }>
   let buildingGroup: BuildingGroup
   let addGroupButton: any
   let buildingGroupCount: any

@@ -140,7 +140,7 @@ export const calculateTotalProducedItems = (factories: Factory[]) => {
 }
 
 export const calculateProducedItemsDifference = (factories: Factory[]) => {
-  const differences: Record<string, {id: string, name: string; totalDifference: number }> =
+  const differences: Record<string, { id: string, name: string; totalDifference: number }> =
       {}
 
   factories.forEach(factory => {

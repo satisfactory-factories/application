@@ -300,7 +300,7 @@
     // Return a sorted object by the name property. Key is not correct.
     const sortedOres = Object.values(ores).sort((a, b) => a.name.localeCompare(b.name))
 
-    const sortedOresAsObj: {[key: string]: WorldRawResource } = {}
+    const sortedOresAsObj: { [key: string]: WorldRawResource } = {}
     sortedOres.forEach(ore => {
       sortedOresAsObj[ore.id] = ore
     })
