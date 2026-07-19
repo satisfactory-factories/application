@@ -1,9 +1,9 @@
 <template>
   <v-dialog v-model="showSplash" max-width="1000" scrollable>
     <v-card>
-      <v-card-title class="text-h4 text-center pb-0">Alpha v0.5 released!</v-card-title>
+      <v-card-title class="text-h4 text-center pb-0">Alpha v0.5 - The "Overclocked" update!</v-card-title>
       <v-card-text>
-        <p class="text-center mb-4">Here's what's new in this update!</p>
+        <p class="text-center mb-4">At long last, Overclocking &amp; Slooping has arrived!</p>
 
         <h2 class="text-h5 mb-2">
           <i class="fas fa-layer-group" /><span class="ml-2">🆕 Building Groups</span>
@@ -23,10 +23,10 @@
         </p>
 
         <h3 class="text-h6 mb-2 d-flex align-center">
-          <game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloop support</span>
+          <game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
         </h3>
         <p class="mb-4">
-          Slot Somersloops into your building groups to amplify production, doubling output when fully slooped. The planner correctly boosts output (not ingredient consumption!), applies the increased power draw, and totals your Somersloop usage — so you know exactly how many of those precious wiggly balls you're committing.
+          Slot Somersloops into your building groups to amplify production, doubling output when fully slooped. The planner correctly boosts output (not ingredient consumption!), applies the increased power draw, and totals your Somersloop usage so you know exactly how many of those precious items you're using!
         </p>
 
         <v-divider class="mb-4" />

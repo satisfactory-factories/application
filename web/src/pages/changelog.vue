@@ -14,6 +14,35 @@
           <li>🔧: Fixes</li>
         </ul>
         <v-divider />
+        <h1>Alpha v0.5 - The "Overclocked" Update</h1>
+        <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
+
+        <h2>🆕 Building Groups</h2>
+        <p>The headline feature of this update! Each product and power generator can now be split into <b>Building Groups</b>, letting you plan how your production lines are physically laid out in your world. Each group has its own building count and clock speed, and the planner keeps them in sync with your production targets.</p>
+        <p>Open them via the new "Open Building Groups" bar underneath each product. With them come two long-requested features:</p>
+
+        <h3 class="d-flex align-center">
+          <game-asset height="24px" subject="power-shard" type="item_id" width="24px" /><span class="ml-2">Overclocking</span>
+        </h3>
+        <p>Set a clock speed per group (up to 250%), and the planner will work out the power usage and the number of buildings you need. The Power Shards required are totalled up for you at a glance.</p>
+
+        <h3 class="d-flex align-center">
+          <game-asset height="24px" subject="somersloop" type="item_id" width="24px" /><span class="ml-2">Somersloops</span>
+        </h3>
+        <p>Slot Somersloops into your building groups to amplify production, doubling output when fully slooped. The planner correctly boosts output (not ingredient consumption!), applies the increased power draw, and totals your Somersloop usage — so you know exactly how many of those precious items you're using!</p>
+
+        <v-divider class="subsection" />
+
+        <h2><i class="fas fa-expand"></i> Collapsible &amp; resizable sidebar</h2>
+        <p>The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</p>
+
+        <v-divider class="subsection" />
+        <h2>🔧 Fixes</h2>
+        <ul>
+          <li>Unpackaged liquids e.g. crude oil were counted twice <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
+        </ul>
+
+        <v-divider />
         <h1>Alpha v0.4</h1>
 
         <p>Check out what's new in the video below!</p>
