@@ -1,5 +1,5 @@
 <template>
-  <v-expansion-panel :value="part.id">
+  <v-expansion-panel class="part-panel" :value="part.id">
     <v-expansion-panel-title>
       <game-asset
         clickable
@@ -56,48 +56,70 @@
           </span>
         </v-chip>
       </div>
-      <div v-if="part.standardRecipes.length">
-        <h3 class="text-subtitle-1 font-weight-bold mb-2">
-          <i class="fas fa-hat-chef" />
-          <span class="ml-2">Produced by</span>
-        </h3>
-        <recipe-card
-          v-for="recipe in part.standardRecipes"
-          :key="recipe.id"
-          :recipe="recipe"
-        />
-      </div>
+      <v-expansion-panels v-if="part.standardRecipes.length" v-model="producedByOpen" class="mb-3" variant="accordion">
+        <v-expansion-panel class="part-accordion" value="produced-by">
+          <v-expansion-panel-title class="text-subtitle-1">
+            <i class="fas fa-hat-chef" />
+            <span class="ml-2 font-weight-bold">Produced by ({{ part.standardRecipes.length }})</span>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-row dense>
+              <v-col
+                v-for="recipe in part.standardRecipes"
+                :key="recipe.id"
+                cols="12"
+                lg="4"
+                md="6"
+              >
+                <recipe-card :recipe="recipe" />
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
       <p v-else class="text-body-2 text-medium-emphasis mb-2">
         <i class="fas fa-mountain" />
         <span class="ml-2">Not produced by any recipe (raw resource or collectible).</span>
       </p>
       <v-expansion-panels v-if="part.alternateRecipes.length" class="mb-3" variant="accordion">
-        <v-expansion-panel>
+        <v-expansion-panel class="part-accordion">
           <v-expansion-panel-title class="text-subtitle-1">
             <i class="fas fa-flask" />
             <span class="ml-2 font-weight-bold">Alternate Recipes ({{ part.alternateRecipes.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <recipe-card
-              v-for="recipe in part.alternateRecipes"
-              :key="recipe.id"
-              :recipe="recipe"
-            />
+            <v-row dense>
+              <v-col
+                v-for="recipe in part.alternateRecipes"
+                :key="recipe.id"
+                cols="12"
+                lg="4"
+                md="6"
+              >
+                <recipe-card :recipe="recipe" />
+              </v-col>
+            </v-row>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
       <v-expansion-panels v-if="part.usedIn.length" variant="accordion">
-        <v-expansion-panel>
+        <v-expansion-panel class="part-accordion">
           <v-expansion-panel-title class="text-subtitle-1">
             <i class="fas fa-cogs" />
             <span class="ml-2 font-weight-bold">Used in ({{ part.usedIn.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <recipe-card
-              v-for="recipe in part.usedIn"
-              :key="recipe.id"
-              :recipe="recipe"
-            />
+            <v-row dense>
+              <v-col
+                v-for="recipe in part.usedIn"
+                :key="recipe.id"
+                cols="12"
+                lg="4"
+                md="6"
+              >
+                <recipe-card :recipe="recipe" />
+              </v-col>
+            </v-row>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -106,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import RecipeCard from '@/components/parts/RecipeCard.vue'
   import { PartEntry, PartProducer } from '@/utils/parts'
@@ -116,6 +138,8 @@
     part: PartEntry;
     producedIn: PartProducer[];
   }>()
+
+  const producedByOpen = ref('produced-by')
 
   const totalProduced = computed(() => props.producedIn.reduce((total, factory) => total + factory.amount, 0))
 
@@ -127,3 +151,15 @@
     router.push('/')
   }
 </script>
+
+<style lang="scss" scoped>
+.part-accordion {
+  background-color: rgb(50, 50, 50);
+  border: 1px solid rgb(108, 108, 108);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.part-panel {
+  background-color: #252525;
+}
+</style>

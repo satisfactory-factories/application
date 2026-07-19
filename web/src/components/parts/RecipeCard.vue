@@ -1,5 +1,5 @@
 <template>
-  <v-card class="recipe-card sub-card border-md mb-3" variant="flat">
+  <v-card class="recipe-card border-md h-100" variant="flat">
     <v-card-title class="d-flex align-center flex-wrap py-2">
       <span class="text-h6">{{ recipe.displayName }}</span>
       <v-chip
@@ -105,3 +105,9 @@
 
   const showAddDialog = ref(false)
 </script>
+
+<style lang="scss" scoped>
+.recipe-card {
+  background-color: rgb(33, 33, 33);
+}
+</style>
