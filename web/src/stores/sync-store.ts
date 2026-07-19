@@ -38,7 +38,7 @@ const createSyncStore = (overrides?: SyncStoreOverrides) => {
 
   const authStore = overrides?.authStore ?? useAuthStore()
   const appStore = overrides?.appStore ?? useAppStore()
-  const syncActions = overrides?.syncActions ?? new SyncActions(authStore, appStore)
+  const syncActions = overrides?.syncActions ?? new SyncActions(authStore)
 
   // Per-tab record of the server's lastSaved timestamps from our own successful saves and
   // pulls. Used at login to detect the "nothing changed anywhere" case.
@@ -248,7 +248,7 @@ const createSyncStore = (overrides?: SyncStoreOverrides) => {
 
       clearQueues()
       appStore.setTabs(full.tabs.map(backendTabToFactoryTab))
-      full.tabs.forEach(entry => setTabSyncMeta(entry.tabId, entry.lastSaved))
+      full.tabs.forEach((entry: BackendTabEntry) => setTabSyncMeta(entry.tabId, entry.lastSaved))
 
       await waitForLoaded()
       appStore.setLastSave()
@@ -274,7 +274,7 @@ const createSyncStore = (overrides?: SyncStoreOverrides) => {
       const merged = mergeTabs(localTabs, remoteTabs)
       clearQueues()
       appStore.setTabs(merged.tabs)
-      full.tabs.forEach(entry => setTabSyncMeta(entry.tabId, entry.lastSaved))
+      full.tabs.forEach((entry: BackendTabEntry) => setTabSyncMeta(entry.tabId, entry.lastSaved))
       toPush = merged.toPush
 
       await waitForLoaded()

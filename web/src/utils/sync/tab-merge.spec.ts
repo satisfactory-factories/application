@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeTabs } from '@/utils/sync/tab-merge'
-import { FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 
 const makeTab = (id: string, name: string, factories: Factory[] = []): FactoryTab => ({
   id,

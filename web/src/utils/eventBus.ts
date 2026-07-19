@@ -6,7 +6,6 @@ type Events = {
   loggedIn: undefined;
   sessionExpired: undefined;
   dataSynced: undefined;
-  dataOutOfSync: undefined;
   dataMergeRequired: undefined;
   // Tab lifecycle changes that need syncing
   tabChanged: { tabId: string };

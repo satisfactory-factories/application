@@ -6,12 +6,10 @@ import { config } from '@/config/config'
 // retries, the login merge flow) lives in sync-store.ts.
 export class SyncActions {
   private readonly authStore: any
-  private readonly appStore: any
   private readonly apiUrl: string
 
-  constructor (authStore: any, appStore: any) {
+  constructor (authStore: any) {
     this.authStore = authStore
-    this.appStore = appStore
     this.apiUrl = config.apiUrl
   }
 

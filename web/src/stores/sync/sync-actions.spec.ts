@@ -20,10 +20,6 @@ const mockAuthStore = {
   validateToken: vi.fn().mockResolvedValue(true),
 }
 
-const mockAppStore = {
-  isLoaded: true,
-}
-
 const expectedHeaders = {
   'Content-Type': 'application/json',
   Authorization: 'Bearer mock-token',
@@ -44,7 +40,7 @@ describe('SyncActions', () => {
     mockAuthStore.getToken.mockResolvedValue('mock-token')
     mockAuthStore.validateToken.mockResolvedValue(true)
 
-    syncActions = new SyncActions(mockAuthStore, mockAppStore)
+    syncActions = new SyncActions(mockAuthStore)
   })
 
   describe('loadTabMeta', () => {
