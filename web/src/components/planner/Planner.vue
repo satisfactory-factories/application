@@ -37,8 +37,9 @@
       <!-- Sticky Sidebar for Desktop -->
       <v-col
         class="d-none d-lg-flex sticky-sidebar"
-        :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar }"
+        :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
         :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
+        @animationend.self="onNudgeEnd"
         @mouseleave="sidebarPeek = false"
       >
         <v-container class="pa-0 sidebar-content">
@@ -134,6 +135,12 @@
   const showSidebar = ref<boolean>(localStorage.getItem('sidebarOpen') !== 'false')
   const sidebarPeek = ref<boolean>(false)
 
+  const sidebarNudge = ref<boolean>(false)
+  const onNudgeEnd = () => {
+    sidebarNudge.value = false
+    localStorage.setItem('sidebarNudgeShown', 'true')
+  }
+
   const defaultSidebarWidth = 375
   const minSidebarWidth = 150
   const sidebarWidth = ref<number>(parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
@@ -195,6 +202,16 @@
     showSidebar.value = !showSidebar.value
     sidebarPeek.value = false
     console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
+
+    if (showSidebar.value) {
+      sidebarNudge.value = false
+    } else if (localStorage.getItem('sidebarNudgeShown') !== 'true') {
+      // First ever hide: once the collapse slide finishes, nudge the sidebar
+      // out briefly so the user learns the hover zone exists.
+      setTimeout(() => {
+        sidebarNudge.value = true
+      }, 300)
+    }
   })
   // #############s
 
@@ -205,6 +222,7 @@
 
   watch(showSidebar, newValue => {
     localStorage.setItem('sidebarOpen', JSON.stringify(newValue))
+    eventBus.emit('sidebarChanged', newValue)
   })
 
   const showPlan = () => {
@@ -478,6 +496,11 @@
       transform: translateX(0);
       box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
     }
+
+    // First-hide hint: pop out a little, wiggle, slide back
+    &.collapsed.nudge {
+      animation: sidebar-nudge 1.1s ease-in-out;
+    }
   }
 
   .main-content {
@@ -493,5 +516,11 @@
       padding-right: calc(100vw - 1800px - 20vw) !important;
     }
   }
+}
+
+@keyframes sidebar-nudge {
+  0%, 100% { transform: translateX(-100%); }
+  15%, 45%, 75% { transform: translateX(calc(-100% + 56px)); }
+  30%, 60% { transform: translateX(calc(-100% + 32px)); }
 }
 </style>

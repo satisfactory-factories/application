@@ -5,7 +5,7 @@
         class="mx-1"
         prepend-icon="fas fa-bars"
         @click="toggleSidebar()"
-      >Sidebar</v-btn>
+      >{{ sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar' }}</v-btn>
       <div class="d-flex align-center" style="min-width: 0">
         <v-tabs
           v-model="appStore.currentFactoryTabIndex"
@@ -93,6 +93,11 @@
     }
     return true
   }
+
+  const sidebarOpen = ref(localStorage.getItem('sidebarOpen') !== 'false')
+  eventBus.on('sidebarChanged', (open: boolean) => {
+    sidebarOpen.value = open
+  })
 
   const toggleSidebar = () => {
     eventBus.emit('toggleSidebar')
