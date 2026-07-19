@@ -4,7 +4,7 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-list" /><span class="ml-3">Factories Summary [WIP]</span>
+            <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
@@ -27,31 +27,31 @@
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
           <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Showing an overview of each factory
-            with the name, buildings and their production.
+            <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
+            Hover over a chip for the full details.
           </p>
 
           <v-table
             ref="tableRef"
-            class="rounded border-md sub-card"
+            class="rounded border-md sub-card summary-table"
             fixed-header
             :height="tableHeight"
           >
             <thead>
               <tr>
-                <th class="text-left text-h6 table-column border-e-md" scope="row">
-                  <i class="fas fa-industry" /><span class="ml-2">Factory Name</span>
+                <th class="text-left text-h6 name-column border-e-md" scope="row">
+                  <i class="fas fa-industry" /><span class="ml-2">Factory</span>
                 </th>
                 <th class="text-left text-h6 table-column border-e-md" scope="row">
-                  <i class="fas fa-building" /><span class="ml-2">Buildings</span>
+                  <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
                 </th>
                 <th class="text-left text-h6 table-column border-e-md" scope="row">
-                  <i class="fas fa-box" /><span class="ml-2">Items</span>
+                  <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
                 </th>
                 <th class="text-left text-h6 table-column border-e-md" scope="row">
                   <i class="fas fa-arrow-to-right" /><span class="ml-2">Imports</span>
                 </th>
-                <th class="text-left text-h6 table-column border-e-md" scope="row">
+                <th class="text-left text-h6 table-column" scope="row">
                   <i class="fas fa-truck-container" /><span class="ml-2">Exports</span>
                 </th>
               </tr>
@@ -60,114 +60,118 @@
               <tr
                 v-for="factory in factories"
                 :key="factory.id"
-                class="header p-5 hover"
+                class="hover"
                 :class="factoryClass(factory)"
                 @click="navigateToFactory(factory.id as number)"
               >
-                <td class="header border-e-md">{{ factory.name }}</td>
-                <td class="header border-e-md">
-                  <span
-                    v-for="([, buildingData], buildingIndex) in Object.entries(factory.buildingRequirements)
-                      .sort(([, a], [, b]) => getBuildingDisplayName(a.name).localeCompare(getBuildingDisplayName(b.name)))"
-                    :key="buildingIndex"
-                    style="display: inline"
-                  >
-                    <v-chip class="sf-chip small no-margin orange" variant="tonal">
-                      <game-asset
-                        clickable
-                        :subject="buildingData.name"
-                        type="building"
-                      />
-                      <span class="ml-1">
-                        <b>{{
-                          getBuildingDisplayName(buildingData.name) ?? "UNKNOWN"
-                        }}</b>: {{ formatNumber(buildingData.amount) ?? 0 }}x
-                      </span>
-                    </v-chip>
-                  </span>
+                <td class="border-e-md">
+                  <v-chip class="sf-chip summary-chip factory-chip">
+                    <i class="fas fa-industry" />
+                    <b class="ml-2">{{ factory.name }}</b>
+                  </v-chip>
                 </td>
-                <td class="header border-e-md">
-                  <v-chip
+                <td class="border-e-md">
+                  <tooltip
                     v-for="part in factory.products
                       .slice()
                       .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))"
                     :key="`${factory.id}-${part.id}`"
-                    class="sf-chip small m-2"
+                    :text="productTooltip(factory, part)"
                   >
-                    <span class="mr-2">
+                    <v-chip class="sf-chip summary-chip blue">
                       <game-asset
                         v-if="part.id"
                         clickable
+                        height="32"
                         :subject="part.id"
                         type="item"
+                        width="32"
                       />
-                    </span>
-                    <span>
-                      <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
-                    </span>
-                    <span
-                      v-if="
-                        hasMetricsForPart(factory, part.id) &&
-                          factory.dependencies.metrics[part.id].difference !== 0
-                      "
-                      class="ml-2"
-                      :class="
-                        differenceClass(
-                          factory.dependencies.metrics[part.id].difference
-                        )
-                      "
-                    >({{
-                      formatNumber(
-                        factory.dependencies.metrics[part.id].difference
-                      )
-                    }}/min)</span>
-                  </v-chip>
+                      <b class="ml-2">{{ formatNumber(part.amount) }}/min</b>
+                    </v-chip>
+                  </tooltip>
                 </td>
-                <td class="header border-e-md">
-                  <v-chip
-                    v-for="(
-                      totals
-                    ) in calculateTotalDependencies(factory.inputs)"
-                    :key="`${factory.id}-${totals.outputPart}`"
-                    class="sf-chip small m-2"
-                  >
-                    <game-asset
-                      v-if="totals.outputPart"
-                      clickable
-                      height="32"
-                      :subject="totals.outputPart"
-                      type="item"
-                      width="32"
-                    />
-                    <span class="ml-2">
-                      <b>{{ getPartDisplayName(totals.outputPart) }}:</b>
-                      {{ formatNumber(totals.totalAmount) }}/min
-                    </span>
+                <td class="border-e-md">
+                  <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
+                    <i class="fas fa-check" />
+                    <b class="ml-2">Satisfied</b>
                   </v-chip>
+                  <tooltip
+                    v-for="[partId, part] in unsatisfiedParts(factory)"
+                    :key="`${factory.id}-shortage-${partId}`"
+                    :text="`<b>${getPartDisplayName(partId)}</b>: ${formatNumber(Math.abs(part.amountRemaining))}/min shortage`"
+                  >
+                    <v-chip class="sf-chip summary-chip red">
+                      <game-asset
+                        clickable
+                        height="32"
+                        :subject="partId"
+                        type="item"
+                        width="32"
+                      />
+                      <b class="ml-2">-{{ formatNumber(Math.abs(part.amountRemaining)) }}/min</b>
+                    </v-chip>
+                  </tooltip>
                 </td>
-                <td class="header border-e-md">
-                  <v-chip
-                    v-for="(
-                      totals
-                    ) in calculateTotalDependencyRequests(
-                      factory.dependencies.requests
-                    )"
-                    :key="totals.part"
-                    class="sf-chip small m-2"
+                <td class="border-e-md">
+                  <tooltip
+                    v-for="summary in calculateImports(factory.inputs)"
+                    :key="`${factory.id}-import-${summary.part}`"
+                    :text="flowTooltip(summary, 'from')"
                   >
-                    <game-asset
-                      v-if="totals.part"
-                      clickable
-                      height="32"
-                      :subject="totals.part"
-                      type="item"
-                      width="32"
-                    />
-                    <span class="ml-2">
-                      <b>{{ getPartDisplayName(totals.part) }}:</b>
-                      {{ formatNumber(totals.totalAmount) }}/min
-                    </span>
-                  </v-chip>
+                    <v-chip class="sf-chip summary-chip flow-chip">
+                      <div class="flow-chip-content">
+                        <div class="d-flex align-center">
+                          <game-asset
+                            clickable
+                            height="32"
+                            :subject="summary.part"
+                            type="item"
+                            width="32"
+                          />
+                          <b class="ml-2">{{ formatNumber(summary.totalAmount) }}/min</b>
+                        </div>
+                        <div
+                          v-for="source in summary.factories"
+                          :key="`${factory.id}-import-${summary.part}-${source.factoryId}`"
+                          class="flow-factory text-cyan"
+                          @click.stop="navigateToFactory(source.factoryId)"
+                        >
+                          <i class="fas fa-arrow-to-right" /> {{ getFactoryName(source.factoryId) }}
+                        </div>
+                      </div>
+                    </v-chip>
+                  </tooltip>
+                </td>
+                <td>
+                  <tooltip
+                    v-for="summary in calculateExports(factory.dependencies.requests)"
+                    :key="`${factory.id}-export-${summary.part}`"
+                    :text="flowTooltip(summary, 'to')"
+                  >
+                    <v-chip class="sf-chip summary-chip flow-chip">
+                      <div class="flow-chip-content">
+                        <div class="d-flex align-center">
+                          <game-asset
+                            clickable
+                            height="32"
+                            :subject="summary.part"
+                            type="item"
+                            width="32"
+                          />
+                          <b class="ml-2">{{ formatNumber(summary.totalAmount) }}/min</b>
+                        </div>
+                        <div
+                          v-for="destination in summary.factories"
+                          :key="`${factory.id}-export-${summary.part}-${destination.factoryId}`"
+                          class="flow-factory text-cyan"
+                          @click.stop="navigateToFactory(destination.factoryId)"
+                        >
+                          <i class="fas fa-truck-container" /> {{ getFactoryName(destination.factoryId) }}
+                        </div>
+                      </div>
+                    </v-chip>
+                  </tooltip>
                 </td>
               </tr>
             </tbody>
@@ -182,15 +186,15 @@
   import { nextTick, ref, watch } from 'vue'
   import {
     Factory,
+    FactoryItem,
+    PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import {
-    differenceClass,
     getPartDisplayName,
     hasMetricsForPart,
   } from '@/utils/helpers'
-  import { calculateTotalDependencies, calculateTotalDependencyRequests } from '@/utils/summary'
+  import { calculateExports, calculateImports, PartFlowSummary } from '@/utils/summary'
   import { formatNumber } from '@/utils/numberFormatter'
-  import { getBuildingDisplayName } from '@/utils/factory-management/common'
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   const props = defineProps<{
@@ -209,10 +213,8 @@
   const maxHeight = 750 // Max height in px
   const tableHeight = ref('tableRef')
 
-  const summaryHidden = localStorage.getItem('summaryHidden') ?? 'false'
-
   // Initialize the 'hidden' ref based on the value in localStorage
-  const hidden = ref<boolean>(Boolean(summaryHidden))
+  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') === 'true')
 
   watch(hidden, newValue => {
     localStorage.setItem('summaryHidden', newValue.toString())
@@ -232,9 +234,37 @@
 
   const factoryClass = (factory: Factory) => {
     return {
-      'factory-card': true,
       problem: factory.hasProblem,
     }
+  }
+
+  const getFactoryName = (factoryId: number): string => {
+    return props.factories.find(factory => factory.id === factoryId)?.name ?? 'UNKNOWN'
+  }
+
+  const unsatisfiedParts = (factory: Factory): [string, PartMetrics][] => {
+    return Object.entries(factory.parts).filter(([, part]) => !part.satisfied)
+  }
+
+  const productTooltip = (factory: Factory, product: FactoryItem): string => {
+    let text = `<b>${getPartDisplayName(product.id)}</b>: ${formatNumber(product.amount)}/min`
+
+    if (hasMetricsForPart(factory, product.id)) {
+      const difference = factory.dependencies.metrics[product.id].difference
+      if (difference !== 0) {
+        const label = difference > 0 ? 'surplus' : 'shortage'
+        text += `<br>${formatNumber(Math.abs(difference))}/min ${label}`
+      }
+    }
+
+    return text
+  }
+
+  const flowTooltip = (summary: PartFlowSummary, direction: 'from' | 'to'): string => {
+    const lines = summary.factories.map(
+      flow => `${direction} <b>${getFactoryName(flow.factoryId)}</b>: ${formatNumber(flow.amount)}/min`
+    )
+    return `<b>${getPartDisplayName(summary.part)}</b>: ${formatNumber(summary.totalAmount)}/min<br>${lines.join('<br>')}`
   }
 
   const adjustTableHeight = () => {
@@ -249,7 +279,78 @@
 </script>
 
 <style lang="scss" scoped>
-  .table-column{
-    min-width: 250px;
+  .name-column {
+    min-width: 150px;
+  }
+
+  .table-column {
+    min-width: 180px;
+  }
+
+  .summary-table {
+    :deep(tbody) {
+      tr {
+        cursor: pointer;
+        transition: background-color 0.3s;
+
+        &:hover td {
+          background-color: rgba(70, 70, 70, 0.4);
+        }
+
+        &.problem td {
+          background-color: rgba(140, 9, 21, 0.4);
+        }
+      }
+
+      td {
+        padding: 8px 12px !important;
+        height: auto !important;
+        // Keep each cell's chips on a single line — the table scrolls
+        // horizontally if a factory has too many to fit.
+        white-space: nowrap;
+      }
+    }
+  }
+
+  // Summary-only chip sizing: Vuetify pins v-chip to a fixed height, which
+  // crushes vertical padding. Let these chips grow to fit their content
+  // (needed for the multi-line import/export chips) without affecting
+  // sf-chip layouts elsewhere in the app.
+  .sf-chip.summary-chip {
+    height: auto !important;
+    min-height: 28px;
+    padding: 6px 12px !important;
+  }
+
+  .factory-chip {
+    font-size: 16px;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .flow-chip {
+    // The pill shape looks odd on these chips as their height varies with the
+    // number of factory lines inside them.
+    border-radius: 8px !important;
+
+    :deep(.v-chip__content) {
+      display: block;
+    }
+  }
+
+  .flow-chip-content {
+    padding: 2px 0;
+
+    .flow-factory {
+      font-size: 13px;
+      line-height: 1.4;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 </style>
