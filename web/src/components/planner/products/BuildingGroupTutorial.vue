@@ -3,29 +3,31 @@
     <v-card>
       <v-card-title><h3 class="text-h3">Building Groups Tutorial</h3></v-card-title>
       <v-card-text class="verbage">
-        <p>Building Groups are a way for you to logically split up parts of the production line. A common practice is for pioneers to split up an input so it can be load balanced, because of throughput constraints (e.g. Crude Oil throughput limit of 600m3 in a single pipe), or space restrictions.</p>
+        <p>Building Groups turn a product's abstract building count into the real sets of machines you'd build in-game. A common practice is for pioneers to split up an input so it can be load balanced, because of throughput constraints (e.g. Crude Oil throughput limit of 600m3 in a single pipe), or space restrictions. Each group has its own building count, clock speed and Somersloops.</p>
         <h4 class="text-h4">What do they do?</h4>
         <ul class="ml-4">
           <li><b>Split up your factory into logical groups: </b> This is useful if you have a constraint, e.g. a series of pipes that you need to distribute a raw resource e.g. oil amongst different groups.</li>
-          <li><b><span class="text-amber">[Under/Over]clocking</span></b>: You are able to clock each group individually, which will update the amount produced by the group.</li>
-          <li><b>COMING SOON <span class="text-purple">Somersloops</span></b>: You can indicate how many Somersloops are deployed in buildings, and how much it is producing.</li>
+          <li><b><span class="text-amber">[Under/Over]clocking</span></b>: You are able to clock each group individually, which will update the amount produced by the group. The Power Shards needed are totalled up on the Building Groups bar (1 per building per 50% clock above 100%).</li>
+          <li><b><span class="text-purple">Somersloops</span></b>: You can slot Somersloops into each group's buildings to amplify production — see below for the details.</li>
           <li><b>Fine tuning of resource distribution</b>: You can apply <b>exactly</b> how much of a given resource is consumed by the group, for maximum control. You can carve it up however you like, from adjusting the output of the group, or the input of it, the building count and clock will be adjusted to accommodate.</li>
           <li><b>Balancing and remainder handling</b>: If you have a pre-existing group, using the buttons you can create more groups and then redistribute the resources evenly, or apply the increased demand to the group you just made at a single button press. Check the tooltips on each button to see what it does.</li>
         </ul>
-        <p>When you click on Even Balance or any of the remainder buttons at the bottom, the tool will lean towards <b>adding more buildings and underclocking them</b> rather than overclocking, simply because the act of overclocking requires Shards that the player may not have. If this is undesirable, simply make a new empty group and you'll have full control and can overclock instead.</p>
+        <p>When you click on Evenly balance or any of the remainder buttons, the tool will lean towards <b>adding more buildings and underclocking them</b> rather than overclocking, simply because the act of overclocking requires Shards that the player may not have. If this is undesirable, simply make a new empty group and you'll have full control and can overclock instead.</p>
 
         <v-divider />
 
-        <h4 class="text-h4">Group Modes</h4>
+        <h4 class="text-h4">Sync</h4>
         <p>
-          <b>"Basic" mode:</b> By default, when you add a product, you will start with one logical group, and any changes to said group will affect the entire product line. e.g. if you increase the number of buildings, it will adjust the line as well and vice versa. This enables you to clock all buildings on the line easily in one go.
+          When you add a product it starts with one group, with <b>Sync enabled</b>: editing the <b>item</b> rebalances its groups evenly, and editing a <b>group</b> updates the item's totals — so you can e.g. clock the entire line in one go.
         </p>
-        <img alt="Basic Mode" src="/assets/tutorials/building-group-basic.png">
+        <p>
+          <b>Adding a second group turns Sync off</b> so your manual adjustments aren't overwritten (it stays off after deleting groups). You then have full manual control, and it's up to you to ensure the groups cover the item's demand — keep an eye on the "Effective Buildings" readout and use the helper buttons to rebalance. It will be very obvious when the math doesn't add up: the Building Groups bar goes red. <b>There is a 0.1 effective building margin of error</b> before the tool yells at you to correct it, as with some recipes it is simply not possible to be 100% balanced. You can re-enable Sync at any time to restore automatic syncing.
+        </p>
 
-        <p>
-          <b>"Advanced" mode:</b> If you make multiple groups, the tool gives you full manual control to make all the adjustments as you please. Note however that the auto correction of the product requirements and building groups are disabled, you will have to adjust manually and ensure the "Effective Buildings" is 0, otherwise the math will not balance. You can use the helper buttons to help you do this. It will be very obvious when the math doesn't add up, and the factory will go red if it doesn't. <b>There is a 0.1 effective building margin of error</b> before the tool yells at you to correct it, as with some recipes it is simply not possible to be 100% balanced.
-        </p>
-        <img alt="Advanced Mode" src="/assets/tutorials/building-group-advanced.png">
+        <v-divider />
+
+        <h4 class="text-h4">Somersloops</h4>
+        <p>Each building has a number of Somersloop slots depending on its type (e.g. Constructors 1, Assemblers 2, Manufacturers 4). Filling slots boosts each building's <b>output</b> — up to <b>double</b> when fully slooped — <b>without increasing ingredient consumption</b>, at the cost of drastically increased power usage (power scales with the square of the amplification, on top of any overclock). The total Somersloops used are shown on the Building Groups bar so you know exactly how many you're committing.</p>
 
         <v-divider />
 

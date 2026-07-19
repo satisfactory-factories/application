@@ -45,6 +45,16 @@
       <i class="fas fa-history" />
       <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
     </v-btn>
+    <v-btn
+      class="ml-auto"
+      color="primary"
+      size="small"
+      variant="flat"
+      @click="showTutorial"
+    >
+      <v-icon icon="fas fa-graduation-cap" />
+      <span class="ml-2">Help</span>
+    </v-btn>
   </div>
   <div class="mb-2 d-flex align-center">
     <div class="mr-2">
@@ -74,7 +84,7 @@
         <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
       </v-chip>
       <v-chip v-if="!under && !over" class="sf-chip green small">
-        <i class="fas fa-check" /><span class="ml-2">Looking good Pioneer!</span>
+        <i class="fas fa-check" /><span class="ml-2">Balanced</span>
       </v-chip>
     </div>
     <div class="mr-2">|</div>
@@ -94,11 +104,6 @@
         text="Sync keeps this item and its Building Groups aligned:<br>• Editing the <b>item</b> rebalances the groups evenly.<br>• Editing a <b>group</b> updates the item's totals.<br><br>Adding a second group turns sync off so your manual adjustments aren't overwritten (it stays off after deleting groups).<br>Re-enable it any time to restore automatic syncing."
       /></span>
     </div>
-    <div class="mr-2">|</div>
-    <v-btn color="primary" size="small" variant="flat" @click="showTutorial">
-      <v-icon icon="fas fa-graduation-cap" />
-      <span class="ml-2">Show Tutorial</span>
-    </v-btn>
   </div>
   <div
     v-for="group in item.buildingGroups"

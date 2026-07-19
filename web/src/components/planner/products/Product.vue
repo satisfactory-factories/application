@@ -208,46 +208,14 @@
         </v-chip>
       </div>
     </div>
-    <div class="mb-2">
-      <v-btn
-        :id="`${factory.id}-${product.id}-building-groups-toggle`"
-        block
-        :color="product.buildingGroupsHaveProblem ? 'red' : 'green'"
-        :disabled="!product.id || !product.recipe"
-        size="small"
-        variant="tonal"
-        @click="toggleBuildingGroupTray(product)"
-      >
-        <v-icon left>{{ product.buildingGroupsTrayOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up' }}</v-icon>
-        <span v-if="product.buildingGroupsHaveProblem" class="ml-2">
-          <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
-        </span>
-        <span v-else class="ml-2">
-          {{ product.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ product.buildingGroups.length }})
-          <tooltip-info v-if="!product.buildingGroupsTrayOpen" :is-caption="false" text="Building Groups turn this product's abstract building count into the real machines you'd build in-game: sets of identical buildings, each group with its own building count, overclock % and Somersloops.<br>Use them to plan your exact layout and see true per-group part rates and power usage." />
-        </span>
-        <span class="ml-3 d-inline-flex align-center">
-          <tooltip text="Total Power Shards needed by this product's Building Groups (1 per building per 50% clock above 100%)">
-            <game-asset height="18px" subject="power-shard" type="item_id" width="18px" />
-          </tooltip>
-          <span :id="`${factory.id}-${product.id}-power-shards-total`" class="ml-1">{{ getTotalPowerShards(product.buildingGroups) }}</span>
-        </span>
-        <span class="ml-3 d-inline-flex align-center">
-          <tooltip text="Total Somersloops used by this product's Building Groups">
-            <game-asset height="18px" subject="somersloop" type="item_id" width="18px" />
-          </tooltip>
-          <span :id="`${factory.id}-${product.id}-somersloops-total`" class="ml-1">{{ getTotalSomersloops(product.buildingGroups) }}</span>
-        </span>
-      </v-btn>
-      <div v-if="product.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="product.buildingGroupsHaveProblem ? 'problem' : ''">
-        <building-groups
-          :building="product.buildingRequirements.name"
-          :factory="factory"
-          :item="product"
-          :type="ItemType.Product"
-        />
-      </div>
-    </div>
+    <building-groups-section
+      :building="product.buildingRequirements.name"
+      :disabled="!product.id || !product.recipe"
+      :factory="factory"
+      :id-prefix="`${factory.id}-${product.id}`"
+      :item="product"
+      :type="ItemType.Product"
+    />
   </div>
 </template>
 
@@ -269,8 +237,6 @@
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
-  import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
-  import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import eventBus from '@/utils/eventBus'
 

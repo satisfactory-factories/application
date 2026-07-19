@@ -121,12 +121,12 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       expect(subject.text()).toContain('Over producing!')
     })
 
-    test('BG-E-AB-PROD-6: When effective is balanced, "Looking good, Pioneer!" is shown', async () => {
+    test('BG-E-AB-PROD-6: When effective is balanced, "Balanced" is shown', async () => {
       // Balanced is 2 buildings
       product.buildingGroups[0].buildingCount = 2
 
       await new Promise(resolve => setTimeout(resolve, 100))
-      expect(subject.text()).toContain('Looking good Pioneer!')
+      expect(subject.text()).toContain('Balanced')
     })
 
     test('BG-E-AB-PROD-13: When any group has clock of !== 100%, show OC @ 100% button', async () => {
