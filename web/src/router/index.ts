@@ -30,9 +30,10 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Need to load the game data first before sync store
-  const syncStore = useSyncStore()
-  syncStore.setupTick()
+  // Need to load the game data first before sync store. Instantiating the singleton here
+  // ensures it is listening for data-change events; saves fire immediately (debounced
+  // per tab) rather than on a polling tick.
+  useSyncStore()
 
   // Proceed to the route if data is loaded
   next()
