@@ -328,6 +328,19 @@ describe('products', () => {
       expect(mockFactory.parts.IronPlate.amountRemaining).toBe(20)
       expect(mockFactory.parts.IronIngot.amountRequired).toBe(30)
     })
+
+    it('should round product amounts to 3 decimal places as the game goes no more precise', () => {
+      const mockProduct = {
+        id: 'IronPlate',
+        amount: 1.6666666667,
+        recipe: 'IronPlate',
+      }
+
+      addProductToFactory(mockFactory, mockProduct)
+      calculateFactories([mockFactory], gameData)
+
+      expect(mockFactory.products[0].amount).toBe(1.667)
+    })
   })
 
   describe('calculateByProducts', () => {
@@ -367,6 +380,20 @@ describe('products', () => {
 
       // Expect that the byproduct has been added to the parts array for potential consumption by other products.
       expect(mockFactory.parts.PolymerResin.amountSupplied).toBe(75)
+    })
+    it('should round byproduct amounts to 3 decimal places', () => {
+      mockFactory.products = []
+      const mockProductWithByProducts = {
+        id: 'LiquidFuel',
+        amount: 1.111, // Byproduct ratio is 0.75, so 0.83325 unrounded
+        recipe: 'LiquidFuel',
+      }
+
+      addProductToFactory(mockFactory, mockProductWithByProducts)
+      calculateFactories([mockFactory], gameData)
+
+      // @ts-ignore
+      expect(mockFactory.products[0].byProducts[0].amount).toBe(0.833)
     })
   })
 

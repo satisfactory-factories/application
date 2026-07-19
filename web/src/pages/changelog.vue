@@ -33,7 +33,7 @@
 
         <v-divider class="subsection" />
 
-        <h2><i class="fas fa-expand"></i> Collapsible &amp; resizable sidebar</h2>
+        <h2><i class="fas fa-expand" /> Collapsible &amp; resizable sidebar</h2>
         <p>The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</p>
 
         <v-divider class="subsection" />
@@ -164,6 +164,7 @@
               <li>Ensuring the hidden factories UI is actually hidden itself when a factory is expanded (reducing rendering time slightly).</li>
               <li>Changes to the factory have been reduced, meaning the UI framework has to do less changes (more to come on this).</li>
               <li>Removed various bits of dead code that slowed the calculation of factories down.</li>
+              <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
             </ul>
           </li>
           <li>👍 The "too many factories open" banner can be dismissed until page reload.</li>

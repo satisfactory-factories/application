@@ -16,6 +16,7 @@ import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { getSomersloopIngredientFactor } from '@/utils/factory-management/building-groups/somersloops'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 const gameData = await fetchGameData()
 
@@ -76,6 +77,9 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       console.warn(`calculateProductRequirements: Recipe with ID ${product.recipe} not found. It could be the user has not yet selected one.`)
       return
     }
+
+    // The game does not go more precise than 3 decimal places, so quantities must not either.
+    product.amount = formatNumberFully(product.amount)
 
     if (!product.amount || product.amount < 0) {
       // If the product amount is negative, this causes issues with calculations, so force it to 0.
@@ -142,7 +146,7 @@ export const calculateByProducts = (factory: Factory, gameData: DataInterface): 
       const byProductRatio = byProduct.amount / recipe.products[0].amount
 
       // Now we compare the product.amount (the amount being produced) and times by the ratio to get the byProduct amount.
-      const byProductAmount = product.amount * byProductRatio
+      const byProductAmount = formatNumberFully(product.amount * byProductRatio)
 
       if (!product.byProducts) {
         product.byProducts = []

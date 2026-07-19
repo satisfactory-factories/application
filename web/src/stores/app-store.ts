@@ -9,6 +9,7 @@ import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -319,6 +320,13 @@ export const useAppStore = defineStore('app', () => {
 
         if (product.buildingGroupsTrayOpen === undefined) {
           product.buildingGroupsTrayOpen = false
+        }
+
+        // Patch for quantity precision. The game does not go more precise than 3 decimal
+        // places, but older saves can hold amounts like 1.6666666667. Force a
+        // recalculation, which now rounds product quantities.
+        if (product.amount !== formatNumberFully(product.amount)) {
+          needsCalculation = true
         }
       })
 
