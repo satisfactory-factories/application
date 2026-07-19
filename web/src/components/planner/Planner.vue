@@ -28,9 +28,20 @@
 
     <!-- Main Content Area -->
     <v-row class="ma-0">
+      <!-- Hot zone to peek the sidebar when it's collapsed -->
+      <div
+        v-if="!showSidebar"
+        class="d-none d-lg-block sidebar-hover-zone"
+        @mouseenter="sidebarPeek = true"
+      />
       <!-- Sticky Sidebar for Desktop -->
-      <v-col v-show="showSidebar" class="d-none d-lg-flex sticky-sidebar">
-        <v-container class="pa-0">
+      <v-col
+        class="d-none d-lg-flex sticky-sidebar"
+        :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar }"
+        :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
+        @mouseleave="sidebarPeek = false"
+      >
+        <v-container class="pa-0 sidebar-content">
           <planner-factory-list
             :factories="getFactories()"
             loaded-from="planner"
@@ -49,6 +60,12 @@
             @toggle-help-text="toggleHelp()"
           />
         </v-container>
+        <div
+          v-if="showSidebar"
+          class="sidebar-resize-handle"
+          :class="{ resizing: isResizingSidebar }"
+          @mousedown.prevent="startSidebarResize"
+        />
       </v-col>
       <!-- Main Content Area -->
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
@@ -114,7 +131,38 @@
   const showImportWorldPopup = ref<boolean>(false)
   const showWorldData = ref<boolean>(false)
 
-  const showSidebar = ref<boolean>(true)
+  const showSidebar = ref<boolean>(localStorage.getItem('sidebarOpen') !== 'false')
+  const sidebarPeek = ref<boolean>(false)
+
+  const defaultSidebarWidth = 375
+  const minSidebarWidth = 150
+  const sidebarWidth = ref<number>(parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
+  const isResizingSidebar = ref<boolean>(false)
+
+  const startSidebarResize = (event: MouseEvent) => {
+    isResizingSidebar.value = true
+    const startX = event.clientX
+    const startWidth = sidebarWidth.value
+
+    // Lock the cursor and text selection for the duration of the drag
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = startWidth + (moveEvent.clientX - startX)
+      sidebarWidth.value = Math.min(Math.max(newWidth, minSidebarWidth), window.innerWidth / 2)
+    }
+    const onMouseUp = () => {
+      isResizingSidebar.value = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      localStorage.setItem('sidebarWidth', String(Math.round(sidebarWidth.value)))
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
 
   // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
@@ -145,6 +193,7 @@
 
   eventBus.on('toggleSidebar', () => {
     showSidebar.value = !showSidebar.value
+    sidebarPeek.value = false
     console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
   })
   // #############s
@@ -152,6 +201,10 @@
   // ==== WATCHES
   watch(helpText, newValue => {
     localStorage.setItem('helpText', JSON.stringify(newValue))
+  })
+
+  watch(showSidebar, newValue => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(newValue))
   })
 
   const showPlan = () => {
@@ -375,15 +428,55 @@
     margin-left: calc((100vw - 2050px)/2) !important;
   }
 
-  .sticky-sidebar {
-    width: 375px;
-    max-width: 375px;
-    max-height: calc(100vh - 64px - 50px); // For some reason this is not relative to the planner container
-    overflow-y: auto; /* Make it scrollable */
+  .sidebar-hover-zone {
+    position: fixed;
+    top: calc(64px + 50px);
+    left: 0;
+    width: 16px;
+    height: calc(100vh - 64px - 50px);
+    z-index: 99;
+  }
 
-    @media screen and (max-width: 1500px) {
-      width: 275px;
-      max-width: 275px;
+  .sticky-sidebar {
+    position: relative; // Anchor for the resize handle
+    max-height: calc(100vh - 64px - 50px); // For some reason this is not relative to the planner container
+    overflow: hidden; // Scrolling happens inside .sidebar-content so the handle spans the full height
+
+    .sidebar-content {
+      max-height: 100%;
+      overflow-y: auto;
+    }
+
+    .sidebar-resize-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      border-right: 2px solid rgba(255, 255, 255, 0.12);
+
+      &:hover, &.resizing {
+        border-right-color: rgb(var(--v-theme-primary));
+      }
+    }
+
+    // Collapsed: taken out of the layout flow and parked off-screen so the
+    // main content takes the full width. Peek slides it back over the content.
+    &.collapsed {
+      position: fixed;
+      top: calc(64px + 50px);
+      left: 0;
+      height: calc(100vh - 64px - 50px);
+      background: rgb(var(--v-theme-background));
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      z-index: 100;
+    }
+
+    &.collapsed.peek {
+      transform: translateX(0);
+      box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
     }
   }
 
