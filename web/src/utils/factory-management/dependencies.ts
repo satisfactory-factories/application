@@ -120,9 +120,17 @@ export const removeFactoryDependants = (factory: Factory, factories: Factory[]) 
 
       // Remove the dependency from the calling factory
       // Not that this massively matters as the factory is likely getting deleted
-      delete factory.dependencies.requests[factory.id]
+      delete factory.dependencies.requests[dependentId]
     })
   }
+
+  // Remove any requests that other factories (e.g. the factory's providers) hold against this factory.
+  // If left behind, flushInvalidRequests would falsely flag those factories as corrupted after deletion. GH: #398
+  factories.forEach(otherFac => {
+    if (otherFac.dependencies?.requests?.[factory.id]) {
+      delete otherFac.dependencies.requests[factory.id]
+    }
+  })
 }
 
 // Loop through all factories, checking their inputs and building a dependency tree.

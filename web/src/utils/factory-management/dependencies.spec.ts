@@ -10,6 +10,7 @@ import { addInputToFactory, getInput } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { create251Scenario } from '@/utils/factory-setups/251-multiple-imports'
+import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 
 describe('dependencies', () => {
   let factories: Factory[] = []
@@ -299,6 +300,33 @@ describe('dependencies', () => {
 
       // And also check if the input has been filtered from the dependant
       expect(mockDependantFactory.inputs.length).toBe(0)
+    })
+
+    // GH: #398
+    it('should remove requests held by provider factories so deletion does not trigger corruption alerts', () => {
+      const factories = complexDemoPlan().getFactories()
+      calculateFactories(factories, gameData)
+
+      // Circuit Boards imports from other factories (e.g. Oil Processing, Copper Basics), so those providers
+      // hold dependency requests keyed by the Circuit Boards factory ID.
+      const factory = findFacByName('Circuit Boards', factories)
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+      // Mimic Planner.vue deleteFactory()
+      const index = factories.findIndex(fac => fac.id === factory.id)
+      removeFactoryDependants(factory, factories)
+      factories.splice(index, 1)
+      calculateFactories(factories, gameData)
+
+      // No factory should still hold requests keyed by the deleted factory's ID
+      factories.forEach(fac => {
+        expect(fac.dependencies.requests[factory.id]).toBe(undefined)
+      })
+
+      // And the user should not have been told their data is corrupted
+      expect(alertMock).not.toHaveBeenCalled()
+
+      alertMock.mockRestore()
     })
   })
 
