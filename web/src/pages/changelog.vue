@@ -43,6 +43,7 @@
           <li>Unpackaged items e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
           <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly
             requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section (<a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a>). This should also fix other oddities to do with byproduct liquids.</li>
+          <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
         </ul>
 
         <v-divider />
@@ -164,7 +165,6 @@
               <li>Ensuring the hidden factories UI is actually hidden itself when a factory is expanded (reducing rendering time slightly).</li>
               <li>Changes to the factory have been reduced, meaning the UI framework has to do less changes (more to come on this).</li>
               <li>Removed various bits of dead code that slowed the calculation of factories down.</li>
-              <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
             </ul>
           </li>
           <li>👍 The "too many factories open" banner can be dismissed until page reload.</li>
