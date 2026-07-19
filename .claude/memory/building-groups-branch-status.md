@@ -1,0 +1,21 @@
+---
+name: building-groups-branch-status
+description: In-flight state of branch 11-product-building-groups (overclocking/somersloops feature) as of 2026-07-18
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 3dbfec8a-0a0f-442f-9ac1-d5872e8f0b23
+  modified: 2026-07-19T00:41:09.845Z
+---
+
+Branch `11-product-building-groups` (uncommitted changes in tree) adds building groups: an item's production split into groups of N physical buildings at an overclock %, with a `buildingGroupItemSync` flag governing whether item↔group edits flow bidirectionally. As of 2026-07-18: **entire web suite green — 47/47 files, 749 passed, 1 deliberately skipped** — plus eslint and vue-tsc clean. Key decisions locked in: new groups default to 1 building minimum; deletion keeps sync disabled; the item is authoritative on bare recalcs — `checkForItemUpdate` (group→item writeback) is gated to `modes.origin === 'buildingGroup'` in `calculateFactory`; `addPowerProducerToFactory`'s `ingredientAmount` maps to `fuelAmount`; power-producer groups count into `factory.buildingRequirements`.
+
+**Somersloops implemented 2026-07-18** (was a stub): `group.somersloops` = sloops PER BUILDING (group = N identical machines; mixed configs = multiple groups), clamped to hardcoded slot counts in `building-groups/somersloops.ts` (gamedata has none): smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/hadroncollider/quantumencoder 4, packager+generators 0. Output ×(1+filled/slots) on outputs ONLY; power ×(1+filled/slots)², stacking with clock^1.321928 (250%+full sloop ≈ 13.43×, wiki-validated). "Effective buildings" is output-effective (includes boost). Item ingredient demand discounted via `getSomersloopIngredientFactor` (phys-eff ÷ output-eff) in `calculateProducts`, divided back out in `calculateBuildingGroupParts` so group ingredient rates stay recipe-exact. GOTCHA: freshly-added products transiently hold `buildingCount: NaN` groups until the first full calc heals them — anything reading groups early (like the ingredient factor) must skip non-finite groups or NaN poisons requirements→parts→imports (broke inputs.spec.ts before the guard). Suites: `building-groups/somersloops.spec.ts` (unit, 33) + `tdd/building-groups/somersloops.spec.ts` (BG-E-S-PROD, 8).
+
+**Sidebar UX added 2026-07-19** (same branch, `Planner.vue` + `TabNavigation.vue`): the Sidebar toggle button previously did nothing on desktop because `v-show`'s inline `display:none` lost to Vuetify's `d-lg-flex` (`display:flex !important`) — never combine `v-show` with `d-*-flex` utilities. Now: pinned/collapsed state (`sidebarOpen` in localStorage), a 16px left-edge hover zone that slides the collapsed sidebar over content as a fixed overlay (`.collapsed`/`.peek` classes), and a drag handle on the right edge to resize (150px min, 50vw max, `sidebarWidth` in localStorage; width applied as inline style, old media-query widths removed). Sidebar scrolling moved from the `v-col` to inner `.sidebar-content` so the handle spans full height. Verified headlessly via playwright-core driving installed Chrome (`channel: 'chrome'` — no browser download; repo has no playwright).
+
+Remaining feature work (ops sheet "Remaining work summary"): byproduct/ingredient item-edits don't flow to groups, sync-off status colours, missing debounces, 0.0001 clock display precision, power-producer group editing untested, dual-role parts model (silica water — the 1 skipped test), factory-wide somersloop count readout.
+
+**Why:** Whoever picks the branch up next needs this starting point; the somersloop semantics (per-building, output-only, ingredient discount) were product decisions made with Matt's latitude and shouldn't be accidentally redesigned.
+
+**How to apply:** Full details in `docs/architecture/building-groups.md` and per-operation truth table `docs/testing/building-groups-operations.md` (keep synced when adding tests). Rebalance gating in `syncBuildingGroups` (`forceRebalance` / `origin: 'buildingGroup'`); writeback gate in `calculateFactory`. Component-test gotcha: the remaining-buildings span is `:key`'d by its value so cached wrappers go stale — re-find before asserting; it displays `Math.abs` + a separate "short"/"over" verb span. Related: [[project-satisfactory-factories]], [[calc-engine-gotchas]].
