@@ -407,7 +407,8 @@ export const syncBuildingGroups = (
         group.overclockPercent = 100
       } else {
         group.buildingCount = Math.ceil(physicalTarget)
-        group.overclockPercent = formatNumberFully((physicalTarget / group.buildingCount) * 100)
+        // Clocks support 4 decimal places in-game, so match that precision.
+        group.overclockPercent = formatNumberFully((physicalTarget / group.buildingCount) * 100, 4)
       }
     })
 
@@ -635,7 +636,8 @@ export const updateBuildingGroupViaPart = (
   // We prefer to have a clock percentage at or below 100%.
   if (targetEffective < 1) {
     group.buildingCount = 1
-    group.overclockPercent = formatNumberFully(targetEffective * 100)
+    // Clocks support 4 decimal places in-game, so match that precision.
+    group.overclockPercent = formatNumberFully(targetEffective * 100, 4)
   } else {
     const maxCandidateCount = Math.ceil(targetEffective) + 1
     type Candidate = { buildingCount: number; clock: number; diff: number }

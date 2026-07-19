@@ -171,4 +171,18 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     // Effective buildings: 2 * 1.5 * 2 = 6
     expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('6.00')
   })
+
+  test('BG-E-S-PROD-14: Group somersloop underchip shows slots / current boost', async () => {
+    // Unslooped: the smelter shows its slot count per building
+    const before = subject.findAll('.underchip').map(w => w.text())
+    expect(before.some(t => t.includes('1 slot / building'))).toBe(true)
+
+    const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
+    await sloopInput.setValue(1)
+    await waitForUpdate()
+
+    // Fully slooped (1 of 1 slot): +100% output / building
+    const after = subject.findAll('.underchip').map(w => w.text())
+    expect(after.some(t => t.includes('+100% output / building'))).toBe(true)
+  })
 })

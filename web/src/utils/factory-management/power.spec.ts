@@ -83,6 +83,30 @@ describe('power', () => {
       expect(buildingGroup.buildingCount).toBe(5)
       expect(buildingGroup.parts.LiquidFuel).toBe(100)
     })
+
+    it('should not leak floating point noise into the turbofuel fuel rate', () => {
+      // A single turbofuel generator produces exactly 250 MW and burns 7.5 turbofuel/min.
+      // The fuel rate is powerProduced / mwPerItem (250 / 33.333…), which without rounding
+      // gives 7.499999999999999 — it must be presented as 7.5.
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 1,
+        recipe: 'GeneratorFuel_LiquidTurboFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      calculateFactories([factory], gameData)
+
+      const producer = factory.powerProducers[0]
+      expect(producer.buildingCount).toBe(1)
+      expect(producer.powerProduced).toBe(250)
+      expect(producer.fuelAmount).toBe(7.5)
+      expect(producer.ingredients[0].perMin).toBe(7.5)
+
+      const buildingGroup = producer.buildingGroups[0]
+      expect(buildingGroup.buildingCount).toBe(1)
+      expect(buildingGroup.parts.LiquidTurboFuel).toBe(7.5)
+    })
   })
 
   describe('calculatePowerProducers', () => {
@@ -252,7 +276,7 @@ describe('power', () => {
             expect(powerProducer.fuelAmount).toBe(0.5)
             expect(powerProducer.powerProduced).toBe(6250)
             expect(buildingGroup.buildingCount).toBe(3)
-            expect(buildingGroup.overclockPercent).toBe(83.333)
+            expect(buildingGroup.overclockPercent).toBe(83.3333)
 
             powerProducer.buildingAmount = 2.775
             powerProducer.updated = FactoryPowerChangeType.Building
@@ -296,7 +320,7 @@ describe('power', () => {
             expect(powerProducer.byproduct?.amount).toBe(127.5)
             expect(powerProducer.powerProduced).toBe(31875)
             expect(buildingGroup.buildingCount).toBe(13)
-            expect(buildingGroup.overclockPercent).toBe(98.077)
+            expect(buildingGroup.overclockPercent).toBe(98.0769)
           })
         })
 
@@ -326,7 +350,7 @@ describe('power', () => {
             expect(powerProducer.byproduct?.amount).toBe(61.1)
             expect(powerProducer.powerProduced).toBe(15275)
             expect(buildingGroup.buildingCount).toBe(7)
-            expect(buildingGroup.overclockPercent).toBe(87.286)
+            expect(buildingGroup.overclockPercent).toBe(87.2857)
           })
         })
 

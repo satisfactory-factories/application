@@ -6,7 +6,7 @@ import { calculateFactories, newFactory } from '../../../src/utils/factory-manag
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import { BuildingGroup, Factory, FactoryItem } from '../../../src/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '../../../src/utils/gameDataService'
-import { mountItem } from '../../helpers'
+import { mountItem, mountSatisfaction } from '../../helpers'
 
 // @ts-ignore
 const gameData = await fetchGameData()
@@ -115,6 +115,84 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('3.00')
     expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('1.00')
   })
+
+  test('BG-E-C-PROD-1: Editing the clock has a debounce', async () => {
+    // The group power underchip is only recomputed inside the 750ms debounce, so it lags behind the raw input.
+    // Baseline: 2 smelters @ 100% = 8 MW
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+    await clockInput.setValue(200)
+
+    // Before the 750ms debounce fires, the group power should NOT have recalculated yet
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+
+    // After the debounce, it updates: 2 smelters @ 200% = 20 MW
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('20 MW')
+  })
+
+  test("BG-E-C-PROD-6: Updates the factory's power consumption", async () => {
+    const satisfactionSubject = mountSatisfaction(factory)
+
+    // Baseline: 2 smelters @ 100% = 8 MW
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW')
+
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+    await clockInput.setValue(200)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Factory power is the sum of the group power usages: 2 smelters @ 200% = 20 MW
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('20 MW')
+  })
+
+  test('BG-E-C-PROD-8: Clock is NOT rounded, and exactly matches what the user entered', async () => {
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+
+    // A 4-decimal-place clock (the game's maximum precision) should be preserved exactly
+    await clockInput.setValue(133.3333)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    expect(buildingGroup.overclockPercent).toBe(133.3333)
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('133.3333')
+  })
+
+  test('BG-E-C-PROD-9: "Is correct" colouring properly reflects balance / imbalance', async () => {
+    // Turn off sync so editing the clock produces an imbalance instead of being absorbed by the item
+    product.buildingGroupItemSync = false
+
+    const statusIndicator = subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`)
+    // Balanced to begin with: the red flag is not set
+    expect(statusIndicator.attributes().isred).toBe('false')
+
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+    await clockInput.setValue(150)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 2 buildings @ 150% = 3 effective vs 2 required = over-producing, so the red flag is set
+    expect(subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`).attributes().isred).toBe('true')
+  })
+
+  test('BG-E-C-PROD-10: Building group building count does NOT change when editing the clock', async () => {
+    expect(buildingGroup.buildingCount).toBe(2)
+
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+    await clockInput.setValue(150)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // The physical building count of the group is untouched by a clock edit
+    expect(buildingGroup.buildingCount).toBe(2)
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('2')
+  })
 })
 
 describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
@@ -171,5 +249,95 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     // Amount should be exactly 40. Actually it will be 30 * 2 * 0.67 = 40.2 due to ceil.
     expect(buildingGroup.parts.OreIron).toBe(40.2)
+  })
+
+  test('BG-E-I-PROD-1: Editing an ingredient has a debounce', async () => {
+    // The group power underchip is only recomputed inside the 750ms debounce, so it lags behind the raw input.
+    // Baseline: 2 smelters @ 100% = 8 MW
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Before the 750ms debounce fires, the group has not been recalculated yet
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+
+    // After the debounce: 4 smelters @ 100% = 16 MW
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW')
+  })
+
+  test('BG-E-I-PROD-3: Editing an ingredient updates the effective buildings', async () => {
+    expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('2.00')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 120 OreIron = 4 buildings @ 100% = 4 effective buildings
+    expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('4.00')
+  })
+
+  test('BG-E-I-PROD-4: Editing an ingredient updates the remaining buildings', async () => {
+    // Turn off sync so the item does not absorb the change and a remainder is produced
+    product.buildingGroupItemSync = false
+    expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('0.00')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Group is now 4 effective buildings vs the item's 2 = 2 over
+    expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('2.00')
+  })
+
+  test('BG-E-I-PROD-6: Editing an ingredient updates the group power used', async () => {
+    // Baseline: 2 smelters @ 100% = 8 MW
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 4 smelters @ 100% = 16 MW
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW')
+  })
+
+  test('BG-E-I-PROD-7: Editing an ingredient updates the factory power used', async () => {
+    const satisfactionSubject = mountSatisfaction(factory)
+
+    // Baseline: 2 smelters @ 100% = 8 MW
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Factory power is the sum of the group power usages: 4 smelters @ 100% = 16 MW
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16 MW')
+  })
+
+  test('BG-E-I-PROD-8: SYNC ON: Editing an ingredient updates the building count on the product', async () => {
+    product.buildingGroupItemSync = true
+    expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('2')
+
+    const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
+    await oreInput.setValue(120)
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // With sync on, the item's building count follows the group: 120 OreIron = 4 buildings
+    expect(product.buildingGroups[0].buildingCount).toBe(4)
+    expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4')
   })
 })

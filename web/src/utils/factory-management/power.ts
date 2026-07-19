@@ -123,7 +123,9 @@ export const calculatePowerProducers = (
     // Ensure the amounts match the new reality, so that if they are re-calculated they don't change without the user's say so.
     producer.buildingAmount = producer.buildingCount
     producer.powerAmount = producer.powerProduced
-    producer.fuelAmount = producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0)
+    // Re-format after the raw division, otherwise floating point noise leaks back in
+    // (e.g. 250 / 33.333… = 7.499999999999999 instead of 7.5).
+    producer.fuelAmount = formatNumberFully(producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0))
   })
 }
 

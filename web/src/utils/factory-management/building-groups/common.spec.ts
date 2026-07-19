@@ -153,7 +153,7 @@ describe('buildingGroupsCommon', async () => {
           syncBuildingGroups(product, ItemType.Product, mockFactory)
 
           expect(group1.buildingCount).toBe(6)
-          expect(group1.overclockPercent).toBe(91.667) // 6 * 0.91667 = 5.5
+          expect(group1.overclockPercent).toBe(91.6667) // 6 * 0.916667 = 5.5
         })
 
         it('should apply an underclock to the group if the building count is not whole', () => {
@@ -212,8 +212,8 @@ describe('buildingGroupsCommon', async () => {
             expect(group1.buildingCount).toBe(3)
             expect(group2.buildingCount).toBe(3)
 
-            expect(group1.overclockPercent).toBe(83.333)
-            expect(group2.overclockPercent).toBe(83.333)
+            expect(group1.overclockPercent).toBe(83.3333)
+            expect(group2.overclockPercent).toBe(83.3333)
           })
 
           it('should distribute the fractional group with an underclock', () => {
@@ -1158,7 +1158,7 @@ describe('powerProducer simplified cases', async () => {
         // Because it is sub 1, we expect a building count of the minimum of 1 and with an underclock.
           updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 10)
           expect(group.buildingCount).toBe(1)
-          expect(group.overclockPercent).toBe(66.667)
+          expect(group.overclockPercent).toBe(66.6667)
         })
 
         it('should update a product group when the part is a decimal', () => {
@@ -1174,7 +1174,7 @@ describe('powerProducer simplified cases', async () => {
         // targetEffective = 7.555/15 = 0.503666666666667.
           updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 7.555)
           expect(group.buildingCount).toBe(1)
-          expect(group.overclockPercent).toBe(50.367)
+          expect(group.overclockPercent).toBe(50.3667)
         })
       })
 

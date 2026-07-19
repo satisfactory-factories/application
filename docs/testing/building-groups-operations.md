@@ -4,8 +4,10 @@ The amount of user operations and interactions that the building groups add to t
 
 Therefore, the tables below list all possible operations that the user could perform on the building groups and items, their current status, and a reference to the automated test(s) covering them.
 
-> Last synced: 2026-07-18. All referenced tests were passing at time of sync
-> (`web/src/utils/factory-management/building-groups/*` unit specs and `web/testing/tdd/building-groups/*` TDD specs).
+> Last synced: 2026-07-19. Re-verified every non-`Y` row against the current code and
+> backed each working operation with a passing automated test. All referenced tests were
+> passing at time of sync (`web/src/utils/factory-management/building-groups/*` unit specs
+> and `web/testing/tdd/building-groups/*` TDD specs — 128 TDD tests green).
 
 Key:
 - Y = Yes, implemented, works, covered by a passing automated test
@@ -26,6 +28,7 @@ Test file locations (referenced by shorthand below):
 - **tdd:item** = `web/testing/tdd/building-groups/item-editing.spec.ts`
 - **unit:sloops** = `web/src/utils/factory-management/building-groups/somersloops.spec.ts`
 - **tdd:sloops** = `web/testing/tdd/building-groups/somersloops.spec.ts`
+- **tdd:pow** = `web/testing/tdd/building-groups/power-producers.spec.ts`
 
 TDD test names contain the operation Ref (e.g. `BG-C-D-2`), so you can find a test with a plain grep of the Ref.
 
@@ -59,14 +62,14 @@ Ref: BG-E-AB-PROD
 | When effective is under balanced, "Under Producing!" is shown                                   | BG-E-AB-PROD-4  | Y      | tdd:buttons      |                                                                    |
 | When effective is over balanced, "Over Producing!" is shown                                     | BG-E-AB-PROD-5  | Y      | tdd:buttons      |                                                                    |
 | When effective is balanced, "Looking good, Pioneer!" is shown                                   | BG-E-AB-PROD-6  | Y      | tdd:buttons      |                                                                    |
-| When effective is balanced, Evenly Balance button should still be enabled                       | BG-E-AB-PROD-7  | ?      | —                | Needs a test; see BG-E-AB-PROD-2/3 for the current enablement rules |
-| When effective is balanced, disable Remainder to Last button                                    | BG-E-AB-PROD-8  | E      | —                |                                                                    |
-| When effective is balanced, disable Remainder to New Group button                               | BG-E-AB-PROD-9  | E      | —                |                                                                    |
-| When effective is imbalanced, enable Remainder to Last button for multiple building groups      | BG-E-AB-PROD-10 | ?      | —                | Forced-rebalance bug is fixed; needs retest + test                 |
-| When effective is imbalanced, enable Remainder to New Group button for singular building group  | BG-E-AB-PROD-11 | ?      | —                | Forced-rebalance bug is fixed; needs retest + test                 |
-| When effective is imbalanced, enable Remainder to New Group button for multiple building groups | BG-E-AB-PROD-12 | ?      | —                | Forced-rebalance bug is fixed; needs retest + test                 |
+| When effective is balanced, Evenly Balance button should still be enabled                       | BG-E-AB-PROD-7  | Y      | tdd:buttons      | Enablement depends on even distribution, not effective balance     |
+| When effective is balanced, disable Remainder to Last button                                    | BG-E-AB-PROD-8  | Y      | tdd:buttons      |                                                                    |
+| When effective is balanced, disable Remainder to New Group button                               | BG-E-AB-PROD-9  | Y      | tdd:buttons      |                                                                    |
+| When effective is imbalanced, enable Remainder to Last button for multiple building groups      | BG-E-AB-PROD-10 | Y      | tdd:buttons      | "Imbalanced" = under-producing; over-producing also disables it    |
+| When effective is imbalanced, enable Remainder to New Group button for singular building group  | BG-E-AB-PROD-11 | Y      | tdd:buttons      |                                                                    |
+| When effective is imbalanced, enable Remainder to New Group button for multiple building groups | BG-E-AB-PROD-12 | Y      | tdd:buttons      |                                                                    |
 | When any group has clock of !== 100%, show OC @ 100% button                                     | BG-E-AB-PROD-13 | Y      | tdd:buttons      |                                                                    |
-| Pressing "Remainder to new group" creates a new group with the remainder                        | BG-E-AB-PROD-14 | Y/E    | unit:product (`remainderToNewGroup`) | Logic unit-tested and passing; UI click itself untested            |
+| Pressing "Remainder to new group" creates a new group with the remainder                        | BG-E-AB-PROD-14 | Y      | tdd:buttons, unit:product | UI click + `remainderToNewGroup` logic both tested                 |
 | Sync is shown as enabled upon creating a new product                                            | BG-E-AB-PROD-15 | Y      | tdd:buttons      |                                                                    |
 | Pressing "Sync" disables sync for the item when enabled                                         | BG-E-AB-PROD-16 | Y      | tdd:buttons      |                                                                    |
 | Pressing "Sync" enables sync for the item when disabled                                         | BG-E-AB-PROD-17 | Y      | tdd:buttons      |                                                                    |
@@ -90,10 +93,10 @@ Ref: BG-E-B-PROD
 | Editing building count updates the group power used                   | BG-E-B-PROD-10 | Y      | tdd:buildings    |                                                             |
 | Editing building count updates the factory power used                 | BG-E-B-PROD-11 | Y      | tdd:buildings    |                                                             |
 | Editing building count updates the factory total buildings            | BG-E-B-PROD-12 | Y      | tdd:buildings    |                                                             |
-| Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | E      | unit:sanity (partial) | Multi-group variant covered by BG-E-BMULTI-PROD-11        |
+| Sync OFF: Updating item Building Count should NOT trigger a rebalance | BG-E-B-PROD-13 | Y      | tdd:buildings, unit:sanity | Single-group now covered by tdd:buildings; multi-group by BG-E-BMULTI-PROD-11 |
 | Sync OFF: Updating item amount should NOT trigger a rebalance         | BG-E-B-PROD-14 | Y      | unit:sanity      | Sync-off no-touch rule asserted in unit:sanity              |
 | It should be possible to use 0.0001 ratios for item amount            | BG-E-B-PROD-15 | Y      | tdd:buildings    | Was broken, now passing                                     |
-| It should display overclocks at a .0001 precision                     | BG-E-B-PROD-16 | B      | —                | Still displaying at 0.001 (3dp) precision                   |
+| It should display overclocks at a .0001 precision                     | BG-E-B-PROD-16 | Y      | tdd:buildings    | Fixed: rebalance now stores clocks at 4dp (common.ts `syncBuildingGroups`) |
 
 ## Building Groups Editing - Buildings multiple groups (Products)
 Ref: BG-E-BMULTI-PROD
@@ -124,16 +127,16 @@ Ref: BG-E-C-PROD
 
 | Operation                                                               | Ref             | Status | Test reference          | Notes                                                    |
 |-------------------------------------------------------------------------|-----------------|--------|-------------------------|----------------------------------------------------------|
-| Editing the clock has a debounce                                        | BG-E-C-PROD-1   | E      | tdd:clocks (implicit)   | 750ms debounce; the clock tests rely on it to pass       |
+| Editing the clock has a debounce                                        | BG-E-C-PROD-1   | Y      | tdd:clocks              | 750ms debounce, now explicitly asserted                  |
 | Allows editing                                                          | BG-E-C-PROD-2   | Y      | tdd:clocks              |                                                          |
 | Updates the effective buildings                                         | BG-E-C-PROD-3   | Y      | tdd:clocks (in PROD-2)  |                                                          |
 | Updates the remaining buildings                                         | BG-E-C-PROD-4   | Y      | tdd:clocks (in PROD-12) |                                                          |
 | Updates the group's power consumption underchip                         | BG-E-C-PROD-5   | Y      | tdd:clocks              | Was marked broken; data model updates correctly          |
-| Updates the factory's power consumption                                 | BG-E-C-PROD-6   | E      | —                       |                                                          |
+| Updates the factory's power consumption                                 | BG-E-C-PROD-6   | Y      | tdd:clocks              |                                                          |
 | Updates the group's parts                                               | BG-E-C-PROD-7   | Y      | tdd:clocks              | Was marked broken; now passing                           |
-| Clock is NOT rounded, and exactly matches what the user entered         | BG-E-C-PROD-8   | E      | —                       |                                                          |
-| "Is correct" colouring properly reflects balance / imbalance            | BG-E-C-PROD-9   | E      | —                       |                                                          |
-| Building group building count does NOT change                           | BG-E-C-PROD-10  | E      | —                       |                                                          |
+| Clock is NOT rounded, and exactly matches what the user entered         | BG-E-C-PROD-8   | Y      | tdd:clocks              |                                                          |
+| "Is correct" colouring properly reflects balance / imbalance            | BG-E-C-PROD-9   | Y      | tdd:clocks              |                                                          |
+| Building group building count does NOT change                           | BG-E-C-PROD-10  | Y      | tdd:clocks              |                                                          |
 | Sync ON: Updates the product's total buildings (fractionals)            | BG-E-C-PROD-11  | Y      | tdd:clocks              |                                                          |
 | Sync OFF: DOES NOT update the product's total buildings                 | BG-E-C-PROD-12  | Y      | tdd:clocks              |                                                          |
 | Sync ON: Effective buildings equally match the item's total buildings   | BG-E-C-PROD-13  | Y      | tdd:clocks (in PROD-11) |                                                          |
@@ -167,7 +170,7 @@ The maths live in `web/src/utils/factory-management/building-groups/somersloops.
 | Remainder to new group only covers the unamplified shortfall           | BG-E-S-PROD-11 | Y      | unit:sloops           |                                                              |
 | Power producers (generators) cannot be amplified                       | BG-E-S-PROD-12 | Y      | unit:sloops           | Stray somersloops on generator groups are sanitized to 0     |
 | Fractional boosts on multi-slot buildings (1 of 2 slots = +50%)        | BG-E-S-PROD-13 | Y      | unit:sloops           | Assembler recipe covered                                     |
-| Group somersloop underchip shows slots / current boost                 | BG-E-S-PROD-14 | E      | —                     | "+N% output / building" when slooped                         |
+| Group somersloop underchip shows slots / current boost                 | BG-E-S-PROD-14 | Y      | tdd:sloops            | "+N% output / building" when slooped; "N slot(s) / building" otherwise |
 | Factory total somersloop count readout                                 | BG-E-S-PROD-15 | N      | —                     | Not designed yet — no aggregate display exists               |
 | Toggle bar shows the item's total somersloop usage                     | BG-E-S-PROD-16 | Y      | tdd:sloops, unit:sloops | Somersloop icon + count on the Open/Close bar; always visible, 0 when unused (`getTotalSomersloops`) |
 | Sync ON: adding a somersloop does not falsely flag a problem           | BG-E-S-PROD-17 | Y      | tdd:sloops, unit:sloops | Was a bug: problem flag computed pre-writeback stuck red on a single calc pass; now refreshed in `checkForItemUpdate` |
@@ -177,28 +180,29 @@ Ref: BG-E-I-PROD
 
 | Operation                                   | Ref             | Status | Test reference | Notes                                                                       |
 |---------------------------------------------|-----------------|--------|----------------|-----------------------------------------------------------------------------|
-| Debounce is present                         | BG-E-I-PROD-1   | E      | tdd:clocks (implicit) |                                                                       |
+| Debounce is present                         | BG-E-I-PROD-1   | Y      | tdd:clocks     | 750ms debounce, now explicitly asserted                                     |
 | Building count AND clocks updated           | BG-E-I-PROD-2   | Y      | tdd:clocks     |                                                                             |
-| Effective buildings updated                 | BG-E-I-PROD-3   | E      | —              |                                                                             |
-| Remaining buildings updated                 | BG-E-I-PROD-4   | E      | —              |                                                                             |
+| Effective buildings updated                 | BG-E-I-PROD-3   | Y      | tdd:clocks     |                                                                             |
+| Remaining buildings updated                 | BG-E-I-PROD-4   | Y      | tdd:clocks     |                                                                             |
 | Parts with the exact input the user entered | BG-E-I-PROD-5   | Y      | tdd:clocks     | Known limitation: clock is ceiled to whole %, so 40 in → 40.2 shown. Test encodes this. |
-| Group Power used updated                    | BG-E-I-PROD-6   | E      | —              |                                                                             |
-| Factory Power used updated                  | BG-E-I-PROD-7   | E      | —              |                                                                             |
-| SYNC ON: Building count updated on Product  | BG-E-I-PROD-8   | ?      | —              | Was marked broken pre-rebalance-fix; needs retest + test                    |
-| SYNC ON: Ingredients updated on Product     | BG-E-I-PROD-9   | ?      | —              | Was marked broken pre-rebalance-fix; needs retest + test                    |
+| Group Power used updated                    | BG-E-I-PROD-6   | Y      | tdd:clocks     |                                                                             |
+| Factory Power used updated                  | BG-E-I-PROD-7   | Y      | tdd:clocks     |                                                                             |
+| SYNC ON: Building count updated on Product  | BG-E-I-PROD-8   | Y      | tdd:clocks     | Now working: `checkForItemUpdate` writes effective buildings back           |
+| SYNC ON: Ingredients updated on Product     | BG-E-I-PROD-9   | B      | —              | Still broken: `increaseProductQtyViaBuilding` updates `product.amount` but not `requirements`, so the item ingredient lags one calc pass |
 
 Related unit coverage: `updateBuildingGroupViaPart` and `buildingsNeededForPartsProducts` in unit:common / unit:product.
 
 ## Building Groups Editing - Buildings (Power Producers)
 Ref: BG-E-B-POW
 
-NOT TESTED — no TDD coverage exists yet. Unit coverage of the group maths only:
-group creation and parts in unit:power and unit:common (`addPowerProducerBuildingGroup`),
-power generation maths in unit:common (`calculatePowerProducerBuildingGroupPower`, wiki/in-game validated numbers).
+Power producers render and sync building groups through the exact same component tree
+as products (`PowerProducer.vue` mounts `<building-groups-section>`). TDD coverage now
+exists in tdd:pow; unit coverage of the group maths in unit:power and unit:common
+(`addPowerProducerBuildingGroup`, `calculatePowerProducerBuildingGroupPower`).
 
 | Operation                                    | Ref         | Status | Test reference | Notes |
 |----------------------------------------------|-------------|--------|----------------|-------|
-| Allows editing the building count            | BG-E-B-POW-1 | ?     | —              | TO ADD MORE |
+| Allows editing the building count            | BG-E-B-POW-1 | Y     | tdd:pow        | Group edit writes back to `producer.buildingCount` |
 
 ## Item Editing - Products
 Ref: BG-I-E-PROD
@@ -206,62 +210,69 @@ Ref: BG-I-E-PROD
 | Operation                                                                                            | Ref            | Status | Test reference | Notes                                                          |
 |------------------------------------------------------------------------------------------------------|----------------|--------|----------------|----------------------------------------------------------------|
 | Editing the product item recreates the building group @ 1 building                                   | BG-I-E-PROD-1  | Y      | tdd:item       |                                                                |
-| Editing the product recipe recreates the building group @ 1 building                                 | BG-I-E-PROD-2  | ?      | —              | Was P/B: updated the group but not the item buildings. Retest  |
-| Editing the product quantity has a debounce                                                          | BG-I-E-PROD-3  | E      | —              |                                                                |
-| Editing the product buildings has a debounce                                                         | BG-I-E-PROD-4  | B      | —              | No debounce implemented                                        |
-| Editing the product byproducts has a debounce                                                        | BG-I-E-PROD-5  | B      | —              | No debounce implemented                                        |
-| Editing the product ingredients has a debounce                                                       | BG-I-E-PROD-6  | B      | —              | No debounce implemented                                        |
+| Editing the product recipe recreates the building group @ 1 building                                 | BG-I-E-PROD-2  | Y      | tdd:item       | Single-group sync-on path recreates one consistent group       |
+| Editing the product quantity has a debounce                                                          | BG-I-E-PROD-3  | Y      | tdd:item       | 750ms debounce                                                 |
+| Editing the product buildings has a debounce                                                         | BG-I-E-PROD-4  | B      | —              | No debounce implemented (updates immediately)                  |
+| Editing the product byproducts has a debounce                                                        | BG-I-E-PROD-5  | B      | —              | No debounce implemented (updates immediately)                  |
+| Editing the product ingredients has a debounce                                                       | BG-I-E-PROD-6  | B      | —              | No debounce implemented (updates immediately)                  |
 | SYNC ON: Single group: Changing the product quantity updates the building group building count       | BG-I-E-PROD-7  | Y      | tdd:item       |                                                                |
 | SYNC ON: Single group: Changing the product Building count changes the building group building count | BG-I-E-PROD-8  | Y      | tdd:item       |                                                                |
-| SYNC ON: Single group: Changing the product byproducts changes the building group building count     | BG-I-E-PROD-9  | B      | —              | Does not change the group at all                               |
-| SYNC ON: Single group: Changing the product Ingredient changes the building group building count     | BG-I-E-PROD-10 | B      | —              | Does not change the group at all                               |
+| SYNC ON: Single group: Changing the product byproducts changes the building group building count     | BG-I-E-PROD-9  | Y      | tdd:item       | Fixed: byproduct edit rewrites `product.amount`, group rebalances |
+| SYNC ON: Single group: Changing the product Ingredient changes the building group building count     | BG-I-E-PROD-10 | Y      | tdd:item       | Fixed: ingredient edit rewrites `product.amount`, group rebalances |
 | SYNC ON: Multiple groups: Changing the product quantity triggers a rebalance                         | BG-I-E-PROD-11 | Y      | tdd:item       | Was broken, now passing                                        |
 | SYNC ON: Multiple: Changing the product Building count triggers a rebalance                          | BG-I-E-PROD-12 | Y      | tdd:item       |                                                                |
-| SYNC ON: Multiple: Changing the product byproducts triggers a rebalance                              | BG-I-E-PROD-13 | B      | —              | Does not change the groups at all                              |
-| SYNC ON: Multiple groups: Changing the product Ingredient triggers a rebalance                       | BG-I-E-PROD-14 | B      | —              | Does not change the groups at all                              |
+| SYNC ON: Multiple: Changing the product byproducts triggers a rebalance                              | BG-I-E-PROD-13 | Y      | tdd:item       | Fixed: groups rebalance off the new amount                     |
+| SYNC ON: Multiple groups: Changing the product Ingredient triggers a rebalance                       | BG-I-E-PROD-14 | Y      | tdd:item       | Fixed: groups rebalance off the new amount                     |
 | SYNC OFF: Changing the product quantity does NOT trigger a rebalance or makes any edits              | BG-I-E-PROD-15 | Y      | unit:sanity    |                                                                |
-| SYNC OFF: Changing the product byproducts does NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-16 | E      | —              |                                                                |
-| SYNC OFF: Changing the product Ingredient DOES NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-17 | E      | —              | Was also updating remaining                                    |
-| SYNC OFF: Making changes to the product updates the effective buildings readout                      | BG-I-E-PROD-18 | E      | —              |                                                                |
-| SYNC OFF: Making changes to the product updates the remaining buildings readout                      | BG-I-E-PROD-19 | E      | —              |                                                                |
-| SYNC OFF: Making changes to the product updates the status colors                                    | BG-I-E-PROD-20 | B      | —              | The colours are not updating with new effective building state |
+| SYNC OFF: Changing the product byproducts does NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-16 | Y      | tdd:item       |                                                                |
+| SYNC OFF: Changing the product Ingredient DOES NOT trigger a rebalance or makes any edits            | BG-I-E-PROD-17 | Y      | tdd:item       |                                                                |
+| SYNC OFF: Making changes to the product updates the effective buildings readout                      | BG-I-E-PROD-18 | Y      | tdd:item       |                                                                |
+| SYNC OFF: Making changes to the product updates the remaining buildings readout                      | BG-I-E-PROD-19 | Y      | tdd:item       |                                                                |
+| SYNC OFF: Making changes to the product updates the status colors                                    | BG-I-E-PROD-20 | Y      | tdd:item       | Fixed: colours recompute via the `factoryUpdated` event listener |
 
 ## Item Editing - Power Producers
 Ref: BG-I-E-POW
 
-NOT TESTED — no TDD coverage exists yet.
+TDD coverage now exists in tdd:pow for the working operations. The debounce rows are
+genuinely absent (power producer item inputs update immediately — only the group-level
+inputs in `BuildingGroup.vue` debounce), and the byproduct-quantity rows are broken (the
+byproduct input is editable but its value is overwritten by `calculatePowerProducers`
+every pass, so the edit never reaches the groups).
 
 | Operation                                                                                                                     | Ref           | Status | Test reference | Notes |
 |-------------------------------------------------------------------------------------------------------------------------------|---------------|--------|----------------|-------|
-| Editing the power producer generator recreates the building group @ 1 building                                                | BG-I-E-POW-1  | ?      | —              |       |
-| Editing the power producer fuel recipe recreates the building group @ 1 building                                              | BG-I-E-POW-2  | ?      | —              |       |
-| Editing the power producer buildings count has a debounce                                                                     | BG-I-E-POW-3  | ?      | —              |       |
-| Editing the power producer byproduct has a debounce                                                                           | BG-I-E-POW-4  | ?      | —              |       |
-| Editing the power producer supplemental fuel has a debounce                                                                   | BG-I-E-POW-5  | ?      | —              |       |
-| Editing the power producer power MW production has a debounce                                                                 | BG-I-E-POW-6  | ?      | —              |       |
-| SYNC ON: Increasing the power producer fuel quantity increases the building group buildings AND rebalances                    | BG-I-E-POW-7  | ?      | —              |       |
-| SYNC ON: Decreasing the power producer fuel quantity decreases the building group buildings AND rebalances                    | BG-I-E-POW-8  | ?      | —              |       |
-| SYNC ON: Changing the power producer buildings changes the building group buildings (single group)                            | BG-I-E-POW-9  | ?      | —              |       |
-| SYNC ON: Changing the power producer buildings changes AND rebalances the building group buildings (multiple groups)          | BG-I-E-POW-10 | ?      | —              |       |
-| SYNC ON: Changing the power producer byproduct quantity changes the building group buildings (single group)                   | BG-I-E-POW-11 | ?      | —              |       |
-| SYNC ON: Changing the power producer byproduct quantity changes AND rebalances the building group buildings (multiple groups) | BG-I-E-POW-12 | ?      | —              |       |
-| SYNC ON: Changing the power producer supplemental fuel changes the building group buildings (single group)                    | BG-I-E-POW-13 | ?      | —              |       |
-| SYNC ON: Changing the power producer supplemental fuel changes AND rebalances the building group buildings (multiple groups)  | BG-I-E-POW-14 | ?      | —              |       |
+| Editing the power producer generator recreates the building group @ 1 building                                                | BG-I-E-POW-1  | Y      | tdd:pow        |       |
+| Editing the power producer fuel recipe recreates the building group @ 1 building                                              | BG-I-E-POW-2  | Y      | tdd:pow        |       |
+| Editing the power producer buildings count has a debounce                                                                     | BG-I-E-POW-3  | N      | —              | No debounce implemented (updates immediately) |
+| Editing the power producer byproduct has a debounce                                                                           | BG-I-E-POW-4  | N      | —              | No debounce implemented (updates immediately) |
+| Editing the power producer supplemental fuel has a debounce                                                                   | BG-I-E-POW-5  | N      | —              | No debounce implemented (updates immediately) |
+| Editing the power producer power MW production has a debounce                                                                 | BG-I-E-POW-6  | N      | —              | No debounce implemented (updates immediately) |
+| SYNC ON: Increasing the power producer fuel quantity increases the building group buildings AND rebalances                    | BG-I-E-POW-7  | Y      | tdd:pow        |       |
+| SYNC ON: Decreasing the power producer fuel quantity decreases the building group buildings AND rebalances                    | BG-I-E-POW-8  | Y      | tdd:pow        |       |
+| SYNC ON: Changing the power producer buildings changes the building group buildings (single group)                            | BG-I-E-POW-9  | Y      | tdd:pow        |       |
+| SYNC ON: Changing the power producer buildings changes AND rebalances the building group buildings (multiple groups)          | BG-I-E-POW-10 | Y      | tdd:pow        |       |
+| SYNC ON: Changing the power producer byproduct quantity changes the building group buildings (single group)                   | BG-I-E-POW-11 | B      | —              | Byproduct input is editable but overwritten by recalculation each pass |
+| SYNC ON: Changing the power producer byproduct quantity changes AND rebalances the building group buildings (multiple groups) | BG-I-E-POW-12 | B      | —              | Same byproduct-overwrite bug |
+| SYNC ON: Changing the power producer supplemental fuel changes the building group buildings (single group)                    | BG-I-E-POW-13 | Y      | tdd:pow        |       |
+| SYNC ON: Changing the power producer supplemental fuel changes AND rebalances the building group buildings (multiple groups)  | BG-I-E-POW-14 | Y      | tdd:pow        |       |
 
 ## Remaining work summary
 
-Broken / not implemented (product decisions made, work outstanding):
-1. Byproduct / ingredient edits on the item do not flow to building groups (BG-I-E-PROD-9/10/13/14).
-2. Sync-off status colours don't update (BG-I-E-PROD-20).
-3. Debounces missing on item buildings / byproducts / ingredients inputs (BG-I-E-PROD-4/5/6).
-4. Overclock display precision is 0.001, want 0.0001 (BG-E-B-PROD-16).
-5. Group parts model holds ONE amount per part, so recipes where a part is both ingredient AND byproduct (e.g. distilled silica's water) cannot display both sides. Needs a split ingredient/output parts model. See the skipped spot check in `web/src/components/planner/products/BuildingGroups.spec.ts`.
+Re-verified 2026-07-19. Since the previous sync, byproduct/ingredient edits on the item
+now flow to the building groups (BG-I-E-PROD-9/10/13/14) and sync-off status colours now
+update (BG-I-E-PROD-20) — all confirmed with new passing TDD tests. The genuinely
+outstanding items are below.
 
-Untested areas needing coverage:
-1. Remainder buttons' enablement states via UI (BG-E-AB-PROD-7..12, 14).
-2. Group ingredient edits syncing back to the product (BG-E-I-PROD-8/9), recipe change (BG-I-E-PROD-2).
-3. All of power producers' group editing + item editing (BG-E-B-POW, BG-I-E-POW).
+Still broken (product decisions made, work outstanding):
+1. Debounces missing on item buildings / byproducts / ingredients inputs (BG-I-E-PROD-4/5/6)
+   and on all power producer item inputs (BG-I-E-POW-3/4/5/6) — these update immediately.
+2. SYNC ON group ingredient edit does not refresh the product's ingredient *requirements*
+   (BG-E-I-PROD-9): `increaseProductQtyViaBuilding` updates `product.amount` but not
+   `requirements`, so the item ingredient field lags one calc pass. Building count DOES update.
+3. Power producer byproduct-quantity edits are overwritten by `calculatePowerProducers`
+   each pass, so they never reach the groups (BG-I-E-POW-11/12).
+4. Group parts model holds ONE amount per part, so recipes where a part is both ingredient AND byproduct (e.g. distilled silica's water) cannot display both sides. Needs a split ingredient/output parts model. See the skipped spot check in `web/src/components/planner/products/BuildingGroups.spec.ts`.
 
 Not implemented at all:
-1. Factory-wide somersloop count readout (BG-E-S-PROD-15) — the per-group somersloop feature itself
-   was implemented 2026-07-18 (see BG-E-S-PROD).
+1. Factory-wide somersloop count readout (BG-E-S-PROD-15) — confirmed still absent; the
+   per-group somersloop feature itself was implemented 2026-07-18 (see BG-E-S-PROD).

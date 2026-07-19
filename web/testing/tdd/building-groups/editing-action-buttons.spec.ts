@@ -115,6 +115,95 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       expect(subject.text()).toContain('Balanced')
     })
 
+    test('BG-E-AB-PROD-7: When effective is balanced, Evenly Balance button should still be enabled', async () => {
+      // Add a second group (turns sync off) and distribute unevenly whilst staying effective-balanced.
+      await addBuildingGroupButton.trigger('click')
+      // Requirement is 2 buildings. Groups of 2 and 0 => effective 2 (balanced) but NOT evenly distributed.
+      product.buildingGroups[0].buildingCount = 2
+      product.buildingGroups[1].buildingCount = 0
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Sanity: we should be balanced
+      expect(subject.text()).toContain('Balanced')
+
+      // Re-find and assert the evenly balance button is still enabled
+      evenlyBalanceButton = subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`)
+      expect(evenlyBalanceButton.classes()).not.toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-8: When effective is balanced, disable Remainder to Last button', () => {
+      // Default single group is balanced (2 buildings), so remainder-to-last should be disabled.
+      const remainderToLastButton = subject.find('button:has(.fa-balance-scale-right)')
+      expect(remainderToLastButton.exists()).toBe(true)
+      expect(remainderToLastButton.classes()).toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-9: When effective is balanced, disable Remainder to New Group button', () => {
+      // Default single group is balanced (2 buildings), so remainder-to-new-group should be disabled.
+      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      expect(remainderToNewGroupButton.exists()).toBe(true)
+      expect(remainderToNewGroupButton.classes()).toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-10: When effective is imbalanced, enable Remainder to Last button (multiple groups)', async () => {
+      // Add a second group (turns sync off) and under-produce.
+      await addBuildingGroupButton.trigger('click')
+      product.buildingGroups[0].buildingCount = 1
+      product.buildingGroups[1].buildingCount = 0
+      // Effective 1 vs requirement 2 => under producing
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Under producing!')
+
+      const remainderToLastButton = subject.find('button:has(.fa-balance-scale-right)')
+      expect(remainderToLastButton.classes()).not.toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-11: When effective is imbalanced, enable Remainder to New Group button (singular group)', async () => {
+      // Single group, under-producing.
+      product.buildingGroupItemSync = false
+      product.buildingGroups[0].buildingCount = 1
+      // Effective 1 vs requirement 2 => under producing
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Under producing!')
+
+      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      expect(remainderToNewGroupButton.classes()).not.toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-12: When effective is imbalanced, enable Remainder to New Group button (multiple groups)', async () => {
+      // Add a second group (turns sync off) and under-produce.
+      await addBuildingGroupButton.trigger('click')
+      product.buildingGroups[0].buildingCount = 1
+      product.buildingGroups[1].buildingCount = 0
+      // Effective 1 vs requirement 2 => under producing
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(subject.text()).toContain('Under producing!')
+
+      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      expect(remainderToNewGroupButton.classes()).not.toContain('v-btn--disabled')
+    })
+
+    test('BG-E-AB-PROD-14: Pressing "Remainder to new group" creates a new group with the remainder', async () => {
+      // Single group under-producing so the button is enabled.
+      product.buildingGroupItemSync = false
+      product.buildingGroups[0].buildingCount = 1 // short by 1 building
+
+      await new Promise(resolve => setTimeout(resolve, 100))
+      const groupsBefore = product.buildingGroups.length
+
+      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      await remainderToNewGroupButton.trigger('click')
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // A new group should have been created and the remainder applied, making it balanced.
+      expect(product.buildingGroups.length).toBe(groupsBefore + 1)
+      expect(subject.text()).toContain('Balanced')
+    })
+
     test('BG-E-AB-PROD-13: When any group has clock of !== 100%, show OC @ 100% button', async () => {
       product.buildingGroups[0].overclockPercent = 50
       await subject.vm.$nextTick()
