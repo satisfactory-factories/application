@@ -16,6 +16,31 @@ This project has the following requirements. We highly recommend you use `nvm` t
 - pnpm version >9.14.4 `npm install -g pnpm`
 - Docker (for the backend) [Docker install docs](https://docs.docker.com/engine/install/)
 
+### Quick start
+The `web`, `backend`, and `parsing` packages are managed as a [pnpm workspace](https://pnpm.io/workspaces). A single `pnpm install` from the repository root installs the dependencies for all three, so you no longer need to `cd` into each package to set it up.
+
+```sh
+pnpm install   # installs web + backend + parsing
+pnpm dev       # starts Mongo (Docker), then the backend + frontend together
+```
+
+`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3010 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+
+Available root scripts:
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Bring up the Mongo container, then run the backend + frontend dev servers in parallel |
+| `pnpm dev:web` | Run only the frontend dev server |
+| `pnpm dev:backend` | Bring up Mongo, then run only the backend dev server |
+| `pnpm dev:parsing` | Run the parser |
+| `pnpm db:up` / `pnpm db:down` | Start / stop the Mongo container on its own |
+| `pnpm build` | Build every package |
+| `pnpm lint` / `pnpm lint-check` | Lint (fix) / lint (check only) every package |
+| `pnpm test` | Run every package's test suite |
+
+You can still work inside a single package if you prefer — the per-package instructions below continue to work. Each package keeps its own `pnpm-lock.yaml` (the workspace uses `sharedWorkspaceLockfile: false`), so dependency versions are pinned independently and CI is unaffected.
+
 ### Frontend
 ```sh
 cd web

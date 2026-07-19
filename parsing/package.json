@@ -1,5 +1,5 @@
 {
-  "name": "factory-planner-parser",
+  "name": "parsing",
   "description": "Parses Satisfactory game data into a structured JSON format.",
   "author": "Matt Cavanagh",
   "main": "dist/index.js",
