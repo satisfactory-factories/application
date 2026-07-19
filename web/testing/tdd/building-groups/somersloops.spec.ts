@@ -108,6 +108,22 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     expect(product.requirements.OreIron.amount).toBe(60)
   })
 
+  test('BG-E-S-PROD-17: Sync ON: Adding a somersloop does NOT flag the groups as having a problem', async () => {
+    product.buildingGroupItemSync = true
+    expect(product.buildingGroupsHaveProblem).toBe(false)
+
+    const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
+    await sloopInput.setValue(1)
+    await waitForUpdate()
+
+    // The item was written back to match the amplified output (120/min), so the
+    // groups are in balance — the bar must not go red.
+    expect(product.amount).toBe(120)
+    expect(product.buildingGroupsHaveProblem).toBe(false)
+    const toggle = subject.find(`[id="${factory.id}-${product.id}-building-groups-toggle"]`)
+    expect(toggle.text()).not.toContain('problem')
+  })
+
   test('BG-E-S-PROD-7: Sync OFF: DOES NOT update the product, shows over-production', async () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
@@ -124,17 +140,15 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
   })
 
   test('BG-E-S-PROD-16: Toggle bar shows the item\'s total somersloop usage', async () => {
-    // No sloops used: the counter should not render at all
-    expect(subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`).exists()).toBe(false)
+    // Always visible, showing 0 when no sloops are used
+    expect(subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`).text()).toBe('0')
 
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
     await waitForUpdate()
 
     // 2 buildings x 1 somersloop each = 2 in total
-    const total = subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`)
-    expect(total.exists()).toBe(true)
-    expect(total.text()).toBe('2')
+    expect(subject.find(`[id="${factory.id}-${product.id}-somersloops-total"]`).text()).toBe('2')
   })
 
   test('BG-E-S-PROD-8: Somersloops PLUS overclocking generate the proper combined numbers', async () => {

@@ -3,7 +3,8 @@
 ## [Unreleased]
 ### Added
 - Implemented Somersloops (production amplification) on product building groups: per-building somersloop input clamped to each building's slot count (smelter/constructor 1, assembler/foundry/refinery/converter 2, manufacturer/blender/particle accelerator/quantum encoder 4; packager and generators cannot be amplified). Output (product + byproducts) is boosted by `1 + filled/slots`, power by `(1 + filled/slots)²`, both stacking with overclocking per the wiki formulas (fully slooped at 250% ≈ 13.43× base power). Ingredient consumption is never amplified — the item's ingredient demand is discounted to what the machines actually consume, and effective/remaining buildings, rebalancing, part reverse-solving and remainder actions are all somersloop-aware. Covered by a new unit suite (`building-groups/somersloops.spec.ts`) and TDD suite (`tdd/building-groups/somersloops.spec.ts`, refs `BG-E-S-PROD`).
-- The "Open/Close Building Groups" bar on products now shows the total Somersloops the item's groups consume (somersloop icon + count, hidden when zero) — sloops are rare, so their usage needs to be visible at a glance.
+- The "Open/Close Building Groups" bar now shows the total Somersloops (products) and Power Shards (products + power producers) the item's groups consume, always visible with 0 when unused — both resources are rare, so their usage needs to be visible at a glance. Shards follow the game rule of 1 per building per 50% clock above 100% (150% = 1, 200% = 2, 250% = 3).
+- The "Open Building Groups" bar is disabled while the product has no item/recipe selected.
 - Implemented `isEvenlyBalanced` logic for Product Groups to improve user feedback and action button states.
 - Added comprehensive TDD tests for Building Groups: Creation, Deletion, Action Buttons, and Item Editing.
 
@@ -12,6 +13,7 @@
 - Rewrote the Building Groups intro tooltip (shown on the closed toggle) to actually explain what Building Groups do, and shortened the Sync status tooltip (which also wrongly claimed sync re-enables when groups are reduced to 1 — it stays off).
 
 ### Fixed
+- Fixed the "Building Groups have a problem!" state falsely triggering when editing a group with sync ON (e.g. adding a Somersloop): the problem flag was computed before the group→item writeback and never refreshed, so a single calculation pass (what the UI runs) left it stuck red against stale item data. It is now recomputed after the writeback.
 - Fixed critical bug where `syncBuildingGroups` ignored the `buildingGroupItemSync` flag, causing unwanted rebalances.
 - Fixed `deleteBuildingGroup` logic to maintain sync disabled after multiple groups are reduced to one, ensuring intentional imbalances are preserved.
 - Fixed `BuildingGroups.vue` to ensure metrics are recalculated immediately on mount and on all relevant factory updates.

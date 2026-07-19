@@ -138,6 +138,7 @@ Ref: BG-E-C-PROD
 | Sync OFF: DOES NOT update the product's total buildings                 | BG-E-C-PROD-12  | Y      | tdd:clocks              |                                                          |
 | Sync ON: Effective buildings equally match the item's total buildings   | BG-E-C-PROD-13  | Y      | tdd:clocks (in PROD-11) |                                                          |
 | Sync OFF: Effective buildings DOES NOT match the item's total buildings | BG-E-C-PROD-14  | Y      | tdd:clocks (in PROD-12) |                                                          |
+| Toggle bar shows the total power shards needed                          | BG-E-C-PROD-15  | Y      | tdd:clocks, unit:common | Always visible (0 at ≤100%); 1 shard/building per 50% clock above 100% (`getTotalPowerShards`). Also on power producers (untested there) |
 
 ## Building Groups Editing - Sommersloops (Products)
 Ref: BG-E-S-PROD
@@ -168,7 +169,8 @@ The maths live in `web/src/utils/factory-management/building-groups/somersloops.
 | Fractional boosts on multi-slot buildings (1 of 2 slots = +50%)        | BG-E-S-PROD-13 | Y      | unit:sloops           | Assembler recipe covered                                     |
 | Group somersloop underchip shows slots / current boost                 | BG-E-S-PROD-14 | E      | —                     | "+N% output / building" when slooped                         |
 | Factory total somersloop count readout                                 | BG-E-S-PROD-15 | N      | —                     | Not designed yet — no aggregate display exists               |
-| Toggle bar shows the item's total somersloop usage                     | BG-E-S-PROD-16 | Y      | tdd:sloops, unit:sloops | Somersloop icon + count on the Open/Close bar; hidden at 0 (`getTotalSomersloops`) |
+| Toggle bar shows the item's total somersloop usage                     | BG-E-S-PROD-16 | Y      | tdd:sloops, unit:sloops | Somersloop icon + count on the Open/Close bar; always visible, 0 when unused (`getTotalSomersloops`) |
+| Sync ON: adding a somersloop does not falsely flag a problem           | BG-E-S-PROD-17 | Y      | tdd:sloops, unit:sloops | Was a bug: problem flag computed pre-writeback stuck red on a single calc pass; now refreshed in `checkForItemUpdate` |
 
 ## Building Groups Editing - Ingredients (Products)
 Ref: BG-E-I-PROD

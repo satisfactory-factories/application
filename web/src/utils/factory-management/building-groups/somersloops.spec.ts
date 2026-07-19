@@ -7,7 +7,7 @@ import {
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
@@ -279,6 +279,17 @@ describe('somersloops in factory calculations', () => {
       expect(product.buildingRequirements.amount).toBe(4)
       expect(group.parts.IronIngot).toBe(120)
       expect(group.parts.OreIron).toBe(60)
+    })
+
+    it('should not flag the groups as having a problem after a single calculation pass', () => {
+      // The UI's updateFactory runs ONE calculateFactory pass. The problem flag used
+      // to be computed only before the writeback, leaving it stuck on stale data.
+      product.buildingGroupItemSync = true
+      group.somersloops = 1
+      calculateFactory(mockFactory, factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+      expect(product.amount).toBe(120)
+      expect(product.buildingGroupsHaveProblem).toBe(false)
     })
 
     it('should discount the item ingredient demand to what the machines actually consume', () => {

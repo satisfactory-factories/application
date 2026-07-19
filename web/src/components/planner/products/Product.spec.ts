@@ -87,6 +87,25 @@ describe('Component: Product', () => {
     expect((productionInput.element as HTMLInputElement).value).toBe('1')
   })
 
+  it('should disable the building groups toggle when the product has no item selected', () => {
+    addProductToFactory(factory, {
+      id: '',
+      amount: 1,
+      recipe: '',
+    })
+    calculateFactory(factory, [factory], gameData)
+    subject = mountSubject(factory)
+
+    const emptyProduct = factory.products[1]
+    const toggle = subject.find(`[id="${factory.id}-${emptyProduct.id}-building-groups-toggle"]`)
+    expect(toggle.exists()).toBe(true)
+    expect(toggle.attributes('disabled')).toBeDefined()
+
+    // The populated product's toggle stays enabled
+    const populatedToggle = subject.find(`[id="${factory.id}-IronIngot-building-groups-toggle"]`)
+    expect(populatedToggle.attributes('disabled')).toBeUndefined()
+  })
+
   it('should open and close the building groups tray via the full-width toggle button', async () => {
     const product = factory.products[0]
     const toggle = subject.find(`[id="${factory.id}-${product.id}-building-groups-toggle"]`)

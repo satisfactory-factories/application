@@ -76,6 +76,18 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     expect(buildingGroup.parts.OreIron).toBe(120)
   })
 
+  test('BG-E-C-PROD-15: Toggle bar shows the total power shards needed', async () => {
+    // Always visible, showing 0 at 100% clock
+    expect(subject.find(`[id="${factory.id}-${product.id}-power-shards-total"]`).text()).toBe('0')
+
+    const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
+    await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 2 buildings @ 150% = 1 shard each = 2 total
+    expect(subject.find(`[id="${factory.id}-${product.id}-power-shards-total"]`).text()).toBe('2')
+  })
+
   test('BG-E-C-PROD-11: Sync ON: Updates the product\'s total buildings (fractionals)', async () => {
     product.buildingGroupItemSync = true
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)

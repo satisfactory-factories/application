@@ -117,6 +117,29 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[],
   return formatNumberFully(effectiveBuildingCount, 4)
 }
 
+// Total power shards needed by the groups. Each shard raises a building's max clock
+// by 50%, so clocks >100% need 1 shard per building, >150% need 2, >200% need 3 (game cap 250%).
+export const getTotalPowerShards = (buildingGroups: BuildingGroup[] | undefined): number => {
+  if (!buildingGroups?.length) {
+    return 0
+  }
+
+  let total = 0
+  for (const group of buildingGroups) {
+    if (group.overclockPercent <= 100) {
+      continue
+    }
+
+    const shardsPerBuilding = Math.min(Math.ceil((group.overclockPercent - 100) / 50), 3)
+    const perGroup = shardsPerBuilding * group.buildingCount
+    if (Number.isFinite(perGroup)) {
+      total += perGroup
+    }
+  }
+
+  return total
+}
+
 export const calculateRemainingBuildingCount = (item: FactoryItem | FactoryPowerProducer, groupType: ItemType) => {
   let subject: FactoryItem | FactoryPowerProducer
 
@@ -697,6 +720,11 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
     } else {
       throw new Error('Invalid type')
     }
+
+    // The problem flag was computed during the group sync, BEFORE this writeback —
+    // against the item's stale building count. The item now matches the groups again
+    // (e.g. after adding a somersloop with sync on), so refresh it or it sticks red.
+    calculateBuildingGroupProblems(item, group.type)
   }
 }
 

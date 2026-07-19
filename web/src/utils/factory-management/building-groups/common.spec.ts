@@ -21,6 +21,7 @@ import {
   calculateRemainingBuildingCount,
   checkForItemUpdate,
   deleteBuildingGroup,
+  getTotalPowerShards,
   syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -1459,6 +1460,52 @@ describe('bestEffortUpdateBuildingCount', () => {
 
       expect(buildingGroup.buildingCount).toBe(6)
       expect(buildingGroup.overclockPercent).toBe(85.4167)
+    })
+  })
+
+  describe('getTotalPowerShards', () => {
+    const makeGroup = (buildingCount: number, overclockPercent: number): BuildingGroup => ({
+      id: 1,
+      type: ItemType.Product,
+      buildingCount,
+      overclockPercent,
+      somersloops: 0,
+      parts: {},
+      powerUsage: 0,
+      powerProduced: 0,
+    })
+
+    it('should return 0 for no groups or clocks at/below 100%', () => {
+      expect(getTotalPowerShards(undefined)).toBe(0)
+      expect(getTotalPowerShards([])).toBe(0)
+      expect(getTotalPowerShards([makeGroup(5, 100)])).toBe(0)
+      expect(getTotalPowerShards([makeGroup(5, 50)])).toBe(0)
+    })
+
+    it('should count 1 shard per building for clocks up to 150%', () => {
+      expect(getTotalPowerShards([makeGroup(2, 101)])).toBe(2)
+      expect(getTotalPowerShards([makeGroup(2, 150)])).toBe(2)
+    })
+
+    it('should count 2 shards per building for clocks up to 200%', () => {
+      expect(getTotalPowerShards([makeGroup(2, 150.1)])).toBe(4)
+      expect(getTotalPowerShards([makeGroup(2, 200)])).toBe(4)
+    })
+
+    it('should count 3 shards per building for clocks up to 250%', () => {
+      expect(getTotalPowerShards([makeGroup(2, 200.1)])).toBe(6)
+      expect(getTotalPowerShards([makeGroup(2, 250)])).toBe(6)
+    })
+
+    it('should sum across groups and ignore non-finite counts', () => {
+      const groups = [
+        makeGroup(2, 150), // 2 shards
+        makeGroup(1, 250), // 3 shards
+        makeGroup(NaN, 200), // ignored
+      ]
+      groups[1].id = 2
+      groups[2].id = 3
+      expect(getTotalPowerShards(groups)).toBe(5)
     })
   })
 })

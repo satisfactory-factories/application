@@ -223,6 +223,12 @@
           {{ producer.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ producer.buildingGroups.length }})
           <tooltip-info v-if="!producer.buildingGroupsTrayOpen" :is-caption="false" text="Building Groups turn this producer's abstract building count into the real generators you'd build in-game: sets of identical buildings, each group with its own building count and overclock %.<br>Use them to plan your exact layout and see true per-group fuel rates and power output." />
         </span>
+        <span class="ml-3 d-inline-flex align-center">
+          <tooltip text="Total Power Shards needed by this producer's Building Groups (1 per building per 50% clock above 100%)">
+            <game-asset height="18px" subject="power-shard" type="item_id" width="18px" />
+          </tooltip>
+          <span :id="`${factory.id}-power-${producerIndex}-power-shards-total`" class="ml-1">{{ getTotalPowerShards(producer.buildingGroups) }}</span>
+        </span>
       </v-btn>
       <div v-if="producer.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="producer.buildingGroupsHaveProblem ? 'problem' : ''">
         <building-groups
@@ -245,7 +251,7 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
-  import { toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
+  import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
