@@ -14,7 +14,7 @@ services:
       - .:/app
     command: pnpm start
   mongo:
-    image: mongo:8.0.3
+    image: mongo:8.3.4
     container_name: sf-db
     ports:
       - "27017:27017"
