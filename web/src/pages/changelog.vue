@@ -14,7 +14,7 @@
           <li>🔧: Fixes</li>
         </ul>
         <v-divider />
-        <h1>Alpha v0.5 - The "Overclocked" Update</h1>
+        <h1>Beta v0.5 - The "Overclocked" Update</h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
 
         <h2>🆕 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups</span></h2>

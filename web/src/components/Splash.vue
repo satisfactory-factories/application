@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="showSplash" max-width="1000" scrollable>
     <v-card>
-      <v-card-title class="text-h4 text-center pb-0">Alpha v0.5 - The "Overclocked" update!</v-card-title>
+      <v-card-title class="text-h4 text-center pb-0">Beta v0.5 - The "Overclocked" update!</v-card-title>
       <v-card-text>
         <p class="text-center mb-4">At long last, Overclocking &amp; Slooping has arrived!</p>
 
