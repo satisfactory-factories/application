@@ -1,7 +1,6 @@
 import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
-import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import { BuildingGroup, Factory, FactoryItem } from '../../../src/interfaces/planner/FactoryInterface'
@@ -13,10 +12,6 @@ const gameData = await fetchGameData()
 
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
-}
-
-const mountPowerProducer = (factory: Factory) => {
-  return mountItem(factory, PowerProducer)
 }
 
 describe('TDD: Building Groups: Editing Buildings (Products)', () => {
@@ -33,9 +28,6 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   let buildingGroupClock: any
   let itemAmount: any
   let itemIngredientAmount: any
-  let itemBuildings: any
-  let effectiveBuildings: any
-  let buildingsRemaining: any
 
   let groupIronIngots: any
   let groupOreIron: any
@@ -61,9 +53,6 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
     buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     itemAmount = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
     itemIngredientAmount = subject.find(`[id="${factory.id}-${product.id}-OreIron-amount"]`)
-    itemBuildings = subject.find(`[id="${factory.id}-${product.id}-buildings"]`)
-    effectiveBuildings = subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`)
-    buildingsRemaining = subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`)
 
     groupIronIngots = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
     groupOreIron = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
@@ -77,14 +66,6 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   })
 
   describe('BG-E-B-PROD: Building Groups Editing - Buildings single group (Products)', () => {
-    let ironIngotsRemaining: any
-    let oreIronRemaining: any
-
-    beforeEach(async () => {
-      ironIngotsRemaining = satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`)
-      oreIronRemaining = satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`)
-    })
-
     test('BG-E-B-PROD-1: Allows editing of building count', async () => {
       expect(buildingGroupCount.element.value).toBe('3')
 

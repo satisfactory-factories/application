@@ -1,11 +1,9 @@
 import { VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
-import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import {
-  BuildingGroup,
   Factory,
   FactoryItem,
 } from '../../../src/interfaces/planner/FactoryInterface'
@@ -19,22 +17,14 @@ const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
 
-const mountPowerProducer = (factory: Factory) => {
-  return mountItem(factory, PowerProducer)
-}
-
 describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => {
   let factory: Factory
   let product: FactoryItem
-  let buildingGroup: BuildingGroup
   let subject: VueWrapper
 
   // Elements
   let addBuildingGroupButton: any
   let toggleSyncButton: any
-  let buildingGroupCount: any
-  let buildingGroupClock: any
-  let itemBuildingCount: any
 
   beforeEach(() => {
     factory = reactive(newFactory('BC-E-AB-PROD Factory'))
@@ -45,16 +35,12 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
     })
     product = factory.products[0]
     product.buildingGroupsTrayOpen = true // This is needed otherwise nothing renders
-    buildingGroup = product.buildingGroups[0]
     calculateFactories([factory], gameData)
     subject = mountProduct(factory)
 
     // Elements
     addBuildingGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
     toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
-    buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
-    buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-    itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
   })
 
   describe('evenly balance button', () => {

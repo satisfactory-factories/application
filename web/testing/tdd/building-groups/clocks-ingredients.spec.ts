@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
-import { BuildingGroup, Factory, FactoryItem, ItemType } from '../../../src/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryItem } from '../../../src/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '../../../src/utils/gameDataService'
 import { mountItem } from '../../helpers'
 

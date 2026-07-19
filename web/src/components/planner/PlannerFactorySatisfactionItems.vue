@@ -45,8 +45,8 @@
                     Byproduct
                   </v-chip>
                   <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
-                    <template #activator="{ props }">
-                      <v-chip v-bind="props" class="sf-chip green x-small mr-2">
+                    <template #activator="{ props: activatorProps }">
+                      <v-chip v-bind="activatorProps" class="sf-chip green x-small mr-2">
                         <span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
                       </v-chip>
                     </template>
@@ -108,8 +108,8 @@
                     variant="outlined"
                   >
                     <v-tooltip bottom>
-                      <template #activator="{ props }">
-                        <div v-bind="props">
+                      <template #activator="{ props: activatorProps }">
+                        <div v-bind="activatorProps">
                           <i class="fas fa-exclamation-circle" /><span class="ml-1">FIX GENS MANUALLY</span>
                         </div>
                       </template>
@@ -136,8 +136,8 @@
                   variant="outlined"
                 >
                   <v-tooltip bottom>
-                    <template #activator="{ props }">
-                      <div v-bind="props">
+                    <template #activator="{ props: activatorProps }">
+                      <div v-bind="activatorProps">
                         <i class="fas fa-exclamation-circle" /><span class="ml-1">CORRECT MANUALLY</span>
                       </div>
                     </template>
@@ -162,8 +162,8 @@
                   variant="outlined"
                 >
                   <v-tooltip bottom>
-                    <template #activator="{ props }">
-                      <div v-bind="props">
+                    <template #activator="{ props: activatorProps }">
+                      <div v-bind="activatorProps">
                         <i class="fas fa-exclamation-circle" /><span class="ml-1">Fix Import</span>
                       </div>
                     </template>
@@ -233,8 +233,8 @@
               </v-chip>
               <template v-if="showRawChip(factory, partId.toString())">
                 <v-tooltip bottom>
-                  <template #activator="{ props }">
-                    <v-chip v-bind="props" class="sf-chip cyan small">
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip cyan small">
                       <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
@@ -243,8 +243,8 @@
               </template>
               <template v-if="showUnpackagedChip(factory, partId.toString())">
                 <v-tooltip bottom>
-                  <template #activator="{ props }">
-                    <v-chip v-bind="props" class="sf-chip cyan small">
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip cyan small">
                       <span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>

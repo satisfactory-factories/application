@@ -2,7 +2,6 @@ import { VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
 import { beforeEach, describe, expect, test } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
-import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import { BuildingGroup, Factory, FactoryItem, ItemType } from '../../../src/interfaces/planner/FactoryInterface'
@@ -18,10 +17,6 @@ const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
 
-const mountPowerProducer = (factory: Factory) => {
-  return mountItem(factory, PowerProducer)
-}
-
 describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
   let factory: Factory
   let product: FactoryItem
@@ -31,9 +26,6 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
   // Elements
   let addBuildingGroupButton: any
   let toggleSyncButton: any
-  let buildingGroupCount: any
-  let buildingGroupClock: any
-  let itemBuildingCount: any
 
   beforeEach(() => {
     factory = newFactory('BC-C-D Factory')
@@ -51,9 +43,6 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
     // Elements
     addBuildingGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
     toggleSyncButton = subject.find(`[id="${factory.id}-${product.id}-toggle-sync"]`)
-    buildingGroupCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
-    buildingGroupClock = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
-    itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
   })
 
   describe('creation', () => {
