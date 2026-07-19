@@ -41,6 +41,8 @@
         <ul>
           <li>Unpackaged liquids e.g. Crude Oil were counted twice as both Raw Import and Production <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
           <li>Unpackaged items e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
+          <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly
+            requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section (<a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a>). This should also fix other oddities to do with byproduct liquids.</li>
         </ul>
 
         <v-divider />
