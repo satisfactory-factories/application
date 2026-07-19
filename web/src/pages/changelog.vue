@@ -37,9 +37,10 @@
         <p>The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</p>
 
         <v-divider class="subsection" />
-        <h2>🔧 Fixes</h2>
+        <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul>
-          <li>Unpackaged liquids e.g. crude oil were counted twice <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
+          <li>Unpackaged liquids e.g. Crude Oil were counted twice as both Raw Import and Production <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
+          <li>Unpackaged items e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
         </ul>
 
         <v-divider />

@@ -38,6 +38,12 @@
           The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.
         </p>
 
+        <v-divider class="mb-4" />
+        <h2 class="text-h5 mb-2">
+          <i class="fas fa-wrench" /><span class="ml-2">Bugfixes</span>
+        </h2>
+        <p class="mb-4">A whole load of fixes were made. Check the change log for a full list.</p>
+
         <p class="text-center">You can see a full list of changes on the <v-btn color="primary" href="/changelog">Change Log</v-btn></p>
       </v-card-text>
       <v-card-actions>
