@@ -20,7 +20,7 @@ describe('common', () => {
 
     describe('parsing tests', () => {
         test('parts should be of expected length', async () => {
-            expect(Object.keys(results.items.parts).length).toBe(168);
+            expect(Object.keys(results.items.parts).length).toBe(156);
         })
         test('raw resources should be of expected length', async () => {
             //debugging code to print out all raw resources for verification
@@ -89,6 +89,81 @@ describe('common', () => {
 
     })
 
+    // #390: Items with no recipe (e.g. Leaves) must never be offered as selectable parts.
+    // The planner builds its product selector directly from items.parts, so anything in there
+    // must be producible by a recipe. Collectables stay available via items.rawResources.
+    describe('recipe-less items (#390)', () => {
+        test('every part must be producible by at least one recipe', () => {
+            const producibleParts = new Set<string>();
+
+            results.recipes.forEach((recipe: ParserRecipe) => {
+                recipe.products.forEach(product => {
+                    producibleParts.add(product.part);
+                });
+            });
+
+            // Nuclear / Plutonium Waste are only produced as power generation byproducts
+            results.powerGenerationRecipes.forEach((recipe: any) => {
+                if (recipe.byproduct) {
+                    producibleParts.add(recipe.byproduct.part);
+                }
+            });
+
+            const recipelessParts = Object.keys(results.items.parts).filter(part => !producibleParts.has(part));
+
+            if (recipelessParts.length > 0) {
+                console.log('Parts with no producing recipe:', recipelessParts);
+            }
+            expect(recipelessParts).toEqual([]);
+        });
+
+        test('Leaves must not be a part, only a raw resource', () => {
+            expect(results.items.parts["Leaves"]).toBeUndefined();
+            expect(results.items.rawResources["Leaves"]).toBeDefined();
+            expect(results.items.rawResources["Leaves"].name).toBe('Leaves');
+        });
+
+        test('other recipe-less collectables must also only be raw resources', () => {
+            const collectables = [
+                "Wood",
+                "Mycelia",
+                "HogParts",
+                "SpitterParts",
+                "StingerParts",
+                "HatcherParts",
+                "Crystal",
+                "Crystal_mk2",
+                "Crystal_mk3",
+                "SAM",
+                "Gift",
+            ];
+
+            collectables.forEach(part => {
+                expect(results.items.parts[part]).toBeUndefined();
+                expect(results.items.rawResources[part]).toBeDefined();
+            });
+        });
+
+        test('power generation byproducts must remain parts', () => {
+            expect(results.items.parts["NuclearWaste"]).toBeDefined();
+            expect(results.items.parts["NuclearWaste"].name).toBe('Uranium Waste');
+            expect(results.items.parts["PlutoniumWaste"]).toBeDefined();
+            expect(results.items.parts["PlutoniumWaste"].name).toBe('Plutonium Waste');
+        });
+
+        test('burnable collectables must still have power generation recipes', () => {
+            const fuels = ["Leaves", "Wood", "Mycelia"];
+
+            fuels.forEach(fuel => {
+                const recipe = results.powerGenerationRecipes.find(
+                    (recipe: any) => recipe.id === `GeneratorBiomass_Automated_${fuel}`
+                );
+                expect(recipe).toBeDefined();
+                expect(recipe.ingredients[0].part).toBe(fuel);
+            });
+        });
+    })
+
     // TODO: Resolve Turbofuel and Slug issues
     describe('ParserRecipe tests', () => {
         it('should properly calculate the correct number of parts used and produced in recipes', () => {
@@ -108,21 +183,24 @@ describe('common', () => {
                 }
             }
 
-            // Now we have our list of parts, asset that the number of parts we've generated actually match
+            // Now we have our list of parts, assert that every part we've generated is actually used by a recipe
             const partsList = Object.keys(results.items.parts);
             const missingParts = partsList.filter(part => !parts.has(part));
-            const extraParts = Array.from(parts).filter(part => !partsList.includes(part));
+
+            // Ingredients that are not parts (e.g. Leaves) must be raw resources — otherwise the
+            // planner has no data at all for them.
+            const nonPartIngredients = Array.from(parts).filter(part => !partsList.includes(part));
+            const unknownIngredients = nonPartIngredients.filter(part => !results.items.rawResources[part]);
 
             if (missingParts && missingParts.length > 0) {
                 console.log('Missing parts:');
                 console.log(missingParts);
             }
-            if (extraParts && extraParts.length > 0) {
-                console.log('Extra parts:', extraParts);
+            if (unknownIngredients && unknownIngredients.length > 0) {
+                console.log('Ingredients missing from both parts and rawResources:', unknownIngredients);
             }
             expect(missingParts.length).toBe(0);
-            expect(extraParts.length).toBe(0);
-            expect(Object.keys(results.items.parts).length).toBe(parts.size);
+            expect(unknownIngredients.length).toBe(0);
         });
 
         it('validate a recipe with a single ingredient and product (iron plates)', () => {

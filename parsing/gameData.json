@@ -207,27 +207,6 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
-            "Crystal": {
-                "name": "Blue Power Slug",
-                "stackSize": 50,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
-            "Crystal_mk2": {
-                "name": "Yellow Power Slug",
-                "stackSize": 50,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
-            "Crystal_mk3": {
-                "name": "Purple Power Slug",
-                "stackSize": 50,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
             "CrystalOscillator": {
                 "name": "Crystal Oscillator",
                 "stackSize": 100,
@@ -368,13 +347,6 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 180
             },
-            "Gift": {
-                "name": "FICSMAS Gift",
-                "stackSize": 200,
-                "isFluid": false,
-                "isFicsmas": true,
-                "energyGeneratedInMJ": 0
-            },
             "GoldIngot": {
                 "name": "Caterium Ingot",
                 "stackSize": 100,
@@ -392,13 +364,6 @@
             "GunpowderMK2": {
                 "name": "Smokeless Powder",
                 "stackSize": 100,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
-            "HatcherParts": {
-                "name": "Hatcher Remains",
-                "stackSize": 50,
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
@@ -427,13 +392,6 @@
             "HighSpeedWire": {
                 "name": "Quickwire",
                 "stackSize": 500,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
-            "HogParts": {
-                "name": "Hog Remains",
-                "stackSize": 50,
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
@@ -479,13 +437,6 @@
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
-            },
-            "Leaves": {
-                "name": "Leaves",
-                "stackSize": 500,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 15
             },
             "LiquidBiofuel": {
                 "name": "Liquid Biofuel",
@@ -556,13 +507,6 @@
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
-            },
-            "Mycelia": {
-                "name": "Mycelia",
-                "stackSize": 200,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 20
             },
             "NitricAcid": {
                 "name": "Nitric Acid",
@@ -879,13 +823,6 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
-            "SAM": {
-                "name": "SAM",
-                "stackSize": 100,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
             "SAMFluctuator": {
                 "name": "SAM Fluctuator",
                 "stackSize": 100,
@@ -1019,13 +956,6 @@
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
             },
-            "SpitterParts": {
-                "name": "Spitter Remains",
-                "stackSize": 50,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
             "Stator": {
                 "name": "Stator",
                 "stackSize": 100,
@@ -1057,13 +987,6 @@
             "SteelPlateReinforced": {
                 "name": "Encased Industrial Beam",
                 "stackSize": 100,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 0
-            },
-            "StingerParts": {
-                "name": "Stinger Remains",
-                "stackSize": 50,
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
@@ -1123,13 +1046,6 @@
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
-            },
-            "Wood": {
-                "name": "Wood",
-                "stackSize": 200,
-                "isFluid": false,
-                "isFicsmas": false,
-                "energyGeneratedInMJ": 100
             },
             "XmasBall1": {
                 "name": "Red FICSMAS Ornament",

@@ -27,6 +27,7 @@
 - Product building count edits with negative values are now clamped to 1.
 - `getPowerRecipe` no longer crashes on an unknown recipe id.
 - Items from old saves without a `buildingGroups` field no longer crash the parts calculation before migration runs.
+- Items that no recipe can produce (Leaves, Wood, Mycelia, alien remains, power slugs, SAM, FICSMAS Gift) are no longer selectable as products ([#390](https://github.com/satisfactory-factories/application/issues/390)). The parser now strips any part that isn't the product of a production recipe or a power-generation byproduct from `items.parts` (guarded by tests), and the game data was regenerated as v1.2-01. These items remain available as raw resources and biomass burner fuel.
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 

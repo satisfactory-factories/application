@@ -44,6 +44,7 @@
           <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly
             requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section (<a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a>). This should also fix other oddities to do with byproduct liquids.</li>
           <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
+          <li>Items that cannot be produced by any recipe e.g. Leaves are no longer selectable as products. Hand-collected items (Leaves, Wood, Mycelia, alien remains, power slugs, SAM etc.) remain available as raw imports and biomass burner fuel. <a href="https://github.com/satisfactory-factories/application/issues/390">GH Issue</a></li>
         </ul>
 
         <v-divider />

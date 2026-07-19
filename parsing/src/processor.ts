@@ -67,6 +67,36 @@ function removeRubbishItems(items: ParserItemDataInterface, recipes: ParserRecip
     });
 }
 
+// Items that no recipe produces must not be offered as selectable products in the planner (#390).
+// A part counts as producible if a production recipe outputs it, or a power generation recipe
+// emits it as a byproduct (Nuclear / Plutonium Waste). Collectables such as Leaves, Wood, alien
+// remains, power slugs and SAM remain available to the planner via items.rawResources.
+function removeRecipelessItems(
+    items: ParserItemDataInterface,
+    recipes: ParserRecipe[],
+    powerRecipes: ParserPowerRecipe[]
+): void {
+    const producedParts = new Set<string>();
+
+    recipes.forEach(recipe => {
+        recipe.products.forEach(product => {
+            producedParts.add(product.part);
+        });
+    });
+
+    powerRecipes.forEach(recipe => {
+        if (recipe.byproduct) {
+            producedParts.add(recipe.byproduct.part);
+        }
+    });
+
+    Object.keys(items.parts).forEach(part => {
+        if (!producedParts.has(part)) {
+            delete items.parts[part];
+        }
+    });
+}
+
 // Central function to process the file and generate the output
 async function processFile(
     inputFile: string, 
@@ -96,8 +126,13 @@ async function processFile(
         removeRubbishItems(items, recipes);
         fixTurbofuel(items, recipes);
 
-        //IMPORTANT: The order here matters - don't run this because fixing the turbofuel. 
+        //IMPORTANT: The order here matters - don't run this because fixing the turbofuel.
         const powerGenerationRecipes = getPowerGeneratingRecipes(data, items);
+
+        // IMPORTANT: This must run after getPowerGeneratingRecipes — power recipes read fuel
+        // energy values from items.parts (e.g. Leaves), and the byproducts they emit
+        // (Nuclear / Plutonium Waste) are part of what counts as "producible".
+        removeRecipelessItems(items, recipes, powerGenerationRecipes);
 
         // Since we've done some manipulation of the items data, re-sort it
         const sortedItems: { [key: string]: ParserPart } = {};
