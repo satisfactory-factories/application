@@ -54,6 +54,11 @@
         <ul>
           <li>🆕 <b>Send shortages to other factories</b> - Shortages in the Satisfaction section now show two buttons underneath the shortage chip: <b>[+ New]</b> creates a brand new factory producing the missing amount, and <b>[+ Existing]</b> lets you pick one of your existing factories to produce it (highlighting factories that already make the part). Both automatically set up the import back into the factory with the shortage, resolving the deficit.</li>
         </ul>
+        <v-img
+          alt="Shortage to factory buttons"
+          max-width="1200"
+          src="/assets/changelog/alpha5/shortages-factory.png"
+        />
 
         <v-divider class="subsection" />
         <h2>🔧 Fixes &amp; minor adjustments</h2>

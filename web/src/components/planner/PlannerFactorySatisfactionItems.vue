@@ -251,6 +251,44 @@
                   <span>This fluid is supplied by unpackaging within this factory rather than being drawn from raw resources.</span>
                 </v-tooltip>
               </template>
+              <div v-if="showSatisfactionItemButton(factory, partId.toString(), 'addToFactory')" class="mt-1">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-btn
+                      v-bind="activatorProps"
+                      class="mr-1"
+                      color="secondary"
+                      :disabled="addingShortagePart === partId.toString()"
+                      size="small"
+                      variant="outlined"
+                      @click="addShortageToNewFactory(factory, partId.toString())"
+                    >
+                      <template v-if="addingShortagePart === partId.toString()">
+                        <v-progress-circular class="mr-1" indeterminate size="14" width="2" />
+                        <span>Adding...</span>
+                      </template>
+                      <template v-else>
+                        +&nbsp;<i class="fas fa-industry" /><span class="ml-1">New</span>
+                      </template>
+                    </v-btn>
+                  </template>
+                  <span>Adds this shortage as a product of a brand new factory,<br>and imports it into this factory.</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-btn
+                      v-bind="activatorProps"
+                      color="secondary"
+                      size="small"
+                      variant="outlined"
+                      @click="openAddShortageDialog(partId.toString())"
+                    >
+                      +&nbsp;<i class="fas fa-industry" /><span class="ml-1">Existing</span>
+                    </v-btn>
+                  </template>
+                  <span>Adds this shortage as a product of an existing factory of your choice,<br>and imports it into this factory.</span>
+                </v-tooltip>
+              </div>
             </div>
           </td>
           <td :class="satisfactionShading(part)">
@@ -314,6 +352,12 @@
       </template>
     </tbody>
   </v-table>
+  <add-shortage-dialog
+    v-if="shortageDialogPart"
+    v-model="shortageDialogOpen"
+    :factory="factory"
+    :part-id="shortageDialogPart"
+  />
 </template>
 
 <script setup lang="ts">
@@ -329,6 +373,7 @@
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
+    addShortageToFactory,
     convertWasteToGeneratorFuel,
     showByProductChip,
     showImportedChip,
@@ -341,7 +386,10 @@
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+  import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+  import eventBus from '@/utils/eventBus'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
+  import AddShortageDialog from '@/components/planner/satisfaction/AddShortageDialog.vue'
   import {
     initializeCalculatorFactoryPart,
     initializeCalculatorFactorySettings,
@@ -349,11 +397,15 @@
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   const appStore = useAppStore()
 
-  const { getDefaultRecipeForPart, getGeneratorFuelRecipeByPart } = useGameDataStore()
+  const { getDefaultRecipeForPart, getGeneratorFuelRecipeByPart, getGameData } = useGameDataStore()
   const openedCalculator = ref('')
+  const shortageDialogPart = ref('')
+  const shortageDialogOpen = ref(false)
+  const addingShortagePart = ref('')
   const satisfactionBreakdowns = appStore.getSatisfactionBreakdowns()
   const calculatorShow = ref(false)
 
@@ -401,6 +453,37 @@
     })
 
     updateFactory(factory)
+  }
+
+  const addShortageToNewFactory = async (factory: Factory, part: string): Promise<void> => {
+    if (addingShortagePart.value) return
+    addingShortagePart.value = part
+
+    // Let the browser paint the "Adding..." button state before the synchronous recalculation blocks the thread.
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    try {
+      const targetFactory = newFactory(`${getPartDisplayName(part)} Factory`)
+      appStore.addFactory(targetFactory)
+
+      addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part))
+      calculateFactories(appStore.getFactories(), getGameData())
+      eventBus.emit('toast', { message: `Created "${targetFactory.name}" producing "${getPartDisplayName(part)}"!` })
+
+      // The dialog owns this setting; respect it here too so users can add multiple shortages without being jumped around.
+      if (localStorage.getItem('shortageJumpToFactory') !== 'false') {
+        // The new factory must be in the DOM before we can scroll to it.
+        await nextTick()
+        navigateToFactory(targetFactory.id)
+      }
+    } finally {
+      addingShortagePart.value = ''
+    }
+  }
+
+  const openAddShortageDialog = (part: string): void => {
+    shortageDialogPart.value = part
+    shortageDialogOpen.value = true
   }
 
   const addGenerator = (factory: Factory, part: string, amount: number): void => {

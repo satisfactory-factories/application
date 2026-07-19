@@ -1,6 +1,6 @@
 import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
-import { getProduct, shouldShowInternal } from '@/utils/factory-management/products'
-import { getAllInputs } from '@/utils/factory-management/inputs'
+import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
+import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
@@ -32,8 +32,51 @@ export const showSatisfactionItemButton = (
       return showCorrectManually(factory, part, partId)
     case 'fixImport':
       return showFixImport(factory, part, partId)
+    case 'addToFactory':
+      return showAddToFactory(factory, part, partId)
     default:
       return null
+  }
+}
+
+// Shown for any shortage that could be produced by another factory (i.e. not raw, not nuclear waste).
+export const showAddToFactory = (factory: Factory, part: PartMetrics, partId: string) => {
+  if (nuclearParts.includes(partId)) {
+    return false
+  }
+  return !part.isRaw && !part.satisfied
+}
+
+// Adds the shortage of a part as a product on the target factory, and imports it back into the
+// shortage factory so the deficit is actually resolved. Caller is expected to recalculate factories.
+export const addShortageToFactory = (
+  shortageFactory: Factory,
+  targetFactory: Factory,
+  partId: string,
+  recipe: string,
+) => {
+  const shortage = Math.abs(shortageFactory.parts[partId]?.amountRemaining ?? 0)
+
+  const existingProduct = getProduct(targetFactory, partId, true) as FactoryItem | undefined
+  if (existingProduct) {
+    existingProduct.amount += shortage
+  } else {
+    addProductToFactory(targetFactory, {
+      id: partId,
+      amount: shortage,
+      recipe,
+    })
+  }
+
+  const existingInput = getAllInputs(shortageFactory, partId, targetFactory.id)[0]
+  if (existingInput) {
+    existingInput.amount += shortage
+  } else {
+    addInputToFactory(shortageFactory, {
+      factoryId: targetFactory.id,
+      outputPart: partId,
+      amount: shortage,
+    })
   }
 }
 

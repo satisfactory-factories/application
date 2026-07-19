@@ -405,13 +405,25 @@
     factory.hidden = false
 
     // Wait a bit for the factory to unhide fully. Hack but works well.
+    setTimeout(() => scrollToElement(subsection ?? `${factoryId}`), 50)
+  }
+
+  // Scrolls to the element, then corrects for layout shifts: factory cards materialize as they
+  // scroll past the viewport, growing the content above the target and leaving the scroll short.
+  const scrollToElement = (elementId: string, attempt = 0) => {
+    const element = document.getElementById(elementId)
+    if (!element) return
+
+    // Corrections snap instantly - re-running the smooth animation would chase a moving target.
+    element.scrollIntoView({ behavior: attempt === 0 ? 'smooth' : 'auto', block: 'start' })
+
+    if (attempt >= 4) return
     setTimeout(() => {
-      // Navigate to it
-      const factoryElement = document.getElementById(subsection ?? `${factoryId}`)
-      if (factoryElement) {
-        factoryElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // ~114px is where the top of a scrolled-to element sits (page header + tab bar)
+      if (Math.abs(element.getBoundingClientRect().top) > 150) {
+        scrollToElement(elementId, attempt + 1)
       }
-    }, 50)
+    }, 600)
   }
 
   const moveFactory = (factory: Factory, direction: string) => {

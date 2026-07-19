@@ -3,6 +3,7 @@ import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInt
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
+  addShortageToFactory,
   convertWasteToGeneratorFuel,
   showByProductChip,
   showImportedChip, showInternalChip,
@@ -310,7 +311,98 @@ describe('satisfaction', () => {
         expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'fixGeneratorManually')).toBe(true)
       })
     })
+
+    describe('addToFactory', () => {
+      it('should show for a part that is not satisfied', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addToFactory')).toBe(true)
+      })
+      it('should NOT show for a part that is raw', () => {
+        addProductToFactory(mockFactory, {
+          id: 'IronIngot',
+          amount: 10,
+          recipe: 'IngotIron',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addToFactory')).toBe(false)
+      })
+      it('should NOT show for a part that is satisfied', () => {
+        const steelFac = newFactory('Steel 2')
+        addProductToFactory(steelFac, {
+          id: 'SteelPlate',
+          amount: 1000,
+          recipe: 'SteelPlate',
+        })
+        factories.push(steelFac)
+        addInputToFactory(mockFactory, {
+          factoryId: steelFac.id,
+          outputPart: 'SteelPlate',
+          amount: 1000,
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addToFactory')).toBe(false)
+      })
+      it('should NOT show for nuclear waste', () => {
+        addProductToFactory(mockFactory, {
+          id: 'PlutoniumPellet',
+          amount: 30,
+          recipe: 'Plutonium',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'NuclearWaste', 'addToFactory')).toBe(false)
+      })
+    })
   })
+
+  describe('addShortageToFactory', () => {
+    it('should add the shortage as a product on the target factory and import it back', () => {
+      const targetFactory = newFactory('Steel Plates')
+      factories.push(targetFactory)
+
+      const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
+      expect(shortage).toBeGreaterThan(0)
+
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      calculateFactories(factories, gameData)
+
+      expect(targetFactory.products.length).toBe(1)
+      expect(targetFactory.products[0].id).toBe('SteelPlate')
+      expect(targetFactory.products[0].amount).toBe(shortage)
+      expect(getInput(mockFactory, 'SteelPlate').amount).toBe(shortage)
+      expect(mockFactory.parts.SteelPlate.satisfied).toBe(true)
+    })
+
+    it('should bump the existing product and input when the target factory already supplies the part', () => {
+      const targetFactory = newFactory('Steel Plates')
+      factories.push(targetFactory)
+      addProductToFactory(targetFactory, {
+        id: 'SteelPlate',
+        amount: 10,
+        recipe: 'SteelPlate',
+      })
+      addInputToFactory(mockFactory, {
+        factoryId: targetFactory.id,
+        outputPart: 'SteelPlate',
+        amount: 10,
+      })
+      calculateFactories(factories, gameData)
+
+      const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
+      expect(shortage).toBeGreaterThan(0)
+
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      calculateFactories(factories, gameData)
+
+      expect(targetFactory.products.length).toBe(1)
+      expect(targetFactory.products[0].amount).toBe(10 + shortage)
+      expect(mockFactory.inputs.length).toBe(1)
+      expect(getInput(mockFactory, 'SteelPlate').amount).toBe(10 + shortage)
+      expect(mockFactory.parts.SteelPlate.satisfied).toBe(true)
+    })
+  })
+
   describe('chips', () => {
     // Adds an Unpackage Oil product covering the factory's entire crude oil demand
     const addUnpackagedOilToCoverDemand = (factory: Factory) => {
