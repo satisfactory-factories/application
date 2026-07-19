@@ -3,6 +3,23 @@ packages:
   - 'backend'
   - 'parsing'
 
+# Single source of truth for versions shared across all workspace packages.
+# Reference these in a package.json with e.g. "typescript": "catalog:".
+# Pinned exactly so every package resolves to one identical version
+# (workspace lockfiles are per-package, so caret ranges would drift apart).
+catalog:
+  typescript: 5.9.3
+  ts-node: 10.9.2
+  eslint: 8.57.1
+  eslint-config-standard: 17.1.0
+  eslint-import-resolver-typescript: 3.10.1
+  eslint-plugin-import: 2.31.0
+  eslint-plugin-n: 16.6.2
+  eslint-plugin-node: 11.1.0
+  eslint-plugin-promise: 6.6.0
+  '@typescript-eslint/eslint-plugin': 8.64.0
+  '@typescript-eslint/parser': 8.64.0
+
 sharedWorkspaceLockfile: false
 
 onlyBuiltDependencies:
