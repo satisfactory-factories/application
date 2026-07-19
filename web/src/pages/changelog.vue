@@ -46,6 +46,7 @@
           <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
           <li>Items that cannot be produced by any recipe e.g. Leaves are no longer selectable as products. Hand-collected items (Leaves, Wood, Mycelia, alien remains, power slugs, SAM etc.) remain available as raw imports and biomass burner fuel. <a href="https://github.com/satisfactory-factories/application/issues/390">GH Issue</a></li>
           <li>Items that have no recipe for production in buildings are no longer selectable (e.g. Leaves). <a href="https://github.com/satisfactory-factories/application/issues/390>">GH issue</a></li>
+          <li>Deleting a factory that imported from other factories no longer displays false "corrupted data" error messages for those factories. <a href="https://github.com/satisfactory-factories/application/issues/398">GH Issue</a></li>
         </ul>
 
         <v-divider />
