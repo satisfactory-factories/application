@@ -39,12 +39,13 @@
         <v-divider class="subsection" />
         <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul>
-          <li>Unpackaged liquids e.g. Crude Oil were counted twice as both Raw Import and Production <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
-          <li>Unpackaged items e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
+          <li>Unpackaged liquids that are also a Raw Ingredient e.g. Crude Oil / Water were counted twice as both Raw Import and Production. <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
+          <li>Unpackaged Liquids e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
           <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly
-            requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section (<a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a>). This should also fix other oddities to do with byproduct liquids.</li>
+            requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section. This should also fix other oddities to do with byproduct liquids. <a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a></li>
           <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
           <li>Items that cannot be produced by any recipe e.g. Leaves are no longer selectable as products. Hand-collected items (Leaves, Wood, Mycelia, alien remains, power slugs, SAM etc.) remain available as raw imports and biomass burner fuel. <a href="https://github.com/satisfactory-factories/application/issues/390">GH Issue</a></li>
+          <li>Items that have no recipe for production in buildings are no longer selectable (e.g. Leaves). <a href="https://github.com/satisfactory-factories/application/issues/390>">GH issue</a></li>
         </ul>
 
         <v-divider />
