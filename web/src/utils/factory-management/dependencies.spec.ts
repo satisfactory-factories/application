@@ -310,7 +310,10 @@ describe('dependencies', () => {
       // Circuit Boards imports from other factories (e.g. Oil Processing, Copper Basics), so those providers
       // hold dependency requests keyed by the Circuit Boards factory ID.
       const factory = findFacByName('Circuit Boards', factories)
+      // window.alert is already a vi.fn() from setup-vitest.ts; since Vitest 3,
+      // spyOn returns that same mock, so clear the history other tests left on it.
       const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {})
+      alertMock.mockClear()
 
       // Mimic Planner.vue deleteFactory()
       const index = factories.findIndex(fac => fac.id === factory.id)

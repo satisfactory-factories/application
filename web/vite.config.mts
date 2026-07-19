@@ -9,7 +9,7 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Utilities
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
@@ -85,8 +85,10 @@ export default defineConfig(() => ({
     globalSetup: './testing/global-setup.ts',
     globalTeardown: './testing/global-teardown.ts',
     css: true,
-    deps: {
-      inline: ['vuetify'],
+    server: {
+      deps: {
+        inline: ['vuetify'],
+      },
     },
   },
 }))

@@ -411,7 +411,9 @@ describe('app-store', () => {
       })
 
       it('should finish early if there are no factories to load', async () => {
-        vi.spyOn(eventBus, 'emit')
+        // Clear emissions recorded during state init: since Vitest 3, resetAllMocks
+        // restores the real eventBus.emit, so init-time events land in the history.
+        vi.spyOn(eventBus, 'emit').mockClear()
 
         await appStore.beginLoading([])
 
@@ -461,6 +463,8 @@ describe('app-store', () => {
         })
 
         it('should have emitted the incrementLoad,increment event the correct number of times', async () => {
+          // Only count emissions from the load flow itself, not from state init
+          vi.mocked(eventBus.emit).mockClear()
           await appStore.prepareLoader(factories)
 
           await appStore.beginLoading(factories)
@@ -534,8 +538,8 @@ describe('app-store', () => {
         // Wait a bit for the state to load
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // Start spying
-        vi.spyOn(eventBus, 'emit')
+        // Start spying, discarding anything the init above already emitted
+        vi.spyOn(eventBus, 'emit').mockClear()
 
         // Call it again, at this point it should be inited
         appStore.getFactories()

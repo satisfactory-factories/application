@@ -24,7 +24,7 @@ describe('auth-store', () => {
     }))
 
     // Initialize the auth store with the mocked fetch
-    authStore = useAuthStore(mockFetch)
+    authStore = useAuthStore(mockFetch as unknown as typeof fetch)
   })
 
   describe('token getters/setters', () => {
