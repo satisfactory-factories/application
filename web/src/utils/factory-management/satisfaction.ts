@@ -121,6 +121,20 @@ export const showUnpackagedChip = (factory: Factory, partId: string) => {
   }
   return factory.products.some(product => product.id === partId && product.recipe.startsWith('Unpackage'))
 }
+export const showRecycledChip = (factory: Factory, partId: string) => {
+  // Only byproducts count as recycled; primary products consumed internally get the Internal chip instead.
+  if (!getProduct(factory, partId, false, true) || getProduct(factory, partId, true)) {
+    return false
+  }
+
+  // The byproduct must actually be consumed within the same factory, e.g. Water from
+  // Aluminum Scrap fed back into Alumina Solution. #243
+  const part = factory.parts[partId]
+  if (!part) {
+    return false
+  }
+  return part.amountRequiredProduction + part.amountRequiredPower > 0
+}
 export const showInternalChip = (factory: Factory, partId: string) => {
   const product = getProduct(factory, partId, true) as FactoryItem
   if (!product) {

@@ -7,6 +7,7 @@ import {
   showByProductChip,
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
+  showRecycledChip,
   showSatisfactionItemButton,
   showUnpackagedChip,
 } from '@/utils/factory-management/satisfaction'
@@ -14,6 +15,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory, getAllInputs, getInput } from '@/utils/factory-management/inputs'
 import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
+import { create243Scenario } from '@/utils/factory-setups/243-water-recycling'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 
 describe('satisfaction', () => {
@@ -434,6 +436,29 @@ describe('satisfaction', () => {
       })
       it('should NOT show for a non-raw product', () => {
         expect(showUnpackagedChip(mockFactory, 'Plastic')).toBe(false)
+      })
+    })
+
+    describe('showRecycledChip', () => {
+      it('should show for a byproduct consumed within the same factory', () => {
+        // Water byproduct of Aluminum Scrap feeds back into Alumina Solution. #243
+        const recycleFactories = create243Scenario().getFactories()
+        calculateFactories(recycleFactories, gameData)
+
+        expect(showRecycledChip(recycleFactories[0], 'Water')).toBe(true)
+      })
+      it('should NOT show for a byproduct that is not consumed internally', () => {
+        expect(showRecycledChip(mockFactory, 'PolymerResin')).toBe(false)
+      })
+      it('should NOT show for a part that is also a primary product', () => {
+        // HeavyOilResidue is consumed internally but deliberately produced as a product, which is the Internal chip's job
+        expect(showRecycledChip(mockFactory, 'HeavyOilResidue')).toBe(false)
+      })
+      it('should NOT show for a product only', () => {
+        expect(showRecycledChip(mockFactory, 'Plastic')).toBe(false)
+      })
+      it('should NOT show for a raw part', () => {
+        expect(showRecycledChip(mockFactory, 'LiquidOil')).toBe(false)
       })
     })
 

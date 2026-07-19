@@ -44,6 +44,14 @@
                   <v-chip v-if="showByProductChip(factory, partId.toString())" class="sf-chip gray x-small mr-2">
                     Byproduct
                   </v-chip>
+                  <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
+                    <template #activator="{ props }">
+                      <v-chip v-bind="props" class="sf-chip green x-small mr-2">
+                        <span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
+                      </v-chip>
+                    </template>
+                    <span>This byproduct is used as an ingredient by other products within the same factory.<br>The planner subtracts it from the amount you need to supply via Imports, so you don't over-feed the system.</span>
+                  </v-tooltip>
                   <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip gray x-small mr-2">
                     Imported
                   </v-chip>
@@ -327,6 +335,7 @@
     showInternalChip,
     showProductChip,
     showRawChip,
+    showRecycledChip,
     showSatisfactionItemButton,
     showUnpackagedChip,
   } from '@/utils/factory-management/satisfaction'
