@@ -9,7 +9,6 @@
 </template>
 
 <script setup lang="ts">
-  import { defineEmits } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
 
   const props = defineProps<{

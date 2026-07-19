@@ -8,7 +8,7 @@ packages:
 # Pinned exactly so every package resolves to one identical version
 # (workspace lockfiles are per-package, so caret ranges would drift apart).
 catalog:
-  typescript: 5.9.3
+  typescript: 6.0.3
   ts-node: 10.9.2
   eslint: 9.39.5
   eslint-import-resolver-typescript: 4.4.5

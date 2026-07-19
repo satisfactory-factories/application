@@ -8,7 +8,6 @@
 
   <VueFlow
     :key="nodes.length"
-    ref="vueFlowRef"
     :edges="edges"
     :nodes="nodes"
     @nodes-initialized="onNodesInitialized"
@@ -21,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, onMounted, ref, shallowRef } from 'vue'
+  import { onMounted, shallowRef } from 'vue'
   import { Edge, VueFlow } from '@vue-flow/core'
   import { useAppStore } from '@/stores/app-store'
   import FactoryNode from '@/components/graph/FactoryNode.vue'
@@ -46,7 +45,6 @@
   let renderedNodeCount = 0 // Count to track rendered nodes
 
   const { layout } = useLayout()
-  const vueFlowRef = ref(null)
 
   // Apply the layout to organize nodes after generation
   function initializeGraph () {

@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineEmits, defineProps, inject, ref, watch } from 'vue'
+  import { inject, ref, watch } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import draggable from 'vuedraggable'

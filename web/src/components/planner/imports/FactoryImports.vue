@@ -16,7 +16,6 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import RawResources from '@/components/planner/imports/RawResources.vue'
   import Imports from '@/components/planner/imports/Imports.vue'

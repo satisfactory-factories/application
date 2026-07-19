@@ -32,7 +32,6 @@
           </p>
 
           <v-table
-            ref="tableRef"
             class="rounded border-md sub-card summary-table"
             fixed-header
             :height="tableHeight"
@@ -207,7 +206,6 @@
     nextTick(() => adjustTableHeight())
   })
 
-  const tableRef = ref<HTMLElement | null>(null)
   const contentRef = ref<HTMLElement | null>(null)
   const headerHeight = 56 // Max height in px
   const maxHeight = 750 // Max height in px

@@ -140,7 +140,6 @@
     satisfyImport,
     validateInput,
   } from '@/utils/factory-management/inputs'
-  import { defineProps } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { useDisplay } from 'vuetify'
   import { getPartDisplayName } from '@/utils/helpers'

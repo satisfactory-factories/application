@@ -23,7 +23,6 @@
 </template>
 
 <script setup lang="ts">
-  import { defineEmits } from 'vue'
   import { importWorldLoadMessages, parseSavFile } from '@/utils/world-import/worldParser'
   import eventBus from '@/utils/eventBus'
   import { replacePlaceholders } from '@/utils/helpers'

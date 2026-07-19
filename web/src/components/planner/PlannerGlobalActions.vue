@@ -97,7 +97,6 @@
 </template>
 
 <script setup lang="ts">
-  import { defineEmits, defineProps } from 'vue'
   import { useAppStore } from '@/stores/app-store'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'

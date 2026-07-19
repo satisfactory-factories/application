@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from '@jest/globals'
+import { beforeAll, describe, expect, it, jest } from '@jest/globals'
 
 import { processFile } from '../src/processor'
 import { getPowerGeneratingRecipes } from '../src/recipes'

@@ -14,7 +14,6 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, withDefaults } from 'vue'
 
   const propsComp = withDefaults(defineProps<{
     text: string

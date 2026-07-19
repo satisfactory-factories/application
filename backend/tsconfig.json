@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2021",
-    "module": "commonjs",
+    "module": "nodenext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -9,7 +9,7 @@
     "outDir": "./dist",
     "rootDir": "./",
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "nodenext"
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

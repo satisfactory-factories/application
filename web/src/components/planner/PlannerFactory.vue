@@ -302,7 +302,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, inject } from 'vue'
+  import { inject } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'

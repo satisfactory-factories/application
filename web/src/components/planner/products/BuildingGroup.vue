@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-  import { defineProps, inject } from 'vue'
+  import { inject } from 'vue'
   import {
     BuildingGroup,
     Factory,
