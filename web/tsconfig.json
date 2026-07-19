@@ -11,8 +11,7 @@
     "resolveJsonModule": true,
     "types": [
       "vite/client",
-      "vite-plugin-vue-layouts/client",
-      "unplugin-vue-router/client",
+      "vite-plugin-vue-layouts-next/client",
       "node"
     ],
     "allowJs": true,
