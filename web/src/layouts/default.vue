@@ -8,6 +8,7 @@
       </navigation>
 
       <tab-navigation v-if="showTabNavigation" />
+      <splash />
     </template>
     <v-main>
       <router-view />

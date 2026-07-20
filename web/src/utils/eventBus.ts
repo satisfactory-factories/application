@@ -25,6 +25,7 @@ type Events = {
 
   // Intro
   introToggle: boolean;
+  splashShow: undefined;
 
   navigationReady: undefined;
 

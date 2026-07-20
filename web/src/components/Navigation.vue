@@ -7,7 +7,11 @@
       <img alt="Site logo" src="/assets/img/SF.png" style="max-width: 48px;">
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
-        <v-chip class="sf-chip blue small">BETA v0.5</v-chip>
+        <v-chip class="sf-chip blue small">
+          BETA v0.5
+          <span class="mx-1">•</span>
+          <a class="show-changes" href="#" @click.prevent="showChanges">Show changes</a>
+        </v-chip>
       </span>
     </template>
     <v-tabs
@@ -62,6 +66,10 @@
     isDrawerOpen.value = !isDrawerOpen.value
   }
 
+  const showChanges = () => {
+    eventBus.emit('splashShow')
+  }
+
   watch(mdAndDown, () => {
     isDrawerOpen.value = false
   })
@@ -85,3 +93,15 @@
     eventBus.emit('navigationReady')
   })
 </script>
+
+<style lang="scss" scoped>
+.show-changes {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+</style>

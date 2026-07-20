@@ -28,7 +28,36 @@
         <v-img
           alt="Overclocking and Somersloops"
           max-width="1200"
-          src="/assets/changelog/alpha5/overclocking.png"
+          src="/assets/changelog/alpha5/building-groups.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-bolt ml-1" /><span class="ml-2">The Power Update</span></h2>
+        <p>Power planning got a full overhaul:</p>
+        <ul>
+          <li>
+            <b><span class="inline-asset"><game-asset
+              height="20px"
+              subject="geothermalgenerator"
+              type="building"
+              width="20px"
+            /></span>Geothermal Generators</b> and <b><span class="inline-asset"><game-asset
+              height="20px"
+              subject="alienpoweraugmenter"
+              type="building"
+              width="20px"
+            /></span>Alien Power Augmenters</b> can now be added to your plans — previously it wasn't possible to plan with them at all. For Geothermal, pick the geyser's purity and the planner handles its fluctuating output.
+          </li>
+          <li><b>Alien Power Augmenters</b> — add one to a factory as a generator and you'll get a custom UI for it. It boosts your <b>entire grid's</b> generation, with the option to supply Power Matrixes for an even bigger boost.</li>
+          <li><b>Variable-power buildings</b> — Particle Accelerators, Converters and Quantum Encoders now show their true draw as an average with the min–max swing, so you can size your grid against the spikes.</li>
+          <li><b>A proper power table</b> — the Statistics section now breaks down exactly where your power comes from and where it's going.</li>
+          <li><b>Power targets</b> — decide how much power you want to generate across your whole plan, and the planner tells you whether you'll generate enough.</li>
+        </ul>
+        <v-img
+          alt="World power statistics table"
+          max-width="1200"
+          src="/assets/changelog/alpha5/power-table.png"
         />
 
         <v-divider class="subsection" />
@@ -42,12 +71,71 @@
         </ul>
         <p>It's also plan-aware! Parts you're already producing show an <b>"In Plan - X/min"</b> badge totalling your production across all factories, with clickable per-factory chips that jump you straight to that factory in the Planner. A <b>"Produced in Plan"</b> filter narrows the list to just the parts your plan produces.</p>
         <p>Every recipe has an <b>Add to Planner</b> button, which opens a dialog listing your factories — highlighting the ones that already produce or use the part — so you can drop the recipe into any of them (or a brand new factory) at 1 building @ 100% clock, then jump to the Planner.</p>
-        <p>Searching is now fuzzy, fast, and much more accurate to boot.</p>
+        <p>Recipe cards lay out in a responsive grid — three across on desktop, down to one on mobile.</p>
+        <p>Clicking any part's icon now opens its <b>Satisfactory Wiki</b> page (this works everywhere in the planner, not just here!). Searching has also been massively improved — far more accurate and much quicker.</p>
+        <v-img
+          alt="Parts and Recipes browser"
+          max-width="1200"
+          src="/assets/changelog/alpha5/parts-recipes.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-paint-roller ml-1" /><span class="ml-2">UI Refresh</span></h2>
+        <p>The planner has been improved across the board, surfacing far more information at a glance:</p>
+        <h3>The Sidebar</h3>
+        <v-row>
+          <v-col cols="12" md="4">
+            <video
+              autoplay
+              class="sidebar-video"
+              loop
+              muted
+              playsinline
+            >
+              <source src="/assets/changelog/alpha5/sidebar.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </v-col>
+          <v-col cols="12" md="8">
+            <p>The sidebar has been improved in various ways:</p>
+            <ul>
+              <li>It's now <b>resizable</b>, and can be hidden entirely as a tray.</li>
+              <li><b>Jump links</b> take you straight to Statistics and the Factories Summary — no more scrolling all the way up.</li>
+              <li>It's <b>power-aware</b> — if your plan runs a power deficit, it warns you right in the sidebar.</li>
+            </ul>
+          </v-col>
+        </v-row>
+        <h3>Factories Summary</h3>
+        <video
+          autoplay
+          class="summary-video"
+          loop
+          muted
+          playsinline
+        >
+          <source src="/assets/changelog/alpha5/factories-summary.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <p>The Factories Summary is now a true <b>at-a-glance table</b> summarising each factory's production, satisfaction, exports and imports.</p>
+        <h3>Statistics</h3>
+        <p>Statistics got improvements all over the board:</p>
+        <ul>
+          <li>New <b>Power Shards &amp; Somersloops</b> counts showing exactly which factories use them.</li>
+          <li>Power generation &amp; consumption now has a <b>much more detailed table</b> describing exactly where your power comes from and where it's going, alongside the new power target.</li>
+          <li>Building summaries, raw resources and product surpluses / deficits have been tidied up, and <b>every section is now hideable</b>.</li>
+        </ul>
+        <h3>Other improvements</h3>
+        <ul>
+          <li><b>Hidden factories</b> now properly show their imports, exports and raw resources as clickable factory buttons, and have received a general polish.</li>
+          <li><b>Colour consistency fixes</b> — colours are now far more consistent across the planner (power, problems, products, etc.).</li>
+          <li><b>Tab switching has been reworked</b> — switching between plans is now dramatically faster.</li>
+        </ul>
 
         <v-divider class="subsection" />
         <h2>👍 Quality of Life</h2>
         <ul>
-          <li>🆕 <b>Collapsible &amp; resizable sidebar</b> - The factory list sidebar can now be resized by dragging its edge, or collapsed entirely to give your plan the full width of the screen. Perfect for smaller screens or very large plans.</li>
+          <li>The Products and Satisfaction columns in the Factories Summary are now fixed-width, wrapping their contents instead of stretching the table.</li>
           <li>🆕 <b>Send shortages to other factories</b> - Shortages in the Satisfaction section now show two buttons underneath the shortage chip: <b>[+ New]</b> creates a brand new factory producing the missing amount, and <b>[+ Existing]</b> lets you pick one of your existing factories to produce it (highlighting factories that already make the part). Both automatically set up the import back into the factory with the shortage, resolving the deficit.</li>
         </ul>
         <v-img
@@ -63,9 +151,8 @@
           <li>Unpackaged Liquids e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
           <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly
             requests you import additional water, and such items are marked with a "Recycled" badge on the Satisfaction section. This should also fix other oddities to do with byproduct liquids. <a href="https://github.com/satisfactory-factories/application/issues/243">GH Issue</a></li>
-          <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54>">GH Issue</a></li>
+          <li>It is no longer possible to enter more than .001 of precision into an item's quantity field, as the game doesn't operate any lower than that. Fixed a few rounding error bugs in the process. <a href="https://github.com/satisfactory-factories/application/issues/54">GH Issue</a></li>
           <li>Items that cannot be produced by any recipe e.g. Leaves are no longer selectable as products. Hand-collected items (Leaves, Wood, Mycelia, alien remains, power slugs, SAM etc.) remain available as raw imports and biomass burner fuel. <a href="https://github.com/satisfactory-factories/application/issues/390">GH Issue</a></li>
-          <li>Items that have no recipe for production in buildings are no longer selectable (e.g. Leaves). <a href="https://github.com/satisfactory-factories/application/issues/390>">GH issue</a></li>
           <li>Deleting a factory that imported from other factories no longer displays false "corrupted data" error messages for those factories. <a href="https://github.com/satisfactory-factories/application/issues/398">GH Issue</a></li>
         </ul>
 
@@ -204,6 +291,24 @@
 </script>
 
 <style lang="scss" scoped>
+
+.inline-asset {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: text-bottom;
+}
+
+// The sidebar demo is a tall vertical capture — cap its height rather than its width
+.sidebar-video {
+  border-radius: 4px;
+  max-height: 500px;
+  max-width: 100%;
+}
+
+.summary-video {
+  border-radius: 4px;
+  max-width: 100%;
+}
 
 h1,h2,h3,h4,h5,h6 {
   margin-top: 1rem;
