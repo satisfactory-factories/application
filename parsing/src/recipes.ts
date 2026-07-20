@@ -127,9 +127,11 @@ function getProductionRecipes(
             if (selectedBuilding === 'hadroncollider' || 
                 selectedBuilding === 'converter' || 
                 selectedBuilding === 'quantumencoder') {
-                // get the power from the recipe instead of the building
+                // get the power from the recipe instead of the building.
+                // mVariablePowerConsumptionConstant is the minimum draw; mVariablePowerConsumptionFactor
+                // is the range ON TOP of the constant, so max = constant + factor.
                 lowPower = Number(recipe.mVariablePowerConsumptionConstant);
-                highPower = Number(recipe.mVariablePowerConsumptionFactor);
+                highPower = lowPower + Number(recipe.mVariablePowerConsumptionFactor);
                 // calculate the average power: Note that because low power can be 0, (and often is), we can't use truthy checks to validate these values
                 if (lowPower !== null && highPower !== null) {
                     powerPerBuilding = (lowPower + highPower) / 2;

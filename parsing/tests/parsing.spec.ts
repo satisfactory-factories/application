@@ -280,9 +280,9 @@ describe('common', () => {
             expect(recipe.products[0].perMin).toBe(0.5);
             expect(recipe.products[0].isByProduct).toBe(false);
             expect(recipe.building.name).toBe('hadroncollider');
-            expect(recipe.building.power).toBe(750);
+            expect(recipe.building.power).toBe(1000);
             expect(recipe.building.minPower).toBe(500);
-            expect(recipe.building.maxPower).toBe(1000);
+            expect(recipe.building.maxPower).toBe(1500);
             expect(recipe.isAlternate).toBe(false);
         });
 
