@@ -41,10 +41,10 @@
                 <th class="text-left text-h6 name-column border-e-md" scope="row">
                   <i class="fas fa-industry" /><span class="ml-2">Factory</span>
                 </th>
-                <th class="text-left text-h6 table-column border-e-md" scope="row">
+                <th class="text-left text-h6 table-column fixed-column border-e-md" scope="row">
                   <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
                 </th>
-                <th class="text-left text-h6 table-column border-e-md" scope="row">
+                <th class="text-left text-h6 table-column fixed-column border-e-md" scope="row">
                   <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
                 </th>
                 <th class="text-left text-h6 table-column border-e-md" scope="row">
@@ -69,7 +69,7 @@
                     <b class="ml-2">{{ factory.name }}</b>
                   </v-chip>
                 </td>
-                <td class="border-e-md">
+                <td class="border-e-md fixed-column">
                   <tooltip
                     v-for="part in factory.products
                       .slice()
@@ -90,7 +90,7 @@
                     </v-chip>
                   </tooltip>
                 </td>
-                <td class="border-e-md">
+                <td class="border-e-md fixed-column">
                   <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
                     <i class="fas fa-check" />
                     <b class="ml-2">Satisfied</b>
@@ -285,6 +285,14 @@
     min-width: 180px;
   }
 
+  // Products and Satisfaction can accumulate a lot of chips; cap their width
+  // and let the chips wrap onto new lines rather than stretching the table.
+  .fixed-column {
+    width: 450px;
+    max-width: 450px;
+    min-width: 450px;
+  }
+
   .summary-table {
     :deep(tbody) {
       tr {
@@ -306,6 +314,12 @@
         // Keep each cell's chips on a single line — the table scrolls
         // horizontally if a factory has too many to fit.
         white-space: nowrap;
+
+        // The fixed-width Products/Satisfaction columns wrap their chips onto
+        // new lines instead, so they never widen the table.
+        &.fixed-column {
+          white-space: normal;
+        }
       }
     }
   }
