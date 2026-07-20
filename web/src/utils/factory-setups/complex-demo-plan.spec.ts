@@ -170,8 +170,8 @@ describe('Complex Demo Plan', () => {
     })
 
     it('should have the correct amount of power calculated', () => {
-      // Should be 33 buildings * 30 power per building = 990
-      expect(oilFac.power.consumed).toBe(990)
+      // 24 refineries @ 100% (720) + 4 @ 200% (2^1.321928 = 2.5x power, 300) + 1 fuel refinery (30)
+      expect(oilFac.power.consumed).toBe(1050)
     })
 
     it('should have the correct number of buildings calculated along with their power', () => {
@@ -182,7 +182,9 @@ describe('Complex Demo Plan', () => {
           powerProduced: 500,
         },
         oilrefinery: {
-          amount: 33,
+          // 24 + 4 overclocked for Plastic, plus 1 for Residual Fuel. powerConsumed here is
+          // the 100%-clock equivalent; the overclock-aware figure lives on factory.power.
+          amount: 29,
           name: 'oilrefinery',
           powerConsumed: 990,
         },
@@ -649,6 +651,25 @@ describe('Complex Demo Plan', () => {
     it('should cost 10 Somersloops per augmenter and no Power Shards', () => {
       expect(getFactorySomersloops(alienPowerFac)).toBe(30) // 3 buildings x 10 to construct
       expect(getFactoryPowerShards(alienPowerFac)).toBe(0) // Augmenters cannot be overclocked
+    })
+  })
+
+  describe('overclocking', () => {
+    it('should keep the Plastic line split of 24 @ 100% and 4 @ 200%, costing 8 shards', () => {
+      const plastic = oilFac.products[0]
+      expect(plastic.buildingGroups).toHaveLength(2)
+      expect(plastic.buildingGroups[0]).toMatchObject({ buildingCount: 24, overclockPercent: 100 })
+      expect(plastic.buildingGroups[1]).toMatchObject({ buildingCount: 4, overclockPercent: 200 })
+      expect(plastic.amount).toBe(640) // 24 + 4x2 = 32 effective buildings x 20/min
+      expect(getFactoryPowerShards(oilFac)).toBe(8) // 4 buildings x 2 shards at 200%
+    })
+
+    it('should run the Copper Sheet line at 200%, costing 16 shards', () => {
+      const sheets = copperBasicsFac.products[2]
+      expect(sheets.buildingGroups).toHaveLength(1)
+      expect(sheets.buildingGroups[0]).toMatchObject({ buildingCount: 8, overclockPercent: 200 })
+      expect(sheets.amount).toBe(160) // 8 x 2 = 16 effective buildings x 10/min
+      expect(getFactoryPowerShards(copperBasicsFac)).toBe(16)
     })
   })
 

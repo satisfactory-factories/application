@@ -39,6 +39,35 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
       amount: 640,
       recipe: 'Plastic',
     })
+    // Overclocking showcase: most of the Plastic line runs at stock clock, with four
+    // refineries pushed to 200% — costing 2 Power Shards per building (8 total), shown
+    // in the Power Shards & Somersloops statistics. 24 + 4x2 = 32 effective buildings.
+    oilFac.products[0].buildingGroups = [
+      {
+        id: 901,
+        type: ItemType.Product,
+        buildingCount: 24,
+        overclockPercent: 100,
+        somersloops: 0,
+        parts: {},
+        powerUsage: 0,
+        powerProduced: 0,
+      },
+      {
+        id: 902,
+        type: ItemType.Product,
+        buildingCount: 4,
+        overclockPercent: 200,
+        somersloops: 0,
+        parts: {},
+        powerUsage: 0,
+        powerProduced: 0,
+      },
+    ]
+    // Mirrors the app: adding a second group turns off item sync so the custom split sticks.
+    oilFac.products[0].buildingGroupItemSync = false
+    // Start with the tray open so the overclock showcase is visible immediately.
+    oilFac.products[0].buildingGroupsTrayOpen = true
     addProductToFactory(oilFac, {
       id: 'LiquidFuel',
       amount: 40,
@@ -103,6 +132,22 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
       amount: 160,
       recipe: 'CopperSheet',
     })
+    // Overclocking showcase: the whole sheet line runs at 200% — half the constructors
+    // for the same output, at 2 Power Shards each (16 total). 8 x 2 = 16 effective.
+    copperBasicsFac.products[2].buildingGroups = [
+      {
+        id: 903,
+        type: ItemType.Product,
+        buildingCount: 8,
+        overclockPercent: 200,
+        somersloops: 0,
+        parts: {},
+        powerUsage: 0,
+        powerProduced: 0,
+      },
+    ]
+    // Start with the tray open so the overclock showcase is visible immediately.
+    copperBasicsFac.products[2].buildingGroupsTrayOpen = true
     addInputToFactory(copperBasicsFac, {
       factoryId: copperIngotsFac.id,
       outputPart: 'CopperIngot',
@@ -239,6 +284,8 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
         powerProduced: 0,
       },
     ]
+    // Start with the tray open so the matrix-supply toggle showcase is visible immediately.
+    alienPowerFac.powerProducers[0].buildingGroupsTrayOpen = true
     alienPowerFac.notes = 'Alien Power Augmenters generate 500 MW each and boost the whole grid: +10% of total generation per augmenter, or +30% when supplied with Alien Power Matrixes.\n\nThe two fueled augmenters create a deliberate Alien Power Matrix shortage (5/min each) to show how matrix demand lands on the satisfaction ledger. Each augmenter also costs 10 Somersloops to construct — see the Power Shards & Somersloops statistics.'
     // =================
 
