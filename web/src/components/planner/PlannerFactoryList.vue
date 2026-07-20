@@ -53,9 +53,9 @@
             <v-tooltip right>
               <template #activator="{ props }">
                 <v-col
-                  class="pa-0 ml-2 align-content-center text-center"
+                  class="pa-0 ml-2 align-content-center text-center sync-state"
                   :class="syncStateClass(element)"
-                  cols="1"
+                  cols="auto"
                   v-bind="props"
                 >
                   <div v-if="element.inSync" class="d-inline">
@@ -171,6 +171,13 @@
       border-bottom: 0 !important;
     }
   }
+}
+
+.sync-state {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  flex: 0 0 30px;
 }
 
 .context-icon {

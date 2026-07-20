@@ -476,12 +476,13 @@
 
   .sticky-sidebar {
     position: relative; // Anchor for the resize handle
-    max-height: calc(100vh - 64px - 50px); // For some reason this is not relative to the planner container
+    height: calc(100vh - 64px - 50px); // Fill the viewport even when the plan is empty/short
     overflow: hidden; // Scrolling happens inside .sidebar-content so the handle spans the full height
 
     .sidebar-content {
       max-height: 100%;
       overflow-y: auto;
+      overflow-x: hidden; // Negative row margins in children must not create a horizontal scrollbar
     }
 
     .sidebar-resize-handle {
