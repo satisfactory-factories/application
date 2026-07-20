@@ -2,7 +2,9 @@ import {
   BuildingRequirement,
   Factory,
   FactoryDependency,
+  FactoryItem,
   FactoryPower,
+  FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { calculateProducts } from '@/utils/factory-management/products'
@@ -19,8 +21,8 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
-import { calculatePowerProducers } from '@/utils/factory-management/power'
-import { checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { calculateGridBoost, calculatePowerProducers } from '@/utils/factory-management/power'
+import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -89,7 +91,10 @@ export interface CalculationModes {
   loadMode?: boolean
   useBuildingGroupBuildings?: boolean
   forceRebalance?: boolean
-  origin?: 'buildingGroup' | 'item'
+  // 'recalculate' treats building groups as sacrosanct: they are never rebalanced, and
+  // item quantities are adjusted to match the groups instead. Used by the Recalculate
+  // action and plan loading.
+  origin?: 'buildingGroup' | 'item' | 'recalculate'
   // Internal: set when calculateFactory re-runs itself after a building-group
   // sync changed item amounts, to prevent further recursion.
   groupResync?: boolean
@@ -145,15 +150,27 @@ export const calculateFactory = (
     factory.products.map(product => product.amount),
     factory.powerProducers.map(producer => [producer.buildingAmount, producer.powerAmount, producer.fuelAmount]),
   ])
+  // On a recalculation, building groups are sacrosanct: any item that disagrees with its
+  // groups has its quantity adjusted to match them, never the other way around. The 0.1
+  // tolerance stops in-sync items being rewritten with float-degraded amounts.
+  const shouldSyncItemToGroups = (item: FactoryItem | FactoryPowerProducer, type: ItemType): boolean => {
+    if (modes.origin === 'buildingGroup') {
+      return true
+    }
+    if (modes.origin === 'recalculate') {
+      return Math.abs(calculateRemainingBuildingCount(item, type)) > 0.1
+    }
+    return false
+  }
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
-    if (modes.origin === 'buildingGroup') {
+    if (shouldSyncItemToGroups(product, ItemType.Product)) {
       checkForItemUpdate(product, factory)
     }
   })
   factory.powerProducers.forEach(producer => {
     syncBuildingGroups(producer, ItemType.Power, factory, modes)
-    if (modes.origin === 'buildingGroup') {
+    if (shouldSyncItemToGroups(producer, ItemType.Power)) {
       checkForItemUpdate(producer, factory)
     }
   })
@@ -167,7 +184,7 @@ export const calculateFactory = (
     factory.products.map(product => product.amount),
     factory.powerProducers.map(producer => [producer.buildingAmount, producer.powerAmount, producer.fuelAmount]),
   ])
-  if (modes.origin === 'buildingGroup' && !modes.groupResync && preSyncAmounts !== postSyncAmounts) {
+  if ((modes.origin === 'buildingGroup' || modes.origin === 'recalculate') && !modes.groupResync && preSyncAmounts !== postSyncAmounts) {
     return calculateFactory(factory, allFactories, gameData, { ...modes, groupResync: true })
   }
 
@@ -175,6 +192,10 @@ export const calculateFactory = (
   calculatePowerProducers(factory, gameData)
 
   calculateFinalBuildingsAndPower(factory)
+
+  // Alien Power Augmenters boost the whole grid, so their MW contribution depends on
+  // every factory's generation — recompute the plan-wide boost now totals are known.
+  calculateGridBoost(allFactories, gameData)
 
   // Check if the factory has any problems
   allFactories.forEach(fac => {

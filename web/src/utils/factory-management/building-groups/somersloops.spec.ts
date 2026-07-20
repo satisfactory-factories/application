@@ -440,3 +440,78 @@ describe('somersloops in factory calculations', () => {
     })
   })
 })
+
+// Spot check against in-game measured values: one Converter making Iron Ore from
+// Limestone (10 Reanimated SAM + 240 Limestone -> 120 Iron Ore, variable 100-400 MW).
+describe('converter spot check (Iron Ore from Limestone)', () => {
+  let mockFactory: Factory
+  let factories: Factory[]
+  let product: FactoryItem
+  let group: BuildingGroup
+
+  beforeEach(() => {
+    mockFactory = newFactory('Converter Factory')
+    factories = [mockFactory]
+
+    addProductToFactory(mockFactory, {
+      id: 'OreIron',
+      amount: 120, // 1 converter at 100%
+      recipe: 'Iron_Limestone',
+    })
+    product = mockFactory.products[0]
+    calculateFactories(factories, gameData)
+    group = product.buildingGroups[0]
+    product.buildingGroupItemSync = true
+  })
+
+  it('should match in-game values at 250% clock with 2 somersloops', () => {
+    group.overclockPercent = 250
+    group.somersloops = 2
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    // Sloops double the output without changing ingredient consumption
+    expect(group.buildingCount).toBe(1)
+    expect(group.parts.OreIron).toBe(600)
+    expect(group.parts.SAMIngot).toBe(25)
+    expect(group.parts.Stone).toBe(600)
+    expect(product.amount).toBe(600)
+    expect(mockFactory.parts.SAMIngot.amountRequired).toBe(25)
+    expect(mockFactory.parts.Stone.amountRequired).toBe(600)
+
+    // Power: base x 2.5^1.321928 x (1 + 2/2)^2 — in-game shows 1343.1 to 5372.4 MW
+    expect(group.powerUsageMin).toBe(1343.099)
+    expect(group.powerUsageMax).toBe(5372.3961)
+  })
+
+  it('should match in-game values at 250% clock without somersloops', () => {
+    group.overclockPercent = 250
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    expect(group.buildingCount).toBe(1)
+    expect(group.parts.OreIron).toBe(300)
+    expect(group.parts.SAMIngot).toBe(25)
+    expect(group.parts.Stone).toBe(600)
+    expect(product.amount).toBe(300)
+
+    // In-game shows 335.8 to 1343.1 MW
+    expect(group.powerUsageMin).toBe(335.7748)
+    expect(group.powerUsageMax).toBe(1343.099)
+  })
+
+  it('should match in-game values at 223.33% clock without somersloops', () => {
+    group.overclockPercent = 223.33
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    expect(group.buildingCount).toBe(1)
+    expect(group.parts.OreIron).toBe(267.996)
+    expect(group.parts.SAMIngot).toBe(22.333)
+    expect(group.parts.Stone).toBe(535.992)
+    expect(product.amount).toBe(267.996)
+    expect(mockFactory.parts.SAMIngot.amountRequired).toBe(22.333)
+    expect(mockFactory.parts.Stone.amountRequired).toBe(535.992)
+
+    // In-game shows 289.3 to 1157 MW
+    expect(group.powerUsageMin).toBe(289.2563)
+    expect(group.powerUsageMax).toBe(1157.0254)
+  })
+})

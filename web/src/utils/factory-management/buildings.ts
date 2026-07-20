@@ -99,14 +99,18 @@ export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: Da
 export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   factory.power = {
     consumed: 0,
+    consumedMin: 0,
     consumedMax: 0,
     produced: 0,
+    producedMin: 0,
+    producedMax: 0,
     difference: 0,
   }
 
   // Sum up the power consumption using the building groups.
   const products = factory.products
   let consumed = 0
+  let consumedMin = 0
   let consumedMax = 0
 
   products.forEach(product => {
@@ -114,27 +118,38 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       if (!group.buildingCount) return
 
       consumed += group.powerUsage
-      // Variable-power buildings spike to powerUsageMax; fixed buildings have max === avg.
+      // Variable-power buildings swing between powerUsageMin and powerUsageMax;
+      // fixed buildings have min === max === avg.
+      consumedMin += group.powerUsageMin ?? group.powerUsage
       consumedMax += group.powerUsageMax ?? group.powerUsage
     })
   })
 
   factory.power.consumed = formatNumberFully(consumed, 1)
+  factory.power.consumedMin = formatNumberFully(consumedMin, 1)
   factory.power.consumedMax = formatNumberFully(consumedMax, 1)
 
   // Sum up all power production
   const powerProducers = factory.powerProducers
   let produced = 0
+  let producedMin = 0
+  let producedMax = 0
 
   powerProducers.forEach(producer => {
     producer.buildingGroups.forEach(group => {
       if (!group.buildingCount) return
 
       produced += group.powerProduced
+      // Variable generators (Geothermal) swing between powerProducedMin and
+      // powerProducedMax; steady generators have min === max === avg.
+      producedMin += group.powerProducedMin ?? group.powerProduced
+      producedMax += group.powerProducedMax ?? group.powerProduced
     })
   })
 
   factory.power.produced = formatNumberFully(produced, 1)
+  factory.power.producedMin = formatNumberFully(producedMin, 1)
+  factory.power.producedMax = formatNumberFully(producedMax, 1)
 
   // Set all factory building counts to 0.
   Object.keys(factory.buildingRequirements).forEach(key => {

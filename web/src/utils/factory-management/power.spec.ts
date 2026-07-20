@@ -8,6 +8,8 @@ import {
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import { calculateTotalPower } from '@/utils/statistics'
 import { gameData } from '@/utils/gameData'
 
 describe('power', () => {
@@ -408,6 +410,161 @@ describe('power', () => {
         expect(factory.powerProducers[0].powerProduced).toBe(6250)
         expect(factory.powerProducers[0].fuelAmount).toBe(0.5)
         expect(factory.powerProducers[0].byproduct?.amount).toBe(25)
+      })
+    })
+  })
+
+  describe('fuel-less generators', () => {
+    beforeEach(() => {
+      factory = newFactory('Power station')
+    })
+
+    describe('geothermal', () => {
+      beforeEach(() => {
+        addPowerProducerToFactory(factory, {
+          building: 'geothermalgenerator',
+          buildingAmount: 2,
+          recipe: 'GeneratorGeoThermal_Pure',
+          updated: FactoryPowerChangeType.Building,
+        })
+        calculateFactories([factory], gameData)
+      })
+
+      it('should produce flat purity-based power with no fuel', () => {
+        const producer = factory.powerProducers[0]
+
+        expect(producer.powerProduced).toBe(800) // 2x 400 MW pure geysers
+        expect(producer.ingredients).toEqual([])
+        expect(producer.fuelAmount).toBe(0)
+        expect(producer.byproduct).toBe(null)
+        expect(factory.power.produced).toBe(800)
+        // The oscillation range flows up to the factory totals.
+        expect(factory.power.producedMin).toBe(400)
+        expect(factory.power.producedMax).toBe(1200)
+      })
+
+      it('should include the oscillation range in the world power totals', () => {
+        const totals = calculateTotalPower([factory])
+
+        expect(totals.totalBasePower).toBe(800)
+        expect(totals.totalBasePowerMin).toBe(400)
+        expect(totals.totalBasePowerMax).toBe(1200)
+        expect(totals.totalPowerProducedMin).toBe(400)
+        expect(totals.totalPowerProducedMax).toBe(1200)
+      })
+
+      it('should expose the oscillation range on the building group', () => {
+        const group = factory.powerProducers[0].buildingGroups[0]
+
+        expect(group.powerProduced).toBe(800)
+        expect(group.powerProducedMin).toBe(400)
+        expect(group.powerProducedMax).toBe(1200)
+      })
+
+      it('should force the clock back to 100% as geothermal cannot be overclocked', () => {
+        const group = factory.powerProducers[0].buildingGroups[0]
+        group.overclockPercent = 150
+
+        calculateFactories([factory], gameData)
+
+        expect(group.overclockPercent).toBe(100)
+        expect(group.powerProduced).toBe(800)
+      })
+
+      it('should support the power-based update direction', () => {
+        const producer = factory.powerProducers[0]
+        producer.powerAmount = 1200
+        producer.updated = FactoryPowerChangeType.Power
+
+        calculateFactories([factory], gameData)
+
+        expect(producer.buildingCount).toBe(3)
+        expect(producer.powerProduced).toBe(1200)
+      })
+    })
+
+    describe('alien power augmenter', () => {
+      let producer: FactoryPowerProducer
+
+      beforeEach(() => {
+        addPowerProducerToFactory(factory, {
+          building: 'alienpoweraugmenter',
+          buildingAmount: 2,
+          recipe: 'AlienPowerAugmenter',
+          updated: FactoryPowerChangeType.Building,
+        })
+        producer = factory.powerProducers[0]
+        calculateFactories([factory], gameData)
+      })
+
+      it('should produce 500 MW static per augmenter and boost the grid by 10% each', () => {
+        expect(producer.powerProduced).toBe(1000)
+        expect(producer.ingredients).toEqual([])
+        expect(factory.power.produced).toBe(1000)
+        expect(factory.power.boostPercent).toBe(0.2)
+        expect(factory.power.boostMw).toBe(200) // 20% of the grid's 1000 MW
+      })
+
+      it('should raise the boost to 30% and demand matrixes when a group supplies them', () => {
+        producer.buildingGroups[0].supplyMatrixes = true
+
+        calculateFactories([factory], gameData)
+
+        expect(factory.power.boostPercent).toBe(0.6) // 2 buildings x 30%
+        expect(factory.power.boostMw).toBe(600)
+        expect(factory.power.boostFueledBuildings).toBe(2)
+        expect(factory.power.boostUnfueledBuildings).toBe(0)
+        expect(producer.ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 10 }])
+        expect(producer.buildingGroups[0].parts.AlienPowerFuel).toBe(10)
+        expect(factory.parts.AlienPowerFuel.amountRequiredPower).toBe(10)
+        expect(factory.parts.AlienPowerFuel.satisfied).toBe(false)
+      })
+
+      it('should match the in-game example: one fueled and one unfueled augmenter', () => {
+        // Split into two groups of one building each; only one supplied with matrixes.
+        producer.buildingGroupItemSync = false
+        producer.buildingGroups[0].buildingCount = 1
+        addPowerProducerBuildingGroup(producer, factory, false)
+        const group2 = producer.buildingGroups[1]
+        group2.buildingCount = 1
+        group2.supplyMatrixes = true
+
+        calculateFactories([factory], gameData)
+
+        // Static: 2x 500 = 1000. Boost: 10% + 30% = 40% of 1000 = 400. Total 1400.
+        expect(factory.power.produced).toBe(1000)
+        expect(factory.power.boostPercent).toBe(0.4)
+        expect(factory.power.boostMw).toBe(400)
+        expect(factory.power.boostFueledBuildings).toBe(1)
+        expect(factory.power.boostUnfueledBuildings).toBe(1)
+
+        const totals = calculateTotalPower([factory])
+        expect(totals.totalPowerProduced).toBe(1400)
+        expect(totals.totalPowerBoost).toBe(400)
+        expect(totals.totalPowerDifference).toBe(1400)
+
+        // Matrix demand comes only from the fueled group.
+        expect(producer.ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 5 }])
+        expect(producer.buildingGroups[0].parts.AlienPowerFuel).toBeUndefined()
+        expect(group2.parts.AlienPowerFuel).toBe(5)
+      })
+
+      it('should boost based on the total generation across all factories', () => {
+        const fuelFactory = newFactory('Fuel plant')
+        addPowerProducerToFactory(fuelFactory, {
+          building: 'generatorfuel',
+          powerAmount: 1000,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Power,
+        })
+
+        calculateFactories([factory, fuelFactory], gameData)
+
+        // Total base generation = 1000 (augmenters) + 1000 (fuel gens) = 2000; 20% = 400.
+        expect(factory.power.boostPercent).toBe(0.2)
+        expect(factory.power.boostMw).toBe(400)
+        expect(fuelFactory.power.boostPercent).toBe(0)
+        expect(fuelFactory.power.boostMw).toBe(0)
       })
     })
   })

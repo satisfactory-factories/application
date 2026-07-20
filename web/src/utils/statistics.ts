@@ -166,20 +166,61 @@ export const calculateProducedItemsDifference = (factories: Factory[]) => {
 
 // Sums the per-factory power figures (which are derived from the building groups, so they
 // account for overclocking and somersloops). Peak differs from consumed only when
-// variable-power buildings (Particle Accelerator etc.) are present.
+// variable-power buildings (Particle Accelerator etc.) are present. The circuit boost
+// (Alien Power Augmenters) is part of total generation, matching the in-game power graph.
 export const calculateTotalPower = (factories: Factory[]) => {
   let totalPowerConsumed = 0
+  let totalPowerConsumedMin = 0
   let totalPowerConsumedMax = 0
-  let totalPowerProduced = 0
+  let totalBasePower = 0
+  let totalBasePowerMin = 0
+  let totalBasePowerMax = 0
+  let totalPowerBoost = 0
+  let totalBoostPercent = 0
+  let totalBoostFueled = 0
+  let totalBoostUnfueled = 0
 
   factories.forEach(factory => {
     const consumed = factory.power?.consumed ?? 0
+    const produced = factory.power?.produced ?? 0
     totalPowerConsumed += consumed
+    totalPowerConsumedMin += factory.power?.consumedMin ?? consumed
     totalPowerConsumedMax += factory.power?.consumedMax ?? consumed
-    totalPowerProduced += factory.power?.produced ?? 0
+    totalBasePower += produced
+    totalBasePowerMin += factory.power?.producedMin ?? produced
+    totalBasePowerMax += factory.power?.producedMax ?? produced
+    totalPowerBoost += factory.power?.boostMw ?? 0
+    totalBoostPercent += factory.power?.boostPercent ?? 0
+    totalBoostFueled += factory.power?.boostFueledBuildings ?? 0
+    totalBoostUnfueled += factory.power?.boostUnfueledBuildings ?? 0
   })
 
+  // The circuit boost is a percentage of whatever the grid is generating, so it swings
+  // with the variable generators.
+  const totalPowerBoostMin = totalBoostPercent * totalBasePowerMin
+  const totalPowerBoostMax = totalBoostPercent * totalBasePowerMax
+
+  const totalPowerProduced = totalBasePower + totalPowerBoost
+  const totalPowerProducedMin = totalBasePowerMin + totalPowerBoostMin
+  const totalPowerProducedMax = totalBasePowerMax + totalPowerBoostMax
   const totalPowerDifference = totalPowerProduced - totalPowerConsumed
 
-  return { totalPowerConsumed, totalPowerConsumedMax, totalPowerProduced, totalPowerDifference }
+  return {
+    totalPowerConsumed,
+    totalPowerConsumedMin,
+    totalPowerConsumedMax,
+    totalBasePower,
+    totalBasePowerMin,
+    totalBasePowerMax,
+    totalPowerBoost,
+    totalPowerBoostMin,
+    totalPowerBoostMax,
+    totalBoostPercent,
+    totalBoostFueled,
+    totalBoostUnfueled,
+    totalPowerProduced,
+    totalPowerProducedMin,
+    totalPowerProducedMax,
+    totalPowerDifference,
+  }
 }

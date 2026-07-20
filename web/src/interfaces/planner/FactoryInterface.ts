@@ -46,6 +46,13 @@ export interface BuildingGroup {
   powerUsageMin?: number
   powerUsageMax?: number
   powerProduced: number
+  // Variable-output generators (Geothermal) oscillate between min and max; powerProduced
+  // is the average. Equal to powerProduced for steady generators.
+  powerProducedMin?: number
+  powerProducedMax?: number
+  // Alien Power Augmenter groups only: whether this group's buildings are fed
+  // Alien Power Matrixes (raises their circuit boost and creates fuel demand).
+  supplyMatrixes?: boolean
   somersloops?: number
   type: ItemType
 }
@@ -154,10 +161,23 @@ export interface FactoryPowerProducer {
 
 export interface FactoryPower {
   consumed: number;
-  // Peak draw when variable-power buildings (Particle Accelerator etc.) spike to their
-  // maximum. Equal to `consumed` when the factory has no variable-power buildings.
+  // Trough/peak draw when variable-power buildings (Particle Accelerator etc.) swing to
+  // their extremes. Equal to `consumed` when the factory has no variable-power buildings.
+  consumedMin?: number;
   consumedMax?: number;
   produced: number;
+  // Trough/peak output when variable generators (Geothermal) swing to their extremes.
+  // Equal to `produced` when the factory has no variable generators.
+  producedMin?: number;
+  producedMax?: number;
+  // Alien Power Augmenters in this factory: total circuit boost fraction they contribute
+  // (0.4 = 40%) and the grid-wide MW that boost yields (fraction x total base generation
+  // across ALL factories — the plan is assumed to be one power grid). The fueled/unfueled
+  // building counts drive the "2 at 30%, 1 at 10%" breakdown displays.
+  boostPercent?: number;
+  boostMw?: number;
+  boostFueledBuildings?: number;
+  boostUnfueledBuildings?: number;
   difference: number;
 }
 

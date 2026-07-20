@@ -376,9 +376,13 @@ export const useAppStore = defineStore('app', () => {
     })
 
     if (needsCalculation) {
-      console.log('appStore: initFactories: Forcing calculation of factories due to data migration')
-      calculateFactories(newFactories, gameDataStore.getGameData())
+      console.log('appStore: initFactories: Data migrations were applied')
     }
+
+    // Always recalculate on load so derived data added since the plan was last saved
+    // (e.g. power min/max ranges, boost breakdowns) is backfilled. This is safe for the
+    // user's building groups: the 'recalculate' origin treats them as sacrosanct.
+    calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
 
     console.log('appStore: initFactories - completed')
 
@@ -420,7 +424,7 @@ export const useAppStore = defineStore('app', () => {
 
     if (forceRecalc) {
       // Trigger calculations
-      calculateFactories(newFactories, gameData)
+      calculateFactories(newFactories, gameData, { origin: 'recalculate' })
     }
 
     // For each factory, set the previous inputs to the current inputs.
@@ -531,7 +535,9 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    calculateFactories(factories.value, gameData)
+    // Building groups are sacrosanct on a recalculation — they are never rebalanced;
+    // item quantities are adjusted to match the groups instead.
+    calculateFactories(factories.value, gameData, { origin: 'recalculate' })
   }
 
   return {

@@ -62,6 +62,22 @@ export const getPartDisplayNameWithoutDataStore = (part: string, gameData: DataI
     `UNKNOWN PART ${part}!`
 }
 
+// Buildings without Power Shard slots — their clock is locked at 100%.
+const NON_OVERCLOCKABLE_BUILDINGS = new Set(['geothermalgenerator', 'alienpoweraugmenter'])
+
+export const canBuildingOverclock = (building: string): boolean => {
+  return !NON_OVERCLOCKABLE_BUILDINGS.has(building)
+}
+
+// Buildings whose building groups are always kept in sync with the item: with no clocks
+// or fuel to fine-tune, unsynced groups offer nothing but confusion (Alien Power
+// Augmenter groups exist only to split fueled from unfueled buildings).
+const ALWAYS_SYNCED_BUILDINGS = new Set(['geothermalgenerator', 'alienpoweraugmenter'])
+
+export const isAlwaysSyncedBuilding = (building: string): boolean => {
+  return ALWAYS_SYNCED_BUILDINGS.has(building)
+}
+
 export const getBuildingDisplayName = (building: string) => {
   const buildingFriendly = new Map<string, string>([
     ['assemblermk1', 'Assembler'],
@@ -70,9 +86,11 @@ export const getBuildingDisplayName = (building: string) => {
     ['converter', 'Converter'],
     ['foundrymk1', 'Foundry'],
     ['hadroncollider', 'Particle Accelerator'],
+    ['alienpoweraugmenter', 'Alien Power Augmenter'],
     ['generatorbiomass', 'Biomass Burner'],
     ['generatorcoal', 'Coal-Powered Generator'],
     ['generatorfuel', 'Fuel-Powered Generator'],
+    ['geothermalgenerator', 'Geothermal Generator'],
     ['generatornuclear', 'Nuclear Power Plant'],
     ['manufacturermk1', 'Manufacturer'],
     ['oilrefinery', 'Oil Refinery'],

@@ -62,6 +62,13 @@ export const calculatePowerProducers = (
 
     const recipe = structuredClone(toRaw(originalRecipe))
 
+    // Fuel-less generators (Geothermal, Alien Power Augmenter) have no fuel to derive
+    // anything from — their output is a flat building.power per building.
+    if (recipe.ingredients.length === 0) {
+      calculateFuellessPowerProducer(producer, recipe)
+      return
+    }
+
     // Upon initialization or re-selection, the ingredients array is empty, so we need to set it to the recipe ingredients.
     if (!producer.ingredients[0]) {
       producer.ingredients = recipe.ingredients
@@ -129,6 +136,41 @@ export const calculatePowerProducers = (
   })
 }
 
+// Geothermal Generators and Alien Power Augmenters produce a flat building.power per
+// building — no fuel, no mwPerItem. Only Building and Power changes are meaningful.
+export const calculateFuellessPowerProducer = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
+  if (producer.updated === FactoryPowerChangeType.Power) {
+    producer.powerProduced = producer.powerAmount
+    producer.buildingCount = producer.powerProduced / recipe.building.power
+  } else {
+    producer.buildingCount = producer.buildingAmount
+    producer.powerProduced = recipe.building.power * producer.buildingCount
+  }
+
+  producer.fuelAmount = 0
+  producer.byproduct = null
+  // With no clocks or fuel to fine-tune, unsynced groups offer nothing — keep them synced.
+  producer.buildingGroupItemSync = true
+
+  // Alien Power Augmenter: groups toggled to "Supply Matrixes" feed their buildings with
+  // Alien Power Matrixes, which creates real fuel demand on the factory's parts ledger.
+  if (recipe.boost) {
+    const fueledBuildings = (producer.buildingGroups ?? []).reduce((acc, group) =>
+      acc + (group.supplyMatrixes ? group.buildingCount : 0), 0)
+
+    producer.ingredients = fueledBuildings > 0
+      ? [{ part: recipe.boost.fuelPart, perMin: formatNumberFully(recipe.boost.fuelRatePerMin * fueledBuildings) }]
+      : []
+  } else {
+    producer.ingredients = []
+  }
+
+  producer.buildingAmount = formatNumberFully(producer.buildingCount)
+  producer.buildingCount = formatNumberFully(producer.buildingCount)
+  producer.powerProduced = formatNumberFully(producer.powerProduced)
+  producer.powerAmount = producer.powerProduced
+}
+
 export const updateViaBuilding = (producer: FactoryPowerProducer, recipe: PowerRecipe) => {
 // Replace the building directly
   producer.buildingCount = producer.buildingAmount
@@ -186,4 +228,42 @@ export const calculatePowerAmount = (
   const mwPerItem = recipe.ingredients[0].mwPerItem ?? 0
   const amount = producer.fuelAmount
   return mwPerItem * amount
+}
+
+// The Alien Power Augmenter's circuit boost applies to the entire power grid (the plan is
+// assumed to be one grid): each augmenter adds 10% (30% when fed matrixes) of the TOTAL
+// base generation across all factories. Must run after factory.power totals are written.
+export const calculateGridBoost = (factories: Factory[], gameData: DataInterface) => {
+  let totalBaseGeneration = 0
+  factories.forEach(factory => {
+    totalBaseGeneration += factory.power?.produced ?? 0
+  })
+
+  factories.forEach(factory => {
+    if (!factory.power) return
+
+    let boostPercent = 0
+    let fueledBuildings = 0
+    let unfueledBuildings = 0
+    factory.powerProducers.forEach(producer => {
+      const boost = getPowerRecipe(producer.recipe, gameData)?.boost
+      if (!boost) return
+
+      producer.buildingGroups.forEach(group => {
+        if (!group.buildingCount) return
+        if (group.supplyMatrixes) {
+          fueledBuildings += group.buildingCount
+          boostPercent += group.buildingCount * boost.fueled
+        } else {
+          unfueledBuildings += group.buildingCount
+          boostPercent += group.buildingCount * boost.base
+        }
+      })
+    })
+
+    factory.power.boostPercent = formatNumberFully(boostPercent, 4)
+    factory.power.boostMw = formatNumberFully(boostPercent * totalBaseGeneration, 1)
+    factory.power.boostFueledBuildings = fueledBuildings
+    factory.power.boostUnfueledBuildings = unfueledBuildings
+  })
 }

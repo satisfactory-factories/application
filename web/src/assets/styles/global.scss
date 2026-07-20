@@ -64,6 +64,18 @@
     border-color: #9a1df6 !important;
   }
 
+  // Alien Power Augmenter circuit boost
+  &.boost {
+    color: #9f6d9f !important;
+    border-color: #9f6d9f !important;
+  }
+
+  // Peak draw of variable-power buildings
+  &.max-consumption {
+    color: #5cb0c5 !important;
+    border-color: #5cb0c5 !important;
+  }
+
   &.no-border {
     border: 0 !important;
   }

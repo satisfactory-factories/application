@@ -135,6 +135,7 @@ describe('buildings', () => {
           calculateFactories([mockFactory], gameData)
 
           expect(mockFactory.power.consumed).toBe(32)
+          expect(mockFactory.power.consumedMin).toBe(32)
           expect(mockFactory.power.consumedMax).toBe(32)
         })
 
@@ -153,8 +154,9 @@ describe('buildings', () => {
           expect(pastaGroup.powerUsageMin).toBe(500)
           expect(pastaGroup.powerUsageMax).toBe(1500)
 
-          // The concrete constructors (32 MW) are fixed power, so only the pasta widens the peak.
+          // The concrete constructors (32 MW) are fixed power, so only the pasta widens the range.
           expect(mockFactory.power.consumed).toBe(1032)
+          expect(mockFactory.power.consumedMin).toBe(532)
           expect(mockFactory.power.consumedMax).toBe(1532)
         })
       })

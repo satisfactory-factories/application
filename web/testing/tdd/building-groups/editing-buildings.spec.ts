@@ -476,18 +476,20 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       test('BG-E-BMULTI-PROD-8.2: Updating via the item\'s amount should rebalance correctly', async () => {
         expect(product.buildingGroupItemSync).toBe(true)
 
-        // Nice even one first
+        // Nice even one first. Note: this must CHANGE the effective building requirement —
+        // groups already fulfilling the amount are sacrosanct and are deliberately not
+        // re-split (see syncBuildingGroups' in-sync guard).
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
-        await itemAmountInput.setValue(120)
+        await itemAmountInput.setValue(240)
 
         // Wait for debounce
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('2')
-        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('2')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('4')
+        expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('4')
         expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('100')
         expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-clock"]`).element.value).toBe('100')
-        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('4')
+        expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('8')
 
         // A spicy one
         await itemAmountInput.setValue(130)

@@ -26,6 +26,16 @@ export const getSomersloopSlots = (building: string): number => {
   return SOMERSLOOP_SLOTS[building] ?? 0
 }
 
+// Somersloops consumed by CONSTRUCTING certain buildings (from their build recipes) —
+// separate from amplification slots. The Alien Power Augmenter costs 10 each.
+export const SOMERSLOOP_BUILD_COST: { [building: string]: number } = {
+  alienpoweraugmenter: 10,
+}
+
+export const getSomersloopBuildCost = (building: string): number => {
+  return SOMERSLOOP_BUILD_COST[building] ?? 0
+}
+
 // Somersloops are stored per building in the group: every building in a group is
 // identical (same clock, same somersloops). Clamped to the building's slot count.
 export const sanitizeGroupSomersloops = (group: BuildingGroup, building: string): number => {
@@ -66,15 +76,18 @@ export const getSomersloopPowerMultiplier = (group: BuildingGroup, building: str
 }
 
 // Total somersloops physically consumed by an item's groups. `somersloops` is stored
-// per building, so a group of N buildings uses N × somersloops of them.
-export const getTotalSomersloops = (buildingGroups: BuildingGroup[] | undefined): number => {
+// per building, so a group of N buildings uses N × somersloops of them. When a building
+// name is given, its construction cost (e.g. 10 per Alien Power Augmenter) is included.
+export const getTotalSomersloops = (buildingGroups: BuildingGroup[] | undefined, building = ''): number => {
   if (!buildingGroups?.length) {
     return 0
   }
 
+  const buildCost = getSomersloopBuildCost(building)
+
   let total = 0
   for (const group of buildingGroups) {
-    const perGroup = (group.somersloops ?? 0) * group.buildingCount
+    const perGroup = ((group.somersloops ?? 0) + buildCost) * group.buildingCount
     if (Number.isFinite(perGroup)) {
       total += perGroup
     }

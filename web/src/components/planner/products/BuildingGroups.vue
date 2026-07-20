@@ -1,5 +1,7 @@
 <template>
-  <div class="mb-2 d-flex align-center">
+  <!-- Alien Power Augmenters are always synced and have no clocks, so the balancing
+       actions and sync/effective-buildings status are pure noise for them. -->
+  <div v-if="!isAlwaysSynced" class="mb-2 d-flex align-center">
     <v-btn
       :id="`${factory.id}-${item.id}-evenly-balance`"
       color="secondary"
@@ -56,7 +58,7 @@
       <span class="ml-2">Help</span>
     </v-btn>
   </div>
-  <div class="mb-2 d-flex align-center">
+  <div v-if="!isAlwaysSynced" class="mb-2 d-flex align-center">
     <div class="mr-2">
       <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
         <i class="fas fa-building" />
@@ -140,6 +142,7 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
   import {
     addBuildingGroup,
     calculateEffectiveBuildingCount,
@@ -229,6 +232,8 @@
   const isLast = (group: BuildingGroup, groups: BuildingGroup[]) => {
     return groups.indexOf(group) === groups.length - 1
   }
+
+  const isAlwaysSynced = computed(() => isAlwaysSyncedBuilding(props.building))
 
   eventBus.on('factoryUpdated', recalculateMetrics)
 </script>

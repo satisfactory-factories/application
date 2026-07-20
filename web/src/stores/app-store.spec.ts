@@ -207,16 +207,14 @@ describe('app-store', () => {
 
       expect(spy).toHaveBeenCalled()
     })
-    it('should NOT call calculateFactories when not required', () => {
-      // @ts-ignore
-      factory.tasks = undefined
-
-      // Spy on the calculateFactories function
+    it('should always call calculateFactories on load, with the group-preserving recalculate origin', () => {
+      // Loading always recalculates so derived data added since the plan was saved is
+      // backfilled. This is safe for building groups: 'recalculate' treats them as sacrosanct.
       const spy = vi.spyOn(FactoryManager, 'calculateFactories')
 
       appStore.initFactories(factories)
 
-      expect(spy).not.toHaveBeenCalled()
+      expect(spy).toHaveBeenCalledWith(expect.anything(), expect.anything(), { origin: 'recalculate' })
     })
 
     it('should show an alert if the factories did not validate', () => {
@@ -469,7 +467,9 @@ describe('app-store', () => {
 
           await appStore.beginLoading(factories)
 
-          expect(eventBus.emit).toHaveBeenCalledTimes(7) // 5 other times, annoyingly we can't check the payload
+          // 5 increments + the events from the always-recalculate on load (factoryUpdated
+          // per factory per pass + calculationsCompleted). Annoyingly we can't check the payload.
+          expect(eventBus.emit).toHaveBeenCalledTimes(12)
           expect(eventBus.emit).toHaveBeenCalledWith('incrementLoad', {
             step: 'increment',
           })

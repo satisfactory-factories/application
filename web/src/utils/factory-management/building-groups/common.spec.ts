@@ -905,11 +905,11 @@ describe('buildingGroupsCommon', async () => {
 
       // Should be:
       // Group 1: 3 * 1.33 = 3.99
-      // Group 2: 2 * 0.56334 = 1.12668 (1.127 ceiled)
-      // Group 3: 11 * 1.33678 = 14.70458 (14.705 ceiled)
-      // Totalling 19.822
+      // Group 2: 2 * 0.56334 = 1.12668 (1.1267 rounded to 4dp)
+      // Group 3: 11 * 1.33678 = 14.70458 (14.7046 rounded to 4dp)
+      // Totalling 19.8213
 
-      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.822)
+      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.8213)
     })
   })
 

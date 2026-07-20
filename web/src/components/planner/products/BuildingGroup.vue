@@ -39,56 +39,108 @@
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
-    <div class="px-1">
-      <div>@</div>
-      <div class="underchip">&nbsp;</div>
-    </div>
-    <div>
-      <v-chip
-        class="sf-chip input unit yellow mx-1"
-        variant="tonal"
-      >
-        <tooltip text="Overclock">
-          <game-asset subject="overclock-production" type="item_id" />
-        </tooltip>
-        <v-number-input
-          :id="`${factory.id}-${group.id}-clock`"
-          v-model="group.overclockPercent"
-          class="inline-inputs ml-0"
-          control-variant="stacked"
-          density="compact"
-          hide-details
-          hide-spin-buttons
-          :max="250"
-          :min="0"
-          type="number"
-          width="125px"
-          @update:model-value="updateGroupOverclockDebounce(group)"
-        />
-        <span>%</span>
-        <span v-if="updatingOverclock">
-          <v-icon>fas fa-sync fa-spin</v-icon>
-        </span>
-      </v-chip>
-      <div class="underchip text-yellow-darken-2">
-        <span
-          v-if="group.type !== ItemType.Power"
-          class="d-inline-flex align-center"
-        >
-          <i class="fas fa-bolt" />
-          <i class="fas fa-minus" />
-          <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
-          <span v-if="groupHasVariablePower" :id="`${factory.id}-${group.id}-group-power-range`" class="ml-1">
-            ({{ formatPower(group.powerUsageMin ?? 0).value }} {{ formatPower(group.powerUsageMin ?? 0).unit }} – {{ formatPower(group.powerUsageMax ?? 0).value }} {{ formatPower(group.powerUsageMax ?? 0).unit }})
-          </span>
-        </span>
-        <span v-else>&nbsp;</span>
+    <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
+    <template v-if="canBuildingOverclock(building)">
+      <div class="px-1">
+        <div>@</div>
+        <div class="underchip">&nbsp;</div>
       </div>
-    </div>
+      <div>
+        <v-chip
+          class="sf-chip input unit yellow mx-1"
+          variant="tonal"
+        >
+          <tooltip text="Overclock">
+            <game-asset subject="overclock-production" type="item_id" />
+          </tooltip>
+          <v-number-input
+            :id="`${factory.id}-${group.id}-clock`"
+            v-model="group.overclockPercent"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :max="250"
+            :min="0"
+            type="number"
+            width="125px"
+            @update:model-value="updateGroupOverclockDebounce(group)"
+          />
+          <span>%</span>
+          <span v-if="updatingOverclock">
+            <v-icon>fas fa-sync fa-spin</v-icon>
+          </span>
+        </v-chip>
+        <div class="underchip text-yellow-darken-2">
+          <span
+            v-if="group.type !== ItemType.Power"
+            class="d-inline-flex align-center"
+          >
+            <i class="fas fa-bolt" />
+            <i class="fas fa-minus" />
+            <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
+            <span v-if="groupHasVariablePower" :id="`${factory.id}-${group.id}-group-power-range`" class="ml-1">
+              ({{ formatPower(group.powerUsageMin ?? 0).value }} {{ formatPower(group.powerUsageMin ?? 0).unit }} – {{ formatPower(group.powerUsageMax ?? 0).value }} {{ formatPower(group.powerUsageMax ?? 0).unit }})
+            </span>
+          </span>
+          <span v-else>&nbsp;</span>
+        </div>
+      </div>
+    </template>
     <div class="px-1">
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
+    <!-- Alien Power Augmenter: matrix supply toggle and construction somersloop cost, both inputs to the group -->
+    <template v-if="group.type === ItemType.Power && building === 'alienpoweraugmenter'">
+      <div>
+        <v-chip
+          class="sf-chip input mx-1"
+          variant="tonal"
+        >
+          <tooltip text="Supply this group's augmenters with Alien Power Matrixes (5/min each), raising their circuit boost from 10% to 30% of the grid's generation.">
+            <game-asset subject="AlienPowerFuel" type="item" />
+          </tooltip>
+          <v-switch
+            :id="`${factory.id}-${group.id}-supply-matrixes`"
+            v-model="group.supplyMatrixes"
+            class="mx-2"
+            color="#9f6d9f"
+            density="compact"
+            hide-details
+            label="Inject Matrices"
+            @update:model-value="updateGroup(group)"
+          />
+        </v-chip>
+        <div class="underchip text-boost">
+          <span :id="`${factory.id}-${group.id}-boost-percent`">+{{ group.supplyMatrixes ? '30' : '10' }}% circuit boost / building</span>
+        </div>
+      </div>
+      <div>
+        <v-chip
+          class="sf-chip input sloop mx-1"
+          variant="tonal"
+        >
+          <tooltip :text="`Constructing each Alien Power Augmenter consumes ${somersloopBuildCost} Somersloops`">
+            <game-asset subject="somersloop" type="item_id" />
+          </tooltip>
+          <v-number-input
+            :id="`${factory.id}-${group.id}-sloop-cost`"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            disabled
+            hide-details
+            hide-spin-buttons
+            :model-value="somersloopBuildCost * group.buildingCount"
+            type="number"
+            width="80px"
+          />
+        </v-chip>
+        <div class="underchip text-purple-lighten-1">{{ somersloopBuildCost }} / building</div>
+      </div>
+    </template>
     <template v-if="group.type === ItemType.Product">
       <div>
         <v-chip
@@ -145,6 +197,7 @@
             class="inline-inputs"
             control-variant="stacked"
             density="compact"
+            :disabled="building === 'alienpoweraugmenter'"
             hide-details
             hide-spin-buttons
             :min="0"
@@ -187,6 +240,7 @@
             class="inline-inputs"
             control-variant="stacked"
             density="compact"
+            :disabled="building === 'alienpoweraugmenter'"
             hide-details
             hide-spin-buttons
             :min="0"
@@ -220,6 +274,9 @@
           <span :id="`${factory.id}-${group.id}-power`" class="ml-2">
             {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
           </span>
+          <span v-if="groupHasVariableProduction" :id="`${factory.id}-${group.id}-power-range`" class="ml-1">
+            ({{ formatPower(group.powerProducedMin ?? 0).value }} {{ formatPower(group.powerProducedMin ?? 0).unit }} – {{ formatPower(group.powerProducedMax ?? 0).value }} {{ formatPower(group.powerProducedMax ?? 0).unit }})
+          </span>
         </v-chip>
         <div class="underchip">&nbsp;</div>
       </div>
@@ -239,8 +296,10 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
+  import { canBuildingOverclock } from '@/utils/factory-management/common'
   import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
   import {
+    getSomersloopBuildCost,
     getSomersloopOutputMultiplier,
     getSomersloopSlots,
     sanitizeGroupSomersloops,
@@ -282,6 +341,12 @@
   const groupHasVariablePower = computed(() => {
     return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage
   })
+
+  const groupHasVariableProduction = computed(() => {
+    return props.group.powerProducedMax !== undefined && props.group.powerProducedMax !== props.group.powerProduced
+  })
+
+  const somersloopBuildCost = computed(() => getSomersloopBuildCost(props.building))
 
   const somersloopBoostPercent = computed(() => {
     return formatNumberFully((getSomersloopOutputMultiplier(props.group, props.building) - 1) * 100)
@@ -408,6 +473,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Alien Power Augmenter circuit boost colour
+.text-boost {
+  color: #9f6d9f;
+}
+
 .underchip {
   display: flex;
   align-items: center;

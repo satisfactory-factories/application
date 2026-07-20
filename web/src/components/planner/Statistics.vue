@@ -78,9 +78,10 @@
   const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'false'
   const statisticsProductsHidden = localStorage.getItem('statisticsProductsHidden') ?? 'false'
 
-  // Initialize the 'hidden' refs based on the value in localStorage
-  const hidden = ref<boolean>(Boolean(statisticsHidden))
-  const hiddenProducts = ref<boolean>(Boolean(statisticsProductsHidden))
+  // Initialize the 'hidden' refs based on the value in localStorage.
+  // Compare against the string — Boolean('false') is true, which hid the section for fresh visitors.
+  const hidden = ref<boolean>(statisticsHidden === 'true')
+  const hiddenProducts = ref<boolean>(statisticsProductsHidden === 'true')
 
   // Watch the 'hidden' ref and update localStorage whenever it changes
   watch(hidden, newValue => {

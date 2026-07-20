@@ -27,11 +27,11 @@
         </tooltip>
         <span :id="`${idPrefix}-power-shards-total`" class="ml-1">{{ getTotalPowerShards(item.buildingGroups) }}</span>
       </span>
-      <span v-if="type === ItemType.Product" class="ml-3 d-inline-flex align-center">
-        <tooltip text="Total Somersloops used by this product's Building Groups">
+      <span v-if="type === ItemType.Product || somersloopBuildCost > 0" class="ml-3 d-inline-flex align-center">
+        <tooltip :text="somersloopTooltip">
           <game-asset height="18px" subject="somersloop" type="item_id" width="18px" />
         </tooltip>
-        <span :id="`${idPrefix}-somersloops-total`" class="ml-1">{{ getTotalSomersloops(item.buildingGroups) }}</span>
+        <span :id="`${idPrefix}-somersloops-total`" class="ml-1">{{ getTotalSomersloops(item.buildingGroups, building) }}</span>
       </span>
     </v-btn>
     <div v-if="item.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="item.buildingGroupsHaveProblem ? 'problem' : ''">
@@ -49,7 +49,7 @@
   import { computed } from 'vue'
   import { Factory, FactoryItem, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
-  import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
+  import { getSomersloopBuildCost, getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 
   const props = defineProps<{
     factory: Factory
@@ -61,6 +61,13 @@
   }>()
 
   const itemNoun = computed(() => props.type === ItemType.Product ? 'product' : 'producer')
+
+  const somersloopBuildCost = computed(() => getSomersloopBuildCost(props.building))
+
+  const somersloopTooltip = computed(() => somersloopBuildCost.value > 0
+    ? `Total Somersloops consumed constructing this ${itemNoun.value}'s buildings (${somersloopBuildCost.value} each)`
+    : "Total Somersloops used by this product's Building Groups",
+  )
 
   const introTooltip = computed(() => props.type === ItemType.Product
     ? "Building Groups turn this product's abstract building count into the real machines you'd build in-game: sets of identical buildings, each group with its own building count, overclock % and Somersloops.<br>Use them to plan your exact layout and see true per-group part rates and power usage."

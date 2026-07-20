@@ -57,7 +57,7 @@
         />
       </div>
       <div class="input-row d-flex align-center">
-        <span v-if="producer.recipe" class="mr-2">
+        <span v-if="producer.recipe && getItemFromFuelRecipe(producer.recipe)" class="mr-2">
           <game-asset
             :key="producer.recipe"
             clickable
@@ -76,14 +76,14 @@
           :disabled="!producer.building"
           hide-details
           :items="getRecipesForPowerProducerSelector(producer.building)"
-          label="Fuel"
+          :label="producer.building === 'geothermalgenerator' ? 'Node Purity' : 'Fuel'"
           max-width="235px"
           variant="outlined"
           width="235px"
           @update:model-value="updatePowerProducerSelection('recipe', producer, factory)"
         />
       </div>
-      <div class="input-row d-flex align-center">
+      <div v-if="!isFuellessProducer(producer)" class="input-row d-flex align-center">
         <v-number-input
           :id="`${factory.id}-${producer.id}-fuel-quantity`"
           v-model="producer.fuelAmount"
@@ -98,13 +98,15 @@
           @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Fuel, producer, factory)"
         />
       </div>
-      <div class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
+      <div v-if="!isFuellessProducer(producer)" class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
+        <!-- Fuel-less generators output fixed steps of power per building, so the MW value
+             cannot be freely dialled in — it is display-only for them. -->
         <v-number-input
           :id="`${factory.id}-${producer.id}-power-amount`"
           v-model="producer.powerAmount"
           control-variant="stacked"
-          :disabled="!producer.recipe"
+          :disabled="!producer.recipe || isFuellessProducer(producer)"
           hide-details
           label="MW"
           :min="0"
@@ -122,6 +124,10 @@
           <i class="fas fa-bolt" />
           <i class="fas fa-plus" />
           <span class="ml-2">{{ formatPower(producer.powerAmount).value }} {{ formatPower(producer.powerAmount).unit }}</span>
+          <template v-if="producerHasVariablePower(producer)">
+            <span class="ml-1">({{ formatPower(producerPowerRange(producer).min).value }} {{ formatPower(producerPowerRange(producer).min).unit }} – {{ formatPower(producerPowerRange(producer).max).value }} {{ formatPower(producerPowerRange(producer).max).unit }})</span>
+            <tooltip-info text="This generator's output oscillates between a minimum and maximum over a one-minute cycle. The main figure is the average." />
+          </template>
         </v-chip>
       </div>
     </div>
@@ -156,6 +162,17 @@
       </div>
       <div class="d-flex align-center">
         <p class="mr-2">Requires:</p>
+        <v-chip
+          v-if="isFuellessProducer(producer) && producer.ingredients[0]"
+          :id="`${factory.id}-${producer.id}-matrix-demand`"
+          class="sf-chip blue input"
+          variant="tonal"
+        >
+          <tooltip :text="getPartDisplayName(producer.ingredients[0].part)">
+            <game-asset clickable :subject="producer.ingredients[0].part" type="item" />
+          </tooltip>
+          <span class="ml-2 mr-4"><b>{{ formatNumber(producer.ingredients[0].perMin) }}</b>/min</span>
+        </v-chip>
         <v-chip
           v-if="producer.ingredients[1]"
           class="sf-chip blue input"
@@ -206,8 +223,10 @@
         </span>
       </div>
     </div>
+    <!-- Geothermal generators have no overclock, fuel or somersloops — building groups
+         would only echo the building count, so they are hidden entirely. -->
     <building-groups-section
-      v-if="producer.building"
+      v-if="producer.building && producer.building !== 'geothermalgenerator'"
       :building="producer.building"
       :factory="factory"
       :id-prefix="`${factory.id}-power-${producerIndex}`"
@@ -217,7 +236,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { formatPower } from '@/utils/numberFormatter'
+  import { formatNumber, formatPower } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'
@@ -276,8 +295,9 @@
       // Each recipe has a bit of a weird displayName where it repeats the building name and the item it's using.
       // We want to shorten this to just the item name.
       // E.g. "Nuclear Power Plant (Ficsonium Fuel Rod) -> Ficsonium Fuel Rod"
+      // Fuel-less recipes (e.g. Alien Power Augmenter) have no parenthesised item.
       return {
-        title: recipe.displayName.split('(')[1].split(')')[0],
+        title: recipe.displayName.includes('(') ? recipe.displayName.split('(')[1].split(')')[0] : recipe.displayName,
         value: recipe.id,
       }
     })
@@ -289,7 +309,34 @@
       return ''
     }
 
-    return fuelRecipe.ingredients[0].part
+    return fuelRecipe.ingredients[0]?.part ?? ''
+  }
+
+  // Geothermal Generators and Alien Power Augmenters have no fuel input.
+  const isFuellessProducer = (producer: FactoryPowerProducer): boolean => {
+    if (!producer.recipe) {
+      return false
+    }
+
+    return (getPowerRecipeById(producer.recipe)?.ingredients.length ?? 0) === 0
+  }
+
+  // Min/max output across the groups for variable-output generators (Geothermal).
+  const producerPowerRange = (producer: FactoryPowerProducer) => {
+    let min = 0
+    let max = 0
+
+    producer.buildingGroups.forEach(group => {
+      min += group.powerProducedMin ?? group.powerProduced
+      max += group.powerProducedMax ?? group.powerProduced
+    })
+
+    return { min, max }
+  }
+
+  const producerHasVariablePower = (producer: FactoryPowerProducer) => {
+    const range = producerPowerRange(producer)
+    return range.max !== range.min
   }
 
   const updatePowerProducerSelection = (source: 'building' | 'recipe', producer: FactoryPowerProducer, factory: Factory) => {

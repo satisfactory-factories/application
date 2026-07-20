@@ -12,7 +12,7 @@ import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import eventBus from '@/utils/eventBus'
-import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
+import { canBuildingOverclock, getPowerRecipe, getRecipe, isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import { CalculationModes } from '@/utils/factory-management/factory'
@@ -33,8 +33,9 @@ export const addBuildingGroup = (
   // This is done from within each method as there's different ways of accessing the building counts.
   const addBuildings = item.buildingGroups.length === 0
 
-  // If we have a second group, we need to disable sync.
-  if (item.buildingGroups.length > 0) {
+  // If we have a second group, we need to disable sync. Exception: always-synced
+  // buildings (fuel-less generators) have nothing to fine-tune, so sync stays on.
+  if (item.buildingGroups.length > 0 && !isAlwaysSyncedBuilding(getItemBuilding(item, type))) {
     item.buildingGroupItemSync = false
   } else {
     // We always want sync enabled for the first group.
@@ -110,8 +111,9 @@ export const calculateEffectiveBuildingCount = (buildingGroups: BuildingGroup[],
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
     const sloopMultiplier = getSomersloopOutputMultiplier(group, building)
-    // Remember it is a percentage so we need to divide by 100
-    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100 * sloopMultiplier)
+    // Remember it is a percentage so we need to divide by 100. Clocks support 4 decimal
+    // places, so keep the full precision here (e.g. 223.33% must stay 2.2333, not 2.233).
+    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100 * sloopMultiplier, 4)
   }
 
   return formatNumberFully(effectiveBuildingCount, 4)
@@ -213,12 +215,22 @@ export const calculatePowerProducerBuildingGroupPower = (
       throw new Error(`productBuildingGroups: calculatePowerProducerBuildingGroupPower: Power recipe not found! ${recipe}`)
     }
 
-    const productionPerBuilding = powerRecipe.building.power * group.buildingCount
+    // Fuel-less generators (Geothermal, Alien Power Augmenter) have no shard slots.
+    if (!canBuildingOverclock(powerRecipe.building.name)) {
+      group.overclockPercent = 100
+    }
 
     // Power production for power producers is a bit different, it is a flat 1:1 ratio
-    const totalProduction = productionPerBuilding * group.overclockPercent / 100
+    const clockedBuildings = group.buildingCount * group.overclockPercent / 100
 
-    group.powerProduced = formatNumberFully(totalProduction, 4)
+    group.powerProduced = formatNumberFully(powerRecipe.building.power * clockedBuildings, 4)
+    // Variable-output generators (Geothermal) oscillate between min and max around the average.
+    group.powerProducedMin = powerRecipe.building.minPower !== undefined
+      ? formatNumberFully(powerRecipe.building.minPower * clockedBuildings, 4)
+      : group.powerProduced
+    group.powerProducedMax = powerRecipe.building.maxPower !== undefined
+      ? formatNumberFully(powerRecipe.building.maxPower * clockedBuildings, 4)
+      : group.powerProduced
   })
 }
 
@@ -305,13 +317,25 @@ export const calculateBuildingGroupParts = (
       }
     } else if (type === ItemType.Power) {
       const subject = item as FactoryPowerProducer
+      const recipe = getPowerRecipe(subject.recipe, gameData)
+      if (!recipe) {
+        throw new Error('productBuildingGroups: calculateBuildingGroupParts: Recipe not found!')
+      }
+
+      // Alien Power Augmenter: matrix demand belongs only to the groups toggled to
+      // supply matrixes — it must not be spread across all buildings like regular fuel.
+      if (recipe.boost) {
+        const boost = recipe.boost
+        item.buildingGroups.forEach(group => {
+          group.parts = group.supplyMatrixes
+            ? { [boost.fuelPart]: formatNumberFully(boost.fuelRatePerMin * group.buildingCount, 3) }
+            : {}
+        })
+        continue
+      }
 
       // If ingredients are missing, fill them now
       if (subject.ingredients.length === 0) {
-        const recipe = getPowerRecipe(subject.recipe, gameData)
-        if (!recipe) {
-          throw new Error('productBuildingGroups: calculateBuildingGroupParts: Recipe not found!')
-        }
         subject.ingredients = recipe.ingredients
       }
 
@@ -392,9 +416,17 @@ export const syncBuildingGroups = (
   // Ensure the math is right in all cases
   recalculateGroupMetrics(item, groupType, factory)
 
+  // Recalculations treat building groups as SACROSANCT: the user may have spent a lot of
+  // time crafting exact counts and clocks, so they are never rebalanced — item quantities
+  // are adjusted to match the groups instead (see calculateFactory).
+  if (modes.origin === 'recalculate') {
+    return
+  }
+
   // If originating from the item, cause a rebalance.
   if (modes.forceRebalance || (modes.origin !== 'buildingGroup' && item.buildingGroupItemSync)) {
     const building = getItemBuilding(item, groupType)
+    const groups = item.buildingGroups
     let targetBuildings: number
 
     // If the update was triggered from the building group, we need to use the totalled building count derived from the building groups.
@@ -402,8 +434,21 @@ export const syncBuildingGroups = (
       targetBuildings = calculateEffectiveBuildingCount(item.buildingGroups, building)
     } else {
       targetBuildings = getBuildingCount(item, groupType)
+
+      // If the groups already fulfil the item exactly (within float noise), leave them
+      // exactly as configured — a rebalance would stomp custom counts and clocks for no
+      // benefit. Any real change to the item's requirement still rebalances. Groups with
+      // fractional building counts are excluded: those are freshly derived from the item
+      // and still need normalizing into whole buildings with an underclock.
+      const groupsAreWholeBuildings = groups.every(group => Number.isInteger(group.buildingCount))
+      if (
+        !modes.forceRebalance &&
+        groupsAreWholeBuildings &&
+        Math.abs(calculateEffectiveBuildingCount(groups, building) - targetBuildings) <= 0.001
+      ) {
+        return
+      }
     }
-    const groups = item.buildingGroups
 
     // Divide the target equally among groups. The target is in output-effective
     // buildings, so a group's somersloop boost reduces the physical buildings it needs.
