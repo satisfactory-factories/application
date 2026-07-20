@@ -11,6 +11,13 @@ const nonProductionBuildings = new Set([
     'factorygame',
 ]);
 
+// Generators without an mFuel entry, mapped from buildable ClassName to the normalized
+// building name used across the game data. They produce power rather than consume it.
+const fuellessGenerators = new Map([
+    ['Build_GeneratorGeoThermal_C', 'geothermalgenerator'],
+    ['Build_AlienPowerBuilding_C', 'alienpoweraugmenter'],
+]);
+
 function getProducingBuildings(data: any[]): string[] {
     const producingBuildingsSet = new Set<string>();
 
@@ -48,6 +55,11 @@ function getProducingBuildings(data: any[]): string[] {
                 }
                 producingBuildingsSet.add(name)
             }
+            // Fuel-less generators (Geothermal, Alien Power Augmenter) have no mFuel, so
+            // they must be picked up from their buildable descriptors directly.
+            if (entry.ClassName && fuellessGenerators.has(entry.ClassName)) {
+                producingBuildingsSet.add(fuellessGenerators.get(entry.ClassName) as string)
+            }
         });
 
     return Array.from(producingBuildingsSet);  // Convert Set to an array
@@ -80,10 +92,13 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
     // per-recipe from mVariablePowerConsumption fields. Power generators (which also
     // have 0 power) are excluded — they legitimately produce power rather than consume it.
     const generatorPrefix = 'generator';
+    const generatorNames = new Set(fuellessGenerators.values());
+    const isGenerator = (buildingName: string) =>
+        buildingName.startsWith(generatorPrefix) || generatorNames.has(buildingName);
     producingBuildings.forEach((buildingName: string) => {
         if (!Object.prototype.hasOwnProperty.call(buildingsPowerMap, buildingName)) {
-            buildingsPowerMap[buildingName] = buildingName.startsWith(generatorPrefix) ? 0 : 0.1;
-        } else if (buildingsPowerMap[buildingName] === 0 && !buildingName.startsWith(generatorPrefix)) {
+            buildingsPowerMap[buildingName] = isGenerator(buildingName) ? 0 : 0.1;
+        } else if (buildingsPowerMap[buildingName] === 0 && !isGenerator(buildingName)) {
             buildingsPowerMap[buildingName] = 0.1;
         }
     });

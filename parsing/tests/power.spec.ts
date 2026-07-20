@@ -146,6 +146,49 @@ describe('Power Parsing', () => {
             expect(recipe.building.name).toBe('generatornuclear');
             expect(recipe.building.power).toBe(2500);
         })
+
+        // ==== FUEL-LESS GENERATORS
+        it('should generate the three geothermal purity recipes with oscillation ranges', () => {
+            const purities = [
+                { id: 'GeneratorGeoThermal_Impure', displayName: 'Geothermal Generator (Impure)', power: 100, minPower: 50, maxPower: 150 },
+                { id: 'GeneratorGeoThermal_Normal', displayName: 'Geothermal Generator (Normal)', power: 200, minPower: 100, maxPower: 300 },
+                { id: 'GeneratorGeoThermal_Pure', displayName: 'Geothermal Generator (Pure)', power: 400, minPower: 200, maxPower: 600 },
+            ];
+
+            purities.forEach(expected => {
+                const recipe : ParserPowerRecipe = results.powerGenerationRecipes.find((item: { id: string }) => item.id === expected.id);
+
+                expect(recipe.displayName).toBe(expected.displayName);
+                expect(recipe.ingredients).toEqual([]);
+                expect(recipe.byproduct).toBe(null);
+                expect(recipe.building.name).toBe('geothermalgenerator');
+                expect(recipe.building.power).toBe(expected.power);
+                expect(recipe.building.minPower).toBe(expected.minPower);
+                expect(recipe.building.maxPower).toBe(expected.maxPower);
+                expect(recipe.boost).toBeUndefined();
+            });
+        })
+
+        it('should generate the alien power augmenter recipe with boost metadata', () => {
+            const recipe : ParserPowerRecipe = results.powerGenerationRecipes.find((item: { id: string }) => item.id === 'AlienPowerAugmenter');
+
+            expect(recipe.displayName).toBe('Alien Power Augmenter');
+            expect(recipe.ingredients).toEqual([]);
+            expect(recipe.byproduct).toBe(null);
+            expect(recipe.building.name).toBe('alienpoweraugmenter');
+            expect(recipe.building.power).toBe(500);
+            expect(recipe.boost).toEqual({
+                base: 0.1,
+                fueled: 0.3,
+                fuelPart: 'AlienPowerFuel',
+                fuelRatePerMin: 5,
+            });
+        })
+
+        it('should register the fuel-less generators in the buildings map with zero consumption', () => {
+            expect(results.buildings.geothermalgenerator).toBe(0);
+            expect(results.buildings.alienpoweraugmenter).toBe(0);
+        })
     })
 
     describe('Missing fuel part handling', () => {

@@ -13,6 +13,18 @@ export interface ParserPowerRecipe {
   building: {
     name: string;
     power: number;
+    // Variable output generators (Geothermal) oscillate between minPower and maxPower;
+    // `power` is the average.
+    minPower?: number;
+    maxPower?: number;
+  }
+  // Alien Power Augmenter: grid-wide circuit boost metadata. `base` applies unfueled,
+  // `fueled` applies while fed `fuelPart` at `fuelRatePerMin` per building. Fractions (0.1 = 10%).
+  boost?: {
+    base: number;
+    fueled: number;
+    fuelPart: string;
+    fuelRatePerMin: number;
   }
 }
 

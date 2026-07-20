@@ -1,5 +1,6 @@
 {
     "buildings": {
+        "alienpoweraugmenter": 0,
         "assemblermk1": 15,
         "blender": 75,
         "constructormk1": 4,
@@ -9,6 +10,7 @@
         "generatorcoal": 0,
         "generatorfuel": 0,
         "generatornuclear": 0,
+        "geothermalgenerator": 0,
         "hadroncollider": 0.1,
         "manufacturermk1": 55,
         "oilrefinery": 30,
@@ -10296,6 +10298,22 @@
     ],
     "powerGenerationRecipes": [
         {
+            "id": "AlienPowerAugmenter",
+            "displayName": "Alien Power Augmenter",
+            "ingredients": [],
+            "byproduct": null,
+            "building": {
+                "name": "alienpoweraugmenter",
+                "power": 500
+            },
+            "boost": {
+                "base": 0.1,
+                "fueled": 0.3,
+                "fuelPart": "AlienPowerFuel",
+                "fuelRatePerMin": 5
+            }
+        },
+        {
             "id": "GeneratorBiomass_Automated_GenericBiomass",
             "displayName": "Biomass Burner (Biomass)",
             "ingredients": [
@@ -10532,6 +10550,42 @@
             "building": {
                 "name": "generatorfuel",
                 "power": 250
+            }
+        },
+        {
+            "id": "GeneratorGeoThermal_Impure",
+            "displayName": "Geothermal Generator (Impure)",
+            "ingredients": [],
+            "byproduct": null,
+            "building": {
+                "name": "geothermalgenerator",
+                "power": 100,
+                "minPower": 50,
+                "maxPower": 150
+            }
+        },
+        {
+            "id": "GeneratorGeoThermal_Normal",
+            "displayName": "Geothermal Generator (Normal)",
+            "ingredients": [],
+            "byproduct": null,
+            "building": {
+                "name": "geothermalgenerator",
+                "power": 200,
+                "minPower": 100,
+                "maxPower": 300
+            }
+        },
+        {
+            "id": "GeneratorGeoThermal_Pure",
+            "displayName": "Geothermal Generator (Pure)",
+            "ingredients": [],
+            "byproduct": null,
+            "building": {
+                "name": "geothermalgenerator",
+                "power": 400,
+                "minPower": 200,
+                "maxPower": 600
             }
         },
         {

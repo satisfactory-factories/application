@@ -183,6 +183,70 @@ function getProductionRecipes(
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+// Fuel-less power generators (Geothermal Generator, Alien Power Augmenter) have no mFuel
+// entry, so they can't flow through getPowerGeneratingRecipes. Their numbers live on the
+// buildable descriptors instead, and are emitted here as synthetic power recipes.
+const GEOTHERMAL_PURITIES = [
+    { id: 'Impure', multiplier: 0.5 },
+    { id: 'Normal', multiplier: 1 },
+    { id: 'Pure', multiplier: 2 },
+];
+
+function getSpecialPowerGeneratingRecipes(data: any[]): ParserPowerRecipe[] {
+    const recipes: ParserPowerRecipe[] = [];
+    const classes = data
+        .filter((entry: any) => entry.Classes)
+        .flatMap((entry: any) => entry.Classes);
+
+    const geothermal = classes.find((c: any) => c.ClassName === 'Build_GeneratorGeoThermal_C');
+    const augmenter = classes.find((c: any) => c.ClassName === 'Build_AlienPowerBuilding_C');
+    const matrixFuel = classes.find((c: any) => c.ClassName === 'Desc_AlienPowerFuel_C');
+
+    if (geothermal) {
+        // mVariablePowerProductionFactor is the average output on a Normal purity geyser;
+        // purity halves or doubles it, and the output oscillates 0.5x-1.5x around the average.
+        const normalAverage = Number(geothermal.mVariablePowerProductionFactor);
+        GEOTHERMAL_PURITIES.forEach(purity => {
+            const average = normalAverage * purity.multiplier;
+            recipes.push({
+                id: `GeneratorGeoThermal_${purity.id}`,
+                displayName: `${geothermal.mDisplayName} (${purity.id})`,
+                ingredients: [],
+                byproduct: null,
+                building: {
+                    name: 'geothermalgenerator',
+                    power: average,
+                    minPower: average * 0.5,
+                    maxPower: average * 1.5,
+                },
+            });
+        });
+    }
+
+    if (augmenter && matrixFuel) {
+        const baseBoost = Number(augmenter.mBaseBoostPercentage);
+        // mBoostDuration is in seconds per matrix, so 12s -> 5/min per augmenter.
+        recipes.push({
+            id: 'AlienPowerAugmenter',
+            displayName: augmenter.mDisplayName,
+            ingredients: [],
+            byproduct: null,
+            building: {
+                name: 'alienpoweraugmenter',
+                power: Number(augmenter.mBasePowerProduction),
+            },
+            boost: {
+                base: baseBoost,
+                fueled: Number((baseBoost + Number(matrixFuel.mBoostPercentage)).toFixed(4)),
+                fuelPart: getPartName(matrixFuel.ClassName),
+                fuelRatePerMin: 60 / Number(matrixFuel.mBoostDuration),
+            },
+        });
+    }
+
+    return recipes;
+}
+
 function getPowerGeneratingRecipes(
     data: any[],
     parts: ParserItemDataInterface
@@ -275,6 +339,9 @@ function getPowerGeneratingRecipes(
                 });
             });
         });
+
+    recipes.push(...getSpecialPowerGeneratingRecipes(data));
+
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
