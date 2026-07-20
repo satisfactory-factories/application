@@ -24,56 +24,89 @@
     margin: 0 !important;
   }
 
+  // All colours below resolve to the --sf-* custom properties published from
+  // src/utils/colors.ts (the single source of truth). Each rule pairs the legacy
+  // colour-name class with its semantic alias so both spellings work; prefer the
+  // semantic one (e.g. `.product` over `.blue`) in new markup.
   &.nocolor {
     color: white !important;
-    border-color: #7f7f7f !important;
+    border-color: var(--sf-grey-border) !important;
   }
 
-  &.red {
-    color: #f44336 !important;
-    border-color: #f44336 !important;
+  // Status
+  &.red, &.error {
+    color: var(--sf-error) !important;
+    border-color: var(--sf-error-border) !important;
   }
 
-  &.blue {
-    color: rgb(33, 150, 243) !important;
-    border-color: rgb(1, 111, 204) !important;
+  &.green, &.success {
+    color: var(--sf-success) !important;
+    border-color: var(--sf-success-border) !important;
   }
 
-  &.cyan {
-    color: rgb(163, 206, 255) !important;
-    border-color: rgb(75, 151, 223) !important;
+  // A reference to a factory (import/export links, export requests, summary rows).
+  // Shares its background with the factory card header (--sf-factory-bg) so the two match.
+  &.factory {
+    color: var(--sf-factory) !important;
+    border-color: var(--sf-factory-border) !important;
+    background-color: var(--sf-factory-bg);
   }
 
-  &.orange {
-    color: #f57f17 !important;
-    border-color: rgb(167, 86, 0) !important
+  // Items & flows
+  &.blue, &.product {
+    color: var(--sf-product) !important;
+    border-color: var(--sf-product-border) !important;
+  }
+
+  &.byproduct {
+    color: var(--sf-byproduct) !important;
+    border-color: var(--sf-byproduct-border) !important;
+  }
+
+  &.cyan, &.raw-resource {
+    color: var(--sf-raw-resource) !important;
+    border-color: var(--sf-raw-resource-border) !important;
+  }
+
+  &.orange, &.building {
+    color: var(--sf-building) !important;
+    border-color: var(--sf-building-border) !important;
+  }
+
+  &.import {
+    color: var(--sf-import) !important;
+    border-color: var(--sf-import-border) !important;
   }
 
   &.yellow {
-    color: #fbc02d !important;
-    border-color: rgb(172, 153, 2) !important
+    color: var(--sf-yellow) !important;
+    border-color: var(--sf-yellow-border) !important;
   }
 
-  &.green {
-    color: #4caf50 !important;
-    border-color: #4caf50 !important;
+  &.sloop, &.somersloop {
+    color: var(--sf-somersloop) !important;
+    border-color: var(--sf-somersloop-border) !important;
   }
 
-  &.sloop {
-    color: #bd67ff !important;
-    border-color: #9a1df6 !important;
+  // Power — generation / consumption / peak draw / Alien Power Augmenter boost.
+  &.generation {
+    color: var(--sf-power-generation) !important;
+    border-color: var(--sf-power-generation-border) !important;
   }
 
-  // Alien Power Augmenter circuit boost
-  &.boost {
-    color: #9f6d9f !important;
-    border-color: #9f6d9f !important;
+  &.consumption {
+    color: var(--sf-power-consumption) !important;
+    border-color: var(--sf-power-consumption-border) !important;
   }
 
-  // Peak draw of variable-power buildings
-  &.max-consumption {
-    color: #5cb0c5 !important;
-    border-color: #5cb0c5 !important;
+  &.boost, &.circuit-boost {
+    color: var(--sf-circuit-boost) !important;
+    border-color: var(--sf-circuit-boost-border) !important;
+  }
+
+  &.max-consumption, &.peak-consumption {
+    color: var(--sf-peak-consumption) !important;
+    border-color: var(--sf-peak-consumption-border) !important;
   }
 
   &.no-border {
@@ -96,8 +129,10 @@
   }
 }
 
+// Note: this deliberately overrides Vuetify's built-in text-cyan so text and chips
+// share the one raw-resource colour.
 .text-cyan {
-    color: rgb(163, 206, 255) !important;
+    color: var(--sf-raw-resource) !important;
 }
 
 .selectors {
@@ -154,7 +189,7 @@
     border-bottom: 1px solid rgb(108, 108, 108) !important;
     align-items: center;
     transition: background-color 0.3s;
-    background-color: rgba(43, 43, 43, 0.4);
+    background-color: var(--sf-factory-bg); // Shared with .sf-chip.factory
 
     &.list {
       padding: 0 !important;
@@ -163,15 +198,15 @@
   }
 
   &.problem {
-    border: 2px solid #a00 !important;
+    border: 2px solid var(--sf-problem-border) !important;
 
     .header {
-      background-color: rgba(140, 9, 21, 0.4);
+      background-color: var(--sf-problem-bg);
     }
   }
 
   &.needsSync {
-    border: 2px solid rgb(167, 86, 0) !important;
+    border: 2px solid var(--sf-building-border) !important;
 
     .header {
       background-color: rgba(255, 136, 0, 0.16);
@@ -179,7 +214,7 @@
   }
 
   &.inSync {
-    border: 2px solid #4caf50 !important;
+    border: 2px solid var(--sf-success) !important;
 
     .header {
       background-color: rgba(76, 175, 80, 0.16);
@@ -260,7 +295,7 @@
 }
 
 .factory-item {
-  border-left: 5px solid #2196f3 !important;
+  border-left: 5px solid var(--sf-blue) !important;
   position: relative;
 }
 
@@ -292,10 +327,10 @@
 }
 
 .buildingGroups {
-  border-left: 5px solid #4caf50 !important;
+  border-left: 5px solid var(--sf-success) !important;
   padding-left: 10px;
 
   &.problem {
-    border-left-color: #f44336 !important;
+    border-left-color: var(--sf-error) !important;
   }
 }

@@ -212,4 +212,7 @@ export interface FactoryTab {
   id: string;
   name: string;
   factories: Factory[];
+  // The user's arbitrary grid generation target (MW) for this plan. Optional so
+  // older saved tabs load cleanly; defaults to 0 when absent.
+  powerTarget?: number;
 }

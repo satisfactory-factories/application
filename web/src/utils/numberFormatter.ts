@@ -36,6 +36,11 @@ export function formatMw (value: number): string {
   return `${Number(formatNumber(value, 1)).toLocaleString('en-US')}\u00A0MW`
 }
 
+// Always renders in gigawatts (value supplied in MW), for compact power chips.
+export function formatGw (value: number): string {
+  return `${Number(formatNumber(value / 1000, 2)).toLocaleString('en-US')}\u00A0GW`
+}
+
 // Returns a number formatted in the value of megawatts or gigawatts. If supplied GW, the number is divided by 1000.
 export function formatPower (value: number): { value: string, unit: string } {
   let formattedValue = formatNumber(value, 1)

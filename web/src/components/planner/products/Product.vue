@@ -123,7 +123,7 @@
           v-for="byProduct in product.byProducts"
           :key="byProduct.id"
         >
-          <v-chip class="sf-chip input unit">
+          <v-chip class="sf-chip input unit byproduct">
             <tooltip :text="getPartDisplayName(byProduct.id)">
               <game-asset clickable :subject="String(byProduct.id)" type="item" />
             </tooltip>

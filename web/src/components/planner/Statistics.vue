@@ -1,5 +1,5 @@
 <template>
-  <v-row>
+  <v-row id="statistics">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">

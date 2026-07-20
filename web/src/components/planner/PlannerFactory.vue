@@ -13,7 +13,7 @@
               >
             </div>
             <!-- chips bar -->
-            <div class="d-flex align-center mt-1">
+            <div class="d-flex align-center flex-wrap mt-1">
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)" class="mr-2">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
@@ -67,6 +67,33 @@
               </div>
               <!-- sync status tooltip -->
               <tooltip-info text="Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory's products are changed, the factory will be out of sync, or if you set it manually." />
+              <!-- power difference chip -->
+              <tooltip
+                v-if="factoryPowerDifference !== 0"
+                :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
+              >
+                <v-chip
+                  class="sf-chip small no-margin ml-2"
+                  :class="factoryPowerDifference > 0 ? 'yellow' : 'consumption'"
+                >
+                  <i class="fas fa-bolt" />
+                  <span class="ml-2">{{ factoryPowerDifference > 0 ? '+' : '' }}{{ powerDiffDisplay }}</span>
+                </v-chip>
+              </tooltip>
+              <!-- somersloops chip -->
+              <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
+                <v-chip class="sf-chip small sloop no-margin ml-2">
+                  <game-asset height="18" subject="somersloop" type="item_id" width="18" />
+                  <span class="ml-2">{{ factorySomersloops }}</span>
+                </v-chip>
+              </tooltip>
+              <!-- power shards chip -->
+              <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
+                <v-chip class="sf-chip small yellow no-margin ml-2">
+                  <game-asset height="18" subject="power-shard" type="item_id" width="18" />
+                  <span class="ml-2">{{ factoryPowerShards }}</span>
+                </v-chip>
+              </tooltip>
             </div>
           </v-col>
           <v-col class="text-right pt-0 pt-md-3" cols="auto" md="4">
@@ -172,45 +199,46 @@
             class="text-body-1 py-2 px-4 pb-1"
             :class="factory.products.length > 0 ? 'border-b-md' : ''"
           >
-            <div class="d-flex align-center">
+            <div class="d-flex align-center flex-wrap">
               <p class="mr-2">Imports:</p>
               <div
-                v-for="(input, inputIndex) in factory.inputs"
-                :key="inputIndex"
-                class="mr-2 pl-2 no-bottom rounded factory-link"
-                @click="navigateToFactory(input.factoryId as number)"
+                v-for="[inputFactoryId, inputs] in groupedInputs"
+                :key="inputFactoryId"
+                class="factory-group-chip clickable mr-2"
+                @click="navigateToFactory(inputFactoryId)"
               >
-                <template v-if="input.factoryId">
-                  <i class="fas fa-industry" />
-                  <span class="ml-2">
-                    <b>{{ findFactory(input.factoryId as number).name }}:</b>
-                  </span>
-                  <v-chip
-                    class="sf-chip blue ml-2"
-                  >
-                    <game-asset
-                      v-if="input.outputPart"
-                      clickable
-                      height="32"
-                      :subject="input.outputPart"
-                      type="item"
-                      width="32"
-                    />
-                    <span class="ml-2"><b>{{ getPartDisplayName(input.outputPart) }}:</b> {{ formatNumber(input.amount) }}/min</span>
-                  </v-chip>
-                </template>
-              </div>
-              <div
-                v-for="(resource, resourceKey) in factory.rawResources"
-                :key="resourceKey"
-                class="mr-2 pl-2 no-bottom rounded"
-              >
-                <i class="fas fa-hard-hat" />
-                <span class="ml-2">
-                  <b>{{ "Raw Resource(s)" }}:</b>
+                <i class="fas fa-industry ml-1" />
+                <span class="mx-2">
+                  <b>{{ findFactory(inputFactoryId).name }}</b>
                 </span>
                 <v-chip
-                  class="sf-chip blue ml-2"
+                  v-for="input in inputs"
+                  :key="`${inputFactoryId}-${input.outputPart}`"
+                  class="sf-chip small import no-margin ml-1"
+                >
+                  <game-asset
+                    v-if="input.outputPart"
+                    clickable
+                    height="32"
+                    :subject="input.outputPart"
+                    type="item"
+                    width="32"
+                  />
+                  <span class="ml-2"><b>{{ getPartDisplayName(input.outputPart) }}:</b> {{ formatNumber(input.amount) }}/min</span>
+                </v-chip>
+              </div>
+              <div
+                v-if="Object.keys(factory.rawResources).length > 0"
+                class="factory-group-chip mr-2"
+              >
+                <i class="fas fa-hard-hat ml-1" />
+                <span class="mx-2">
+                  <b>Raw Resources</b>
+                </span>
+                <v-chip
+                  v-for="(resource, resourceKey) in factory.rawResources"
+                  :key="resourceKey"
+                  class="sf-chip small raw-resource no-margin ml-1"
                 >
                   <game-asset
                     v-if="resource.id"
@@ -230,24 +258,24 @@
             :class="hasExports(factory) ? 'border-b-md' : ''"
           >
             <p v-if="factory.products.length === 0" class="text-body-1">Empty factory! Select a product!</p>
-            <div v-else>
-              <p class="text-body-1 d-inline-block mr-2">Producing: </p>
+            <div v-else class="d-flex align-center flex-wrap">
+              <p class="text-body-1 mr-2">Producing: </p>
               <template v-for="part in factory.products">
                 <v-chip
                   v-if="factory.parts[part.id]"
                   :key="`${factory.id}-${part.id}`"
-                  class="sf-chip"
-                  :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : ''"
+                  class="sf-chip small no-margin mr-2 my-1"
+                  :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : 'product'"
                 >
-                  <span class="mr-2">
-                    <game-asset
-                      v-if="part.id"
-                      clickable
-                      :subject="part.id"
-                      type="item"
-                    />
-                  </span>
-                  <span>
+                  <game-asset
+                    v-if="part.id"
+                    clickable
+                    height="32"
+                    :subject="part.id"
+                    type="item"
+                    width="32"
+                  />
+                  <span class="ml-2">
                     <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
                   </span>
                   <span
@@ -264,22 +292,22 @@
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
             class="text-body-1 py-2 px-4 pb-1"
           >
-            <div class="d-flex align-center">
+            <div class="d-flex align-center flex-wrap">
               <p class="mr-2">Exports:</p>
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"
                 :key="dependant"
-                class="mr-2 pl-2 no-bottom rounded factory-link"
+                class="factory-group-chip clickable mr-2"
                 @click="navigateToFactory(dependant)"
               >
-                <i class="fas fa-industry" />
-                <span class="ml-2">
-                  <b>{{ findFactory(dependant).name }}:</b>
+                <i class="fas fa-industry ml-1" />
+                <span class="mx-2">
+                  <b>{{ findFactory(dependant).name }}</b>
                 </span>
                 <v-chip
                   v-for="part in factory.dependencies.requests[dependant]"
                   :key="part.part"
-                  class="sf-chip blue ml-2"
+                  class="sf-chip small product no-margin ml-1"
                 >
                   <game-asset
                     v-if="part.part"
@@ -302,11 +330,13 @@
 </template>
 
 <script setup lang="ts">
-  import { inject } from 'vue'
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { computed, inject } from 'vue'
+  import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
+  import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
+  import { formatMw, formatNumber, formatPower } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
 
@@ -316,13 +346,61 @@
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
   const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
 
-  defineProps<{
+  const props = defineProps<{
     factory: Factory
     helpText: boolean
     totalFactories: number;
   }>()
 
   const { smAndDown } = useDisplay()
+
+  // Header chips: net power and total somersloops / power shards across the whole
+  // factory (products + power producers).
+  const factoryPowerDifference = computed(() =>
+    (props.factory.power?.produced ?? 0) - (props.factory.power?.consumed ?? 0),
+  )
+
+  const powerDiffDisplay = computed(() => {
+    const { value, unit } = formatPower(factoryPowerDifference.value)
+    return `${value} ${unit}`
+  })
+
+  const factorySomersloops = computed(() => {
+    let total = 0
+    for (const product of props.factory.products) {
+      total += getTotalSomersloops(product.buildingGroups, product.buildingRequirements?.name)
+    }
+    for (const producer of props.factory.powerProducers) {
+      total += getTotalSomersloops(producer.buildingGroups, producer.building)
+    }
+    return total
+  })
+
+  const factoryPowerShards = computed(() => {
+    let total = 0
+    for (const product of props.factory.products) {
+      total += getTotalPowerShards(product.buildingGroups)
+    }
+    for (const producer of props.factory.powerProducers) {
+      total += getTotalPowerShards(producer.buildingGroups)
+    }
+    return total
+  })
+
+  // Collapsed view: one group chip per source factory, with all its imported parts inside.
+  const groupedInputs = computed<[number, FactoryInput[]][]>(() => {
+    const groups = new Map<number, FactoryInput[]>()
+    for (const input of props.factory.inputs) {
+      if (input.factoryId == null) continue
+      const existing = groups.get(input.factoryId)
+      if (existing) {
+        existing.push(input)
+      } else {
+        groups.set(input.factoryId, [input])
+      }
+    }
+    return [...groups.entries()]
+  })
 
   const factoryClass = (factory: Factory) => {
     return {
@@ -364,8 +442,21 @@
   }
 }
 
-.factory-link {
-  &:hover {
+// Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
+// imported from / exported to that factory. Shares the factory token + card header
+// background (see src/utils/colors.ts).
+.factory-group-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 2px solid var(--sf-factory-border);
+  border-radius: 28px;
+  background-color: var(--sf-factory-bg);
+  color: var(--sf-factory);
+  padding: 4px 6px 4px 10px;
+  margin: 4px 0;
+
+  &.clickable:hover {
     cursor: pointer;
     background-color: #323232;
   }

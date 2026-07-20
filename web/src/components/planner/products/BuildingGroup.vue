@@ -106,7 +106,7 @@
             :id="`${factory.id}-${group.id}-supply-matrixes`"
             v-model="group.supplyMatrixes"
             class="mx-2"
-            color="#9f6d9f"
+            :color="sfColors.circuitBoost.color"
             density="compact"
             hide-details
             label="Inject Matrices"
@@ -294,6 +294,7 @@
     ItemType,
   } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { sfColors } from '@/utils/colors'
   import { useDisplay } from 'vuetify'
   import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
   import { canBuildingOverclock } from '@/utils/factory-management/common'
@@ -473,9 +474,9 @@
 </script>
 
 <style lang="scss" scoped>
-// Alien Power Augmenter circuit boost colour
+// Alien Power Augmenter circuit boost colour (single source: src/utils/colors.ts)
 .text-boost {
-  color: #9f6d9f;
+  color: var(--sf-circuit-boost);
 }
 
 .underchip {

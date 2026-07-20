@@ -1,4 +1,60 @@
 <template>
+  <div v-show="show && factories.length > 0" class="factory-list section-links">
+    <!-- Statistics jump-link with an at-a-glance power summary. -->
+    <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit }">
+      <v-card
+        class="w-100 header list px-0 rounded-0"
+        style="box-shadow: none !important;"
+        @click="navigateToSection('statistics')"
+      >
+        <v-row class="d-flex flex-wrap ma-0 align-center">
+          <v-spacer class="d-flex align-center text-body-1 pa-2">
+            <i class="fas fa-chart-line mr-2" />
+            <span>Statistics</span>
+          </v-spacer>
+          <v-col class="d-flex align-center flex-wrap justify-end ga-1 py-1 px-2" cols="auto">
+            <tooltip :text="`Power generated: ${formatMw(totalPower.totalPowerProduced)}`">
+              <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
+                <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" />
+                <span class="ml-1">{{ formatGw(totalPower.totalPowerProduced) }}</span>
+              </v-chip>
+            </tooltip>
+            <tooltip :text="`Power consumed: ${formatMw(totalPower.totalPowerConsumed)}`">
+              <v-chip class="sf-chip x-small no-margin consumption" variant="tonal">
+                <i class="fas fa-bolt mr-1" /><i class="fas fa-minus" />
+                <span class="ml-1">{{ formatGw(totalPower.totalPowerConsumed) }}</span>
+              </v-chip>
+            </tooltip>
+            <tooltip :text="`Difference: ${formatMw(powerDifference)}`">
+              <v-chip
+                class="sf-chip x-small no-margin"
+                :class="powerDeficit ? 'error' : 'success'"
+                variant="tonal"
+              >
+                <i class="fas fa-balance-scale" />
+                <span class="ml-1">{{ formatGw(powerDifference) }}</span>
+              </v-chip>
+            </tooltip>
+          </v-col>
+        </v-row>
+      </v-card>
+    </div>
+    <!-- Factories Summary jump-link. -->
+    <div class="mb-1 rounded factory-card">
+      <v-card
+        class="w-100 header list px-0 rounded-0"
+        style="box-shadow: none !important;"
+        @click="navigateToSection('factory-summary')"
+      >
+        <v-row class="d-flex flex-nowrap ma-0 align-center">
+          <v-spacer class="d-flex align-center text-body-1 pa-2">
+            <i class="fas fa-list mr-2" />
+            <span>Factories Summary</span>
+          </v-spacer>
+        </v-row>
+      </v-card>
+    </div>
+  </div>
   <draggable
     v-show="show"
     v-model="factoriesCopy"
@@ -98,13 +154,16 @@
 </template>
 
 <script setup lang="ts">
-  import { inject, ref, watch } from 'vue'
+  import { computed, inject, ref, watch } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { countActiveTasks } from '@/utils/factory-management/factory'
+  import { calculateTotalPower } from '@/utils/statistics'
+  import { formatGw, formatMw } from '@/utils/numberFormatter'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
 
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
+  const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
 
   const emit = defineEmits<{
     (event: 'createFactory'): void;
@@ -116,6 +175,12 @@
     loadedFrom: string
   }>()
   const show = ref(compProps.loadedFrom !== 'planner')
+
+  // At-a-glance power figures for the Statistics jump-link. The difference is the grid
+  // headroom (generated − consumed); a deficit flags the entry red.
+  const totalPower = computed(() => calculateTotalPower(compProps.factories))
+  const powerDifference = computed(() => totalPower.value.totalPowerDifference)
+  const powerDeficit = computed(() => powerDifference.value < 0)
 
   const factoriesCopy = ref([...compProps.factories])
 
@@ -169,6 +234,17 @@
   .factory-card {
     .header {
       border-bottom: 0 !important;
+    }
+  }
+}
+
+.section-links {
+  .v-card {
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08);
     }
   }
 }

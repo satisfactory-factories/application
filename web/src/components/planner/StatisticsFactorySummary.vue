@@ -1,5 +1,5 @@
 <template>
-  <v-row>
+  <v-row id="factory-summary">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
@@ -64,7 +64,7 @@
                 @click="navigateToFactory(factory.id as number)"
               >
                 <td class="border-e-md">
-                  <v-chip class="sf-chip summary-chip factory-chip">
+                  <v-chip class="sf-chip summary-chip factory-chip factory">
                     <i class="fas fa-industry" />
                     <b class="ml-2">{{ factory.name }}</b>
                   </v-chip>
@@ -133,7 +133,7 @@
                         <div
                           v-for="source in summary.factories"
                           :key="`${factory.id}-import-${summary.part}-${source.factoryId}`"
-                          class="flow-factory text-cyan"
+                          class="flow-factory"
                           @click.stop="navigateToFactory(source.factoryId)"
                         >
                           <i class="fas fa-arrow-to-right" /> {{ getFactoryName(source.factoryId) }}
@@ -163,7 +163,7 @@
                         <div
                           v-for="destination in summary.factories"
                           :key="`${factory.id}-export-${summary.part}-${destination.factoryId}`"
-                          class="flow-factory text-cyan"
+                          class="flow-factory"
                           @click.stop="navigateToFactory(destination.factoryId)"
                         >
                           <i class="fas fa-truck-container" /> {{ getFactoryName(destination.factoryId) }}
@@ -304,7 +304,7 @@
         }
 
         &.problem td {
-          background-color: rgba(140, 9, 21, 0.4);
+          background-color: var(--sf-problem-bg);
         }
       }
 
@@ -359,6 +359,7 @@
     .flow-factory {
       font-size: 13px;
       line-height: 1.4;
+      color: var(--sf-factory); // Factory references share the factory token colour
 
       &:hover {
         text-decoration: underline;

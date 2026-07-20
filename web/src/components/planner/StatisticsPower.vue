@@ -235,25 +235,25 @@
     }
   }
 
-  // The circuit boost brand colour, used wherever the boost is represented.
+  // Semantic power colours — defined once in src/utils/colors.ts, published as --sf-*.
   .boost-row td {
-    color: #9f6d9f;
+    color: var(--sf-circuit-boost);
   }
 
   .generation-row td {
-    color: #9e9e9e;
+    color: var(--sf-power-generation);
   }
 
   .consumption-row td {
-    color: #e59344;
+    color: var(--sf-power-consumption);
 
     // Must out-rank the row-wide colour above.
     &.max-consumption {
-      color: #5cb0c5;
+      color: var(--sf-peak-consumption);
     }
   }
 
   .max-consumption {
-    color: #5cb0c5;
+    color: var(--sf-peak-consumption);
   }
 </style>

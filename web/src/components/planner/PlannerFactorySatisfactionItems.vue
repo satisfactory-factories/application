@@ -300,7 +300,7 @@
                 <v-chip
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="sf-chip small"
+                  class="sf-chip small factory"
                   :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
@@ -665,8 +665,8 @@ table {
         border-block: thin solid #4b4b4b !important;
 
         &.border-red {
-          background: rgba(128, 0, 0, 0.50) !important;
-          border-block: thin solid #b50000 !important;
+          background: var(--sf-problem-bg) !important;
+          border-block: thin solid var(--sf-problem-border) !important;
         }
 
         &.name {

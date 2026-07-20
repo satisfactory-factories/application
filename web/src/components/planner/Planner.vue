@@ -430,6 +430,11 @@
     reorderFactory(factory, direction, getFactories())
   }
 
+  // Scroll to a non-factory section (Statistics, Factories Summary) by its element id.
+  const navigateToSection = (sectionId: string) => {
+    setTimeout(() => scrollToElement(sectionId), 50)
+  }
+
   const forceSort = () => {
     // Forcefully regenerate the displayOrder counting upwards.
     getFactories().forEach((factory, index) => {
@@ -447,6 +452,7 @@
   provide('copyFactory', copyFactory)
   provide('deleteFactory', deleteFactory)
   provide('navigateToFactory', navigateToFactory)
+  provide('navigateToSection', navigateToSection)
   provide('moveFactory', moveFactory)
 
 </script>
