@@ -30,6 +30,12 @@ export function formatNumberFully (value: any, precision = 3): number {
   return Number(result)
 }
 
+// Matches the in-game power screens: MW with thousands separators (e.g. "5,100 MW").
+// The non-breaking space stops the value wrapping onto a new line before the unit.
+export function formatMw (value: number): string {
+  return `${Number(formatNumber(value, 1)).toLocaleString('en-US')}\u00A0MW`
+}
+
 // Returns a number formatted in the value of megawatts or gigawatts. If supplied GW, the number is divided by 1000.
 export function formatPower (value: number): { value: string, unit: string } {
   let formattedValue = formatNumber(value, 1)

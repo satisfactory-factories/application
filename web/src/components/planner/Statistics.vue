@@ -25,14 +25,61 @@
             </v-btn>
           </v-col>
         </v-row>
+        <!-- Power gets prominence even when the statistics are collapsed: the target and
+             its difference stay visible so the user always knows where they stand. -->
+        <v-card-text v-if="hidden" class="text-body-1 d-flex align-center flex-wrap py-2">
+          <span class="mr-3 font-weight-bold">Power Target:</span>
+          <v-chip class="sf-chip input no-margin" variant="tonal">
+            <tooltip text="Power target">
+              <i class="fas fa-bullseye ml-3" />
+            </tooltip>
+            <v-number-input
+              id="stats-power-target-collapsed"
+              v-model="powerTarget"
+              class="inline-inputs ml-2"
+              control-variant="stacked"
+              density="compact"
+              hide-details
+              hide-spin-buttons
+              :min="0"
+              width="140px"
+            />
+            <span class="mx-2">MW</span>
+          </v-chip>
+          <v-chip class="sf-chip yellow ml-3" variant="tonal">
+            <i class="fas fa-bolt" />
+            <i class="fas fa-plus" />
+            <span id="stats-power-generated-collapsed" class="ml-2">
+              Generated: {{ formatMw(totalPower.totalPowerProduced) }}
+            </span>
+          </v-chip>
+          <v-chip class="sf-chip yellow ml-3" variant="tonal">
+            <i class="fas fa-bolt" />
+            <i class="fas fa-minus" />
+            <span id="stats-power-consumed-collapsed" class="ml-2">
+              Consumed: {{ formatMw(totalPower.totalPowerConsumed) }}
+            </span>
+          </v-chip>
+          <v-chip
+            v-if="powerTarget > 0"
+            class="sf-chip ml-3"
+            :class="targetDifference >= 0 ? 'green' : 'red'"
+            variant="tonal"
+          >
+            <i class="fas fa-balance-scale" />
+            <span id="stats-power-target-difference-collapsed" class="ml-2">
+              Difference vs target: {{ formatMw(targetDifference) }}
+            </span>
+          </v-chip>
+        </v-card-text>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <statistics-resources :factories="factories" :help-text="helpText" />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-buildings :factories="factories" :help-text="helpText" />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <statistics-power :factories="factories" :help-text="helpText" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          <statistics-resources :factories="factories" :help-text="helpText" />
+          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <statistics-items-difference :factories="factories" :help-text="helpText" />
+          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          <statistics-buildings :factories="factories" :help-text="helpText" />
           <v-col class="text-center pb-0">
             <v-btn
               v-show="!hiddenProducts"
@@ -64,15 +111,23 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
+  import { calculateTotalPower } from '@/utils/statistics'
+  import { formatMw } from '@/utils/numberFormatter'
+  import { usePowerTarget } from '@/composables/usePowerTarget'
 
-  defineProps<{
+  const props = defineProps<{
     factories: Factory[];
     helpText: boolean;
   }>()
+
+  // Power strip shown while the statistics are collapsed.
+  const { powerTarget } = usePowerTarget()
+  const totalPower = computed(() => calculateTotalPower(props.factories))
+  const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)
 
   // Default to not showing the stats on first ever load
   const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'false'

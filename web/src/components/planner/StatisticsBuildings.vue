@@ -1,27 +1,39 @@
 <template>
-  <h1 class="text-h5">
-    <i class="fas fa-building" />
-    <span class="ml-3">Building Summary</span>
-  </h1>
-  <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle" /> Shows the amount buildings of each
-    type in all your factories.
-  </p>
-  <div v-if="totalBuildingsByType.length > 0">
-    <span v-for="(building, type) in totalBuildingsByType" :key="type">
-      <v-chip class="sf-chip orange" variant="tonal">
-        <game-asset clickable :subject="building.name" type="building" />
-        <span class="ml-1">
-          <b>{{ getBuildingDisplayName(building.name) ?? "UNKNOWN" }}</b>: {{ formatNumber(building.totalAmount) ?? 0 }}x
-        </span>
-      </v-chip>
-    </span>
+  <div class="d-flex align-center">
+    <h1 class="text-h5">
+      <i class="fas fa-building" />
+      <span class="ml-3">Building Summary</span>
+    </h1>
+    <v-btn
+      class="ml-4"
+      color="primary"
+      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      size="small"
+      variant="outlined"
+      @click="hidden = !hidden"
+    >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
-  <p v-else class="text-body-1">Awaiting Building Construction</p>
+  <template v-if="!hidden">
+    <p v-show="helpText" class="mb-4">
+      <i class="fas fa-info-circle" /> Shows the amount buildings of each
+      type in all your factories.
+    </p>
+    <div v-if="totalBuildingsByType.length > 0">
+      <span v-for="(building, type) in totalBuildingsByType" :key="type">
+        <v-chip class="sf-chip orange" variant="tonal">
+          <game-asset clickable :subject="building.name" type="building" />
+          <span class="ml-1">
+            <b>{{ getBuildingDisplayName(building.name) ?? "UNKNOWN" }}</b>: {{ formatNumber(building.totalAmount) ?? 0 }}x
+          </span>
+        </v-chip>
+      </span>
+    </div>
+    <p v-else class="text-body-1">Awaiting Building Construction</p>
+  </template>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
@@ -35,4 +47,10 @@
   }>()
 
   const totalBuildingsByType = computed(() => calculateTotalBuildingsByType(props.factories))
+
+  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsBuildingSummaryHidden') === 'true')
+  watch(hidden, value => {
+    localStorage.setItem('statisticsBuildingSummaryHidden', value.toString())
+  })
 </script>

@@ -32,7 +32,7 @@
             {{ formatPower(factory.power.consumedMax ?? 0).value }} {{ formatPower(factory.power.consumedMax ?? 0).unit }}
           </span>
         </span>
-        <tooltip-info text="Variable-power buildings in this factory oscillate between a minimum and maximum draw; Consumes shows the average. Rather than generating for this peak, cover the average and use Power Storage (batteries) to absorb the spikes." />
+        <tooltip-info text="Variable-power buildings in this factory oscillate between a minimum and maximum draw; Consumes shows the average.<br>Rather than generating for this peak, cover the average and use Power Storage (batteries) to absorb the spikes." />
       </v-chip>
       <v-chip
         class="sf-chip yellow"

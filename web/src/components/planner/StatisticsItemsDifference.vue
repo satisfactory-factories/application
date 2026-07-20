@@ -1,35 +1,47 @@
 <template>
-  <h1 class="text-h5">
-    <i class="fas fa-warehouse" />
-    <span class="ml-3">Product Surplus & Deficit</span>
-  </h1>
-  <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle" /> Shows the amount of surplus or
-    deficit of items you have in your factory. These are items that
-    either need to be produced more (in red), or items that can be
-    stored or sunk (in green)!
-  </p>
-  <div v-if="factoryProductDifferences.length > 0">
-    <v-chip
-      v-for="(product) in factoryProductDifferences"
-      :key="product.id"
-      class="sf-chip"
-      :class="{
-        'green': product.amountRemaining > 0,
-        'red': product.amountRemaining < 0,
-      }"
-    >
-      <game-asset clickable :subject="product.id" type="item" />
-      <span class="ml-2">
-        <b>{{ getPartDisplayName(product.id) }}</b>: {{ formatNumber(product.amountRemaining) }}/min
-      </span>
-    </v-chip>
+  <div class="d-flex align-center">
+    <h1 class="text-h5">
+      <i class="fas fa-warehouse" />
+      <span class="ml-3">Product Surplus & Deficit</span>
+    </h1>
+    <v-btn
+      class="ml-4"
+      color="primary"
+      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      size="small"
+      variant="outlined"
+      @click="hidden = !hidden"
+    >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
-  <p v-else class="text-body-1">No Product Surplus or Deficit</p>
+  <template v-if="!hidden">
+    <p v-show="helpText" class="mb-4">
+      <i class="fas fa-info-circle" /> Shows the amount of surplus or
+      deficit of items you have in your factory. These are items that
+      either need to be produced more (in red), or items that can be
+      stored or sunk (in green)!
+    </p>
+    <div v-if="factoryProductDifferences.length > 0">
+      <v-chip
+        v-for="(product) in factoryProductDifferences"
+        :key="product.id"
+        class="sf-chip"
+        :class="{
+          'green': product.amountRemaining > 0,
+          'red': product.amountRemaining < 0,
+        }"
+      >
+        <game-asset clickable :subject="product.id" type="item" />
+        <span class="ml-2">
+          <b>{{ getPartDisplayName(product.id) }}</b>: {{ formatNumber(product.amountRemaining) }}/min
+        </span>
+      </v-chip>
+    </div>
+    <p v-else class="text-body-1">No Product Surplus or Deficit</p>
+  </template>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
@@ -47,4 +59,9 @@
   // This function calculates total number of products produced and gets the difference between demand and supply (to see if we have a surplus of products or not)
   const factoryProductDifferences = computed(() => calculateTotalParts(props.factories).filter(product => product.amountRemaining !== 0))
 
+  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') === 'true')
+  watch(hidden, value => {
+    localStorage.setItem('statisticsSurplusHidden', value.toString())
+  })
 </script>
