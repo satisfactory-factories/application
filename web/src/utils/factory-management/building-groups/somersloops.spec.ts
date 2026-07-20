@@ -498,20 +498,66 @@ describe('converter spot check (Iron Ore from Limestone)', () => {
     expect(group.powerUsageMax).toBe(1343.099)
   })
 
-  it('should match in-game values at 223.33% clock without somersloops', () => {
-    group.overclockPercent = 223.33
+  it('should match in-game values at 223.333% clock without somersloops', () => {
+    group.overclockPercent = 223.333
     calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
 
+    // The building group is what the in-game machine displays: 1 Converter at 223.333%.
     expect(group.buildingCount).toBe(1)
-    expect(group.parts.OreIron).toBe(267.996)
-    expect(group.parts.SAMIngot).toBe(22.333)
-    expect(group.parts.Stone).toBe(535.992)
-    expect(product.amount).toBe(267.996)
-    expect(mockFactory.parts.SAMIngot.amountRequired).toBe(22.333)
-    expect(mockFactory.parts.Stone.amountRequired).toBe(535.992)
+    expect(group.parts.OreIron).toBe(268) // 120 * 2.23333
+    expect(group.parts.SAMIngot).toBe(22.333) // 10 * 2.23333
+    expect(group.parts.Stone).toBe(535.999) // 240 * 2.23333
 
-    // In-game shows 289.3 to 1157 MW
-    expect(group.powerUsageMin).toBe(289.2563)
-    expect(group.powerUsageMax).toBe(1157.0254)
+    // In-game shows 289.3 to 1157 MW (the UI has no decimals).
+    expect(group.powerUsageMin).toBe(289.2615)
+    expect(group.powerUsageMax).toBe(1157.0459)
+
+    // The qty/min matches the group's Iron Ore output exactly.
+    expect(product.amount).toBe(268)
+
+    // NOTE: the factory-level Stone requirement rounds to 536 here (vs the group's
+    // 535.999). The item output rounds up (267.9996 -> 268) and the factory ingredient
+    // demand scales from that rounded output, overshooting by 0.001. The group ingredient
+    // is computed straight from the clock so it stays exact.
+  })
+
+  // Solidification: 1 Converter at 223.333% with ONE somersloop (2 slots, so +50% output).
+  it('should match in-game values at 223.333% clock with one somersloop', () => {
+    group.overclockPercent = 223.333
+    group.somersloops = 1
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    // Ingredients are unaffected by the somersloop; output is boosted 1.5x.
+    expect(group.buildingCount).toBe(1)
+    expect(group.parts.SAMIngot).toBe(22.333) // 10 * 2.23333
+    expect(group.parts.Stone).toBe(535.999) // 240 * 2.23333
+    expect(group.parts.OreIron).toBe(401.999) // 120 * 2.23333 * 1.5
+
+    // The item qty/min and the factory requirements must match the building group exactly
+    // to 3 decimal places (previously the qty rounded up to 402 and Stone to 536).
+    expect(product.amount).toBe(401.999)
+    expect(mockFactory.parts.SAMIngot.amountRequired).toBe(22.333)
+    expect(mockFactory.parts.Stone.amountRequired).toBe(535.999)
+  })
+
+  // Editing a group's output value must not trigger a rebalance that spreads the work
+  // across more buildings — it would destroy the user's deliberate overclock.
+  it('should not rebalance a hand-set overclock when its output value is edited', () => {
+    group.overclockPercent = 223.333
+    group.somersloops = 1
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    // The user re-enters the group's Iron Ore output.
+    updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'OreIron', 401.999)
+    calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+    // Still ONE converter at ~223.33% — NOT re-solved into 3 converters at 75%.
+    expect(product.buildingGroups.length).toBe(1)
+    expect(group.buildingCount).toBe(1)
+    expect(group.overclockPercent).toBeGreaterThan(200)
+    expect(group.overclockPercent).toBeLessThanOrEqual(250)
+
+    // Sync is on, so the item quantity still reflects the group output.
+    expect(product.amount).toBe(401.999)
   })
 })

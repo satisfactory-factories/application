@@ -1223,6 +1223,30 @@ describe('powerProducer simplified cases', async () => {
           expect(group.buildingCount).toBe(1)
           expect(group.overclockPercent).toBe(50.3667)
         })
+
+        it('should keep the user\'s building count when an overclock is set, only rescaling the clock', () => {
+          // The user has deliberately overclocked a single building. Editing the output
+          // must not spread the work across more buildings (the default candidate search
+          // would pick 2 buildings @ 67%); it should keep 1 building and rescale the clock.
+          group.overclockPercent = 200
+
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 20)
+
+          // targetEffective = 20 / 15 ≈ 1.3333 → 1 building @ 133.33%.
+          expect(group.buildingCount).toBe(1)
+          expect(group.overclockPercent).toBe(133.3333)
+        })
+
+        it('should fall back to a full re-solve if preserving the count would exceed 250%', () => {
+          // 1 building already at 150%, but the requested output needs > 250% on one
+          // building, so we must add buildings rather than blow the game clock cap.
+          group.overclockPercent = 150
+
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 60)
+
+          // targetEffective = 60 / 15 = 4 → cannot be one building at ≤250%, so re-solve.
+          expect(group.buildingCount).toBeGreaterThan(1)
+        })
       })
 
       describe('part re-calculations', () => {

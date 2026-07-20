@@ -299,8 +299,19 @@ export const calculateBuildingGroupParts = (
     // Track which parts are outputs — somersloops amplify outputs only, never ingredients.
     const outputParts = new Set<string>()
 
+    // Recipe ingredient rates (per building @ 100%). Ingredient consumption is a pure
+    // function of the group's own physical buildings and clock, so we compute it directly
+    // from these rather than round-tripping through the item's (amount-derived, sloop-
+    // discounted) requirements — that round-trip accumulates rounding and makes a group's
+    // ingredient drift by 0.001 whenever the item amount shifts (see calculateProducts).
+    const ingredientRates: { [part: string]: number } = {}
+
     if (type === ItemType.Product) {
       const subject = item as FactoryItem
+      const productRecipe = getRecipe(subject.recipe, gameData)
+      productRecipe?.ingredients.forEach(ingredient => {
+        ingredientRates[ingredient.part] = ingredient.perMin
+      })
 
       for (
         const [part, partData] of Object.entries(subject.requirements)
@@ -361,6 +372,15 @@ export const calculateBuildingGroupParts = (
       Object.entries(parts).forEach(([partKey, amount]) => {
         if (partKey === exclude) {
           return // Skip this part so we don't cause an update storm.
+        }
+
+        // Pure ingredients: derive straight from the recipe rate and this group's own
+        // buildings, so the value tracks the group's clock exactly and never drifts with
+        // the item amount. Outputs (and any part without a known rate) keep the split of
+        // the item's total across the groups by building count.
+        if (!outputParts.has(partKey) && ingredientRates[partKey] !== undefined) {
+          group.parts[partKey] = ingredientRates[partKey] * group.buildingCount
+          return
         }
 
         // Calculate the amount of parts per building, based off total building count to get the per building amount
@@ -692,6 +712,21 @@ export const updateBuildingGroupViaPart = (
   // E.g., if baseRate is 15 and amount is 20, then targetEffective ≈ 20/15 ≈ 1.33 buildings.
   const targetEffective = amount / baseRate
 
+  // 5a. If the user has dialed in an overclock, their building count is deliberate — keep
+  // it and simply rescale the clock to hit the new output. Re-solving the count/clock
+  // (step 6) prefers spreading the work across more buildings at a sub-100% clock, which
+  // blows away the delicate setup (e.g. 1 building @ 223.333% becoming 3 @ 75%). Only do
+  // this while the resulting clock stays within the game's 0–250% range; otherwise fall
+  // through to a full re-solve.
+  if (group.overclockPercent > 100 && group.buildingCount >= 1) {
+    const preservedClock = (targetEffective / group.buildingCount) * 100
+    if (preservedClock > 0 && preservedClock <= 250) {
+      group.overclockPercent = formatNumberFully(preservedClock, 4)
+      recalculateGroupMetrics(item, groupType, factory)
+      return
+    }
+  }
+
   // 6. Determine the best combination of whole building count and clock speed.
   // We prefer to have a clock percentage at or below 100%.
   if (targetEffective < 1) {
@@ -773,6 +808,22 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
         factory, gameData,
         'buildingGroup'
       )
+
+      // increaseProductQtyViaBuilding derives the amount from the 4dp-rounded effective
+      // building count (calculateEffectiveBuildingCount), which drifts from the group's own
+      // output — e.g. 1 building @ 223.333% with a somersloop rounds to 3.35, giving
+      // 3.35 * 120 = 402, while the group produces 401.999. Recompute the amount from the
+      // full-precision effective building count so the qty/min matches the building groups
+      // to the game's 3 decimal places.
+      const recipe = getRecipe(subject.recipe, gameData)
+      if (recipe) {
+        const building = getItemBuilding(subject, ItemType.Product)
+        const preciseEffective = subject.buildingGroups.reduce(
+          (sum, g) => sum + (g.buildingCount * g.overclockPercent / 100 * getSomersloopOutputMultiplier(g, building)),
+          0
+        )
+        subject.amount = formatNumberFully(recipe.products[0].perMin * preciseEffective)
+      }
     } else if (group.type === ItemType.Power) {
       const subject = item as FactoryPowerProducer
 
