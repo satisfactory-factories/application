@@ -559,6 +559,53 @@ describe('buildingGroupsCommon', async () => {
             expect(group.powerUsage).toBe(13.431)
           })
         })
+
+        it('should set the min/max to the average for fixed-power buildings', () => {
+          group.overclockPercent = 100
+          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, product.recipe)
+          expect(group.powerUsage).toBe(4)
+          expect(group.powerUsageMin).toBe(4)
+          expect(group.powerUsageMax).toBe(4)
+        })
+      })
+
+      // Variable-power buildings (Particle Accelerator etc.) carry their real draw on the
+      // recipe; the flat buildings map only holds their 0.1 MW standby power.
+      describe('variable power consumption (nuclear pasta)', () => {
+        beforeEach(() => {
+          addProductToFactory(mockFactory, {
+            id: 'SpaceElevatorPart_9',
+            amount: 0.5,
+            recipe: 'SpaceElevatorPart_9',
+          })
+          calculateFactories([mockFactory], gameData)
+          product = mockFactory.products[0]
+          group = product.buildingGroups[0]
+          group.buildingCount = 1
+        })
+
+        it('should use the recipe average power, not the standby building power', () => {
+          group.overclockPercent = 100
+          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, product.recipe)
+          expect(group.powerUsage).toBe(1000)
+          expect(group.powerUsageMin).toBe(500)
+          expect(group.powerUsageMax).toBe(1500)
+        })
+
+        it('should scale the range with overclock and somersloops', () => {
+          group.overclockPercent = 250
+          group.somersloops = 4 // Fully slooped = 4x power
+          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name, product.recipe)
+          expect(group.powerUsage).toBe(13430.9902)
+          expect(group.powerUsageMin).toBe(6715.4951)
+          expect(group.powerUsageMax).toBe(20146.4852)
+        })
+
+        it('should fall back to the standby power when no recipe is supplied', () => {
+          group.overclockPercent = 100
+          calculateProductBuildingGroupPower(product.buildingGroups, product.buildingRequirements.name)
+          expect(group.powerUsage).toBe(0.1)
+        })
       })
 
       describe('power producer generation', () => {

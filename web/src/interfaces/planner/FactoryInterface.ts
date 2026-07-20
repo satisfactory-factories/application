@@ -41,6 +41,10 @@ export interface BuildingGroup {
   overclockPercent: number
   parts: { [key: string]: number }
   powerUsage: number
+  // Variable-power buildings draw between min and max over the recipe cycle; powerUsage is
+  // the average. Equal to powerUsage for fixed-power buildings.
+  powerUsageMin?: number
+  powerUsageMax?: number
   powerProduced: number
   somersloops?: number
   type: ItemType
@@ -150,6 +154,9 @@ export interface FactoryPowerProducer {
 
 export interface FactoryPower {
   consumed: number;
+  // Peak draw when variable-power buildings (Particle Accelerator etc.) spike to their
+  // maximum. Equal to `consumed` when the factory has no variable-power buildings.
+  consumedMax?: number;
   produced: number;
   difference: number;
 }

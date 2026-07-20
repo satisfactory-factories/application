@@ -12,6 +12,10 @@
     <i class="fas fa-bolt" />
     <i class="fas fa-minus" />
     <span class="ml-2">{{ powerConsumed.value }} {{ powerConsumed.unit }} consumed</span>
+    <template v-if="hasVariablePower">
+      <span class="ml-1">(peaks at {{ powerConsumedMax.value }} {{ powerConsumedMax.unit }})</span>
+      <tooltip-info text="Variable-power buildings (Particle Accelerator etc.) oscillate between a minimum and maximum draw. The main figure is the average; size your grid (or batteries) for the peak." />
+    </template>
   </v-chip>
   <v-chip
     class="sf-chip yellow"
@@ -52,6 +56,13 @@
       unit: formatPower(totalPower.value.totalPowerConsumed).unit,
     }
   })
+  const powerConsumedMax = computed(() => {
+    return {
+      value: formatPower(totalPower.value.totalPowerConsumedMax).value,
+      unit: formatPower(totalPower.value.totalPowerConsumedMax).unit,
+    }
+  })
+  const hasVariablePower = computed(() => totalPower.value.totalPowerConsumedMax > totalPower.value.totalPowerConsumed)
   const powerProduced = computed(() => {
     return {
       value: formatPower(totalPower.value.totalPowerProduced).value,

@@ -180,6 +180,10 @@
           <i class="fas fa-bolt" />
           <i class="fas fa-minus" />
           <span class="ml-2">{{ productPowerConsumed(product).value }} {{ productPowerConsumed(product).unit }}</span>
+          <template v-if="productHasVariablePower(product)">
+            <span class="ml-1">({{ formatPower(productPowerRange(product).min).value }} {{ formatPower(productPowerRange(product).min).unit }} – {{ formatPower(productPowerRange(product).max).value }} {{ formatPower(productPowerRange(product).max).unit }})</span>
+            <tooltip-info text="This building's power draw oscillates between a minimum and maximum over the recipe cycle. The main figure is the average." />
+          </template>
         </v-chip>
         <v-chip
           v-for="(requirement, part) in product.requirements"
@@ -458,5 +462,23 @@
     })
 
     return formatPower(totalPower ?? 0)
+  }
+
+  // Min/max draw across the groups for variable-power buildings (equal to the average otherwise).
+  const productPowerRange = (product: FactoryItem) => {
+    let min = 0
+    let max = 0
+
+    product.buildingGroups.forEach(group => {
+      min += group.powerUsageMin ?? group.powerUsage
+      max += group.powerUsageMax ?? group.powerUsage
+    })
+
+    return { min, max }
+  }
+
+  const productHasVariablePower = (product: FactoryItem) => {
+    const range = productPowerRange(product)
+    return range.max !== range.min
   }
 </script>

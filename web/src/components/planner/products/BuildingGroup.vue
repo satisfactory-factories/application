@@ -73,9 +73,14 @@
       <div class="underchip text-yellow-darken-2">
         <span
           v-if="group.type !== ItemType.Power"
+          class="d-inline-flex align-center"
         >
-          Group Power:
-          <span :id="`${factory.id}-${group.id}-group-power`">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
+          <i class="fas fa-bolt" />
+          <i class="fas fa-minus" />
+          <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
+          <span v-if="groupHasVariablePower" :id="`${factory.id}-${group.id}-group-power-range`" class="ml-1">
+            ({{ formatPower(group.powerUsageMin ?? 0).value }} {{ formatPower(group.powerUsageMin ?? 0).unit }} – {{ formatPower(group.powerUsageMax ?? 0).value }} {{ formatPower(group.powerUsageMax ?? 0).unit }})
+          </span>
         </span>
         <span v-else>&nbsp;</span>
       </div>
@@ -274,6 +279,10 @@
 
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
 
+  const groupHasVariablePower = computed(() => {
+    return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage
+  })
+
   const somersloopBoostPercent = computed(() => {
     return formatNumberFully((getSomersloopOutputMultiplier(props.group, props.building) - 1) * 100)
   })
@@ -400,9 +409,10 @@
 
 <style lang="scss" scoped>
 .underchip {
-  margin-top: -5px;
-  text-align: center;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  height: 20px;
   font-size: 0.8rem;
 }
 </style>

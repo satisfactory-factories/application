@@ -130,6 +130,33 @@ describe('buildings', () => {
           expect(group2.powerUsage).toBe(34.183) // 5 smelters 5mw each
           expect(mockFactory.power.consumed).toBe(66.2)
         })
+
+        it('should have a peak equal to consumed with only fixed-power buildings', () => {
+          calculateFactories([mockFactory], gameData)
+
+          expect(mockFactory.power.consumed).toBe(32)
+          expect(mockFactory.power.consumedMax).toBe(32)
+        })
+
+        it('should track peak consumption for variable-power buildings', () => {
+          // Nuclear pasta in a Particle Accelerator: 500-1500 MW, 1000 MW average.
+          addProductToFactory(mockFactory, {
+            id: 'SpaceElevatorPart_9',
+            amount: 0.5,
+            recipe: 'SpaceElevatorPart_9',
+          })
+
+          calculateFactories([mockFactory], gameData)
+
+          const pastaGroup = mockFactory.products[1].buildingGroups[0]
+          expect(pastaGroup.powerUsage).toBe(1000)
+          expect(pastaGroup.powerUsageMin).toBe(500)
+          expect(pastaGroup.powerUsageMax).toBe(1500)
+
+          // The concrete constructors (32 MW) are fixed power, so only the pasta widens the peak.
+          expect(mockFactory.power.consumed).toBe(1032)
+          expect(mockFactory.power.consumedMax).toBe(1532)
+        })
       })
 
       describe('power producers', () => {

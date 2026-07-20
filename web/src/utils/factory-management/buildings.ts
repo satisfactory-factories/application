@@ -99,6 +99,7 @@ export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: Da
 export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   factory.power = {
     consumed: 0,
+    consumedMax: 0,
     produced: 0,
     difference: 0,
   }
@@ -106,16 +107,20 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
   // Sum up the power consumption using the building groups.
   const products = factory.products
   let consumed = 0
+  let consumedMax = 0
 
   products.forEach(product => {
     product.buildingGroups.forEach(group => {
       if (!group.buildingCount) return
 
       consumed += group.powerUsage
+      // Variable-power buildings spike to powerUsageMax; fixed buildings have max === avg.
+      consumedMax += group.powerUsageMax ?? group.powerUsage
     })
   })
 
   factory.power.consumed = formatNumberFully(consumed, 1)
+  factory.power.consumedMax = formatNumberFully(consumedMax, 1)
 
   // Sum up all power production
   const powerProducers = factory.powerProducers

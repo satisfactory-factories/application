@@ -16,6 +16,10 @@ export interface Recipe {
   building: {
     name: string;
     power: number;
+    // Variable-power buildings (Particle Accelerator, Converter, Quantum Encoder) oscillate
+    // between minPower and maxPower over the recipe cycle; `power` is the average draw.
+    minPower?: number;
+    maxPower?: number;
   }
   isAlternate: boolean;
   isFicsmas: boolean;

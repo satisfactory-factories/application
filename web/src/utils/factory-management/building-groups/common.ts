@@ -160,14 +160,23 @@ export const calculateRemainingBuildingCount = (item: FactoryItem | FactoryPower
 export const calculateProductBuildingGroupPower = (
   buildingGroups: BuildingGroup[],
   building: string,
+  recipeId?: string,
 ) => {
+  // Variable-power buildings (Particle Accelerator, Converter, Quantum Encoder) carry their
+  // real draw on the recipe (avg/min/max); the flat buildings map only holds their standby
+  // power (0.1 MW), so it must not be used for them.
+  const recipe = recipeId ? getRecipe(recipeId, gameData) : undefined
+  const recipeBuilding = recipe?.building.minPower !== undefined && recipe?.building.maxPower !== undefined
+    ? recipe.building
+    : undefined
+
   buildingGroups.forEach(group => {
     // In order to figure this out, we need to:
     // 1. Get the original building's power
     // 2. Times the building's power by the overclock percentage, with the ratio of: powerusage=initialpowerusage×(clockspeed100)1.321928
 
     // Get the building's details
-    const consumptionPerBuilding = gameData.buildings[building]
+    const consumptionPerBuilding = recipeBuilding?.power ?? gameData.buildings[building]
 
     if (consumptionPerBuilding === undefined) {
       // throw new Error(`productBuildingGroups: calculateProductBuildingGroupPower: Building not found! ${building}`)
@@ -177,12 +186,18 @@ export const calculateProductBuildingGroupPower = (
     // Now, using the formula above, we calculate the power usage.
     // Somersloops stack multiplicatively: power x (1 + filled/slots)^2, so a fully
     // slooped building at 250% clock draws ~13.43x its base power.
-    const totalConsumption = consumptionPerBuilding *
-      Math.pow(group.overclockPercent / 100, 1.321928) *
-      getSomersloopPowerMultiplier(group, building)
+    const clockAndSloopFactor = Math.pow(group.overclockPercent / 100, 1.321928) *
+      getSomersloopPowerMultiplier(group, building) *
+      group.buildingCount
 
-    // Now multiply it by number of buildings
-    group.powerUsage = formatNumberFully(totalConsumption * group.buildingCount, 4)
+    group.powerUsage = formatNumberFully(consumptionPerBuilding * clockAndSloopFactor, 4)
+    // The min/max draw scales by the same clock and somersloop factors as the average.
+    group.powerUsageMin = recipeBuilding
+      ? formatNumberFully((recipeBuilding.minPower ?? 0) * clockAndSloopFactor, 4)
+      : group.powerUsage
+    group.powerUsageMax = recipeBuilding
+      ? formatNumberFully((recipeBuilding.maxPower ?? 0) * clockAndSloopFactor, 4)
+      : group.powerUsage
   })
 }
 
@@ -685,7 +700,7 @@ export const recalculateGroupMetrics = (
 
   if (groupType === ItemType.Product) {
     const subject = item as FactoryItem
-    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name)
+    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name, subject.recipe)
   } else {
     const subject = item as FactoryPowerProducer
     calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)

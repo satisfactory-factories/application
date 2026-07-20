@@ -1,4 +1,4 @@
 export const config = {
   apiUrl: import.meta.env.VITE_ENV === 'dev' ? 'http://localhost:3001' : 'https://api.satisfactory-factories.app',
-  dataVersion: '1.2-01',
+  dataVersion: '1.2-02',
 }

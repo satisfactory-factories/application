@@ -18,6 +18,12 @@
           <span :id="`${factory.id}-buildings-power-consumed`">
             {{ formatPower(factory.power.consumed).value }} {{ formatPower(factory.power.consumed).unit }}
           </span>
+          <template v-if="hasVariablePower">
+            <span :id="`${factory.id}-buildings-power-consumed-max`">
+              (peaks at {{ formatPower(factory.power.consumedMax ?? 0).value }} {{ formatPower(factory.power.consumedMax ?? 0).unit }})
+            </span>
+            <tooltip-info text="Variable-power buildings in this factory oscillate between a minimum and maximum draw. The main figure is the average; size your grid (or batteries) for the peak." />
+          </template>
         </span></v-chip>
       <v-chip
         class="sf-chip yellow"
@@ -64,9 +70,14 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
 
-  defineProps<{
+  const props = defineProps<{
     factory: Factory;
     helpText: boolean;
   }>()
+
+  const hasVariablePower = computed(() => {
+    const consumedMax = props.factory.power.consumedMax
+    return consumedMax !== undefined && consumedMax !== props.factory.power.consumed
+  })
 
 </script>

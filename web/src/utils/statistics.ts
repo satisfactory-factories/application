@@ -164,43 +164,22 @@ export const calculateProducedItemsDifference = (factories: Factory[]) => {
   )
 }
 
+// Sums the per-factory power figures (which are derived from the building groups, so they
+// account for overclocking and somersloops). Peak differs from consumed only when
+// variable-power buildings (Particle Accelerator etc.) are present.
 export const calculateTotalPower = (factories: Factory[]) => {
-  const buildings: Record<
-string,
-{
-  powerConsumed: number;
-  powerProduced: number;
-}
-> = {} // Explicitly define the type
+  let totalPowerConsumed = 0
+  let totalPowerConsumedMax = 0
+  let totalPowerProduced = 0
 
   factories.forEach(factory => {
-    Object.entries(factory.buildingRequirements).forEach(
-      ([key, requirement]) => {
-        if (!buildings[key]) {
-          // Initialize the building entry
-          buildings[key] = {
-            powerConsumed: requirement.powerConsumed || 0,
-            powerProduced: requirement.powerProduced || 0,
-          }
-        } else {
-          // Accumulate power values if the building already exists
-          buildings[key].powerConsumed += requirement.powerConsumed || 0
-          buildings[key].powerProduced += requirement.powerProduced || 0
-        }
-      }
-    )
-  })
-  // Calculate total power consumed and produced
-  let totalPowerConsumed = 0
-  let totalPowerProduced = 0
-  let totalPowerDifference = 0
-
-  Object.values(buildings).forEach(building => {
-    totalPowerConsumed += building.powerConsumed
-    totalPowerProduced += building.powerProduced
+    const consumed = factory.power?.consumed ?? 0
+    totalPowerConsumed += consumed
+    totalPowerConsumedMax += factory.power?.consumedMax ?? consumed
+    totalPowerProduced += factory.power?.produced ?? 0
   })
 
-  totalPowerDifference = totalPowerProduced - totalPowerConsumed
+  const totalPowerDifference = totalPowerProduced - totalPowerConsumed
 
-  return { totalPowerConsumed, totalPowerProduced, totalPowerDifference }
+  return { totalPowerConsumed, totalPowerConsumedMax, totalPowerProduced, totalPowerDifference }
 }
