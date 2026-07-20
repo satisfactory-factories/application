@@ -33,7 +33,6 @@ declare module 'vue' {
     KoFi: typeof import('./components/ko-fi.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
-    Notice: typeof import('./components/planner/Notice.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
     PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']
