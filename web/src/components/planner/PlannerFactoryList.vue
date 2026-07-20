@@ -255,6 +255,19 @@
       background-color: rgba(255, 255, 255, 0.08);
     }
   }
+
+  // The bolt icons sit flush against the fixed 26px chip height, so let the chip grow
+  // and breathe vertically instead.
+  .sf-chip.x-small {
+    height: auto !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  // The balance-scale glyph renders visually smaller than the bolt — compensate.
+  .sf-chip .fa-balance-scale {
+    font-size: 14px;
+  }
 }
 
 .sync-state {
