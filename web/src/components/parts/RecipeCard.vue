@@ -82,7 +82,7 @@
             <b>{{ getBuildingDisplayName(recipe.building.name) }}</b>
           </span>
         </v-chip>
-        <v-chip class="sf-chip yellow">
+        <v-chip class="sf-chip consumption">
           <i class="fas fa-bolt" />
           <span class="ml-2">{{ formatPower(recipe.building.power).value }} {{ formatPower(recipe.building.power).unit }}</span>
         </v-chip>

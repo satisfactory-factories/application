@@ -118,7 +118,7 @@
       </div>
       <div class="input-row d-flex align-center">
         <v-chip
-          class="sf-chip yellow"
+          class="sf-chip green"
           variant="tonal"
         >
           <i class="fas fa-bolt" />

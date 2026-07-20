@@ -135,6 +135,12 @@
     color: var(--sf-raw-resource) !important;
 }
 
+// Plain-text power figures (e.g. building-group under-chip labels) share the
+// consumption chip colour.
+.text-power-consumption {
+    color: var(--sf-power-consumption) !important;
+}
+
 .selectors {
   &:last-of-type {
     margin-bottom: 12px !important;

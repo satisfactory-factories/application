@@ -33,6 +33,7 @@
                 <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
+                  <tooltip-info :text="gameSyncHelpText" @click.stop />
                   <v-btn
                     class="ml-2"
                     icon
@@ -48,6 +49,7 @@
                 <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
+                  <tooltip-info :text="gameSyncHelpText" @click.stop />
                   <v-btn
                     class="ml-2"
                     icon
@@ -63,35 +65,35 @@
                 <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
+                  <tooltip-info :text="gameSyncHelpText" @click.stop />
                 </v-chip>
               </div>
-              <!-- sync status tooltip -->
-              <tooltip-info text="Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory's products are changed, the factory will be out of sync, or if you set it manually." />
               <!-- power difference chip -->
               <tooltip
                 v-if="factoryPowerDifference !== 0"
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small no-margin ml-2"
-                  :class="factoryPowerDifference > 0 ? 'yellow' : 'consumption'"
+                  class="sf-chip small mx-1"
+                  :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
-                  <span class="ml-2">{{ factoryPowerDifference > 0 ? '+' : '' }}{{ powerDiffDisplay }}</span>
-                </v-chip>
-              </tooltip>
-              <!-- somersloops chip -->
-              <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop no-margin ml-2">
-                  <game-asset height="18" subject="somersloop" type="item_id" width="18" />
-                  <span class="ml-2">{{ factorySomersloops }}</span>
+                  <i class="fas" :class="factoryPowerDifference > 0 ? 'fa-plus' : 'fa-minus'" />
+                  <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow no-margin ml-2">
+                <v-chip class="sf-chip small yellow mx-1">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
+                </v-chip>
+              </tooltip>
+              <!-- somersloops chip -->
+              <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
+                <v-chip class="sf-chip small sloop mx-1">
+                  <game-asset height="18" subject="somersloop" type="item_id" width="18" />
+                  <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
               </tooltip>
             </div>
@@ -354,14 +356,17 @@
 
   const { smAndDown } = useDisplay()
 
+  const gameSyncHelpText = 'Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory\'s products are changed, the factory will be out of sync, or if you set it manually.'
+
   // Header chips: net power and total somersloops / power shards across the whole
   // factory (products + power producers).
   const factoryPowerDifference = computed(() =>
     (props.factory.power?.produced ?? 0) - (props.factory.power?.consumed ?? 0),
   )
 
+  // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
   const powerDiffDisplay = computed(() => {
-    const { value, unit } = formatPower(factoryPowerDifference.value)
+    const { value, unit } = formatPower(Math.abs(factoryPowerDifference.value))
     return `${value} ${unit}`
   })
 

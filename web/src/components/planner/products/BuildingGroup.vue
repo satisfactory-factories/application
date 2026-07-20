@@ -72,7 +72,7 @@
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
         </v-chip>
-        <div class="underchip text-yellow-darken-2">
+        <div class="underchip text-power-consumption">
           <span
             v-if="group.type !== ItemType.Power"
             class="d-inline-flex align-center"
@@ -266,7 +266,7 @@
     <template v-if="group.type === ItemType.Power">
       <div>
         <v-chip
-          class="sf-chip yellow ml-1"
+          class="sf-chip green ml-1"
           variant="tonal"
         >
           <i class="fas fa-bolt" />

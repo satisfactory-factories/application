@@ -8,7 +8,7 @@
     </v-card-title>
     <v-card-text class="text-body-1 pb-2">
       <v-chip
-        class="sf-chip yellow"
+        class="sf-chip consumption"
         variant="tonal"
       >
         <i class="fas fa-bolt" />
@@ -35,7 +35,8 @@
         <tooltip-info text="Variable-power buildings in this factory oscillate between a minimum and maximum draw; Consumes shows the average.<br>Rather than generating for this peak, cover the average and use Power Storage (batteries) to absorb the spikes." />
       </v-chip>
       <v-chip
-        class="sf-chip yellow"
+        class="sf-chip"
+        :class="factory.power.produced > 0 ? 'green' : 'generation'"
         variant="tonal"
       >
         <i class="fas fa-bolt" />

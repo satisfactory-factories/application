@@ -46,14 +46,14 @@
             />
             <span class="mx-2">MW</span>
           </v-chip>
-          <v-chip class="sf-chip yellow ml-3" variant="tonal">
+          <v-chip class="sf-chip ml-3" :class="totalPower.totalPowerProduced > 0 ? 'green' : 'generation'" variant="tonal">
             <i class="fas fa-bolt" />
             <i class="fas fa-plus" />
             <span id="stats-power-generated-collapsed" class="ml-2">
               Generated: {{ formatMw(totalPower.totalPowerProduced) }}
             </span>
           </v-chip>
-          <v-chip class="sf-chip yellow ml-3" variant="tonal">
+          <v-chip class="sf-chip consumption ml-3" variant="tonal">
             <i class="fas fa-bolt" />
             <i class="fas fa-minus" />
             <span id="stats-power-consumed-collapsed" class="ml-2">

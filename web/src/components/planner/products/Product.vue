@@ -174,7 +174,7 @@
           />
         </v-chip>
         <v-chip
-          class="sf-chip yellow"
+          class="sf-chip consumption"
           variant="tonal"
         >
           <i class="fas fa-bolt" />
