@@ -236,6 +236,14 @@
   const isAlwaysSynced = computed(() => isAlwaysSyncedBuilding(props.building))
 
   eventBus.on('factoryUpdated', recalculateMetrics)
+
+  // These components mount and unmount every time the plan is hidden/shown (e.g. on a tab
+  // switch), so the listener must be torn down or it leaks. mitt does not dedup handlers, so
+  // leaked listeners accumulate and every factoryUpdated emit fires all of them — the main
+  // driver of the escalating recalculation cost.
+  onUnmounted(() => {
+    eventBus.off('factoryUpdated', recalculateMetrics)
+  })
 </script>
 
 <style scoped lang="scss">

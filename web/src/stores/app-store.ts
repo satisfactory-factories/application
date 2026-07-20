@@ -375,14 +375,16 @@ export const useAppStore = defineStore('app', () => {
       factory.dataVersion = '2025-02-20'
     })
 
+    // Only recalculate when a data migration actually backfilled a missing field. A plan
+    // whose derived data is already current — the common case, e.g. switching between tabs —
+    // is stored fully calculated, so recalculating it is pure wasted work that blocks the main
+    // thread (and blanks the screen) for several seconds on large plans. Callers that genuinely
+    // need a recalc pass forceRecalc to setFactories or use forceCalculation. The 'recalculate'
+    // origin treats the user's building groups as sacrosanct, so the backfill is safe.
     if (needsCalculation) {
-      console.log('appStore: initFactories: Data migrations were applied')
+      console.log('appStore: initFactories: Data migrations were applied, recalculating')
+      calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
     }
-
-    // Always recalculate on load so derived data added since the plan was last saved
-    // (e.g. power min/max ranges, boost breakdowns) is backfilled. This is safe for the
-    // user's building groups: the 'recalculate' origin treats them as sacrosanct.
-    calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
 
     console.log('appStore: initFactories - completed')
 

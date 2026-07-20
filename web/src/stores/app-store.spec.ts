@@ -207,14 +207,26 @@ describe('app-store', () => {
 
       expect(spy).toHaveBeenCalled()
     })
-    it('should always call calculateFactories on load, with the group-preserving recalculate origin', () => {
-      // Loading always recalculates so derived data added since the plan was saved is
-      // backfilled. This is safe for building groups: 'recalculate' treats them as sacrosanct.
+    it('should use the group-preserving recalculate origin when a migration triggers a recalc', () => {
+      // When a migration backfills a missing field the recalc must run with the 'recalculate'
+      // origin, which treats the user's building groups as sacrosanct.
+      // @ts-ignore - force a migration to trigger the recalc
+      factory.power = undefined
       const spy = vi.spyOn(FactoryManager, 'calculateFactories')
 
       appStore.initFactories(factories)
 
       expect(spy).toHaveBeenCalledWith(expect.anything(), expect.anything(), { origin: 'recalculate' })
+    })
+
+    it('should NOT call calculateFactories when the plan is already fully calculated', () => {
+      // A plan whose derived data is already current (e.g. switching between tabs) is stored
+      // fully calculated. Recalculating it is wasted work that blanks the screen, so init skips it.
+      const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+
+      appStore.initFactories(factories)
+
+      expect(spy).not.toHaveBeenCalled()
     })
 
     it('should show an alert if the factories did not validate', () => {
@@ -467,9 +479,10 @@ describe('app-store', () => {
 
           await appStore.beginLoading(factories)
 
-          // 5 increments + the events from the always-recalculate on load (factoryUpdated
-          // per factory per pass + calculationsCompleted). Annoyingly we can't check the payload.
-          expect(eventBus.emit).toHaveBeenCalledTimes(12)
+          // Fresh factories need no migration, so no recalc fires. The 7 events are:
+          // plannerShow(false), prepareForLoad ×2, incrementLoad ×2 (one per factory),
+          // the render increment, and loadingCompleted. Annoyingly we can't check the payload.
+          expect(eventBus.emit).toHaveBeenCalledTimes(7)
           expect(eventBus.emit).toHaveBeenCalledWith('incrementLoad', {
             step: 'increment',
           })
