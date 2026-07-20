@@ -3,8 +3,17 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1" cols="8">
+          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
             <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
+            <v-chip
+              v-if="factories.length > 0"
+              id="factory-summary-count"
+              class="sf-chip factory ml-3"
+              variant="tonal"
+            >
+              <i class="fas fa-industry" />
+              <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+            </v-chip>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn

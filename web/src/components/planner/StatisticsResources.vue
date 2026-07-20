@@ -1,11 +1,19 @@
 <template>
   <div class="d-flex align-center">
-    <h1 class="text-h5">
+    <h4 class="text-h4">
       <i class="fas fa-globe" />
       <span class="ml-3">Raw Resources</span>
-    </h1>
+    </h4>
+    <v-chip
+      v-if="allFactoryRawResources.length > 0"
+      id="stats-raw-resources-summary"
+      class="sf-chip raw-resource ml-3"
+      variant="tonal"
+    >
+      {{ allFactoryRawResources.length }} {{ allFactoryRawResources.length === 1 ? 'resource' : 'resources' }}
+    </v-chip>
     <v-btn
-      class="ml-4"
+      class="ml-auto"
       color="primary"
       :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
       size="small"

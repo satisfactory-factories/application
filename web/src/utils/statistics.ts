@@ -3,6 +3,8 @@ import {
   getPartDisplayName,
   hasMetricsForPart,
 } from '@/utils/helpers'
+import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
+import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
 // This function calculates the total number of buildings for each type
 export const calculateTotalBuildingsByType = (factories: Factory[]) => {
   const buildings: Record<
@@ -163,6 +165,40 @@ export const calculateProducedItemsDifference = (factories: Factory[]) => {
     a.name.localeCompare(b.name)
   )
 }
+
+// Total Power Shards a factory needs across all its building groups (products + power
+// producers).
+export const getFactoryPowerShards = (factory: Factory): number => {
+  let total = 0
+  for (const product of factory.products) {
+    total += getTotalPowerShards(product.buildingGroups)
+  }
+  for (const producer of factory.powerProducers) {
+    total += getTotalPowerShards(producer.buildingGroups)
+  }
+  return total
+}
+
+// Total Somersloops a factory consumes across all its building groups, including
+// build costs (e.g. 10 per Alien Power Augmenter).
+export const getFactorySomersloops = (factory: Factory): number => {
+  let total = 0
+  for (const product of factory.products) {
+    total += getTotalSomersloops(product.buildingGroups, product.buildingRequirements?.name)
+  }
+  for (const producer of factory.powerProducers) {
+    total += getTotalSomersloops(producer.buildingGroups, producer.building)
+  }
+  return total
+}
+
+// Per-factory usage list for the statistics summary — only factories actually using any.
+export const calculateFactoriesUsing = (
+  factories: Factory[],
+  getAmount: (factory: Factory) => number,
+) => factories
+  .map(factory => ({ factory, amount: getAmount(factory) }))
+  .filter(entry => entry.amount > 0)
 
 // Sums the per-factory power figures (which are derived from the building groups, so they
 // account for overclocking and somersloops). Peak differs from consumed only when

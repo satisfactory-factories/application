@@ -338,7 +338,15 @@ export const useAppStore = defineStore('app', () => {
           producer.buildingGroupsHaveProblem = false
           producer.buildingGroupItemSync = true
 
-          addPowerProducerBuildingGroup(producer, factory, true)
+          // Only backfill a group when the producer has calculated buildings to mirror.
+          // An uncalculated producer (e.g. a plan template defined via powerAmount) would
+          // get a 0-building group, which the sacrosanct-groups recalculation then syncs
+          // the producer down to — zeroing its generation. Let the calculation create it.
+          if (producer.buildingCount > 0) {
+            addPowerProducerBuildingGroup(producer, factory, true)
+          } else {
+            needsCalculation = true
+          }
         }
 
         // Patch for #11 renaming ingredientAmount to fuelAmount

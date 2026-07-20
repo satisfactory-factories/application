@@ -1,11 +1,28 @@
 <template>
   <div class="d-flex align-center">
-    <h1 class="text-h5">
+    <h4 class="text-h4">
       <i class="fas fa-warehouse" />
       <span class="ml-3">Product Surplus & Deficit</span>
-    </h1>
+    </h4>
+    <v-chip
+      v-if="surplusCount > 0"
+      id="stats-surplus-summary"
+      class="sf-chip green ml-3"
+      variant="tonal"
+    >
+      {{ surplusCount }} in surplus
+    </v-chip>
+    <v-chip
+      v-if="deficitCount > 0"
+      id="stats-deficit-summary"
+      class="sf-chip red"
+      :class="{ 'ml-3': surplusCount === 0 }"
+      variant="tonal"
+    >
+      {{ deficitCount }} in deficit
+    </v-chip>
     <v-btn
-      class="ml-4"
+      class="ml-auto"
       color="primary"
       :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
       size="small"
@@ -58,6 +75,10 @@
 
   // This function calculates total number of products produced and gets the difference between demand and supply (to see if we have a surplus of products or not)
   const factoryProductDifferences = computed(() => calculateTotalParts(props.factories).filter(product => product.amountRemaining !== 0))
+
+  // Header at-a-glance counts, shown whether the section is open or collapsed.
+  const surplusCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining > 0).length)
+  const deficitCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining < 0).length)
 
   // Section visibility, persisted. Compare against the string — Boolean('false') is true.
   const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') === 'true')

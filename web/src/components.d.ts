@@ -64,6 +64,7 @@ declare module 'vue' {
     StatisticsItemsDifference: typeof import('./components/planner/StatisticsItemsDifference.vue')['default']
     StatisticsPower: typeof import('./components/planner/StatisticsPower.vue')['default']
     StatisticsResources: typeof import('./components/planner/StatisticsResources.vue')['default']
+    StatisticsShardsSloops: typeof import('./components/planner/StatisticsShardsSloops.vue')['default']
     Sync: typeof import('./components/Sync.vue')['default']
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']

@@ -336,8 +336,7 @@
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
-  import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
-  import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
+  import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber, formatPower } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
@@ -370,27 +369,8 @@
     return `${value} ${unit}`
   })
 
-  const factorySomersloops = computed(() => {
-    let total = 0
-    for (const product of props.factory.products) {
-      total += getTotalSomersloops(product.buildingGroups, product.buildingRequirements?.name)
-    }
-    for (const producer of props.factory.powerProducers) {
-      total += getTotalSomersloops(producer.buildingGroups, producer.building)
-    }
-    return total
-  })
-
-  const factoryPowerShards = computed(() => {
-    let total = 0
-    for (const product of props.factory.products) {
-      total += getTotalPowerShards(product.buildingGroups)
-    }
-    for (const producer of props.factory.powerProducers) {
-      total += getTotalPowerShards(producer.buildingGroups)
-    }
-    return total
-  })
+  const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
+  const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
   const groupedInputs = computed<[number, FactoryInput[]][]>(() => {

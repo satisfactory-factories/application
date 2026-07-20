@@ -46,7 +46,7 @@
             />
             <span class="mx-2">MW</span>
           </v-chip>
-          <v-chip class="sf-chip ml-3" :class="totalPower.totalPowerProduced > 0 ? 'green' : 'generation'" variant="tonal">
+          <v-chip class="sf-chip generation ml-3" variant="tonal">
             <i class="fas fa-bolt" />
             <i class="fas fa-plus" />
             <span id="stats-power-generated-collapsed" class="ml-2">
@@ -78,6 +78,8 @@
           <statistics-resources :factories="factories" :help-text="helpText" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <statistics-items-difference :factories="factories" :help-text="helpText" />
+          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          <statistics-shards-sloops :factories="factories" :help-text="helpText" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <statistics-buildings :factories="factories" :help-text="helpText" />
           <v-col class="text-center pb-0">

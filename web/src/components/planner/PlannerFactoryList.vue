@@ -8,11 +8,11 @@
         @click="navigateToSection('statistics')"
       >
         <v-row class="d-flex flex-wrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+          <v-spacer class="d-flex align-center text-body-1 pt-2 px-2 pb-0">
             <i class="fas fa-chart-line mr-2" />
             <span>Statistics</span>
           </v-spacer>
-          <v-col class="d-flex align-center flex-wrap justify-end ga-1 py-1 px-2" cols="auto">
+          <v-col class="d-flex align-center flex-wrap justify-end ga-1 pt-1 pb-2 px-2" cols="auto">
             <tooltip :text="`Power generated: ${formatMw(totalPower.totalPowerProduced)}`">
               <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
                 <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" />
@@ -51,6 +51,14 @@
             <i class="fas fa-list mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
+          <v-col class="d-flex align-center justify-end py-1 px-2" cols="auto">
+            <tooltip :text="`Factories in plan: ${factories.length}`">
+              <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
+                <i class="fas fa-industry" />
+                <span class="ml-1">{{ factories.length }}</span>
+              </v-chip>
+            </tooltip>
+          </v-col>
         </v-row>
       </v-card>
     </div>

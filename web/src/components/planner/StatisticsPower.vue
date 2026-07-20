@@ -1,7 +1,36 @@
 <template>
-  <h1 class="text-h5">
-    <i class="fas fa-power-off mr-3" />Power Consumption and Generation
-  </h1>
+  <div class="d-flex align-center flex-wrap">
+    <h4 class="text-h4">
+      <i class="fas fa-power-off mr-3" />Power Consumption and Generation
+    </h4>
+    <v-chip
+      id="stats-power-summary-generation"
+      class="sf-chip generation ml-3"
+      variant="tonal"
+    >
+      <i class="fas fa-bolt" />
+      <i class="fas fa-plus" />
+      <span class="ml-1">{{ mw(totalPower.totalPowerProduced) }}</span>
+    </v-chip>
+    <v-chip
+      id="stats-power-summary-consumption"
+      class="sf-chip consumption"
+      variant="tonal"
+    >
+      <i class="fas fa-bolt" />
+      <i class="fas fa-minus" />
+      <span class="ml-1">{{ mw(totalPower.totalPowerConsumed) }}</span>
+    </v-chip>
+    <v-chip
+      id="stats-power-summary-difference"
+      class="sf-chip"
+      :class="totalPower.totalPowerDifference >= 0 ? 'green' : 'red'"
+      variant="tonal"
+    >
+      <i class="fas fa-balance-scale" />
+      <span class="ml-1">{{ mw(totalPower.totalPowerDifference) }}</span>
+    </v-chip>
+  </div>
   <p v-show="helpText" class="mb-4">
     <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
   </p>

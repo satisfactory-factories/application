@@ -1,8 +1,8 @@
 <template>
-  <h1 class="text-h5">
+  <h4 class="text-h4">
     <i class="fas fa-conveyor-belt-alt" />
     <span class="ml-3">Produced Items</span>
-  </h1>
+  </h4>
   <p v-show="helpText" class="mb-4">
     <i class="fas fa-info-circle" /> Shows all the items produced by all
     your factories.

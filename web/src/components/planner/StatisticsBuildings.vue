@@ -1,11 +1,19 @@
 <template>
   <div class="d-flex align-center">
-    <h1 class="text-h5">
+    <h4 class="text-h4">
       <i class="fas fa-building" />
       <span class="ml-3">Building Summary</span>
-    </h1>
+    </h4>
+    <v-chip
+      v-if="totalBuildingCount > 0"
+      id="stats-buildings-summary"
+      class="sf-chip building ml-3"
+      variant="tonal"
+    >
+      {{ formatNumber(totalBuildingCount) }} {{ totalBuildingCount === 1 ? 'building' : 'buildings' }}
+    </v-chip>
     <v-btn
-      class="ml-4"
+      class="ml-auto"
       color="primary"
       :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
       size="small"
@@ -47,6 +55,9 @@
   }>()
 
   const totalBuildingsByType = computed(() => calculateTotalBuildingsByType(props.factories))
+
+  // Header at-a-glance count, shown whether the section is open or collapsed.
+  const totalBuildingCount = computed(() => totalBuildingsByType.value.reduce((total, building) => total + building.totalAmount, 0))
 
   // Section visibility, persisted. Compare against the string — Boolean('false') is true.
   const hidden = ref<boolean>(localStorage.getItem('statisticsBuildingSummaryHidden') === 'true')

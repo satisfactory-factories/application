@@ -436,15 +436,24 @@ export const syncBuildingGroups = (
   // Ensure the math is right in all cases
   recalculateGroupMetrics(item, groupType, factory)
 
+  // A group set totalling zero buildings while the item itself has some is degenerate —
+  // there is no user craft to preserve. This happens when a producer defined only by its
+  // power amount (e.g. a plan template) gets its default group before any calculation has
+  // derived a building count. Rebuild the groups from the item rather than letting the
+  // sacrosanct rule below sync the item down to nothing.
+  const groupsAreDegenerate =
+    item.buildingGroups.reduce((acc, group) => acc + group.buildingCount, 0) === 0 &&
+    getBuildingCount(item, groupType) > 0
+
   // Recalculations treat building groups as SACROSANCT: the user may have spent a lot of
   // time crafting exact counts and clocks, so they are never rebalanced — item quantities
   // are adjusted to match the groups instead (see calculateFactory).
-  if (modes.origin === 'recalculate') {
+  if (modes.origin === 'recalculate' && !groupsAreDegenerate) {
     return
   }
 
   // If originating from the item, cause a rebalance.
-  if (modes.forceRebalance || (modes.origin !== 'buildingGroup' && item.buildingGroupItemSync)) {
+  if (modes.forceRebalance || groupsAreDegenerate || (modes.origin !== 'buildingGroup' && item.buildingGroupItemSync)) {
     const building = getItemBuilding(item, groupType)
     const groups = item.buildingGroups
     let targetBuildings: number

@@ -4,6 +4,7 @@ import { calculateFactories, findFacByName } from '@/utils/factory-management/fa
 import { gameData } from '@/utils/gameData'
 import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
+import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
 
 let factories: Factory[]
 let oilFac: Factory
@@ -13,6 +14,8 @@ let circuitBoardsFac: Factory
 let computersFac: Factory
 let uraniumFac: Factory
 let plutoniumFac: Factory
+let alienPowerFac: Factory
+let geothermalFac: Factory
 
 // This test file in effect tests most of the functionality we expect from the data.
 describe('Complex Demo Plan', () => {
@@ -26,13 +29,15 @@ describe('Complex Demo Plan', () => {
     computersFac = findFacByName('Computers (end product)', factories)
     uraniumFac = findFacByName('☢️ Uranium Power', factories)
     plutoniumFac = findFacByName('☢️ Plutonium Processing', factories)
+    alienPowerFac = findFacByName('Alien Power', factories)
+    geothermalFac = findFacByName('Geothermal Power', factories)
   })
 
   it('should have factories', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(7)
+    expect(factories.length).toBe(9)
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
@@ -613,6 +618,83 @@ describe('Complex Demo Plan', () => {
         isRaw: true,
         exportable: true,
       })
+    })
+  })
+
+  describe('Alien Power', () => {
+    it('should have three augmenters producing 500 MW each', () => {
+      expect(alienPowerFac.powerProducers.length).toBe(1)
+      expect(alienPowerFac.powerProducers[0]).toMatchObject({
+        building: 'alienpoweraugmenter',
+        buildingCount: 3,
+        buildingAmount: 3,
+        powerProduced: 1500,
+        recipe: 'AlienPowerAugmenter',
+      })
+      expect(alienPowerFac.power.produced).toBe(1500)
+    })
+
+    it('should boost the grid by 30% for the two fueled augmenters and 10% for the dry one', () => {
+      expect(alienPowerFac.power.boostFueledBuildings).toBe(2)
+      expect(alienPowerFac.power.boostUnfueledBuildings).toBe(1)
+      expect(alienPowerFac.power.boostPercent).toBe(0.7) // 2 x 30% + 1 x 10%
+    })
+
+    it('should demand matrixes for the fueled augmenters, creating a deliberate shortage', () => {
+      expect(alienPowerFac.powerProducers[0].ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 10 }])
+      expect(alienPowerFac.parts.AlienPowerFuel.amountRequiredPower).toBe(10)
+      expect(alienPowerFac.parts.AlienPowerFuel.satisfied).toBe(false)
+    })
+
+    it('should cost 10 Somersloops per augmenter and no Power Shards', () => {
+      expect(getFactorySomersloops(alienPowerFac)).toBe(30) // 3 buildings x 10 to construct
+      expect(getFactoryPowerShards(alienPowerFac)).toBe(0) // Augmenters cannot be overclocked
+    })
+  })
+
+  describe('Geothermal Power', () => {
+    it('should have one producer per geyser purity', () => {
+      expect(geothermalFac.powerProducers.length).toBe(3)
+      expect(geothermalFac.powerProducers[0]).toMatchObject({
+        building: 'geothermalgenerator',
+        buildingCount: 4,
+        powerProduced: 400,
+        recipe: 'GeneratorGeoThermal_Impure',
+      })
+      expect(geothermalFac.powerProducers[1]).toMatchObject({
+        buildingCount: 3,
+        powerProduced: 600,
+        recipe: 'GeneratorGeoThermal_Normal',
+      })
+      expect(geothermalFac.powerProducers[2]).toMatchObject({
+        buildingCount: 2,
+        powerProduced: 800,
+        recipe: 'GeneratorGeoThermal_Pure',
+      })
+    })
+
+    it('should produce 1800 MW average with the 0.5x-1.5x oscillation range', () => {
+      expect(geothermalFac.power.produced).toBe(1800)
+      expect(geothermalFac.power.producedMin).toBe(900)
+      expect(geothermalFac.power.producedMax).toBe(2700)
+    })
+  })
+
+  // The browser loads plans with origin 'recalculate' (building groups sacrosanct). The raw
+  // template's fuel generators are defined by power amount only, so their default building
+  // groups start with 0 buildings — the degenerate-group healing must rebuild them from the
+  // producer instead of syncing the producer's generation down to 0.
+  describe('recalculate origin (browser load path)', () => {
+    it('should keep all generation when recalculated with sacrosanct groups', () => {
+      const freshFactories = complexDemoPlan().getFactories()
+      calculateFactories(freshFactories, gameData, { origin: 'recalculate' })
+
+      expect(findFacByName('Oil Processing', freshFactories).power.produced).toBe(500)
+      expect(findFacByName('☢️ Uranium Power', freshFactories).power.produced).toBe(25000)
+      const alien = findFacByName('Alien Power', freshFactories)
+      expect(alien.power.produced).toBe(1500)
+      // 70% boost of the whole grid's base generation (500 + 25,000 + 1,500 + 1,800 = 28,800 MW)
+      expect(alien.power.boostMw).toBe(20160)
     })
   })
 })
