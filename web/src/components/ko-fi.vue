@@ -31,7 +31,7 @@
         <v-btn
           class="mx-auto mb-4"
           color="blue"
-          href="https://ko-fi.com/maelstromeous"
+          href="https://ko-fi.com/maelstrome"
           prepend-icon="fas fa-mug-hot"
           rel="noopener noreferrer"
           target="_blank"
