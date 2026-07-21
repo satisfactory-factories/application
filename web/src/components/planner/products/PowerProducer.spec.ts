@@ -145,6 +145,7 @@ describe('Component: PowerProducer', () => {
   describe('fuel quantity changes', () => {
     beforeEach(async () => {
       await fuelQuantity.setValue('2')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     })
 
     it('should update the power amount itself', () => {
@@ -167,6 +168,7 @@ describe('Component: PowerProducer', () => {
   describe('power amount changes', () => {
     beforeEach(async () => {
       await powerAmount.setValue('10000')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     })
 
     it('should update the power amount itself', () => {
@@ -197,6 +199,7 @@ describe('Component: PowerProducer', () => {
     beforeEach(async () => {
       requirementAmount = subject.find(`[id="${factory.id}-${powerProducer.id}-Water"]`)
       requirementAmount.setValue('480')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     })
 
     it('should update the data model', () => {
@@ -215,6 +218,7 @@ describe('Component: PowerProducer', () => {
   describe('building count changes', () => {
     beforeEach(async () => {
       await buildingCount.setValue(10) // Was 1
+      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     })
 
     it('should update the building count itself', () => {

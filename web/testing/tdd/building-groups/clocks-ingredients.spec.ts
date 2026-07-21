@@ -38,6 +38,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
   test('BG-E-C-PROD-2: Allows editing', async () => {
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce in BuildingGroup.vue (750ms)
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -53,6 +54,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -68,6 +70,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -92,6 +95,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     product.buildingGroupItemSync = true
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -105,6 +109,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     product.buildingGroupItemSync = false
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -123,6 +128,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Before the 750ms debounce fires, the group power should NOT have recalculated yet
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -141,6 +147,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -154,6 +161,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     // A 4-decimal-place clock (the game's maximum precision) should be preserved exactly
     await clockInput.setValue(133.3333)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -172,6 +180,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -185,6 +194,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -221,6 +231,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     // Change OreIron to 120 (needs 4 buildings)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce (750ms)
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -258,6 +269,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Before the 750ms debounce fires, the group has not been recalculated yet
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -273,6 +285,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -288,6 +301,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -302,6 +316,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -318,6 +333,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -332,6 +348,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
     // Wait for debounce
     await new Promise(resolve => setTimeout(resolve, 1000))

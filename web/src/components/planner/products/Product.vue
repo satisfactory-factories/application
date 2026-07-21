@@ -82,9 +82,7 @@
           :width="smAndDown ? undefined : '130px'"
           @update:model-value="updateProductQty(product, factory)"
         />
-        <span v-if="debouncingProduct === product.id && debouncing === 'amount'">
-          <v-icon>fas fa-sync fa-spin</v-icon>
-        </span>
+        <debounce-spinner :active="debouncingProduct === product.id && debouncing === 'amount'" />
       </div>
       <div class="input-row d-flex align-center">
         <v-btn
@@ -141,6 +139,7 @@
               @update:model-value="setProductQtyByByproduct(product, byProduct.id)"
             />
             <span>/min</span>
+            <debounce-spinner :active="pendingRecalc === `${product.id}-bp-${byProduct.id}`" />
           </v-chip>
           <v-chip v-if="shouldShowInternal(byProduct, factory)" class="sf-chip small green">
             Internal
@@ -172,6 +171,7 @@
             width="120px"
             @update:model-value="changeBuildingAmountInput(product, $event)"
           />
+          <debounce-spinner :active="pendingRecalc === `${product.id}-buildings`" />
         </v-chip>
         <v-chip
           class="sf-chip consumption"
@@ -209,6 +209,7 @@
             @update:model-value="setProductQtyByRequirement(product, part.toString())"
           />
           <span>/min</span>
+          <debounce-spinner :active="pendingRecalc === `${product.id}-req-${part}`" />
         </v-chip>
       </div>
     </div>
@@ -244,6 +245,7 @@
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import { debounce } from '@/components/planner/products/ItemCommon'
+  import { useDebouncedAction } from '@/composables/useDebouncedAction'
   import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
@@ -251,6 +253,9 @@
 
   const debouncing = ref('')
   const debouncingProduct = ref('')
+  // Secondary inputs (ingredients, byproducts, building count): the value mutation
+  // lands instantly, only the whole-plan recalculation is debounced behind this.
+  const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
 
   const { smAndDown, mdAndDown } = useDisplay()
   const {
@@ -406,7 +411,7 @@
       return
     }
     updateProductAmountViaByproduct(product, part, gameData)
-    updateFactory(props.factory)
+    runDebounced(`${product.id}-bp-${part}`, () => updateFactory(props.factory))
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
@@ -415,7 +420,7 @@
       return
     }
     updateProductAmountViaRequirement(product, part)
-    updateFactory(props.factory)
+    runDebounced(`${product.id}-req-${part}`, () => updateFactory(props.factory))
   }
 
   const changeBuildingAmount = (product: FactoryItem) => {
@@ -425,7 +430,7 @@
     }
 
     increaseProductQtyViaBuilding(product, props.factory, gameData)
-    updateFactory(props.factory)
+    runDebounced(`${product.id}-buildings`, () => updateFactory(props.factory))
   }
 
   // The input displays a formatted value (the raw one carries float noise like

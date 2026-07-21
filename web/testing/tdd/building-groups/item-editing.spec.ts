@@ -77,6 +77,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         // Update the product quantity, after debounce it should have updated the building group and effective buildings
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
         await itemAmountInput.setValue(120)
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
         // Wait for debounce
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -91,6 +92,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         // Update the product building count, after debounce it should have updated the building group and effective buildings
         const itemBCountInput = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         await itemBCountInput.setValue(4)
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
         // Wait for debounce
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -171,7 +173,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await itemAmountInput.setValue(120) // 4 buildings once applied
 
-      // Before the debounce elapses, the building group must NOT have updated yet.
+      // Before the debounce (250ms) elapses, the building group must NOT have updated yet.
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(product.buildingGroups[0].buildingCount).toBe(2)
 

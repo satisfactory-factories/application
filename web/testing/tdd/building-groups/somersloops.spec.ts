@@ -44,6 +44,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     expect((sloopInput.element as HTMLInputElement).disabled).toBe(false)
 
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     expect(buildingGroup.somersloops).toBe(1)
@@ -53,6 +54,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // 2 smelters @ 100% fully slooped: 120 ingots out, still 60 ore in
@@ -71,6 +73,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
 
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // 2 smelters * 4MW * 4 = 32 MW
@@ -81,6 +84,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // 2 physical buildings fully slooped = 4 effective
@@ -90,6 +94,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
   test('BG-E-S-PROD-5: Clamps somersloops to the building slot count', async () => {
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(5) // smelter only has 1 slot
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     expect(buildingGroup.somersloops).toBe(1)
@@ -99,6 +104,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     product.buildingGroupItemSync = true
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // 4 effective buildings worth of output = 120/min
@@ -114,6 +120,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
 
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // The item was written back to match the amplified output (120/min), so the
@@ -128,6 +135,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     expect(product.amount).toBe(60)
@@ -145,6 +153,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
 
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // 2 buildings x 1 somersloop each = 2 in total
@@ -155,10 +164,12 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
     product.buildingGroupItemSync = false
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     // Clock edits are debounced 750ms
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -179,6 +190,7 @@ describe('TDD: BG-E-S-PROD: Building Groups: Somersloops (Products)', () => {
 
     const sloopInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-somersloops"]`)
     await sloopInput.setValue(1)
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     await waitForUpdate()
 
     // Fully slooped (1 of 1 slot): +100% output / building

@@ -60,8 +60,9 @@
             :min-width="smAndDown ? undefined : '130px'"
             :name="`${input.factoryId}-${input.outputPart}.amount`"
             variant="outlined"
-            @update:model-value="updateFactories(factory, input)"
+            @update:model-value="updateFactoriesDebounced(factory, input)"
           />
+          <debounce-spinner :active="pendingRecalc === `${input.factoryId}-${input.outputPart}`" />
         </div>
         <div class="input-row d-flex align-center">
           <v-btn
@@ -147,8 +148,11 @@
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
+  import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const { getFactories } = useAppStore()
+  // Qty edits mutate the input instantly; only the recalculation is debounced.
+  const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
   const { getGameData } = useGameDataStore()
   const { smAndDown } = useDisplay()
 
@@ -286,6 +290,17 @@
   const importCandidates = computed((): Factory[] => {
     return calculateImportCandidates(props.factory, possibleImports.value)
   })
+
+  // Debounced variant for the Qty input, which fires per keystroke.
+  const updateFactoriesDebounced = (factory: Factory, input: FactoryInput) => {
+    validateInput(input)
+    runDebounced(`${input.factoryId}-${input.outputPart}`, () => {
+      updateFactory(factory)
+      if (input.factoryId) {
+        updateFactory(findFactory(input.factoryId))
+      }
+    })
+  }
 
   const updateFactories = (factory: Factory, input: FactoryInput) => {
     validateInput(input)

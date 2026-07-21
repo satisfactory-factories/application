@@ -170,6 +170,7 @@ describe('Component: BuildingGroups', () => {
     describe('editing groups', () => {
       it('should correctly update the building group when building count has changed', async () => {
         await buildingGroupCount.setValue('2')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
         expect(buildingGroup.buildingCount).toBe(2)
         expect(buildingGroup.overclockPercent).toBe(100)
@@ -179,6 +180,7 @@ describe('Component: BuildingGroups', () => {
 
       it('should update the product building count when there is a singular group', async () => {
         await buildingGroupCount.setValue('2')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
         expect(product.buildingRequirements.amount).toBe(2)
       })
@@ -190,6 +192,7 @@ describe('Component: BuildingGroups', () => {
 
         const newBuildingGroupCount = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-building-count"]`)
         await newBuildingGroupCount.setValue('3')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
         expect(product.buildingRequirements.amount).toBe(1) // Originally 1
       })
@@ -199,7 +202,8 @@ describe('Component: BuildingGroups', () => {
         const ironIngotAmount = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-IronIngot-amount"]`)
 
         await buildingGroupClock.setValue('200')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(200)
         expect(buildingGroup.parts.OreIron).toBe(60)
@@ -223,14 +227,16 @@ describe('Component: BuildingGroups', () => {
 
       it('should the clock be changed, the building number should not change but update effective buildings correctly', async () => {
         await buildingGroupClock.setValue('200')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(200)
         expect(buildingGroup.buildingCount).toBe(1)
         expect(effectiveBuildings.text()).toBe('2.00')
 
         await buildingGroupClock.setValue('250')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroup.overclockPercent).toBe(250)
         expect(buildingGroup.buildingCount).toBe(1)
@@ -238,13 +244,16 @@ describe('Component: BuildingGroups', () => {
 
       it('should the clock be changed, the product buildings should also be updated', async () => {
         await buildingGroupCount.setValue('1')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         await buildingGroupClock.setValue('200')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(itemBuildingCount.element.value).toBe('2')
 
         await buildingGroupClock.setValue('250')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(itemBuildingCount.element.value).toBe('2.5')
       })
@@ -256,7 +265,8 @@ describe('Component: BuildingGroups', () => {
         expect(buildingGroupPowerUsed.text()).toBe('4 MW')
 
         await buildingGroupClock.setValue('200')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(buildingGroupPowerUsed.text()).toBe('10 MW') // Remember Power is not a linear calculation.
       })
@@ -271,7 +281,8 @@ describe('Component: BuildingGroups', () => {
         expect(chipIronIngot.text()).toBe('30 / building')
 
         await buildingGroupClock.setValue('200')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         expect(chipOreIron.text()).toBe('60 / building')
@@ -301,7 +312,8 @@ describe('Component: BuildingGroups', () => {
         expect(chipIronIngot.text()).toBe('30 / building')
 
         await buildingGroupCount.setValue('10')
-        // We have baked in a debounce delay of 750ms, so make the test wait
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         // The per building counts stay the same as the overclock is 100%
@@ -333,6 +345,7 @@ describe('Component: BuildingGroups', () => {
 
           it('should sync be enabled, and a singular group, when product is edited group should be kept in sync', async () => {
             await itemBuildingCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect(product.buildingRequirements.amount).toBe(2)
             expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -341,6 +354,7 @@ describe('Component: BuildingGroups', () => {
 
           it('should sync be enabled, and a singular group, when building group is edited product should be kept in sync', async () => {
             await buildingGroupCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect((itemBuildingCount.element as HTMLInputElement).value).toBe('2')
             expect(product.buildingRequirements.amount).toBe(2)
@@ -349,6 +363,7 @@ describe('Component: BuildingGroups', () => {
           it('should update the product when enabled and the building count is changed (single group)', async () => {
             const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
             await count.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect(buildingGroupCount.attributes('value')).toBe('2')
           })
@@ -363,11 +378,13 @@ describe('Component: BuildingGroups', () => {
             // Set new group's building counts to 10
             const newGroupCount = subject.find(`[id="${factory.id}-${product.buildingGroups[1].id}-building-count"]`)
             await newGroupCount.setValue('10')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
             expect(product.buildingGroups[1].buildingCount).toBe(10)
 
             // Set original building count to 2, totalling to 12
             const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
             await count.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             const itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
             expect(itemBuildingCount.attributes('value')).toBe('12')
@@ -377,11 +394,13 @@ describe('Component: BuildingGroups', () => {
           it('should update the product requirements properly when a building group is synced', async () => {
             // This tests for a weird condition where if you update the building count, it lags behind by one change
             await buildingGroupCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect(product.buildingRequirements.amount).toBe(2)
             expect(product.requirements.OreIron.amount).toBe(60)
 
             await buildingGroupCount.setValue('10')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
             expect(product.buildingRequirements.amount).toBe(10)
             expect(product.requirements.OreIron.amount).toBe(300)
           })
@@ -389,10 +408,12 @@ describe('Component: BuildingGroups', () => {
           it('should update the effective buildings correctly when a building group is synced', async () => {
             // This tests for a weird condition where if you update the building count, it lags behind by one change
             await buildingGroupCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
             expect(effectiveBuildings.text()).toBe('2.00')
             expect(buildingsRemaining.text()).toBe('0.00')
 
             await buildingGroupCount.setValue('10')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
             expect(effectiveBuildings.text()).toBe('10.00')
             expect(buildingsRemaining.text()).toBe('0.00')
           })
@@ -411,6 +432,7 @@ describe('Component: BuildingGroups', () => {
             product.buildingGroupItemSync = false
 
             await itemBuildingCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect(product.buildingRequirements.amount).toBe(2)
             expect(product.buildingGroups[0].buildingCount).toBe(1)
@@ -421,6 +443,7 @@ describe('Component: BuildingGroups', () => {
             product.buildingGroupItemSync = false
 
             await buildingGroupCount.setValue('2')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             expect((itemBuildingCount.element as HTMLInputElement).value).toBe('1')
             expect(product.buildingRequirements.amount).toBe(1)
@@ -432,6 +455,7 @@ describe('Component: BuildingGroups', () => {
 
             // Update the product's building count
             await itemBuildingCount.setValue('13')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             // It should have synced the building count to the building group
             expect(effectiveBuildings.text()).toBe('13.00')
@@ -442,6 +466,7 @@ describe('Component: BuildingGroups', () => {
 
             // Modify the product building count again
             await itemBuildingCount.setValue('15')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
             // Expect it not to have changed the effective buildings, and there should be a remainder.
             // NOTE: the remaining-buildings span is :key'd by its value, so the element is
@@ -611,6 +636,7 @@ describe('Component: BuildingGroups', () => {
         it('should update the power producer when enabled and the building count is changed (single group)', async () => {
           const count = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
           await count.setValue('2')
+          await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
           const powerProducerBuildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
           expect(powerProducerBuildingCount.attributes('value')).toBe('2')
@@ -626,11 +652,13 @@ describe('Component: BuildingGroups', () => {
           // Set new group's building counts to 10
           const newGroupCount = subject.find(`[id="${factory.id}-${powerProducer.buildingGroups[1].id}-building-count"]`)
           await newGroupCount.setValue('10')
+          await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
           expect(powerProducer.buildingGroups[1].buildingCount).toBe(10)
 
           // Set original building count to 2, totalling to 12
           const buildingCount = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
           await buildingCount.setValue('2')
+          await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
           const powerProducerBuildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
           expect(powerProducerBuildingCount.attributes('value')).toBe('12')
@@ -641,13 +669,15 @@ describe('Component: BuildingGroups', () => {
       it('should update the effective buildings correctly when a building group is synced', async () => {
         // This tests for a weird condition where if you update the building count, it lags behind by one change
         await buildingGroupCount.setValue('3')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
-        // There's a debounce delay of 750ms, so make the test wait
+        // There's a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(effectiveBuildings.text()).toBe('3.00')
         expect(buildingsRemaining.text()).toBe('0.00')
 
         await buildingGroupCount.setValue('13')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         expect(effectiveBuildings.text()).toBe('13.00')
         expect(buildingsRemaining.text()).toBe('0.00')
       })
@@ -664,6 +694,7 @@ describe('Component: BuildingGroups', () => {
             newGroupBuildings = subject.find(`[id="${factory.id}-${newGroup.id}-building-count"]`)
             newGroupClock = subject.find(`[id="${factory.id}-${newGroup.id}-clock"]`)
             await newGroupBuildings.setValue('1')
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
             // Also enable sync
             await toggleSyncButton.trigger('click')
 
@@ -673,7 +704,8 @@ describe('Component: BuildingGroups', () => {
 
           it('should not rebalance when buildings are updated', async () => {
             await buildingGroupCount.setValue('2')
-            // There's a debounce delay of 750ms, so make the test wait
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+            // There's a debounce delay of 250ms, so make the test wait
             await new Promise(resolve => setTimeout(resolve, 1000))
 
             expect(buildingGroupCount.attributes('value')).toBe('2')
@@ -688,7 +720,8 @@ describe('Component: BuildingGroups', () => {
 
           it('should not rebalance when overclock updated ', async () => {
             await buildingGroupClock.setValue('200')
-            // There's a debounce delay of 750ms, so make the test wait
+            await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+            // There's a debounce delay of 250ms, so make the test wait
             await new Promise(resolve => setTimeout(resolve, 1000))
 
             expect(buildingGroupCount.attributes('value')).toBe('1')
@@ -707,9 +740,11 @@ describe('Component: BuildingGroups', () => {
     describe('power calculations', () => {
       it('should display power production for power producers and at the correct value', async () => {
         await buildingGroupCount.setValue('10')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         expect(buildingGroupPowerUsed.text()).toBe(`25 GW`)
 
         await buildingGroupCount.setValue('15')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         expect(buildingGroupPowerUsed.text()).toBe(`37.5 GW`)
       })
     })

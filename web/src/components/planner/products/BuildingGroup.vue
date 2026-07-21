@@ -38,6 +38,7 @@
           width="100px"
           @update:model-value="updateGroup(group)"
         />
+        <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -166,6 +167,7 @@
             width="80px"
             @update:model-value="updateGroupSomersloops(group)"
           />
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
           <span v-if="somersloopSlots === 0">Cannot be amplified</span>
@@ -310,8 +312,10 @@
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
+  import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const updateFactory = inject('updateFactory') as (factory: Factory, modes?: CalculationModes) => void
+  const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
 
   // const timeout: NodeJS.Timeout | null = null
   const updatingPart = ref('')
@@ -329,13 +333,15 @@
   }>()
 
   const updateGroup = (group: BuildingGroup) => {
+    // The group's own numbers update instantly; only the recalculation is debounced.
     updateBuildingGroup(group)
 
-    // Update the factory
-    updateFactory(props.factory, {
-      useBuildingGroupBuildings: true,
-      forceRebalance: false,
-      origin: 'buildingGroup',
+    runDebounced(`group-${group.id}`, () => {
+      updateFactory(props.factory, {
+        useBuildingGroupBuildings: true,
+        forceRebalance: false,
+        origin: 'buildingGroup',
+      })
     })
   }
 
@@ -382,7 +388,7 @@
       updatingOverclock.value = false
       console.log('Overclock updated')
       eventBus.emit('buildingGroupUpdated', props.factory)
-    }, 750)
+    }, 250)
   }
 
   const deleteGroup = (group: BuildingGroup) => {
@@ -475,7 +481,7 @@
       updatingPart.value = ''
       console.log(`Part ${part} updated`)
       eventBus.emit('buildingGroupUpdated', props.factory)
-    }, 750)
+    }, 250)
   }
 </script>
 

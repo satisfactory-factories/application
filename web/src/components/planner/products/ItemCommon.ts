@@ -16,7 +16,13 @@ export function debounce (): Promise<void> {
       resolveFunc = resolve
     })
   }
-  // Start a new timer
+  // 250ms: long enough to coalesce keystrokes while typing a number, short enough
+  // that the planner feels immediate. (Was 750ms back when every recalculation
+  // rewrote the whole plan reactively and needed hiding.) Dev tests can override
+  // via window.__sfDebounceMs to A/B the debounce itself.
+  const delay = (import.meta.env.DEV && typeof window !== 'undefined'
+    ? (window as unknown as { __sfDebounceMs?: number }).__sfDebounceMs
+    : undefined) ?? 250
   timer = setTimeout(() => {
     console.log('Item debounce elapsed')
     // Resolve the debounce promise
@@ -25,6 +31,6 @@ export function debounce (): Promise<void> {
     currentPromise = null
     resolveFunc = null
     timer = null
-  }, 750)
+  }, delay)
   return currentPromise
 }

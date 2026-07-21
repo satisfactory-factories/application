@@ -40,6 +40,7 @@
           <li>A recalculation that changes nothing now touches <b>zero</b> reactive state — previously it rewrote ~2,400 values on even a modest 9-factory plan.</li>
           <li>Editing a product on a 124-factory mega-plan now triggers <b>~40 reactive updates instead of ~30,000+</b>, and only the affected fields re-render.</li>
           <li>The "add shortage as a new factory" flow and other whole-plan recalculations no longer hang large plans.</li>
+          <li><b>Inputs feel instant</b> — your typed value lands immediately, and a small spinner beside the input shows the (much shorter) pause before the plan recalculates.</li>
         </ul>
         <v-divider class="subsection" />
 

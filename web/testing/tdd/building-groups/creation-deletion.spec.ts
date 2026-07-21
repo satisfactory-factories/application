@@ -241,6 +241,7 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       // Update the product amount to create a balance of 2 groups with 1 building
       const productAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await productAmountInput.setValue('60')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
       // Wait for debounce
       await new Promise(resolve => setTimeout(resolve, 1000))

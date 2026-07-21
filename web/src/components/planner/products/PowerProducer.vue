@@ -97,6 +97,7 @@
           :width="smAndDown ? undefined : '130px'"
           @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Fuel, producer, factory)"
         />
+        <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Fuel}`" />
       </div>
       <div v-if="!isFuellessProducer(producer)" class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
@@ -115,6 +116,7 @@
           :width="smAndDown ? undefined : '130px'"
           @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Power, producer, factory)"
         />
+        <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Power}`" />
       </div>
       <div class="input-row d-flex align-center">
         <v-chip
@@ -219,6 +221,7 @@
               width="120px"
               @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
             />
+            <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Building}`" />
           </v-chip>
         </span>
       </div>
@@ -245,8 +248,11 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
+  // Numeric edits mutate the producer instantly; only the recalculation is debounced.
+  const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
 
   const { smAndDown } = useDisplay()
@@ -397,7 +403,7 @@
     if (producer.buildingAmount < 0) {
       producer.buildingAmount = 0
     }
-    updateFactory(factory)
+    runDebounced(`${producer.id}-${type}`, () => updateFactory(factory))
   }
 
   const updatePowerProducerOrder = (direction: 'up' | 'down', producer: FactoryPowerProducer) => {
