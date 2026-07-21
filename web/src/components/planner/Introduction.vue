@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="showDialog" max-width="1000" scrollable>
     <v-card class="my-2">
-      <v-card-title class="text-center pb-0">
+      <v-card-title class="text-center pb-0 mt-4">
         <h1 class="text-h1">Welcome to Satisfactory Factories!</h1>
       </v-card-title>
       <v-card-subtitle class="text-center">
