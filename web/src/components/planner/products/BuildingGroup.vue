@@ -333,10 +333,11 @@
   }>()
 
   const updateGroup = (group: BuildingGroup) => {
-    // The group's own numbers update instantly; only the recalculation is debounced.
-    updateBuildingGroup(group)
-
+    // The typed value echoes instantly via v-model; ALL derived work — including the
+    // group's own power/parts recompute — waits for the debounce, otherwise dependent
+    // displays update per keystroke and drag renders with them.
     runDebounced(`group-${group.id}`, () => {
+      updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
         forceRebalance: false,
@@ -362,17 +363,26 @@
   })
 
   const updateGroupSomersloops = (group: BuildingGroup) => {
-    const requested = group.somersloops ?? 0
-    const clamped = sanitizeGroupSomersloops(group, props.building)
+    // Sanitizing (and its toast) also waits for the debounce — clamping per keystroke
+    // rewrites the field and spams warnings while the user is still typing.
+    runDebounced(`group-${group.id}`, () => {
+      const requested = group.somersloops ?? 0
+      const clamped = sanitizeGroupSomersloops(group, props.building)
 
-    if (requested > clamped) {
-      eventBus.emit('toast', {
-        message: `This building only has ${somersloopSlots.value} somersloop slot(s) per building.`,
-        type: 'warning',
+      if (requested > clamped) {
+        eventBus.emit('toast', {
+          message: `This building only has ${somersloopSlots.value} somersloop slot(s) per building.`,
+          type: 'warning',
+        })
+      }
+
+      updateBuildingGroup(group)
+      updateFactory(props.factory, {
+        useBuildingGroupBuildings: true,
+        forceRebalance: false,
+        origin: 'buildingGroup',
       })
-    }
-
-    updateGroup(group)
+    })
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {

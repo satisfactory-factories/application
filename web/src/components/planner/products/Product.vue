@@ -410,8 +410,12 @@
       // The user may be typing a decimal point starting with zero, so leave them alone
       return
     }
-    updateProductAmountViaByproduct(product, part, gameData)
-    runDebounced(`${product.id}-bp-${part}`, () => updateFactory(props.factory))
+    // Even the local reverse-solve waits for the debounce — running it per keystroke
+    // updates dependent displays (and triggers renders) while the user is still typing.
+    runDebounced(`${product.id}-bp-${part}`, () => {
+      updateProductAmountViaByproduct(product, part, gameData)
+      updateFactory(props.factory)
+    })
   }
 
   const setProductQtyByRequirement = (product: FactoryItem, part: string) => {
@@ -419,8 +423,10 @@
       // The user may be typing a decimal point starting with zero, so leave them alone
       return
     }
-    updateProductAmountViaRequirement(product, part)
-    runDebounced(`${product.id}-req-${part}`, () => updateFactory(props.factory))
+    runDebounced(`${product.id}-req-${part}`, () => {
+      updateProductAmountViaRequirement(product, part)
+      updateFactory(props.factory)
+    })
   }
 
   const changeBuildingAmount = (product: FactoryItem) => {
@@ -429,8 +435,10 @@
       return
     }
 
-    increaseProductQtyViaBuilding(product, props.factory, gameData)
-    runDebounced(`${product.id}-buildings`, () => updateFactory(props.factory))
+    runDebounced(`${product.id}-buildings`, () => {
+      increaseProductQtyViaBuilding(product, props.factory, gameData)
+      updateFactory(props.factory)
+    })
   }
 
   // The input displays a formatted value (the raw one carries float noise like

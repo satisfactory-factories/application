@@ -391,19 +391,22 @@
     producer: FactoryPowerProducer,
     factory: Factory
   ) => {
-    producer.updated = type
+    // All derived work (clamping included — it rewrites the field) waits for the debounce.
+    runDebounced(`${producer.id}-${type}`, () => {
+      producer.updated = type
 
-    // If user has tried to enter zeros for any inputs, zero it
-    if (producer.fuelAmount < 0) {
-      producer.fuelAmount = 0
-    }
-    if (producer.powerAmount < 0) {
-      producer.powerAmount = 0
-    }
-    if (producer.buildingAmount < 0) {
-      producer.buildingAmount = 0
-    }
-    runDebounced(`${producer.id}-${type}`, () => updateFactory(factory))
+      // If user has tried to enter zeros for any inputs, zero it
+      if (producer.fuelAmount < 0) {
+        producer.fuelAmount = 0
+      }
+      if (producer.powerAmount < 0) {
+        producer.powerAmount = 0
+      }
+      if (producer.buildingAmount < 0) {
+        producer.buildingAmount = 0
+      }
+      updateFactory(factory)
+    })
   }
 
   const updatePowerProducerOrder = (direction: 'up' | 'down', producer: FactoryPowerProducer) => {

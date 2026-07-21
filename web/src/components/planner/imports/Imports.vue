@@ -291,10 +291,11 @@
     return calculateImportCandidates(props.factory, possibleImports.value)
   })
 
-  // Debounced variant for the Qty input, which fires per keystroke.
+  // Debounced variant for the Qty input, which fires per keystroke. validateInput also
+  // waits — it clamps 0 to 1 with a toast, which would fight the user mid-typing.
   const updateFactoriesDebounced = (factory: Factory, input: FactoryInput) => {
-    validateInput(input)
     runDebounced(`${input.factoryId}-${input.outputPart}`, () => {
+      validateInput(input)
       updateFactory(factory)
       if (input.factoryId) {
         updateFactory(findFactory(input.factoryId))

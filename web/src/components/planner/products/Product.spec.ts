@@ -56,6 +56,7 @@ describe('Component: Product', () => {
     expect((ironOreInput.element as HTMLInputElement).value).toBe('30')
 
     await ironOreInput.setValue('60')
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     expect((productionInput.element as HTMLInputElement).value).toBe('60')
   })
 
@@ -74,6 +75,7 @@ describe('Component: Product', () => {
     expect((byProductInput.element as HTMLInputElement).value).toBe('30')
 
     await byProductInput.setValue('60')
+    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
     expect((productionInput.element as HTMLInputElement).value).toBe('80')
   })
 
