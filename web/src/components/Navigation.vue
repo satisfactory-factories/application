@@ -1,13 +1,15 @@
 <template>
-  <v-toolbar dark :density="toolbarDensity">
+  <!-- Burnt FICSIT orange: dark enough to sit back as chrome, but unmistakably
+       construction-orange next to the logo and deep-orange tab accent. -->
+  <v-toolbar class="main-header" color="rgb(108, 62, 38)" dark :density="toolbarDensity">
     <v-btn v-if="mdAndDown" icon @click="toggleDrawer">
       <i class="fa fa-bars" />
     </v-btn>
     <template v-else>
-      <img alt="Site logo" src="/assets/img/SF.png" style="max-width: 48px;">
+      <img alt="Site logo" class="ml-3 site-logo" src="/assets/img/SF.png" style="max-width: 48px;">
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
-        <v-chip class="sf-chip blue small">
+        <v-chip class="sf-chip small beta-chip">
           BETA v0.5
           <span class="mx-1">•</span>
           <a class="show-changes" href="#" @click.prevent="showChanges">Show changes</a>
@@ -159,6 +161,29 @@
   &:hover, &.resizing {
     border-right-color: rgb(var(--v-theme-primary));
   }
+}
+
+.main-header {
+  border-bottom: 1px solid #ba7800;
+
+  // The active route's underline shares the consumption orange with the factory
+  // tab bar below (the slider has its own fill — it doesn't inherit currentColor).
+  :deep(.v-tab__slider) {
+    background-color: var(--sf-power-consumption);
+  }
+}
+
+// The beta badge sits on the burnt-orange toolbar, so it can't borrow a
+// semantic chip colour (blue clashed, yellow/beige dissolve into the orange) —
+// a neutral darkened fill with white text keeps it prominent on the warm bg.
+.beta-chip {
+  color: #fff !important;
+  border-color: rgba(255, 251, 0, 0.55) !important;
+  background-color: rgba(118, 121, 24, 0.28);
+}
+
+.site-logo {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
 }
 
 .show-changes {
