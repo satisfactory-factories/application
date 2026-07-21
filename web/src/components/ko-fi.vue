@@ -15,19 +15,28 @@
       title="Help support the project!"
       width="400"
     >
-      <div class="pa-2">
-        <iframe
-          id="kofiframe"
-          height="600"
-          src="https://ko-fi.com/maelstromeous/?hidefeed=true&widget=true&embed=true&preview=true"
-          style="border:none;width:100%;padding:4px;background:transparent;"
-          title="maelstromeous"
+      <template #append>
+        <v-btn
+          icon="fas fa-times"
+          size="small"
+          variant="text"
+          @click="open = false"
         />
+      </template>
+      <div class="pa-4 text-body-1">
+        Thank you for considering a donation! Any amount of support is vastly
+        appreciated and helps keep the project running and improving. ❤️
       </div>
       <template #actions>
         <v-btn
-          class="ms-auto"
-          text="Close"
+          class="mx-auto mb-4"
+          color="blue"
+          href="https://ko-fi.com/maelstromeous"
+          prepend-icon="fas fa-mug-hot"
+          rel="noopener noreferrer"
+          target="_blank"
+          text="Donate on Ko-fi"
+          variant="flat"
           @click="open = false"
         />
       </template>
