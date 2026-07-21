@@ -104,6 +104,38 @@ export const useAppStore = defineStore('app', () => {
     setLastEdit() // Update last edit time whenever the data changes, from any source.
   }, { deep: true })
 
+  // Dev-only test hook: lets browser tests measure reactive churn during interactions.
+  // Installing it adds a deep sync watcher over the whole plan — the same (expensive)
+  // shape Vue Devtools uses — so it is never active unless a test installs it.
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    let watchFires = 0
+    let stopCounter: (() => void) | null = null
+    interface SfWatchCounter {
+      install: () => void
+      count: () => number
+      reset: () => void
+      stop: () => void
+    }
+    (window as unknown as { __sfWatchCounter: SfWatchCounter }).__sfWatchCounter = {
+      install: () => {
+        stopCounter?.()
+        watchFires = 0
+        const handle = watch(factoryTabs.value, () => {
+          watchFires++
+        }, { deep: true, flush: 'sync' })
+        stopCounter = () => handle()
+      },
+      count: () => watchFires,
+      reset: () => {
+        watchFires = 0
+      },
+      stop: () => {
+        stopCounter?.()
+        stopCounter = null
+      },
+    }
+  }
+
   const getLastEdit = (): Date => {
     return lastEdit.value
   }
@@ -437,9 +469,11 @@ export const useAppStore = defineStore('app', () => {
       calculateFactories(newFactories, gameData, { origin: 'recalculate' })
     }
 
-    // For each factory, set the previous inputs to the current inputs.
+    // For each factory, snapshot the current inputs as the previous inputs. Must be a
+    // copy — aliasing the live array would make the "previous" state track the current
+    // one (and corrupts the in-place diff commit in calculateFactories).
     newFactories.forEach(factory => {
-      factory.previousInputs = factory.inputs
+      factory.previousInputs = factory.inputs.map(input => ({ ...input }))
     })
 
     factories.value = newFactories

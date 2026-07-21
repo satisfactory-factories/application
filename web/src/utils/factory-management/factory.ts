@@ -23,6 +23,8 @@ import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculateGridBoost, calculatePowerProducers } from '@/utils/factory-management/power'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
+import { applyDiff } from '@/utils/factory-management/commit'
+import { toRaw } from 'vue'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
   // This should always be supplied, if not there's a major bug.
@@ -101,7 +103,10 @@ export interface CalculationModes {
 }
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
-export const calculateFactory = (
+// This is the raw engine: it mutates whatever objects it is handed, rebuilding parts /
+// metrics dictionaries from scratch each run. The exported calculateFactory wraps it in a
+// clone-run-commit cycle so those churny writes never hit reactive state directly.
+const calculateFactoryEngine = (
   factory: Factory,
   allFactories: Factory[],
   gameData: DataInterface,
@@ -185,7 +190,7 @@ export const calculateFactory = (
     factory.powerProducers.map(producer => [producer.buildingAmount, producer.powerAmount, producer.fuelAmount]),
   ])
   if ((modes.origin === 'buildingGroup' || modes.origin === 'recalculate') && !modes.groupResync && preSyncAmounts !== postSyncAmounts) {
-    return calculateFactory(factory, allFactories, gameData, { ...modes, groupResync: true })
+    return calculateFactoryEngine(factory, allFactories, gameData, { ...modes, groupResync: true })
   }
 
   // It's possible that the power producers have changed, so we need to recalculate the power.
@@ -202,8 +207,11 @@ export const calculateFactory = (
     calculateHasProblem(fac)
   })
 
-  // Emit an event that the data has been updated so it can be synced
-  eventBus.emit('factoryUpdated', factory)
+  // Emit an event that the data has been updated so it can be synced.
+  // During a clone run the wrapper emits after committing, with the real objects.
+  if (!inCloneRun()) {
+    eventBus.emit('factoryUpdated', factory)
+  }
 
   console.log(`factory: calculateFactory completed for factory: ${factory.name}`)
 
@@ -212,7 +220,7 @@ export const calculateFactory = (
 
 // The beating heart of the entire app...
 // This function is called to calculate all factories in the planner.
-export const calculateFactories = (
+const calculateFactoriesEngine = (
   factories: Factory[],
   gameData: DataInterface,
   modes: CalculationModes = {}
@@ -222,16 +230,116 @@ export const calculateFactories = (
   // loadMode flag passed here to ensure we don't nuke inputs due to no part data.
   // This generates the Part metrics for the factories, which is then used by calculateDependencies to generate the dependency metrics.
   // While we are running the calculations twice, they are very quick, <20ms even for the largest plans.
-  factories.forEach(factory => calculateFactory(factory, factories, gameData, { ...modes, loadMode: true }))
+  factories.forEach(factory => calculateFactoryEngine(factory, factories, gameData, { ...modes, loadMode: true }))
 
   // Now calculate the dependencies for all factories, removing any invalid inputs.
   calculateAllDependencies(factories, gameData)
 
   // Re-run the calculations after the dependencies have been calculated as some inputs may have been deleted
-  factories.forEach(factory => calculateFactory(factory, factories, gameData, modes))
+  factories.forEach(factory => calculateFactoryEngine(factory, factories, gameData, modes))
 
   console.log('factory: Calculations completed')
 
+  if (!inCloneRun()) {
+    eventBus.emit('calculationsCompleted')
+  }
+}
+
+// --- Clone-run-commit wrappers ---------------------------------------------------------
+// The engine rebuilds parts / metrics / rawResources from scratch and accumulates values
+// with += on every pass, so run directly against reactive store objects it performs
+// thousands of writes per recalculation of which ~98% leave the value unchanged. Every
+// one still triggers deep watchers (localStorage persistence, the factory list, and —
+// catastrophically — Vue Devtools' sync $subscribe) and re-renders every component
+// reading the rebuilt objects. The public entry points below therefore run the engine on
+// a plain structuredClone of the plan and diff-commit only the genuine changes back onto
+// the live objects, preserving object identity throughout.
+
+let cloneRunDepth = 0
+
+// True while the engine is running against a calculation clone. Nested calculateFactory /
+// calculateFactories calls from inside the engine (e.g. deleteRequestPair) are already
+// operating on the clone and must run the engine directly rather than re-cloning.
+const inCloneRun = () => cloneRunDepth > 0
+
+const cloneForCalculation = (factories: Factory[]): Factory[] =>
+  // toRaw both the array and its elements: callers hand us either the store's reactive
+  // array (raw elements inside) or a plain array that may contain reactive proxies.
+  structuredClone(toRaw(factories).map(factory => toRaw(factory)))
+
+// Diff the calculation results onto the live factories; returns the ones that changed.
+const commitResults = (targets: Factory[], results: Factory[]): Factory[] => {
+  const changed: Factory[] = []
+  targets.forEach((target, index) => {
+    // Older sessions aliased previousInputs to the inputs array (they were the same
+    // array object). An in-place diff of one would corrupt the other, so break the
+    // alias first. setFactories no longer creates such aliases.
+    if (target.previousInputs === target.inputs) {
+      target.previousInputs = target.inputs.map(input => ({ ...input }))
+    }
+    if (applyDiff(target, results[index]) > 0) {
+      changed.push(target)
+    }
+  })
+  return changed
+}
+
+export const calculateFactory = (
+  factory: Factory,
+  allFactories: Factory[],
+  gameData: DataInterface,
+  modes: CalculationModes = {},
+): Factory => {
+  if (inCloneRun()) {
+    return calculateFactoryEngine(factory, allFactories, gameData, modes)
+  }
+
+  const index = allFactories.indexOf(factory)
+  if (index === -1) {
+    // The factory isn't part of the plan being calculated (should not happen via the UI);
+    // fall back to calculating it directly.
+    console.error('factory: calculateFactory: factory not found in allFactories, calculating directly', factory.id)
+    return calculateFactoryEngine(factory, allFactories, gameData, modes)
+  }
+
+  const results = cloneForCalculation(allFactories)
+  cloneRunDepth++
+  try {
+    calculateFactoryEngine(results[index], results, gameData, modes)
+  } finally {
+    cloneRunDepth--
+  }
+
+  const changed = commitResults(allFactories, results)
+  changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
+  // The edited factory's user-made change (e.g. a new product amount) happened before
+  // this call, so the diff may be empty even though the plan is dirty — always notify.
+  if (!changed.includes(factory)) {
+    eventBus.emit('factoryUpdated', factory)
+  }
+
+  return factory
+}
+
+export const calculateFactories = (
+  factories: Factory[],
+  gameData: DataInterface,
+  modes: CalculationModes = {}
+): void => {
+  if (inCloneRun()) {
+    return calculateFactoriesEngine(factories, gameData, modes)
+  }
+
+  const results = cloneForCalculation(factories)
+  cloneRunDepth++
+  try {
+    calculateFactoriesEngine(results, gameData, modes)
+  } finally {
+    cloneRunDepth--
+  }
+
+  const changed = commitResults(factories, results)
+  changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
   eventBus.emit('calculationsCompleted')
 }
 

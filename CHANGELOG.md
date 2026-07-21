@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Performance
+
+- Massively reduced the reactive cost of recalculations. The calculation engine used to rebuild parts / metrics dictionaries directly on the live (reactive) plan on every pass — ~98% of those writes left values unchanged, yet each one still fired deep watchers (localStorage persistence, the sidebar factory list, and, catastrophically, Vue Devtools' sync store subscription, which deep-traverses the entire plan per write and made adding a factory hang for minutes on large plans). `calculateFactory` / `calculateFactories` now run the engine on a plain `structuredClone` of the plan and diff-commit only genuine changes back onto the live objects, preserving object identity throughout. A no-op recalculation now performs zero reactive writes (verified down from ~2,400 on the demo plan), a product edit fires ~30 watcher events instead of thousands, and `factoryUpdated` events are only emitted for factories whose data actually changed. Also fixed `setFactories` aliasing `previousInputs` to the live `inputs` array instead of snapshotting a copy.
+- Added a browser-level reactivity test harness (`web/testing/browser/`) that drives the real planner (demo plan and Mael's MegaPlan) with Puppeteer, asserting DOM reactivity end-to-end and bounding the number of deep-watcher fires per interaction via a dev-only `window.__sfWatchCounter` hook.
+
 ## Beta v0.5 — The "Overclocked" Update
 
 After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.
