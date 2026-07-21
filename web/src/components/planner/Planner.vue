@@ -8,61 +8,46 @@
   <div class="planner-container">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
-      <planner-factory-list
+      <planner-sidebar-content
         :factories="getFactories()"
-        loaded-from="navigation"
-        :total-factories="getFactories().length"
-        @create-factory="createFactory"
-        @update-factories="updateFactoriesList"
-      />
-      <planner-global-actions
-        class="py-4"
         :help-text-shown="helpText"
+        loaded-from="navigation"
         @clear-all="clearAll"
+        @create-factory="createFactory"
         @hide-all="showHideAll('hide')"
         @import-world="importWorld"
         @show-all="showHideAll('show')"
         @toggle-help-text="toggleHelp()"
+        @update-factories="updateFactoriesList"
       />
     </Teleport>
 
     <!-- Main Content Area -->
     <v-row class="ma-0">
-      <!-- Hot zone to peek the sidebar when it's collapsed -->
-      <div
-        v-if="!showSidebar"
-        class="d-none d-lg-block sidebar-hover-zone"
-        @mouseenter="sidebarPeek = true"
-      />
       <!-- Sticky Sidebar for Desktop -->
       <v-col
         class="d-none d-lg-flex sticky-sidebar"
         :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
         :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
         @animationend.self="onNudgeEnd"
-        @mouseleave="sidebarPeek = false"
+        @mouseleave="onSidebarMouseLeave"
       >
         <v-container class="pa-0 sidebar-content">
-          <planner-factory-list
+          <planner-sidebar-content
             :factories="getFactories()"
-            loaded-from="planner"
-            :total-factories="getFactories().length"
-            @create-factory="createFactory"
-            @update-factories="updateFactoriesList"
-          />
-          <v-divider color="#ccc" thickness="2px" />
-          <planner-global-actions
-            class="py-2"
             :help-text-shown="helpText"
+            loaded-from="planner"
             @clear-all="clearAll"
+            @create-factory="createFactory"
             @hide-all="showHideAll('hide')"
             @import-world="importWorld"
             @show-all="showHideAll('show')"
             @toggle-help-text="toggleHelp()"
+            @update-factories="updateFactoriesList"
           />
         </v-container>
         <div
-          v-if="showSidebar"
+          v-if="showSidebar || sidebarPeek"
           class="sidebar-resize-handle"
           :class="{ resizing: isResizingSidebar }"
           @mousedown.prevent="startSidebarResize"
@@ -96,9 +81,9 @@
 </template>
 
 <script setup lang="ts">
-  import { provide, reactive, ref, watch } from 'vue'
+  import { onMounted, onUnmounted, provide, reactive, ref, watch } from 'vue'
+  import { useDisplay } from 'vuetify'
 
-  import PlannerGlobalActions from '@/components/planner/PlannerGlobalActions.vue'
   import {
     Factory,
     WorldRawResource,
@@ -134,6 +119,55 @@
 
   const showSidebar = ref<boolean>(localStorage.getItem('sidebarOpen') !== 'false')
   const sidebarPeek = ref<boolean>(false)
+
+  // Below the lg breakpoint the docked sidebar doesn't exist (the nav drawer
+  // tray takes over), so peeking is meaningless there.
+  const { lgAndUp } = useDisplay()
+  watch(lgAndUp, isDesktop => {
+    if (!isDesktop) sidebarPeek.value = false
+  })
+
+  // Peek the collapsed sidebar when the cursor travels anywhere near the left
+  // edge. A window-level listener rather than a hover strip: it doesn't sit
+  // over (and steal clicks from) the content, and a wider zone still works in
+  // floating windows where there's no screen edge to catch the cursor.
+  const peekZoneWidth = 48
+  const peekTopOffset = 64 + 50 // Toolbar + tab bar, matching the CSS offsets below
+
+  const onPeekMouseMove = (event: MouseEvent) => {
+    if (showSidebar.value || !lgAndUp.value || isResizingSidebar.value) return
+    if (!sidebarPeek.value && event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
+      sidebarPeek.value = true
+    } else if (sidebarPeek.value && event.clientX > sidebarWidth.value) {
+      sidebarPeek.value = false
+    }
+  }
+
+  // The peeked tray must survive the cursor briefly outrunning the edge while
+  // it's being drag-resized.
+  const onSidebarMouseLeave = () => {
+    if (!isResizingSidebar.value) {
+      sidebarPeek.value = false
+    }
+  }
+
+  // A cursor flung out through the window's left edge never produces a
+  // mousemove inside the zone — catch the exit itself.
+  const onPeekMouseOut = (event: MouseEvent) => {
+    if (showSidebar.value || !lgAndUp.value || event.relatedTarget) return
+    if (event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
+      sidebarPeek.value = true
+    }
+  }
+
+  onMounted(() => {
+    window.addEventListener('mousemove', onPeekMouseMove)
+    window.addEventListener('mouseout', onPeekMouseOut)
+  })
+  onUnmounted(() => {
+    window.removeEventListener('mousemove', onPeekMouseMove)
+    window.removeEventListener('mouseout', onPeekMouseOut)
+  })
 
   const sidebarNudge = ref<boolean>(false)
   const onNudgeEnd = () => {
@@ -419,8 +453,12 @@
 
     if (attempt >= 4) return
     setTimeout(() => {
+      // Re-query rather than closing over `element` — cards materializing
+      // above can replace the node, and a detached node's rect reads 0,
+      // which silently skips the correction.
+      const current = document.getElementById(elementId)
       // ~114px is where the top of a scrolled-to element sits (page header + tab bar)
-      if (Math.abs(element.getBoundingClientRect().top) > 150) {
+      if (current && Math.abs(current.getBoundingClientRect().top) > 150) {
         scrollToElement(elementId, attempt + 1)
       }
     }, 600)
@@ -431,7 +469,19 @@
   }
 
   // Scroll to a non-factory section (Statistics, Factories Summary) by its element id.
-  const navigateToSection = (sectionId: string) => {
+  // The section may be collapsed — tell it to show itself first (each listens for its own
+  // id), give the reveal a beat to change the layout, then scroll. scrollToElement's
+  // correction passes absorb any further shifts from content still materializing.
+  // Right after page load the section components may not be mounted yet, so a single
+  // emit can vanish into the void — keep re-emitting until the element exists (bounded).
+  const navigateToSection = (sectionId: string, attempt = 0) => {
+    eventBus.emit('openSection', sectionId)
+    if (!document.getElementById(sectionId)) {
+      if (attempt < 20) {
+        setTimeout(() => navigateToSection(sectionId, attempt + 1), 250)
+      }
+      return
+    }
     setTimeout(() => scrollToElement(sectionId), 50)
   }
 
@@ -469,15 +519,6 @@
 
   @media screen and (min-width: 2560px) {
     margin-left: calc((100vw - 2050px)/2) !important;
-  }
-
-  .sidebar-hover-zone {
-    position: fixed;
-    top: calc(64px + 50px);
-    left: 0;
-    width: 16px;
-    height: calc(100vh - 64px - 50px);
-    z-index: 99;
   }
 
   .sticky-sidebar {

@@ -8,11 +8,11 @@
         @click="navigateToSection('statistics')"
       >
         <v-row class="d-flex flex-wrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pt-2 px-2 pb-0">
+          <v-spacer class="d-flex align-center text-body-1 pa-2">
             <i class="fas fa-chart-line mr-2" />
             <span>Statistics</span>
           </v-spacer>
-          <v-col class="d-flex align-center flex-wrap justify-end ga-1 pt-1 pb-2 px-2" cols="auto">
+          <v-col class="d-flex align-center flex-wrap justify-end ga-1 py-1 px-2" cols="auto">
             <tooltip :text="`Power generated: ${formatMw(totalPower.totalPowerProduced)}`">
               <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
                 <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" />
@@ -25,7 +25,7 @@
                 <span class="ml-1">{{ formatGw(totalPower.totalPowerConsumed) }}</span>
               </v-chip>
             </tooltip>
-            <tooltip :text="`Difference: ${formatMw(powerDifference)}`">
+            <tooltip :text="`Difference vs ${hasTarget ? 'target' : 'plan'}: ${formatMw(powerDifference)}`">
               <v-chip
                 class="sf-chip x-small no-margin"
                 :class="powerDeficit ? 'error' : 'success'"
@@ -33,6 +33,10 @@
               >
                 <i class="fas fa-balance-scale" />
                 <span class="ml-1">{{ formatGw(powerDifference) }}</span>
+                <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
+                     so class flips (and removal of the bare <i>) never reach the rendered icon. -->
+                <span v-if="hasTarget" class="ml-1"><i class="fas fa-bullseye" /></span>
+                <span v-else class="ml-1"><i class="fas fa-check-square" /></span>
               </v-chip>
             </tooltip>
           </v-col>
@@ -51,7 +55,19 @@
             <i class="fas fa-list mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
-          <v-col class="d-flex align-center justify-end py-1 px-2" cols="auto">
+          <v-col class="d-flex align-center justify-end ga-1 py-1 px-2" cols="auto">
+            <tooltip text="Open fullscreen summary">
+              <v-btn
+                class="expand-summary-btn"
+                color="primary"
+                rounded="sm"
+                size="x-small"
+                variant="outlined"
+                @click.stop="eventBus.emit('openSummaryFullscreen')"
+              >
+                <i class="fas fa-expand-alt" />
+              </v-btn>
+            </tooltip>
             <tooltip :text="`Factories in plan: ${factories.length}`">
               <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
                 <i class="fas fa-industry" />
@@ -167,6 +183,7 @@
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
+  import { usePowerTarget } from '@/composables/usePowerTarget'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
 
@@ -184,10 +201,14 @@
   }>()
   const show = ref(compProps.loadedFrom !== 'planner')
 
-  // At-a-glance power figures for the Statistics jump-link. The difference is the grid
-  // headroom (generated − consumed); a deficit flags the entry red.
+  // At-a-glance power figures for the Statistics jump-link. The difference is the
+  // headroom vs the user's power target when one is set (bullseye icon), otherwise
+  // vs the plan's own consumption (tick icon); a deficit flags the entry red.
   const totalPower = computed(() => calculateTotalPower(compProps.factories))
-  const powerDifference = computed(() => totalPower.value.totalPowerDifference)
+  const { powerTarget, hasTarget } = usePowerTarget()
+  const powerDifference = computed(() => hasTarget.value
+    ? totalPower.value.totalPowerProduced - powerTarget.value
+    : totalPower.value.totalPowerDifference)
   const powerDeficit = computed(() => powerDifference.value < 0)
 
   const factoriesCopy = ref([...compProps.factories])
@@ -275,6 +296,16 @@
   min-width: 30px;
   max-width: 30px;
   flex: 0 0 30px;
+}
+
+// Miniature of the summary header's outlined "Expand" button: sized to sit
+// flush with the x-small count chip beside it in the sidebar row.
+.expand-summary-btn {
+  // Square, matching the rendered height of the x-small count chip beside it
+  min-width: 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
 }
 
 .context-icon {

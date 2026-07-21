@@ -2,6 +2,7 @@
   <div class="border-t-md d-flex bg-grey-darken-3 align-center justify-space-between w-100">
     <div class="d-flex align-center">
       <v-btn
+        v-if="lgAndUp"
         class="mx-1"
         prepend-icon="fas fa-bars"
         @click="toggleSidebar()"
@@ -64,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useDisplay } from 'vuetify'
   import { useAppStore } from '@/stores/app-store'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
@@ -98,6 +100,11 @@
   eventBus.on('sidebarChanged', (open: boolean) => {
     sidebarOpen.value = open
   })
+
+  // Below the lg breakpoint there is no room for the docked sidebar — the
+  // toolbar's burger icon drives the navigation drawer tray instead, so the
+  // button only shows on desktop.
+  const { lgAndUp } = useDisplay()
 
   const toggleSidebar = () => {
     eventBus.emit('toggleSidebar')
