@@ -8,18 +8,11 @@
         <h6 class="text-h6">Bringing sanity to the production chain!</h6>
       </v-card-subtitle>
       <v-card-text class="text-body-1 text-left">
-        <v-responsive :aspect-ratio="16 / 9" class="pb-4">
-          <iframe
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-            frameborder="0"
-            height="100%"
-            referrerpolicy="strict-origin-when-cross-origin"
-            src="https://www.youtube.com/embed/cKuWEKwxX5c?si=mEVI0mJoiNbIwzkG"
-            title="YouTube video player"
-            width="100%"
-          />
-        </v-responsive>
+        <youtube-embed
+          class="pb-4"
+          params="si=mEVI0mJoiNbIwzkG"
+          video-id="cKuWEKwxX5c"
+        />
         <p class="text-h5">Why does this tool exist?</p>
         <p>TL;DR: Create production goals for each factory, create and manage dependencies between factories, visualise the flow of items and highlight bottlenecks / gaps in supply as you scale your industrial prowess!</p>
         <p><b>Satisfactory Factories</b> helps plan and manage modular factory (or levels in mega-factories) production chains. Tracking interconnected factories and their dependencies can be overwhelming, leading to overlooked areas and bottlenecks when demands change. This tool automates calculations, ensuring proper scaling for new demands and saving time. Unlike other planners that focus on "what is needed to make X part", SF focuses on per-factory demand rather than <i>just</i> per-part demand. You can use it to determine part quantities and import requirements for future changes, maintaining the production chain and highlighting issues / bottlenecks.</p>

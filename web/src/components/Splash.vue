@@ -16,18 +16,11 @@
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-4">The "Overclocked" Update is here!</h2>
           <!-- TODO(Matt): swap in the v0.5 update video ID (currently the Alpha 4 video as a placeholder) -->
-          <v-responsive :aspect-ratio="16 / 9" class="mb-4">
-            <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen
-              frameborder="0"
-              height="100%"
-              referrerpolicy="strict-origin-when-cross-origin"
-              src="https://www.youtube.com/embed/YsWDeOU3e8o?si=aX6DUy_LF4aLPv_G"
-              title="YouTube video player"
-              width="100%"
-            />
-          </v-responsive>
+          <youtube-embed
+            class="mb-4"
+            params="si=aX6DUy_LF4aLPv_G"
+            video-id="YsWDeOU3e8o"
+          />
           <p class="hero-blurb mb-2"><b>Overclocking and Somersloops have arrived</b> — alongside a huge Power update, an all-new Parts &amp; Recipes browser, and a refresh of the planner's UI.</p>
           <p class="mb-2">There's a lot in this one — jump to what interests you, or take the full tour!</p>
           <ul class="contents-list ml-6">
