@@ -262,13 +262,13 @@ describe('Component: BuildingGroups', () => {
         // Product originally starts off at 30 iron ingots.
 
         // At 100%, we should be using 4MW
-        expect(buildingGroupPowerUsed.text()).toBe('4 MW')
+        expect(buildingGroupPowerUsed.text()).toBe('4\u00A0MW')
 
         await buildingGroupClock.setValue('200')
         await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
-        expect(buildingGroupPowerUsed.text()).toBe('10 MW') // Remember Power is not a linear calculation.
+        expect(buildingGroupPowerUsed.text()).toBe('10\u00A0MW') // Remember Power is not a linear calculation.
       })
 
       it('should the clock be changed, the group\'s underchips should be correct', async () => {
@@ -741,11 +741,11 @@ describe('Component: BuildingGroups', () => {
       it('should display power production for power producers and at the correct value', async () => {
         await buildingGroupCount.setValue('10')
         await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-        expect(buildingGroupPowerUsed.text()).toBe(`25 GW`)
+        expect(buildingGroupPowerUsed.text()).toBe(`25,000\u00A0MW`)
 
         await buildingGroupCount.setValue('15')
         await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-        expect(buildingGroupPowerUsed.text()).toBe(`37.5 GW`)
+        expect(buildingGroupPowerUsed.text()).toBe(`37,500\u00A0MW`)
       })
     })
   })

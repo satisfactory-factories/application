@@ -227,32 +227,32 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
     test('BG-E-B-PROD-10: Editing building count updates the group power used ', async () => {
       // Test beforeEach change
-      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('12 MW')
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('12\u00A0MW')
 
       // Increase
       await buildingGroupCount.setValue(4)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW') // 4*4 MW
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW') // 2*4 MW
+      expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW') // 2*4 MW
     })
 
     test('BG-E-B-PROD-11: Editing building count updates the factory power used ', async () => {
       // Test beforeEach change
-      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('12 MW')
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('12\u00A0MW')
 
       // Increase
       await buildingGroupCount.setValue(4)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16 MW') // 4*4 MW
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16\u00A0MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW') // 2*4 MW
+      expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8\u00A0MW') // 2*4 MW
     })
 
     test('BG-E-B-PROD-12: Editing building count updates the factory total buildings', async () => {

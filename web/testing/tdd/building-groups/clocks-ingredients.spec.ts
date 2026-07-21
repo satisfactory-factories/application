@@ -122,28 +122,27 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
   })
 
   test('BG-E-C-PROD-1: Editing the clock has a debounce', async () => {
-    // The group power underchip is only recomputed inside the 750ms debounce, so it lags behind the raw input.
+    // The group power underchip is only recomputed inside the 250ms debounce, so it lags behind the raw input.
     // Baseline: 2 smelters @ 100% = 8 MW
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
-    // Before the 750ms debounce fires, the group power should NOT have recalculated yet
+    // Before the 250ms debounce fires, the group power should NOT have recalculated yet
     await new Promise(resolve => setTimeout(resolve, 100))
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce, it updates: 2 smelters @ 200% = 20 MW
     await new Promise(resolve => setTimeout(resolve, 1000))
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('20 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('20\u00A0MW')
   })
 
   test("BG-E-C-PROD-6: Updates the factory's power consumption", async () => {
     const satisfactionSubject = mountSatisfaction(factory)
 
     // Baseline: 2 smelters @ 100% = 8 MW
-    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW')
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8\u00A0MW')
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
@@ -153,7 +152,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     // Factory power is the sum of the group power usages: 2 smelters @ 200% = 20 MW
-    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('20 MW')
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('20\u00A0MW')
   })
 
   test('BG-E-C-PROD-8: Clock is NOT rounded, and exactly matches what the user entered', async () => {
@@ -263,21 +262,20 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
   })
 
   test('BG-E-I-PROD-1: Editing an ingredient has a debounce', async () => {
-    // The group power underchip is only recomputed inside the 750ms debounce, so it lags behind the raw input.
+    // The group power underchip is only recomputed inside the 250ms debounce, so it lags behind the raw input.
     // Baseline: 2 smelters @ 100% = 8 MW
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
 
-    // Before the 750ms debounce fires, the group has not been recalculated yet
+    // Before the 250ms debounce fires, the group has not been recalculated yet
     await new Promise(resolve => setTimeout(resolve, 100))
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce: 4 smelters @ 100% = 16 MW
     await new Promise(resolve => setTimeout(resolve, 1000))
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW')
   })
 
   test('BG-E-I-PROD-3: Editing an ingredient updates the effective buildings', async () => {
@@ -312,7 +310,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
   test('BG-E-I-PROD-6: Editing an ingredient updates the group power used', async () => {
     // Baseline: 2 smelters @ 100% = 8 MW
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
@@ -322,14 +320,14 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     // 4 smelters @ 100% = 16 MW
-    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16 MW')
+    expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW')
   })
 
   test('BG-E-I-PROD-7: Editing an ingredient updates the factory power used', async () => {
     const satisfactionSubject = mountSatisfaction(factory)
 
     // Baseline: 2 smelters @ 100% = 8 MW
-    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8 MW')
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8\u00A0MW')
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
@@ -339,7 +337,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     // Factory power is the sum of the group power usages: 4 smelters @ 100% = 16 MW
-    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16 MW')
+    expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16\u00A0MW')
   })
 
   test('BG-E-I-PROD-8: SYNC ON: Editing an ingredient updates the building count on the product', async () => {
