@@ -13,3 +13,4 @@
 - [Verify: tab navigation](verify-tab-navigation.md) — puppeteer recipe for adding/switching factory tabs (:scope > add btn; factory .v-tabs = the one without "Change Log")
 - [FontAwesome dynamic icons](fontawesome-dynamic-icons.md) — FA SVG replacement detaches `<i>`; toggle a wrapper span, never `:class`-flip an icon
 - [Rendering rework + loader intent](rendering-rework-loader-intent.md) — planned on-select factory rendering; loader should track calc not render; don't micro-opt the 75ms stagger before that lands
+- [Verify: colour iteration](verify-color-iteration.md) — compare style candidates by editing the file through HMR; DOM overrides get clobbered by Vue re-renders
