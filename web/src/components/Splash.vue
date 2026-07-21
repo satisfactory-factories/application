@@ -191,8 +191,24 @@
           </ul>
         </div>
 
-        <!-- Slide 6: Fixes & Other Changes -->
+        <!-- Slide 6: Performance Overhaul -->
         <div v-if="currentSlide === 5">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-rocket-launch" /><span class="ml-2">Massive Performance Overhaul</span>
+          </h2>
+          <p class="mb-4">
+            The calculation engine has been <b>fundamentally reworked for large plans</b>. It used to rewrite your entire plan's data on every edit — even the values that hadn't changed — forcing huge amounts of unnecessary re-rendering. On big plans, adding a factory or tweaking a product could freeze the planner for seconds or even minutes.
+          </p>
+          <p class="mb-2">The engine now calculates off to the side and only applies what <b>actually changed</b>:</p>
+          <ul class="ml-6 mb-4">
+            <li>Editing a product on a 124-factory mega-plan now triggers <b>~40 reactive updates instead of ~30,000+</b> — only the affected fields on screen re-render.</li>
+            <li>A recalculation that changes nothing now touches <b>zero</b> state — previously it rewrote thousands of values every time.</li>
+            <li>Whole-plan operations like <b>[+ New]</b> shortage factories no longer hang large plans.</li>
+          </ul>
+        </div>
+
+        <!-- Slide 7: Fixes & Other Changes -->
+        <div v-if="currentSlide === 6">
           <h2 class="text-h5 mb-2">
             <i class="fas fa-wrench" /><span class="ml-2">Fixes</span>
           </h2>
@@ -298,6 +314,7 @@
     { title: 'The Power Update', nav: 'The Power Update' },
     { title: 'Parts & Recipes', nav: 'Parts & Recipes' },
     { title: 'UI Refresh', nav: 'UI Refresh' },
+    { title: 'Massive Performance Overhaul', nav: 'Performance' },
     { title: 'Fixes & Other Changes', nav: 'Fixes & Other Changes' },
   ]
 

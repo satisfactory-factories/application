@@ -4,15 +4,15 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
-### Performance
+## Beta v0.5 — The "Overclocked" Update
+
+After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.
+
+### Performance — the reactivity overhaul
 
 - Massively reduced the reactive cost of recalculations. The calculation engine used to rebuild parts / metrics dictionaries directly on the live (reactive) plan on every pass — ~98% of those writes left values unchanged, yet each one still fired deep watchers (localStorage persistence, the sidebar factory list, and, catastrophically, Vue Devtools' sync store subscription, which deep-traverses the entire plan per write and made adding a factory hang for minutes on large plans). `calculateFactory` / `calculateFactories` now run the engine on a plain `structuredClone` of the plan and diff-commit only genuine changes back onto the live objects, preserving object identity throughout. A no-op recalculation now performs zero reactive writes (verified down from ~2,400 on the demo plan), a product edit fires ~30 watcher events instead of thousands, and `factoryUpdated` events are only emitted for factories whose data actually changed. Also fixed `setFactories` aliasing `previousInputs` to the live `inputs` array instead of snapshotting a copy.
 - Added a browser-level reactivity test harness (`web/testing/browser/`) that drives the real planner (demo plan and Mael's MegaPlan) with Puppeteer, asserting DOM reactivity end-to-end and bounding the number of deep-watcher fires per interaction via a dev-only `window.__sfWatchCounter` hook.
 - Added a 124-factory stress-test plan (4× Mael's MegaPlan with remapped ids, `factory-setups/stress-plan.ts`, loadable in dev via `window.__sfLoadStressPlan`) plus a browser stress harness (`stress.e2e.mjs`) that expands every factory, materializes ~294k DOM nodes, and measures edit→DOM-settle latency, DOM mutations, watcher fires and main-thread long tasks per edit. It confirms calculation churn is solved at scale (~37 fires, ~65 DOM mutations per edit; a no-op recalc of all 124 factories is 0 reactive writes / ~240ms) and pinpoints the next bottleneck: the three full-plan deep watchers (app-store localStorage persistence, sidebar factory list, statistics summary) re-traverse the whole plan per flush (~2.3s at this scale in dev) plus the persistence `JSON.stringify` (~1.9s), so an edit still blocks ~4–6.5s on a 124-factory plan pending a deep-watcher rework.
-
-## Beta v0.5 — The "Overclocked" Update
-
-After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.
 
 ### Building Groups — Overclocking & Somersloops
 

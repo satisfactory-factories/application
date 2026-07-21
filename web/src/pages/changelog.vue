@@ -33,6 +33,16 @@
 
         <v-divider class="subsection" />
 
+        <h2>🆕 <i class="fas fa-rocket-launch ml-1" /><span class="ml-2">Massive Performance Overhaul</span></h2>
+        <p>The planner's calculation engine has been fundamentally reworked for <b>large plans</b>. Previously, every edit recalculated your entire plan directly on the live data — rewriting <i>everything</i>, even values that hadn't changed — which forced the planner to re-render far more than it needed to. On big plans this could freeze the planner for many seconds (or minutes with browser dev tools open) just from adding a factory or tweaking a product.</p>
+        <p>The engine now runs its calculations off to the side and only applies the values that <b>actually changed</b> back to your plan. In numbers:</p>
+        <ul>
+          <li>A recalculation that changes nothing now touches <b>zero</b> reactive state — previously it rewrote ~2,400 values on even a modest 9-factory plan.</li>
+          <li>Editing a product on a 124-factory mega-plan now triggers <b>~40 reactive updates instead of ~30,000+</b>, and only the affected fields re-render.</li>
+          <li>The "add shortage as a new factory" flow and other whole-plan recalculations no longer hang large plans.</li>
+        </ul>
+        <v-divider class="subsection" />
+
         <h2>🆕 <i class="fas fa-bolt ml-1" /><span class="ml-2">The Power Update</span></h2>
         <p>Power planning got a full overhaul:</p>
         <ul>
