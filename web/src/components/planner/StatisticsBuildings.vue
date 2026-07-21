@@ -17,7 +17,7 @@
       color="primary"
       :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
       size="small"
-      variant="outlined"
+      :variant="hidden ? 'outlined' : 'flat'"
       @click="hidden = !hidden"
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>

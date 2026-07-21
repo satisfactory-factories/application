@@ -34,6 +34,9 @@ type Events = {
   buildingGroupUpdated: Factory;
   toggleSidebar: undefined;
   sidebarChanged: boolean;
+  openSummaryFullscreen: undefined;
+  // Sidebar jump-links: unhide the target section (by element id) before scrolling to it.
+  openSection: string;
 }
 
 const eventBus = mitt<Events>()
