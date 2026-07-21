@@ -158,6 +158,7 @@
         <v-divider class="subsection" />
         <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul>
+          <li><b>Quantities no longer come back a hair off what you typed.</b> Entering a whole number (e.g. 1234 Crude Oil as an ingredient) could display as 1234.001 or 1233.999 after the planner recalculated, because the underlying product amount is a repeating decimal that has to be rounded. Quantities within 0.002 of a whole number now snap to it — if a value works out to 120.001, you almost certainly meant 120. This also stops building groups at repeating clocks (e.g. 223.333%) showing 535.999 in one place and 536 in another.</li>
           <li>Unpackaged liquids that are also a Raw Ingredient e.g. Crude Oil / Water were counted twice as both Raw Import and Production. <a href="https://github.com/satisfactory-factories/application/issues/431">GH Issue</a></li>
           <li>Unpackaged Liquids e.g. Crude Oil are now represented on the Satisfaction section via a "Unpackaged" badge.</li>
           <li>Byproducts e.g. Water production via byproduct of Aluminum Scrap is now considered "Recycled" into the system. The planner no longer incorrectly

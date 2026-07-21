@@ -21,13 +21,29 @@ export function formatNumber (value: any, precision = 3): string {
   return truncated.toString()
 }
 
+// Quantities within this distance of a whole number are assumed to BE that whole number.
+// Reverse-solves and building-group writebacks routinely produce values like 120.001 or
+// 99.999 out of 3dp float round-trips, and at that precision it is extremely unlikely the
+// user wanted anything but the integer.
+const INTEGER_SNAP_TOLERANCE = 0.002
+
+// Snaps a value to the nearest whole number when it is within the tolerance. Never snaps
+// to 0 — tiny legitimate quantities (e.g. 0.001 of a byproduct) must survive.
+export function snapNearInteger (value: number, tolerance = INTEGER_SNAP_TOLERANCE): number {
+  const nearest = Math.round(value)
+  if (nearest === 0) {
+    return value
+  }
+  return Math.abs(value - nearest) <= tolerance ? nearest : value
+}
+
 export function formatNumberFully (value: any, precision = 3): number {
   const result = formatNumber(value, precision)
 
   if (isNaN(Number(result))) {
     return 0
   }
-  return Number(result)
+  return snapNearInteger(Number(result))
 }
 
 // Matches the in-game power screens: MW with thousands separators (e.g. "5,100 MW").

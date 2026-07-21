@@ -1,6 +1,6 @@
 /* eslint-disable no-loss-of-precision */
 import { describe, expect, it } from 'vitest'
-import { formatMw, formatNumber, formatNumberFully } from '@/utils/numberFormatter'
+import { formatMw, formatNumber, formatNumberFully, snapNearInteger } from '@/utils/numberFormatter'
 
 describe('numberFormatter', () => {
   describe('formatNumber', () => {
@@ -38,6 +38,35 @@ describe('numberFormatter', () => {
 
     it('should handle a NaN to 0', () => {
       expect(formatNumberFully('NaN')).toBe(0)
+    })
+
+    it('should snap values a rounding-hair away from a whole number to that whole number', () => {
+      expect(formatNumberFully(120.001)).toBe(120)
+      expect(formatNumberFully(99.999)).toBe(100)
+      expect(formatNumberFully(1234.0005)).toBe(1234)
+      expect(formatNumberFully(1233.999)).toBe(1234)
+    })
+  })
+
+  describe('snapNearInteger', () => {
+    it('should snap values within 0.002 of a whole number', () => {
+      expect(snapNearInteger(120.001)).toBe(120)
+      expect(snapNearInteger(120.002)).toBe(120)
+      expect(snapNearInteger(99.999)).toBe(100)
+      expect(snapNearInteger(99.998)).toBe(100)
+      expect(snapNearInteger(-119.999)).toBe(-120)
+    })
+
+    it('should leave values outside the tolerance alone', () => {
+      expect(snapNearInteger(120.003)).toBe(120.003)
+      expect(snapNearInteger(99.997)).toBe(99.997)
+      expect(snapNearInteger(822.667)).toBe(822.667)
+      expect(snapNearInteger(0.5)).toBe(0.5)
+    })
+
+    it('should never snap tiny quantities to zero', () => {
+      expect(snapNearInteger(0.001)).toBe(0.001)
+      expect(snapNearInteger(-0.001)).toBe(-0.001)
     })
   })
 

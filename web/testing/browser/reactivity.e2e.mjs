@@ -169,6 +169,26 @@ try {
     results.push(`  (edit round-trip incl. debounce: ${editMs}ms)`)
   }
 
+  // ---- TEST 1b: reverse-solve round-trip exactness ----
+  // Typing a whole number into a Requires (ingredient) input reverse-solves the product
+  // amount (1234 oil -> 822.667 plastic) and recomputes the ingredient — which used to
+  // settle at 1234.001 from double rounding. It must settle at exactly what was typed.
+  const oilInputSel = '[id="1-Plastic-LiquidOil-amount"]'
+  await page.evaluate(() => document.getElementById('1')?.scrollIntoView({ block: 'center' }))
+  await sleep(1000)
+  const oilInput = await page.$(oilInputSel)
+  if (!oilInput) {
+    fail('reverse-solve: Plastic LiquidOil requirement input not found')
+  } else {
+    await oilInput.click()
+    await page.keyboard.down('Control'); await page.keyboard.press('a'); await page.keyboard.up('Control')
+    await page.keyboard.type('1234')
+    await sleep(1500) // debounce + recalc + write-back
+    const settled = await page.evaluate(sel => document.querySelector(sel)?.value, oilInputSel)
+    if (settled === '1234') pass('reverse-solve round-trip: typed 1234 into Requires, settled at exactly 1234')
+    else fail(`reverse-solve round-trip: typed 1234, settled at "${settled}"`)
+  }
+
   // ---- TEST 3: MegaPlan (large real plan) ----
   const tplClicked = await page.evaluate(() => {
     const btn = [...document.querySelectorAll('button')].find(b => /templates/i.test(b.innerText))

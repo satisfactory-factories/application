@@ -969,4 +969,41 @@ describe('products', () => {
       expect(product.buildingGroups[1].buildingCount).toBe(1) // Created with the default of 1, never rebalanced
     })
   })
+
+  describe('reverse-solve round-trips', () => {
+    // Typing a whole-number ingredient quantity reverse-solves the product amount, which
+    // is often a repeating decimal (1234 oil -> 822.666... plastic). Capped at 3dp, the
+    // recomputed ingredient used to come back a rounding-hair off (1234.001 / 1233.999);
+    // the near-integer snap must return exactly what the user typed.
+    let mockFactory: Factory
+    let product: FactoryItem
+
+    beforeEach(() => {
+      mockFactory = newFactory('Round trip factory')
+      addProductToFactory(mockFactory, {
+        id: 'Plastic',
+        amount: 20,
+        recipe: 'Plastic', // 30 LiquidOil/min -> 20 Plastic/min
+      })
+      product = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+    })
+
+    it('should return exactly the typed ingredient amount after the recalculation', async () => {
+      product.requirements.LiquidOil.amount = 1234
+      await updateProductAmountViaRequirement(product, 'LiquidOil')
+      calculateFactories([mockFactory], gameData)
+
+      expect(product.amount).toBe(822.667)
+      expect(product.requirements.LiquidOil.amount).toBe(1234)
+    })
+
+    it('should snap a legacy under-rounded amount up to the whole ingredient number', () => {
+      // 822.666 x 1.5 = 1233.999 — the down-rounded flavour of the same artifact.
+      product.amount = 822.666
+      calculateFactories([mockFactory], gameData)
+
+      expect(product.requirements.LiquidOil.amount).toBe(1234)
+    })
+  })
 })

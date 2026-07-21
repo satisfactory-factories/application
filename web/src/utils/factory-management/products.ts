@@ -105,7 +105,10 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       // === Now we need to calculate the parts required per min to make the product ===
       const productIngredientRatio = product.amount / recipe.products[0].perMin // This formula should have no rounding - the decimal points are important here for the floating point calculations
       let ingredientRequired = ingredient.perMin * productIngredientRatio * sloopIngredientFactor
-      ingredientRequired = Math.round(ingredientRequired * 1000) / 1000
+      // 3dp round + near-integer snap: a 3dp-capped product amount reverse-solved from a
+      // whole-number ingredient (1234 oil -> 822.667 plastic) recomputes here as e.g.
+      // 1234.0005, which used to display as the user-baffling 1234.001.
+      ingredientRequired = formatNumberFully(ingredientRequired)
 
       // Handle the ingredients
       // Set the amount that the individual products need for display purposes.
