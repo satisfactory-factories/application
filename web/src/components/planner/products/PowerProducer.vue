@@ -6,7 +6,7 @@
   >
     <div class="factory-item-controls">
       <v-btn
-        :color="producer.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
+        :color="producer.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
         :disabled="producer.displayOrder === 0"
         icon="fas fa-arrow-up"
         size="small"
@@ -14,7 +14,7 @@
         @click="updatePowerProducerOrder('up', producer)"
       />
       <v-btn
-        :color="producer.displayOrder === factory.powerProducers.length - 1 ? 'light-blue-darken-4' : 'blue'"
+        :color="producer.displayOrder === factory.powerProducers.length - 1 ? 'grey-darken-3' : 'primary'"
         :disabled="producer.displayOrder === factory.powerProducers.length - 1"
         icon="fas fa-arrow-down"
         size="small"
@@ -123,9 +123,9 @@
         >
           <i class="fas fa-bolt" />
           <i class="fas fa-plus" />
-          <span class="ml-2">{{ formatPower(producer.powerAmount).value }} {{ formatPower(producer.powerAmount).unit }}</span>
+          <span class="ml-2">{{ formatMw(producer.powerAmount) }}</span>
           <template v-if="producerHasVariablePower(producer)">
-            <span class="ml-1">({{ formatPower(producerPowerRange(producer).min).value }} {{ formatPower(producerPowerRange(producer).min).unit }} – {{ formatPower(producerPowerRange(producer).max).value }} {{ formatPower(producerPowerRange(producer).max).unit }})</span>
+            <span class="ml-1">({{ formatMw(producerPowerRange(producer).min) }} – {{ formatMw(producerPowerRange(producer).max) }})</span>
             <tooltip-info text="This generator's output oscillates between a minimum and maximum over a one-minute cycle. The main figure is the average." />
           </template>
         </v-chip>
@@ -140,13 +140,13 @@
         class="d-flex align-center"
       >
         <p class="mr-2">Byproduct:</p>
-        <v-chip class="sf-chip input">
+        <v-chip class="sf-chip input byproduct">
           <tooltip :text="getPartDisplayName(producer.byproduct.part)">
             <game-asset clickable :subject="producer.byproduct.part" type="item" />
           </tooltip>
           <v-number-input
             v-model="producer.byproduct.amount"
-            class="inline-inputs ml-2"
+            class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             hide-details
@@ -185,7 +185,7 @@
           <v-number-input
             :id="`${factory.id}-${producer.id}-${producer.ingredients[1].part.toString()}`"
             v-model="producer.ingredients[1].perMin"
-            class="inline-inputs ml-2"
+            class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             hide-details
@@ -209,7 +209,7 @@
             <v-number-input
               :id="`${factory.id}-${producer.id}-building-count`"
               v-model="producer.buildingAmount"
-              class="inline-inputs ml-2"
+              class="inline-inputs ml-0"
               control-variant="stacked"
               density="compact"
               hide-details
@@ -236,7 +236,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
   import { useGameDataStore } from '@/stores/game-data-store'

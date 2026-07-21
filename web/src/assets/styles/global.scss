@@ -119,8 +119,41 @@
     padding-left: 0 !important;
     padding-right: 0 !important;
 
+    // Icon gutters live on the image itself, INSIDE the clickable anchor — an
+    // inline-flex box includes its child's margins, so the hover fill covers the
+    // breathing room instead of hugging the image pixels.
     .v-img {
       margin: 0 8px !important;
+    }
+
+    // Only the OUTERMOST element carries the gutter: Vuetify nests a sizer and
+    // the real (absolutely positioned) <img> inside .v-img — a margin on those
+    // shifts the picture sideways and clips it against the container.
+    .v-img :is(img, .v-responsive__sizer) {
+      margin: 0 !important;
+    }
+
+    // The wrapper layers around an icon (tooltip spans, activator spans) must not
+    // add gutters of their own — that stacking is what made wrapped icons sit
+    // wider than bare ones, and it kept the spacing outside the hover fill.
+    span:not([class]):has(.v-img, .game-asset-clickable) {
+      margin: 0 !important;
+    }
+
+    // A text label directly followed by an input (e.g. "Oil Refinery" in the
+    // Requires chip): the input brings its own left gutter, so the span's right
+    // margin would double the gap between them.
+    span:not([class]):has(+ .inline-inputs) {
+      margin-right: 0 !important;
+    }
+
+    // A text label directly after an icon: the image already carries its own 8px
+    // gutter (inside the link wrapper when clickable), so the span's left margin
+    // would double it.
+    .game-asset-clickable + span:not([class]),
+    img + span:not([class]),
+    .v-img + span:not([class]) {
+      margin-left: 0 !important;
     }
 
     span:not([class]) {
@@ -139,6 +172,15 @@
 // consumption chip colour.
 .text-power-consumption {
     color: var(--sf-power-consumption) !important;
+}
+
+// Plain-text item labels (building-group under-chip "x / building" lines) share
+// their chip colours so text and chips always agree.
+.text-product {
+    color: var(--sf-product) !important;
+}
+.text-byproduct {
+    color: var(--sf-byproduct) !important;
 }
 
 .selectors {
@@ -200,6 +242,14 @@
     &.list {
       padding: 0 !important;
       border-bottom: 0;
+    }
+
+    // A collapsed card renders the header alone: its divider would sit flush on the
+    // card's own bottom border and read as one extra-thick line, so drop it when no
+    // body follows. (:last-child can't express this — Vuetify appends a
+    // .v-card__underlay after the slot content.)
+    &:not(:has(~ .v-card-text)) {
+      border-bottom: 0 !important;
     }
   }
 
@@ -298,6 +348,39 @@
 // Standardize the font weights as they're all over the place
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6 {
   font-weight: 400 !important;
+}
+
+// Vuetify's default hover overlay (4%) is invisible on outlined buttons —
+// hovering one should visibly fill it with a tint of its own colour.
+// Doubled class: the button element also carries .v-theme--dark, whose own
+// --v-hover-opacity: 0.04 otherwise wins the cascade at equal specificity.
+.v-btn.v-btn--variant-outlined {
+  --v-hover-opacity: 0.25;
+}
+
+// Solid buttons get the inverse treatment: their overlay is normally
+// currentColor (the white label), which *lightens* on hover — paint it black
+// instead so hovering visibly darkens the fill.
+.v-btn.v-btn--variant-elevated,
+.v-btn.v-btn--variant-flat {
+  --v-hover-opacity: 0.16;
+
+  // Not on :hover — the overlay's opacity fades out AFTER the pointer leaves,
+  // and a hover-scoped rule snaps the colour back to currentColor (white)
+  // mid-fade, flashing the button bright on exit. Excluding disabled buttons
+  // instead keeps Vuetify's high-opacity disabled wash from turning black.
+  &:not(.v-btn--disabled) > .v-btn__overlay {
+    background-color: black;
+  }
+
+  // The overlay is absolutely positioned and so paints above the (static)
+  // label — invisible when it matched the text colour, but a black overlay
+  // dims the text. Lift the content above it; only the background darkens.
+  > .v-btn__content,
+  > .v-btn__prepend,
+  > .v-btn__append {
+    z-index: 1;
+  }
 }
 
 .factory-item {

@@ -24,6 +24,8 @@ export const palette = {
   blueBorder: '#016fcc',
   cyan: '#a3ceff',
   cyanBorder: '#4b97df',
+  beige: '#e8d5a3',
+  beigeBorder: '#b39a58',
   orange: '#f57f17',
   orangeBorder: '#a75600',
   yellow: '#fbc02d',
@@ -52,8 +54,8 @@ export const sfColors = {
 
   // Items & flows
   product: { color: palette.blue, border: palette.blueBorder },
-  byproduct: { color: palette.lightBlue, border: palette.lightBlueBorder },
-  rawResource: { color: palette.cyan, border: palette.cyanBorder },
+  byproduct: { color: palette.cyan, border: palette.cyanBorder },
+  rawResource: { color: palette.beige, border: palette.beigeBorder },
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },

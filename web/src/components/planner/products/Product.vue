@@ -6,7 +6,7 @@
   >
     <div class="factory-item-controls">
       <v-btn
-        :color="product.displayOrder === 0 ? 'light-blue-darken-4' : 'blue'"
+        :color="product.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
         :disabled="product.displayOrder === 0"
         icon="fas fa-arrow-up"
         size="small"
@@ -14,7 +14,7 @@
         @click="updateProductOrder('up', product)"
       />
       <v-btn
-        :color="product.displayOrder === factory.products.length - 1 ? 'light-blue-darken-4' : 'blue'"
+        :color="product.displayOrder === factory.products.length - 1 ? 'grey-darken-3' : 'primary'"
         :disabled="product.displayOrder === factory.products.length - 1"
         icon="fas fa-arrow-down"
         size="small"
@@ -129,7 +129,7 @@
             </tooltip>
             <v-number-input
               v-model="byProduct.amount"
-              class="inline-inputs"
+              class="inline-inputs ml-0"
               control-variant="stacked"
               density="compact"
               hide-details
@@ -179,9 +179,9 @@
         >
           <i class="fas fa-bolt" />
           <i class="fas fa-minus" />
-          <span class="ml-2">{{ productPowerConsumed(product).value }} {{ productPowerConsumed(product).unit }}</span>
+          <span class="ml-2">{{ productPowerConsumed(product) }}</span>
           <template v-if="productHasVariablePower(product)">
-            <span class="ml-1">({{ formatPower(productPowerRange(product).min).value }} {{ formatPower(productPowerRange(product).min).unit }} – {{ formatPower(productPowerRange(product).max).value }} {{ formatPower(productPowerRange(product).max).unit }})</span>
+            <span class="ml-1">({{ formatMw(productPowerRange(product).min) }} – {{ formatMw(productPowerRange(product).max) }})</span>
             <tooltip-info text="This building's power draw oscillates between a minimum and maximum over the recipe cycle. The main figure is the average." />
           </template>
         </v-chip>
@@ -193,12 +193,12 @@
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(part)">
-            <game-asset :subject="String(part)" type="item" />
+            <game-asset clickable :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${product.id}-${part}-amount`"
             v-model="requirement.amount"
-            class="inline-inputs"
+            class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             hide-details
@@ -212,9 +212,11 @@
         </v-chip>
       </div>
     </div>
+    <!-- Hidden entirely until the product has a valid item + recipe — an
+         inert bar for a half-configured product is just noise. -->
     <building-groups-section
+      v-if="product.id && product.recipe"
       :building="product.buildingRequirements.name"
-      :disabled="!product.id || !product.recipe"
       :factory="factory"
       :id-prefix="`${factory.id}-${product.id}`"
       :item="product"
@@ -235,7 +237,7 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
+  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
@@ -461,7 +463,7 @@
       totalPower += group.powerUsage
     })
 
-    return formatPower(totalPower ?? 0)
+    return formatMw(totalPower ?? 0)
   }
 
   // Min/max draw across the groups for variable-power buildings (equal to the average otherwise).

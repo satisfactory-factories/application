@@ -30,6 +30,7 @@
           <span v-if="input.outputPart" class="mr-2">
             <game-asset
               :key="input.outputPart"
+              clickable
               height="32px"
               :subject="input.outputPart"
               type="item"

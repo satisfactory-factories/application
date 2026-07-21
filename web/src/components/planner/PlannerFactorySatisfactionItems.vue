@@ -41,7 +41,7 @@
                   <v-chip v-if="showProductChip(factory, partId.toString())" class="sf-chip blue x-small mr-2">
                     Product
                   </v-chip>
-                  <v-chip v-if="showByProductChip(factory, partId.toString())" class="sf-chip gray x-small mr-2">
+                  <v-chip v-if="showByProductChip(factory, partId.toString())" class="sf-chip byproduct x-small mr-2">
                     Byproduct
                   </v-chip>
                   <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
@@ -52,7 +52,7 @@
                     </template>
                     <span>This byproduct is used as an ingredient by other products within the same factory.<br>The planner subtracts it from the amount you need to supply via Imports, so you don't over-feed the system.</span>
                   </v-tooltip>
-                  <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip gray x-small mr-2">
+                  <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip import x-small mr-2">
                     Imported
                   </v-chip>
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">

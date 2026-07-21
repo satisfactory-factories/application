@@ -22,7 +22,9 @@
         class="sf-chip orange input mx-1"
         variant="tonal"
       >
-        <game-asset :subject="building" type="building" />
+        <tooltip :text="getBuildingDisplayName(building)">
+          <game-asset clickable :subject="building" type="building" />
+        </tooltip>
         <v-number-input
           :id="`${factory.id}-${group.id}-building-count`"
           v-model="group.buildingCount"
@@ -51,7 +53,7 @@
           variant="tonal"
         >
           <tooltip text="Overclock">
-            <game-asset subject="overclock-production" type="item_id" />
+            <game-asset clickable subject="overclock-production" type="item_id" wiki-name="Clock speed" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-clock`"
@@ -79,9 +81,9 @@
           >
             <i class="fas fa-bolt" />
             <i class="fas fa-minus" />
-            <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatPower(group.powerUsage).value }} {{ formatPower(group.powerUsage).unit }}</span>
+            <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatMw(group.powerUsage) }}</span>
             <span v-if="groupHasVariablePower" :id="`${factory.id}-${group.id}-group-power-range`" class="ml-1">
-              ({{ formatPower(group.powerUsageMin ?? 0).value }} {{ formatPower(group.powerUsageMin ?? 0).unit }} – {{ formatPower(group.powerUsageMax ?? 0).value }} {{ formatPower(group.powerUsageMax ?? 0).unit }})
+              ({{ formatMw(group.powerUsageMin ?? 0) }} – {{ formatMw(group.powerUsageMax ?? 0) }})
             </span>
           </span>
           <span v-else>&nbsp;</span>
@@ -123,7 +125,7 @@
           variant="tonal"
         >
           <tooltip :text="`Constructing each Alien Power Augmenter consumes ${somersloopBuildCost} Somersloops`">
-            <game-asset subject="somersloop" type="item_id" />
+            <game-asset clickable subject="somersloop" type="item_id" wiki-name="Somersloop" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-sloop-cost`"
@@ -148,7 +150,7 @@
           variant="tonal"
         >
           <tooltip text="Somersloop">
-            <game-asset subject="somersloop" type="item_id" />
+            <game-asset clickable subject="somersloop" type="item_id" wiki-name="Somersloop" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-somersloops`"
@@ -189,12 +191,12 @@
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(part)">
-            <game-asset :subject="String(part)" type="item" />
+            <game-asset clickable :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-parts-${part}-amount`"
             v-model="group.parts[part]"
-            class="inline-inputs"
+            class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             :disabled="building === 'alienpoweraugmenter'"
@@ -232,12 +234,12 @@
           variant="tonal"
         >
           <tooltip :text="getPartDisplayName(part)">
-            <game-asset :subject="String(part)" type="item" />
+            <game-asset clickable :subject="String(part)" type="item" />
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-parts-${part}-amount`"
             v-model="group.parts[part]"
-            class="inline-inputs"
+            class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
             :disabled="building === 'alienpoweraugmenter'"
@@ -272,10 +274,10 @@
           <i class="fas fa-bolt" />
           <i class="fas fa-plus" />
           <span :id="`${factory.id}-${group.id}-power`" class="ml-2">
-            {{ formatPower(group.powerProduced ?? 0).value }} {{ formatPower(group.powerProduced ?? 0).unit }}
+            {{ formatMw(group.powerProduced ?? 0) }}
           </span>
           <span v-if="groupHasVariableProduction" :id="`${factory.id}-${group.id}-power-range`" class="ml-1">
-            ({{ formatPower(group.powerProducedMin ?? 0).value }} {{ formatPower(group.powerProducedMin ?? 0).unit }} – {{ formatPower(group.powerProducedMax ?? 0).value }} {{ formatPower(group.powerProducedMax ?? 0).unit }})
+            ({{ formatMw(group.powerProducedMin ?? 0) }} – {{ formatMw(group.powerProducedMax ?? 0) }})
           </span>
         </v-chip>
         <div class="underchip">&nbsp;</div>
@@ -296,8 +298,8 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { sfColors } from '@/utils/colors'
   import { useDisplay } from 'vuetify'
-  import { formatNumberFully, formatPower } from '@/utils/numberFormatter'
-  import { canBuildingOverclock } from '@/utils/factory-management/common'
+  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { canBuildingOverclock, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
   import {
     getSomersloopBuildCost,
@@ -427,19 +429,23 @@
 
   const chipColors = (part: string) => {
     const isRaw = props.factory.parts[part].isRaw
+    const isByProduct = partIsByProduct(part, props.group.type)
 
     return {
-      cyan: isRaw && !partIsByProduct(part, props.group.type),
-      blue: !isRaw && !partIsByProduct(part, props.group.type),
-      nocolor: partIsByProduct(part, props.group.type),
+      cyan: isRaw && !isByProduct,
+      blue: !isRaw && !isByProduct,
+      byproduct: isByProduct,
     }
   }
 
   const underchipColors = (part: string) => {
+    const isRaw = props.factory.parts[part].isRaw
+    const isByProduct = partIsByProduct(part, props.group.type)
+
     return {
-      'text-blue-darken-1': !partIsByProduct(part, props.group.type),
-      'text-cyan': props.factory.parts[part].isRaw && !partIsByProduct(part, props.group.type),
-      'text-grey-lighten-2': partIsByProduct(part, props.group.type),
+      'text-product': !isRaw && !isByProduct,
+      'text-cyan': isRaw && !isByProduct,
+      'text-byproduct': isByProduct,
     }
   }
 

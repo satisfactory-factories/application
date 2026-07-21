@@ -87,7 +87,7 @@ describe('Component: Product', () => {
     expect((productionInput.element as HTMLInputElement).value).toBe('1')
   })
 
-  it('should disable the building groups toggle when the product has no item selected', () => {
+  it('should hide the building groups toggle when the product has no item selected', () => {
     addProductToFactory(factory, {
       id: '',
       amount: 1,
@@ -98,11 +98,11 @@ describe('Component: Product', () => {
 
     const emptyProduct = factory.products[1]
     const toggle = subject.find(`[id="${factory.id}-${emptyProduct.id}-building-groups-toggle"]`)
-    expect(toggle.exists()).toBe(true)
-    expect(toggle.attributes('disabled')).toBeDefined()
+    expect(toggle.exists()).toBe(false)
 
-    // The populated product's toggle stays enabled
+    // The populated product's toggle is present and enabled
     const populatedToggle = subject.find(`[id="${factory.id}-IronIngot-building-groups-toggle"]`)
+    expect(populatedToggle.exists()).toBe(true)
     expect(populatedToggle.attributes('disabled')).toBeUndefined()
   })
 

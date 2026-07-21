@@ -25,6 +25,9 @@ export default createVuetify({
           // Material's pink #cf6679 while our chips/text use #f44336.
           error: sfColors.error.color,
           success: sfColors.success.color,
+          // Primary buttons share the product blue, so e.g. "Add Factory" and
+          // the product sliver/chips are always the exact same colour.
+          primary: sfColors.product.color,
         },
       },
     },

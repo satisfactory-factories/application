@@ -57,7 +57,7 @@
           v-for="product in recipe.products"
           :key="product.part"
           class="sf-chip"
-          :class="product.isByProduct ? 'orange' : 'green'"
+          :class="product.isByProduct ? 'byproduct' : 'green'"
         >
           <game-asset
             clickable
@@ -84,7 +84,7 @@
         </v-chip>
         <v-chip class="sf-chip consumption">
           <i class="fas fa-bolt" />
-          <span class="ml-2">{{ formatPower(recipe.building.power).value }} {{ formatPower(recipe.building.power).unit }}</span>
+          <span class="ml-2">{{ formatMw(recipe.building.power) }}</span>
         </v-chip>
       </div>
     </v-card-text>
@@ -97,7 +97,7 @@
   import { Recipe } from '@/interfaces/Recipes'
   import { getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
-  import { formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatMw, formatNumber } from '@/utils/numberFormatter'
 
   defineProps<{
     recipe: Recipe;
