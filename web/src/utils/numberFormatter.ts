@@ -22,8 +22,8 @@ export function formatNumber (value: any, precision = 3): string {
 }
 
 // Quantities within this distance of a whole number are assumed to BE that whole number.
-// Reverse-solves and building-group writebacks routinely produce values like 120.001 or
-// 99.999 out of 3dp float round-trips, and at that precision it is extremely unlikely the
+// Reverse-solves and 3dp float round-trips routinely produce values like 120.001 or
+// 99.999 from whole-number inputs, and at that precision it is extremely unlikely the
 // user wanted anything but the integer.
 const INTEGER_SNAP_TOLERANCE = 0.002
 
@@ -37,13 +37,17 @@ export function snapNearInteger (value: number, tolerance = INTEGER_SNAP_TOLERAN
   return Math.abs(value - nearest) <= tolerance ? nearest : value
 }
 
-export function formatNumberFully (value: any, precision = 3): number {
+// `snap` is opt-in and context-driven: callers snap only when the value derives from
+// whole-number inputs (so a 0.001 offset is float noise). Values derived from
+// deliberately precise inputs — e.g. a building group clocked at 223.333% — must NOT
+// snap, so the planner keeps matching the in-game figures (535.999 stays 535.999).
+export function formatNumberFully (value: any, precision = 3, snap = false): number {
   const result = formatNumber(value, precision)
 
   if (isNaN(Number(result))) {
     return 0
   }
-  return snapNearInteger(Number(result))
+  return snap ? snapNearInteger(Number(result)) : Number(result)
 }
 
 // Matches the in-game power screens: MW with thousands separators (e.g. "5,100 MW").

@@ -40,11 +40,15 @@ describe('numberFormatter', () => {
       expect(formatNumberFully('NaN')).toBe(0)
     })
 
-    it('should snap values a rounding-hair away from a whole number to that whole number', () => {
-      expect(formatNumberFully(120.001)).toBe(120)
-      expect(formatNumberFully(99.999)).toBe(100)
-      expect(formatNumberFully(1234.0005)).toBe(1234)
-      expect(formatNumberFully(1233.999)).toBe(1234)
+    it('should snap near-integer values only when asked to', () => {
+      // Snap is opt-in: callers enable it only for whole-number-driven quantities.
+      expect(formatNumberFully(120.001, 3, true)).toBe(120)
+      expect(formatNumberFully(99.999, 3, true)).toBe(100)
+      expect(formatNumberFully(1234.0005, 3, true)).toBe(1234)
+      expect(formatNumberFully(1233.999, 3, true)).toBe(1234)
+      // Default behaviour keeps deliberate precision (e.g. fractional-clock outputs).
+      expect(formatNumberFully(535.9992)).toBe(535.999)
+      expect(formatNumberFully(120.001)).toBe(120.001)
     })
   })
 

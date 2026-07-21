@@ -500,17 +500,16 @@ describe('converter spot check (Iron Ore from Limestone)', () => {
 
   it('should match in-game values at 223.333% clock without somersloops', () => {
     group.overclockPercent = 223.333
+    group.clockSetByUser = true // The user dialled this clock — derived values stay exact
     calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
 
     // The building group is what the in-game machine displays: 1 Converter at 223.333%.
     expect(group.buildingCount).toBe(1)
     expect(group.parts.OreIron).toBe(268) // 120 * 2.23333
     expect(group.parts.SAMIngot).toBe(22.333) // 10 * 2.23333
-    // 240 * 2.23333 = 535.9992 — the game displays 535.999, but the near-integer snap
-    // (see snapNearInteger) treats a truncated-repeating clock as meaning the whole
-    // number, which also makes the group match the factory-level requirement (which
-    // always rounded to 536) instead of sitting 0.001 apart from it.
-    expect(group.parts.Stone).toBe(536)
+    // A fractional clock (223.333%) is deliberate precision, so the near-integer snap
+    // does NOT apply — the group shows exactly what the game shows.
+    expect(group.parts.Stone).toBe(535.999) // 240 * 2.23333
 
     // In-game shows 289.3 to 1157 MW (the UI has no decimals).
     expect(group.powerUsageMin).toBe(289.2615)
@@ -518,37 +517,42 @@ describe('converter spot check (Iron Ore from Limestone)', () => {
 
     // The qty/min matches the group's Iron Ore output exactly.
     expect(product.amount).toBe(268)
+
+    // NOTE: the factory-level Stone requirement rounds to 536 here (vs the group's
+    // 535.999). The item output rounds up (267.9996 -> 268) and the factory ingredient
+    // demand scales from that rounded output, overshooting by 0.001. The group ingredient
+    // is computed straight from the clock so it stays exact.
   })
 
   // Solidification: 1 Converter at 223.333% with ONE somersloop (2 slots, so +50% output).
   it('should match in-game values at 223.333% clock with one somersloop', () => {
     group.overclockPercent = 223.333
+    group.clockSetByUser = true // The user dialled this clock — derived values stay exact
     group.somersloops = 1
     calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
 
     // Ingredients are unaffected by the somersloop; output is boosted 1.5x.
     expect(group.buildingCount).toBe(1)
     expect(group.parts.SAMIngot).toBe(22.333) // 10 * 2.23333
-    expect(group.parts.Stone).toBe(536) // 240 * 2.23333 = 535.9992, near-integer snapped
-    expect(group.parts.OreIron).toBe(402) // 120 * 2.23333 * 1.5 = 401.9994, snapped
+    expect(group.parts.Stone).toBe(535.999) // 240 * 2.23333 — fractional clock, no snap
+    expect(group.parts.OreIron).toBe(401.999) // 120 * 2.23333 * 1.5
 
     // The item qty/min and the factory requirements must match the building group exactly
-    // to 3 decimal places — the snap keeps all three on the same whole number instead of
-    // the group drifting 0.001 below the factory figure.
-    expect(product.amount).toBe(402)
+    // to 3 decimal places (previously the qty rounded up to 402 and Stone to 536).
+    expect(product.amount).toBe(401.999)
     expect(mockFactory.parts.SAMIngot.amountRequired).toBe(22.333)
-    expect(mockFactory.parts.Stone.amountRequired).toBe(536)
+    expect(mockFactory.parts.Stone.amountRequired).toBe(535.999)
   })
 
   // Editing a group's output value must not trigger a rebalance that spreads the work
   // across more buildings — it would destroy the user's deliberate overclock.
   it('should not rebalance a hand-set overclock when its output value is edited', () => {
     group.overclockPercent = 223.333
+    group.clockSetByUser = true // The user dialled this clock — derived values stay exact
     group.somersloops = 1
     calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
 
-    // The user re-enters the group's Iron Ore output (a hair under the whole number —
-    // the near-integer snap treats it as 402).
+    // The user re-enters the group's Iron Ore output.
     updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'OreIron', 401.999)
     calculateFactories(factories, gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
 
@@ -559,6 +563,6 @@ describe('converter spot check (Iron Ore from Limestone)', () => {
     expect(group.overclockPercent).toBeLessThanOrEqual(250)
 
     // Sync is on, so the item quantity still reflects the group output.
-    expect(product.amount).toBe(402)
+    expect(product.amount).toBe(401.999)
   })
 })

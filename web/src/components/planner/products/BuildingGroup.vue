@@ -388,6 +388,9 @@
   }
 
   const updateGroupOverclockDebounce = (group: BuildingGroup) => {
+    // The user dialled this clock in themselves — quantities derived from a fractional
+    // user-set clock are deliberate precision and must not snap to whole numbers.
+    group.clockSetByUser = true
     updatingOverclock.value = true
     if (timeout.value) {
       clearTimeout(timeout.value)

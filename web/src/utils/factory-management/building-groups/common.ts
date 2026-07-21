@@ -218,6 +218,7 @@ export const calculatePowerProducerBuildingGroupPower = (
     // Fuel-less generators (Geothermal, Alien Power Augmenter) have no shard slots.
     if (!canBuildingOverclock(powerRecipe.building.name)) {
       group.overclockPercent = 100
+      group.clockSetByUser = false
     }
 
     // Power production for power producers is a bit different, it is a flat 1:1 ratio
@@ -499,6 +500,7 @@ export const syncBuildingGroups = (
         // Clocks support 4 decimal places in-game, so match that precision.
         group.overclockPercent = formatNumberFully((physicalTarget / group.buildingCount) * 100, 4)
       }
+      group.clockSetByUser = false // Solver-derived clock, not user precision
     })
 
     // Recalculate the group metrics after the rebalance.
@@ -526,6 +528,7 @@ export const bestEffortUpdateBuildingCount = (
     // If the group should have no amount, just set it to 0
     group.buildingCount = 0
     group.overclockPercent = 0
+    group.clockSetByUser = false
     return
   }
 
@@ -583,6 +586,7 @@ export const bestEffortUpdateBuildingCount = (
   // Apply the best building count and clock speed to the group
   group.buildingCount = bestBuildingCount
   group.overclockPercent = formatNumberFully(bestClock, 4)
+  group.clockSetByUser = false // Solver-derived clock, not user precision
 }
 
 // This function will take the remainder of the building requirements and apply it to the last group. It will prefer using more buildings than overclocking, as power shards are harder to come by.
@@ -742,6 +746,7 @@ export const updateBuildingGroupViaPart = (
     group.buildingCount = 1
     // Clocks support 4 decimal places in-game, so match that precision.
     group.overclockPercent = formatNumberFully(targetEffective * 100, 4)
+    group.clockSetByUser = false // Solver-derived clock, not user precision
   } else {
     const maxCandidateCount = Math.ceil(targetEffective) + 1
     type Candidate = { buildingCount: number; clock: number; diff: number }
@@ -773,6 +778,7 @@ export const updateBuildingGroupViaPart = (
 
     group.buildingCount = chosenCandidate.buildingCount
     group.overclockPercent = formatNumberFully(chosenCandidate.clock)
+    group.clockSetByUser = false // Solver-derived clock, not user precision
   }
 
   // 7. Perform any additional calculations needed after updating the group.

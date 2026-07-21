@@ -39,6 +39,10 @@ export interface BuildingGroup {
   id: number;
   buildingCount: number
   overclockPercent: number
+  // True when the user dialled the clock in themselves (vs the solver deriving it).
+  // A user-set fractional clock is deliberate precision: quantities derived from it are
+  // exact and must not be snapped to whole numbers. Optional so old saves default falsy.
+  clockSetByUser?: boolean
   parts: { [key: string]: number }
   powerUsage: number
   // Variable-power buildings draw between min and max over the recipe cycle; powerUsage is

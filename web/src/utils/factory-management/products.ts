@@ -67,6 +67,16 @@ export const addProductToFactory = (
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
 
+// A fractional overclock the user dialled in themselves (223.333%) is deliberate
+// precision — quantities derived from it must be kept exact rather than snapped to the
+// nearest whole number. Solver-derived fractional clocks (a typed quantity re-solving to
+// 42 buildings @ 97.9365%) don't count: they are representations of the typed value, and
+// snapping still applies.
+export const productHasFractionalClock = (product: FactoryItem): boolean => {
+  return (product.buildingGroups ?? []).some(group =>
+    group.clockSetByUser === true && (group.overclockPercent ?? 100) % 1 !== 0)
+}
+
 // Loops through all products and figures out what they produce and what they require, then adds it to the factory.parts object.
 export const calculateProducts = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -78,8 +88,15 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       return
     }
 
+    // Whole-number-driven quantities that land a rounding-hair off an integer (e.g. a
+    // typed ingredient of 1234 reverse-solving to 822.667 and recomputing as 1234.001)
+    // snap to the integer the user meant. When any building group carries a fractional
+    // overclock (223.333%), that precision is deliberate — derived values are treated as
+    // accurate and never snapped, keeping the planner aligned with in-game figures.
+    const snapProductValues = !productHasFractionalClock(product)
+
     // The game does not go more precise than 3 decimal places, so quantities must not either.
-    product.amount = formatNumberFully(product.amount)
+    product.amount = formatNumberFully(product.amount, 3, snapProductValues)
 
     if (!product.amount || product.amount < 0) {
       // If the product amount is negative, this causes issues with calculations, so force it to 0.
@@ -105,10 +122,10 @@ export const calculateProducts = (factory: Factory, gameData: DataInterface) => 
       // === Now we need to calculate the parts required per min to make the product ===
       const productIngredientRatio = product.amount / recipe.products[0].perMin // This formula should have no rounding - the decimal points are important here for the floating point calculations
       let ingredientRequired = ingredient.perMin * productIngredientRatio * sloopIngredientFactor
-      // 3dp round + near-integer snap: a 3dp-capped product amount reverse-solved from a
-      // whole-number ingredient (1234 oil -> 822.667 plastic) recomputes here as e.g.
-      // 1234.0005, which used to display as the user-baffling 1234.001.
-      ingredientRequired = formatNumberFully(ingredientRequired)
+      // 3dp round + (context-dependent) near-integer snap: a 3dp-capped product amount
+      // reverse-solved from a whole-number ingredient (1234 oil -> 822.667 plastic)
+      // recomputes here as 1234.0005, which used to display as the baffling 1234.001.
+      ingredientRequired = formatNumberFully(ingredientRequired, 3, snapProductValues)
 
       // Handle the ingredients
       // Set the amount that the individual products need for display purposes.
@@ -149,7 +166,7 @@ export const calculateByProducts = (factory: Factory, gameData: DataInterface): 
       const byProductRatio = byProduct.amount / recipe.products[0].amount
 
       // Now we compare the product.amount (the amount being produced) and times by the ratio to get the byProduct amount.
-      const byProductAmount = formatNumberFully(product.amount * byProductRatio)
+      const byProductAmount = formatNumberFully(product.amount * byProductRatio, 3, !productHasFractionalClock(product))
 
       if (!product.byProducts) {
         product.byProducts = []

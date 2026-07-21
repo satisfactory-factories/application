@@ -209,6 +209,7 @@
   const resetClocks = (buildingGroups: BuildingGroup[]) => {
     buildingGroups.forEach(group => {
       group.overclockPercent = 100
+      group.clockSetByUser = false
     })
   }
 
