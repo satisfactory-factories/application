@@ -29,7 +29,7 @@
           >
             <i class="fas fa-files-medical" />
             <span class="ml-2">Copied!</span>
-          </v-btn> which then you can paste into a message to us on <v-btn class="bg-indigo-darken-2 border" density="compact" href="https://discord.gg/zge68PrGJ7" target="_blank">
+          </v-btn> which then you can paste into a message to us on <v-btn class="bg-indigo-darken-2 border" density="compact" href="https://discord.gg/vcFsjcWAFv" target="_blank">
             <i class="fab fa-discord" />
             <span class="ml-2">Discord</span>
           </v-btn>.

@@ -5,7 +5,7 @@
         <h1 class="text-h1">Welcome to Satisfactory Factories!</h1>
       </v-card-title>
       <v-card-subtitle class="text-center">
-        <h6 class="text-h6">Bringing sanity to the production chain!</h6>
+        <h6 class="text-h6">Bringing sanity to the logistics chain!</h6>
       </v-card-subtitle>
       <v-card-text class="text-body-1 text-left">
         <youtube-embed
@@ -14,8 +14,9 @@
           video-id="cKuWEKwxX5c"
         />
         <p class="text-h5">Why does this tool exist?</p>
-        <p>TL;DR: Create production goals for each factory, create and manage dependencies between factories, visualise the flow of items and highlight bottlenecks / gaps in supply as you scale your industrial prowess!</p>
-        <p><b>Satisfactory Factories</b> helps plan and manage modular factory (or levels in mega-factories) production chains. Tracking interconnected factories and their dependencies can be overwhelming, leading to overlooked areas and bottlenecks when demands change. This tool automates calculations, ensuring proper scaling for new demands and saving time. Unlike other planners that focus on "what is needed to make X part", SF focuses on per-factory demand rather than <i>just</i> per-part demand. You can use it to determine part quantities and import requirements for future changes, maintaining the production chain and highlighting issues / bottlenecks.</p>
+        <p class="font-weight-bold">TL;DR: Create production goals for each factory, create and monitor import and export dependencies between factories, visualise the flow of items and highlight bottlenecks / gaps in supply as you scale your industrial prowess!</p>
+        <p><b>Satisfactory Factories</b> helps plan and manage modular factory (or levels in mega-factories) production and logistics chains. Tracking interconnected factories and their dependencies can be overwhelming, leading to overlooked areas and bottlenecks when demands change. This tool automates calculations, ensuring proper scaling for new demands and saving time.</p>
+        <p>Unlike other planners that focus on "what is needed to make X part", SF focuses on per-factory demand rather than <i>just</i> per-part demand. You can use it to determine part quantities and import requirements for future changes, maintaining the production chain and highlighting issues / bottlenecks as your game progresses.</p>
         <div class="py-2 mb-4 border-t-md border-b-md rounded">
           <p class="text-h5">Enough yapping, how does it work?</p>
           <ul class="ml-4 mb-4">
@@ -33,11 +34,10 @@
           <p>will be marked in <span class="text-red">red</span> on both the main factory view and the list to the left.</p>
           <p>My suggestion would be to start from "Goal first". Define a factory producing end products, then work your way back from there to the very base level products. But you can plan however you like!</p>
         </div>
-        <div class="px-2 py-2 mb-4 bg-blue-grey-darken-3 rounded">
+        <div class="pa-4 mb-4 bg-blue-darken-4 rounded">
           <p>
-            Please note - this project is in an <span class="text-orange font-weight-bold">alpha</span> state, it is very hot out of the oven and there may <i>(will)</i> be some bugs. Please report any bugs to the project's <a href="https://github.com/Maelstromeous/satisfactory-factories/issues">GitHub Issues page</a> for now.
+            Please note - this project is in an <span class="text-orange font-weight-bold">beta</span> state, there may be some bugs. Please report any bugs to the project's <a href="https://github.com/Maelstromeous/satisfactory-factories/issues">GitHub Issues page</a> or <a href="https://discord.gg/vcFsjcWAFv">Discord</a> for now.
           </p>
-          <p>Each page has a Todo section with what I plan to add. Please offer any suggestions at the GitHub link above for any improvements you'd like to see.</p>
         </div>
         <p>Happy planning! - Maelstromeous</p>
       </v-card-text>

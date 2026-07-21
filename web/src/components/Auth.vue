@@ -7,7 +7,7 @@
       <v-card-title class="text-h5">Session Expired!</v-card-title>
       <v-card-text>
         <p class="mb-4">Your session has expired, Pioneer. Please log in again!</p>
-        <p>If this keeps happening repeatedly or much sooner than expected (30 days), please report it on Discord!</p>
+        <p>If this keeps happening repeatedly or much sooner than expected (30 days), please report it on <a href="https://discord.gg/vcFsjcWAFv" target="_blank">Discord</a>!</p>
       </v-card-text>
       <v-card-actions>
         <v-btn color="primary" variant="elevated" @click="closeSessionExpiredAlert">Ok</v-btn>
@@ -87,7 +87,12 @@
             <p class="text-left mb-2"><b>NOTE:</b> There is currently no password reset system implemented. If you lose your login details, you'll have to create a new account!</p>
             <v-btn color="green" type="submit" variant="flat">Register</v-btn>
           </v-form>
-          <p v-if="errorMessage" class="text-red font-weight-bold mt-2">{{ errorMessage }}</p>
+          <div v-if="errorMessage" class="mt-2">
+            <p class="text-red font-weight-bold">{{ errorMessage }}</p>
+            <p v-if="errorMessage.toLowerCase().includes('discord')">
+              <a href="https://discord.gg/vcFsjcWAFv" target="_blank">Join our Discord →</a>
+            </p>
+          </div>
         </v-card-text>
 
         <v-card-text v-if="loggedInUser" class="text-left text-body-1">

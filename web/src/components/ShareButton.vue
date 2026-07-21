@@ -92,22 +92,22 @@
         eventBus.emit('toast', { message: 'You are being rate limited. Stop spamming that button! Please wait some time before trying again.', type: 'error' })
       } else if (response.status === 500) {
         console.error('Share Error: Server error', response)
-        eventBus.emit('toast', { message: 'A server error has occurred trying to create the share link. Please report this on <a href="https://discord.gg/zge68PrGJ7">Discord</a>!', type: 'error' })
+        eventBus.emit('toast', { message: 'A server error has occurred trying to create the share link. Please report this on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
       } else if (response.status === 502) {
         console.error('Share Error: Gateway timeout', response)
-        eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/zge68PrGJ7">Discord</a>, ping @Maelstrome directly!', type: 'error' })
+        eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>, ping @Maelstrome directly!', type: 'error' })
       } else {
         console.error('Share Error: Unknown response', response.body)
-        eventBus.emit('toast', { message: 'Failed to create share link. Please report this error on our <a href="https://discord.gg/zge68PrGJ7">Discord</a>!', type: 'error' })
+        eventBus.emit('toast', { message: 'Failed to create share link. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
       }
     } catch (error) {
       if (error instanceof Error) {
         console.error('Share Error (catchall):', error)
         if (error.message.includes('NetworkError')) {
-          eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/zge68PrGJ7">Discord</a>, ping @Maelstrome directly!', type: 'error' })
+          eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>, ping @Maelstrome directly!', type: 'error' })
           return
         }
-        eventBus.emit('toast', { message: 'Failed to create share link due to unknown error. Please report this error on our <a href="https://discord.gg/zge68PrGJ7">Discord</a>!', type: 'error' })
+        eventBus.emit('toast', { message: 'Failed to create share link due to unknown error. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
       }
     }
   }

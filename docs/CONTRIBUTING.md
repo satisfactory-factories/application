@@ -32,4 +32,4 @@ Please keep in mind that this is a hobby project designed around a game, and it 
 
 There is no true democracy when it comes to software projects (some may say... Managed Democracy?). The project creator (@Maelstromeous) has the final say on all decisions. If you disagree with a decision, please bring it up in a respectful manner, he is a reasonable guy!
 
-The preferred method of communication is through [Discord](https://discord.gg/abXGXHnE), with decision points being recorded within the GitHub issue itself.
+The preferred method of communication is through [Discord](https://discord.gg/vcFsjcWAFv), with decision points being recorded within the GitHub issue itself.
