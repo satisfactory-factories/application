@@ -213,9 +213,12 @@
 
   const factoriesCopy = ref([...compProps.factories])
 
-  watch(() => compProps.factories, factories => {
-    factoriesCopy.value = [...factories]
-  }, { deep: true })
+  // The copy holds the same factory objects, so name/status changes flow through them
+  // reactively — it only goes stale when membership or order changes. Watching that
+  // via an id fingerprint avoids a deep watch re-traversing the whole plan per flush.
+  watch(() => compProps.factories.map(factory => factory.id).join('|'), () => {
+    factoriesCopy.value = [...compProps.factories]
+  })
 
   // "Cheat" here by when a load is requested we hide the list
   eventBus.on('prepareForLoad', () => {

@@ -7,7 +7,7 @@
 // stop changing?), a PerformanceObserver (how long was the main thread blocked?),
 // and the __sfWatchCounter deep-watcher hook (how many reactive writes?).
 //
-// Product edits sit behind a fixed 750ms debounce (ItemCommon.ts), so the settle
+// Product edits sit behind a fixed 250ms debounce (ItemCommon.ts), so the settle
 // time is reported both raw and with the debounce subtracted.
 //
 // Run: start the dev server (`pnpm dev:web`, never on port 3001), then from web/:
@@ -18,7 +18,7 @@ import puppeteer from 'puppeteer-core'
 
 const PORT = process.env.PORT ?? '3000'
 const CHROMIUM = process.env.CHROMIUM ?? '/usr/bin/chromium'
-const DEBOUNCE_MS = 750
+const DEBOUNCE_MS = 250
 const BASE = `http://localhost:${PORT}`
 const results = []
 const fail = msg => { results.push(`✗ FAIL: ${msg}`) }
@@ -36,6 +36,9 @@ const browser = await puppeteer.launch({
     '--disable-backgrounding-occluded-windows',
     '--window-size=1600,1000',
   ],
+  // Expanding/scrolling a 124-factory plan can block the page long enough to bust the
+  // default 180s CDP timeout on a loaded machine.
+  protocolTimeout: 600_000,
 })
 
 try {
@@ -95,22 +98,24 @@ try {
   // expandAll defers show-all by 250ms behind its own performance-warning toast.
   await sleep(3000)
 
-  // Materialize every card by scrolling through the entire plan.
-  const materialize = await page.evaluate(async () => {
-    const container = document.querySelector('.main-content')
-    const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
-    let guard = 0
-    while (container.scrollTop + container.clientHeight < container.scrollHeight - 5 && guard < 400) {
+  // Materialize every card by scrolling through the entire plan. Driven one screen per
+  // evaluate from here — a single long-running in-page loop can trip the CDP timeout
+  // when rendering blocks the main thread.
+  let screens = 0
+  for (; screens < 400; screens++) {
+    const atBottom = await page.evaluate(() => {
+      const container = document.querySelector('.main-content')
       container.scrollBy(0, container.clientHeight)
-      await wait(150)
-      guard++
-    }
-    return {
-      cards: [...document.querySelectorAll('.main-content .v-card[id]')].filter(c => /^\d+$/.test(c.id)).length,
-      domNodes: document.querySelectorAll('*').length,
-      screens: guard,
-    }
-  })
+      return container.scrollTop + container.clientHeight >= container.scrollHeight - 5
+    })
+    await sleep(150)
+    if (atBottom) break
+  }
+  const materialize = await page.evaluate(screens => ({
+    cards: [...document.querySelectorAll('.main-content .v-card[id]')].filter(c => /^\d+$/.test(c.id)).length,
+    domNodes: document.querySelectorAll('*').length,
+    screens,
+  }), screens)
   note(`SHOW ALL + full scroll-through: ~${Date.now() - tShow}ms — ${materialize.cards} cards mounted, ${materialize.domNodes} DOM nodes (${materialize.screens} screens tall)`)
   if (materialize.cards >= factoryCount) pass(`all ${materialize.cards} factory cards mounted`)
   else note(`(${materialize.cards}/${factoryCount} cards mounted — remainder likely empty/hidden variants)`)
@@ -175,15 +180,18 @@ try {
       return m
     }
     const blocking = m.longTasks.reduce((a, b) => a + b, 0)
-    note(`${label}: input -> DOM settled in ${m.settleMs}ms raw (~${m.settleMs - DEBOUNCE_MS}ms after 750ms debounce) | ` +
+    note(`${label}: input -> DOM settled in ${m.settleMs}ms raw (~${m.settleMs - DEBOUNCE_MS}ms after ${DEBOUNCE_MS}ms debounce) | ` +
       `${m.mutations} DOM mutations | ${m.fires} watcher fires | main-thread blocking ${blocking}ms (tasks: ${m.longTasks.join('+') || 'none >50ms'})`)
-    // Current bound reflects the NEXT known bottleneck (profiled 2026-07-21): the three
-    // full-plan deep watchers (app-store persistence, PlannerFactoryList,
-    // StatisticsFactorySummary) each re-traverse all ~124 factories per flush (~2.3s),
-    // plus the persistence JSON.stringify (~1.9s) and broad Vuetify prop sweeps (~1s),
-    // all dev-mode-inflated. Reactive churn from calculations is no longer a factor
-    // (~40 fires). Tighten towards <1000ms once the deep watchers are reworked.
-    if (m.settleMs - DEBOUNCE_MS < 8000) pass(`${label}: DOM propagation ${m.settleMs - DEBOUNCE_MS}ms (debounce excluded) within current bound (<8s; target <1s after deep-watcher rework)`)
+    // The full-plan deep watchers are gone (event-driven persistence, keyed/shallow
+    // component watchers, devtools overlay opt-in) — profiled 2026-07-21, `traverse` no
+    // longer appears at all. The remaining per-edit cost is the Vuetify component
+    // update sweep (~1.5s) and native style/layout across the ~294k-node DOM (~2s),
+    // both dev-mode-inflated and the rendering rework's territory. Typical settle is
+    // ~2.5–4.5s but varies ±1s run to run, so this bound is a gross-latency guard —
+    // the tight regression gate is the fires assertion below. NOTE: the settle also
+    // includes the __sfWatchCounter observer itself (a deep sync watcher, ~40 full-plan
+    // traversals per edit), so real-world settle is lower still.
+    if (m.settleMs - DEBOUNCE_MS < 6500) pass(`${label}: DOM propagation ${m.settleMs - DEBOUNCE_MS}ms (debounce excluded) within bound (<6.5s incl. measurement overhead)`)
     else fail(`${label}: DOM propagation too slow: ${m.settleMs - DEBOUNCE_MS}ms after debounce`)
     if (m.fires < 2000) pass(`${label}: ${m.fires} reactive fires (pre-fix churn at this scale was ~30,000+)`)
     else fail(`${label}: reactive fires exploded: ${m.fires}`)

@@ -46,7 +46,12 @@ export default defineConfig(() => ({
     Vue({
       template: { transformAssetUrls },
     }),
-    vueDevTools(),
+    // The devtools overlay embeds the full devtools backend (@vue/devtools-kit) into
+    // every dev page — including pinia's deep + sync store subscription, which
+    // re-traverses the entire plan on every reactive write. On large plans that alone
+    // makes edits multi-second in dev, browser extension or not. Opt in when needed:
+    //   VITE_DEVTOOLS=true pnpm dev:web
+    ...(process.env.VITE_DEVTOOLS === 'true' ? [vueDevTools()] : []),
     Vuetify({
       autoImport: true,
     }),

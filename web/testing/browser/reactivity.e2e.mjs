@@ -228,6 +228,42 @@ try {
       if (fires > 0 && fires < 2000) pass(`MegaPlan edit reactive fires bounded: ${fires} (deep-watcher fires across a ~40-factory plan)`)
       else fail(`MegaPlan edit fires out of range: ${fires}`)
       results.push(`  (MegaPlan edit round-trip incl. debounce: ${megaEditMs}ms)`)
+
+      // ---- TEST 4: persistence survives a reload ----
+      // Persistence is event-driven (no deep watcher): calculation edits persist via the
+      // debounced factoryUpdated save, and non-calc mutations (like a factory rename,
+      // which emits no events) must be flushed by the pagehide handler on reload.
+      await sleep(1500) // let the debounced persist fire for the edit above
+      const renamed = await page.evaluate(facId => {
+        const nameInput = document.getElementById(facId)?.querySelector('input.factory-name')
+        if (!nameInput) return null
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+        setter.call(nameInput, 'Persistence Check Factory')
+        nameInput.dispatchEvent(new Event('input', { bubbles: true }))
+        return true
+      }, target.facId)
+      if (!renamed) {
+        fail('persistence: could not rename target factory')
+      } else {
+        await sleep(300)
+        // Plain URL — a reload would re-run ?setupDemo=true and overwrite the plan.
+        // The navigation itself fires pagehide, which must flush the pending save.
+        await page.goto(BASE, { waitUntil: 'networkidle2' })
+        await sleep(3000)
+        const persisted = await page.evaluate(({ inputId, facId }) => {
+          const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]')
+          const factories = tabs.flatMap(tab => tab.factories ?? [])
+          const factory = factories.find(fac => String(fac.id) === facId)
+          const partId = inputId.split('-')[1]
+          const product = factory?.products.find(p => p.id === partId)
+          return { name: factory?.name ?? null, amount: product?.amount ?? null }
+        }, { inputId: target.inputId, facId: target.facId })
+        const expectedAmount = Number(valAfter)
+        if (persisted.amount === expectedAmount) pass(`persistence: product edit survived reload (${persisted.amount})`)
+        else fail(`persistence: product edit lost on reload (stored ${persisted.amount}, expected ${expectedAmount})`)
+        if (persisted.name === 'Persistence Check Factory') pass('persistence: non-calc rename flushed on reload (pagehide)')
+        else fail(`persistence: rename lost on reload (stored "${persisted.name}")`)
+      }
     }
   }
 

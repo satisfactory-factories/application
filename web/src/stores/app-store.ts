@@ -1,7 +1,7 @@
 // Utilities
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
-import { ref, watch } from 'vue'
+import { ref, toRaw, watch } from 'vue'
 import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -98,11 +98,42 @@ export const useAppStore = defineStore('app', () => {
     })
   })
 
-  // Watch the factories array for changes
-  watch(factoryTabs.value, () => {
-    localStorage.setItem('factoryTabs', JSON.stringify(factoryTabs.value))
+  // ==== PLAN PERSISTENCE
+  // Previously a deep watcher persisted factoryTabs on every reactive flush — on large
+  // plans that meant a full-plan traversal per flush plus a multi-second JSON.stringify
+  // through the reactive proxies, the dominant per-edit cost. Persistence is now
+  // event-driven: calculation commits emit factoryUpdated / calculationsCompleted
+  // (debounced into one save), explicit store mutations schedule a save directly, and a
+  // periodic compare-and-save plus a flush on tab-hide/close catches direct mutations
+  // that bypass the calculator (factory/tab renames, hidden toggles, tasks and such).
+  let persistTimer: ReturnType<typeof setTimeout> | undefined
+  let lastPersistedPlan = ''
+
+  const persistPlan = () => {
+    clearTimeout(persistTimer)
+    // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
+    const json = JSON.stringify(toRaw(factoryTabs.value))
+    if (json === lastPersistedPlan) return
+    lastPersistedPlan = json
+    localStorage.setItem('factoryTabs', json)
     setLastEdit() // Update last edit time whenever the data changes, from any source.
-  }, { deep: true })
+  }
+
+  const schedulePersist = () => {
+    clearTimeout(persistTimer)
+    persistTimer = setTimeout(persistPlan, 500)
+  }
+
+  eventBus.on('factoryUpdated', schedulePersist)
+  eventBus.on('calculationsCompleted', schedulePersist)
+
+  if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
+    setInterval(persistPlan, 5_000)
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') persistPlan()
+    })
+    window.addEventListener('pagehide', persistPlan)
+  }
 
   // Dev-only test hook: lets browser tests measure reactive churn during interactions.
   // Installing it adds a deep sync watcher over the whole plan — the same (expensive)
@@ -143,6 +174,13 @@ export const useAppStore = defineStore('app', () => {
       await prepareLoader(plan, true)
       return plan.length
     }
+
+    // Dev-only: lets tests await "all factories rendered" instead of polling the DOM.
+    const loadsWindow = window as unknown as { __sfLoadsCompleted: number }
+    loadsWindow.__sfLoadsCompleted = 0
+    eventBus.on('loadingCompleted', () => {
+      loadsWindow.__sfLoadsCompleted++
+    })
   }
 
   const getLastEdit = (): Date => {
@@ -486,6 +524,8 @@ export const useAppStore = defineStore('app', () => {
     })
 
     factories.value = newFactories
+    // Loads without a recalc emit no calculation events, so persist explicitly.
+    schedulePersist()
     // Will also call the watcher, which sets the current tab data.
 
     console.log('appStore: setFactories: Factories set.', factories.value)
@@ -496,12 +536,20 @@ export const useAppStore = defineStore('app', () => {
     factory.displayOrder = factories.value.length
     factories.value.push(factory)
     console.log('appStore: addFactory: Factory added', factories.value)
+
+    // Adding a factory doesn't necessarily run a calculation, so announce and persist
+    // explicitly — otherwise the new factory isn't saved (or seen by sync) until the
+    // periodic safety net catches it.
+    eventBus.emit('factoryUpdated', factory)
+    schedulePersist()
   }
 
   const removeFactory = (id: number) => {
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
-      factories.value.splice(index, 1)
+      const [removed] = factories.value.splice(index, 1)
+      eventBus.emit('factoryUpdated', removed)
+      schedulePersist()
     }
 
     regenerateSortOrders(getFactories())
@@ -536,6 +584,7 @@ export const useAppStore = defineStore('app', () => {
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
+    schedulePersist()
   }
 
   const removeCurrentTab = async () => {
@@ -543,6 +592,7 @@ export const useAppStore = defineStore('app', () => {
 
     factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
     currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
+    schedulePersist()
 
     // We now need to force a load of the factories, because the tab index may not change, but the factories will have.
     console.log('appStore: removeCurrentTab: Tab removed, preparing loader.')

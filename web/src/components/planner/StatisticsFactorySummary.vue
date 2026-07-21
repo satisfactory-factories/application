@@ -324,12 +324,14 @@
     }))
   })
 
+  // Row count is what materially changes the table's height (it is capped at maxHeight
+  // and scrolls internally). A deep watch here re-traversed the entire plan on every
+  // flush — a major per-edit cost on large plans — just to re-measure the table.
   watch(
-    () => props.factories, // The data to watch
+    () => props.factories.length,
     () => {
-      nextTick(() => adjustTableHeight()) // Callback to adjust height after changes
+      nextTick(() => adjustTableHeight())
     },
-    { deep: true } // Option to deeply watch for changes within the array
   )
 
   const toggleVisibility = () => {
