@@ -15,7 +15,6 @@
         <!-- Slide 1: Announcement hero -->
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-4">The "Overclocked" Update is here!</h2>
-          <!-- TODO(Matt): swap in the v0.5 update video ID (currently the Alpha 4 video as a placeholder) -->
           <youtube-embed
             class="mb-4"
             params="si=aX6DUy_LF4aLPv_G"
