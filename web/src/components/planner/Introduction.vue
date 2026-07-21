@@ -13,6 +13,7 @@
           params="si=mEVI0mJoiNbIwzkG"
           video-id="cKuWEKwxX5c"
         />
+        <p class="text-center mt-n3 text-caption">This video is a little old and needs a refresh, but the principle remains the same!</p>
         <p class="text-h5">Why does this tool exist?</p>
         <p class="font-weight-bold">TL;DR: Create production goals for each factory, create and monitor import and export dependencies between factories, visualise the flow of items and highlight bottlenecks / gaps in supply as you scale your industrial prowess!</p>
         <p><b>Satisfactory Factories</b> helps plan and manage modular factory (or levels in mega-factories) production and logistics chains. Tracking interconnected factories and their dependencies can be overwhelming, leading to overlooked areas and bottlenecks when demands change. This tool automates calculations, ensuring proper scaling for new demands and saving time.</p>
