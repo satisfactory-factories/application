@@ -13,16 +13,16 @@
               >
             </div>
             <!-- chips bar -->
-            <div class="d-flex align-center flex-wrap mt-1">
+            <div class="d-flex align-center flex-wrap mt-1 ga-2">
               <!-- tasks chip -->
-              <div v-if="countActiveTasks(factory)" class="mr-2">
+              <div v-if="countActiveTasks(factory)">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
-              <div v-if="factory.notes" class="mr-2">
+              <div v-if="factory.notes">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
@@ -74,7 +74,7 @@
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small mx-1"
+                  class="sf-chip small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
@@ -84,14 +84,14 @@
               </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow mx-1">
+                <v-chip class="sf-chip small yellow no-margin">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
                 </v-chip>
               </tooltip>
               <!-- somersloops chip -->
               <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop mx-1">
+                <v-chip class="sf-chip small sloop no-margin">
                   <game-asset height="18" subject="somersloop" type="item_id" width="18" />
                   <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
@@ -198,15 +198,15 @@
         <v-card-text v-if="factory.hidden" class="pa-0">
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
-            class="text-body-1 py-2 px-4 pb-1"
+            class="text-body-1 py-2 px-4 collapsed-section"
             :class="factory.products.length > 0 ? 'border-b-md' : ''"
           >
-            <div class="d-flex align-center flex-wrap">
-              <p class="mr-2">Imports:</p>
+            <p class="section-label">Imports:</p>
+            <div class="section-chips">
               <div
                 v-for="[inputFactoryId, inputs] in groupedInputs"
                 :key="inputFactoryId"
-                class="factory-group-chip clickable mr-2"
+                class="factory-group-chip clickable"
                 @click="navigateToFactory(inputFactoryId)"
               >
                 <i class="fas fa-industry ml-1" />
@@ -216,7 +216,7 @@
                 <v-chip
                   v-for="input in inputs"
                   :key="`${inputFactoryId}-${input.outputPart}`"
-                  class="sf-chip small import no-margin ml-1"
+                  class="sf-chip small import"
                 >
                   <game-asset
                     v-if="input.outputPart"
@@ -231,7 +231,7 @@
               </div>
               <div
                 v-if="Object.keys(factory.rawResources).length > 0"
-                class="factory-group-chip mr-2"
+                class="factory-group-chip"
               >
                 <i class="fas fa-hard-hat ml-1" />
                 <span class="mx-2">
@@ -240,7 +240,7 @@
                 <v-chip
                   v-for="(resource, resourceKey) in factory.rawResources"
                   :key="resourceKey"
-                  class="sf-chip small raw-resource no-margin ml-1"
+                  class="sf-chip small raw-resource"
                 >
                   <game-asset
                     v-if="resource.id"
@@ -255,51 +255,53 @@
               </div>
             </div>
           </div>
-          <v-row
-            class="py-2 px-4 my-0 mx-0"
+          <div
+            class="text-body-1 py-2 px-4 collapsed-section"
             :class="hasExports(factory) ? 'border-b-md' : ''"
           >
-            <p v-if="factory.products.length === 0" class="text-body-1">Empty factory! Select a product!</p>
-            <div v-else class="d-flex align-center flex-wrap">
-              <p class="text-body-1 mr-2">Producing: </p>
-              <template v-for="part in factory.products">
-                <v-chip
-                  v-if="factory.parts[part.id]"
-                  :key="`${factory.id}-${part.id}`"
-                  class="sf-chip small no-margin mr-2 my-1"
-                  :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : 'product'"
-                >
-                  <game-asset
-                    v-if="part.id"
-                    clickable
-                    height="32"
-                    :subject="part.id"
-                    type="item"
-                    width="32"
-                  />
-                  <span class="ml-2">
-                    <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
-                  </span>
-                  <span
-                    v-if="factory.parts[part.id].amountRemaining !== 0"
-                    class="ml-2"
-                    :class="differenceClass(factory.parts[part.id].amountRemaining)"
+            <p v-if="factory.products.length === 0">Empty factory! Select a product!</p>
+            <template v-else>
+              <p class="section-label">Producing:</p>
+              <div class="section-chips">
+                <template v-for="part in factory.products">
+                  <v-chip
+                    v-if="factory.parts[part.id]"
+                    :key="`${factory.id}-${part.id}`"
+                    class="sf-chip"
+                    :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : 'product'"
                   >
-                    (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
-                </v-chip>
-              </template>
-            </div>
-          </v-row>
+                    <game-asset
+                      v-if="part.id"
+                      clickable
+                      height="32"
+                      :subject="part.id"
+                      type="item"
+                      width="32"
+                    />
+                    <span class="ml-2">
+                      <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
+                    </span>
+                    <span
+                      v-if="factory.parts[part.id].amountRemaining !== 0"
+                      class="ml-2"
+                      :class="differenceClass(factory.parts[part.id].amountRemaining)"
+                    >
+                      (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                  </v-chip>
+                </template>
+              </div>
+            </template>
+          </div>
           <div
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
-            class="text-body-1 py-2 px-4 pb-1"
+            class="text-body-1 py-2 px-4 collapsed-section"
           >
-            <div class="d-flex align-center flex-wrap">
-              <p class="mr-2">Exports:</p>
+            <p class="section-label">Exports:</p>
+            <div class="section-chips">
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"
                 :key="dependant"
-                class="factory-group-chip clickable mr-2"
+                class="factory-group-chip clickable"
                 @click="navigateToFactory(dependant)"
               >
                 <i class="fas fa-industry ml-1" />
@@ -309,7 +311,7 @@
                 <v-chip
                   v-for="part in factory.dependencies.requests[dependant]"
                   :key="part.part"
-                  class="sf-chip small product no-margin ml-1"
+                  class="sf-chip small product"
                 >
                   <game-asset
                     v-if="part.part"
@@ -424,6 +426,37 @@
   }
 }
 
+// Collapsed-view section rows (Imports / Producing / Exports) read as a table:
+// a fixed-width right-aligned label column so every chip flow starts at the same
+// x, with the label vertically centred even when the chips wrap to more lines.
+.collapsed-section {
+  display: flex;
+  align-items: center;
+  column-gap: 8px;
+
+  .section-label {
+    flex: 0 0 85px;
+    text-align: right;
+  }
+
+  .section-chips {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 8px;
+
+    // Spacing between chips is the gap's job — the global .sf-chip margins
+    // would stack on top of it and skew the section's vertical symmetry.
+    // Only direct children (the Producing chips): part chips inside the
+    // factory-group pills keep their own 4px rhythm below.
+    > .sf-chip {
+      margin: 0 !important;
+    }
+  }
+}
+
 // Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
 // imported from / exported to that factory. Shares the factory token + card header
 // background (see src/utils/colors.ts).
@@ -436,7 +469,14 @@
   background-color: var(--sf-factory-bg);
   color: var(--sf-factory);
   padding: 4px 6px 4px 10px;
-  margin: 4px 0;
+  row-gap: 4px;
+
+  // The global .sf-chip.no-margin rule out-specifies utility classes like ml-1,
+  // so the 4px rhythm between part chips has to live here, where the scope
+  // attribute wins the specificity contest.
+  .sf-chip {
+    margin: 0 0 0 4px !important;
+  }
 
   &.clickable:hover {
     cursor: pointer;

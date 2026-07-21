@@ -1,11 +1,11 @@
 <template>
-  <div class="d-flex align-center flex-wrap">
+  <div class="d-flex align-center flex-wrap ga-2">
     <h4 class="text-h4">
       <i class="fas fa-power-off mr-3" />Power Consumption and Generation
     </h4>
     <v-chip
       id="stats-power-summary-generation"
-      class="sf-chip generation ml-3"
+      class="sf-chip generation no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -14,7 +14,7 @@
     </v-chip>
     <v-chip
       id="stats-power-summary-consumption"
-      class="sf-chip consumption"
+      class="sf-chip consumption no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -24,7 +24,7 @@
     <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
       <v-chip
         id="stats-power-summary-difference"
-        class="sf-chip"
+        class="sf-chip no-margin"
         :class="balanceDifference >= 0 ? 'green' : 'red'"
         variant="tonal"
       >

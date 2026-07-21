@@ -27,8 +27,8 @@
         </v-row>
         <!-- Power gets prominence even when the statistics are collapsed: the target and
              its difference stay visible so the user always knows where they stand. -->
-        <v-card-text v-if="hidden" class="text-body-1 d-flex align-center flex-wrap py-2">
-          <span class="mr-3 font-weight-bold">Power Target:</span>
+        <v-card-text v-if="hidden" class="text-body-1 d-flex align-center flex-wrap ga-2 py-2">
+          <span class="font-weight-bold">Power Target:</span>
           <v-chip class="sf-chip input no-margin" variant="tonal">
             <tooltip text="Power target">
               <i class="fas fa-bullseye ml-3" />
@@ -46,14 +46,14 @@
             />
             <span class="mx-2">MW</span>
           </v-chip>
-          <v-chip class="sf-chip generation ml-3" variant="tonal">
+          <v-chip class="sf-chip generation no-margin" variant="tonal">
             <i class="fas fa-bolt" />
             <i class="fas fa-plus" />
             <span id="stats-power-generated-collapsed" class="ml-2">
               Generated: {{ formatMw(totalPower.totalPowerProduced) }}
             </span>
           </v-chip>
-          <v-chip class="sf-chip consumption ml-3" variant="tonal">
+          <v-chip class="sf-chip consumption no-margin" variant="tonal">
             <i class="fas fa-bolt" />
             <i class="fas fa-minus" />
             <span id="stats-power-consumed-collapsed" class="ml-2">
@@ -62,7 +62,7 @@
           </v-chip>
           <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
             <v-chip
-              class="sf-chip ml-3"
+              class="sf-chip no-margin"
               :class="balanceDifference >= 0 ? 'green' : 'red'"
               variant="tonal"
             >
