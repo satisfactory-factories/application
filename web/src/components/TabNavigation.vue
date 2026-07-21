@@ -135,6 +135,9 @@
 .sidebar-toggle {
   background-color: var(--sf-power-consumption) !important;
   color: rgba(0, 0, 0, 0.87) !important;
+  // Fixed width sized to the wider label ("Show Sidebar") so toggling the text
+  // doesn't nudge the tabs sideways.
+  width: 152px;
 }
 
 // Bare glyphs rather than button pills: the text variant drops the fill, and
