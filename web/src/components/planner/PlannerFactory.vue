@@ -102,7 +102,7 @@
             <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"
-              color="primary"
+              :color="factory.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
               :disabled="factory.displayOrder === 0"
               icon="fas fa-arrow-up"
               size="small"
@@ -112,7 +112,7 @@
             />
             <v-btn
               class="mr-2 rounded"
-              color="primary"
+              :color="factory.displayOrder === totalFactories - 1 ? 'grey-darken-3' : 'primary'"
               :disabled="factory.displayOrder === totalFactories - 1"
               icon="fas fa-arrow-down"
               size="small"
@@ -337,7 +337,7 @@
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
-  import { formatMw, formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
 
@@ -364,10 +364,7 @@
   )
 
   // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
-  const powerDiffDisplay = computed(() => {
-    const { value, unit } = formatPower(Math.abs(factoryPowerDifference.value))
-    return `${value} ${unit}`
-  })
+  const powerDiffDisplay = computed(() => formatMw(Math.abs(factoryPowerDifference.value)))
 
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))

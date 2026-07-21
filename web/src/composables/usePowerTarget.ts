@@ -27,5 +27,9 @@ export const usePowerTarget = () => {
     },
   })
 
-  return { powerTarget }
+  // Balance chips compare against the target when one is set, and fall back to the
+  // plan's own consumption when it isn't — every consumer needs the same distinction.
+  const hasTarget = computed<boolean>(() => powerTarget.value > 0)
+
+  return { powerTarget, hasTarget }
 }

@@ -21,15 +21,21 @@
       <i class="fas fa-minus" />
       <span class="ml-1">{{ mw(totalPower.totalPowerConsumed) }}</span>
     </v-chip>
-    <v-chip
-      id="stats-power-summary-difference"
-      class="sf-chip"
-      :class="totalPower.totalPowerDifference >= 0 ? 'green' : 'red'"
-      variant="tonal"
-    >
-      <i class="fas fa-balance-scale" />
-      <span class="ml-1">{{ mw(totalPower.totalPowerDifference) }}</span>
-    </v-chip>
+    <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
+      <v-chip
+        id="stats-power-summary-difference"
+        class="sf-chip"
+        :class="balanceDifference >= 0 ? 'green' : 'red'"
+        variant="tonal"
+      >
+        <i class="fas fa-balance-scale" />
+        <span class="ml-1">{{ mw(balanceDifference) }}</span>
+        <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
+             so class flips (and removal of the bare <i>) never reach the rendered icon. -->
+        <span v-if="hasTarget" class="ml-2"><i class="fas fa-bullseye" /></span>
+        <span v-else class="ml-2"><i class="fas fa-check-square" /></span>
+      </v-chip>
+    </tooltip>
   </div>
   <p v-show="helpText" class="mb-4">
     <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
@@ -48,7 +54,9 @@
   </v-alert>
   <v-row class="mt-1">
     <v-col cols="12" md="8">
-      <h2 class="text-subtitle-1 font-weight-bold">Plan</h2>
+      <h2 class="text-h5 font-weight-bold text-no-wrap">
+        <i class="fas fa-check-square mr-2" />Plan
+      </h2>
       <v-table class="power-table" density="compact">
         <thead>
           <tr>
@@ -143,28 +151,44 @@
       </p>
     </v-col>
     <v-col cols="12" md="4">
-      <h2 class="text-subtitle-1 font-weight-bold">Power Target</h2>
-      <p class="text-body-2 text-medium-emphasis mb-3">
-        Since not every power consumer can be represented in the plan, set your own generation
-        target for the grid and see how far the plan's total generation is from it.
+      <h2 class="text-h5 font-weight-bold text-no-wrap">
+        <i class="fas fa-bullseye mr-2" />Power Target
+      </h2>
+      <div class="d-flex align-center">
+        <v-chip class="sf-chip input no-margin" variant="tonal">
+          <tooltip text="Power target">
+            <i class="fas fa-bolt ml-3" />
+          </tooltip>
+          <v-number-input
+            id="stats-power-target"
+            v-model="powerTarget"
+            class="inline-inputs ml-2"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            width="140px"
+          />
+          <span class="mx-2">MW</span>
+        </v-chip>
+        <!-- height matches the sf-chip input beside it (32px chip + its forced 20px padding) -->
+        <v-btn
+          id="stats-power-target-clear"
+          class="ml-2"
+          color="primary"
+          :disabled="!hasTarget"
+          height="42"
+          variant="outlined"
+          @click="powerTarget = 0"
+        >Clear
+        </v-btn>
+        <tooltip-info text="When the target is cleared, the balance chips show the difference vs the plan's consumption instead of your target." />
+      </div>
+      <p class="text-body-2 text-medium-emphasis mt-3">
+        Since not every power consumer can be represented in the plan (e.g. Trains, Lights etc), you can set your own generation
+        target for the grid and see the difference versus the plan's production.
       </p>
-      <v-chip class="sf-chip input no-margin" variant="tonal">
-        <tooltip text="Power target">
-          <i class="fas fa-bullseye ml-3" />
-        </tooltip>
-        <v-number-input
-          id="stats-power-target"
-          v-model="powerTarget"
-          class="inline-inputs ml-2"
-          control-variant="stacked"
-          density="compact"
-          hide-details
-          hide-spin-buttons
-          :min="0"
-          width="140px"
-        />
-        <span class="mx-2">MW</span>
-      </v-chip>
       <v-table v-if="powerTarget > 0" class="power-table target-table mt-2" density="compact">
         <tbody>
           <tr>
@@ -211,8 +235,14 @@
 
   const totalPower = computed(() => calculateTotalPower(props.factories))
 
-  const { powerTarget } = usePowerTarget()
+  const { powerTarget, hasTarget } = usePowerTarget()
   const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)
+
+  // The balance chip compares against the target when one is set, otherwise
+  // against the plan's own consumption — the trailing icon says which.
+  const balanceDifference = computed(() =>
+    hasTarget.value ? targetDifference.value : totalPower.value.totalPowerDifference,
+  )
 
   // The game's power screens always show MW, so the table matches them exactly.
   const mw = formatMw

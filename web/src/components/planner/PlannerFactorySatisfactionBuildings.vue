@@ -16,7 +16,7 @@
         <span class="ml-2">
           Consumes:
           <span :id="`${factory.id}-buildings-power-consumed`">
-            {{ formatPower(factory.power.consumed).value }} {{ formatPower(factory.power.consumed).unit }}
+            {{ formatMw(factory.power.consumed) }}
           </span>
         </span></v-chip>
       <v-chip
@@ -29,7 +29,7 @@
         <span class="ml-2">
           Max consumption:
           <span :id="`${factory.id}-buildings-power-consumed-max`">
-            {{ formatPower(factory.power.consumedMax ?? 0).value }} {{ formatPower(factory.power.consumedMax ?? 0).unit }}
+            {{ formatMw(factory.power.consumedMax ?? 0) }}
           </span>
         </span>
         <tooltip-info text="Variable-power buildings in this factory oscillate between a minimum and maximum draw; Consumes shows the average.<br>Rather than generating for this peak, cover the average and use Power Storage (batteries) to absorb the spikes." />
@@ -44,7 +44,7 @@
         <span class="ml-2">
           Produces:
           <span :id="`${factory.id}-buildings-power-produced`">
-            {{ formatPower(factory.power.produced).value }} {{ formatPower(factory.power.produced).unit }}
+            {{ formatMw(factory.power.produced) }}
           </span>
         </span>
       </v-chip>
@@ -58,7 +58,7 @@
         <span class="ml-2">
           Circuit boost:
           <span :id="`${factory.id}-buildings-power-boost`">
-            +{{ formatPower(factory.power.boostMw ?? 0).value }} {{ formatPower(factory.power.boostMw ?? 0).unit }} ({{ boostBreakdown }})
+            +{{ formatMw(factory.power.boostMw ?? 0) }} ({{ boostBreakdown }})
           </span>
         </span>
         <tooltip-info text="This factory's Alien Power Augmenters boost the whole grid: +10% of total generation each, or +30% when supplied with Alien Power Matrixes.<br>Assumes all factories are connected to one big power grid." />
@@ -91,7 +91,7 @@
   </v-card>
 </template>
 <script setup lang="ts">
-  import { formatNumber, formatPower } from '@/utils/numberFormatter'
+  import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
 

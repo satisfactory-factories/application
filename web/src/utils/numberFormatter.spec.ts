@@ -1,6 +1,6 @@
 /* eslint-disable no-loss-of-precision */
 import { describe, expect, it } from 'vitest'
-import { formatNumber, formatNumberFully, formatPower } from '@/utils/numberFormatter'
+import { formatMw, formatNumber, formatNumberFully } from '@/utils/numberFormatter'
 
 describe('numberFormatter', () => {
   describe('formatNumber', () => {
@@ -41,22 +41,17 @@ describe('numberFormatter', () => {
     })
   })
 
-  describe('formatPower', () => {
-    it('should format a given value into a string with a unit of MW', () => {
-      expect(formatPower(100).value).toBe('100')
-      expect(formatPower(100).unit).toBe('MW')
+  describe('formatMw', () => {
+    it('should format a value in MW', () => {
+      expect(formatMw(100)).toBe('100\u00A0MW')
     })
-    it('should format a given value into a string with a unit of GW', () => {
-      expect(formatPower(1000).value).toBe('1')
-      expect(formatPower(1000).unit).toBe('GW')
+    it('should stay in MW with thousands separators above 1000', () => {
+      expect(formatMw(1000)).toBe('1,000\u00A0MW')
+      expect(formatMw(46351)).toBe('46,351\u00A0MW')
     })
-    it('should format a given negative value into a string with a unit of MW', () => {
-      expect(formatPower(-100).value).toBe('-100')
-      expect(formatPower(-100).unit).toBe('MW')
-    })
-    it('should format a given negative value into a string with a unit of GW', () => {
-      expect(formatPower(-1000).value).toBe('-1')
-      expect(formatPower(-1000).unit).toBe('GW')
+    it('should format negative values in MW', () => {
+      expect(formatMw(-100)).toBe('-100\u00A0MW')
+      expect(formatMw(-1000)).toBe('-1,000\u00A0MW')
     })
   })
 })

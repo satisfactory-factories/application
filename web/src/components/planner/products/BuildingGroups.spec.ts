@@ -15,7 +15,7 @@ import {
 } from '@/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '@/utils/gameDataService'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
-import { formatPower } from '@/utils/numberFormatter'
+import { formatMw } from '@/utils/numberFormatter'
 
 const gameData = await fetchGameData()
 
@@ -585,9 +585,7 @@ describe('Component: BuildingGroups', () => {
 
       it('should display power production', () => {
         const power = subject.find(`[id="${factory.id}-${newBuildingGroup.id}-power"]`)
-        const powerAmountCalculated = formatPower(newBuildingGroup.powerProduced)
-        const powerDisplay = `${powerAmountCalculated.value} ${powerAmountCalculated.unit}`
-        expect(power.text()).toBe(powerDisplay)
+        expect(power.text()).toBe(formatMw(newBuildingGroup.powerProduced))
       })
     })
 

@@ -36,20 +36,9 @@ export function formatMw (value: number): string {
   return `${Number(formatNumber(value, 1)).toLocaleString('en-US')}\u00A0MW`
 }
 
-// Always renders in gigawatts (value supplied in MW), for compact power chips.
+// Always renders in gigawatts (value supplied in MW). Reserved for the statistics
+// side tray, which is too space-constrained for full MW figures — everywhere else
+// shows MW via formatMw to match the game's power screens.
 export function formatGw (value: number): string {
   return `${Number(formatNumber(value / 1000, 2)).toLocaleString('en-US')}\u00A0GW`
-}
-
-// Returns a number formatted in the value of megawatts or gigawatts. If supplied GW, the number is divided by 1000.
-export function formatPower (value: number): { value: string, unit: string } {
-  let formattedValue = formatNumber(value, 1)
-  let unit = 'MW'
-
-  // If the unit is above 1000, or less than -1000, convert the unit into gigawatts.
-  if (value >= 1000 || value <= -1000) {
-    formattedValue = formatNumber(value / 1000, 1)
-    unit = 'GW'
-  }
-  return { value: formattedValue, unit }
 }

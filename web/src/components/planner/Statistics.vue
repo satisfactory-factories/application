@@ -4,14 +4,14 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-list" /><span class="ml-3">Statistics [WIP]</span>
+            <i class="fas fa-list" /><span class="ml-3">Statistics</span>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
               v-show="!hidden"
               color="primary"
               prepend-icon="fas fa-eye-slash"
-              variant="outlined"
+              variant="flat"
               @click="toggleVisibility"
             >Hide
             </v-btn>
@@ -60,17 +60,22 @@
               Consumed: {{ formatMw(totalPower.totalPowerConsumed) }}
             </span>
           </v-chip>
-          <v-chip
-            v-if="powerTarget > 0"
-            class="sf-chip ml-3"
-            :class="targetDifference >= 0 ? 'green' : 'red'"
-            variant="tonal"
-          >
-            <i class="fas fa-balance-scale" />
-            <span id="stats-power-target-difference-collapsed" class="ml-2">
-              Difference vs target: {{ formatMw(targetDifference) }}
-            </span>
-          </v-chip>
+          <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
+            <v-chip
+              class="sf-chip ml-3"
+              :class="balanceDifference >= 0 ? 'green' : 'red'"
+              variant="tonal"
+            >
+              <i class="fas fa-balance-scale" />
+              <span id="stats-power-target-difference-collapsed" class="ml-2">
+                Difference vs {{ hasTarget ? 'target' : 'plan' }}: {{ formatMw(balanceDifference) }}
+              </span>
+              <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
+                   so class flips (and removal of the bare <i>) never reach the rendered icon. -->
+              <span v-if="hasTarget" class="ml-2"><i class="fas fa-bullseye" /></span>
+              <span v-else class="ml-2"><i class="fas fa-check-square" /></span>
+            </v-chip>
+          </tooltip>
         </v-card-text>
         <v-card-text v-if="!hidden" class="text-body-1">
           <statistics-power :factories="factories" :help-text="helpText" />
@@ -87,7 +92,7 @@
               v-show="!hiddenProducts"
               color="primary"
               prepend-icon="fas fa-eye-slash"
-              variant="outlined"
+              variant="flat"
               @click="toggleProductsVisibility"
             >Hide all Products
             </v-btn>
@@ -120,16 +125,20 @@
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import eventBus from '@/utils/eventBus'
 
   const props = defineProps<{
     factories: Factory[];
     helpText: boolean;
   }>()
 
-  // Power strip shown while the statistics are collapsed.
-  const { powerTarget } = usePowerTarget()
+  // Power strip shown while the statistics are collapsed. Its balance chip mirrors
+  // the expanded section: vs target when one is set, vs the plan otherwise.
+  const { powerTarget, hasTarget } = usePowerTarget()
   const totalPower = computed(() => calculateTotalPower(props.factories))
-  const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)
+  const balanceDifference = computed(() => hasTarget.value
+    ? totalPower.value.totalPowerProduced - powerTarget.value
+    : totalPower.value.totalPowerDifference)
 
   // Default to not showing the stats on first ever load
   const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'false'
@@ -152,6 +161,14 @@
   const toggleVisibility = () => {
     hidden.value = !hidden.value
   }
+
+  // Sidebar jump-link: landing on a collapsed section just to click Show is pointless,
+  // so reveal it before the scroll arrives.
+  eventBus.on('openSection', sectionId => {
+    if (sectionId === 'statistics') {
+      hidden.value = false
+    }
+  })
 
   // Function to toggle visibility
   const toggleProductsVisibility = () => {
