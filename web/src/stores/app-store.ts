@@ -134,6 +134,15 @@ export const useAppStore = defineStore('app', () => {
         stopCounter = null
       },
     }
+
+    // Dev-only: load the ~124-factory stress plan (browser perf harness). Dynamic import
+    // so the fixture stays out of the entry chunk.
+    ;(window as unknown as { __sfLoadStressPlan: (copies?: number) => Promise<number> }).__sfLoadStressPlan = async (copies = 4) => {
+      const { createStressPlan } = await import('@/utils/factory-setups/stress-plan')
+      const plan = createStressPlan(copies)
+      await prepareLoader(plan, true)
+      return plan.length
+    }
   }
 
   const getLastEdit = (): Date => {
