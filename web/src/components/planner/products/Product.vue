@@ -84,29 +84,27 @@
         />
         <debounce-spinner :active="debouncingProduct === product.id && debouncing === 'amount'" />
       </div>
-      <div class="input-row d-flex align-center">
-        <v-btn
-          v-show="shouldShowFix(product, factory) == 'deficit'"
-          class="rounded mr-2"
-          color="green"
-          prepend-icon="fas fa-arrow-up"
-          @click="doFixProduct(product, factory)"
-        >Satisfy</v-btn>
-        <v-btn
-          v-show="shouldShowFix(product, factory) == 'surplus'"
-          class="rounded mr-2"
-          color="yellow"
-          prepend-icon="fas fa-arrow-down"
-          size="default"
-          @click="doFixProduct(product, factory)"
-        >Trim</v-btn>
-        <v-chip v-if="shouldShowInternal(product, factory)" class="ml-2 sf-chip small green">
-          Internal
-        </v-chip>
-        <v-chip v-if="shouldShowNotInDemand(product, factory)" class="ml-2 sf-chip small orange">
-          No demand!
-        </v-chip>
-      </div>
+      <v-btn
+        v-show="shouldShowFix(product, factory) == 'deficit'"
+        class="rounded align-self-center"
+        color="green"
+        prepend-icon="fas fa-arrow-up"
+        @click="doFixProduct(product, factory)"
+      >Satisfy</v-btn>
+      <v-btn
+        v-show="shouldShowFix(product, factory) == 'surplus'"
+        class="rounded align-self-center"
+        color="yellow"
+        prepend-icon="fas fa-arrow-down"
+        size="default"
+        @click="doFixProduct(product, factory)"
+      >Trim</v-btn>
+      <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
+        Internal
+      </v-chip>
+      <v-chip v-if="shouldShowNotInDemand(product, factory)" class="align-self-center sf-chip small orange">
+        No demand!
+      </v-chip>
     </div>
     <div
       v-if="product.recipe"
@@ -245,7 +243,7 @@
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { inject } from 'vue'
   import { debounce } from '@/components/planner/products/ItemCommon'
-  import { useDebouncedAction } from '@/composables/useDebouncedAction'
+  import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
   import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
@@ -382,8 +380,13 @@
     }
 
     updateFactory(factory)
-    debouncing.value = ''
-    debouncingProduct.value = ''
+    // Hold the spinner until the recalc's DOM updates have painted so its exit
+    // animation runs on an idle frame instead of mid-jank.
+    await afterRender()
+    if (callId === updateQtyCallCounter) {
+      debouncing.value = ''
+      debouncingProduct.value = ''
+    }
 
     const newAmount = formatNumberFully(product.amount)
 

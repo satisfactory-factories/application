@@ -99,7 +99,7 @@
         />
         <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Fuel}`" />
       </div>
-      <div v-if="!isFuellessProducer(producer)" class="d-flex align-center mx-1 font-weight-bold"><span>OR</span></div>
+      <div v-if="!isFuellessProducer(producer)" class="d-flex align-center font-weight-bold"><span>OR</span></div>
       <div class="input-row d-flex align-center">
         <!-- Fuel-less generators output fixed steps of power per building, so the MW value
              cannot be freely dialled in — it is display-only for them. -->
@@ -118,20 +118,18 @@
         />
         <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Power}`" />
       </div>
-      <div class="input-row d-flex align-center">
-        <v-chip
-          class="sf-chip green"
-          variant="tonal"
-        >
-          <i class="fas fa-bolt" />
-          <i class="fas fa-plus" />
-          <span class="ml-2">{{ formatMw(producer.powerAmount) }}</span>
-          <template v-if="producerHasVariablePower(producer)">
-            <span class="ml-1">({{ formatMw(producerPowerRange(producer).min) }} – {{ formatMw(producerPowerRange(producer).max) }})</span>
-            <tooltip-info text="This generator's output oscillates between a minimum and maximum over a one-minute cycle. The main figure is the average." />
-          </template>
-        </v-chip>
-      </div>
+      <v-chip
+        class="align-self-center sf-chip green"
+        variant="tonal"
+      >
+        <i class="fas fa-bolt" />
+        <i class="fas fa-plus" />
+        <span class="ml-2">{{ formatMw(producer.powerAmount) }}</span>
+        <template v-if="producerHasVariablePower(producer)">
+          <span class="ml-1">({{ formatMw(producerPowerRange(producer).min) }} – {{ formatMw(producerPowerRange(producer).max) }})</span>
+          <tooltip-info text="This generator's output oscillates between a minimum and maximum over a one-minute cycle. The main figure is the average." />
+        </template>
+      </v-chip>
     </div>
     <div
       v-if="producer.recipe"

@@ -1,5 +1,15 @@
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { debounce } from '@/components/planner/products/ItemCommon'
+
+// Resolves once the DOM changes from the last action have actually been painted:
+// nextTick waits for Vue's render flush, the double requestAnimationFrame waits for
+// the browser to produce a frame with those changes on screen. Used so spinner
+// exit animations start on an idle frame instead of mid-jank.
+export const afterRender = (): Promise<void> => new Promise(resolve => {
+  nextTick(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
+})
 
 // Debounces the expensive part of an input edit (the whole-plan recalculation) while
 // the v-model mutation itself lands instantly. Callers mutate their data immediately,
@@ -23,7 +33,12 @@ export const useDebouncedAction = () => {
     try {
       action()
     } finally {
-      debouncing.value = ''
+      // Hold the spinner until the recalc's DOM updates have painted, so its exit
+      // animation runs smoothly instead of during the re-render.
+      await afterRender()
+      if (id === callId) {
+        debouncing.value = ''
+      }
     }
   }
 

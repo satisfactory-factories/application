@@ -312,7 +312,7 @@
   import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
-  import { useDebouncedAction } from '@/composables/useDebouncedAction'
+  import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const updateFactory = inject('updateFactory') as (factory: Factory, modes?: CalculationModes) => void
   const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
@@ -320,6 +320,8 @@
   // const timeout: NodeJS.Timeout | null = null
   const updatingPart = ref('')
   const updatingOverclock = ref(false)
+  // Guards the post-paint spinner clear against a newer edit re-arming the flag.
+  let updateRunId = 0
 
   const timeout = ref<NodeJS.Timeout | null>(null)
 
@@ -391,13 +393,18 @@
       clearTimeout(timeout.value)
     }
 
-    timeout.value = setTimeout(() => {
+    const runId = ++updateRunId
+    timeout.value = setTimeout(async () => {
       console.log('Updating building group overclock')
       updateBuildingGroup(group)
       updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
-      updatingOverclock.value = false
-      console.log('Overclock updated')
       eventBus.emit('buildingGroupUpdated', props.factory)
+      // Hold the spinner until the recalc's DOM updates have painted.
+      await afterRender()
+      if (runId === updateRunId) {
+        updatingOverclock.value = false
+      }
+      console.log('Overclock updated')
     }, 250)
   }
 
@@ -477,7 +484,8 @@
       clearTimeout(timeout.value)
     }
 
-    timeout.value = setTimeout(() => {
+    const runId = ++updateRunId
+    timeout.value = setTimeout(async () => {
       console.log('Updating building group parts')
       updateBuildingGroupViaPart(
         props.group,
@@ -488,9 +496,13 @@
         props.group.parts[part],
       )
       updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
-      updatingPart.value = ''
-      console.log(`Part ${part} updated`)
       eventBus.emit('buildingGroupUpdated', props.factory)
+      // Hold the spinner until the recalc's DOM updates have painted.
+      await afterRender()
+      if (runId === updateRunId) {
+        updatingPart.value = ''
+      }
+      console.log(`Part ${part} updated`)
     }, 250)
   }
 </script>

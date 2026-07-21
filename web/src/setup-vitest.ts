@@ -73,6 +73,16 @@ vi.mock('./stores/local-game-data-loader.ts', () => {
   }
 })
 
+// Serve game data from the local file instead of HTTP. Without this, specs importing
+// the calc engine (building-groups/common.ts top-level-awaits fetchGameData) depend on
+// vitest's port-3001 test server — which silently skips startup if anything else (e.g.
+// the backend dev server) is squatting that port, failing the suite with fetch errors.
+vi.mock('./utils/gameDataService.ts', () => {
+  return {
+    fetchGameData: async () => gameData,
+  }
+})
+
 // Create pinia so that stores that are created during module don't throw
 // errors because pinia is not set up.
 setActivePinia(createPinia())
