@@ -16,6 +16,12 @@
         <v-divider />
         <h1>Beta v0.5 - The "Overclocked" Update</h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
+        <p>Check out what's new in the video below!</p>
+        <youtube-embed
+          class="pb-4"
+          params="si=aX6DUy_LF4aLPv_G"
+          video-id="YsWDeOU3e8o"
+        />
 
         <h2>🆕 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups</span></h2>
         <p>The headline feature of this update! Each product and power generator can now be split into <b>Building Groups</b>, letting you plan how your production lines are physically laid out in your world. Each group has its own building count and clock speed, and the planner keeps them in sync with your production targets.</p>
