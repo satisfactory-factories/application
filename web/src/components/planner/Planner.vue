@@ -508,9 +508,18 @@
 </script>
 
 <style scoped lang="scss">
+// Fixed chrome sitting above the planner. These MUST include the borders, or
+// the content regions overshoot the viewport by a few pixels and the whole
+// document gains a second scrollbar on top of the regions' own overflow.
+//   header  = 64px v-toolbar + 1px bottom border (.main-header)
+//   tab bar = 48px v-tabs + 2px top + 2px bottom border (.tab-bar)
+$header-height: 65px;
+$tab-bar-height: 52px;
+$chrome-height: $header-height + $tab-bar-height; // 117px
+
 .planner-container {
   width: 100%;
-  height: calc(100vh - 64px - 50px);
+  height: calc(100vh - #{$chrome-height});
 
   @media screen and (min-width: 2000px) {
     margin-left: 10vw;
@@ -523,7 +532,7 @@
 
   .sticky-sidebar {
     position: relative; // Anchor for the resize handle
-    height: calc(100vh - 64px - 50px); // Fill the viewport even when the plan is empty/short
+    height: calc(100vh - #{$chrome-height}); // Fill the viewport even when the plan is empty/short
     overflow: hidden; // Scrolling happens inside .sidebar-content so the handle spans the full height
 
     .sidebar-content {
@@ -550,9 +559,9 @@
     // main content takes the full width. Peek slides it back over the content.
     &.collapsed {
       position: fixed;
-      top: calc(64px + 50px);
+      top: $chrome-height;
       left: 0;
-      height: calc(100vh - 64px - 50px);
+      height: calc(100vh - #{$chrome-height});
       background: rgb(var(--v-theme-background));
       transform: translateX(-100%);
       transition: transform 0.2s ease;
@@ -572,7 +581,7 @@
 
   .main-content {
     width: 100%;
-    max-height: calc(100vh - 64px - 50px);
+    max-height: calc(100vh - #{$chrome-height});
     overflow-y: auto;
 
     @media screen and (min-width: 2000px) {
