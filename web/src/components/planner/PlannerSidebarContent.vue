@@ -20,6 +20,8 @@
     @show-all="emit('showAll')"
     @toggle-help-text="emit('toggleHelpText')"
   />
+  <v-divider color="#ccc" thickness="2px" />
+  <copyright />
 </template>
 
 <script setup lang="ts">
