@@ -18,8 +18,8 @@ describe('dependencies', () => {
   let mockDependantFactory: Factory
 
   beforeEach(() => {
-    mockFactory = newFactory('Iron Ingots')
-    mockDependantFactory = newFactory('Iron Plates')
+    mockFactory = newFactory('Iron Ingots', 0, 1)
+    mockDependantFactory = newFactory('Iron Plates', 1, 2)
     factories = [mockFactory, mockDependantFactory]
   })
 
@@ -243,7 +243,7 @@ describe('dependencies', () => {
       })
     })
     it('should calculate the dependency metrics from multiple inputs from differing factories', () => {
-      const mockDependantFactory2 = newFactory('Iron Rods')
+      const mockDependantFactory2 = newFactory('Iron Rods', 2, 3)
       // Ensure the new factory is in the list
       factories = [mockFactory, mockDependantFactory, mockDependantFactory2]
 
@@ -335,8 +335,8 @@ describe('dependencies', () => {
 
   describe('flushInvalidRequests', () => {
     it('should remove invalid import requests', () => {
-      const factory1 = newFactory('Factory 1')
-      const factory2 = newFactory('Factory 2')
+      const factory1 = newFactory('Factory 1', 0, 1)
+      const factory2 = newFactory('Factory 2', 1, 2)
 
       // Legit product that we are requesting.
       addProductToFactory(factory1, {
