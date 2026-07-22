@@ -684,6 +684,18 @@ describe('app-store', () => {
         expect(appStore.currentFactoryTabIndex).toBe(1)
         expect(appStore.getCurrentTab().id).toBe(newTab.id)
       })
+
+      it('should preserve the power target when importing a tab', () => {
+        const newTab: FactoryTab = {
+          id: '67890',
+          name: 'Imported Tab',
+          factories: [],
+          powerTarget: 5000,
+        }
+        appStore.addTab(newTab)
+
+        expect(appStore.getCurrentTab().powerTarget).toBe(5000)
+      })
     })
     describe('removeCurrentTab', () => {
       beforeEach(() => {

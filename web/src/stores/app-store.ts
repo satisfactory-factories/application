@@ -576,11 +576,14 @@ export const useAppStore = defineStore('app', () => {
     id = crypto.randomUUID(),
     name = 'New Tab',
     factories = [],
+    powerTarget,
   } = {} as Partial<FactoryTab>) => {
     factoryTabs.value.push({
       id,
       name,
       factories,
+      // Preserve the plan's power target when importing a tab (e.g. from a share link).
+      powerTarget,
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
