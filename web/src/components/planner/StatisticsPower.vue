@@ -276,6 +276,17 @@
 </script>
 
 <style scoped lang="scss">
+  // Pin the note to the shared opaque muted blue (mutedBlue in colors.ts) instead
+  // of Vuetify's translucent tonal underlay, so it and the sidebar summary's
+  // expand button are literally the same colour regardless of backdrop.
+  #stats-power-accuracy-note {
+    background-color: var(--sf-muted-blue);
+
+    :deep(.v-alert__underlay) {
+      display: none;
+    }
+  }
+
   .power-table {
     width: 100%;
     background: transparent;

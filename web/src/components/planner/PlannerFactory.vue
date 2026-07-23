@@ -330,7 +330,8 @@
       </v-card>
     </v-col>
   </v-row>
-  <v-divider class="my-6 opacity-50" color="blue" thickness="5px" />
+  <!-- Same orange as the sidebar's active-factory indicator and the selected tab slider. -->
+  <v-divider class="my-6 factory-divider" thickness="5px" />
 </template>
 
 <script setup lang="ts">
@@ -414,6 +415,13 @@
 </script>
 
 <style lang="scss" scoped>
+// The burnt orange of the app header — full indicator orange proved too bright
+// as a 5px band between cards.
+.factory-divider {
+  color: var(--sf-header);
+  opacity: 1;
+}
+
 .factory-name {
   width: 85%;
   padding: 6px;

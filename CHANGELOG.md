@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Sidebar — Active factory indicator
+
+- The sidebar's factory list now shows which factory you're currently looking at: an orange bar (the same orange as the selected tab's underline) on the left edge of that factory's entry, following you as you scroll the plan or jump between factories — no more losing your place in a 30-factory plan. A factory counts as "in view" when its card spans an eye-line 10% down the planner pane (not the pane's very top edge), so a factory scrolled slightly past its header is still credited as the one being viewed rather than the tail end of the factory above it. The Statistics and Factories Summary jump-links get the same treatment when their sections are in view, and while the eye-line crosses the divider gap between two cards the indicator stays put on the last entry instead of blinking off. Works in both the desktop sidebar and the mobile navigation drawer.
+- The thick divider between factory cards in the main view swapped its blue for the app header's burnt orange (now a shared `--sf-header` token, so the header, its gold border and the divider draw from one definition in `colors.ts`).
+- In the Factories Summary sidebar row, the factory count chip and the fullscreen-summary expand control swapped places: the expand control now sits flush at the row's right edge, sized to the same 30px column as the factory rows' game-sync cells so the two line up down the sidebar.
+
 ### Export Calculator — Belts
 
 - The Export Calculator gained a Belts transport method (returning from the pre-rework calculator, now per-destination): a full-width section beneath Train/Drone/Truck/Tractor showing how many conveyor belts of a chosen mark it takes to carry the export. All six marks (Mk.1–Mk.6 at 60/120/270/480/780/1,200 items per min) are selectable via an icon toggle, and the default mark auto-picks the smallest single belt that can carry the amount. Belt speeds are maintained in code — they aren't part of the game docs data. Fluid exports point to pipelines instead.

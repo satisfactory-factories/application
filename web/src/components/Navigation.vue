@@ -1,7 +1,7 @@
 <template>
   <!-- Burnt FICSIT orange: dark enough to sit back as chrome, but unmistakably
        construction-orange next to the logo and deep-orange tab accent. -->
-  <v-toolbar class="main-header" color="rgb(108, 62, 38)" dark :density="toolbarDensity">
+  <v-toolbar class="main-header" :color="sfColors.header.color" dark :density="toolbarDensity">
     <v-btn v-if="mdAndDown" icon @click="toggleDrawer">
       <i class="fa fa-bars" />
     </v-btn>
@@ -66,6 +66,7 @@
 <script setup lang="ts">
   import { useDisplay } from 'vuetify'
   import eventBus from '@/utils/eventBus'
+  import { sfColors } from '@/utils/colors'
   const { mdAndDown } = useDisplay()
 
   const toolbarDensity = computed(() => mdAndDown.value ? 'compact' : undefined)
@@ -164,7 +165,7 @@
 }
 
 .main-header {
-  border-bottom: 1px solid #ba7800;
+  border-bottom: 1px solid var(--sf-header-border);
 
   // The active route's underline shares the consumption orange with the factory
   // tab bar below (the slider has its own fill — it doesn't inherit currentColor).

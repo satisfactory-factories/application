@@ -1,18 +1,18 @@
 <template>
   <div v-show="show && factories.length > 0" class="factory-list section-links">
     <!-- Statistics jump-link with an at-a-glance power summary. -->
-    <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit }">
+    <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit, 'active-view': activeFactoryId === 'statistics' }">
       <v-card
         class="w-100 header list px-0 rounded-0"
         style="box-shadow: none !important;"
         @click="navigateToSection('statistics')"
       >
-        <v-row class="d-flex flex-wrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+        <v-row class="d-flex flex-wrap ma-0 align-center pa-2 ga-2">
+          <v-spacer class="d-flex align-center text-body-1 pa-0 section-title">
             <i class="fas fa-chart-line mr-2" />
             <span>Statistics</span>
           </v-spacer>
-          <v-col class="d-flex align-center flex-wrap justify-end ga-1 py-1 px-2" cols="auto">
+          <v-col class="d-flex align-center flex-wrap justify-end ga-1 pa-0" cols="auto">
             <tooltip :text="`Power generated: ${formatMw(totalPower.totalPowerProduced)}`">
               <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
                 <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" />
@@ -33,8 +33,6 @@
               >
                 <i class="fas fa-balance-scale" />
                 <span class="ml-1">{{ formatGw(powerDifference) }}</span>
-                <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
-                     so class flips (and removal of the bare <i>) never reach the rendered icon. -->
                 <span v-if="hasTarget" class="ml-1"><i class="fas fa-bullseye" /></span>
                 <span v-else class="ml-1"><i class="fas fa-check-square" /></span>
               </v-chip>
@@ -44,7 +42,7 @@
       </v-card>
     </div>
     <!-- Factories Summary jump-link. -->
-    <div class="mb-1 rounded factory-card">
+    <div class="mb-1 rounded factory-card" :class="{ 'active-view': activeFactoryId === 'factory-summary' }">
       <v-card
         class="w-100 header list px-0 rounded-0"
         style="box-shadow: none !important;"
@@ -55,26 +53,34 @@
             <i class="fas fa-list mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
-          <v-col class="d-flex align-center justify-end ga-1 py-1 px-2" cols="auto">
-            <tooltip text="Open fullscreen summary">
-              <v-btn
-                class="expand-summary-btn"
-                color="primary"
-                rounded="sm"
-                size="x-small"
-                variant="outlined"
+          <v-tooltip right>
+            <template #activator="{ props }">
+              <v-col
+                class="context-icon align-content-center text-center py-0 px-2"
+                cols="auto"
+                v-bind="props"
+              >
+                <i class="d-inline fas fa-industry mr-1" />
+                <span>{{ factories.length }}</span>
+              </v-col>
+            </template>
+            <span>Factories in plan: {{ factories.length }}</span>
+          </v-tooltip>
+          <!-- Sits at the row's right edge, sized like the factory rows' sync-state
+               cells so the two columns line up down the sidebar. -->
+          <v-tooltip right>
+            <template #activator="{ props }">
+              <v-col
+                class="pa-0 align-self-stretch align-content-center text-center sync-state expand-summary"
+                cols="auto"
+                v-bind="props"
                 @click.stop="eventBus.emit('openSummaryFullscreen')"
               >
                 <i class="fas fa-expand-alt" />
-              </v-btn>
-            </tooltip>
-            <tooltip :text="`Factories in plan: ${factories.length}`">
-              <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
-                <i class="fas fa-industry" />
-                <span class="ml-1">{{ factories.length }}</span>
-              </v-chip>
-            </tooltip>
-          </v-col>
+              </v-col>
+            </template>
+            <span>Open fullscreen summary</span>
+          </v-tooltip>
         </v-row>
       </v-card>
     </div>
@@ -189,8 +195,9 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
-  // Scroll-spy from Planner.vue: the factory currently under the viewport top.
-  const activeFactoryId = inject('activeFactoryId', ref(null)) as Ref<number | null>
+  // Scroll-spy from Planner.vue: the factory id (or section element id, e.g.
+  // 'statistics') currently under the user's eye-line.
+  const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const emit = defineEmits<{
     (event: 'createFactory'): void;
@@ -282,13 +289,15 @@
       top: 0;
       bottom: 0;
       left: 0;
-      width: 4px;
+      width: 3px;
       // Same orange as the selected tab's slider in TabNavigation.vue
       background-color: var(--sf-power-consumption);
       opacity: 0;
       transition: opacity 0.2s;
       pointer-events: none;
       z-index: 1;
+      border-top-left-radius: 2px;
+      border-bottom-left-radius: 2px;
     }
 
     &.active-view::before {
@@ -298,6 +307,14 @@
 }
 
 .section-links {
+  // Match the rendered height of the power chips beside/below the title. When title
+  // and chips share a line the taller chips stretch the line box and the centred
+  // text drops a few px, then pops back up once the chips wrap onto their own line —
+  // pinning the title line to the chip height keeps the text still in both layouts.
+  .section-title {
+    min-height: 32px;
+  }
+
   .v-card {
     cursor: pointer;
     transition: background-color 0.2s;
@@ -328,14 +345,19 @@
   flex: 0 0 30px;
 }
 
-// Miniature of the summary header's outlined "Expand" button: sized to sit
-// flush with the x-small count chip beside it in the sidebar row.
-.expand-summary-btn {
-  // Square, matching the rendered height of the x-small count chip beside it
-  min-width: 30px;
-  width: 30px;
-  height: 30px;
-  padding: 0;
+// The summary row's expand control: shares .sync-state's fixed 30px column so it
+// aligns with the factory rows' sync cells below it, and reads as clickable.
+.expand-summary {
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  // Same muted blue as the "please note" info notices (see mutedBlue in
+  // colors.ts); hover snaps to the full primary blue so it reads as a button.
+  background-color: var(--sf-muted-blue);
+
+  &:hover {
+    background-color: rgb(var(--v-theme-primary));
+  }
 }
 
 .context-icon {

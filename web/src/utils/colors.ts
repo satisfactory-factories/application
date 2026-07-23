@@ -47,6 +47,10 @@ export interface SfColor {
 
 // Semantic tokens — map a domain concept to a colour. This is what components should reference.
 export const sfColors = {
+  // The app chrome: burnt FICSIT orange main header (colour) with its gold bottom
+  // border. Also used by the divider between factory cards in the planner.
+  header: { color: '#6c3e26', border: '#ba7800' },
+
   // A factory itself — used wherever another factory is referenced (import/export
   // links, satisfaction export requests, summary rows). Neutral white-on-grey, with
   // the same background as the factory card header so the two always match.
@@ -66,6 +70,13 @@ export const sfColors = {
   powerGeneration: { color: '#9e9e9e', border: '#9e9e9e' },
   circuitBoost: { color: '#9f6d9f', border: '#9f6d9f' },
   peakConsumption: { color: '#5cb0c5', border: '#5cb0c5' },
+
+  // Muted info blue: the fill of "please note" info notices and of interactive
+  // affordances that should match them (e.g. the sidebar summary's expand button).
+  // Deliberately OPAQUE — Vuetify's tonal variant renders `info` at 12% alpha,
+  // which composites to a different shade per backdrop (same trap as `problem`
+  // below); this is that tonal blue as rendered over the dark card surface.
+  mutedBlue: { color: '#212f3a', border: '#212f3a' },
 
   // Status
   success: { color: palette.green, border: palette.green },

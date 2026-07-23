@@ -263,7 +263,8 @@
   // Scroll-spy for the sidebar: tracks which factory card currently sits under the
   // fixed chrome so the factory list can mark the one being looked at. Reads are
   // batched behind rAF — a fast scroll fires far more events than painted frames.
-  const activeFactoryId = ref<number | null>(null)
+  // A factory id, or one of the section element ids ('statistics' / 'factory-summary').
+  const activeFactoryId = ref<number | string | null>(null)
   let activeFactoryScan: number | null = null
 
   // Where the user's "eyes" are assumed to be: 10% down the planner pane, not its very
@@ -287,16 +288,20 @@
 
   const updateActiveFactory = () => {
     const activationLine = getActivationLine()
-    let current: number | null = null
-    // Factories render in array order, so once a card starts below the line no
-    // later card can span it.
-    for (const factory of getFactories()) {
-      const rect = document.getElementById(`${factory.id}`)?.getBoundingClientRect()
+    // Sections then factories, matching document order — so once an entry starts
+    // below the line, no later one can span it.
+    const entries: (number | string)[] = ['statistics', 'factory-summary', ...getFactories().map(factory => factory.id)]
+    for (const entry of entries) {
+      const rect = document.getElementById(`${entry}`)?.getBoundingClientRect()
       if (!rect) continue
       if (rect.top > activationLine) break
-      current = rect.bottom > activationLine ? factory.id : null
+      if (rect.bottom > activationLine) {
+        activeFactoryId.value = entry
+        return
+      }
     }
-    activeFactoryId.value = current
+    // Nothing spans the line — it's sitting in the gap/divider between cards.
+    // Stay sticky on the previous entry rather than dropping the highlight.
   }
 
   const showPlan = () => {
@@ -592,10 +597,10 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
       width: 8px;
       height: 100%;
       cursor: col-resize;
-      border-right: 2px solid rgba(255, 255, 255, 0.12);
+      border-right: 2px solid color-mix(in srgb, var(--sf-header-border) 35%, transparent);
 
       &:hover, &.resizing {
-        border-right-color: rgb(var(--v-theme-primary));
+        border-right-color: var(--sf-header-border);
       }
     }
 

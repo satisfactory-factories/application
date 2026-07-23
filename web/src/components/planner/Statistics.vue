@@ -4,7 +4,7 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-list" /><span class="ml-3">Statistics</span>
+            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
