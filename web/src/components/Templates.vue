@@ -63,129 +63,143 @@
   import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
   import { create267Scenario } from '@/utils/factory-setups/267-nuclear-waste-handling'
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
+  import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-  const { prepareLoader, isDebugMode } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
 
   const dialog = ref(false)
 
   interface Template {
     name: string
     description: string
+    // JSON TemplatePayload — always serialize via planData()/scenarioData().
     data: string
     show: boolean
     isDebug: boolean
   }
 
+  interface TemplatePayload {
+    factories: Factory[]
+    powerTarget: number
+  }
+
+  // Real template plans carry their own power target; debug issue scenarios are bare
+  // factory arrays and load with no target.
+  const planData = (plan: TemplatePlan) =>
+    JSON.stringify({ factories: plan.getFactories(), powerTarget: plan.powerTarget } satisfies TemplatePayload)
+  const scenarioData = (factories: Factory[]) =>
+    JSON.stringify({ factories, powerTarget: 0 } satisfies TemplatePayload)
+
   const templates = [
     {
       name: 'Demo',
       description: 'Contains 7 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
-      data: JSON.stringify(complexDemoPlan().getFactories()),
+      data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,
     },
     {
       name: 'Simple',
       description: 'Very simple Iron Ingot and Iron Plate factory setup, with a single dependency link.',
-      data: JSON.stringify(createSimple().getFactories()),
+      data: planData(createSimple()),
       show: true,
       isDebug: false,
     },
     {
       name: 'Mael\'s "MegaPlan"',
       description: 'A real-life plan created by Maelstrome. This is considered a very large plan, and makes use of all features of the planner.',
-      data: JSON.stringify(createMaelsBigBoiPlan()),
+      data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,
     },
     {
       name: 'PowerOnlyImport',
       description: '2 factory setup where on factory is producing the a fuel and another is consuming the fuel (via import) for power generation. Related to issue #268',
-      data: JSON.stringify(create268Scenraio().getFactories()),
+      data: scenarioData(create268Scenraio().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#290 Multiple product imports',
       description: '3 factory setup where one factory is importing the same product from two different factories. Related to issue #290. The Imports on Iron Plates should render correctly with the correct part name, and NOT be called "IronPlate", rather "Iron Plate".',
-      data: JSON.stringify(create290Scenario().getFactories()),
+      data: scenarioData(create290Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#315 Import exportable parts',
       description: '#315 - For testing import candidate code. Aluminium factory in this example should not be able to import Copper Ingots from Copper Parts',
-      data: JSON.stringify(create315Scenario().getFactories()),
+      data: scenarioData(create315Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: 'Invalid migration',
       description: 'Contains a factory plan that has lots of invalid data. This was a real plan that broke the app, and was used to fix the migration code. It is expected that when you load the template, the plan operates effectively. Originally, supply for certain factories e.g. Gun Powder was broken due to missing part data (due to errors).',
-      data: JSON.stringify(create317Scenario()),
+      data: scenarioData(create317Scenario()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#324: Redundant Imports',
       description: 'Contains a factory plan where there is a redundant import (on Iron Plates Fac). The UI should show this properly as a warning.',
-      data: JSON.stringify(create324Scenario().getFactories()),
+      data: scenarioData(create324Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#242: Byproduct Imports miscalculations',
       description: 'Contains a factory that also contains an import as a byproduct of the same factory. When you hit TRIM on the Dark Matter import in Issue Factory, it should trim the import to 5, as 25 of DMR is produced locally.',
-      data: JSON.stringify(create242Scenario().getFactories()),
+      data: scenarioData(create242Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#321: Product byproduct balancing',
       description: 'Contains a factory that produces a byproduct, and then consumes that byproduct. Trimming the products should correctly take other byproducts and products into account. Target to hit is HOR at 120/min. Trimming HOR product itself should result in 40. Setting Rubber to then use 280 resin should create an equilibrium.',
-      data: JSON.stringify(create321Scenario().getFactories()),
+      data: scenarioData(create321Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#251: Multiple inputs scenario',
       description: 'Contains a fuel factory that has two imports of compacted coal. The test is to trim import from Factory B, which should result in 260.',
-      data: JSON.stringify(create251Scenario().getFactories()),
+      data: scenarioData(create251Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#220: Byproduct only parts handling',
       description: 'Contains a factory that contains a byproduct only part. The planner used to show "Fix Production" for it, but it did nothing as it does not know how to correct the issue. Now, it shows a "Correct Manually" "button" which instructs the user to correct it manually.',
-      data: JSON.stringify(create220Scenario().getFactories()),
+      data: scenarioData(create220Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#338: Satisfaction Chips',
       description: 'Contains an oil factory configured with a variety of parts in different states.',
-      data: JSON.stringify(create338Scenario().getFactories()),
+      data: scenarioData(create338Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#314: Byproduct / Requirements <=0 breakage',
       description: 'Setting the requirement ingredients of the product to 0 used to break the UI.',
-      data: JSON.stringify(create341Scenario().getFactories()),
+      data: scenarioData(create341Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#267: Nuclear Waste handling',
       description: 'Nuclear waste was possible to be added via a +Product button in Satisfaction. Now it should show +Generator to add a generator directly instead.',
-      data: JSON.stringify(create267Scenario().getFactories()),
+      data: scenarioData(create267Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
     {
       name: '#375: Byproduct products handling',
       description: 'Contains a factory that has selected a byproduct as a product. In the issue, a ghost surplus was created as it was counting both the product quantity of 100, and the byproduct quantity of 100. The UI should show Rubber as the main recipe, and HOR as the byproduct.',
-      data: JSON.stringify(create375Scenario().getFactories()),
+      data: scenarioData(create375Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },
@@ -195,8 +209,18 @@
     console.log('Template loaded:', template.name, 'starting load')
 
     // This is a workaround for the templating bug where the data was passed as a reference, and would refuse to load the same template until the page is refreshed.
-    const data = JSON.parse(template.data) as Factory[]
-    prepareLoader(data, true)
+    const { factories, powerTarget } = JSON.parse(template.data) as TemplatePayload
+
+    // The power target lives on the tab, not in the factories, so apply the plan's
+    // own target on load — otherwise the previous plan's target would survive.
+    // Explicitly a number (0 = no target, never undefined) — an unset tab value
+    // falls back to the legacy localStorage target in usePowerTarget.
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.powerTarget = powerTarget ?? 0
+    }
+
+    prepareLoader(factories, true)
     dialog.value = false
   }
 </script>

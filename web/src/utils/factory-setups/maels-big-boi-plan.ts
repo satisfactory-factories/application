@@ -1,7 +1,13 @@
 import { Factory, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-export const createMaelsBigBoiPlan = (): Factory[] => {
-  return bigBoiPlan
+export const createMaelsBigBoiPlan = (): TemplatePlan => {
+  return {
+    getFactories: () => bigBoiPlan,
+    // No target: the plan has no generators, so any positive target would
+    // permanently flag it as a deficit.
+    powerTarget: 0,
+  }
 }
 
 const bigBoiPlan: Factory[] = [{

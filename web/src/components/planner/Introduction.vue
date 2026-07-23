@@ -67,7 +67,7 @@
   import eventBus from '@/utils/eventBus'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useAppStore } from '@/stores/app-store'
-  const { getFactories, prepareLoader } = useAppStore()
+  const { getFactories, prepareLoader, getCurrentTab } = useAppStore()
 
   defineProps<{ source: 'planner' | 'changelog' }>()
 
@@ -111,7 +111,14 @@
       }
     }
     close()
-    prepareLoader(complexDemoPlan().getFactories(), true)
+    const demoPlan = complexDemoPlan()
+    // The power target lives on the tab, not in the factories — apply the demo's
+    // own target so it doesn't inherit whatever the previous plan had set.
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.powerTarget = demoPlan.powerTarget
+    }
+    prepareLoader(demoPlan.getFactories(), true)
   }
 
   if (introShow.value) {

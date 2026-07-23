@@ -180,7 +180,7 @@ describe('calculateFactories clone-run-commit', () => {
 
   describe('large plan', () => {
     it('should calculate a large real-world plan with zero-write no-op recalcs', () => {
-      const state = reactive({ factories: createMaelsBigBoiPlan() })
+      const state = reactive({ factories: createMaelsBigBoiPlan().getFactories() })
       calculateFactories(state.factories, gameData)
 
       const counter = watchPlan(state)

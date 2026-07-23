@@ -626,8 +626,14 @@ export const useAppStore = defineStore('app', () => {
 
   if (isSetupDemo()) {
     console.log('appStore: setupDemo: Setting up demo data')
-    const factories = complexDemoPlan().getFactories()
-    prepareLoader(factories, true)
+    const demoPlan = complexDemoPlan()
+    // The power target lives on the tab — apply the demo's own target alongside
+    // its factories.
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.powerTarget = demoPlan.powerTarget
+    }
+    prepareLoader(demoPlan.getFactories(), true)
   }
 
   isDebugMode.value = debugMode()

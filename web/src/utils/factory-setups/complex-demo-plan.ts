@@ -3,6 +3,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
 let oilFac: Factory
 let copperIngotsFac: Factory
@@ -17,7 +18,7 @@ let geothermalFac: Factory
 // This is a more complex setup with multiple factories with dependencies going in a straight chain from Computers to Ingots and Oil Processing.
 // This setup is used to test the more complex factory management functions.
 // Copper Basics has a deliberate shortage of Copper Ingots to highlight that functionality to new users.
-export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
+export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
   oilFac = newFactory('Oil Processing', 1, 1)
   copperIngotsFac = newFactory('Copper Ingots', 2, 2)
@@ -319,5 +320,8 @@ export const complexDemoPlan = (): { getFactories: () => Factory[] } => {
   // Return an object with a method to access the configured factories
   return {
     getFactories: () => factories,
+    // 40 GW: comfortably above the plan's ~27 GW of generation, so the demo also
+    // shows off the power-target (bullseye) deficit feature.
+    powerTarget: 40_000,
   }
 }

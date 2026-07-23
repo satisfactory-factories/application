@@ -10,7 +10,7 @@ export const createStressPlan = (copies = 4): Factory[] => {
 
   for (let copy = 0; copy < copies; copy++) {
     const offset = (copy + 1) * 1_000_000
-    const factories = structuredClone(createMaelsBigBoiPlan())
+    const factories = structuredClone(createMaelsBigBoiPlan().getFactories())
 
     factories.forEach(factory => {
       factory.id += offset

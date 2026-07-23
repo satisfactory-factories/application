@@ -1,9 +1,9 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-export const createSimple = (): { getFactories: () => Factory[] } => {
+export const createSimple = (): TemplatePlan => {
   // Local variables to ensure a fresh instance on every call
   const ironIngotFac = newFactory('Iron Ingots', 0, 1)
   const ironPlateFac = newFactory('Iron Plates', 1, 2)
@@ -41,5 +41,8 @@ export const createSimple = (): { getFactories: () => Factory[] } => {
   // Return an object with a method to access the factories
   return {
     getFactories: () => factories, // Expose factories as a method
+    // No target: the plan has no generators, so any positive target would
+    // permanently flag it as a deficit.
+    powerTarget: 0,
   }
 }
