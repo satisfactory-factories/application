@@ -57,7 +57,7 @@
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
         <planner-factory-placeholder-list />
       </v-col>
-      <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content">
+      <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <planner-factory
@@ -167,6 +167,7 @@
   onUnmounted(() => {
     window.removeEventListener('mousemove', onPeekMouseMove)
     window.removeEventListener('mouseout', onPeekMouseOut)
+    if (activeFactoryScan !== null) cancelAnimationFrame(activeFactoryScan)
   })
 
   const sidebarNudge = ref<boolean>(false)
@@ -259,9 +260,51 @@
     eventBus.emit('sidebarChanged', newValue)
   })
 
+  // Scroll-spy for the sidebar: tracks which factory card currently sits under the
+  // fixed chrome so the factory list can mark the one being looked at. Reads are
+  // batched behind rAF — a fast scroll fires far more events than painted frames.
+  const activeFactoryId = ref<number | null>(null)
+  let activeFactoryScan: number | null = null
+
+  // Where the user's "eyes" are assumed to be: 10% down the planner pane, not its very
+  // top edge — a factory scrolled slightly past its header is still the one being looked
+  // at. A scrolled-to card lands at the pane top, so the navigation target always spans
+  // this line (unless the card is shorter than the 10%, i.e. collapsed).
+  const getActivationLine = (): number => {
+    const main = document.querySelector('.main-content')
+    if (!main) return 160
+    const rect = main.getBoundingClientRect()
+    return rect.top + rect.height * 0.1
+  }
+
+  const onMainContentScroll = () => {
+    if (activeFactoryScan !== null) return
+    activeFactoryScan = requestAnimationFrame(() => {
+      activeFactoryScan = null
+      updateActiveFactory()
+    })
+  }
+
+  const updateActiveFactory = () => {
+    const activationLine = getActivationLine()
+    let current: number | null = null
+    // Factories render in array order, so once a card starts below the line no
+    // later card can span it.
+    for (const factory of getFactories()) {
+      const rect = document.getElementById(`${factory.id}`)?.getBoundingClientRect()
+      if (!rect) continue
+      if (rect.top > activationLine) break
+      current = rect.bottom > activationLine ? factory.id : null
+    }
+    activeFactoryId.value = current
+  }
+
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
+
+    // Restore the indicator once the cards have had a beat to render.
+    setTimeout(updateActiveFactory, 300)
 
     // If another page (e.g. Parts & Recipes) requested a jump to a factory, honour it once rendered.
     const pendingNav = sessionStorage.getItem('navigateToFactory')
@@ -502,6 +545,7 @@
   provide('copyFactory', copyFactory)
   provide('deleteFactory', deleteFactory)
   provide('navigateToFactory', navigateToFactory)
+  provide('activeFactoryId', activeFactoryId)
   provide('navigateToSection', navigateToSection)
   provide('moveFactory', moveFactory)
 

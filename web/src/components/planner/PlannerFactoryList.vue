@@ -178,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, watch } from 'vue'
+  import { computed, inject, ref, type Ref, watch } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { calculateTotalPower } from '@/utils/statistics'
@@ -189,6 +189,8 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
+  // Scroll-spy from Planner.vue: the factory currently under the viewport top.
+  const activeFactoryId = inject('activeFactoryId', ref(null)) as Ref<number | null>
 
   const emit = defineEmits<{
     (event: 'createFactory'): void;
@@ -232,6 +234,7 @@
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
+      'active-view': factory.id === activeFactoryId.value,
       problem: factory.hasProblem,
       needsSync: !factory.hasProblem && factory.inSync === false,
     }
@@ -264,8 +267,32 @@
   flex-direction: column;
 
   .factory-card {
+    position: relative;
+
     .header {
       border-bottom: 0 !important;
+    }
+
+    // Scroll-spy indicator: a bar overlaying the card's left edge marking the
+    // factory currently in view. The global .factory-card state borders are
+    // 2px shorthand + !important, so a pseudo-element instead of a border.
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 4px;
+      // Same orange as the selected tab's slider in TabNavigation.vue
+      background-color: var(--sf-power-consumption);
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    &.active-view::before {
+      opacity: 1;
     }
   }
 }
