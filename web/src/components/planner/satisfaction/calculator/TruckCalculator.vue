@@ -7,7 +7,7 @@
       <v-icon icon="fas fa-tire-rugged fa-spin" />
     </span>
     <v-number-input
-      v-model="factorySettings.truckTime"
+      v-model="truckTime"
       control-variant="stacked"
       density="compact"
       hide-details
@@ -28,14 +28,19 @@
     </v-btn>
   </div>
   <div class="text-center">
-    <v-chip>
+    <v-chip v-if="!isFluid(request.part)">
       <game-asset subject="truck" type="vehicle" />
       <span class="ml-2">Trucks: <b>{{ calculateTrucks() }}</b></span>
+    </v-chip>
+    <v-chip v-if="isFluid(request.part)">
+      <game-asset subject="fluid-truck" type="vehicle" />
+      <span class="ml-2">Fluid Trucks: <b>{{ calculateTrucks() }}</b></span>
     </v-chip>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { toRef } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import TooltipInfo from '@/components/tooltip-info.vue'
@@ -48,8 +53,11 @@
     factorySettings: ExportCalculatorFactorySettings
   }>()
 
+  // Writes through to the settings object held by the store — the round trip time persists with the plan.
+  const truckTime = toRef(props.factorySettings, 'truckTime')
+
   const timer = ref(0)
-  let timerInterval: NodeJS.Timeout
+  let timerInterval: ReturnType<typeof setInterval>
 
   const startTimer = () => {
     timer.value = 1
@@ -60,7 +68,7 @@
 
   const stopTimer = () => {
     clearInterval(timerInterval)
-    props.factorySettings.truckTime = timer.value
+    truckTime.value = timer.value
     timer.value = 0
   }
 
@@ -72,8 +80,12 @@
 
     const part = props.request.part
     const amount = props.request.amount
-    const time = props.factorySettings.truckTime ?? 123
+    const time = truckTime.value ?? 123
 
     return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Truck, time, gameData)
+  }
+
+  const isFluid = (part: string) => {
+    return gameData.items.parts[part].isFluid
   }
 </script>

@@ -15,6 +15,7 @@ declare module 'vue' {
     AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
+    BeltPipeCalculator: typeof import('./components/planner/satisfaction/calculator/BeltPipeCalculator.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']
     BuildingGroups: typeof import('./components/planner/products/BuildingGroups.vue')['default']
     BuildingGroupsSection: typeof import('./components/planner/products/BuildingGroupsSection.vue')['default']

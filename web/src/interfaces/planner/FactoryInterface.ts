@@ -89,11 +89,20 @@ export interface FactoryDependencyMetrics {
   difference: number;
 }
 
+export interface ExportCalculatorTransportGroup {
+  id: number;
+  mark: number; // Conveyor belt mark (1-6) or pipeline mark (1-2)
+  amount: number; // Items/min (belts) or m³/min (pipes) carried by this group
+}
+
 export interface ExportCalculatorFactorySettings {
   trainTime: number;
   droneTime: number;
   truckTime: number;
   tractorTime: number;
+  // Optional: absent on old saves, initialized lazily by the belt/pipe calculator
+  beltGroups?: ExportCalculatorTransportGroup[];
+  pipeGroups?: ExportCalculatorTransportGroup[];
 }
 
 export interface ExportCalculatorSettings {

@@ -689,11 +689,13 @@ table {
 
 .calculator-tray {
   overflow: hidden;
-  height: 0;
-  transition: height, 0.25s ease-in;
+  max-height: 0;
+  transition: max-height 0.25s ease-in;
 
   &.expanded {
-    height: 250px; /* Adjust based on expected content height */
+    /* Above any expected content height; scrolls if the user stacks up many belt groups */
+    max-height: 800px;
+    overflow-y: auto;
   }
 }
 </style>

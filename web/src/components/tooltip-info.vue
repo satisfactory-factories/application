@@ -31,3 +31,11 @@
     }
   }
 </script>
+
+<style scoped>
+.v-icon {
+  /* Vuetify's inline-flex + middle sinks the glyph ~3px below the surrounding text's baseline;
+     FontAwesome's own -0.125em shim centres it optically against the text. */
+  vertical-align: -0.125em;
+}
+</style>

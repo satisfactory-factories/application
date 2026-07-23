@@ -1,18 +1,25 @@
 <template>
-  <div class="d-flex align-center justify-center mb-2">
-    <span class="mr-2 pb-5">
+  <div class="d-flex align-center justify-center mb-4">
+    <span class="mr-2">
       <v-icon icon="fas fa-drone" />
     </span>
     <v-text-field
       v-model="timeString"
       density="compact"
+      hide-details="auto"
       label="Round trip time"
       max-width="190px"
       :rules="timeRules"
       variant="outlined"
       @update:model-value="calculateSeconds()"
     />
-    <tooltip-info classes="pb-6" text="Round trip time is shown to you in the drone port's UI. <br>This does mean you need to configure the route, run it, then see the duration.<br> However, you will know how many drones you require to be efficient." />
+    <tooltip-info text="Round trip time is shown to you in the drone port's UI. <br>This does mean you need to configure the route, run it, then see the duration.<br> However, you will know how many drones you require to be efficient." />
+  </div>
+  <div class="d-flex align-center justify-center mb-4">
+    <!-- Placeholder where the other vehicles have a Start Timer button, keeping the columns' rows level -->
+    <v-btn color="primary" density="comfortable" disabled>
+      N/A
+    </v-btn>
   </div>
   <div class="d-flex align-center justify-center">
     <v-chip>

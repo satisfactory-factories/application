@@ -1,13 +1,13 @@
 <template>
   <div class="d-flex align-center justify-center mb-4">
     <span v-if="timer === 0" class="mr-2">
-      <v-icon icon="fas fa-sync" />
+      <v-icon icon="fas fa-train" />
     </span>
     <span v-if="timer > 0" class="mr-2">
       <v-icon icon="fas fa-sync fa-spin" />
     </span>
     <v-number-input
-      v-model="factorySettings.trainTime"
+      v-model="trainTime"
       control-variant="stacked"
       density="compact"
       hide-details
@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+  import { toRef } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import TooltipInfo from '@/components/tooltip-info.vue'
@@ -52,8 +53,11 @@
     factorySettings: ExportCalculatorFactorySettings
   }>()
 
+  // Writes through to the settings object held by the store — the round trip time persists with the plan.
+  const trainTime = toRef(props.factorySettings, 'trainTime')
+
   const timer = ref(0)
-  let timerInterval: NodeJS.Timeout
+  let timerInterval: ReturnType<typeof setInterval>
 
   const startTimer = () => {
     timer.value = 1
@@ -64,7 +68,7 @@
 
   const stopTimer = () => {
     clearInterval(timerInterval)
-    props.factorySettings.trainTime = timer.value
+    trainTime.value = timer.value
     timer.value = 0
   }
 
@@ -76,7 +80,7 @@
 
     const part = props.request.part
     const amount = props.request.amount
-    const time = props.factorySettings.trainTime ?? 123
+    const time = trainTime.value ?? 123
 
     return calculateTransportVehiclesForExporting(part, amount, TransportMethod.Train, time, gameData)
   }
