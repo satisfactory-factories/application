@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-  import { onMounted, onUnmounted, provide, reactive, ref, watch } from 'vue'
+  import { onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
   import { useDisplay } from 'vuetify'
 
   import {
@@ -210,7 +210,7 @@
 
   const defaultSidebarWidth = 375
   const minSidebarWidth = 150
-  const sidebarWidth = ref<number>(parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
+  const sidebarWidth = ref<number>(Number.parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
   const isResizingSidebar = ref<boolean>(false)
 
   const startSidebarResize = (event: MouseEvent) => {
@@ -380,7 +380,7 @@
         // Loop through each ingredient in the recipe (array of objects).
         recipe.ingredients.forEach(ingredient => {
           // Extract the ingredient name and amount.
-          if (isNaN(ingredient.amount)) {
+          if (Number.isNaN(ingredient.amount)) {
             console.warn(`Invalid ingredient amount for ingredient "${ingredient.part}". Skipping.`)
             return
           }
@@ -438,10 +438,11 @@
   }
 
   const copyFactory = (originalFactory: Factory) => {
-    // Make a deep copy of the factory with a new ID
-    const newId = Math.floor(Math.random() * 10000)
+    // Make a deep copy of the factory with a new ID. Math.random is fine here:
+    // the ID is a display identifier, not a security token — same scheme as newFactory().
+    const newId = Math.floor(Math.random() * 10000) // NOSONAR
     const newFactory: Factory = {
-      ...JSON.parse(JSON.stringify(originalFactory)),
+      ...structuredClone(toRaw(originalFactory)),
       id: newId,
       name: `${originalFactory.name} (copy)`,
       displayOrder: originalFactory.displayOrder + 1,
@@ -509,7 +510,7 @@
   }
 
   const navigateToFactory = (factoryId: number | string, subsection?: string) => {
-    const facId = parseInt(factoryId.toString(), 10)
+    const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
       console.error(`navigateToFactory: Factory ${factoryId} not found!`)
