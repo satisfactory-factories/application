@@ -372,6 +372,23 @@ describe('dependencies', () => {
       expect(foundInvalidInput).not.toBeDefined()
     })
 
+    // Copying a factory duplicates its dependencies.requests wholesale; the flush that
+    // follows deletes request pairs mid-loop, which used to crash on the now-missing key.
+    it('should not crash when a copied factory carries duplicated requests', () => {
+      const factories = complexDemoPlan().getFactories()
+      calculateFactories(factories, gameData)
+
+      const original = findFacByName('Oil Processing', factories)
+      const copy: Factory = {
+        ...structuredClone(original),
+        id: 9999,
+        name: `${original.name} (copy)`,
+      }
+      factories.push(copy)
+
+      expect(() => calculateFactories(factories, gameData)).not.toThrow()
+    })
+
     // GH: #378
     it('should handle when the user changes the factoryID of an input', () => {
       const factories = create251Scenario().getFactories()

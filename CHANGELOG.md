@@ -22,6 +22,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 ### Fixes
 
 - The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window — flinging the cursor onto a monitor to the left (or alt-tabbing to the game) used to trip the left-edge peek zone on the way out and leave the tray showing indefinitely. A peek triggered by the cursor exiting the window is now provisional (it closes after a second unless the cursor comes back in), and the tray always collapses when the window loses focus. Peeking by hovering the left edge inside the window behaves exactly as before.
+- Copying a factory that supplies other factories no longer throws an error during the recalculation that follows: the copy carries the original's dependency requests, and cleaning up such an orphaned request could pull the entry out from under the cleanup scan itself mid-loop.
 
 ## Beta v0.5 — The "Overclocked" Update
 

@@ -57,6 +57,13 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
     Object.keys(factory.dependencies.requests).forEach(requestedFactoryId => {
       const requests: FactoryDependencyRequest[] = factory.dependencies.requests[requestedFactoryId]
 
+      // deleteRequestPair recalculates both affected factories mid-loop, which can strip
+      // this key from under the Object.keys snapshot (e.g. when a copied factory carries
+      // its original's requests). Nothing left to scan in that case.
+      if (!requests) {
+        return
+      }
+
       const dependantFactory = findFac(requestedFactoryId, factories)
       // If the factory doesn't exist, somehow this data corrupted, clean it up now.
       if (!dependantFactory?.id || !dependantFactory?.inputs) {
