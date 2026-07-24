@@ -19,6 +19,10 @@ All notable changes to this project are documented in this file. It mirrors the 
 - Tidied the Export Calculator tray: it now reads as an actual recessed tray (darker background with an inset lip, breathing room top and bottom), and the mixed thick/thin borders between the transport columns were unified into single thin dividers matching the satisfaction table's row lines — the dividing lines under the accuracy chips are gone, so each column's header visually attaches to its content. The tray also grows with its content instead of clipping at a fixed 250px height (scrolling beyond ~800px).
 - Calculator polish: the Train's round-trip input icon is now a train instead of a refresh glyph; the Drone column gained a disabled "N/A" placeholder where the other vehicles have Start Timer (its rows now line up, helped by no longer reserving validation-message space under the drone time input); the belt group delete button matches the factory header's square outlined red trash button; and `tooltip-info` icons no longer sit ~3px below the surrounding text's baseline (FontAwesome's -0.125em shim, applied app-wide).
 
+### Fixes
+
+- The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window — flinging the cursor onto a monitor to the left (or alt-tabbing to the game) used to trip the left-edge peek zone on the way out and leave the tray showing indefinitely. A peek triggered by the cursor exiting the window is now provisional (it closes after a second unless the cursor comes back in), and the tray always collapses when the window loses focus. Peeking by hovering the left edge inside the window behaves exactly as before.
+
 ## Beta v0.5 — The "Overclocked" Update
 
 After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.

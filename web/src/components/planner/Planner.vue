@@ -135,6 +135,7 @@
   const peekTopOffset = 64 + 50 // Toolbar + tab bar, matching the CSS offsets below
 
   const onPeekMouseMove = (event: MouseEvent) => {
+    cancelProvisionalPeek()
     if (showSidebar.value || !lgAndUp.value || isResizingSidebar.value) return
     if (!sidebarPeek.value && event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
       sidebarPeek.value = true
@@ -152,21 +153,52 @@
   }
 
   // A cursor flung out through the window's left edge never produces a
-  // mousemove inside the zone — catch the exit itself.
+  // mousemove inside the zone — catch the exit itself. But an exit is
+  // ambiguous: the cursor may be hovering just past a floating window's edge
+  // (wants the peek) or on its way to another monitor (doesn't). There's no
+  // API to ask where the cursor is once it's outside, so the peek is
+  // provisional: kept only if a mousemove confirms the cursor came back.
+  const peekGraceMs = 1000
+  let provisionalPeekTimer: number | null = null
+
+  const cancelProvisionalPeek = () => {
+    if (provisionalPeekTimer !== null) {
+      clearTimeout(provisionalPeekTimer)
+      provisionalPeekTimer = null
+    }
+  }
+
   const onPeekMouseOut = (event: MouseEvent) => {
     if (showSidebar.value || !lgAndUp.value || event.relatedTarget) return
     if (event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
       sidebarPeek.value = true
+      cancelProvisionalPeek()
+      provisionalPeekTimer = window.setTimeout(() => {
+        provisionalPeekTimer = null
+        if (!isResizingSidebar.value) sidebarPeek.value = false
+      }, peekGraceMs)
+    }
+  }
+
+  // Alt-tabbing away leaves no mouse events behind — without this the tray
+  // stays open in the now-background window.
+  const onWindowBlur = () => {
+    if (!isResizingSidebar.value) {
+      cancelProvisionalPeek()
+      sidebarPeek.value = false
     }
   }
 
   onMounted(() => {
     window.addEventListener('mousemove', onPeekMouseMove)
     window.addEventListener('mouseout', onPeekMouseOut)
+    window.addEventListener('blur', onWindowBlur)
   })
   onUnmounted(() => {
     window.removeEventListener('mousemove', onPeekMouseMove)
     window.removeEventListener('mouseout', onPeekMouseOut)
+    window.removeEventListener('blur', onWindowBlur)
+    cancelProvisionalPeek()
     if (activeFactoryScan !== null) cancelAnimationFrame(activeFactoryScan)
   })
 
