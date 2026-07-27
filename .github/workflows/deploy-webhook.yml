@@ -1,9 +1,9 @@
 name: "Backend: Trigger Deployment Webhook"
 
-# Reusable, and deliberately the last link in the chain. Pokes Mael's webhooks
+# Reusable, and deliberately the last link in the chain. Pokes the webhooks
 # server, which SSHes to the API box and runs /root/update.sh there.
 #
-#   POST https://hooks.mattcavanagh.me/hooks/satisfactory-factories
+#   POST <WEBHOOK_URL>   — the deploy hook on the webhooks host
 #
 # The hook is selected by the URL path; the body is only what the HMAC signature
 # is computed over, so `application` is documentation rather than routing.

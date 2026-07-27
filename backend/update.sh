@@ -65,7 +65,11 @@ log "Deploy requested."
 before=$(docker compose images -q "$SERVICE" 2>/dev/null || true)
 
 log "Pulling $SERVICE image..."
-docker compose pull "$SERVICE" 2>&1 | tee -a "$LOG"
+# --quiet suppresses the per-layer progress, which is what tee was dumping into
+# deploy.log: the first real deploy wrote ~80 lines of "Extracting 24.31MB" into
+# the one file you are meant to be able to read at a glance. Errors still print
+# and are still captured, which is the reason tee is here at all.
+docker compose pull --quiet "$SERVICE" 2>&1 | tee -a "$LOG"
 
 # `up -d` recreates the container only when the image digest actually changed, so
 # a no-op deploy costs nothing and never drops a request. The old script ran
