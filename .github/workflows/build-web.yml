@@ -9,13 +9,17 @@ on:
       - main
     paths:
       - 'web/**'
+  # Deliberately NOT path-filtered, unlike the push trigger above. This job is a
+  # required status check on main, and a required check that never runs sits
+  # pending forever rather than passing — so a path filter here would block every
+  # PR that does not touch web/ (a backend bump, a docs change, a config edit)
+  # with no way to satisfy it. Running the web suite on those PRs costs a couple
+  # of minutes and is the price of it being required.
   pull_request:
     branches:
       - main
-
 permissions:
   contents: read
-
 jobs:
   build-web:
     name: Build & Test Web
@@ -29,7 +33,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 

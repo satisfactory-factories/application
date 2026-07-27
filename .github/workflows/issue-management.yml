@@ -18,7 +18,7 @@ jobs:
 
     - name: New issue, add Needs Triage label
       if: github.event.action == 'opened'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           await github.rest.issues.addLabels({
@@ -30,7 +30,7 @@ jobs:
 
     - name: P1 Label added
       if: github.event.action == 'labeled' && contains(github.event.label.name, 'P1')
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const label = context.payload.label.name;
@@ -48,7 +48,7 @@ jobs:
 
     - name: P1 Label removed
       if: github.event.action == 'unlabeled'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const label = context.payload.label.name;
@@ -66,7 +66,7 @@ jobs:
 
     - name: P2 or P3 Label added, Remove Needs Triage label
       if: github.event.action == 'labeled' && (contains(github.event.label.name, 'P2') || contains(github.event.label.name, 'P3'))
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const issue = context.issue;
