@@ -1,4 +1,10 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "renovate/**": false,
+      "dependabot/**": false
+    }
+  },
   "rewrites": [
     { "source": "/graph", "destination": "/" },
     { "source": "/recipes", "destination": "/" },
