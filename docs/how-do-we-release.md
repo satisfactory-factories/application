@@ -26,9 +26,9 @@ When a PR touching `backend/` (or the workspace files the image is built from) i
 
 1. Runs the backend checks — lint and TypeScript build.
 2. Builds the Docker image and pushes it to Docker Hub as `maelstromeous/satisfactory-factories:backend-latest`, plus a `backend-<commit sha>` tag so a bad deploy can be rolled back to an exact commit without a rebuild.
-3. Calls a webhook on Mael's webhooks server, which SSHes to the API box and runs `docker compose pull` + `docker compose up -d --wait` there.
+3. Calls a webhook on the webhooks server, which SSHes to the API box and runs `docker compose pull` + `docker compose up -d --wait` there.
 
-This used to be a manual `backend/publish.sh` from Mael's laptop, which meant he was the only person who could ship the API at all. That script still exists as a break-glass path for when GitHub Actions is unavailable, and says so at the top.
+This used to be a manual `backend/publish.sh` run from a laptop, which meant only one person could ship the API at all. That script still exists as a break-glass path for when GitHub Actions is unavailable, and says so at the top.
 
 **A green Actions run is not proof the deploy landed** — the webhook returns `200` before the SSH even happens. The confirmation is `/root/deploy.log` on the box.
 

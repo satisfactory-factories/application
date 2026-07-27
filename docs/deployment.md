@@ -34,8 +34,7 @@ For the release philosophy across all three packages see
                docker compose up -d --wait backend     ← blocks on the healthcheck
 ```
 
-The whole thing exists so that shipping the API is not something only Mael's
-laptop can do. It used to be `backend/publish.sh`, run by hand; that script is
+The whole thing exists so that shipping the API is not tied to one laptop. It used to be `backend/publish.sh`, run by hand; that script is
 still there as a break-glass path and says so at the top.
 
 ## Things that surprise you later
