@@ -22,6 +22,9 @@ on:
       - '.github/workflows/publish-backend.yml'
       - '.github/workflows/deploy-webhook.yml'
 
+permissions:
+  contents: read
+
 # A newer push to the same PR makes the in-flight build redundant.
 concurrency:
   group: pr-docker-backend-${{ github.ref }}

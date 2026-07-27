@@ -14,6 +14,9 @@ name: "Backend: Trigger Deployment Webhook"
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   send-webhook:
     name: Trigger deployment

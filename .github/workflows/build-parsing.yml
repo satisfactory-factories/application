@@ -1,4 +1,8 @@
 name: Parsing Checks
+
+# The push trigger stays path-filtered, the pull_request one does not. A required
+# status check that never triggers sits pending forever rather than passing, so a
+# path filter here would block every PR that does not touch parsing/.
 on:
   push:
     branches:
@@ -8,8 +12,10 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'parsing/**'
+
+permissions:
+  contents: read
+
 jobs:
   build-parsing:
     name: Build Parsing
@@ -23,7 +29,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 

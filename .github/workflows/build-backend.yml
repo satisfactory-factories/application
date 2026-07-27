@@ -6,20 +6,19 @@ name: Backend Checks
 # There is no `push: main` trigger any more: on main this is called by
 # Backend Deploy instead, so keeping one would run the same checks twice on the
 # same commit.
+#
+# The pull_request trigger is deliberately not path-filtered. A required status
+# check that never triggers sits pending forever rather than passing, so a filter
+# here would block every PR that does not touch the backend.
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'backend/**'
-      - 'package.json'
-      - 'pnpm-workspace.yaml'
-      - '.dockerignore'
-      - '.github/workflows/deploy-backend.yml'
-      - '.github/workflows/build-backend.yml'
-      - '.github/workflows/publish-backend.yml'
-      - '.github/workflows/deploy-webhook.yml'
   workflow_call:
+
+permissions:
+  contents: read
+
 jobs:
   build-backend:
     name: Build Backend
@@ -33,7 +32,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 
