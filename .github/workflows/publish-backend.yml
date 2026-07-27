@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Skipped for validation builds: a PR from a fork has no secrets, and a
       # build that never pushes has no reason to talk to the registry.
