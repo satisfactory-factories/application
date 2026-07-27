@@ -6,7 +6,9 @@
   "description": [
     "Renovate has been raising PRs against this repo with no config file committed, so it was running on whatever the hosted app defaults to. This pins the baseline down so the behaviour is in the repo rather than implied.",
     "A release has to have been public for 14 days before Renovate will propose it. That window is where a compromised or immediately-yanked publish gets found by someone else before it reaches a PR here.",
-    "Security fixes are not delayed by this: Renovate's vulnerabilityAlerts defaults are minimumReleaseAge null, an empty schedule and prCreation immediate, so a CVE fix is raised straight away regardless of the wait below."
+    "Security fixes are not delayed by this: Renovate's vulnerabilityAlerts defaults are minimumReleaseAge null, an empty schedule and prCreation immediate, so a CVE fix is raised straight away regardless of the wait below.",
+    "Nothing automerges here yet, so platformAutomerge is set ahead of that decision rather than in response to it. If automerge is ever turned on, Renovate should merge its own PRs: GitHub auto-merge is disabled on this repo, and main has a review requirement with no required status checks behind it, so the platform route would be both blocked and the weaker gate. Renovate waits for the whole branch to go green."
   ],
-  "minimumReleaseAge": "14 days"
+  "minimumReleaseAge": "14 days",
+  "platformAutomerge": false
 }
