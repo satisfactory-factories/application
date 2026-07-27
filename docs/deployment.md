@@ -44,12 +44,12 @@ still there as a break-glass path and says so at the top.
   `200` as soon as it accepts the request — it does not wait for the SSH, and it
   does not report the script's exit code. The only honest confirmation is
   `/root/deploy.log` on the box.
-- **It returns `200` even when the signature is wrong.** `webhook`'s default
-  `trigger-rule-mismatch-http-response-code` is `200`, so a hook that matched the
-  URL but failed its HMAC check answers exactly like a successful one — verified
-  against the live server on 2026-07-27. A wrong `WEBHOOK_SECRET` therefore shows
-  up as a **green** deploy step that silently did nothing. `404` (no such hook) is
-  the only status that reliably signals a problem.
+- **A wrong `WEBHOOK_SECRET` does *not* fail silently.** Verified against
+  `webhook` 2.8.2 on 2026-07-27: a signature computed with the wrong secret
+  returns `500` (`invalid payload signatures`) and fails the Deploy step. `404`
+  means the hook isn't loaded. `403` means no signature header was sent at all.
+  Only `200` is ambiguous — and it is ambiguous in exactly one direction: the
+  command ran, but nothing reports whether it *worked*.
 - **The image builds from the repo root, not from `backend/`.**
   `backend/package.json` pins `ts-node`, `typescript` and the eslint packages
   with `catalog:`, and a catalog only resolves when pnpm can see
@@ -216,7 +216,8 @@ again, so a local retag is a stopgap, not a state anyone else can see.
 | --- | --- |
 | Actions green, nothing changed on the box | Three different causes, and **the webhook returns `200` for all of them**: a wrong `WEBHOOK_SECRET`, a failed SSH, or a no-op pull. Work down `/root/deploy.log` on `sf` first — if it has no new entry at all, the hook never ran the script, so suspect the secret. Then `app/config/logs/webhooks.log` on the webhooks box |
 | `Image unchanged` in `deploy.log` after a real change | The box's `/root/docker/docker-compose.yml` still pulls the old `ghcr.io/...` tag. It is not version-controlled — edit it there |
-| **Deploy step green but no entry in `deploy.log`** | Almost certainly a `WEBHOOK_SECRET` mismatch. `webhook` answers `200` when a hook matches but its trigger rules fail, so a bad signature is indistinguishable from success at the HTTP layer. Confirm on the webhooks box: `docker compose -f /root/webhooks/docker-compose.yml logs webhook \| grep "not satisfied"` |
+| Deploy step fails with `500` | `WEBHOOK_SECRET` here does not match `webhook.env` on the webhooks box. The daemon logs `error evaluating hook: invalid payload signatures` |
+| **Deploy step green but no entry in `deploy.log`** | The hook ran `deploy.sh` but the SSH failed — `200` is returned before the SSH result is known. Check `app/config/logs/webhooks.log` on the webhooks box: `docker compose -f /root/webhooks/docker-compose.yml logs webhook` |
 | `404` from the webhook step | The `satisfactory-factories` hook is not loaded. On the webhooks box: `cd /root/webhooks && ./sync.sh` and check the hook list it prints. `404` is the *only* HTTP status that reliably tells you something is wrong |
 | `DEPLOY FAILED` in `deploy.log` after `up --wait` | The new image starts but never turns healthy. `ssh sf 'docker logs sf-backend'` — most likely a bad `sf.env` or Mongo unreachable |
 | Publish step fails on `pnpm install --frozen-lockfile` | `backend/pnpm-lock.yaml` is out of date with `backend/package.json`. Run `pnpm install` in `backend/` and commit the lockfile |
