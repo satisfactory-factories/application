@@ -1,0 +1,51 @@
+name: "Backend: Deploy"
+
+# The whole backend release, end to end: checks -> image -> webhook -> box.
+#
+# This replaces running backend/publish.sh from Mael's laptop, which was the only
+# way to ship the API and therefore something only he could do. See
+# docs/deployment.md for the full chain and how to verify a deploy landed.
+on:
+  push:
+    branches: [main]
+    # Only redeploy when something that ends up in the image changes. Note that
+    # the four workflow files below are listed individually rather than as
+    # .github/workflows/** — editing build-web.yml should not redeploy the API.
+    paths:
+      - 'backend/**'
+      - 'package.json'            # holds the packageManager pin corepack uses
+      - 'pnpm-workspace.yaml'     # the catalog the backend install resolves against
+      - '.dockerignore'           # changes what lands in the build context
+      - '.github/workflows/deploy-backend.yml'
+      - '.github/workflows/build-backend.yml'
+      - '.github/workflows/publish-backend.yml'
+      - '.github/workflows/deploy-webhook.yml'
+  # Lets a deploy be re-run by hand after a failed webhook, or after the box has
+  # been rebuilt, without needing an empty commit.
+  workflow_dispatch:
+
+# Never cancel a deploy that is already publishing or calling the webhook —
+# queue the next one behind it. Cancelling mid-publish can leave backend-latest
+# pointing at a half-pushed manifest.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/build-backend.yml
+
+  publish:
+    name: Publish image
+    needs: checks
+    uses: ./.github/workflows/publish-backend.yml
+    with:
+      push: true
+    secrets: inherit
+
+  deploy:
+    name: Deploy
+    needs: publish
+    uses: ./.github/workflows/deploy-webhook.yml
+    secrets: inherit

@@ -18,7 +18,16 @@ import {Factory} from "./interfaces/FactoryInterface";
 
 dotenv.config();
 
-const PORT = 3010;
+// 3001 is the API's port everywhere: here, in the Dockerfile, in both compose
+// files, and on the box where the Cloudflare tunnel points at it. Keep them
+// equal — 618e944 moved this to 3010 without moving anything else, and the only
+// reason production survived is that it was still running an image from before
+// that commit.
+//
+// Overridable because web's vitest fixture server also binds 3001
+// (web/testing/global-setup.ts), so `PORT=3011 pnpm dev:backend` gets the two
+// out of each other's way locally. Nothing deployed sets it.
+const PORT = Number(process.env.PORT) || 3001;
 
 // *************************************************
 // Setup Express

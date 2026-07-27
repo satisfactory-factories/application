@@ -1,0 +1,30 @@
+# The backend image is built from the repo root so pnpm can resolve the
+# workspace catalog (see backend/Dockerfile). Without this file the whole
+# monorepo — three node_modules trees, the parser's multi-megabyte game
+# fixtures, the web build — gets uploaded to the daemon on every build.
+
+# Never useful in an image, and copying a host node_modules into a Linux
+# container is how you get native modules built for the wrong platform.
+**/node_modules
+**/dist
+.git
+.github
+.idea
+.claude
+
+# Other workspace packages. web deploys via Vercel and parsing runs locally;
+# neither belongs in the API image. pnpm-workspace.yaml still lists them, which
+# is harmless — the globs simply match nothing.
+web/
+parsing/
+youtube/
+docs/
+
+# Local-only backend state: the Mongo data directory bind-mounted by
+# docker-compose.yml, and the dev .env (the server injects its own via
+# env_file: sf.env, and dotenv does not override real environment variables).
+backend/data/
+backend/.env
+
+*.md
+!README.md

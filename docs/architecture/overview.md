@@ -11,7 +11,7 @@ Everything revolves around an array of `Factory` objects held in a Pinia store a
 | Path | What it is |
 |---|---|
 | `web/` | The app: Vue 3 (Composition API, `<script setup>`), Vuetify 3, Pinia, Vite, Vitest. Deployed by Vercel on merge to `main`. |
-| `backend/` | Small Express + Mongoose API: auth (JWT), save/load of the whole plan, share links. Single file `backend/backend.ts`. Manually deployed to the maintainer's NAS. |
+| `backend/` | Small Express + Mongoose API: auth (JWT), save/load of the whole plan, share links. Single file `backend/backend.ts`. Deployed to the maintainer's NAS on merge to `main` — see [deployment.md](../deployment.md). |
 | `parsing/` | CLI that converts the game's `Docs.json` into `gameData_vX.json` consumed by the web app. Jest-tested; tests are mandatory here. |
 | `docs/` | Project docs, including the per-operation test sheets in `docs/testing/`. |
 | `youtube/` | Media assets, not code. |

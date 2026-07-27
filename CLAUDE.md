@@ -21,7 +21,7 @@ Run from the repo root (`application/`):
 | Command | Purpose |
 | --- | --- |
 | `pnpm install` | Install all three packages |
-| `pnpm dev` | Mongo (Docker) + backend + frontend in parallel (web :3000, backend :3010) |
+| `pnpm dev` | Mongo (Docker) + backend + frontend in parallel (web :3000, backend :3001) |
 | `pnpm dev:web` | Frontend only (no Docker needed) — sufficient for most planner work |
 | `pnpm dev:backend` | Mongo + backend only |
 | `pnpm dev:parsing` | Run the parser |
@@ -73,4 +73,4 @@ The version tracks the game's minor version. See `README.md` for the full parser
 - **TypeScript everywhere.** Vue components use `<script setup>` + Composition API and Vuetify components for UI.
 - 2-space indent, LF endings, trailing newline, no trailing whitespace. `pnpm lint` (auto-fix) must pass before commit — CI blocks otherwise.
 - **Conventional Commits**, scoped by component: `feat(web): ...`, `fix(parser): ...`, `chore(repo): ...`. Universal SemVer across all packages.
-- Update `CHANGELOG.md` for significant changes. Deploys are trunk-based off `main` (GitHub Actions → Vercel for web, Docker image for backend).
+- Update `CHANGELOG.md` for significant changes. Deploys are trunk-based off `main` (GitHub Actions → Vercel for web, Docker image → webhook → the API box for backend — see `docs/deployment.md`).

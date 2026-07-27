@@ -1,15 +1,39 @@
+# This is the compose file that runs the production API. It lives on the box at
+# /root/docker/docker-compose.yml — this copy is a hand-maintained mirror, NOT
+# something any deploy syncs. Change one, change the other, or /root/update.sh
+# will happily keep deploying whatever the box's copy says.
 services:
   backend:
-    image: ghcr.io/maelstromeous/satisfactory-factories:backend-latest
+    # Docker Hub, published by the "Backend: Deploy" workflow. Was
+    # ghcr.io/maelstromeous/satisfactory-factories:backend-latest, pushed by hand
+    # from a laptop.
+    image: maelstromeous/satisfactory-factories:backend-latest
     restart: always
     container_name: sf-backend
     networks:
       - backend
     env_file:
       - sf.env
+    # 3001 on both sides, matching backend.ts and the host port the Cloudflare
+    # tunnel resolves to. Deliberately not a translated mapping: 618e944 moved
+    # the app to 3010 and left this at "3001:3001", and the only reason
+    # production still worked is that it was running an image from before that
+    # commit. The first rebuild from main would have published a container
+    # nothing upstream could reach — and the deploy would still have gone green.
     ports:
       - "3001:3001"
     command: pnpm start
+    healthcheck:
+      # /hello is the API's own liveness route. node 24 ships global fetch, so
+      # this needs nothing extra installed in the image (there is no curl in
+      # node:24-slim). update.sh's `up --wait` blocks on this, which is what
+      # turns "container started" into "container actually serving".
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/hello').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # ts-node compiles on boot, so first response takes a few seconds.
+      start_period: 30s
   mongo:
     image: mongo:8.3.4
     container_name: sf-db

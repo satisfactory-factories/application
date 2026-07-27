@@ -1,0 +1,56 @@
+name: "Backend: Build & Publish"
+
+# Reusable. Called with push=false from pull requests (does the build fail?) and
+# with push=true from "Backend: Deploy" on main (ship it).
+#
+# The image lives in the Docker Hub repo maelstromeous/satisfactory-factories.
+# It used to be ghcr.io/maelstromeous/satisfactory-factories, published by hand
+# from a laptop via backend/publish.sh.
+on:
+  workflow_call:
+    inputs:
+      push:
+        description: 'Push the built image to Docker Hub'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  build:
+    name: Build API image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Skipped for validation builds: a PR from a fork has no secrets, and a
+      # build that never pushes has no reason to talk to the registry.
+      - name: Log in to Docker Hub
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          # The repo root, not backend/ — backend/package.json's `catalog:`
+          # specs only resolve when pnpm-workspace.yaml is in the context.
+          # backend/Dockerfile explains this at length.
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: ${{ inputs.push }}
+          # Two tags per build. `backend-latest` is the moving one that the
+          # server's compose file pulls; the SHA-pinned one exists so a bad
+          # deploy can be rolled back to an exact commit without a rebuild.
+          # The `backend-` prefix leaves the repo free to hold other components
+          # later, and matches the tag the GHCR image already used.
+          tags: |
+            maelstromeous/satisfactory-factories:backend-latest
+            maelstromeous/satisfactory-factories:backend-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -24,7 +24,11 @@ pnpm install   # installs web + backend + parsing
 pnpm dev       # starts Mongo (Docker), then the backend + frontend together
 ```
 
-`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3010 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+
+**The port allocation is 3000 for the web app and 3001 for the API, everywhere** — local dev, the container, the host, and behind the tunnel. Treat those two as fixed; anything else that wants a port should move rather than pushing the API off 3001.
+
+> One known overlap: `web/testing/global-setup.ts` serves the test `gameData.json` on 3001 too, and it *silently skips startup* if the port is taken — so running `pnpm test` in `web/` while the backend is up makes the suite fetch game data from the API, get a 404, and fail confusingly. It is rare enough to live with: stop the backend first, or start it elsewhere with `PORT=3011 pnpm dev:backend` (the frontend's dev API URL is hardcoded to 3001, so only do that when you're not exercising save/load). If it does start to bite, move **the test fixture** to a port of its own — say 3005 — rather than moving the API.
 
 Available root scripts:
 
@@ -80,12 +84,14 @@ pnpm install
 ./start.sh
 ```
 
-API will be available on http://localhost:3010.
+API will be available on http://localhost:3001.
 
 There are no tests currently available for the backend project.
 
 ### Deployment
-New versions are trunked to `main` branch. Once `main` has been pushed, GitHub Actions will create a release then deploy the frontend to Vercel, and create a docker image of the backend to deploy to my personal server.
+New versions are trunked to `main` branch. Once `main` has been pushed, GitHub Actions will create a release then deploy the frontend to Vercel, and build a docker image of the backend which is published to Docker Hub and pulled onto my personal server automatically.
+
+See [docs/deployment.md](docs/deployment.md) for the backend chain end to end — including how to tell whether a deploy actually landed, since a green Actions run does not prove it.
 ___
 
 ## License

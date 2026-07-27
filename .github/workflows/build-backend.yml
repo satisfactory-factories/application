@@ -1,15 +1,25 @@
 name: Backend Checks
+
+# Lint and typecheck. Runs on PRs, and is called by "Backend: Deploy" as the gate
+# in front of the image build.
+#
+# There is no `push: main` trigger any more: on main this is called by
+# Backend Deploy instead, so keeping one would run the same checks twice on the
+# same commit.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
   pull_request:
     branches:
       - main
     paths:
       - 'backend/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.dockerignore'
+      - '.github/workflows/deploy-backend.yml'
+      - '.github/workflows/build-backend.yml'
+      - '.github/workflows/publish-backend.yml'
+      - '.github/workflows/deploy-webhook.yml'
+  workflow_call:
 jobs:
   build-backend:
     name: Build Backend

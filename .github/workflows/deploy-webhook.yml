@@ -1,0 +1,37 @@
+name: "Backend: Trigger Deployment Webhook"
+
+# Reusable, and deliberately the last link in the chain. Pokes Mael's webhooks
+# server, which SSHes to the API box and runs /root/update.sh there.
+#
+#   POST https://hooks.mattcavanagh.me/hooks/satisfactory-factories
+#
+# The hook is selected by the URL path; the body is only what the HMAC signature
+# is computed over, so `application` is documentation rather than routing.
+#
+# Requires two repository secrets — see docs/deployment.md:
+#   WEBHOOK_URL     the URL above
+#   WEBHOOK_SECRET  the shared HMAC secret
+on:
+  workflow_call:
+
+jobs:
+  send-webhook:
+    name: Trigger deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger webhook
+        uses: ramzzisudip/secure-github-webhook@0.3.0
+        with:
+          url: "${{ secrets.WEBHOOK_URL }}"
+          data: '{ "application": "satisfactory-factories" }'
+          timeout: 2000
+          hmacSecret: "${{ secrets.WEBHOOK_SECRET }}"
+
+      # A green tick here means the webhook server accepted the request, NOT
+      # that the deploy worked: the hook returns 200 without waiting for the
+      # SSH, so a failed deploy still looks successful in Actions. The real
+      # confirmation is /root/deploy.log on the API box.
+      - name: What green means here
+        run: |
+          echo "Webhook accepted. This does NOT confirm the deploy succeeded."
+          echo "Confirm on the box: ssh sf 'tail -5 /root/deploy.log'"
