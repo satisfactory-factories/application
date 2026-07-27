@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-As of **2026-07-27**, the live API on `sf` (10.0.5.5) runs an image built ~19 months ago.
+As of **2026-07-27**, the live API on the `sf` box runs an image built ~19 months ago.
 `main` has drifted away from it in ways that only surface at deploy time, so **production
 is not reproducible from `main`** until PR
 [#439](https://github.com/satisfactory-factories/application/pull/439) lands (issue #438):
