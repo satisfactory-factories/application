@@ -15,7 +15,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3010:3010"
+      - "3001:3001"
     volumes:
       # The app lives at /app/backend in the image now (the workspace root is
       # /app), so mounting over /app would hide it entirely. The anonymous

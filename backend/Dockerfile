@@ -36,8 +36,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY backend/ ./
 
-# backend.ts listens on 3010. The server compose file maps host 3001 onto it —
-# do not assume the published port and this one are the same.
-EXPOSE 3010
+# 3001 all the way through: backend.ts, both compose files, and the host port
+# the Cloudflare tunnel resolves to. No translation anywhere.
+EXPOSE 3001
 
 CMD ["pnpm", "start"]

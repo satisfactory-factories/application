@@ -37,7 +37,7 @@ Other pages: `graph.vue` (Vue Flow node graph of factory links; nodes/edges from
 
 ## Backend (`backend/backend.ts`)
 
-One Express file, port 3010, Mongo via Mongoose. `POST /register|/login|/validate-token` (JWT, bcrypt), `POST /save` + `GET /load` (whole-plan blob per user), `POST /share` + `GET /share/:id` (share slugs via `random-word-slugs`), rate limiting throughout. The factory interfaces are duplicated from the frontend (`backend/interfaces/`) — keep in mind when changing `FactoryInterface.ts`.
+One Express file, port 3001 (same number in the container, in both compose files and behind the tunnel), Mongo via Mongoose. `POST /register|/login|/validate-token` (JWT, bcrypt), `POST /save` + `GET /load` (whole-plan blob per user), `POST /share` + `GET /share/:id` (share slugs via `random-word-slugs`), rate limiting throughout. The factory interfaces are duplicated from the frontend (`backend/interfaces/`) — keep in mind when changing `FactoryInterface.ts`.
 
 ## Testing layout
 

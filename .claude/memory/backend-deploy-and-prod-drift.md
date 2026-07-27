@@ -13,10 +13,16 @@ is not reproducible from `main`** until PR
 1. **The image could not be built.** `backend/package.json` uses `catalog:` versions, which
    need `pnpm-workspace.yaml` in the build context; `publish.sh` built from `backend/` and
    died with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. Reproduced on `main`.
-2. **The compose port mapping was wrong.** `618e944` moved the listen port 3001 → 3010, but
-   the server compose published `3001:3001`. It only works because the running image
-   predates that commit — the first rebuild would have shipped a container nothing upstream
-   could reach, and the deploy would still have gone green.
+2. **The listen port disagreed with everything else.** `618e944` moved the app 3001 → 3010
+   but moved nothing else — the server compose still published `3001:3001`, and
+   `web/src/config/config.ts` still pointed local dev at 3001. It only worked because the
+   running image predates that commit; the first rebuild would have shipped a container
+   nothing upstream could reach, and the deploy would still have gone green. Resolved by
+   putting the app **back on 3001** everywhere (app, `EXPOSE`, both compose files, host
+   port, tunnel origin) rather than mapping between two numbers. Note 3001 is also the port
+   `web/testing/global-setup.ts` binds for its gameData fixture, which silently skips
+   startup when taken — so running the backend during a `web` test run breaks the suite.
+   `PORT` overrides the app's port for local work; nothing deployed sets it.
 3. **A failed deploy could not report itself.** The webhook returns `200` before the SSH
    happens, and the old `update.sh` exited `0` whether or not the container survived.
 

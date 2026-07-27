@@ -24,7 +24,9 @@ pnpm install   # installs web + backend + parsing
 pnpm dev       # starts Mongo (Docker), then the backend + frontend together
 ```
 
-`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3010 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+
+> **Port 3001 is shared with the web unit tests.** `web/testing/global-setup.ts` serves the test `gameData.json` on 3001, and it *silently skips startup* if the port is taken. So running `pnpm test` in `web/` while the backend is up makes the suite fetch game data from the API, get a 404, and fail confusingly. Either stop the backend first, or start it on another port with `PORT=3011 pnpm dev:backend` (the frontend's dev API URL is hardcoded to 3001, so only do that when you're not exercising save/load).
 
 Available root scripts:
 
@@ -80,7 +82,7 @@ pnpm install
 ./start.sh
 ```
 
-API will be available on http://localhost:3010.
+API will be available on http://localhost:3001.
 
 There are no tests currently available for the backend project.
 

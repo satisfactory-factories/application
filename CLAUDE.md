@@ -21,7 +21,7 @@ Run from the repo root (`application/`):
 | Command | Purpose |
 | --- | --- |
 | `pnpm install` | Install all three packages |
-| `pnpm dev` | Mongo (Docker) + backend + frontend in parallel (web :3000, backend :3010) |
+| `pnpm dev` | Mongo (Docker) + backend + frontend in parallel (web :3000, backend :3001) |
 | `pnpm dev:web` | Frontend only (no Docker needed) — sufficient for most planner work |
 | `pnpm dev:backend` | Mongo + backend only |
 | `pnpm dev:parsing` | Run the parser |
