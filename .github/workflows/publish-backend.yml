@@ -42,7 +42,7 @@ jobs:
       # step would mean loading the image into the local daemon first, which is
       # slower and buys nothing, so the split is in the naming not the mechanism.
       - name: ${{ inputs.push && 'Build and push' || 'Build' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           # The repo root, not backend/ — backend/package.json's `catalog:`
           # specs only resolve when pnpm-workspace.yaml is in the context.
