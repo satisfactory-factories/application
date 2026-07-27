@@ -1,4 +1,8 @@
 name: Web Checks
+
+# The push trigger stays path-filtered, the pull_request one does not. A required
+# status check that never triggers sits pending forever rather than passing, so a
+# path filter here would block every PR that does not touch web/.
 on:
   push:
     branches:
@@ -14,6 +18,8 @@ on:
   pull_request:
     branches:
       - main
+permissions:
+  contents: read
 jobs:
   build-web:
     name: Build & Test Web

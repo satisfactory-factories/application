@@ -27,6 +27,9 @@ on:
 # Never cancel a deploy that is already publishing or calling the webhook —
 # queue the next one behind it. Cancelling mid-publish can leave backend-latest
 # pointing at a half-pushed manifest.
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-backend
   cancel-in-progress: false
