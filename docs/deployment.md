@@ -98,6 +98,11 @@ seconds of `502`s — paid on every deploy, including the majority where the pul
 found nothing new. `up -d` on its own recreates only when the digest actually
 changed, which makes a no-op deploy cost about a second and drop nothing.
 
+Measured on the sibling albionroads box, which still ran the old script: two
+deploys of the same commit, resolved image ID identical across both
+(`sha256:339903be…`), and the container's `StartedAt` still moved from
+`16:15:00Z` to `16:18:20Z`. It really does tear down and rebuild for nothing.
+
 **2. It could not tell whether the container survived.** `docker compose up -d`
 returns when the container has been *started*, not when the app is listening. A
 container that boots and dies — bad `sf.env`, unreachable Mongo, a TypeScript
@@ -139,6 +144,38 @@ best-effort `docker image prune` restricted to *dangling* images older than a
 week, so tagged images — including the `backend-<sha>` tags a rollback needs, and
 anything belonging to other stacks on the box — are never touched, and a failure
 to tidy up cannot fail a deploy that already worked.
+
+**8. And `set -euo pipefail` did not protect any of it.** This is the one that
+makes the rest dangerous rather than merely untidy. `set -e` **does not fire for
+a command on the left of `&&`** — only for the last command in the list. So in:
+
+```bash
+docker compose pull server && docker compose down server && docker compose up server -d
+```
+
+a failed `pull` skips `down` and `up`, does **not** exit the script, and
+execution continues straight to `echo "Container updated!"`. Deploy reports
+success, the webhook returns `200`, Actions goes green, and nothing was deployed.
+
+Observed live on the sibling albionroads box on 2026-07-27, while its compose
+file still referenced a Docker Hub repo that had been renamed out from under it:
+
+```
+server Error pull access denied for maelstromeous/albion-mapper,
+       repository does not exist or may require 'docker login'
+```
+
+…followed, three seconds later, by `Container updated!` in `deploy.log` and a
+green deploy. The containers were never touched — `StartedAt` was unchanged
+thirteen hours later. Reproduce the shell behaviour in isolation with:
+
+```bash
+bash -c 'set -euo pipefail; false && echo B; echo "still here"'   # prints: still here
+```
+
+The rewrite avoids this by putting each command on its own line, so `set -e` and
+the `ERR` trap actually apply, and by comparing the image ID before and after
+rather than trusting that the commands ran.
 
 The rewritten script also reports the container's health state explicitly, which
 surfaces the case where the box's compose file has no healthcheck at all — in
