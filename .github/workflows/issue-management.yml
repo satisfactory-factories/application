@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: New issue, add Needs Triage label
       if: github.event.action == 'opened'
