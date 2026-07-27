@@ -20,7 +20,7 @@ For the release philosophy across all three packages see
       │                                            :backend-latest
       │                                            :backend-<sha>
       └─ Deploy          → deploy-webhook.yml
-         └─ POST https://hooks.mattcavanagh.me/hooks/satisfactory-factories
+         └─ POST <WEBHOOK_URL>   (the deploy hook; see repo secrets)
             X-Hub-Signature-256 = HMAC-SHA256(body, WEBHOOK_SECRET)
                      │
                      ▼
@@ -234,7 +234,7 @@ Repository secrets (Settings → Secrets and variables → Actions):
 | --- | --- |
 | `DOCKERHUB_USERNAME` | `maelstromeous` |
 | `DOCKERHUB_TOKEN` | Docker Hub access token with write scope on `maelstromeous/satisfactory-factories` |
-| `WEBHOOK_URL` | `https://hooks.mattcavanagh.me/hooks/satisfactory-factories` |
+| `WEBHOOK_URL` | The deploy hook endpoint. This repo is public, so the URL is not written down here — it is in the private `Maelstromeous/webhooks` repo |
 | `WEBHOOK_SECRET` | The shared webhook HMAC secret |
 
 > The webhook secret is **shared across every project** on that server. A repo
