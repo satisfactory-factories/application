@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "description": [
+    "Renovate has been raising PRs against this repo with no config file committed, so it was running on whatever the hosted app defaults to. This pins the baseline down so the behaviour is in the repo rather than implied.",
+    "A release has to have been public for 14 days before Renovate will propose it. That window is where a compromised or immediately-yanked publish gets found by someone else before it reaches a PR here.",
+    "Security fixes are not delayed by this: Renovate's vulnerabilityAlerts defaults are minimumReleaseAge null, an empty schedule and prCreation immediate, so a CVE fix is raised straight away regardless of the wait below."
+  ],
+  "minimumReleaseAge": "14 days"
+}
