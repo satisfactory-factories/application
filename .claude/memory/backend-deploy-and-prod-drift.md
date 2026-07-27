@@ -19,10 +19,12 @@ is not reproducible from `main`** until PR
    running image predates that commit; the first rebuild would have shipped a container
    nothing upstream could reach, and the deploy would still have gone green. Resolved by
    putting the app **back on 3001** everywhere (app, `EXPOSE`, both compose files, host
-   port, tunnel origin) rather than mapping between two numbers. Note 3001 is also the port
-   `web/testing/global-setup.ts` binds for its gameData fixture, which silently skips
-   startup when taken — so running the backend during a `web` test run breaks the suite.
-   `PORT` overrides the app's port for local work; nothing deployed sets it.
+   port, tunnel origin) rather than mapping between two numbers. **Matt's ruling, 2026-07-27:
+   3000 is the web app and 3001 is the API, and those two are fixed** — the overlap with the
+   gameData fixture `web/testing/global-setup.ts` binds on 3001 (it silently skips startup
+   when taken, so running the backend during a `web` test run 404s the suite) is judged rare
+   enough to live with. If it ever does bite, move **the fixture** to its own port (~3005),
+   never the API. `PORT` overrides the app's port for local work; nothing deployed sets it.
 3. **A failed deploy could not report itself.** The webhook returns `200` before the SSH
    happens, and the old `update.sh` exited `0` whether or not the container survived.
 
