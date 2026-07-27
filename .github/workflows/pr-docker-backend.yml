@@ -1,0 +1,34 @@
+name: "Backend: Docker Build"
+
+# Builds the API image without pushing, so a broken Dockerfile or a lockfile that
+# no longer matches package.json is caught on the PR instead of halfway through a
+# deploy on main.
+#
+# This is not hypothetical. Before this pipeline existed the image had been
+# unbuildable for months — backend/package.json moved to `catalog:` versions,
+# which cannot resolve from the backend/ build context, and nothing ever tried to
+# build it, so the failure sat there until someone needed to ship.
+#
+# Same paths as "Backend: Deploy".
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.dockerignore'
+      - '.github/workflows/deploy-backend.yml'
+      - '.github/workflows/build-backend.yml'
+      - '.github/workflows/publish-backend.yml'
+      - '.github/workflows/deploy-webhook.yml'
+
+# A newer push to the same PR makes the in-flight build redundant.
+concurrency:
+  group: pr-docker-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/publish-backend.yml
+    with:
+      push: false

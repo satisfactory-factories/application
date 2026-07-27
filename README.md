@@ -85,7 +85,9 @@ API will be available on http://localhost:3010.
 There are no tests currently available for the backend project.
 
 ### Deployment
-New versions are trunked to `main` branch. Once `main` has been pushed, GitHub Actions will create a release then deploy the frontend to Vercel, and create a docker image of the backend to deploy to my personal server.
+New versions are trunked to `main` branch. Once `main` has been pushed, GitHub Actions will create a release then deploy the frontend to Vercel, and build a docker image of the backend which is published to Docker Hub and pulled onto my personal server automatically.
+
+See [docs/deployment.md](docs/deployment.md) for the backend chain end to end — including how to tell whether a deploy actually landed, since a green Actions run does not prove it.
 ___
 
 ## License

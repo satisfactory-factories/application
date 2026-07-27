@@ -1,8 +1,14 @@
+# Runs the backend the way production runs it — from the image rather than from
+# `pnpm dev` — against a local Mongo. For ordinary development use
+# docker-compose.yml (Mongo only) plus `pnpm dev:backend`.
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      # The workspace root, because backend/package.json's `catalog:` versions
+      # only resolve when pnpm-workspace.yaml is in the build context. See
+      # backend/Dockerfile.
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: app
     networks:
       - backend
@@ -11,7 +17,12 @@ services:
     ports:
       - "3010:3010"
     volumes:
-      - .:/app
+      # The app lives at /app/backend in the image now (the workspace root is
+      # /app), so mounting over /app would hide it entirely. The anonymous
+      # volume keeps the container's own node_modules rather than letting the
+      # host's shadow them.
+      - .:/app/backend
+      - /app/backend/node_modules
     command: pnpm start
   mongo:
     image: mongo:8.3.4

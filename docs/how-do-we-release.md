@@ -18,15 +18,23 @@ E.g. when someone creates a new feature, it follows this flow:
 5. Upon merging into `main`, Vercel will automatically build and release the frontend application.
 
 ## Backend
-As of writing, backend is seldom updated. As a consequence, the deployment of it is done manually.
+The backend now follows the same trunk-based flow as the frontend: **merge to `main` and it deploys itself.**
 
 The backend system is hosted on Mael's private NAS server in his home. It is protected by Cloudflare Tunnels so that it is not directly exposed to the internet.
 
-However, this does mean that only he will have the ability to deploy the backend system. This is not ideal, but it is the current state of the project.
+When a PR touching `backend/` (or the workspace files the image is built from) is merged, the `Backend: Deploy` workflow:
 
-It is done so by running `/backend/publish.sh`, which has an SSH connection to run a simple `docker-compose pull && docker-compose down && docker-compose up` commands to deploy the docker container.
+1. Runs the backend checks — lint and TypeScript build.
+2. Builds the Docker image and pushes it to Docker Hub as `maelstromeous/satisfactory-factories:backend-latest`, plus a `backend-<commit sha>` tag so a bad deploy can be rolled back to an exact commit without a rebuild.
+3. Calls a webhook on Mael's webhooks server, which SSHes to the API box and runs `docker compose pull` + `docker compose up -d --wait` there.
 
-It is intended that this will be automated in the future where as of building a docker container, it will be detected and pulled by the server, and the server will automatically restart the container.
+This used to be a manual `backend/publish.sh` from Mael's laptop, which meant he was the only person who could ship the API at all. That script still exists as a break-glass path for when GitHub Actions is unavailable, and says so at the top.
+
+**A green Actions run is not proof the deploy landed** — the webhook returns `200` before the SSH even happens. The confirmation is `/root/deploy.log` on the box.
+
+Two files on the server — its compose file and its `update.sh` — are mirrored in `backend/` but are *not* synced by any deploy; they have to be copied over by hand when they change.
+
+**→ [deployment.md](./deployment.md) has the full chain, the required secrets, rollback, and a troubleshooting table.**
 
 ## Parser
 There are no deployments for the parser. It is run alongside a website deployment so that users browsers download the new game data.

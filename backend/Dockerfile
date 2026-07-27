@@ -1,13 +1,43 @@
-FROM node:24
+# Build context is the REPO ROOT, not backend/:
+#
+#     docker build -f backend/Dockerfile .
+#
+# backend/package.json pins ts-node, typescript and the eslint packages with
+# `catalog:`, and a catalog only resolves when pnpm can see the workspace's
+# pnpm-workspace.yaml. Building from backend/ on its own — which is what
+# publish.sh used to do — fails at `pnpm install` with:
+#
+#     ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC
+#     No catalog entry 'eslint' was found for catalog 'default'.
+#
+# The image running in production predates the catalog, which is why nobody
+# noticed. See the root .dockerignore for what is kept out of the context.
+FROM node:24-slim
 
-# Install pnpm
-RUN npm install -g pnpm
+# corepack activates the exact pnpm pinned by `packageManager` in the root
+# package.json, so CI and a laptop build with the same version.
+RUN corepack enable
 
-COPY . /app
 WORKDIR /app
 
-RUN pnpm install
+# Manifests first: a source-only change then reuses the cached install layer.
+# pnpm-workspace.yaml is what makes the `catalog:` specs resolvable.
+COPY pnpm-workspace.yaml package.json ./
+COPY backend/package.json backend/pnpm-lock.yaml ./backend/
 
+WORKDIR /app/backend
+
+# --frozen-lockfile so a build fails loudly on a lockfile that does not match
+# package.json, instead of silently resolving something newer than what was
+# tested. Dev dependencies are deliberately installed: `pnpm start` is
+# `ts-node backend.ts`, so ts-node and typescript are runtime dependencies here
+# in all but name.
+RUN pnpm install --frozen-lockfile
+
+COPY backend/ ./
+
+# backend.ts listens on 3010. The server compose file maps host 3001 onto it —
+# do not assume the published port and this one are the same.
 EXPOSE 3010
 
 CMD ["pnpm", "start"]
