@@ -17,32 +17,46 @@ try {
   throw err
 }
 
-let server: http.Server
-
+// Vitest takes the teardown from what globalSetup returns (or from a named `teardown`
+// export) — there is no `globalTeardown` config option, that one is Jest's. Returning
+// the closer here is what guarantees this listener actually goes away: while it is
+// open, its handle keeps the main process alive, Vitest's close() blows its 10s
+// teardown budget, and the run exits non-zero at random even though every test passed.
 export default async function globalSetup () {
-  // If server is already running, skip starting a new one
-  // Start an HTTP server that listens on port 3001
-  await new Promise<void>(resolve => {
-    server = http.createServer((req, res) => {
-      if (req.url === '/gameData.json') {
-        res.setHeader('Content-Type', 'application/json')
-        res.end(gameData)
-      } else {
-        res.statusCode = 404
-        res.end()
-      }
-    })
-    server.once('error', (err: any) => {
+  const server = http.createServer((req, res) => {
+    if (req.url === '/gameData.json') {
+      res.setHeader('Content-Type', 'application/json')
+      res.end(gameData)
+    } else {
+      res.statusCode = 404
+      res.end()
+    }
+  })
+
+  const listening = await new Promise<boolean>(resolve => {
+    server.once('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         console.log('Port 3001 already in use, skipping test server startup')
-        resolve()
+        resolve(false)
       }
     })
     server.listen(3001, () => {
       console.log('Test server started on port 3001')
-      resolve()
+      resolve(true)
     })
-  });
-  // Store for teardown
-  (global as any).__TEST_SERVER__ = server
+  })
+
+  // Nothing of ours is listening, so there is nothing to close — and calling close()
+  // on a server that never listened fails with ERR_SERVER_NOT_RUNNING.
+  if (!listening) return
+
+  return async () => {
+    // close() stops new connections but waits on live ones, so a lingering keep-alive
+    // socket would reintroduce the same hang. Drop them first.
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) => {
+      server.close(err => (err ? reject(err) : resolve()))
+    })
+    console.log('Test server closed')
+  }
 }
