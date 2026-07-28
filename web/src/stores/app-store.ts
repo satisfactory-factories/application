@@ -10,6 +10,7 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { repairPlanPrecision } from '@/utils/factory-management/repair'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -483,6 +484,17 @@ export const useAppStore = defineStore('app', () => {
       // Update data version
       factory.dataVersion = '2025-02-20'
     })
+
+    // Patch for #485. Runs after the shape migrations above, so it can rely on every
+    // factory having its products, producers and building groups in place.
+    const repairs = repairPlanPrecision(newFactories, gameData)
+    if (repairs.repairs.length || repairs.staleRecipeFigures) {
+      console.log(
+        `appStore: initFactories: Repaired ${repairs.repairs.length} drifted quantities and ${repairs.staleRecipeFigures} stale recipe figures`,
+        repairs.repairs
+      )
+      needsCalculation = true
+    }
 
     // Only recalculate when a data migration actually backfilled a missing field. A plan
     // whose derived data is already current — the common case, e.g. switching between tabs —

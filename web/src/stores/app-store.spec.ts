@@ -10,6 +10,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -328,6 +329,43 @@ describe('app-store', () => {
       appStore.initFactories(factories)
 
       expect(factory.products[0].buildingGroupsHaveProblem).toBeDefined()
+    })
+
+    // Patch for #485 — a saved plan holding 2400.002 where it means 2400 is repaired on
+    // load, and the repair forces the recalculation that clears the derived figures too.
+    describe('rounding drift repair', () => {
+      it('should load the plan from #485 with every Rocket Fuel figure whole', () => {
+        const drifted = create485Scenario()
+
+        appStore.initFactories(drifted)
+
+        const producer = drifted[0].powerProducers[0]
+        expect(producer.fuelAmount).toBe(2400)
+        expect(producer.ingredients[0].perMin).toBe(2400)
+        expect(producer.ingredients[0].mwPerItem).toBe(60)
+        expect(producer.buildingGroups[0].parts.RocketFuel).toBe(2400)
+        expect(drifted[0].parts.RocketFuel.amountRequired).toBe(2400)
+        expect(drifted[0].parts.RocketFuel.amountRemaining).toBe(-2400)
+      })
+
+      it('should recalculate a plan it repaired', () => {
+        const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+
+        appStore.initFactories(create485Scenario())
+
+        expect(spy).toHaveBeenCalled()
+      })
+
+      it('should not recalculate a plan that needs no repair', () => {
+        const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+        const clean = create485Scenario()
+        appStore.initFactories(clean)
+        spy.mockClear()
+
+        appStore.initFactories(clean)
+
+        expect(spy).not.toHaveBeenCalled()
+      })
     })
   })
 
