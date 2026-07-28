@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@eslint/js':
+      specifier: 10.0.1
+      version: 10.0.1
     eslint:
       specifier: 10.7.0
       version: 10.7.0
@@ -58,7 +61,7 @@ importers:
         version: 0.1.7
     devDependencies:
       '@eslint/js':
-        specifier: ^10.0.0
+        specifier: 'catalog:'
         version: 10.0.1(eslint@10.7.0(supports-color@5.5.0))
       '@types/bcryptjs':
         specifier: ^2.4.6
