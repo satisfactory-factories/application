@@ -111,6 +111,95 @@ describe('power', () => {
     })
   })
 
+  // #485: a 600 Oil -> 2400 Rocket Fuel plant asked for 2400.002 Rocket Fuel/min, because
+  // mwPerItem was derived from a rate the parser had already rounded to 5dp. The error is
+  // proportional, so it grows with the plant.
+  describe('rocket fuel plant rounding', () => {
+    beforeEach(() => {
+      factory = newFactory('Rocket fuel plant')
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 240,
+        recipe: 'GeneratorFuel_RocketFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+      calculateFactories([factory], gameData)
+    })
+
+    it('should demand a whole 1000 Rocket Fuel/min for 240 generators', () => {
+      const producer = factory.powerProducers[0]
+
+      expect(producer.buildingCount).toBe(240)
+      expect(producer.powerProduced).toBe(60000)
+      expect(producer.fuelAmount).toBe(1000)
+      expect(producer.ingredients[0].perMin).toBe(1000)
+      expect(producer.buildingGroups[0].parts.RocketFuel).toBe(1000)
+      expect(factory.parts.RocketFuel.amountRequired).toBe(1000)
+    })
+
+    it('should demand a whole 2400 Rocket Fuel/min once the group is clocked to 240%', () => {
+      const producer = factory.powerProducers[0]
+      const group = producer.buildingGroups[0]
+      group.overclockPercent = 240
+      group.clockSetByUser = true
+
+      calculateFactories([factory], gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+      expect(group.buildingCount).toBe(240)
+      expect(group.overclockPercent).toBe(240)
+      expect(producer.powerProduced).toBe(144000)
+      expect(producer.fuelAmount).toBe(2400)
+      expect(producer.ingredients[0].perMin).toBe(2400)
+      expect(group.parts.RocketFuel).toBe(2400)
+      expect(factory.parts.RocketFuel.amountRequired).toBe(2400)
+    })
+
+    it('should stay whole at a plant size where snapping alone could not save it', () => {
+      // The old drift was proportional (8e-7), so at 1200 generators it exceeded the 0.002
+      // snap tolerance and reappeared as 12000.01. Only an exact mwPerItem holds here.
+      const producer = factory.powerProducers[0]
+      producer.buildingAmount = 1200
+      producer.updated = FactoryPowerChangeType.Building
+
+      calculateFactories([factory], gameData)
+
+      expect(producer.powerProduced).toBe(300000)
+      expect(producer.fuelAmount).toBe(5000)
+      expect(producer.ingredients[0].perMin).toBe(5000)
+    })
+
+    it('should keep compacted coal generators whole too', () => {
+      // The other recipe with a repeating burn rate: 630 MJ / 60s = exactly 10.5 MW per item.
+      factory = newFactory('Compacted coal plant')
+      addPowerProducerToFactory(factory, {
+        building: 'generatorcoal',
+        buildingAmount: 420,
+        recipe: 'GeneratorCoal_CompactedCoal',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      calculateFactories([factory], gameData)
+
+      const producer = factory.powerProducers[0]
+      expect(producer.powerProduced).toBe(31500)
+      expect(producer.fuelAmount).toBe(3000)
+      expect(producer.ingredients[0].perMin).toBe(3000)
+    })
+
+    it('should not snap a quantity derived from a user-set fractional clock', () => {
+      const producer = factory.powerProducers[0]
+      const group = producer.buildingGroups[0]
+      group.overclockPercent = 240.001
+      group.clockSetByUser = true
+
+      calculateFactories([factory], gameData, { origin: 'buildingGroup', useBuildingGroupBuildings: true })
+
+      // 240 gens @ 240.001% = 2400.01 Rocket Fuel/min — close to a whole number, but the
+      // user asked for that precision, so it must survive rather than snap to 2400.
+      expect(producer.fuelAmount).toBe(2400.01)
+    })
+  })
+
   describe('calculatePowerProducers', () => {
     it('should calculate the correct generator details', () => {
       expect(factory.powerProducers[0].building).toBe('generatorfuel')

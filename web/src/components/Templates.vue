@@ -63,6 +63,7 @@
   import { create341Scenario } from '@/utils/factory-setups/341-fissible-uranium-issues'
   import { create267Scenario } from '@/utils/factory-setups/267-nuclear-waste-handling'
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
+  import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
   const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
@@ -193,6 +194,13 @@
       name: '#267: Nuclear Waste handling',
       description: 'Nuclear waste was possible to be added via a +Product button in Satisfaction. Now it should show +Generator to add a generator directly instead.',
       data: scenarioData(create267Scenario().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+    },
+    {
+      name: '#485: Micro-rounding repair',
+      description: 'Three factories whose saved quantities are a rounding hair off the numbers they mean, exactly as plans saved before the mwPerItem fix hold them. Loading it should raise the "Plan data repaired" dialog listing every correction, and leave the plan on whole numbers: the Refinery on 14,400 Rocket Fuel/min, FG TEST on 2,400 plus 3,000 Compacted Coal, and the Mega Plant on 12,000. The Mega Plant and Refinery drifts (0.01 and 0.012) are past the flat snap tolerance, so they prove the scaling one.',
+      data: scenarioData(create485DemoPlan().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },

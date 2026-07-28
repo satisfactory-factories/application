@@ -10,6 +10,7 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { PlanRepairEntry, repairPlanPrecision } from '@/utils/factory-management/repair'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -77,6 +78,8 @@ export const useAppStore = defineStore('app', () => {
   const lastEdit = ref<Date>(new Date(localStorage.getItem('lastEdit') ?? ''))
   const isDebugMode = ref<boolean>(false)
   const isLoaded = ref<boolean>(false)
+  // Quantities repairPlanPrecision corrected on the last load, awaiting the user being told.
+  const planRepairs = ref<PlanRepairEntry[]>([])
   const showSatisfactionBreakdowns = ref<boolean>(
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
@@ -484,6 +487,21 @@ export const useAppStore = defineStore('app', () => {
       factory.dataVersion = '2025-02-20'
     })
 
+    // Patch for #485. Runs after the shape migrations above, so it can rely on every
+    // factory having its products, producers and building groups in place.
+    const repairs = repairPlanPrecision(newFactories, gameData)
+    if (repairs.repairs.length || repairs.staleRecipeFigures) {
+      console.log(
+        `appStore: initFactories: Repaired ${repairs.repairs.length} drifted quantities and ${repairs.staleRecipeFigures} stale recipe figures`,
+        repairs.repairs
+      )
+      // Held for the dialog rather than emitted: a plan can be inited before the layout has
+      // mounted its listeners (the factories getter inits on first read), and a repair the
+      // user never sees reported is the thing we are trying to avoid.
+      planRepairs.value = [...planRepairs.value, ...repairs.repairs]
+      needsCalculation = true
+    }
+
     // Only recalculate when a data migration actually backfilled a missing field. A plan
     // whose derived data is already current — the common case, e.g. switching between tabs —
     // is stored fully calculated, so recalculating it is pure wasted work that blocks the main
@@ -500,6 +518,11 @@ export const useAppStore = defineStore('app', () => {
     inited.value = true
     factories.value = newFactories // Also calls the watcher, which sets the current tab data.
     return factories.value
+  }
+
+  // The dialog reporting them has been shown — don't nag on the next tab switch.
+  const dismissPlanRepairs = () => {
+    planRepairs.value = []
   }
 
   const getFactories = () => {
@@ -683,6 +706,8 @@ export const useAppStore = defineStore('app', () => {
     lastEdit,
     isDebugMode,
     isLoaded,
+    planRepairs,
+    dismissPlanRepairs,
     getLastEdit,
     setLastSave,
     setLastEdit,

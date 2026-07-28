@@ -54,6 +54,16 @@ export default defineConfig(() => ({
     ...(process.env.VITE_DEVTOOLS === 'true' ? [vueDevTools()] : []),
     Vuetify({
       autoImport: true,
+      // Compiles Vuetify's Sass so the breakpoint overrides in the settings file
+      // reach the generated media queries. See that file for why.
+      //
+      // Not under Vitest: compiling from source costs ~5x the transform time
+      // (8.6s → 69s across the suite in CI, enough to time out a 5s test), and
+      // it buys nothing there — jsdom does no layout, so no test can observe a
+      // media query. The app's own styles load either way.
+      ...(process.env.VITEST
+        ? {}
+        : { styles: { configFile: 'src/assets/styles/vuetify-settings.scss' } }),
     }),
     Fonts({
       google: {

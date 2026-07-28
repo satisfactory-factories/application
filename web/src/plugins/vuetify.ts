@@ -35,6 +35,19 @@ export default createVuetify({
   components: {
     VNumberInput,
   },
+  // Vuetify 4 shrank the breakpoints (md 960→840, lg 1280→1145, xl 1920→1545).
+  // The planner's smAndDown/lgAndUp switches are tuned to the old widths, so
+  // pin them rather than have the sidebar collapse at a different size.
+  display: {
+    thresholds: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1280,
+      xl: 1920,
+      xxl: 2560,
+    },
+  },
   defaults: {
     // The stable VNumberInput (graduated from labs in 3.8) rounds to integers
     // by default (precision: 0); null restores the labs behaviour of

@@ -60,7 +60,9 @@ function getProductionRecipes(
                             if (isFluid(partName)) {
                                 amount = amount / 1000;
                             }
-                            const perMin: number = recipe.mManufactoringDuration && amount > 0 ? (60 / parseFloat(recipe.mManufactoringDuration)) * amount : 0;
+                            // Multiply before dividing — (60 / duration) * amount leaves float noise
+                            // behind on some recipes (3 Computers / 25s came out as 7.199999999999999).
+                            const perMin: number = recipe.mManufactoringDuration && amount > 0 ? (60 * amount) / parseFloat(recipe.mManufactoringDuration) : 0;
 
                             return {
                                 part: partName,
@@ -87,7 +89,7 @@ function getProductionRecipes(
                 if (isFluid(productName)) {
                     amount = amount / 1000;  // Divide by 1000 for liquid/gas amounts
                 }
-                const perMin = recipe.mManufactoringDuration && amount > 0 ? (60 / parseFloat(recipe.mManufactoringDuration)) * amount : 0;
+                const perMin = recipe.mManufactoringDuration && amount > 0 ? (60 * amount) / parseFloat(recipe.mManufactoringDuration) : 0;
 
                 products.push({
                     part: productName,
@@ -268,11 +270,10 @@ function getPowerGeneratingRecipes(
                 power: Math.round(recipe.mPowerProduction), // generated power - can be rounded to the nearest whole number (all energy numbers are whole numbers) 
             };   
             const supplementalRatio = Number(recipe.mSupplementalToPowerRatio);
-            // 1. Generator MW generated. This is an hourly value.
-            // 2. Divide by 60, to get the minute value
-            // 3. Now calculate the MJ, using the MJ->MW constant (1/3600), (https://en.wikipedia.org/wiki/Joule#Conversions) 
-            // 4. Now divide this number by the part energy to calculate how many MJ we burn in 1 minute. e.g. For nuclear reactors this is 150,000MJ / minute.
-            const burnRateMJ = (recipe.mPowerProduction / 60) / (1/3600);
+            // MW is MJ/s, so a minute of running burns power * 60 MJ. e.g. nuclear reactors
+            // burn 150,000 MJ/min. Written as a single multiply on purpose: the equivalent
+            // (power / 60) / (1 / 3600) is float-lossy (250 MW -> 15000.000000000002).
+            const burnRateMJ = building.power * 60;
 
             const fuels: ParserFuel[] = Array.isArray(recipe.mFuel) ? recipe.mFuel as ParserFuel[] : [];
 
@@ -302,15 +303,16 @@ function getPowerGeneratingRecipes(
                 //Find the part for the primary fuel
                 let primaryPerMin = 0;
                 if (primaryFuelPart.energyGeneratedInMJ > 0) {
-                    // The rounding here is important to remove floating point errors that appear with some types 
-                    // (this is step 4 from above)
-                    primaryPerMin = parseFloat((burnRateMJ / primaryFuelPart.energyGeneratedInMJ).toFixed(5))
+                    primaryPerMin = burnRateMJ / primaryFuelPart.energyGeneratedInMJ;
                 }
                 const ingredients: ParserPowerItem[] = [];
                 ingredients.push({
                     part: fuelItem.primaryFuel,
                     perMin: primaryPerMin,
-                    mwPerItem: building.power / primaryPerMin,
+                    // Derived from the fuel's energy, NOT from power / primaryPerMin: repeating rates
+                    // (Rocket Fuel at 4.1666…/min) make that division inexact, and the planner
+                    // multiplies the error up by the building count. See issue #485.
+                    mwPerItem: primaryFuelPart.energyGeneratedInMJ / 60,
                 })
                 if (fuelItem.supplementalResource && supplementalRatio > 0) {
                     const perMin = (3 / 50) * supplementalRatio * building.power;

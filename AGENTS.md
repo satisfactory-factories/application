@@ -22,7 +22,7 @@ This application is a specialized tool for players of the video game **Satisfact
 ### Frontend (`/web`)
 - **Framework**: Vue 3 (Composition API)
 - **Language**: TypeScript
-- **UI Components**: Vuetify 3
+- **UI Components**: Vuetify 4
 - **State Management**: Pinia
 - **Build Tool**: Vite
 - **Testing**: Vitest, @pinia/testing, @vue/test-utils

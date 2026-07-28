@@ -36,11 +36,15 @@ jobs:
         with:
           node-version: '24'
 
+      # corepack activates the pnpm pinned by `packageManager`, same as the API
+      # image. `npm install -g pnpm` fetched latest and then delegated to the
+      # pin anyway — two downloads, and an unpinned one in the build path.
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: corepack enable
 
+      # --filter, or the shared lockfile makes this install web and parsing too.
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --filter backend
 
       - name: Lint check
         run: pnpm lint-check

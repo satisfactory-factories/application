@@ -1,6 +1,15 @@
-import { Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
+
+// A fractional overclock the user dialled in themselves (223.333%) is deliberate precision —
+// quantities derived from it must be kept exact rather than snapped to the nearest whole
+// number. Solver-derived fractional clocks (a typed quantity re-solving to 42 buildings @
+// 97.9365%) don't count: they are representations of the typed value, and snapping still applies.
+export const hasFractionalClock = (groups: BuildingGroup[] | undefined): boolean => {
+  return (groups ?? []).some(group =>
+    group.clockSetByUser === true && (group.overclockPercent ?? 100) % 1 !== 0)
+}
 
 export const createNewPart = (factory: Factory, part: string) => {
   if (!factory.parts[part]) {

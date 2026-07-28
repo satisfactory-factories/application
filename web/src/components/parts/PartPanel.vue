@@ -63,7 +63,7 @@
             <span class="ml-2 font-weight-bold">Produced by ({{ part.standardRecipes.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row dense>
+            <v-row density="compact">
               <v-col
                 v-for="recipe in part.standardRecipes"
                 :key="recipe.id"
@@ -88,7 +88,7 @@
             <span class="ml-2 font-weight-bold">Alternate Recipes ({{ part.alternateRecipes.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row dense>
+            <v-row density="compact">
               <v-col
                 v-for="recipe in part.alternateRecipes"
                 :key="recipe.id"
@@ -109,7 +109,7 @@
             <span class="ml-2 font-weight-bold">Used in ({{ part.usedIn.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row dense>
+            <v-row density="compact">
               <v-col
                 v-for="recipe in part.usedIn"
                 :key="recipe.id"

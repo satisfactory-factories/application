@@ -321,4 +321,45 @@ describe('common', () => {
             expect(recipe.isAlternate).toBe(false);
         });
     })
+
+    // #485: the planner multiplies these rates up by the building count, so a value that is
+    // a hair off the number it means (7.199999999999999 for 7.2) surfaces as 2400.002 in the UI.
+    describe('numeric precision', () => {
+        // Noise is a value that sits within a rounding hair of a short decimal without being
+        // it. Genuine repeating rates (1.6666666666666667) are far from their 5dp form and pass.
+        const isFloatNoise = (value: number): boolean => {
+            if (Number.isInteger(value)) return false;
+            const short = parseFloat(value.toFixed(5));
+            return short !== value && Math.abs(value - short) < 1e-9;
+        }
+
+        const numbersIn = (node: any, trail: string, found: { trail: string, value: number }[] = []) => {
+            if (Array.isArray(node)) node.forEach((item, i) => numbersIn(item, `${trail}[${i}]`, found));
+            else if (node && typeof node === 'object') Object.entries(node).forEach(([key, item]) => numbersIn(item, `${trail}.${key}`, found));
+            else if (typeof node === 'number') found.push({ trail, value: node });
+            return found;
+        }
+
+        test('no number anywhere in the output should carry float noise', () => {
+            const noisy = numbersIn(results, '')
+                .filter(entry => isFloatNoise(entry.value))
+                .map(entry => `${entry.trail} = ${entry.value}`);
+
+            expect(noisy).toEqual([]);
+        })
+
+        test('production rates should be the exact amount-per-duration ratio', () => {
+            // 3 Computers per 25s and 3 Crystal Oscillators per 300s: both came out long
+            // when perMin was calculated as (60 / duration) * amount.
+            const superState: ParserRecipe = results.recipes.find((item: ParserRecipe) => item.id === 'Alternate_SuperStateComputer');
+            expect(superState.ingredients[0].perMin).toBe(7.2);
+
+            const uraniumUnit: ParserRecipe = results.recipes.find((item: ParserRecipe) => item.id === 'Alternate_NuclearFuelRod_1');
+            expect(uraniumUnit.ingredients[2].perMin).toBe(0.6);
+            expect(uraniumUnit.products[0].perMin).toBe(0.6);
+
+            const fuelRod: ParserRecipe = results.recipes.find((item: ParserRecipe) => item.id === 'NuclearFuelRod');
+            expect(fuelRod.ingredients[1].perMin).toBe(1.2);
+        })
+    })
 })

@@ -87,7 +87,7 @@ describe('Power Parsing', () => {
 
             expect(recipe.displayName).toBe('Fuel-Powered Generator (Rocket Fuel)');
             expect(recipe.ingredients[0].part).toBe('RocketFuel');
-            expect(recipe.ingredients[0].perMin).toBe(4.16667);
+            expect(recipe.ingredients[0].perMin).toBe(4.166666666666667);
             expect(recipe.byproduct).toBe(null);
             expect(recipe.building.name).toBe('generatorfuel');
             expect(recipe.building.power).toBe(250);
@@ -188,6 +188,52 @@ describe('Power Parsing', () => {
         it('should register the fuel-less generators in the buildings map with zero consumption', () => {
             expect(results.buildings.geothermalgenerator).toBe(0);
             expect(results.buildings.alienpoweraugmenter).toBe(0);
+        })
+    })
+
+    // Regression cover for #485: the planner divides a plant's total MW by mwPerItem, so any
+    // error here is multiplied by the building count (240 gens @ 240% turned 2400 into 2400.002).
+    describe('Fuel rate precision', () => {
+        const mwPerItemOf = (id: string) => {
+            const recipe : ParserPowerRecipe = results.powerGenerationRecipes.find((item: { id: string }) => item.id === id);
+            return recipe.ingredients[0].mwPerItem;
+        }
+
+        it('should store an exact mwPerItem for fuels with a repeating burn rate', () => {
+            // 3600 MJ / 60s and 630 MJ / 60s. Both were previously derived from a 5dp-rounded
+            // perMin, which left 59.999952000038405 and 10.499995800001681 behind.
+            expect(mwPerItemOf('GeneratorFuel_RocketFuel')).toBe(60);
+            expect(mwPerItemOf('GeneratorCoal_CompactedCoal')).toBe(10.5);
+        })
+
+        it('should derive every mwPerItem as exactly the fuel energy per second', () => {
+            results.powerGenerationRecipes.forEach((recipe: ParserPowerRecipe) => {
+                const fuel = recipe.ingredients[0];
+                if (!fuel || fuel.mwPerItem === undefined) return;
+
+                // Biomass fuels are moved out to rawResources once the power recipes are built
+                const part = results.items.parts[fuel.part];
+                if (!part) return;
+
+                expect(fuel.mwPerItem).toBe(part.energyGeneratedInMJ / 60);
+            })
+        })
+
+        it('should not round the fuel perMin, so it round-trips against mwPerItem', () => {
+            results.powerGenerationRecipes.forEach((recipe: ParserPowerRecipe) => {
+                const fuel = recipe.ingredients[0];
+                if (!fuel || !fuel.mwPerItem) return;
+
+                expect(fuel.perMin * fuel.mwPerItem).toBeCloseTo(recipe.building.power, 9);
+            })
+        })
+
+        it('should give a whole fuel demand for a 240 generator plant at 240%', () => {
+            const recipe : ParserPowerRecipe = results.powerGenerationRecipes.find((item: { id: string }) => item.id === 'GeneratorFuel_RocketFuel');
+            const totalMw = recipe.building.power * 240 * 2.4;
+
+            expect(totalMw / recipe.ingredients[0].mwPerItem!).toBe(2400);
+            expect(recipe.building.power * 240 / recipe.ingredients[0].mwPerItem!).toBe(1000);
         })
     })
 

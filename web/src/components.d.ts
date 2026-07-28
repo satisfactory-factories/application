@@ -51,6 +51,7 @@ declare module 'vue' {
     PlannerGlobalActions: typeof import('./components/planner/PlannerGlobalActions.vue')['default']
     PlannerSidebarContent: typeof import('./components/planner/PlannerSidebarContent.vue')['default']
     PlannerTooManyFactoriesOpen: typeof import('./components/planner/PlannerTooManyFactoriesOpen.vue')['default']
+    PlanRepairDialog: typeof import('./components/PlanRepairDialog.vue')['default']
     PowerProducer: typeof import('./components/planner/products/PowerProducer.vue')['default']
     Product: typeof import('./components/planner/products/Product.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
