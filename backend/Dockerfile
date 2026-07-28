@@ -21,18 +21,23 @@ RUN corepack enable
 WORKDIR /app
 
 # Manifests first: a source-only change then reuses the cached install layer.
-# pnpm-workspace.yaml is what makes the `catalog:` specs resolvable.
-COPY pnpm-workspace.yaml package.json ./
-COPY backend/package.json backend/pnpm-lock.yaml ./backend/
-
-WORKDIR /app/backend
+# pnpm-workspace.yaml is what makes the `catalog:` specs resolvable. The one
+# lockfile covers every package, and --frozen-lockfile validates it against
+# every importer in it, so web and parsing must contribute their manifests even
+# though --filter never installs them.
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY backend/package.json ./backend/
+COPY web/package.json ./web/
+COPY parsing/package.json ./parsing/
 
 # --frozen-lockfile so a build fails loudly on a lockfile that does not match
 # package.json, instead of silently resolving something newer than what was
 # tested. Dev dependencies are deliberately installed: `pnpm start` is
 # `ts-node backend.ts`, so ts-node and typescript are runtime dependencies here
 # in all but name.
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter backend
+
+WORKDIR /app/backend
 
 COPY backend/ ./
 
