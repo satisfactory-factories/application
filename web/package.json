@@ -13,7 +13,7 @@
     "test:browser": "node testing/browser/reactivity.e2e.mjs"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.8",
+    "@dagrejs/dagre": "^3.0.0",
     "@mdi/font": "7.4.47",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
