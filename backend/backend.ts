@@ -189,7 +189,10 @@ app.post('/login', async (req: TypedRequestBody<{ username: string; password: st
 
 // Validate Token Endpoint
 app.post('/validate-token', (req: TypedRequestBody<{ token: string }>, res: Express.Response) => {
-  const token = req.body.token;
+  // Express 5's body-parser leaves req.body undefined when nothing was parsed,
+  // where v4 gave an empty object. Without the guard this throws a 500 instead
+  // of the 400 below.
+  const token = req.body?.token;
   if (!token) {
     return res.status(400).json({ message: 'Token is required' });
   }
