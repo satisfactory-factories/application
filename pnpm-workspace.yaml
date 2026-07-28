@@ -10,7 +10,7 @@ packages:
 catalog:
   typescript: 6.0.3
   ts-node: 10.9.2
-  eslint: 9.39.5
+  eslint: 10.7.0
   eslint-import-resolver-typescript: 4.4.5
   eslint-plugin-import-x: 4.17.1
   typescript-eslint: 8.64.0
@@ -22,3 +22,8 @@ onlyBuiltDependencies:
   - esbuild
   - unrs-resolver
   - vue-demi
+
+# neostandard 0.13.0 pins @stylistic/eslint-plugin 2.11.0, which calls SourceCode
+# methods ESLint 10 removed. 5.x is the first line that supports ESLint 10.
+overrides:
+  '@stylistic/eslint-plugin': 5.10.0

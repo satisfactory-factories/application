@@ -7,6 +7,42 @@ import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescri
 // (regenerated into .eslintrc-auto-import.json by the vite plugin).
 const autoImport = JSON.parse(readFileSync(new URL('./.eslintrc-auto-import.json', import.meta.url), 'utf-8'))
 
+// neostandard 0.13 is still written against @stylistic v2, but that version calls
+// SourceCode methods ESLint 10 removed, so pnpm-workspace.yaml overrides the plugin
+// to v5. Three of the rule configs neostandard emits no longer validate against v5's
+// schemas; patch them here rather than lose the rules. Drop this shim, and the
+// override, once neostandard supports ESLint 10.
+const styleConfigs = neostandard().map(config => {
+  if (!config.rules) return config
+
+  const rules = { ...config.rules }
+
+  // Renamed in @stylistic v3.
+  if (rules['@stylistic/func-call-spacing']) {
+    rules['@stylistic/function-call-spacing'] = rules['@stylistic/func-call-spacing']
+    delete rules['@stylistic/func-call-spacing']
+  }
+
+  // `allowMultiplePropertiesPerLine` was the deprecated alias of
+  // `allowAllPropertiesOnSameLine`; v5 dropped it from the schema.
+  const objectPropertyNewline = rules['@stylistic/object-property-newline']
+  if (Array.isArray(objectPropertyNewline) && objectPropertyNewline[1]?.allowMultiplePropertiesPerLine !== undefined) {
+    const [severity, { allowMultiplePropertiesPerLine, ...options }] = objectPropertyNewline
+    rules['@stylistic/object-property-newline'] = [severity, {
+      ...options,
+      allowAllPropertiesOnSameLine: allowMultiplePropertiesPerLine,
+    }]
+  }
+
+  // Deprecated aliases of `indent` / `no-multi-spaces`, which neostandard already
+  // configures. This project has no JSX, so dropping them only removes the warnings
+  // @stylistic prints on every run.
+  delete rules['@stylistic/jsx-indent']
+  delete rules['@stylistic/jsx-props-no-multi-spaces']
+
+  return { ...config, rules }
+})
+
 export default defineConfigWithVueTs(
   {
     ignores: [
@@ -23,7 +59,7 @@ export default defineConfigWithVueTs(
   // Style layer: neostandard is the flat-config successor of eslint-config-standard,
   // which the old eslint-config-vuetify v1 extended. Must come before the Vue
   // configs so vue-eslint-parser wins on .vue files.
-  ...neostandard(),
+  ...styleConfigs,
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
   {
@@ -67,7 +103,8 @@ export default defineConfigWithVueTs(
       '@stylistic/arrow-parens': ['error', 'as-needed'],
       '@stylistic/quotes': ['error', 'single', {
         avoidEscape: true,
-        allowTemplateLiterals: true,
+        // @stylistic v5 deprecated the boolean form of this option.
+        allowTemplateLiterals: 'always',
       }],
       '@stylistic/comma-dangle': ['error', {
         arrays: 'always-multiline',

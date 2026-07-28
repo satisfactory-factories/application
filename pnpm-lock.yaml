@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@stylistic/eslint-plugin': 5.10.0
+
 importers:
 
   .: {}

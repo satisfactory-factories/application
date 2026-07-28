@@ -24,6 +24,10 @@ All notable changes to this project are documented in this file. It mirrors the 
 - The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window — flinging the cursor onto a monitor to the left (or alt-tabbing to the game) used to trip the left-edge peek zone on the way out and leave the tray showing indefinitely. A peek triggered by the cursor exiting the window is now provisional (it closes after a second unless the cursor comes back in), and the tray always collapses when the window loses focus. Peeking by hovering the left edge inside the window behaves exactly as before.
 - Copying a factory that supplies other factories no longer throws an error during the recalculation that follows: the copy carries the original's dependency requests, and cleaning up such an orphaned request could pull the entry out from under the cleanup scan itself mid-loop.
 
+### Under the hood
+
+- Upgraded ESLint 9 → 10 across all three packages. The one blocker was the style layer: `neostandard` (still ESLint 9-only) bundles `@stylistic/eslint-plugin` v2, which calls `SourceCode` methods ESLint 10 deleted, so the plugin is pinned forward to v5 via a workspace override and web's flat config patches the three rule configs neostandard emits that v5 no longer accepts (`func-call-spacing` → `function-call-spacing`, `object-property-newline`'s `allowMultiplePropertiesPerLine` → `allowAllPropertiesOnSameLine`, and the deprecated JSX aliases this project has no use for). Both the override and the shim come out again once neostandard supports ESLint 10. Rule behaviour is otherwise unchanged; the only code change is auto-fixed indentation in three TS type annotations.
+
 ## Beta v0.5 — The "Overclocked" Update
 
 After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.
