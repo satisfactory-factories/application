@@ -88,7 +88,6 @@ export default defineConfig(() => ({
     pool: 'forks',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
-    globalTeardown: './testing/global-teardown.ts',
     css: true,
     server: {
       deps: {

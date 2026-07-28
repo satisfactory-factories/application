@@ -108,9 +108,9 @@ export const calculateTotalParts = (factories: Factory[]) => {
 
 export const calculateTotalProducedItems = (factories: Factory[]) => {
   const products: Record<
-      string,
-      { id: string, name: string; totalAmount: number; totalDifference: number }
-    > = {}
+    string,
+    { id: string, name: string; totalAmount: number; totalDifference: number }
+  > = {}
 
   factories.forEach(factory => {
     factory.products.forEach(product => {
@@ -129,7 +129,7 @@ export const calculateTotalProducedItems = (factories: Factory[]) => {
       // Add the difference if metrics exist
       if (hasMetricsForPart(factory, product.id)) {
         const difference =
-            factory.dependencies.metrics[product.id]?.difference ?? 0
+          factory.dependencies.metrics[product.id]?.difference ?? 0
         products[product.id].totalDifference += difference
       }
     })
@@ -143,7 +143,7 @@ export const calculateTotalProducedItems = (factories: Factory[]) => {
 
 export const calculateProducedItemsDifference = (factories: Factory[]) => {
   const differences: Record<string, { id: string, name: string; totalDifference: number }> =
-      {}
+    {}
 
   factories.forEach(factory => {
     Object.entries(factory.dependencies.metrics).forEach(([partId, metric]) => {

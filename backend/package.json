@@ -16,7 +16,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.0.0",
     "express": "^4.22.2",
     "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "^9.0.3",
@@ -24,7 +24,7 @@
     "random-word-slugs": "^0.1.7"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "catalog:",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
