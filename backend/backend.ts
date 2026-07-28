@@ -244,7 +244,7 @@ app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestB
     await FactoryData.findOneAndUpdate(
       { user: username },
       { data: factoryData, lastSaved: new Date() },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     );
 
     console.log(`Data saved for ${username}`);
