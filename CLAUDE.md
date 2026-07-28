@@ -8,7 +8,7 @@ A companion `AGENTS.md` exists with project-domain context (factory connections,
 
 This is a pnpm workspace (`pnpm-workspace.yaml`) with three packages under `application/`:
 
-- **`web/`** — Vue 3 + Vuetify 3 SPA (the planner UI). This is where most work happens.
+- **`web/`** — Vue 3 + Vuetify 4 SPA (the planner UI). This is where most work happens.
 - **`backend/`** — Express + Mongoose API for auth and saving/sharing plans. Optional for local dev.
 - **`parsing/`** — CLI that converts the game's `Docs.json` into the `gameData.json` the frontend consumes.
 

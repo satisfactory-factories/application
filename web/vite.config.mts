@@ -54,6 +54,9 @@ export default defineConfig(() => ({
     ...(process.env.VITE_DEVTOOLS === 'true' ? [vueDevTools()] : []),
     Vuetify({
       autoImport: true,
+      // Compiles Vuetify's Sass so the breakpoint overrides in the settings file
+      // reach the generated media queries. See that file for why.
+      styles: { configFile: 'src/assets/styles/vuetify-settings.scss' },
     }),
     Fonts({
       google: {

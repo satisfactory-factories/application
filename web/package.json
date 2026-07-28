@@ -31,7 +31,7 @@
     "sav2json": "^1.0.1",
     "vue": "^3.5.40",
     "vuedraggable": "^4.1.0",
-    "vuetify": "^3.12.10"
+    "vuetify": "^4.0.0"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.0.0",
