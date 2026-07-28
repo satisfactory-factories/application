@@ -85,9 +85,21 @@ export const useAppStore = defineStore('app', () => {
     return factories.filter(factory => !factory.hidden).length
   }
 
+  // The tab-switch load is deferred to the next frame so the loading overlay paints
+  // before the work starts. jsdom implements requestAnimationFrame on a ~16ms timer,
+  // so under Vitest that instead defers it past the end of the spec that switched
+  // tabs: the callback then logs — and starts the whole load cascade, which logs
+  // more — while the worker is being torn down, and Vitest fails the run with
+  // "Closing rpc while onUserConsoleLog was pending". Nothing paints in tests, so
+  // run it inline and keep the work inside the test that asked for it.
+  const afterPaint = (fn: () => void) => {
+    if (import.meta.env.MODE === 'test') fn()
+    else requestAnimationFrame(fn)
+  }
+
   // Watch the tab index, if it changes we need to throw up a loading
   watch(currentFactoryTabIndex, () => {
-    requestAnimationFrame(() => {
+    afterPaint(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
 
