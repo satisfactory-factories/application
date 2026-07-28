@@ -1,6 +1,6 @@
 /* eslint-disable no-loss-of-precision */
 import { describe, expect, it } from 'vitest'
-import { formatMw, formatNumber, formatNumberFully, snapNearInteger } from '@/utils/numberFormatter'
+import { formatMw, formatNumber, formatNumberFully, snapDriftedInteger, snapNearInteger } from '@/utils/numberFormatter'
 
 describe('numberFormatter', () => {
   describe('formatNumber', () => {
@@ -71,6 +71,28 @@ describe('numberFormatter', () => {
     it('should never snap tiny quantities to zero', () => {
       expect(snapNearInteger(0.001)).toBe(0.001)
       expect(snapNearInteger(-0.001)).toBe(-0.001)
+    })
+  })
+
+  describe('snapDriftedInteger', () => {
+    it('should behave like snapNearInteger for small values', () => {
+      expect(snapDriftedInteger(120.001)).toBe(120)
+      expect(snapDriftedInteger(120.003)).toBe(120.003)
+      expect(snapDriftedInteger(0.001)).toBe(0.001)
+    })
+
+    it('should widen with the value, catching drift the flat tolerance misses', () => {
+      // #485's drift was 8e-7 of the value, so it outgrew the flat 0.002 past ~2,500/min.
+      expect(snapDriftedInteger(2400.002)).toBe(2400)
+      expect(snapDriftedInteger(5000.004)).toBe(5000)
+      expect(snapDriftedInteger(12000.01)).toBe(12000)
+      expect(snapNearInteger(12000.01)).toBe(12000.01) // What the flat tolerance does
+    })
+
+    it('should still leave a deliberately chosen quantity alone', () => {
+      expect(snapDriftedInteger(12000.5)).toBe(12000.5)
+      expect(snapDriftedInteger(12000.05)).toBe(12000.05)
+      expect(snapDriftedInteger(822.667)).toBe(822.667)
     })
   })
 
