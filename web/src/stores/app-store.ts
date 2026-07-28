@@ -196,6 +196,16 @@ export const useAppStore = defineStore('app', () => {
     localStorage.setItem('lastSave', lastSave.value.toISOString())
   }
 
+  // The pauses in the load sequence pace the browser: they give Vue a chance to flush
+  // and paint between factories so a large plan appears progressively instead of
+  // locking the tab. There is nothing to paint under Vitest, where they only leave the
+  // chain sleeping — and logging — after the spec that kicked it off has finished.
+  // `readyForData` starts that chain fire-and-forget, so no spec can await it, and a
+  // log still in flight when the worker is torn down fails the whole run with
+  // "Closing rpc while onUserConsoleLog was pending".
+  const loadPause = (ms: number) =>
+    new Promise(resolve => setTimeout(resolve, import.meta.env.MODE === 'test' ? 0 : ms))
+
   const prepareLoader = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
     const factoriesToLoad = newFactories ?? factories.value
@@ -205,7 +215,7 @@ export const useAppStore = defineStore('app', () => {
     eventBus.emit('plannerShow', false)
 
     // Wait a bit for the planner to comply
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await loadPause(50)
 
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)
@@ -257,7 +267,7 @@ export const useAppStore = defineStore('app', () => {
     eventBus.emit('prepareForLoad', { count: newFactories.length, shown: shownFactories(newFactories) })
 
     // Wait 50ms to allow the loader to update
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await loadPause(50)
 
     // Start loading the factories
     await loadNextFactory(newFactories)
@@ -269,12 +279,12 @@ export const useAppStore = defineStore('app', () => {
       eventBus.emit('incrementLoad', { step: 'increment' })
       loadedCount++
 
-      await new Promise(resolve => setTimeout(resolve, 75)) // Pause between loads
+      await loadPause(75) // Pause between loads
     }
 
     console.log('appStore: loadNextFactory: Finished loading factories.')
     eventBus.emit('incrementLoad', { step: 'render' })
-    await new Promise(resolve => setTimeout(resolve, 75)) // Wait for DOM updates
+    await loadPause(75) // Wait for DOM updates
     loadingCompleted()
   }
 
