@@ -21,6 +21,17 @@
         "minor"
       ],
       "automerge": true
+    },
+    {
+      "description": [
+        "Below 1.0.0, a bump of the second digit (0.6 -> 0.7) is a major update to Renovate, because ^0.6.0 does not permit 0.7.0 under semver. The patch/minor rule above therefore never matches pre-1.0 packages, and they were being left for manual merge.",
+        "This treats those the same as any other minor: merged once the branch is green. Genuine 1.0+ majors still require a human."
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "matchCurrentVersion": "<1.0.0",
+      "automerge": true
     }
   ]
 }

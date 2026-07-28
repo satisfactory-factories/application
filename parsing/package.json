@@ -13,7 +13,7 @@
     "lint-check": "eslint ."
   },
   "dependencies": {
-    "fs-extra": "^10.1.0",
+    "fs-extra": "^11.0.0",
     "iconv-lite": "^0.7.0"
   },
   "devDependencies": {
