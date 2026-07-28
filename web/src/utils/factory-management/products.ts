@@ -9,6 +9,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import {
   getPartDisplayNameWithoutDataStore,
   getRecipe,
+  hasFractionalClock,
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
@@ -67,15 +68,8 @@ export const addProductToFactory = (
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
 
-// A fractional overclock the user dialled in themselves (223.333%) is deliberate
-// precision — quantities derived from it must be kept exact rather than snapped to the
-// nearest whole number. Solver-derived fractional clocks (a typed quantity re-solving to
-// 42 buildings @ 97.9365%) don't count: they are representations of the typed value, and
-// snapping still applies.
-export const productHasFractionalClock = (product: FactoryItem): boolean => {
-  return (product.buildingGroups ?? []).some(group =>
-    group.clockSetByUser === true && (group.overclockPercent ?? 100) % 1 !== 0)
-}
+export const productHasFractionalClock = (product: FactoryItem): boolean =>
+  hasFractionalClock(product.buildingGroups)
 
 // Loops through all products and figures out what they produce and what they require, then adds it to the factory.parts object.
 export const calculateProducts = (factory: Factory, gameData: DataInterface) => {

@@ -4566,7 +4566,7 @@
                 {
                     "part": "Computer",
                     "amount": 3,
-                    "perMin": 7.199999999999999
+                    "perMin": 7.2
                 },
                 {
                     "part": "ElectromagneticControlRod",
@@ -4858,7 +4858,7 @@
                 {
                     "part": "CrystalOscillator",
                     "amount": 3,
-                    "perMin": 0.6000000000000001
+                    "perMin": 0.6
                 },
                 {
                     "part": "Rotor",
@@ -4870,7 +4870,7 @@
                 {
                     "part": "NuclearFuelRod",
                     "amount": 3,
-                    "perMin": 0.6000000000000001,
+                    "perMin": 0.6,
                     "isByProduct": false
                 }
             ],
@@ -10185,7 +10185,7 @@
                 {
                     "part": "SteelPlateReinforced",
                     "amount": 3,
-                    "perMin": 1.2000000000000002
+                    "perMin": 1.2
                 },
                 {
                     "part": "ElectromagneticControlRod",
@@ -10436,8 +10436,8 @@
             "ingredients": [
                 {
                     "part": "CompactedCoal",
-                    "perMin": 7.14286,
-                    "mwPerItem": 10.499995800001681
+                    "perMin": 7.142857142857143,
+                    "mwPerItem": 10.5
                 },
                 {
                     "part": "Water",
@@ -10526,8 +10526,8 @@
             "ingredients": [
                 {
                     "part": "RocketFuel",
-                    "perMin": 4.16667,
-                    "mwPerItem": 59.999952000038405
+                    "perMin": 4.166666666666667,
+                    "mwPerItem": 60
                 }
             ],
             "byproduct": null,
