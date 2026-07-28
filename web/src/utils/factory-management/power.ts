@@ -1,6 +1,6 @@
 import { Factory, FactoryPowerChangeType, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipe } from '@/utils/factory-management/common'
+import { getPowerRecipe, hasFractionalClock } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
@@ -114,17 +114,22 @@ export const calculatePowerProducers = (
       }
     }
 
+    // Whole-number-driven quantities that land a rounding hair off an integer snap to the
+    // integer meant, matching what products.ts does. A user-dialled fractional clock is
+    // deliberate precision, so those producers keep their exact figures.
+    const snap = !hasFractionalClock(producer.buildingGroups)
+
     // Ensure values are correctly formatted
-    producer.buildingAmount = formatNumberFully(producer.buildingAmount)
-    producer.buildingCount = formatNumberFully(producer.buildingCount)
-    producer.powerAmount = formatNumberFully(producer.powerAmount, 1)
-    producer.fuelAmount = formatNumberFully(producer.fuelAmount)
-    producer.powerProduced = formatNumberFully(producer.powerProduced)
+    producer.buildingAmount = formatNumberFully(producer.buildingAmount, 3, snap)
+    producer.buildingCount = formatNumberFully(producer.buildingCount, 3, snap)
+    producer.powerAmount = formatNumberFully(producer.powerAmount, 1, snap)
+    producer.fuelAmount = formatNumberFully(producer.fuelAmount, 3, snap)
+    producer.powerProduced = formatNumberFully(producer.powerProduced, 3, snap)
     producer.ingredients.forEach(ingredient => {
-      ingredient.perMin = formatNumberFully(ingredient.perMin)
+      ingredient.perMin = formatNumberFully(ingredient.perMin, 3, snap)
     })
     if (producer.byproduct) {
-      producer.byproduct.amount = formatNumberFully(producer.byproduct.amount)
+      producer.byproduct.amount = formatNumberFully(producer.byproduct.amount, 3, snap)
     }
 
     // Ensure the amounts match the new reality, so that if they are re-calculated they don't change without the user's say so.
@@ -132,7 +137,7 @@ export const calculatePowerProducers = (
     producer.powerAmount = producer.powerProduced
     // Re-format after the raw division, otherwise floating point noise leaks back in
     // (e.g. 250 / 33.333… = 7.499999999999999 instead of 7.5).
-    producer.fuelAmount = formatNumberFully(producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0))
+    producer.fuelAmount = formatNumberFully(producer.powerProduced / (recipe.ingredients[0].mwPerItem ?? 0), 3, snap)
   })
 }
 
