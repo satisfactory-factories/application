@@ -6,12 +6,7 @@
     }
   },
   "rewrites": [
-    { "source": "/graph", "destination": "/" },
-    { "source": "/parts", "destination": "/" },
-    { "source": "/recipes", "destination": "/" },
-    { "source": "/share/:path*", "destination": "/" },
-    { "source": "/changelog", "destination": "/" },
-    { "source": "/error", "destination": "/" }
+    { "source": "/((?!_vercel/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
