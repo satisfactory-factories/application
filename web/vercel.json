@@ -6,10 +6,7 @@
     }
   },
   "rewrites": [
-    { "source": "/graph", "destination": "/" },
-    { "source": "/recipes", "destination": "/" },
-    { "source": "/share/:path*", "destination": "/" },
-    { "source": "/changelog", "destination": "/" }
+    { "source": "/((?!_vercel/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
