@@ -73,4 +73,32 @@ describe('PlanRepairDialog', () => {
     expect(dialogText()).toContain('Coal plant')
     expect(dialogText()).toContain('Compacted Coal')
   })
+
+  it('should group a factory\'s items under one heading', async () => {
+    appStore.planRepairs = [
+      rocketFuelRepair,
+      { ...rocketFuelRepair, itemName: 'Compacted Coal', before: 3000.003, after: 3000 },
+      { ...rocketFuelRepair, factoryName: 'Steel plant', itemName: 'Iron Plate' },
+    ]
+    appStore.isLoaded = true
+    await nextTick()
+
+    const headings = [...document.querySelectorAll('h3')].map(h => h.textContent?.trim())
+    expect(headings).toEqual(['FG TEST', 'Steel plant'])
+
+    // Both of FG TEST's items sit in its list, not repeated under their own headings
+    const lists = document.querySelectorAll('.repair-list')
+    expect(lists).toHaveLength(2)
+    expect(lists[0].querySelectorAll('li')).toHaveLength(2)
+    expect(lists[1].querySelectorAll('li')).toHaveLength(1)
+  })
+
+  it('should colour the old value as an error and the new one as a success', async () => {
+    appStore.planRepairs = [rocketFuelRepair]
+    appStore.isLoaded = true
+    await nextTick()
+
+    expect(document.querySelector('.repair-before')?.textContent).toBe('2400.002')
+    expect(document.querySelector('.repair-after')?.textContent).toBe('2400')
+  })
 })

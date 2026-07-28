@@ -11,26 +11,23 @@
           We have detected some data errors in your plan (usually to do with micro-rounding)
           and have fixed the following items:
         </p>
-        <v-list class="py-0" density="compact">
-          <v-list-item
-            v-for="(repair, index) in repairs"
-            :key="index"
-            class="px-0"
-          >
-            <v-list-item-title class="text-body-2">
-              <strong>{{ repair.factoryName }}</strong>
-              <span class="mx-1 text-medium-emphasis">/</span>
+        <div v-for="group in groupedRepairs" :key="group.factoryName" class="mb-4">
+          <h3 class="text-h6 mb-1">
+            <i class="fas fa-industry mr-2" />
+            <span>{{ group.factoryName }}</span>
+          </h3>
+          <ul class="repair-list">
+            <li v-for="(repair, index) in group.repairs" :key="index" class="text-body-2 mb-1">
               <strong>{{ repair.itemName }}</strong>
-              <span class="text-medium-emphasis"> ({{ repair.field }})</span>
-            </v-list-item-title>
-            <v-list-item-subtitle class="text-body-2">
-              <span>{{ repair.context }}:</span>
-              <span class="ml-1 text-medium-emphasis">{{ repair.before }}</span>
+              <span class="text-medium-emphasis">
+                — {{ repair.context }} ({{ repair.field }}):
+              </span>
+              <span class="repair-before">{{ repair.before }}</span>
               <i class="fas fa-arrow-right mx-2" />
-              <span class="font-weight-bold">{{ repair.after }}</span>
-            </v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
+              <span class="repair-after">{{ repair.after }}</span>
+            </li>
+          </ul>
+        </div>
         <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">
           Nothing you need to do — your plan has already been recalculated with the corrected
           figures. If you had worked around this by hand, you can now undo that.
@@ -48,6 +45,7 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia'
   import { useAppStore } from '@/stores/app-store'
+  import { PlanRepairEntry } from '@/utils/factory-management/repair'
 
   const appStore = useAppStore()
   const { planRepairs, isLoaded } = storeToRefs(appStore)
@@ -55,7 +53,7 @@
   const isOpen = ref(false)
   // Snapshotted on open: dismissing clears the store's list, which would otherwise empty
   // the dialog's content while it is still fading out.
-  const repairs = ref<typeof planRepairs.value>([])
+  const repairs = ref<PlanRepairEntry[]>([])
 
   // Held back until loading finishes, otherwise this lands behind the loading overlay on
   // the very load that produced it.
@@ -65,8 +63,38 @@
     isOpen.value = true
   }, { immediate: true })
 
+  // One heading per factory with its affected items beneath, rather than repeating the
+  // factory name on every line. Insertion order is the plan's own factory order.
+  const groupedRepairs = computed(() => {
+    const groups = new Map<string, PlanRepairEntry[]>()
+    for (const repair of repairs.value) {
+      const existing = groups.get(repair.factoryName)
+      if (existing) {
+        existing.push(repair)
+      } else {
+        groups.set(repair.factoryName, [repair])
+      }
+    }
+    return [...groups].map(([factoryName, entries]) => ({ factoryName, repairs: entries }))
+  })
+
   const dismiss = () => {
     isOpen.value = false
     appStore.dismissPlanRepairs()
   }
 </script>
+
+<style lang="scss" scoped>
+.repair-list {
+  padding-left: 1.5rem;
+}
+
+.repair-before {
+  color: var(--sf-error);
+}
+
+.repair-after {
+  color: var(--sf-success);
+  font-weight: 700;
+}
+</style>

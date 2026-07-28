@@ -4,7 +4,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { repairPlanPrecision } from '@/utils/factory-management/repair'
-import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
+import { create485DemoPlan, create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 import { gameData } from '@/utils/gameData'
 
 describe('repair', () => {
@@ -83,6 +83,39 @@ describe('repair', () => {
 
         expect(second.repairs).toEqual([])
         expect(second.staleRecipeFigures).toBe(0)
+      })
+    })
+
+    // The template behind the Templates dialog's "#485: Micro-rounding repair" button.
+    describe('the demo plan', () => {
+      it('should repair every factory and leave the plan on whole numbers', () => {
+        const factories = create485DemoPlan().getFactories()
+
+        const report = repairPlanPrecision(factories, gameData)
+        calculateFactories(factories, gameData, { origin: 'recalculate' })
+
+        const [refinery, fgTest, megaPlant] = factories
+        expect(refinery.products[0].amount).toBe(14400)
+        expect(fgTest.powerProducers[0].fuelAmount).toBe(2400)
+        expect(fgTest.powerProducers[1].fuelAmount).toBe(3000)
+        expect(fgTest.inputs[0].amount).toBe(2400)
+        expect(megaPlant.powerProducers[0].fuelAmount).toBe(12000)
+        expect(megaPlant.inputs[0].amount).toBe(12000)
+
+        // One heading per factory in the dialog, in plan order
+        expect([...new Set(report.repairs.map(entry => entry.factoryName))]).toEqual([
+          'Rocket Fuel Refinery', 'FG TEST', 'Mega Rocket Fuel Plant',
+        ])
+      })
+
+      it('should include drift past the flat snap tolerance', () => {
+        const factories = create485DemoPlan().getFactories()
+
+        const report = repairPlanPrecision(factories, gameData)
+
+        // 0.012 and 0.01 — both beyond the runtime's flat 0.002 allowance
+        const large = report.repairs.filter(entry => Math.abs(entry.before - entry.after) > 0.002)
+        expect(large.map(entry => entry.before).sort()).toEqual([12000.01, 12000.01, 14400.012])
       })
     })
 
