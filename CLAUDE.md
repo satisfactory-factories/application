@@ -12,7 +12,7 @@ This is a pnpm workspace (`pnpm-workspace.yaml`) with three packages under `appl
 - **`backend/`** — Express + Mongoose API for auth and saving/sharing plans. Optional for local dev.
 - **`parsing/`** — CLI that converts the game's `Docs.json` into the `gameData.json` the frontend consumes.
 
-Each package keeps its **own** `pnpm-lock.yaml` (`sharedWorkspaceLockfile: false`) — versions are pinned per package.
+There is a **single** `pnpm-lock.yaml` at the repo root covering all three packages (`sharedWorkspaceLockfile: true`). Versions shared across packages live in the `catalog:` block of `pnpm-workspace.yaml`. Install one package's deps with `pnpm install --filter <pkg>`; a bare `pnpm install` from any directory installs the whole workspace.
 
 ## Commands
 

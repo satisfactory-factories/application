@@ -5,8 +5,6 @@ packages:
 
 # Single source of truth for versions shared across all workspace packages.
 # Reference these in a package.json with e.g. "typescript": "catalog:".
-# Pinned exactly so every package resolves to one identical version
-# (workspace lockfiles are per-package, so caret ranges would drift apart).
 catalog:
   typescript: 6.0.3
   ts-node: 10.9.2
@@ -16,10 +14,18 @@ catalog:
   eslint-plugin-import-x: 4.17.1
   typescript-eslint: 8.64.0
 
-sharedWorkspaceLockfile: false
+# Must stay true. Renovate only ever commits the workspace-root lockfile, so
+# with per-package lockfiles every `catalog:` bump shipped as a one-file diff
+# and broke the API image on ERR_PNPM_LOCKFILE_CONFIG_MISMATCH.
+# See https://github.com/renovatebot/renovate/issues/37485
+sharedWorkspaceLockfile: true
 
-onlyBuiltDependencies:
-  - core-js
-  - esbuild
-  - unrs-resolver
-  - vue-demi
+# pnpm 11 removed onlyBuiltDependencies in favour of this map, so the old list
+# was dead config. @parcel/watcher (optional native watcher for sass) is left
+# unbuilt, which is what the old list did in practice.
+allowBuilds:
+  core-js: true
+  esbuild: true
+  unrs-resolver: true
+  vue-demi: true
+  '@parcel/watcher': false

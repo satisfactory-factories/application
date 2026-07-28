@@ -36,8 +36,9 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm
 
+      # --filter, or the shared lockfile makes this install web and backend too.
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --filter parsing
 
 #      - name: Lint check
 #        run: pnpm lint-check
