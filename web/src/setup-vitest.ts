@@ -48,6 +48,26 @@ for (const name of ['localStorage', 'sessionStorage'] as const) {
   Object.defineProperty(window, name, { value: storage, writable: true, configurable: true })
 }
 
+// jsdom has no visualViewport, and Vuetify's overlay (every v-dialog, v-menu, v-tooltip)
+// reads the bare global while positioning itself — an unhandled ReferenceError otherwise.
+if (typeof globalThis.visualViewport === 'undefined') {
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    offsetLeft: 0,
+    offsetTop: 0,
+    pageLeft: 0,
+    pageTop: 0,
+    scale: 1,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }
+  for (const target of [globalThis, window]) {
+    Object.defineProperty(target, 'visualViewport', { value: viewport, writable: true, configurable: true })
+  }
+}
+
 let gameData: any = null
 let gameDataVersion: string | null = null
 

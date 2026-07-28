@@ -37,6 +37,19 @@ export function snapNearInteger (value: number, tolerance = INTEGER_SNAP_TOLERAN
   return Math.abs(value - nearest) <= tolerance ? nearest : value
 }
 
+// Drift baked into a saved plan is proportional, not absolute: #485 stored a fuel rate
+// 8e-7 too high, which a 240-generator plant multiplied into 2400.002 and a 1,200-generator
+// one into 12000.01. The flat tolerance above catches the former and misses the latter, so
+// the repair pass that runs over loaded plans scales its tolerance with the value.
+const DRIFT_RELATIVE_TOLERANCE = 1e-6
+
+// Snaps a value a saved plan holds a rounding hair off a whole number. Deliberately looser
+// than snapNearInteger for large values and identical to it for small ones — a value must
+// still be within one part per million of the integer, which no hand-typed quantity is.
+export function snapDriftedInteger (value: number): number {
+  return snapNearInteger(value, Math.max(INTEGER_SNAP_TOLERANCE, Math.abs(value) * DRIFT_RELATIVE_TOLERANCE))
+}
+
 // `snap` is opt-in and context-driven: callers snap only when the value derives from
 // whole-number inputs (so a 0.001 offset is float noise). Values derived from
 // deliberately precise inputs — e.g. a building group clocked at 223.333% — must NOT
