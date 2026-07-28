@@ -21,12 +21,8 @@ RUN corepack enable
 WORKDIR /app
 
 # Manifests first: a source-only change then reuses the cached install layer.
-# pnpm-workspace.yaml is what makes the `catalog:` specs resolvable. The root
-# pnpm-lock.yaml comes along because the install runs over two importers (the
-# root and backend), and a --frozen-lockfile install checks the workspace's
-# `overrides` against *every* importer's lockfile — without the root's, the
-# check fails with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH for `/app`.
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml is what makes the `catalog:` specs resolvable.
+COPY pnpm-workspace.yaml package.json ./
 COPY backend/package.json backend/pnpm-lock.yaml ./backend/
 
 WORKDIR /app/backend

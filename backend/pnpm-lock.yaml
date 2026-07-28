@@ -28,9 +28,6 @@ catalogs:
       specifier: 8.64.0
       version: 8.64.0
 
-overrides:
-  '@stylistic/eslint-plugin': 5.10.0
-
 importers:
 
   .:

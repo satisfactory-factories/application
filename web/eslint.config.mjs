@@ -1,17 +1,25 @@
 import { readFileSync } from 'node:fs'
 import neostandard from 'neostandard'
 import pluginVue from 'eslint-plugin-vue'
+import stylistic from '@stylistic/eslint-plugin'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 
 // Globals for the components/composables auto-imported by unplugin-auto-import
 // (regenerated into .eslintrc-auto-import.json by the vite plugin).
 const autoImport = JSON.parse(readFileSync(new URL('./.eslintrc-auto-import.json', import.meta.url), 'utf-8'))
 
-// neostandard 0.13 is still written against @stylistic v2, but that version calls
-// SourceCode methods ESLint 10 removed, so pnpm-workspace.yaml overrides the plugin
-// to v5. Three of the rule configs neostandard emits no longer validate against v5's
-// schemas; patch them here rather than lose the rules. Drop this shim, and the
-// override, once neostandard supports ESLint 10.
+// neostandard 0.13 is still written against @stylistic v2, and v2 calls SourceCode
+// methods ESLint 10 removed — every lint run dies on `isSpaceBetweenTokens`. So we
+// take neostandard's configs and hand them our own @stylistic v5 (the first line
+// that supports ESLint 10, pinned in package.json), which means also patching the
+// three rule configs v5's schemas no longer accept.
+//
+// Swapping the plugin object here rather than forcing neostandard's dependency with
+// a pnpm override is deliberate: an override lives in pnpm-workspace.yaml, and any
+// environment whose pnpm does not read overrides from there (Vercel's build image,
+// among others) fails the install outright with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH.
+//
+// All of this comes out once neostandard supports ESLint 10.
 const styleConfigs = neostandard().map(config => {
   if (!config.rules) return config
 
@@ -40,7 +48,13 @@ const styleConfigs = neostandard().map(config => {
   delete rules['@stylistic/jsx-indent']
   delete rules['@stylistic/jsx-props-no-multi-spaces']
 
-  return { ...config, rules }
+  // The rules above only resolve against v5 if the config carrying them registers
+  // v5 under the same name, so replace neostandard's bundled v2 wherever it appears.
+  const plugins = config.plugins?.['@stylistic']
+    ? { ...config.plugins, '@stylistic': stylistic }
+    : config.plugins
+
+  return { ...config, ...(plugins ? { plugins } : {}), rules }
 })
 
 export default defineConfigWithVueTs(

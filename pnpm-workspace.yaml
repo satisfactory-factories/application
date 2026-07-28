@@ -23,8 +23,3 @@ onlyBuiltDependencies:
   - esbuild
   - unrs-resolver
   - vue-demi
-
-# neostandard 0.13.0 pins @stylistic/eslint-plugin 2.11.0, which calls SourceCode
-# methods ESLint 10 removed. 5.x is the first line that supports ESLint 10.
-overrides:
-  '@stylistic/eslint-plugin': 5.10.0
