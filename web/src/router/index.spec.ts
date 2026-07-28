@@ -51,6 +51,19 @@ describe('router', () => {
       expect(resolved.params).toEqual({ id: 'some-share-id' })
     })
 
+    it('resolves an unknown path to the not-found page', () => {
+      // Vercel rewrites every unmatched URL to the SPA, so the router — not the
+      // CDN — is what tells the user the page does not exist. Without this
+      // catch-all the rewrite would just render an empty <router-view />.
+      const resolved = router.resolve('/no/such/page')
+      expect(resolved.matched.length).toBeGreaterThan(0)
+      expect(resolved.params).toEqual({ path: 'no/such/page' })
+    })
+
+    it('prefers a real page over the catch-all', () => {
+      expect(router.resolve('/parts').params).toEqual({})
+    })
+
     it('wraps pages in the default layout', () => {
       // setupLayouts nests each page under the layout component, so a page
       // route matches two records: the layout wrapper and the page itself.
