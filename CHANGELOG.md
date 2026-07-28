@@ -21,6 +21,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ### Fixes
 
+- Refreshing or deep-linking the Parts browser no longer 404s. The site is a single-page app — only `index.html` exists on the server — so every route needs a rewrite in `web/vercel.json` pointing it back at the entrypoint, and `/parts` was never added when the page shipped (navigating there from inside the app worked, which is why it went unnoticed). `/error` was missing the same way. A new test now cross-checks the generated route table against that rewrite list in both directions, so adding a page without its rewrite — or leaving a rewrite behind after deleting a page — fails CI instead of reaching production.
 - The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window — flinging the cursor onto a monitor to the left (or alt-tabbing to the game) used to trip the left-edge peek zone on the way out and leave the tray showing indefinitely. A peek triggered by the cursor exiting the window is now provisional (it closes after a second unless the cursor comes back in), and the tray always collapses when the window loses focus. Peeking by hovering the left edge inside the window behaves exactly as before.
 - Copying a factory that supplies other factories no longer throws an error during the recalculation that follows: the copy carries the original's dependency requests, and cleaning up such an orphaned request could pull the entry out from under the cleanup scan itself mid-loop.
 
