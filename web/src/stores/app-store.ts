@@ -10,7 +10,7 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { repairPlanPrecision } from '@/utils/factory-management/repair'
+import { PlanRepairEntry, repairPlanPrecision } from '@/utils/factory-management/repair'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -78,6 +78,8 @@ export const useAppStore = defineStore('app', () => {
   const lastEdit = ref<Date>(new Date(localStorage.getItem('lastEdit') ?? ''))
   const isDebugMode = ref<boolean>(false)
   const isLoaded = ref<boolean>(false)
+  // Quantities repairPlanPrecision corrected on the last load, awaiting the user being told.
+  const planRepairs = ref<PlanRepairEntry[]>([])
   const showSatisfactionBreakdowns = ref<boolean>(
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
@@ -493,6 +495,10 @@ export const useAppStore = defineStore('app', () => {
         `appStore: initFactories: Repaired ${repairs.repairs.length} drifted quantities and ${repairs.staleRecipeFigures} stale recipe figures`,
         repairs.repairs
       )
+      // Held for the dialog rather than emitted: a plan can be inited before the layout has
+      // mounted its listeners (the factories getter inits on first read), and a repair the
+      // user never sees reported is the thing we are trying to avoid.
+      planRepairs.value = [...planRepairs.value, ...repairs.repairs]
       needsCalculation = true
     }
 
@@ -512,6 +518,11 @@ export const useAppStore = defineStore('app', () => {
     inited.value = true
     factories.value = newFactories // Also calls the watcher, which sets the current tab data.
     return factories.value
+  }
+
+  // The dialog reporting them has been shown — don't nag on the next tab switch.
+  const dismissPlanRepairs = () => {
+    planRepairs.value = []
   }
 
   const getFactories = () => {
@@ -695,6 +706,8 @@ export const useAppStore = defineStore('app', () => {
     lastEdit,
     isDebugMode,
     isLoaded,
+    planRepairs,
+    dismissPlanRepairs,
     getLastEdit,
     setLastSave,
     setLastEdit,

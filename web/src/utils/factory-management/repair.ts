@@ -1,6 +1,12 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipe, hasFractionalClock } from '@/utils/factory-management/common'
+import {
+  getBuildingDisplayName,
+  getPartDisplayNameWithoutDataStore,
+  getPowerRecipe,
+  getRecipe,
+  hasFractionalClock,
+} from '@/utils/factory-management/common'
 import { snapDriftedInteger } from '@/utils/numberFormatter'
 
 // Plans saved before #485 hold quantities a rounding hair off the number they mean —
@@ -13,9 +19,21 @@ import { snapDriftedInteger } from '@/utils/numberFormatter'
 // A user-dialled fractional clock (223.333%) is deliberate precision — 535.999 means
 // 535.999 — so items carrying one are left entirely alone, matching calculateProducts.
 
+export interface PlanRepairEntry {
+  factoryName: string
+  // Friendly name of the thing repaired — a part ("Rocket Fuel") or a building
+  // ("Fuel-Powered Generator").
+  itemName: string
+  // Recipe display name, or where an import comes from.
+  context: string
+  // Which quantity moved, for when one item has more than one repaired figure.
+  field: string
+  before: number
+  after: number
+}
+
 export interface PlanRepairReport {
-  // Human-readable "factory / field: before -> after" lines, for the console.
-  repairs: string[]
+  repairs: PlanRepairEntry[]
   // Stale mwPerItem figures refreshed from the current game data.
   staleRecipeFigures: number
 }
@@ -40,34 +58,77 @@ export const repairPlanPrecision = (
     }
   })
 
+  const factoryNames = new Map(factories.map(factory => [factory.id, factory.name]))
+
+  // A power producer's fuelAmount and its fuel ingredient's perMin are the same number held
+  // twice, so a single drift would otherwise be reported as two identical-looking lines.
+  const reported = new Set<string>()
+
   factories.forEach(factory => {
-    const repair = (label: string, value: number): number => {
+    const repair = (
+      value: number,
+      entry: Omit<PlanRepairEntry, 'factoryName' | 'before' | 'after'>,
+    ): number => {
       if (!isDrifted(value)) return value
 
-      const snapped = snapDriftedInteger(value)
-      report.repairs.push(`${factory.name} / ${label}: ${value} -> ${snapped}`)
-      return snapped
+      const after = snapDriftedInteger(value)
+      const key = `${factory.id}|${entry.itemName}|${entry.context}|${value}|${after}`
+      if (!reported.has(key)) {
+        reported.add(key)
+        report.repairs.push({ ...entry, factoryName: factory.name, before: value, after })
+      }
+      return after
     }
 
     factory.products.forEach(product => {
       if (hasFractionalClock(product.buildingGroups)) return
-      product.amount = repair(`product ${product.id}`, product.amount)
+
+      product.amount = repair(product.amount, {
+        itemName: getPartDisplayNameWithoutDataStore(product.id, gameData),
+        context: getRecipe(product.recipe, gameData)?.displayName ?? product.recipe,
+        field: 'Quantity',
+      })
     })
 
     factory.powerProducers.forEach(producer => {
       if (hasFractionalClock(producer.buildingGroups)) return
 
-      producer.fuelAmount = repair(`${producer.recipe} fuel`, producer.fuelAmount)
-      producer.powerAmount = repair(`${producer.recipe} power`, producer.powerAmount)
-      producer.buildingAmount = repair(`${producer.recipe} buildings`, producer.buildingAmount)
+      const recipe = getPowerRecipe(producer.recipe, gameData)
+      const context = recipe?.displayName ?? producer.recipe
+      const buildingName = getBuildingDisplayName(producer.building)
+      const fuelName = producer.ingredients[0]
+        ? getPartDisplayNameWithoutDataStore(producer.ingredients[0].part, gameData)
+        : buildingName
+
+      producer.fuelAmount = repair(producer.fuelAmount, {
+        itemName: fuelName, context, field: 'Fuel rate',
+      })
+      producer.powerAmount = repair(producer.powerAmount, {
+        itemName: buildingName, context, field: 'Power generated (MW)',
+      })
+      producer.buildingAmount = repair(producer.buildingAmount, {
+        itemName: buildingName, context, field: 'Building count',
+      })
       producer.ingredients.forEach(ingredient => {
-        ingredient.perMin = repair(`${producer.recipe} ${ingredient.part}`, ingredient.perMin)
+        ingredient.perMin = repair(ingredient.perMin, {
+          itemName: getPartDisplayNameWithoutDataStore(ingredient.part, gameData),
+          context,
+          field: 'Rate per min',
+        })
       })
     })
 
-    factory.inputs.forEach((input, index) => {
+    factory.inputs.forEach(input => {
       if (input.factoryId !== null && factoriesWithFractionalClocks.has(input.factoryId)) return
-      input.amount = repair(`input ${index} (${input.outputPart})`, input.amount)
+
+      const source = input.factoryId === null ? null : factoryNames.get(input.factoryId)
+      input.amount = repair(input.amount, {
+        itemName: input.outputPart
+          ? getPartDisplayNameWithoutDataStore(input.outputPart, gameData)
+          : 'Unknown part',
+        context: source ? `Imported from ${source}` : 'Import',
+        field: 'Quantity',
+      })
     })
 
     // A producer's ingredients are a copy of the recipe's, taken when the producer was

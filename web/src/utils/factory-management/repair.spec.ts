@@ -22,8 +22,27 @@ describe('repair', () => {
 
         expect(producer.fuelAmount).toBe(2400)
         expect(producer.ingredients[0].perMin).toBe(2400)
-        expect(report.repairs).toHaveLength(2)
-        expect(report.repairs[0]).toBe('FG TEST / GeneratorFuel_RocketFuel fuel: 2400.002 -> 2400')
+        // fuelAmount and the fuel ingredient's perMin are the same number held twice
+        expect(report.repairs).toHaveLength(1)
+      })
+
+      it('should describe each repair in terms the user recognises', () => {
+        const report = repairPlanPrecision(factories, gameData)
+
+        expect(report.repairs[0]).toEqual({
+          factoryName: 'FG TEST',
+          itemName: 'Rocket Fuel',
+          context: 'Fuel-Powered Generator (Rocket Fuel)',
+          field: 'Fuel rate',
+          before: 2400.002,
+          after: 2400,
+        })
+      })
+
+      it('should not report the same repaired quantity twice', () => {
+        const report = repairPlanPrecision(factories, gameData)
+
+        expect(report.repairs.map(entry => entry.field)).toEqual(['Fuel rate'])
       })
 
       it('should refresh the stale mwPerItem the save was made with', () => {
