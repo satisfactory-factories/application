@@ -341,9 +341,17 @@
 .sub-card {
   background-color: rgb(50, 50, 50) !important;
 
+  // This `border-bottom` has never actually applied: Vuetify 3 emitted
+  // `.border-md` with `!important`, which beat it. v4 layers the helper instead,
+  // which would let it through — taking the last product panel's bottom border
+  // with it, and collapsing the tray's 8px margin out through the missing edge.
   &:last-of-type {
     border-bottom: 0;
     box-shadow: 0 0 0 0;
+
+    &[class*="border-"] {
+      border-bottom: revert-layer;
+    }
   }
 }
 
