@@ -37,6 +37,16 @@
     text-transform: uppercase;
   }
 
+  // MD3 also grew card titles from 1.25rem to 1.375rem. Doubled for the same
+  // reason as `.v-row` above — VCard's CSS is imported after this file.
+  .v-card-title.v-card-title {
+    font-size: 1.25rem;
+  }
+
+  .v-card .v-card-title.v-card-title {
+    line-height: 1.6;
+  }
+
   // v4 swapped the grid's negative margins + column padding for `gap`, pulling
   // column content flush to the row edges. Restoring the v3 geometry: zeroing
   // the gap vars also collapses VCol's flex-basis maths back to percentages.
@@ -421,8 +431,14 @@
   }
 }
 
+// Inert since it was written: Vuetify's own `.v-card-title` rule loaded after
+// this file and won on source order, so titles have always had its 0.5rem
+// vertical padding. v4 layers that rule, which would let this through and add
+// 16px to all 30 card headings in a plan. Deferring keeps today's spacing —
+// dropping the `revert-layer` is the one-line way to adopt the roomier look.
 .v-card-title {
   padding: 1rem;
+  padding-block: revert-layer;
 }
 
 .fa-bolt {
