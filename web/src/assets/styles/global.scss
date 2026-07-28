@@ -18,6 +18,15 @@
     padding: 0;
     margin: 0;
   }
+
+  // v3 stripped the native chrome off every form element; v4 only does it inside
+  // its own `.v-field`, so the app's two bare inputs (factory name, tab rename)
+  // got the browser's box and border back. Vuetify's components style their
+  // fields from a later layer, so this can't reach them.
+  button, input, select, textarea {
+    background-color: transparent;
+    border-style: none;
+  }
 }
 
 @layer vuetify-components {
@@ -67,6 +76,21 @@
   .v-row--no-gutters > .v-col {
     padding: 0;
   }
+}
+
+// v3's spacing helpers carried `!important` and beat app CSS; v4 puts them in a
+// layer, so the rules below now win wherever the markup asked for a helper
+// instead. `revert-layer` hands the property back whenever one is present.
+// (`web/testing/browser/utility-collisions.mjs` finds any others.)
+.fa-bolt[class*="mr-"],
+.sf-chip[class*="mr-"],
+.sf-chip[class*="mx-"] {
+  margin-right: revert-layer;
+}
+
+.inline-inputs[class*="ml-"],
+.inline-inputs[class*="mx-"] {
+  margin-left: revert-layer;
 }
 
 // Font Awesome injects an unlayered `.svg-inline--fa { font-size: inherit }` at
@@ -396,13 +420,6 @@
 .fa-bolt {
   font-size: 20px;
   margin-right: 2px
-}
-
-// Seven bolts carry `mr-1`, which beat the 2px above on `!important` until v4
-// moved the spacing helpers into a cascade layer. Same trick as the icon sizing
-// near the top of this file: defer to the layered value where one is set.
-.fa-bolt[class*="mr-"] {
-  margin-right: revert-layer;
 }
 
 .border-gray {
