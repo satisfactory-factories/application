@@ -20,7 +20,7 @@
     "express": "^5.0.0",
     "express-rate-limit": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.24.1",
+    "mongoose": "^9.0.0",
     "random-word-slugs": "^0.1.7"
   },
   "devDependencies": {
