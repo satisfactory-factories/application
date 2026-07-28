@@ -1,0 +1,20 @@
+// Vuetify 4 shrank the breakpoints (md 960→840, lg 1280→1145, xl 1920→1545,
+// xxl 2560→2138). The planner's responsive behaviour is tuned to the old
+// widths — the sidebar's `d-none d-lg-flex` and the `md`/`lg` column props in
+// particular — so compile Vuetify's styles against the v3 scale.
+//
+// This has to happen in Sass: the `display.thresholds` option in
+// plugins/vuetify.ts only moves the JS `useDisplay()` values, while the media
+// queries behind `.d-*`, `.v-col-*` and `.v-container` are baked into the CSS.
+// Keep the two in sync. `$container-max-widths` derives from this map, so the
+// container sizes (900/1200/1800/2400) come back with it.
+@use 'vuetify/settings' with (
+  $grid-breakpoints: (
+    'xs': 0,
+    'sm': 600px,
+    'md': 960px,
+    'lg': 1280px,
+    'xl': 1920px,
+    'xxl': 2560px,
+  )
+);

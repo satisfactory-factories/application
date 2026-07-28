@@ -428,6 +428,12 @@
   border-radius: 4px;
   transition: background-color 0.3s;
 
+  // The markup's `pl-0` beat this on `!important` until Vuetify 4 layered the
+  // spacing helpers. Scoped so it outranks the rule above deterministically.
+  &[class*="pl-"] {
+    padding-left: revert-layer;
+  }
+
   &:hover {
     cursor: pointer;
     background-color: #323232;

@@ -1,5 +1,5 @@
 <template>
-  <v-row class="ma-0" dense>
+  <v-row class="ma-0" density="compact">
     <v-col
       v-for="group in groups"
       :key="group.id"

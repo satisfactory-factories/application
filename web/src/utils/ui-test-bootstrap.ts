@@ -12,6 +12,18 @@ const vuetify = createVuetify({
   theme: {
     defaultTheme: 'dark',
   },
+  // Keep in sync with src/plugins/vuetify.ts: v4's breakpoints are narrower and
+  // the app is tuned to the v3 scale.
+  display: {
+    thresholds: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1280,
+      xl: 1920,
+      xxl: 2560,
+    },
+  },
   defaults: {
     // Keep in sync with src/plugins/vuetify.ts: stable VNumberInput rounds to
     // integers by default; null restores unrestricted decimals.

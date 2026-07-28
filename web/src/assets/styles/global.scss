@@ -2,6 +2,151 @@
   color-scheme: dark;
 }
 
+// --- Vuetify 4 compatibility ------------------------------------------------
+// v4 is the Material 3 rewrite; these rules hold the old appearance. Each sits
+// in the cascade layer that reproduces its v3 precedence — unlayered CSS beats
+// every layer, so a top-level `.v-btn` rule here would break `.text-none`.
+
+@layer vuetify-core.reset {
+  // v3 shipped `* { padding: 0; margin: 0 }`; v4's reset only touches html/body.
+  // The templates have ~330 raw headings, paragraphs and lists relying on it.
+  h1, h2, h3, h4, h5, h6, p, figure, blockquote {
+    margin: 0;
+  }
+
+  ul, ol {
+    padding: 0;
+    margin: 0;
+  }
+
+  // v3 stripped the native chrome off every form element; v4 only does it inside
+  // its own `.v-field`, so the app's two bare inputs (factory name, tab rename)
+  // got the browser's box and border back. Vuetify's components style their
+  // fields from a later layer, so this can't reach them.
+  button, input, select, textarea {
+    background-color: transparent;
+    border-style: none;
+  }
+}
+
+@layer vuetify-components {
+  // v4 (Material 3) restyled VBtn: no uppercase, and tighter letter spacing.
+  .v-btn {
+    letter-spacing: 0.0892857143em;
+    text-indent: 0.0892857143em;
+    text-transform: uppercase;
+  }
+
+  // MD3 also grew card titles from 1.25rem to 1.375rem. Doubled for the same
+  // reason as `.v-row` above — VCard's CSS is imported after this file.
+  .v-card-title.v-card-title {
+    font-size: 1.25rem;
+  }
+
+  .v-card .v-card-title.v-card-title {
+    line-height: 1.6;
+  }
+
+  // v4 swapped the grid's negative margins + column padding for `gap`, pulling
+  // column content flush to the row edges. Restoring the v3 geometry: zeroing
+  // the gap vars also collapses VCol's flex-basis maths back to percentages.
+  // Doubled class because `.v-row--density-default` sets them too, and
+  // Vuetify's component CSS is imported after this file.
+  .v-row.v-row {
+    --v-col-gap-x: 0px;
+    --v-col-gap-y: 0px;
+  }
+
+  .v-row {
+    margin: -12px;
+  }
+
+  // Not scoped to `.v-row >` — v3 padded every column class regardless of
+  // parent, and the app has columns that aren't direct children of a row.
+  .v-col {
+    padding: 12px;
+  }
+
+  .v-row.v-row + .v-row {
+    margin-top: 12px;
+  }
+
+  .v-row--density-compact {
+    margin: -4px;
+  }
+
+  .v-row--density-compact > .v-col {
+    padding: 4px;
+  }
+
+  .v-row--no-gutters {
+    margin: 0;
+  }
+
+  .v-row--no-gutters > .v-col {
+    padding: 0;
+  }
+}
+
+// v3's spacing helpers carried `!important` and beat app CSS; v4 puts them in a
+// layer, so the rules below now win wherever the markup asked for a helper
+// instead. `revert-layer` hands the property back whenever one is present.
+// (`web/testing/browser/utility-collisions.mjs` finds any others.)
+.fa-bolt[class*="mr-"],
+.sf-chip[class*="mr-"],
+.sf-chip[class*="mx-"] {
+  margin-right: revert-layer;
+}
+
+.inline-inputs[class*="ml-"],
+.inline-inputs[class*="mx-"] {
+  margin-left: revert-layer;
+}
+
+// Font Awesome injects an unlayered `.svg-inline--fa { font-size: inherit }` at
+// runtime, which under v4 beats Vuetify's layered sizing — every icon shrank to
+// its parent's font size (18px → 14px in a button). `revert-layer` hands the
+// value back to Vuetify rather than naming a size, so the component rules that
+// outrank `.v-icon--size-*` (28px on `.v-alert__prepend`) still win.
+.svg-inline--fa.v-icon {
+  font-size: revert-layer;
+}
+
+// MD2 text classes are gone in v4; these are the ones the app uses that aren't
+// already redefined further down, copied from v3 verbatim. The early layer plus
+// `!important` reproduces v3's cascade, where the sizes beat component rules
+// but the plain line-height lost to `.v-card .v-card-text` — `!important`
+// inverts layer precedence, so both halves land the same way round.
+@layer vuetify-core {
+  .text-body-1 {
+    font-size: 1rem !important;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.03125em !important;
+  }
+
+  .text-body-2 {
+    font-size: 0.875rem !important;
+    font-weight: 400;
+    line-height: 1.425;
+    letter-spacing: 0.0178571429em !important;
+  }
+
+  .text-subtitle-1 {
+    font-size: 1rem !important;
+    font-weight: normal;
+    line-height: 1.75;
+    letter-spacing: 0.009375em !important;
+  }
+
+  .text-caption {
+    font-size: 0.75rem !important;
+    font-weight: 400;
+    line-height: 1.667;
+    letter-spacing: 0.0333333333em !important;
+  }
+}
+
 .sf-chip {
   padding: 20px 12px !important;
   border: 2px solid #7f7f7f !important;
@@ -206,9 +351,17 @@
 .sub-card {
   background-color: rgb(50, 50, 50) !important;
 
+  // This `border-bottom` has never actually applied: Vuetify 3 emitted
+  // `.border-md` with `!important`, which beat it. v4 layers the helper instead,
+  // which would let it through — taking the last product panel's bottom border
+  // with it, and collapsing the tray's 8px margin out through the missing edge.
   &:last-of-type {
     border-bottom: 0;
     box-shadow: 0 0 0 0;
+
+    &[class*="border-"] {
+      border-bottom: revert-layer;
+    }
   }
 }
 
@@ -278,8 +431,14 @@
   }
 }
 
+// Inert since it was written: Vuetify's own `.v-card-title` rule loaded after
+// this file and won on source order, so titles have always had its 0.5rem
+// vertical padding. v4 layers that rule, which would let this through and add
+// 16px to all 30 card headings in a plan. Deferring keeps today's spacing —
+// dropping the `revert-layer` is the one-line way to adopt the roomier look.
 .v-card-title {
   padding: 1rem;
+  padding-block: revert-layer;
 }
 
 .fa-bolt {
@@ -348,6 +507,29 @@
 // Standardize the font weights as they're all over the place
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6 {
   font-weight: 400 !important;
+}
+
+// The rules above only ever overrode size and weight — the tracking came from
+// Vuetify's own .text-h* classes, which v4 removed. h3/h5 need stating too: they
+// were `normal`, which reset the tracking inherited from the surrounding card.
+.text-h1 {
+  letter-spacing: -0.015625em !important;
+}
+
+.text-h2 {
+  letter-spacing: -0.0083333333em !important;
+}
+
+.text-h4 {
+  letter-spacing: 0.0073529412em !important;
+}
+
+.text-h6 {
+  letter-spacing: 0.0125em !important;
+}
+
+.text-h3, .text-h5 {
+  letter-spacing: normal !important;
 }
 
 // Vuetify's default hover overlay (4%) is invisible on outlined buttons —

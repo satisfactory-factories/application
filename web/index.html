@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Satisfactory Factories: Factory Planner</title>
+    <!-- Pins Vuetify 4's cascade layer order. Layers rank by first declaration,
+         and a production build splits Vuetify's CSS per component — so a chunk
+         declaring `vuetify-components` can load before the entrypoint declares
+         `vuetify-core`, promoting the core reset's `button { font: inherit }`
+         over every component's own styles. Dev loads in order and hides this. -->
+    <style>@layer vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final;</style>
     <script defer src="/assets/js/fa-brands.min.js"></script>
     <script defer src="/assets/js/fa-solid.min.js"></script>
     <script defer src="/assets/js/fa.min.js"></script>
