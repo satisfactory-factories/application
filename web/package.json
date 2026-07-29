@@ -46,7 +46,7 @@
     "@vue/test-utils": "^2.4.11",
     "eslint": "catalog:",
     "eslint-plugin-vue": "^10.9.2",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "neostandard": "^0.13.0",
     "puppeteer-core": "^25.3.0",
     "sass": "1.101.0",
