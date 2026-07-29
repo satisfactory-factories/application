@@ -30,7 +30,7 @@ When a PR touching `backend/` (or the workspace files the image is built from) i
 
 This used to be a manual `backend/publish.sh` run from a laptop, which meant only one person could ship the API at all. That script still exists as a break-glass path for when GitHub Actions is unavailable, and says so at the top.
 
-**A green Actions run is not proof the deploy landed** — the webhook returns `200` before the SSH even happens. The confirmation is `/root/deploy.log` on the box.
+**A green Actions run now means the deploy landed** — since 2026-07-28 the hook waits for the deploy and answers `200` or `500` carrying the script's own output, and the Deploy step fails on the `500`. It used to answer `200` on acceptance alone. `/root/deploy.log` on the box is still where the reason for a failure lives.
 
 Two files on the server — its compose file and its `update.sh` — are mirrored in `backend/` but are *not* synced by any deploy; they have to be copied over by hand when they change.
 
