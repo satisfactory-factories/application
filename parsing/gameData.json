@@ -13,10 +13,15 @@
         "geothermalgenerator": 0,
         "hadroncollider": 0.1,
         "manufacturermk1": 55,
+        "minermk1": 5,
+        "minermk2": 15,
+        "minermk3": 45,
+        "oilpump": 40,
         "oilrefinery": 30,
         "packager": 10,
         "quantumencoder": 0.1,
-        "smeltermk1": 4
+        "smeltermk1": 4,
+        "waterpump": 20
     },
     "items": {
         "parts": {
@@ -821,6 +826,13 @@
             "Rubber": {
                 "name": "Rubber",
                 "stackSize": 200,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "SAM": {
+                "name": "SAM",
+                "stackSize": 100,
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
@@ -5244,6 +5256,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreBauxite",
+            "displayName": "Bauxite (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreBauxite",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "SpaceElevatorPart_10",
             "displayName": "Biochemical Sculptor",
             "ingredients": [
@@ -5541,6 +5593,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreGold",
+            "displayName": "Caterium Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreGold",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Caterium_Quartz",
             "displayName": "Caterium Ore (Quartz)",
             "ingredients": [
@@ -5692,6 +5784,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Coal",
+            "displayName": "Coal (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Coal",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5852,6 +5984,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreCopper",
+            "displayName": "Copper Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Copper_Quartz",
             "displayName": "Copper Ore (Quartz)",
             "ingredients": [
@@ -5961,6 +6133,38 @@
             "building": {
                 "name": "constructormk1",
                 "power": 4
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_LiquidOil",
+            "displayName": "Crude Oil (Oil Extractor)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "LiquidOil",
+                    "amount": 1,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "oilpump",
+                "power": 40
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "oilpump",
+                        "ratePerMin": 120
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7229,6 +7433,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreIron",
+            "displayName": "Iron Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreIron",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "IronPlate",
             "displayName": "Iron Plate",
             "ingredients": [
@@ -7299,6 +7543,46 @@
             "building": {
                 "name": "constructormk1",
                 "power": 4
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Stone",
+            "displayName": "Limestone (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Stone",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -8558,6 +8842,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_RawQuartz",
+            "displayName": "Raw Quartz (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "RawQuartz",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "IngotSAM",
             "displayName": "Reanimated SAM",
             "ingredients": [
@@ -8845,6 +9169,46 @@
             "building": {
                 "name": "oilrefinery",
                 "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_SAM",
+            "displayName": "SAM (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "SAM",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -9394,6 +9758,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Sulfur",
+            "displayName": "Sulfur (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Sulfur",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -10174,6 +10578,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreUranium",
+            "displayName": "Uranium (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreUranium",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "NuclearFuelRod",
             "displayName": "Uranium Fuel Rod",
             "ingredients": [
@@ -10266,6 +10710,36 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Water",
+            "displayName": "Water (Water Extractor)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Water",
+                    "amount": 1,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "waterpump",
+                "power": 20
+            },
+            "extraction": {
+                "purities": [
+                    "normal"
+                ],
+                "extractors": [
+                    {
+                        "building": "waterpump",
+                        "ratePerMin": 120
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false

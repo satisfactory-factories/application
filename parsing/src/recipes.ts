@@ -1,7 +1,9 @@
 import {
     ParserBuilding,
+    ParserPurity,
     ParserRecipe,
 } from "./interfaces/ParserRecipe";
+import {extractors} from "./buildings";
 import {
     ParserFuel,
     ParserPowerItem,
@@ -20,7 +22,8 @@ import {ParserItemDataInterface} from "./interfaces/ParserPart";
 // If you can read this, you are a wizard. ChatGPT made this, it works, so I won't question it!
 function getProductionRecipes(
     data: any[],
-    producingBuildings: { [key: string]: number }
+    producingBuildings: { [key: string]: number },
+    items: ParserItemDataInterface
 ): ParserRecipe[] {
     const recipes: ParserRecipe[] = [];
 
@@ -182,7 +185,99 @@ function getProductionRecipes(
     //     isFicsmas: false,
     // });
 
+    recipes.push(...getExtractionRecipes(data, items));
+
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+// Solid resources with miner-placeable nodes. Miners declare an empty mAllowedResources, meaning
+// "any solid node", and non-fluid does not imply mineable — Leaves, Wood, Mycelia, alien remains
+// and power slugs are hand-collected — so the list has to be explicit.
+const MINEABLE_SOLIDS = [
+    'OreIron',
+    'OreCopper',
+    'OreGold',
+    'Stone',
+    'Coal',
+    'RawQuartz',
+    'Sulfur',
+    'OreBauxite',
+    'OreUranium',
+    'SAM',
+];
+
+const MINER_CLASSES = ['Build_MinerMk1_C', 'Build_MinerMk2_C', 'Build_MinerMk3_C'];
+const ALL_PURITIES: ParserPurity[] = ['impure', 'normal', 'pure'];
+
+// Rates are per minute at 100% clock on a normal node. Fluid extractors count in cm3, so a
+// water pump's 2000 per second becomes 120 m3/min.
+function getExtractorRate(extractor: any, fluid: boolean): number {
+    const perMin = (Number(extractor.mItemsPerCycle) / Number(extractor.mExtractCycleTime)) * 60;
+    return fluid ? perMin / 1000 : perMin;
+}
+
+// Extractors sit on resource nodes rather than running recipes, so nothing in the game data links
+// them to the resources they produce. These synthetic recipes make extraction an ordinary product
+// in the planner; the extractor mark and node purity are then chosen per building group.
+function getExtractionRecipes(data: any[], items: ParserItemDataInterface): ParserRecipe[] {
+    const recipes: ParserRecipe[] = [];
+    const classes = data
+        .filter((entry: any) => entry.Classes)
+        .flatMap((entry: any) => entry.Classes);
+
+    const findClass = (className: string) => classes.find((c: any) => c.ClassName === className);
+
+    const build = (
+        part: string,
+        extractorClasses: string[],
+        purities: ParserPurity[],
+        extractorLabel: string
+    ): void => {
+        const resource = items.rawResources[part];
+        if (!resource) {
+            return;
+        }
+
+        const fluid = isFluid(part);
+        const extractorData = extractorClasses
+            .map(className => ({ className, data: findClass(className) }))
+            .filter(entry => entry.data);
+
+        if (extractorData.length === 0) {
+            return;
+        }
+
+        const extractorList = extractorData.map(entry => ({
+            building: extractors.get(entry.className) as string,
+            ratePerMin: getExtractorRate(entry.data, fluid),
+        }));
+
+        // The first extractor at normal purity is the recipe's reference rate: every building
+        // group's real output is expressed as a multiple of it.
+        const referenceRate = extractorList[0].ratePerMin;
+
+        recipes.push({
+            id: `Extract_${part}`,
+            displayName: `${resource.name} (${extractorLabel})`,
+            ingredients: [],
+            products: [{ part, amount: 1, perMin: referenceRate, isByProduct: false }],
+            building: {
+                name: extractorList[0].building,
+                power: Number(extractorData[0].data.mPowerConsumption) || 0,
+            },
+            extraction: { purities, extractors: extractorList },
+            isAlternate: false,
+            isFicsmas: false,
+        });
+    };
+
+    MINEABLE_SOLIDS.forEach(part => build(part, MINER_CLASSES, ALL_PURITIES, 'Miner'));
+    build('LiquidOil', ['Build_OilPump_C'], ALL_PURITIES, 'Oil Extractor');
+    // Water sources have no purity, so the Water Extractor is a plain producing building that
+    // happens to output a raw resource. It still overclocks like anything else.
+    build('Water', ['Build_WaterPump_C'], ['normal'], 'Water Extractor');
+
+    return recipes;
 }
 
 // Fuel-less power generators (Geothermal Generator, Alien Power Augmenter) have no mFuel

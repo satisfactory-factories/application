@@ -3,10 +3,10 @@ import { formatNumberFully } from '@/utils/numberFormatter'
 import {
   calculateBuildingGroupParts,
   createBuildingGroup,
+  getGroupOutputMultiplier,
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
-import { getSomersloopOutputMultiplier } from '@/utils/factory-management/building-groups/somersloops'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -55,9 +55,14 @@ export const buildingsNeededForPartsProducts = (
   }
 
   if (isProduct && !isIngredient) {
-    // This is a product — somersloops amplify output, so fewer buildings are needed.
-    const sloopMultiplier = getSomersloopOutputMultiplier(buildingGroup, product.buildingRequirements?.name ?? '')
-    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * sloopMultiplier
+    // This is a product — somersloops amplify output (and for extraction, the group's miner
+    // mark and node purity do too), so fewer buildings are needed.
+    const outputMultiplier = getGroupOutputMultiplier(
+      buildingGroup,
+      product.buildingRequirements?.name ?? '',
+      product.recipe
+    )
+    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * outputMultiplier
     return formatNumberFully(amount / perMinOverclocked)
   }
 

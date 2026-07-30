@@ -7,6 +7,17 @@ export interface RecipeItem {
   isByProduct?: boolean;
 }
 
+export type NodePurity = 'impure' | 'normal' | 'pure'
+
+// Extraction recipes have no ingredients: an extractor placed on a resource node produces it
+// outright. The mark and node purity are chosen per building group, so the recipe only declares
+// what is available. `extractors` is ordered cheapest first and its first entry's rate is the
+// recipe's reference rate — every group's real output is expressed as a multiple of it.
+export interface RecipeExtraction {
+  purities: NodePurity[];
+  extractors: { building: string; ratePerMin: number }[];
+}
+
 export interface Recipe {
   id: string;
   displayName: string;
@@ -21,6 +32,7 @@ export interface Recipe {
     minPower?: number;
     maxPower?: number;
   }
+  extraction?: RecipeExtraction;
   isAlternate: boolean;
   isFicsmas: boolean;
 }

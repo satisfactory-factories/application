@@ -18,6 +18,16 @@ const fuellessGenerators = new Map([
     ['Build_AlienPowerBuilding_C', 'alienpoweraugmenter'],
 ]);
 
+// Extractors sit on resource nodes and never appear in mProducedIn, so they must be picked up
+// from their buildable descriptors to land in the buildings map with their real power draw.
+const extractors = new Map([
+    ['Build_MinerMk1_C', 'minermk1'],
+    ['Build_MinerMk2_C', 'minermk2'],
+    ['Build_MinerMk3_C', 'minermk3'],
+    ['Build_WaterPump_C', 'waterpump'],
+    ['Build_OilPump_C', 'oilpump'],
+]);
+
 function getProducingBuildings(data: any[]): string[] {
     const producingBuildingsSet = new Set<string>();
 
@@ -59,6 +69,9 @@ function getProducingBuildings(data: any[]): string[] {
             // they must be picked up from their buildable descriptors directly.
             if (entry.ClassName && fuellessGenerators.has(entry.ClassName)) {
                 producingBuildingsSet.add(fuellessGenerators.get(entry.ClassName) as string)
+            }
+            if (entry.ClassName && extractors.has(entry.ClassName)) {
+                producingBuildingsSet.add(extractors.get(entry.ClassName) as string)
             }
         });
 
@@ -112,4 +125,4 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
     return sortedMap;
 }
 
-export { getProducingBuildings, getPowerConsumptionForBuildings };
+export { getProducingBuildings, getPowerConsumptionForBuildings, extractors };

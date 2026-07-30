@@ -109,11 +109,15 @@ export const getBuildingDisplayName = (building: string) => {
     ['geothermalgenerator', 'Geothermal Generator'],
     ['generatornuclear', 'Nuclear Power Plant'],
     ['manufacturermk1', 'Manufacturer'],
+    ['minermk1', 'Miner Mk.1'],
+    ['minermk2', 'Miner Mk.2'],
+    ['minermk3', 'Miner Mk.3'],
+    ['oilpump', 'Oil Extractor'],
     ['oilrefinery', 'Oil Refinery'],
     ['packager', 'Packager'],
     ['quantumencoder', 'Quantum Encoder'],
     ['smeltermk1', 'Smelter'],
-    ['waterExtractor', 'Water Extractor'],
+    ['waterpump', 'Water Extractor'],
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`

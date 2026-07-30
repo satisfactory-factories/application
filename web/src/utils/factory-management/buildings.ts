@@ -3,6 +3,7 @@ import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterf
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { getGroupExtractor, isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -33,6 +34,20 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
         name: buildingData.name,
         amount: buildingCount,
         powerConsumed: (buildingData.power * wholeBuildingCount) + (buildingData.power * Math.pow(fractionalBuildingCount, 1.321928)), // Power usage = initial power usage x (clock speed / 100)1.321928
+      }
+
+      // Extraction products can mix extractor marks across their groups, so a single
+      // product-level estimate would be wrong. Their counts and power are summed from the
+      // groups in calculateFinalBuildingsAndPower; only seed the entries here.
+      if (isExtractionRecipe(product.recipe)) {
+        product.buildingRequirements.powerConsumed = 0
+        product.buildingGroups.forEach(group => {
+          const groupBuilding = getGroupExtractor(group, product.recipe)
+          if (!factory.buildingRequirements[groupBuilding]) {
+            factory.buildingRequirements[groupBuilding] = { name: groupBuilding, amount: 0, powerConsumed: 0 }
+          }
+        })
+        return
       }
 
       // Add it to the factory building requirements
@@ -158,10 +173,20 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
 
   // Sum up the buildings
   products.forEach(product => {
+    const extraction = isExtractionRecipe(product.recipe)
+
     product.buildingGroups.forEach(group => {
       if (!group.buildingCount) return
 
-      const building = product.buildingRequirements.name
+      // Extraction products mix marks across groups, so the building is the group's own
+      // extractor and the entry may not have been seeded from the product's single building.
+      const building = extraction
+        ? getGroupExtractor(group, product.recipe)
+        : product.buildingRequirements.name
+
+      if (extraction && !factory.buildingRequirements[building]) {
+        factory.buildingRequirements[building] = { name: building, amount: 0, powerConsumed: 0 }
+      }
 
       const buildingData = factory.buildingRequirements[building] // It should be present by the time this is run (from calculateFactoryBuildingsAndPower)
       if (!buildingData) {
@@ -169,6 +194,9 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       }
 
       buildingData.amount += group.buildingCount
+      if (extraction) {
+        buildingData.powerConsumed = formatNumberFully((buildingData.powerConsumed ?? 0) + group.powerUsage, 3)
+      }
     })
   })
 

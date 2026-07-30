@@ -1,6 +1,6 @@
 // noinspection DuplicatedCode
 // Duplicated by backend
-import { PowerItem } from '@/interfaces/Recipes'
+import { NodePurity, PowerItem } from '@/interfaces/Recipes'
 
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
@@ -58,6 +58,11 @@ export interface BuildingGroup {
   // Alien Power Matrixes (raises their circuit boost and creates fuel demand).
   supplyMatrixes?: boolean
   somersloops?: number
+  // Extraction groups only: which extractor sits on the nodes and how pure they are. Both are
+  // per group because one ore line routinely mixes marks and purities. Absent on every other
+  // group type; defaults are applied when missing.
+  extractorBuilding?: string
+  purity?: NodePurity
   type: ItemType
 }
 

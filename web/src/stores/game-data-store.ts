@@ -99,6 +99,16 @@ export const useGameDataStore = defineStore('game-data', () => {
       return recipes[0].id
     }
 
+    // Raw resources are extracted far more often than they are synthesised, and several have a
+    // Converter recipe too (Iron Ore from Limestone), which would otherwise leave the selector
+    // empty. Picking a raw resource means mining it unless the user says otherwise.
+    if (gameData.value?.items.rawResources[part]) {
+      const extractionRecipe = recipes.find(recipe => recipe.extraction)
+      if (extractionRecipe) {
+        return extractionRecipe.id
+      }
+    }
+
     const exactRecipe = recipes.find(recipe => recipe.id === part)
     if (exactRecipe) {
       return exactRecipe.id

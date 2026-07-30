@@ -1,0 +1,241 @@
+// Extraction is the one place where three per-group multipliers stack: the extractor mark, the
+// node purity and the overclock. The figures asserted here are taken from the Satisfactory wiki
+// rather than derived from our own code, so a regression in any one of the three shows up as a
+// number the game would disagree with.
+
+import { beforeEach, describe, expect, it } from 'vitest'
+import { BuildingGroup, Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { addProductToFactory } from '@/utils/factory-management/products'
+import {
+  getExtractionOutputMultiplier,
+  getGroupExtractionRate,
+  getGroupExtractor,
+  getGroupPurity,
+  isExtractionRecipe,
+  PURITY_MULTIPLIERS,
+  sanitizeGroupExtraction,
+} from '@/utils/factory-management/building-groups/extraction'
+import { calculateProductBuildingGroupPower } from '@/utils/factory-management/building-groups/common'
+import { fetchGameData } from '@/utils/gameDataService'
+
+describe('extraction', async () => {
+  const gameData = await fetchGameData()
+
+  const group = (overrides: Partial<BuildingGroup> = {}): BuildingGroup => ({
+    id: 1,
+    type: ItemType.Product,
+    buildingCount: 1,
+    overclockPercent: 100,
+    somersloops: 0,
+    parts: {},
+    powerUsage: 0,
+    powerProduced: 0,
+    ...overrides,
+  })
+
+  describe('recipe detection', () => {
+    it('identifies extraction recipes and leaves everything else alone', () => {
+      expect(isExtractionRecipe('Extract_RawQuartz')).toBe(true)
+      expect(isExtractionRecipe('Extract_Water')).toBe(true)
+      expect(isExtractionRecipe('IngotIron')).toBe(false)
+      expect(isExtractionRecipe('')).toBe(false)
+      expect(isExtractionRecipe(undefined)).toBe(false)
+    })
+
+    it('returns a multiplier of 1 for non-extraction recipes so nothing else changes', () => {
+      expect(getExtractionOutputMultiplier(group(), 'IngotIron')).toBe(1)
+      expect(getExtractionOutputMultiplier(group(), undefined)).toBe(1)
+    })
+  })
+
+  describe('defaults and sanitizing', () => {
+    it('defaults a group to the reference extractor on a normal node', () => {
+      const subject = group()
+      sanitizeGroupExtraction(subject, 'Extract_RawQuartz')
+
+      expect(subject.extractorBuilding).toBe('minermk1')
+      expect(subject.purity).toBe('normal')
+    })
+
+    it('falls back when the group holds an extractor or purity the recipe does not offer', () => {
+      const subject = group({ extractorBuilding: 'smeltermk1', purity: 'pure' })
+      sanitizeGroupExtraction(subject, 'Extract_Water')
+
+      expect(subject.extractorBuilding).toBe('waterpump')
+      // Water has no purity, so a saved "pure" must not survive and inflate the output.
+      expect(subject.purity).toBe('normal')
+      expect(getExtractionOutputMultiplier(subject, 'Extract_Water')).toBe(1)
+    })
+
+    it('leaves non-extraction groups untouched', () => {
+      const subject = group()
+      sanitizeGroupExtraction(subject, 'IngotIron')
+
+      expect(subject.extractorBuilding).toBeUndefined()
+      expect(subject.purity).toBeUndefined()
+    })
+
+    it('resolves the extractor and purity without mutating', () => {
+      const subject = group({ extractorBuilding: 'minermk3', purity: 'pure' })
+
+      expect(getGroupExtractor(subject, 'Extract_OreIron')).toBe('minermk3')
+      expect(getGroupPurity(subject, 'Extract_OreIron')).toBe('pure')
+    })
+  })
+
+  // Wiki: Miner Mk.1 30/60/120, Mk.2 60/120/240, Mk.3 120/240/480 per minute.
+  describe('mark x purity rates', () => {
+    const cases: [string, keyof typeof PURITY_MULTIPLIERS, number][] = [
+      ['minermk1', 'impure', 30],
+      ['minermk1', 'normal', 60],
+      ['minermk1', 'pure', 120],
+      ['minermk2', 'impure', 60],
+      ['minermk2', 'normal', 120],
+      ['minermk2', 'pure', 240],
+      ['minermk3', 'impure', 120],
+      ['minermk3', 'normal', 240],
+      ['minermk3', 'pure', 480],
+    ]
+
+    it.each(cases)('%s on a %s node extracts %i/min', (extractorBuilding, purity, expected) => {
+      const subject = group({ extractorBuilding, purity })
+
+      expect(getGroupExtractionRate(subject, 'Extract_RawQuartz')).toBe(expected)
+      // The reference rate is Mk.1 at normal (60), so the multiplier is the rate over that.
+      expect(getExtractionOutputMultiplier(subject, 'Extract_RawQuartz')).toBe(expected / 60)
+    })
+
+    it('extracts oil at 60/120/240 by purity', () => {
+      const rates = (['impure', 'normal', 'pure'] as const).map(purity =>
+        getGroupExtractionRate(group({ extractorBuilding: 'oilpump', purity }), 'Extract_LiquidOil')
+      )
+
+      expect(rates).toEqual([60, 120, 240])
+    })
+
+    it('extracts water at a flat 120/min regardless of the purity asked for', () => {
+      const rates = (['impure', 'normal', 'pure'] as const).map(purity =>
+        getGroupExtractionRate(group({ extractorBuilding: 'waterpump', purity }), 'Extract_Water')
+      )
+
+      expect(rates).toEqual([120, 120, 120])
+    })
+  })
+
+  // The heart of it: a Miner Mk.2 on a pure Raw Quartz node, overclocked. Rate scales linearly
+  // with the clock; power follows the game's clock^1.321928 curve and ignores purity entirely.
+  describe('overclocking on top of mark and purity', () => {
+    let mockFactory: Factory
+    let product: FactoryItem
+
+    const setClock = (overclockPercent: number) => {
+      const subject = product.buildingGroups[0]
+      subject.extractorBuilding = 'minermk2'
+      subject.purity = 'pure'
+      subject.buildingCount = 1
+      subject.overclockPercent = overclockPercent
+      subject.clockSetByUser = true
+    }
+
+    const recalculate = () =>
+      calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
+
+    beforeEach(() => {
+      mockFactory = newFactory('Quartz Mine')
+      addProductToFactory(mockFactory, { id: 'RawQuartz', recipe: 'Extract_RawQuartz' })
+      product = mockFactory.products[0]
+    })
+
+    it('produces 240/min at 15 MW on a pure node at 100%', () => {
+      setClock(100)
+      recalculate()
+
+      expect(product.amount).toBe(240)
+      expect(mockFactory.power.consumed).toBe(15)
+    })
+
+    it('produces 600/min at 50.4 MW at 250%', () => {
+      setClock(250)
+      recalculate()
+
+      expect(product.amount).toBe(600)
+      // 15 x 2.5^1.321928 = 50.37
+      expect(mockFactory.power.consumed).toBeCloseTo(50.4, 1)
+    })
+
+    it('produces 560/min at 46 MW at 233.3333%', () => {
+      setClock(233.3333)
+      recalculate()
+
+      expect(product.amount).toBeCloseTo(560, 2)
+      // 15 x 2.333333^1.321928 = 45.98
+      expect(mockFactory.power.consumed).toBeCloseTo(46, 0)
+      // A user-dialled fractional clock is deliberate precision and must not be snapped away.
+      expect(product.buildingGroups[0].overclockPercent).toBe(233.3333)
+    })
+
+    it('scales the rate linearly with the clock but not the power', () => {
+      setClock(100)
+      recalculate()
+      const baseRate = product.amount
+      const basePower = mockFactory.power.consumed
+
+      setClock(200)
+      recalculate()
+
+      expect(product.amount).toBe(baseRate * 2)
+      // Power is superlinear: 15 x 2^1.321928 = 37.5, not 30.
+      expect(mockFactory.power.consumed).toBeGreaterThan(basePower * 2)
+      expect(mockFactory.power.consumed).toBeCloseTo(37.5, 1)
+    })
+
+    it('does not change power when only the purity changes', () => {
+      setClock(100)
+      product.buildingGroups[0].purity = 'impure'
+      recalculate()
+      const impurePower = mockFactory.power.consumed
+      const impureRate = product.amount
+
+      product.buildingGroups[0].purity = 'pure'
+      recalculate()
+
+      expect(product.amount).toBe(impureRate * 4)
+      expect(mockFactory.power.consumed).toBe(impurePower)
+    })
+
+    it('draws power from each group\'s own extractor, not the product\'s', () => {
+      const groups = [
+        group({ id: 1, extractorBuilding: 'minermk3', purity: 'pure', buildingCount: 2 }),
+        group({ id: 2, extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1 }),
+      ]
+
+      calculateProductBuildingGroupPower(groups, 'minermk1', 'Extract_RawQuartz')
+
+      expect(groups[0].powerUsage).toBe(90) // 2 x Mk.3 @ 45 MW
+      expect(groups[1].powerUsage).toBe(15) // 1 x Mk.2 @ 15 MW
+    })
+  })
+
+  describe('mixed groups on one product', () => {
+    it('sums groups of different marks and purities into the product total', () => {
+      const mockFactory = newFactory('Quartz Mine')
+      addProductToFactory(mockFactory, { id: 'RawQuartz', recipe: 'Extract_RawQuartz' })
+      const product = mockFactory.products[0]
+
+      // 2 x Mk.3 pure = 960/min, 1 x Mk.2 normal = 120/min
+      product.buildingGroups = [
+        group({ id: 1, extractorBuilding: 'minermk3', purity: 'pure', buildingCount: 2 }),
+        group({ id: 2, extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1 }),
+      ]
+      product.buildingGroupItemSync = true
+
+      calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
+
+      expect(product.amount).toBe(1080)
+      expect(mockFactory.power.consumed).toBe(105) // 2 x 45 + 15
+      expect(mockFactory.buildingRequirements.minermk3.amount).toBe(2)
+      expect(mockFactory.buildingRequirements.minermk2.amount).toBe(1)
+    })
+  })
+})
