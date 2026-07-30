@@ -54,10 +54,7 @@
         />
         <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
       </v-chip>
-      <div class="underchip" :class="isExtraction ? 'text-cyan' : ''">
-        <span v-if="isExtraction">{{ formatNumberFully(groupExtractionRate) }} / building</span>
-        <span v-else>&nbsp;</span>
-      </div>
+      <div class="underchip">&nbsp;</div>
     </div>
     <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
     <template v-if="canBuildingOverclock(groupBuilding)">
@@ -366,7 +363,6 @@
   } from '@/utils/factory-management/building-groups/somersloops'
   import {
     getExtraction,
-    getGroupExtractionRate,
     getGroupExtractor,
     getGroupPurity,
     PURITY_LABELS,
@@ -429,10 +425,6 @@
 
   const groupPurity = computed(() => getGroupPurity(props.group, props.item.recipe))
   const purityMultiplier = computed(() => PURITY_MULTIPLIERS[groupPurity.value])
-  const groupExtractionRate = computed(() =>
-    getGroupExtractionRate(props.group, props.item.recipe) * props.group.overclockPercent / 100
-  )
-
   const extractorOptions = computed(() =>
     (extraction.value?.extractors ?? []).map(extractor => ({
       title: getBuildingDisplayName(extractor.building),

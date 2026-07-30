@@ -58,6 +58,9 @@
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
                     Raw
                   </v-chip>
+                  <v-chip v-if="showRawShortageChip(factory, partId.toString())" class="sf-chip red x-small mr-2">
+                    Raw shortage
+                  </v-chip>
                   <v-chip v-if="showUnpackagedChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
                     Unpackaged
                   </v-chip>
@@ -238,7 +241,17 @@
                       <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>Raw Items e.g. Iron Ore are always satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.</span>
+                  <span>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
+                </v-tooltip>
+              </template>
+              <template v-if="showRawShortageChip(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip red small">
+                      <span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
+                    </v-chip>
+                  </template>
+                  <span>This factory isn't assuming raw supply, so this shortfall is real. Add an extractor as a product to mine it here, or import it from a mine factory.</span>
                 </v-tooltip>
               </template>
               <template v-if="showUnpackagedChip(factory, partId.toString())">
@@ -389,6 +402,7 @@
     showInternalChip,
     showProductChip,
     showRawChip,
+    showRawShortageChip,
     showRecycledChip,
     showSatisfactionItemButton,
     showUnpackagedChip,

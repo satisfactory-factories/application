@@ -26,3 +26,5 @@
 - [VNumberInput clamping](vnumberinput-clamping.md) — clamp typed values on entry and remount the field; `:max` swallows the update event
 - [Export/import chain invariants](export-import-chain-invariants.md) — exports are derived from imports, factory IDs must be unique, and a loaded plan won't self-heal unless validation asks for a recalc
 - [Factory status registry](factory-status-registry.md) — adding a status is one array entry; keep the warning tier out of the engine loop and mirror the product-less guard or saved plans change colour
+- [Extraction output multiplier](extraction-output-multiplier.md) — how miner mark + node purity plug into the building-group maths without forking the solver
+- [Raw input assumption](raw-input-assumption.md) — why it reaches the engine via a module accessor, and the spec pollution that causes

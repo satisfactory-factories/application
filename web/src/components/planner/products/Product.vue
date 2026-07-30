@@ -156,7 +156,7 @@
           <v-chip
             v-for="extractor in extractorCounts(product)"
             :key="`${product.id}-${extractor.building}`"
-            class="sf-chip orange input"
+            class="sf-chip orange"
             variant="tonal"
           >
             <game-asset clickable :subject="extractor.building" type="building" />
