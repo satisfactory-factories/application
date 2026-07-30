@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Mining — Extraction is now part of the plan
+
+- **Raw resources can be extracted as products.** Pick Iron Ore, Raw Quartz, Water, Crude Oil or any other node resource as a product and the planner offers its extractor as the recipe: Miner Mk.1/2/3 for the ten solid node resources, the Oil Extractor for Crude Oil, the Water Extractor for Water. Build a dedicated mine factory and export the ore anywhere in your plan, or mine on site and smelt it in the same factory — both work, and the ore stops being an unspoken assumption either way.
+- **Miner mark and node purity are set per building group**, because one ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one. Each group picks its own extractor and purity, and the two multiply with the group's clock exactly as the game does: a Miner Mk.2 on a pure node reads 240/min at 100%, 560/min at 233.3333% and 600/min at 250%, drawing 15 MW, 46 MW and 50.4 MW respectively. Purity changes the yield, never the power.
+- The Water Extractor is not a special case — water sources have no purity, so it is a plain producing building at a flat 120 m³/min that happens to output a raw resource, and it overclocks like everything else (300/min at 250%).
+- Buildings are tallied per extractor, so a factory mixing marks reports "Miner Mk.3 × 2, Miner Mk.2 × 1" rather than one meaningless number, and the power figures follow each group's own extractor.
+- SAM is now selectable as a product, since it finally has a recipe that produces it.
+
+### Satisfaction — Raw inputs no longer assumed by default
+
+- Raw resource demand used to be topped up silently, so a plan could never tell you it was short of ore and a mine exporting more than its miners produce still read as green. There is now an **Options** dialog (the wrench next to the share button) with a global "Assume raw resource inputs are supplied" switch, and each factory can override it from its Raw Resources card.
+- With the assumption off, an unmet raw resource is a genuine shortage: it shows a **Raw shortage** chip, turns the factory red, and offers the usual **+ Product** and **Add to factory** buttons so you can mine it on the spot or import it from a mine factory. A factory whose demand is entirely raw can now import, which it previously refused to do.
+- **New plans default to not assuming.** Existing plans keep the old behaviour and are asked once, on load, whether to drop it — answering either way is remembered and the prompt never returns.
+
 ### Backend — a health check that can actually fail
 
 - The API had one health route, `GET /hello`, and it returned `200` for as long as the Node process was alive. It never spoke to Mongo, so the database could be dead, unreachable or out of disk and the monitoring would still show green — which is exactly what happened when the API box filled its disk. New `GET /health` runs a real `ping` against Mongo (the `SELECT 1` equivalent) and returns **503** with the error message when it doesn't answer, so an outage raises an alert instead of nothing. The response also carries process uptime, the Mongoose connection state and how long the ping took.
