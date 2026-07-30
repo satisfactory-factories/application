@@ -1,6 +1,7 @@
 import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
+import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
@@ -39,12 +40,18 @@ export const showSatisfactionItemButton = (
   }
 }
 
-// Shown for any shortage that could be produced by another factory (i.e. not raw, not nuclear waste).
+// A raw part only bypasses the shortage UI while the factory is assuming its supply. Once the
+// assumption is off, an unmet raw part is a shortage like any other — you fix it by mining it
+// here or importing it from a mine factory.
+const isAssumedRaw = (factory: Factory, part: PartMetrics): boolean =>
+  part.isRaw && factoryAssumesRawInputs(factory)
+
+// Shown for any shortage that could be produced by another factory (i.e. not assumed raw, not nuclear waste).
 export const showAddToFactory = (factory: Factory, part: PartMetrics, partId: string) => {
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !part.isRaw && !part.satisfied
+  return !isAssumedRaw(factory, part) && !part.satisfied
 }
 
 // Adds the shortage of a part as a product on the target factory, and imports it back into the
@@ -85,17 +92,17 @@ export const showAddProduct = (factory: Factory, part: PartMetrics, partId: stri
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !getProduct(factory, partId) && !part.isRaw && !part.satisfied
+  return !getProduct(factory, partId) && !isAssumedRaw(factory, part) && !part.satisfied
 }
 
 export const showFixProduct = (factory: Factory, part: PartMetrics, partId: string) => {
-  return getProduct(factory, partId, true) && !part.isRaw && !part.satisfied
+  return getProduct(factory, partId, true) && !isAssumedRaw(factory, part) && !part.satisfied
 }
 
 export const showCorrectManually = (factory: Factory, part: PartMetrics, partId: string) => {
   const isByProduct = factory.byProducts.find(byProduct => byProduct.id === partId)
   // If the product is already a byproduct, isn't raw and isn't satisfied, show it
-  if (isByProduct && !part.isRaw && !part.satisfied) {
+  if (isByProduct && !isAssumedRaw(factory, part) && !part.satisfied) {
     return true
   }
 
@@ -156,6 +163,12 @@ export const showRawChip = (factory: Factory, partId: string) => {
   // Only show when raw supply is actually being drawn from the world. A raw part fully
   // supplied by unpackaging (e.g. Packaged Oil -> Crude Oil) is not a raw import. #431
   return part.isRaw && part.amountSuppliedViaRaw > 0
+}
+
+// A raw part this factory is short of because it isn't assuming raw supply.
+export const showRawShortageChip = (factory: Factory, partId: string) => {
+  const part = factory.parts[partId]
+  return part.isRaw && !factoryAssumesRawInputs(factory) && !part.satisfied
 }
 export const showUnpackagedChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]

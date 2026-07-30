@@ -22,8 +22,8 @@
         class="sf-chip orange input mx-1"
         variant="tonal"
       >
-        <tooltip :text="getBuildingDisplayName(building)">
-          <game-asset clickable :subject="building" type="building" />
+        <tooltip :text="getBuildingDisplayName(groupBuilding)">
+          <game-asset clickable :subject="groupBuilding" type="building" />
         </tooltip>
         <v-number-input
           :id="`${factory.id}-${group.id}-building-count`"
@@ -38,12 +38,29 @@
           width="100px"
           @update:model-value="updateGroup(group)"
         />
+        <!-- Extraction only: the mark sits on the group because one ore line routinely
+             mixes a Mk.3 on a pure node with a Mk.2 on a normal one. -->
+        <v-select
+          v-if="isExtraction && extractorOptions.length > 1"
+          :id="`${factory.id}-${group.id}-extractor`"
+          class="inline-inputs ml-2"
+          density="compact"
+          hide-details
+          :items="extractorOptions"
+          :model-value="groupBuilding"
+          variant="plain"
+          width="130px"
+          @update:model-value="updateGroupExtractor(group, $event)"
+        />
         <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
       </v-chip>
-      <div class="underchip">&nbsp;</div>
+      <div class="underchip" :class="isExtraction ? 'text-cyan' : ''">
+        <span v-if="isExtraction">{{ formatNumberFully(groupExtractionRate) }} / building</span>
+        <span v-else>&nbsp;</span>
+      </div>
     </div>
     <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
-    <template v-if="canBuildingOverclock(building)">
+    <template v-if="canBuildingOverclock(groupBuilding)">
       <div class="px-1">
         <div>@</div>
         <div class="underchip">&nbsp;</div>
@@ -144,7 +161,33 @@
         <div class="underchip text-purple-lighten-1">{{ somersloopBuildCost }} / building</div>
       </div>
     </template>
-    <template v-if="group.type === ItemType.Product">
+    <!-- Extraction groups get node purity where a normal product gets somersloops: miners have
+         no amplification slots, and purity is the equivalent per-group output multiplier. -->
+    <template v-if="isExtraction">
+      <div v-if="purityOptions.length > 1">
+        <v-chip
+          class="sf-chip input cyan mx-1"
+          variant="tonal"
+        >
+          <tooltip text="Node purity">
+            <i class="fas fa-gem" />
+          </tooltip>
+          <v-select
+            :id="`${factory.id}-${group.id}-purity`"
+            class="inline-inputs ml-2"
+            density="compact"
+            hide-details
+            :items="purityOptions"
+            :model-value="groupPurity"
+            variant="plain"
+            width="110px"
+            @update:model-value="updateGroupPurity(group, $event)"
+          />
+        </v-chip>
+        <div class="underchip text-cyan">x{{ purityMultiplier }} node yield</div>
+      </div>
+    </template>
+    <template v-else-if="group.type === ItemType.Product">
       <div>
         <v-chip
           class="sf-chip input sloop mx-1"
@@ -321,6 +364,15 @@
     getSomersloopOutputMultiplier,
     getSomersloopSlots,
   } from '@/utils/factory-management/building-groups/somersloops'
+  import {
+    getExtraction,
+    getGroupExtractionRate,
+    getGroupExtractor,
+    getGroupPurity,
+    PURITY_LABELS,
+    PURITY_MULTIPLIERS,
+  } from '@/utils/factory-management/building-groups/extraction'
+  import { NodePurity } from '@/interfaces/Recipes'
   import { applyGroupSomersloops, updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
@@ -364,6 +416,46 @@
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
   // Bumped to remount the somersloop field when a typed value has to be clamped.
   const somersloopFieldKey = ref(0)
+
+  // ==== Extraction
+  const extraction = computed(() => getExtraction(props.item.recipe))
+  const isExtraction = computed(() => !!extraction.value)
+
+  // The building shown and priced for this group: its own extractor when extracting, since a
+  // single product can span several marks, otherwise the item's one building.
+  const groupBuilding = computed(() =>
+    isExtraction.value ? getGroupExtractor(props.group, props.item.recipe) : props.building
+  )
+
+  const groupPurity = computed(() => getGroupPurity(props.group, props.item.recipe))
+  const purityMultiplier = computed(() => PURITY_MULTIPLIERS[groupPurity.value])
+  const groupExtractionRate = computed(() =>
+    getGroupExtractionRate(props.group, props.item.recipe) * props.group.overclockPercent / 100
+  )
+
+  const extractorOptions = computed(() =>
+    (extraction.value?.extractors ?? []).map(extractor => ({
+      title: getBuildingDisplayName(extractor.building),
+      value: extractor.building,
+    }))
+  )
+
+  const purityOptions = computed(() =>
+    (extraction.value?.purities ?? []).map(purity => ({
+      title: PURITY_LABELS[purity],
+      value: purity,
+    }))
+  )
+
+  const updateGroupExtractor = (group: BuildingGroup, building: string) => {
+    group.extractorBuilding = building
+    updateGroup(group)
+  }
+
+  const updateGroupPurity = (group: BuildingGroup, purity: NodePurity) => {
+    group.purity = purity
+    updateGroup(group)
+  }
 
   const groupHasVariablePower = computed(() => {
     return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage

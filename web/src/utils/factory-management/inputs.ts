@@ -3,6 +3,7 @@ import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
 import { DataInterface } from '@/interfaces/DataInterface'
+import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
 import eventBus from '@/utils/eventBus'
 // Re-exported so existing callers keep importing them from here; they live in a leaf module
 // because status.ts needs them and cannot import anything that reaches factory.ts.
@@ -208,7 +209,9 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
     return 'noProductsOrProducers'
   }
 
-  if (factory.usingRawResourcesOnly) {
+  // A factory whose demand is entirely raw has nothing to import while it is assuming that
+  // supply. Once it isn't, importing from a mine factory is exactly what it should be doing.
+  if (factory.usingRawResourcesOnly && factoryAssumesRawInputs(factory)) {
     return 'rawOnly'
   }
 

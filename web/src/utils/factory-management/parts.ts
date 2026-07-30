@@ -3,6 +3,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
+import { getAssumeRawInputs } from '@/utils/factory-management/settings'
 
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
@@ -173,7 +174,14 @@ export const calculatePartSupply = (factory: Factory) => {
   }
 }
 
+// Whether this factory tops raw shortfalls up automatically. The factory's own setting wins;
+// absent (the normal case) it inherits the user's global choice.
+export const factoryAssumesRawInputs = (factory: Factory): boolean =>
+  factory.assumeRawInputs ?? getAssumeRawInputs()
+
 export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
+  const assumed = factoryAssumesRawInputs(factory)
+
   for (const part in factory.parts) {
     const partData = factory.parts[part]
 
@@ -185,22 +193,27 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
       continue // Nothing else to do
     }
 
-    // Raw resources are assumed to be supplied by the user, but only for the shortfall left after
-    // inputs and internal production (e.g. unpackaging Packaged Oil into Crude Oil) are accounted for.
-    // Otherwise the same supply would be counted twice. Fixes #431.
-    partData.amountSuppliedViaRaw = Math.max(0,
+    // The shortfall left after inputs and internal production (extraction, or unpackaging
+    // Packaged Oil into Crude Oil) are accounted for. Counting the whole requirement here
+    // would double up that supply. Fixes #431.
+    const shortfall = Math.max(0,
       partData.amountRequired -
       partData.amountSuppliedViaInput -
       partData.amountSuppliedViaProduction
     )
+
+    // With the assumption on, the shortfall is taken as supplied by the player. With it off it
+    // stays unmet, so it flows through amountRemaining and lands as a genuine shortage.
+    partData.amountSuppliedViaRaw = assumed ? shortfall : 0
 
     partData.amountSupplied =
       partData.amountSuppliedViaInput +
       partData.amountSuppliedViaProduction +
       partData.amountSuppliedViaRaw
 
-    // Also fill the rawResources array, only with the amount actually needed from raw supply
-    if (partData.amountSuppliedViaRaw > 0) {
+    // Fill the rawResources array with what the world has to provide either way — when the
+    // assumption is off this is what the factory is short of, which is worth showing.
+    if (shortfall > 0) {
       if (!factory.rawResources[part]) {
         factory.rawResources[part] = {
           id: part,
@@ -208,7 +221,7 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
           amount: 0,
         }
       }
-      factory.rawResources[part].amount += partData.amountSuppliedViaRaw
+      factory.rawResources[part].amount += shortfall
     }
   }
 }

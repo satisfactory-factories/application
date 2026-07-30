@@ -11,6 +11,7 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
+import { setAssumeRawInputs } from '@/utils/factory-management/settings'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -83,6 +84,45 @@ export const useAppStore = defineStore('app', () => {
   const showSatisfactionBreakdowns = ref<boolean>(
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
+
+  // ==== RAW INPUT ASSUMPTION
+  // New plans do not assume raw supply — mining is modelled properly now. Existing plans keep
+  // the old behaviour until the user answers the one-time prompt, because flipping it silently
+  // would turn every factory in their plan red.
+  const assumeRawInputs = ref<boolean>(true)
+  const showRawAssumptionPrompt = ref<boolean>(false)
+
+  const applyAssumeRawInputs = (value: boolean, persist = true) => {
+    assumeRawInputs.value = value
+    setAssumeRawInputs(value)
+    if (persist) {
+      localStorage.setItem('assumeRawInputs', value ? 'true' : 'false')
+    }
+  }
+
+  const storedRawAssumption = localStorage.getItem('assumeRawInputs')
+  if (storedRawAssumption !== null) {
+    applyAssumeRawInputs(storedRawAssumption === 'true', false)
+  } else if (factoryTabs.value.some(tab => tab.factories?.length > 0)) {
+    // Don't persist yet: the answer to the prompt is what gets saved.
+    applyAssumeRawInputs(true, false)
+    showRawAssumptionPrompt.value = true
+  } else {
+    applyAssumeRawInputs(false)
+  }
+
+  const getAssumeRawInputsSetting = () => assumeRawInputs
+
+  const setAssumeRawInputsSetting = (value: boolean) => {
+    applyAssumeRawInputs(value)
+    forceCalculation()
+  }
+
+  const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
+    applyAssumeRawInputs(!removeAssumption)
+    showRawAssumptionPrompt.value = false
+    forceCalculation()
+  }
 
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
@@ -743,6 +783,10 @@ export const useAppStore = defineStore('app', () => {
     removeCurrentTab,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
+    getAssumeRawInputsSetting,
+    setAssumeRawInputsSetting,
+    showRawAssumptionPrompt,
+    answerRawAssumptionPrompt,
     prepareLoader,
     forceCalculation,
 

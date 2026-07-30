@@ -149,7 +149,24 @@
         class="d-flex flex-wrap align-center mb-1"
       >
         <p class="mr-2">Requires:</p>
+        <!-- Extraction products span several marks of extractor across their groups, so a
+             single building with an editable count would be a lie. Show what the groups
+             actually add up to instead; the counts are edited per group. -->
+        <template v-if="extractorCounts(product).length > 0">
+          <v-chip
+            v-for="extractor in extractorCounts(product)"
+            :key="`${product.id}-${extractor.building}`"
+            class="sf-chip orange input"
+            variant="tonal"
+          >
+            <game-asset clickable :subject="extractor.building" type="building" />
+            <span class="ml-2">
+              <b>{{ getBuildingDisplayName(extractor.building) }}</b>: {{ extractor.amount }}
+            </span>
+          </v-chip>
+        </template>
         <v-chip
+          v-else
           class="sf-chip orange input"
           variant="tonal"
         >
@@ -241,6 +258,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
+  import { getGroupExtractor, isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
   import { inject } from 'vue'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -296,6 +314,22 @@
   const deleteProduct = (index: number, factory: Factory) => {
     deleteItem(index, ItemType.Product, factory)
     updateFactory(factory)
+  }
+
+  // Extraction only: how many of each extractor the product's groups add up to. Empty for
+  // everything else, which keeps the normal single-building row in place.
+  const extractorCounts = (product: FactoryItem) => {
+    if (!isExtractionRecipe(product.recipe)) {
+      return []
+    }
+
+    const counts = new Map<string, number>()
+    product.buildingGroups.forEach(group => {
+      const building = getGroupExtractor(group, product.recipe)
+      counts.set(building, (counts.get(building) ?? 0) + group.buildingCount)
+    })
+
+    return [...counts].map(([building, amount]) => ({ building, amount }))
   }
 
   const getRecipesForPartSelector = (part: string) => {

@@ -5,6 +5,7 @@ import { calculateFactories, newFactory } from '../../../src/utils/factory-manag
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import { BuildingGroup, Factory, FactoryItem } from '../../../src/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '../../../src/utils/gameDataService'
+import { setAssumeRawInputs } from '../../../src/utils/factory-management/settings'
 import { mountItem, mountSatisfaction } from '../../helpers'
 
 // @ts-ignore // this is fine, it works, stop moaning
@@ -33,6 +34,9 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   let groupOreIron: any
 
   beforeEach(async () => {
+    // These assertions read the raw-supply row, so pin the assumption on: mounting a component
+    // spins up the app store, which otherwise resolves it from the (empty) saved plan.
+    setAssumeRawInputs(true)
     factory = newFactory('BG-E-B-PROD Factory')
     addProductToFactory(factory, {
       id: 'IronIngot',

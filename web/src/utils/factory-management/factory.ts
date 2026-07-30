@@ -96,6 +96,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     exportCalculator: {},
     rawResources: {},
     power: {} as FactoryPower,
+    assumeRawInputs: null, // Inherit the user's global setting
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
     hidden: false,

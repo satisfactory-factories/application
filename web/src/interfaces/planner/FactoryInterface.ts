@@ -214,6 +214,9 @@ export interface Factory {
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
+  // Per-factory override for whether unmet raw demand is assumed to be supplied by the player.
+  // null/undefined inherits the user's global setting, which is what almost every factory does.
+  assumeRawInputs?: boolean | null;
   usingRawResourcesOnly: boolean;
   hidden: boolean; // Whether to hide the card or not
   hasProblem: boolean
