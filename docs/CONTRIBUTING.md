@@ -6,7 +6,7 @@ Hello and thank you for your interest in contributing to Satisfactory Factories!
 Contributions are most welcome!
 
 ### Getting Started
-Please read `README.md` and the documents contained within the `/docs` folder to get started on local development.
+Please read `README.md` — plus the README of whichever package you are working on (`web/`, `backend/` or `parsing/`) — and the documents contained within the `/docs` folder to get started on local development.
 
 ### Development cycle
 Please follow this guide to make sure your contributions are as effective as possible:

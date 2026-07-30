@@ -66,7 +66,7 @@ When game recipes/items change, regenerate data via the parser, then:
 2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-05`) — this triggers clients to re-download.
 3. Delete the old `web/public/gameData_*.json`.
 
-The version tracks the game's minor version. See `README.md` for the full parser workflow.
+The version tracks the game's minor version. See `parsing/README.md` for the full parser workflow.
 
 ## Conventions
 
