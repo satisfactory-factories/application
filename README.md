@@ -8,12 +8,14 @@ The player can scale up end product factories as they see fit, and check if thei
 ## Contributing
 Since this is an open source project, all PR requests will be welcomed, as long as proper intent and communication with the project maintainers is maintained.
 
+Please read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) before you start — in particular, work should have an issue attached to it before you open a PR.
+
 ___
 ## Local Development
 This project has the following requirements. We highly recommend you use `nvm` to manage your node and p(npm) versions.
-- Node.js version >=24 `nvm install 24 && nvm use 24`
+- Node.js version >=24 — `nvm use` in the repo root picks up the version pinned in `.nvmrc`, or `nvm install 24 && nvm use 24`
   - You may want to make 24 the default version with `nvm alias default 24`
-- pnpm version >9.14.4 `npm install -g pnpm`
+- pnpm version >=11.3 `npm install -g pnpm` (or `corepack enable`, which honours the `packageManager` field in `package.json`)
 - Docker (for the backend) [Docker install docs](https://docs.docker.com/engine/install/)
 
 ### Quick start
@@ -24,7 +26,7 @@ pnpm install   # installs web + backend + parsing
 pnpm dev       # starts Mongo (Docker), then the backend + frontend together
 ```
 
-`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running and a `backend/.env` file to exist.
+`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running. `backend/.env` is committed with working local defaults, so there is nothing to create — just be aware those credentials are for local dev only.
 
 **The port allocation is 3000 for the web app and 3001 for the API, everywhere** — local dev, the container, the host, and behind the tunnel. Treat those two as fixed; anything else that wants a port should move rather than pushing the API off 3001.
 
@@ -43,46 +45,58 @@ Available root scripts:
 | `pnpm lint` / `pnpm lint-check` | Lint (fix) / lint (check only) every package |
 | `pnpm test` | Run every package's test suite |
 
-You can still work inside a single package if you prefer — the per-package instructions below continue to work. Each package keeps its own `pnpm-lock.yaml` (the workspace uses `sharedWorkspaceLockfile: false`), so dependency versions are pinned independently and CI is unaffected.
+There is a **single** `pnpm-lock.yaml`, at the repository root, covering all three packages (`sharedWorkspaceLockfile: true` in `pnpm-workspace.yaml` — it must stay `true`, see the comment there for why). Versions that are shared across packages are pinned once in the `catalog:` block of `pnpm-workspace.yaml` and referenced from each `package.json` as `"typescript": "catalog:"`; bump them in the catalog, not in the individual packages.
+
+You can still run commands from inside a single package if you prefer — `cd web && pnpm dev` works fine. What you don't need is a per-package `pnpm install`: the root install has already put `node_modules` in place for all three. If you do want to install just one package's dependencies, use `pnpm install --filter web` from anywhere in the workspace rather than `cd`-ing in.
 
 ### Frontend
 ```sh
 cd web
-pnpm install
 pnpm dev
 ```
 
 Visit http://localhost:3000 to view the project. You may need to load it twice.
 
 #### Testing
-There are tests for the frontend project, run them with `pnpm test`. Tests must pass for PRs to be accepted. Note as of writing the coverage isn't 100%.
+There are tests for the frontend project, run them with `pnpm test` from the repository root or from `web/` (Vitest, run with coverage). Tests must pass for PRs to be accepted. Note as of writing the coverage isn't 100%.
+
+To run a single test file or pattern while iterating: `cd web && pnpm exec vitest run factory-management/products`. Drop the `run` for watch mode.
+
+Note that `pnpm build` in `web` runs `vue-tsc --noEmit` first, so a type error fails the build even if the tests pass.
 
 ### Parsing
 The parser is responsible for processing the `Docs.json` from the game and reconstructing a more readable version for our use, since the game's docs file is overwhelmingly large and not very human-readable. The file is located under `X\steamapps\common\Satisfactory\CommunityResources\Docs` on Windows. Replace X with where you have installed your steam library (usually `C:\Program Files (x86)\Steam`)
 
 #### Running the parser and updating the gameData
-To run the parser:
+Copy the game's `Docs.json` into `parsing/` as `game-docs.json` (that filename is what the `dev` script passes in as the input argument), then:
 
 ```sh
 cd parsing
-pnpm install
 pnpm dev
 ```
 
-When the parser is run, it outputs to file `/parser/gameData.json`. This file needs copying to `/web/public/gameData_v1.x-xx.json`. The version must directly correlate with the minor version of the game (unless a patch messes with a recipe, unlikely). e.g. `v1.0-11.json` would increment to `v1.0-12.json`. The old version needs deleting when you commit.
+The script is `ts-node src/index.ts game-docs.json gameData.json`, so if you'd rather not rename anything you can run `pnpm exec ts-node src/index.ts <input> <output>` with your own paths.
 
-Once the new file has been placed, you must also edit `/web/src/config/config.ts` and update the version there too.
+When the parser is run, it outputs to `parsing/gameData.json`. This file needs copying to `web/public/gameData_v1.x-xx.json`. The version must directly correlate with the minor version of the game (unless a patch messes with a recipe, unlikely). e.g. `gameData_v1.2-05.json` would increment to `gameData_v1.2-06.json`. The old version needs deleting when you commit.
+
+Once the new file has been placed, you must also edit `web/src/config/config.ts` and bump `dataVersion` to match (currently `1.2-05`).
 
 This instructs web clients to re-download the game data file with the new version upon refresh and replace their locally stored version.
 
+#### Testing
+Run the parser's tests with `pnpm test` from `parsing/` (Jest, run with coverage). Unlike the frontend, **tests are mandatory here** — the parser feeds every calculation in the app, so it is kept at or near 100% coverage.
+
 ### Backend
 Required for the login and syncing of data features, not required for local development.
-1. Start Docker service on your local machine.
+
+Start the Docker service on your local machine, then either run `pnpm dev:backend` from the repository root, or:
+
 ```sh
 cd backend
-pnpm install
 ./start.sh
 ```
+
+Both do the same thing — bring up the Mongo container, then start the API with nodemon. `./stop.sh` (or `pnpm db:down` from the root) tears the container back down.
 
 API will be available on http://localhost:3001.
 
@@ -95,7 +109,7 @@ See [docs/deployment.md](docs/deployment.md) for the backend chain end to end �
 ___
 
 ## License
-This project is licensed under the GNU License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`) - see the [LICENSE](LICENSE) file for details.
 
 Please kindly consider opening PRs to improve the project, and make it better for everyone rather than making a clone.
 
