@@ -4,7 +4,7 @@ A single-file Express + Mongoose API (`backend.ts`) backing the login, plan sync
 
 **It is optional for local development.** The planner works fine without it — you just lose accounts and syncing, and plans stay in `localStorage`.
 
-Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this package. You do need Docker running, for Mongo.
+Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this component, but you do need Docker running, for Mongo. **pnpm is mandatory**; see [why](../README.md#pnpm-is-the-mandatory-package-manager) before reaching for npm or yarn.
 
 ## Running
 

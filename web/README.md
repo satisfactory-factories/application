@@ -2,7 +2,7 @@
 
 The Vue 3 + Vuetify 4 single-page app that players actually use. This is the planner UI and the calculation engine behind it; most work on the project happens here.
 
-Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this package — a `pnpm install` at the repository root covers it.
+Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this component — a `pnpm install` at the repository root covers it. **pnpm is mandatory**; see [why](../README.md#pnpm-is-the-mandatory-package-manager) before reaching for npm or yarn.
 
 ## Running
 

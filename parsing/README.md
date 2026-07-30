@@ -2,7 +2,7 @@
 
 A small CLI that turns the game's `Docs.json` into the `gameData.json` the frontend consumes. The game's own docs file is enormous and not remotely human-readable; this reconstructs a trimmed, structured version of the recipes, items and buildings.
 
-Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this package.
+Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this component. **pnpm is mandatory**; see [why](../README.md#pnpm-is-the-mandatory-package-manager) before reaching for npm or yarn.
 
 ## Finding `Docs.json`
 

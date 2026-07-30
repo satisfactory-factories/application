@@ -5,6 +5,17 @@ The tool highlights bottlenecks in the production chain, and visually tells the 
 
 The player can scale up end product factories as they see fit, and check if their production chain can handle the increased load.
 
+## Components
+The repository is a [pnpm workspace](https://pnpm.io/workspaces) containing three components:
+
+| Component | What it does | Docs |
+| --- | --- | --- |
+| [`web`](web) | The Vue 3 + Vuetify single-page app players actually use, containing both the planner UI and the calculation engine that resolves production chains, links factories together and flags bottlenecks. | [web/README.md](web/README.md) |
+| [`backend`](backend) | An Express + Mongoose API providing user accounts, plan syncing across devices and shareable plan links — entirely optional for local development. | [backend/README.md](backend/README.md) |
+| [`parsing`](parsing) | A CLI that converts the game's own enormous `Docs.json` into the trimmed `gameData.json` of recipes, items and buildings that the frontend downloads. | [parsing/README.md](parsing/README.md) |
+
+Each component's README covers running it, its tests, and anything else specific to it. This README covers what applies across all three.
+
 ## Contributing
 Since this is an open source project, all PR requests will be welcomed, as long as proper intent and communication with the project maintainers is maintained.
 
@@ -12,14 +23,22 @@ Please read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) before you start — in
 
 ___
 ## Local Development
-This project has the following requirements. We highly recommend you use `nvm` to manage your node and p(npm) versions.
+This project has the following requirements. We highly recommend you use `nvm` to manage your Node.js version.
 - Node.js version >=24 — `nvm use` in the repo root picks up the version pinned in `.nvmrc`, or `nvm install 24 && nvm use 24`
   - You may want to make 24 the default version with `nvm alias default 24`
-- pnpm version >=11.3 `npm install -g pnpm` (or `corepack enable`, which honours the `packageManager` field in `package.json`)
+- pnpm version >=11.3 — `corepack enable` is the recommended way to get it, as that activates the exact version pinned by the `packageManager` field in `package.json` (this is what CI does). `npm install -g pnpm` also works, but installs whatever the latest release happens to be.
 - Docker (for the backend) [Docker install docs](https://docs.docker.com/engine/install/)
 
+### pnpm is the mandatory package manager
+**Use `pnpm`. Not npm, not yarn, not bun.** This is not a preference — the repository is a pnpm workspace, and the other package managers do not understand `pnpm-workspace.yaml`, the `catalog:` version pins, or the single shared lockfile. Running them here produces a broken install and a lockfile that does not describe what this project builds with.
+
+Concretely:
+- **Never commit a `package-lock.json`, `yarn.lock` or `bun.lockb`.** Any PR containing one will be rejected — remove the file and re-run `pnpm install` before pushing.
+- `pnpm-lock.yaml` at the repository root is the only lockfile in the project. Commit it whenever your change touches dependencies.
+- CI runs `pnpm install` with `CI=true`, which means pnpm's frozen-lockfile behaviour applies: if `pnpm-lock.yaml` is out of step with any `package.json`, the build fails before it reaches lint or tests.
+
 ### Quick start
-The `web`, `backend`, and `parsing` packages are managed as a [pnpm workspace](https://pnpm.io/workspaces). A single `pnpm install` from the repository root installs the dependencies for all three, so you never need to `cd` into a package to set it up.
+A single `pnpm install` from the repository root installs the dependencies for all three components, so you never need to `cd` into one to set it up.
 
 ```sh
 pnpm install   # installs web + backend + parsing
@@ -30,15 +49,7 @@ pnpm dev       # starts Mongo (Docker), then the backend + frontend together
 
 If you only want to work on the planner — which is most of the time — `pnpm dev:web` is enough and needs no Docker.
 
-### The packages
-
-| Package | What it is | Docs |
-| --- | --- | --- |
-| `web` | The Vue 3 + Vuetify planner SPA, and the calculation engine behind it | [web/README.md](web/README.md) |
-| `backend` | Express + Mongoose API for login, plan syncing and sharing. Optional locally | [backend/README.md](backend/README.md) |
-| `parsing` | CLI that converts the game's `Docs.json` into the `gameData.json` the frontend consumes | [parsing/README.md](parsing/README.md) |
-
-Each package README covers running it, its tests, and anything specific to it. The rest of this section is the parts that apply across all three.
+For anything specific to a single component, see its own README — linked from the [Components](#components) table above.
 
 ### Root scripts
 
@@ -54,7 +65,7 @@ Each package README covers running it, its tests, and anything specific to it. T
 | `pnpm test` | Run every package's test suite |
 
 ### Dependencies and the lockfile
-There is a **single** `pnpm-lock.yaml`, at the repository root, covering all three packages (`sharedWorkspaceLockfile: true` in `pnpm-workspace.yaml` — it must stay `true`, see the comment there for why). Versions that are shared across packages are pinned once in the `catalog:` block of `pnpm-workspace.yaml` and referenced from each `package.json` as `"typescript": "catalog:"`; bump them in the catalog, not in the individual packages.
+The reason there is only one lockfile is `sharedWorkspaceLockfile: true` in `pnpm-workspace.yaml` — it must stay `true`, see the comment there for why. Versions that are shared across components are pinned once in the `catalog:` block of the same file and referenced from each `package.json` as `"typescript": "catalog:"`; bump them in the catalog, not in the individual `package.json` files.
 
 You can still run commands from inside a single package if you prefer — `cd web && pnpm dev` works fine. What you don't need is a per-package `pnpm install`: the root install has already put `node_modules` in place for all three. If you do want to install just one package's dependencies, use `pnpm install --filter web` from anywhere in the workspace rather than `cd`-ing in.
 
