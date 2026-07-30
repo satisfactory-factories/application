@@ -8,22 +8,23 @@ Prerequisites (Node, pnpm) and the one-time workspace install are covered in the
 
 ## Running
 
-From the repository root:
+With Docker running, from the repository root:
 
 ```sh
 pnpm dev:backend
 ```
 
-or from this directory:
+That brings up the Mongo container and then starts the API with nodemon, on http://localhost:3001.
+
+If you'd rather work from this directory, the two steps are separate scripts — `pnpm dev` on its own starts the API but *not* Mongo:
 
 ```sh
 cd backend
-./start.sh
+pnpm db:up   # docker compose up -d --wait
+pnpm dev
 ```
 
-Both do the same thing — bring up the Mongo container, then start the API with nodemon. The API listens on http://localhost:3001.
-
-To tear the container back down, `./stop.sh` from here or `pnpm db:down` from the root.
+To tear the container back down, `pnpm db:down` from either the root or here.
 
 `PORT` is respected if you need to move the API (`PORT=3011 pnpm dev:backend`), but note the frontend's dev API URL is hardcoded to 3001, so only do that when you aren't exercising save/load. See the [port allocation note](../README.md#ports) in the root README.
 
