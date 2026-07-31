@@ -262,10 +262,41 @@ let cloneRunDepth = 0
 // operating on the clone and must run the engine directly rather than re-cloning.
 const inCloneRun = () => cloneRunDepth > 0
 
-const cloneForCalculation = (factories: Factory[]): Factory[] =>
+// Unwraps every proxy on the way down, producing a plain copy. Only used as the fallback
+// below — it is a hand-rolled traversal where structuredClone is native.
+const deepRaw = (value: unknown): unknown => {
+  const raw = toRaw(value)
+
+  if (raw === null || typeof raw !== 'object') {
+    return raw
+  }
+  if (Array.isArray(raw)) {
+    return raw.map(deepRaw)
+  }
+
+  const copy: Record<string, unknown> = {}
+  for (const key of Object.keys(raw)) {
+    copy[key] = deepRaw((raw as Record<string, unknown>)[key])
+  }
+  return copy
+}
+
+const cloneForCalculation = (factories: Factory[]): Factory[] => {
   // toRaw both the array and its elements: callers hand us either the store's reactive
   // array (raw elements inside) or a plain array that may contain reactive proxies.
-  structuredClone(toRaw(factories).map(factory => toRaw(factory)))
+  const raws = toRaw(factories).map(factory => toRaw(factory))
+
+  try {
+    return structuredClone(raws)
+  } catch (err) {
+    // structuredClone refuses a Proxy, and assigning the result of a reactive array's
+    // filter() stores the proxies it read out as elements — see rawArray in common.ts,
+    // which every such site now uses. A miss would otherwise break every subsequent
+    // calculation, so unwrap the hard way rather than leaving the plan uncalculated.
+    console.error('factory: cloneForCalculation: the plan holds a reactive proxy, falling back to a deep unwrap. This is a bug — the assignment that stored it should use rawArray().', err)
+    return deepRaw(raws) as Factory[]
+  }
+}
 
 // Diff the calculation results onto the live factories; returns the ones that changed.
 const commitResults = (targets: Factory[], results: Factory[]): Factory[] => {
