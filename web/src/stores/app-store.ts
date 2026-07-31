@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
-import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
+import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
@@ -319,7 +319,11 @@ export const useAppStore = defineStore('app', () => {
     let needsCalculation = false
 
     try {
-      validateFactories(newFactories, gameData) // Ensure the data is clean
+      // Returns true when the data it repaired leaves the plan needing a recalculation —
+      // most notably a drifted import/export chain, which only a recalc can flush.
+      if (validateFactories(newFactories, gameData)) {
+        needsCalculation = true
+      }
     } catch (err) {
       // If err is type of Error
       if (err instanceof Error) {
@@ -577,6 +581,15 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const addFactory = (factory: Factory) => {
+    // newFactory() cannot see the plan, so its random ID may already be taken. A collision
+    // makes the two factories indistinguishable to the dependency system, which keys every
+    // export request by factory ID.
+    if (factories.value.some(existing => existing.id === factory.id)) {
+      const oldId = factory.id
+      factory.id = generateFactoryId(factories.value)
+      console.warn(`appStore: addFactory: Factory ID ${oldId} was already taken, reassigned to ${factory.id}`)
+    }
+
     // Ensure the factory has the correct display order
     factory.displayOrder = factories.value.length
     factories.value.push(factory)

@@ -1,14 +1,88 @@
 // Check for invalid factory data e.g. inputs without factories etc
-import { calculateFactory, findFac } from '@/utils/factory-management/factory'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { calculateFactory, findFac, generateFactoryId } from '@/utils/factory-management/factory'
+import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { createNewPart } from '@/utils/factory-management/common'
+import { createNewPart, rawArray } from '@/utils/factory-management/common'
+import { findDependencyChainViolations } from '@/utils/factory-management/dependency-integrity'
 
-export const validateFactories = (factories: Factory[], gameData: DataInterface) => {
-  let hasErrors = false
+// Two factories sharing an ID make every dependency between them ambiguous: requests are
+// keyed by ID, so one factory's exports get attributed to (and deleted with) the other.
+// Plans built before IDs were issued uniquely can carry collisions, so break them on load.
+// The first factory keeps the ID; anything still pointing at the reassigned one is left for
+// the chain reconciliation and the recalculation that follows.
+export const repairDuplicateFactoryIds = (factories: Factory[]): string[] => {
+  const repairs: string[] = []
+  const seen = new Set<number>()
 
   factories.forEach(factory => {
+    if (factory.id && !seen.has(factory.id)) {
+      seen.add(factory.id)
+      return
+    }
+
+    const oldId = factory.id
+    factory.id = generateFactoryId(factories)
+    seen.add(factory.id)
+    repairs.push(`Factory "${factory.name}" shared the ID ${oldId} with another factory and has been reassigned ${factory.id}.`)
+  })
+
+  return repairs
+}
+
+// The UI blocks importing the same part from the same factory twice, but plans saved before
+// it did (and hand-edited share links) can hold duplicates. Only one request is ever raised
+// for a provider + part pair, so the rows have to be merged or the export understates demand.
+export const mergeDuplicateInputs = (factories: Factory[]): string[] => {
+  const repairs: string[] = []
+
+  factories.forEach(factory => {
+    const seen = new Map<string, FactoryInput>()
+    const kept: FactoryInput[] = []
+
     factory.inputs.forEach(input => {
+      // A row the user never finished isn't a duplicate of anything.
+      if (!input.factoryId || !input.outputPart) {
+        kept.push(input)
+        return
+      }
+
+      const key = `${input.factoryId}-${input.outputPart}`
+      const existing = seen.get(key)
+
+      if (existing) {
+        existing.amount += input.amount
+        repairs.push(`Factory "${factory.name}" (${factory.id}) imported ${input.outputPart} from factory ${input.factoryId} more than once; the imports have been merged into ${existing.amount}/min.`)
+        return
+      }
+
+      seen.set(key, input)
+      kept.push(input)
+    })
+
+    if (kept.length !== factory.inputs.length) {
+      factory.inputs = rawArray(kept)
+    }
+  })
+
+  return repairs
+}
+
+// Returns true when the plan needs a full recalculation to become self-consistent again.
+export const validateFactories = (factories: Factory[], gameData: DataInterface): boolean => {
+  let hasErrors = false
+
+  // Both run before anything reads a factory by ID or pairs an input with a request.
+  const structuralRepairs = [
+    ...repairDuplicateFactoryIds(factories),
+    ...mergeDuplicateInputs(factories),
+  ]
+  structuralRepairs.forEach(repair => console.error(`VALIDATION ERROR: ${repair}`))
+  hasErrors = hasErrors || structuralRepairs.length > 0
+
+  factories.forEach(factory => {
+    // Filtered rather than spliced mid-loop: splicing by the first matching factoryId
+    // removes whichever input happens to match first and skips the next one along.
+    factory.inputs = rawArray(factory.inputs.filter(input => {
       if (input.amount <= 0) {
         hasErrors = true
         console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has an input with an amount of 0 or less. Setting to 1.`)
@@ -16,18 +90,27 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
         input.amount = 1
       }
 
-      const inputFac = findFac(Number(input.factoryId), factories)
+      // A row the user was still filling in when the plan was saved. Harmless, and the
+      // Imports UI needs it to keep showing the half-made selection.
+      if (!input.factoryId) {
+        return true
+      }
+
+      const inputFac = findFac(input.factoryId, factories)
       if (!inputFac?.id) {
         hasErrors = true
         console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has an input for ${input.factoryId} with part ${input.outputPart} where which the factory does not exist!`)
-
-        // Remove the input
-        const index = factory.inputs.findIndex(i => i.factoryId === input.factoryId)
-        if (index !== -1) {
-          factory.inputs.splice(index, 1)
-        }
+        return false
       }
-    })
+
+      if (inputFac.id === factory.id) {
+        hasErrors = true
+        console.error(`VALIDATION ERROR: Factory "${factory.name}" (${factory.id}) has an input importing ${input.outputPart} from itself!`)
+        return false
+      }
+
+      return true
+    }))
 
     // Check the dependencies to ensure the factories they're requesting exist
     Object.keys(factory.dependencies.requests).forEach(depFacId => {
@@ -89,4 +172,18 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
   if (hasErrors) {
     alert('There were errors loading your factory data. Please check the browser console for more details. Firefox: Control + Shift + K, Chrome: Control + Shift + J. Look for "VALIDATION ERROR:".\n\nThe planner has made corrections so you can continue planning.')
   }
+
+  // A plan whose derived data looks current is loaded without being recalculated, so a
+  // ghost export saved by an older build would never be flushed. Report the drift instead
+  // of alerting: the recalculation this triggers is what actually clears it, and it is not
+  // something the user did wrong.
+  const drift = findDependencyChainViolations(factories)
+  if (drift.length > 0) {
+    console.warn(
+      `validation: The import/export chain is inconsistent in ${drift.length} place(s); recalculating the plan to repair it.`,
+      drift
+    )
+  }
+
+  return hasErrors || drift.length > 0
 }

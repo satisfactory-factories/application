@@ -96,6 +96,7 @@
     calculateFactory,
     CalculationModes,
     findFac,
+    generateFactoryId,
     newFactory,
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
@@ -438,9 +439,8 @@
   }
 
   const copyFactory = (originalFactory: Factory) => {
-    // Make a deep copy of the factory with a new ID. Math.random is fine here:
-    // the ID is a display identifier, not a security token — same scheme as newFactory().
-    const newId = Math.floor(Math.random() * 10000) // NOSONAR
+    // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
+    const newId = generateFactoryId(getFactories())
     const newFactory: Factory = {
       ...structuredClone(toRaw(originalFactory)),
       id: newId,
@@ -452,6 +452,11 @@
     newFactory.syncState = {}
     newFactory.syncStatePower = {}
     newFactory.inSync = null
+
+    // The clone inherits the original's exports, but the importers are still buying from
+    // the original — leaving them on renders as an export nobody asked for until the flush
+    // tears them (and a recalculation of every affected factory) back down.
+    newFactory.dependencies = { requests: {}, metrics: {} }
 
     getFactories().push(newFactory)
 

@@ -57,9 +57,30 @@ export const findFacByName = (name: string, factories: Factory[]): Factory => {
   return factory
 }
 
+// Factory IDs key dependency requests and inputs, so a collision silently merges two
+// factories' exports (and deleting one takes the other's imports with it). Math.random()
+// over 10k values collides ~50% of the time at 120 factories, so IDs must be issued
+// against the plan. 0 is never issued: findFac and the input validation both read it as
+// "not set". NOSONAR: a display identifier, not a security token.
+export const generateFactoryId = (factories: Factory[] = []): number => {
+  const taken = new Set(factories.map(factory => factory.id))
+  let range = 10000
+
+  for (let attempt = 0; ; attempt++) {
+    const id = Math.floor(Math.random() * range) + 1 // NOSONAR
+    if (!taken.has(id)) {
+      return id
+    }
+    // Saturated ID space (a very large plan) — widen rather than spin forever.
+    if (attempt > 0 && attempt % 50 === 0) {
+      range *= 10
+    }
+  }
+}
+
 export const newFactory = (name = 'A new factory', order?: number, id?: number): Factory => {
   return {
-    id: id ?? Math.floor(Math.random() * 10000),
+    id: id ?? generateFactoryId(),
     name,
     products: [],
     byProducts: [],
