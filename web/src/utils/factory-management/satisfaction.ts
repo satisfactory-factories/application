@@ -170,6 +170,15 @@ export const showRawShortageChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]
   return part.isRaw && !factoryAssumesRawInputs(factory) && !part.satisfied
 }
+
+// Whether any raw resource is genuinely unmet — flags the Imports section and its
+// Raw Resources card, the same way an unsatisfied factory is flagged.
+export const factoryHasRawShortage = (factory: Factory): boolean => {
+  if (factoryAssumesRawInputs(factory)) {
+    return false
+  }
+  return Object.values(factory.parts).some(part => part.isRaw && !part.satisfied)
+}
 export const showUnpackagedChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]
   if (!part.isRaw) {

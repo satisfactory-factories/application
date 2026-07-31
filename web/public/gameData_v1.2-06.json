@@ -5193,7 +5193,7 @@
         },
         {
             "id": "Bauxite_Caterium",
-            "displayName": "Bauxite (Caterium)",
+            "displayName": "Bauxite (Convert: Caterium)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5225,7 +5225,7 @@
         },
         {
             "id": "Bauxite_Copper",
-            "displayName": "Bauxite (Copper)",
+            "displayName": "Bauxite (Convert: Copper)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5562,7 +5562,7 @@
         },
         {
             "id": "Caterium_Copper",
-            "displayName": "Caterium Ore (Copper)",
+            "displayName": "Caterium Ore (Convert: Copper)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5573,6 +5573,38 @@
                     "part": "OreCopper",
                     "amount": 15,
                     "perMin": 150
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreGold",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 250,
+                "minPower": 100,
+                "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Caterium_Quartz",
+            "displayName": "Caterium Ore (Convert: Quartz)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "RawQuartz",
+                    "amount": 12,
+                    "perMin": 120
                 }
             ],
             "products": [
@@ -5628,38 +5660,6 @@
                         "ratePerMin": 240
                     }
                 ]
-            },
-            "isAlternate": false,
-            "isFicsmas": false
-        },
-        {
-            "id": "Caterium_Quartz",
-            "displayName": "Caterium Ore (Quartz)",
-            "ingredients": [
-                {
-                    "part": "SAMIngot",
-                    "amount": 1,
-                    "perMin": 10
-                },
-                {
-                    "part": "RawQuartz",
-                    "amount": 12,
-                    "perMin": 120
-                }
-            ],
-            "products": [
-                {
-                    "part": "OreGold",
-                    "amount": 12,
-                    "perMin": 120,
-                    "isByProduct": false
-                }
-            ],
-            "building": {
-                "name": "converter",
-                "power": 250,
-                "minPower": 100,
-                "maxPower": 400
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5726,7 +5726,7 @@
         },
         {
             "id": "Coal_Iron",
-            "displayName": "Coal (Iron)",
+            "displayName": "Coal (Convert: Iron)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5758,7 +5758,7 @@
         },
         {
             "id": "Coal_Limestone",
-            "displayName": "Coal (Limestone)",
+            "displayName": "Coal (Convert: Limestone)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5984,6 +5984,70 @@
             "isFicsmas": false
         },
         {
+            "id": "Copper_Quartz",
+            "displayName": "Copper Ore (Convert: Quartz)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "RawQuartz",
+                    "amount": 10,
+                    "perMin": 100
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 250,
+                "minPower": 100,
+                "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Copper_Sulfur",
+            "displayName": "Copper Ore (Convert: Sulfur)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Sulfur",
+                    "amount": 12,
+                    "perMin": 120
+                }
+            ],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 250,
+                "minPower": 100,
+                "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Extract_OreCopper",
             "displayName": "Copper Ore (Miner)",
             "ingredients": [],
@@ -6019,70 +6083,6 @@
                         "ratePerMin": 240
                     }
                 ]
-            },
-            "isAlternate": false,
-            "isFicsmas": false
-        },
-        {
-            "id": "Copper_Quartz",
-            "displayName": "Copper Ore (Quartz)",
-            "ingredients": [
-                {
-                    "part": "SAMIngot",
-                    "amount": 1,
-                    "perMin": 10
-                },
-                {
-                    "part": "RawQuartz",
-                    "amount": 10,
-                    "perMin": 100
-                }
-            ],
-            "products": [
-                {
-                    "part": "OreCopper",
-                    "amount": 12,
-                    "perMin": 120,
-                    "isByProduct": false
-                }
-            ],
-            "building": {
-                "name": "converter",
-                "power": 250,
-                "minPower": 100,
-                "maxPower": 400
-            },
-            "isAlternate": false,
-            "isFicsmas": false
-        },
-        {
-            "id": "Copper_Sulfur",
-            "displayName": "Copper Ore (Sulfur)",
-            "ingredients": [
-                {
-                    "part": "SAMIngot",
-                    "amount": 1,
-                    "perMin": 10
-                },
-                {
-                    "part": "Sulfur",
-                    "amount": 12,
-                    "perMin": 120
-                }
-            ],
-            "products": [
-                {
-                    "part": "OreCopper",
-                    "amount": 12,
-                    "perMin": 120,
-                    "isByProduct": false
-                }
-            ],
-            "building": {
-                "name": "converter",
-                "power": 250,
-                "minPower": 100,
-                "maxPower": 400
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7402,7 +7402,7 @@
         },
         {
             "id": "Iron_Limestone",
-            "displayName": "Iron Ore (Limestone)",
+            "displayName": "Iron Ore (Convert: Limestone)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7548,6 +7548,38 @@
             "isFicsmas": false
         },
         {
+            "id": "Limestone_Sulfur",
+            "displayName": "Limestone (Convert: Sulfur)",
+            "ingredients": [
+                {
+                    "part": "SAMIngot",
+                    "amount": 1,
+                    "perMin": 10
+                },
+                {
+                    "part": "Sulfur",
+                    "amount": 2,
+                    "perMin": 20
+                }
+            ],
+            "products": [
+                {
+                    "part": "Stone",
+                    "amount": 12,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "converter",
+                "power": 250,
+                "minPower": 100,
+                "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "Extract_Stone",
             "displayName": "Limestone (Miner)",
             "ingredients": [],
@@ -7583,38 +7615,6 @@
                         "ratePerMin": 240
                     }
                 ]
-            },
-            "isAlternate": false,
-            "isFicsmas": false
-        },
-        {
-            "id": "Limestone_Sulfur",
-            "displayName": "Limestone (Sulfur)",
-            "ingredients": [
-                {
-                    "part": "SAMIngot",
-                    "amount": 1,
-                    "perMin": 10
-                },
-                {
-                    "part": "Sulfur",
-                    "amount": 2,
-                    "perMin": 20
-                }
-            ],
-            "products": [
-                {
-                    "part": "Stone",
-                    "amount": 12,
-                    "perMin": 120,
-                    "isByProduct": false
-                }
-            ],
-            "building": {
-                "name": "converter",
-                "power": 250,
-                "minPower": 100,
-                "maxPower": 400
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7859,7 +7859,7 @@
         },
         {
             "id": "Nitrogen_Bauxite",
-            "displayName": "Nitrogen Gas (Bauxite)",
+            "displayName": "Nitrogen Gas (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7891,7 +7891,7 @@
         },
         {
             "id": "Nitrogen_Caterium",
-            "displayName": "Nitrogen Gas (Caterium)",
+            "displayName": "Nitrogen Gas (Convert: Caterium)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -8779,7 +8779,7 @@
         },
         {
             "id": "Quartz_Bauxite",
-            "displayName": "Raw Quartz (Bauxite)",
+            "displayName": "Raw Quartz (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -8811,7 +8811,7 @@
         },
         {
             "id": "Quartz_Coal",
-            "displayName": "Raw Quartz (Coal)",
+            "displayName": "Raw Quartz (Convert: Coal)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -9700,7 +9700,7 @@
         },
         {
             "id": "Sulfur_Coal",
-            "displayName": "Sulfur (Coal)",
+            "displayName": "Sulfur (Convert: Coal)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -9732,7 +9732,7 @@
         },
         {
             "id": "Sulfur_Iron",
-            "displayName": "Sulfur (Iron)",
+            "displayName": "Sulfur (Convert: Iron)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -10654,7 +10654,7 @@
         },
         {
             "id": "Uranium_Bauxite",
-            "displayName": "Uranium Ore (Bauxite)",
+            "displayName": "Uranium Ore (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",

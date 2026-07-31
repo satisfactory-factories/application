@@ -43,13 +43,13 @@
         <v-select
           v-if="isExtraction && extractorOptions.length > 1"
           :id="`${factory.id}-${group.id}-extractor`"
-          class="inline-inputs ml-2"
+          class="inline-inputs ml-1 chip-select"
           density="compact"
           hide-details
           :items="extractorOptions"
           :model-value="groupBuilding"
           variant="plain"
-          width="130px"
+          width="125px"
           @update:model-value="updateGroupExtractor(group, $event)"
         />
         <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
@@ -171,13 +171,13 @@
           </tooltip>
           <v-select
             :id="`${factory.id}-${group.id}-purity`"
-            class="inline-inputs ml-2"
+            class="inline-inputs ml-1 chip-select"
             density="compact"
             hide-details
             :items="purityOptions"
             :model-value="groupPurity"
             variant="plain"
-            width="110px"
+            width="90px"
             @update:model-value="updateGroupPurity(group, $event)"
           />
         </v-chip>
@@ -620,6 +620,32 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+// A select sitting inside a chip alongside other inputs. Vuetify sizes the control for a
+// labelled field: the chevron is top-aligned in a taller box and the input reserves trailing
+// space, which reads as a gap after "Miner Mk.1". Centre both and tighten the padding.
+.chip-select {
+  :deep(.v-field) {
+    align-items: center;
+  }
+
+  :deep(.v-field__input) {
+    align-items: center;
+    min-height: 0;
+    padding: 0 0 0 8px;
+  }
+
+  :deep(.v-field__append-inner) {
+    align-items: center;
+    padding-top: 0;
+    margin-inline-start: 0;
+
+    .v-icon {
+      font-size: 20px;
+      opacity: 0.85;
+    }
+  }
 }
 
 .underchip {

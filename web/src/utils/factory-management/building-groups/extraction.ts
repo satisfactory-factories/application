@@ -29,6 +29,11 @@ export const getExtraction = (recipeId?: string): RecipeExtraction | undefined =
 
 export const isExtractionRecipe = (recipeId?: string): boolean => !!getExtraction(recipeId)
 
+// The recipe that extracts a raw resource, if one exists. Collectables (Leaves, alien remains,
+// power slugs) and resource-well gases have none, so callers must handle undefined.
+export const getExtractionRecipeForPart = (part: string): string | undefined =>
+  gameData.recipes.find(recipe => recipe.extraction && recipe.products[0]?.part === part)?.id
+
 // The extractor a group uses, falling back to the recipe's reference extractor. A building the
 // recipe doesn't offer (bad save, changed game data) falls back rather than producing nonsense.
 export const getGroupExtractor = (group: BuildingGroup, recipeId?: string): string => {

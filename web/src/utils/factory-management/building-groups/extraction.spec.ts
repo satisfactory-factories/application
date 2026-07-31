@@ -9,6 +9,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   getExtractionOutputMultiplier,
+  getExtractionRecipeForPart,
   getGroupExtractionRate,
   getGroupExtractor,
   getGroupPurity,
@@ -47,6 +48,20 @@ describe('extraction', async () => {
       expect(getExtractionOutputMultiplier(group(), 'IngotIron')).toBe(1)
       expect(getExtractionOutputMultiplier(group(), undefined)).toBe(1)
     })
+
+    it('finds the extraction recipe for a resource that has one', () => {
+      expect(getExtractionRecipeForPart('OreIron')).toBe('Extract_OreIron')
+      expect(getExtractionRecipeForPart('Water')).toBe('Extract_Water')
+      expect(getExtractionRecipeForPart('LiquidOil')).toBe('Extract_LiquidOil')
+    })
+
+    it('has no extraction recipe for collectables or resource-well gases', () => {
+      // These drive whether the Raw Resources card offers a "mine it here" button.
+      expect(getExtractionRecipeForPart('Leaves')).toBeUndefined()
+      expect(getExtractionRecipeForPart('HogParts')).toBeUndefined()
+      expect(getExtractionRecipeForPart('NitrogenGas')).toBeUndefined()
+      expect(getExtractionRecipeForPart('IronIngot')).toBeUndefined()
+    })
   })
 
   describe('defaults and sanitizing', () => {
@@ -81,6 +96,49 @@ describe('extraction', async () => {
 
       expect(getGroupExtractor(subject, 'Extract_OreIron')).toBe('minermk3')
       expect(getGroupPurity(subject, 'Extract_OreIron')).toBe('pure')
+    })
+  })
+
+  // Nobody builds Mk.1 miners, so the first thing done to a new mine is swapping the default
+  // mark — which must not silently rewrite the quantity the user typed.
+  describe('mines default to unsynced building groups', () => {
+    let mockFactory: Factory
+
+    beforeEach(() => {
+      mockFactory = newFactory('Iron Mine')
+    })
+
+    it('starts an extraction product with building group sync off', () => {
+      addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+
+      expect(mockFactory.products[0].buildingGroupItemSync).toBe(false)
+    })
+
+    it('still solves the initial group before turning sync off', () => {
+      addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+      const [firstGroup] = mockFactory.products[0].buildingGroups
+
+      // 480/min on Mk.1 normal nodes is 8 whole miners, not a fractional count.
+      expect(firstGroup.buildingCount).toBe(8)
+      expect(firstGroup.overclockPercent).toBe(100)
+    })
+
+    it('leaves the quantity alone when the miner mark is swapped', () => {
+      addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+      calculateFactories([mockFactory], gameData)
+
+      mockFactory.products[0].buildingGroups[0].extractorBuilding = 'minermk3'
+      calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
+
+      expect(mockFactory.products[0].amount).toBe(480)
+      // The groups now out-produce the target, which is surfaced rather than silently applied.
+      expect(mockFactory.products[0].buildingGroupsHaveProblem).toBe(true)
+    })
+
+    it('keeps sync on for ordinary products', () => {
+      addProductToFactory(mockFactory, { id: 'IronIngot', recipe: 'IngotIron', amount: 480 })
+
+      expect(mockFactory.products[0].buildingGroupItemSync).toBe(true)
     })
   })
 
@@ -130,6 +188,9 @@ describe('extraction', async () => {
     let product: FactoryItem
 
     const setClock = (overclockPercent: number) => {
+      // Mines default to unsynced (see the defaults block below); these cases are about the
+      // group's output reaching the item, so opt back in.
+      product.buildingGroupItemSync = true
       const subject = product.buildingGroups[0]
       subject.extractorBuilding = 'minermk2'
       subject.purity = 'pure'
@@ -228,7 +289,7 @@ describe('extraction', async () => {
         group({ id: 1, extractorBuilding: 'minermk3', purity: 'pure', buildingCount: 2 }),
         group({ id: 2, extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1 }),
       ]
-      product.buildingGroupItemSync = true
+      product.buildingGroupItemSync = true // Asserting the groups' total reaches the item
 
       calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
 

@@ -32,6 +32,10 @@ describe('mining scenarios', async () => {
       addProductToFactory(smelter, { id: 'IronIngot', recipe: 'IngotIron', amount: 960 })
       addInputToFactory(smelter, { factoryId: mine.id, outputPart: 'OreIron', amount: 960 })
 
+      // Mines default to unsynced so swapping the miner mark doesn't rewrite the quantity;
+      // these cases adjust the miners and expect the plan to follow, so opt back in.
+      mine.products[0].buildingGroupItemSync = true
+
       calculateFactories(factories, gameData, { origin: 'buildingGroup' })
     })
 

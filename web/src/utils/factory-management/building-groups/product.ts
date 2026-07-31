@@ -7,6 +7,7 @@ import {
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
+import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -26,6 +27,14 @@ export const addProductBuildingGroup = (
       ItemType.Product,
       factory,
     )
+
+    // Mines start unsynced. Almost nobody actually builds Mk.1 miners, so the first thing done
+    // to a new mine is swapping the default for a Mk.3 — and with sync on that writes the
+    // group's new output back over the quantity the user just typed. The balance above has
+    // already run, so the group is solved before sync is turned off.
+    if (isExtractionRecipe(product.recipe)) {
+      product.buildingGroupItemSync = false
+    }
   }
   calculateBuildingGroupParts([product], ItemType.Product, factory)
 }

@@ -186,8 +186,24 @@ function getProductionRecipes(
     // });
 
     recipes.push(...getExtractionRecipes(data, items));
+    labelConverterRecipes(recipes, items);
 
     return recipes.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+// The Converter's ore recipes are named "Iron Ore (Limestone)" in game, which now sits next to
+// the extraction recipe "Iron Ore (Miner)" in the recipe selector and reads as though the ore
+// simply comes from limestone. Naming the process makes the choice obvious:
+// "Iron Ore (Convert: Limestone)".
+function labelConverterRecipes(recipes: ParserRecipe[], items: ParserItemDataInterface): void {
+    recipes
+        .filter(recipe =>
+            recipe.building.name === 'converter' &&
+            !!items.rawResources[recipe.products[0]?.part]
+        )
+        .forEach(recipe => {
+            recipe.displayName = recipe.displayName.replace(/\(([^)]+)\)\s*$/, '(Convert: $1)');
+        });
 }
 
 // Solid resources with miner-placeable nodes. Miners declare an empty mAllowedResources, meaning

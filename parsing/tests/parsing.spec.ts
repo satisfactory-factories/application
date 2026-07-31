@@ -231,6 +231,40 @@ describe('common', () => {
             });
         });
 
+        // "Iron Ore (Limestone)" sits next to "Iron Ore (Miner)" in the recipe selector and reads
+        // as though the ore just comes from limestone, so the Converter recipes name the process.
+        test('converter recipes for raw resources name the conversion', () => {
+            const expected: Record<string, string> = {
+                Iron_Limestone: 'Iron Ore (Convert: Limestone)',
+                Quartz_Coal: 'Raw Quartz (Convert: Coal)',
+                Quartz_Bauxite: 'Raw Quartz (Convert: Bauxite)',
+                Uranium_Bauxite: 'Uranium Ore (Convert: Bauxite)',
+                Nitrogen_Caterium: 'Nitrogen Gas (Convert: Caterium)',
+            };
+
+            Object.entries(expected).forEach(([id, displayName]) => {
+                expect(results.recipes.find((recipe: ParserRecipe) => recipe.id === id).displayName).toBe(displayName);
+            });
+        });
+
+        test('every raw-producing converter recipe is relabelled, and nothing else is', () => {
+            const rawResources = new Set(Object.keys(results.items.rawResources));
+            const converterRaw = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.building.name === 'converter' && rawResources.has(recipe.products[0].part));
+
+            expect(converterRaw.length).toBe(17);
+            converterRaw.forEach((recipe: ParserRecipe) => {
+                expect(recipe.displayName).toContain('(Convert: ');
+            });
+
+            // Ficsite Ingot (Iron) and the like are Converter recipes too, but not raw resources.
+            const untouched = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.building.name === 'converter' && !rawResources.has(recipe.products[0].part));
+            untouched.forEach((recipe: ParserRecipe) => {
+                expect(recipe.displayName).not.toContain('Convert: ');
+            });
+        });
+
         test('every extractor building is in the buildings map with its power draw', () => {
             expect(results.buildings.minermk1).toBe(5);
             expect(results.buildings.minermk2).toBe(15);

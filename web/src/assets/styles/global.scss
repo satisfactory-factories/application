@@ -371,6 +371,13 @@
 .sub-card {
   background-color: rgb(50, 50, 50) !important;
 
+  // A sub-card in a problem state (e.g. Raw Resources the factory is short of) is flagged
+  // the same way an unsatisfied factory card is.
+  &.problem {
+    border-color: var(--sf-problem-border) !important;
+    background-color: var(--sf-problem-bg) !important;
+  }
+
   // This `border-bottom` has never actually applied: Vuetify 3 emitted
   // `.border-md` with `!important`, which beat it. v4 layers the helper instead,
   // which would let it through — taking the last product panel's bottom border
