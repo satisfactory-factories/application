@@ -2,7 +2,6 @@
 import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
-import { rawArray } from '@/utils/factory-management/common'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 
@@ -282,6 +281,23 @@ export const isImportRedundant = (importIndex: number, factory: Factory): boolea
   return requirementAfterOtherImports <= 0
 }
 
+// Two rows importing the same part from the same factory collapse into a single export
+// request, so the provider only ever sees one of them. Reports whether the row at
+// inputIndex has become such a duplicate.
+export const isDuplicateImport = (factory: Factory, inputIndex: number): boolean => {
+  const input = factory.inputs[inputIndex]
+
+  if (!input?.factoryId || !input.outputPart) {
+    return false // Still being filled in.
+  }
+
+  return factory.inputs.some((other, index) =>
+    index !== inputIndex &&
+    other.factoryId === input.factoryId &&
+    other.outputPart === input.outputPart
+  )
+}
+
 export const satisfyImport = (importIndex: number, factory: Factory): void | null => {
   const input = factory.inputs[importIndex]
   if (!input.outputPart) {
@@ -309,19 +325,25 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
 }
 
 export const deleteInputPair = (factory: Factory, input: FactoryInput, factories: Factory[], gameData: DataInterface): void => {
-  const supplyingFactory = findFac(String(input.factoryId), factories)
-
-  if (!supplyingFactory) {
-    throw new Error(`inputs: deleteInputPair: Source factory ${input.factoryId} not found!`)
+  // Remove the exact row the user clicked. Matching on factory + part instead would take
+  // every half-configured row (all of which read as null-null) with it.
+  const index = factory.inputs.indexOf(input)
+  if (index === -1) {
+    console.warn('inputs: deleteInputPair: Input no longer present on the factory, nothing to delete.')
+    return
   }
+  factory.inputs.splice(index, 1)
 
-  // Delete the source factory's input by factory and part
-  factory.inputs = rawArray(factory.inputs.filter(inp => {
-    return !(inp.factoryId === input.factoryId && inp.outputPart === input.outputPart)
-  }))
+  // An incomplete row has no supplier to reconcile — it never produced a dependency.
+  // findFac returns an empty object rather than throwing, so test the id, not the object.
+  const supplyingFactory = input.factoryId ? findFac(input.factoryId, factories) : null
 
   // Calculate the factory again as it's inputs have now changed
   calculateFactory(factory, factories, gameData)
+
+  if (!supplyingFactory?.id) {
+    return
+  }
 
   // Now calculate the dependencies on the other factory, which will remove the dependency on the deleted input and recalculate the parts.
   recalculateFactoryDependencies(supplyingFactory, factories, gameData)

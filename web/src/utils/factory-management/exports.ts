@@ -38,16 +38,9 @@ export const getPartExportRequestByRequestingFactory = (
 }
 
 export const getExportableFactories = (factories: Factory[]): Factory[] => {
-  const exportableFacs: Factory[] = []
-  // Loop through all the factory parts and if one is exportable, we add it to the list.
-
-  factories.forEach(factory => {
-    Object.values(factory.parts).forEach(part => {
-      if (part.exportable) {
-        exportableFacs.push(factory)
-      }
-    })
-  })
-
-  return exportableFacs
+  // A factory with three exportable parts is still one factory; listing it once per part
+  // put duplicates in front of every consumer of this list.
+  return factories.filter(factory =>
+    Object.values(factory.parts).some(part => part.exportable)
+  )
 }
