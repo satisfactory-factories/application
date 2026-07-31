@@ -16,7 +16,9 @@ import {
   getSomersloopPowerMultiplier,
   getSomersloopSlots,
   getTotalSomersloops,
+  isAmplifiableBuilding,
   sanitizeGroupSomersloops,
+  SOMERSLOOP_SLOTS,
 } from '@/utils/factory-management/building-groups/somersloops'
 import {
   calculateEffectiveBuildingCount,
@@ -125,6 +127,61 @@ describe('somersloops', () => {
       const group = makeGroup({ somersloops: 2 })
       expect(sanitizeGroupSomersloops(group, 'generatorfuel')).toBe(0)
       expect(group.somersloops).toBe(0)
+    })
+  })
+
+  // Every amplifiable building, checked against the wiki's Production amplifier table.
+  // A wrong cap here silently inflates output, so the table is asserted whole.
+  describe('per-building slot caps', () => {
+    const wikiSlots: [string, number][] = [
+      ['smeltermk1', 1],
+      ['constructormk1', 1],
+      ['assemblermk1', 2],
+      ['foundrymk1', 2],
+      ['oilrefinery', 2],
+      ['converter', 2],
+      ['manufacturermk1', 4],
+      ['blender', 4],
+      ['hadroncollider', 4],
+      ['quantumencoder', 4],
+    ]
+
+    it('should not amplify any building the wiki does not list', () => {
+      const amplifiable = Object.entries(SOMERSLOOP_SLOTS)
+        .filter(([, slots]) => slots > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+
+      expect(amplifiable).toEqual([...wikiSlots].sort(([a], [b]) => a.localeCompare(b)))
+    })
+
+    it.each(wikiSlots)('should cap %s at %i somersloops per building', (building, slots) => {
+      expect(getSomersloopSlots(building)).toBe(slots)
+      expect(isAmplifiableBuilding(building)).toBe(true)
+
+      const group = makeGroup({ somersloops: slots + 1 })
+      expect(sanitizeGroupSomersloops(group, building)).toBe(slots)
+      expect(group.somersloops).toBe(slots)
+    })
+
+    it.each(wikiSlots)('should never exceed 2x output or 4x power on %s', (building, slots) => {
+      const overfilled = makeGroup({ somersloops: slots + 10 })
+      expect(getSomersloopOutputMultiplier(overfilled, building)).toBe(2)
+      expect(getSomersloopPowerMultiplier(makeGroup({ somersloops: slots + 10 }), building)).toBe(4)
+    })
+
+    it.each(wikiSlots)('should clamp an over-slooped %s group on recalculation', (building, slots) => {
+      const recipe = gameData.recipes.find(r => r.building?.name === building)
+      if (!recipe) throw new Error(`No recipe found for ${building}`)
+
+      const factory = newFactory(`${building} factory`)
+      addProductToFactory(factory, { id: recipe.products[0].part, recipe: recipe.id })
+      calculateFactories([factory], gameData)
+
+      const group = factory.products[0].buildingGroups[0]
+      group.somersloops = slots + 3
+      calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+
+      expect(group.somersloops).toBe(slots)
     })
   })
 

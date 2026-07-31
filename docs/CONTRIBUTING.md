@@ -6,7 +6,7 @@ Hello and thank you for your interest in contributing to Satisfactory Factories!
 Contributions are most welcome!
 
 ### Getting Started
-Please read `README.md` and the documents contained within the `/docs` folder to get started on local development.
+Please read `README.md` — plus the README of whichever package you are working on (`web/`, `backend/` or `parsing/`) — and the documents contained within the `/docs` folder to get started on local development.
 
 ### Development cycle
 Please follow this guide to make sure your contributions are as effective as possible:
@@ -21,6 +21,7 @@ Please follow this guide to make sure your contributions are as effective as pos
 5. Open a draft pull request on the main repo. This is to indicate to other contributors that you are working on this issue.
 6. Make your changes.
 7. Ideally write tests for your changes (remember, they are mandatory within the Parser project).
+    1. **Use `pnpm` and only `pnpm`.** npm, yarn and bun are not accepted. A PR containing a `package-lock.json`, `yarn.lock` or `bun.lockb` will be rejected — delete the file and re-run `pnpm install` before pushing. The root `pnpm-lock.yaml` is the project's only lockfile; commit it whenever your change touches dependencies.
 8. Await the review cycle and make changes.
 9. Once your changes are approved, they will be merged into the main branch and deployed.
 
