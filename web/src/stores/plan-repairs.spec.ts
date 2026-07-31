@@ -4,6 +4,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { useAppStore } from '@/stores/app-store'
 import { findDependencyChainViolations } from '@/utils/factory-management/dependency-integrity'
 import { create499BrokenChainPlan } from '@/utils/factory-setups/499-broken-chain-plan'
+import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { StructuralRepair } from '@/utils/factory-management/repair'
 
 // Loading a deliberately corrupt plan: everything the loader can put right must be put
@@ -163,6 +164,35 @@ describe('plan repairs on load', () => {
     // 600 to Iron Plates (the merged rows) + 300 to Iron Rods.
     expect(ingots.parts.IronIngot.amountRequiredExports).toBe(900)
     expect(ingots.dependencies.metrics.IronIngot.request).toBe(900)
+  })
+})
+
+// A plan assembled in code arrives with its imports set but no exports and no part ledgers —
+// they are built by the calculation that follows. Reporting that as damage put a dialog full
+// of "the export has been restored" in front of anyone loading the demo plan or a template.
+describe('plan repairs on a plan that has never been calculated', () => {
+  it('reports nothing for the demo plan', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    localStorage.removeItem('factoryTabs')
+    setActivePinia(createPinia())
+    const appStore = useAppStore()
+
+    appStore.initFactories(complexDemoPlan().getFactories())
+
+    expect(appStore.planRepairs).toEqual([])
+  })
+
+  it('still reports a factory that does hold exports', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    localStorage.removeItem('factoryTabs')
+    setActivePinia(createPinia())
+    const appStore = useAppStore()
+
+    // The broken-chain fixture is uncalculated too, but its refinery holds exports — so it
+    // has been wired, and the one that went missing is a genuine fault.
+    appStore.initFactories(create499BrokenChainPlan())
+
+    expect(appStore.planRepairs.length).toBeGreaterThan(0)
   })
 })
 

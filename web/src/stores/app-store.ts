@@ -319,7 +319,10 @@ export const useAppStore = defineStore('app', () => {
     let needsCalculation = false
 
     // Everything the loader put right, from any source, reported together in one dialog.
+    // Reset first: the dialog describes the plan being loaded now, so repairs the previous
+    // plan needed (a template loaded over another, say) must not ride along with it.
     const repairs: PlanRepair[] = []
+    planRepairs.value = []
 
     try {
       repairs.push(...validateFactories(newFactories, gameData))
@@ -506,7 +509,7 @@ export const useAppStore = defineStore('app', () => {
       // Held for the dialog rather than emitted: a plan can be inited before the layout has
       // mounted its listeners (the factories getter inits on first read), and a repair the
       // user never sees reported is the thing we are trying to avoid.
-      planRepairs.value = [...planRepairs.value, ...repairs]
+      planRepairs.value = repairs
       // Repaired seeds and a repaired import/export chain both leave derived figures stale.
       needsCalculation = true
     }

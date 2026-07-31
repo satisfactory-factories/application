@@ -129,6 +129,13 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
     })
   })
 
+  // A factory with no exports recorded and no part ledger has never been calculated. Its
+  // links are not missing, they have simply not been built yet — a template, or a plan
+  // assembled in code, arrives in exactly that state and there is nothing to report.
+  const isWired = (factory: Factory): boolean =>
+    Object.keys(factory.dependencies?.requests ?? {}).length > 0 ||
+    Object.keys(factory.parts ?? {}).length > 0
+
   // The other direction: an import the provider has no record of. The recalculation rebuilds
   // the request from the input, so this only needs reporting — but silently is not an option,
   // since until it runs the supplying factory is not making anything for it.
@@ -139,10 +146,14 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
       }
 
       const provider = byId.get(input.factoryId)
-      const hasRequest = provider?.dependencies?.requests?.[requester.id]
+      if (!provider || !isWired(provider)) {
+        return
+      }
+
+      const hasRequest = provider.dependencies?.requests?.[requester.id]
         ?.some(request => request.part === input.outputPart)
 
-      if (provider && !hasRequest) {
+      if (!hasRequest) {
         repairs.push(repair(requester, `Imports ${partName(input.outputPart)} from "${provider.name}", which had no record of supplying it. The export has been restored.`))
       }
     })
