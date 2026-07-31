@@ -309,6 +309,15 @@
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
                   </span>
+                  <v-btn
+                    class="chip-jump-btn ml-2"
+                    color="primary"
+                    icon="fas fa-eye"
+                    size="x-small"
+                    title="Jump to this factory"
+                    variant="flat"
+                    @click.stop="navigateToFactory(request.requestingFactoryId)"
+                  />
                 </v-chip>
               </div>
             </div>
@@ -685,6 +694,16 @@ table {
       }
     }
   }
+}
+
+// Sits inside the export chip, so it has to shed the icon button's circle and
+// claw back the chip's right padding to avoid looking bolted on.
+.chip-jump-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 4px !important;
+  margin-right: -4px;
 }
 
 .calculator-tray {
