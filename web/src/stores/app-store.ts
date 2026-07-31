@@ -128,13 +128,9 @@ export const useAppStore = defineStore('app', () => {
   // off, `assumes` wants it on. Only asks when the current setting disagrees — a plan that
   // already reads correctly has nothing to offer the user but an interruption.
   const askRawAssumption = (reason: RawAssumptionReason) => {
-    if (reason === 'migration') {
-      // Debug scenario only: put the setting back to never-answered and the assumption back on,
-      // so the one-time notice behaves exactly as it does for someone opening a plan they made
-      // before mining existed. Otherwise it is unreachable once answered.
-      localStorage.removeItem('assumeRawInputs')
-      applyAssumeRawInputs(true, false)
-    } else {
+    // A plan built before mining existed always gets asked; the other two only when the
+    // current setting disagrees with the plan, since otherwise there is nothing to offer.
+    if (reason !== 'migration') {
       const planWantsAssumption = reason === 'assumes'
       if (assumeRawInputs.value === planWantsAssumption) {
         return
@@ -144,6 +140,22 @@ export const useAppStore = defineStore('app', () => {
     rawAssumptionPromptReason.value = reason
     showRawAssumptionPrompt.value = true
   }
+
+  // Debug scenario only: put the setting back to never-answered and the assumption back on, so
+  // the one-time notice behaves as it does for someone opening a plan made before mining
+  // existed. Otherwise it is unreachable once answered.
+  const rearmRawAssumption = () => {
+    localStorage.removeItem('assumeRawInputs')
+    applyAssumeRawInputs(true, false)
+    askRawAssumption('migration')
+  }
+
+  // A plan whose factories predate mining has no `assumeRawInputs` key at all — newFactory has
+  // written one (null) ever since. Whatever brought it in (paste, share link, account sync), the
+  // user is looking at a plan built on the old assumption and deserves the same one-time notice
+  // that a saved plan gets on first load.
+  const planPredatesMining = (plan: Factory[]) =>
+    plan.some(factory => !('assumeRawInputs' in factory))
 
   const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
     applyAssumeRawInputs(!removeAssumption)
@@ -320,6 +332,12 @@ export const useAppStore = defineStore('app', () => {
   const beginLoading = async (newFactories: Factory[], loadMode = false) => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
+
+    // Every plan arrives here — first load, paste, share link, template, account sync — so it
+    // is the one place that catches a plan built before mining regardless of how it got in.
+    if (planPredatesMining(newFactories)) {
+      askRawAssumption('migration')
+    }
 
     // Reset the factories currently loaded, if there is any
     if (currentFactoryTab.value.factories.length > 0) {
@@ -815,6 +833,7 @@ export const useAppStore = defineStore('app', () => {
     showRawAssumptionPrompt,
     rawAssumptionPromptReason,
     askRawAssumption,
+    rearmRawAssumption,
     answerRawAssumptionPrompt,
     prepareLoader,
     forceCalculation,

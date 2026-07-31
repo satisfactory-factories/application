@@ -67,7 +67,7 @@
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-  const { prepareLoader, isDebugMode, getCurrentTab, askRawAssumption } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, askRawAssumption, rearmRawAssumption } = useAppStore()
 
   const dialog = ref(false)
 
@@ -278,7 +278,9 @@
     prepareLoader(factories, true)
     dialog.value = false
 
-    if (template.rawAssumption) {
+    if (template.rawAssumption === 'migration') {
+      rearmRawAssumption()
+    } else if (template.rawAssumption) {
       askRawAssumption(template.rawAssumption)
     }
   }

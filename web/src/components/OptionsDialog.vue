@@ -95,8 +95,8 @@
           <p class="mb-2">
             <b>Yes</b> — raw resources you aren't mining or importing become shortages, so the plan
             tells you what is missing. Best if you intend to plan your mining out.
-            <b>This will likely result in a lot of factories in your plan going red, just so
-              you're aware.</b>
+            <b class="text-caution">This will likely result in a lot of factories in your plan
+              going red, just so you're aware.</b>
           </p>
           <p class="mb-2">
             <b>No</b> — raw resources stay assumed as supplied, exactly as they are today. Nothing
@@ -198,5 +198,10 @@
   .hero-blurb {
     font-size: 1.35rem;
     line-height: 1.5;
+  }
+
+  // Not `.text-warning` — Vuetify already ships that as a theme colour class.
+  .text-caution {
+    color: var(--sf-warning);
   }
 </style>
