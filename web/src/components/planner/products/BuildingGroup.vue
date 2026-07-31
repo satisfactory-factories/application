@@ -167,7 +167,7 @@
           variant="tonal"
         >
           <tooltip text="Node purity">
-            <i class="fas fa-gem" />
+            <v-icon icon="fas fa-gem" size="20" />
           </tooltip>
           <v-select
             :id="`${factory.id}-${group.id}-purity`"

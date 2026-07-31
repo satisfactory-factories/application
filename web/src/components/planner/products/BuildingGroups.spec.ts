@@ -786,5 +786,39 @@ describe('Component: BuildingGroups', () => {
       expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(false)
       expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).exists()).toBe(false)
     })
+
+    // 5,280/min short: every purity is offered so the user doesn't have to guess which nodes
+    // the hint assumes. Counts round up — these are whole miners you'd place.
+    it('hints how many of each miner would close the gap, per purity', () => {
+      // The separating spaces are CSS margins, so the DOM text runs the pills together.
+      const hints = subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).text()
+
+      // Impure halves the rate: 30 / 60 / 120 per minute
+      expect(hints).toContain('Impure:Mk.1: 176|Mk.2: 88|Mk.3: 44')
+      // Normal: 60 / 120 / 240
+      expect(hints).toContain('Normal:Mk.1: 88|Mk.2: 44|Mk.3: 22')
+      // Pure doubles it: 120 / 240 / 480
+      expect(hints).toContain('Pure:Mk.1: 44|Mk.2: 22|Mk.3: 11')
+    })
+
+    it('drops the hint once the mine is no longer short', () => {
+      product.buildingGroups[0].buildingCount = 12 // 12 x 480 = 5,760
+      calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+      subject = mountProduct(factory)
+
+      expect(subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).exists()).toBe(false)
+    })
+  })
+
+  it('never hints for an ordinary product, which has only one building', () => {
+    addProductToFactory(factory, { id: 'IronIngot', amount: 300, recipe: 'IngotIron' })
+    const product = factory.products[0]
+    product.buildingGroupsTrayOpen = true
+    product.buildingGroups[0].buildingCount = 1 // 9 buildings short
+    calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+    subject = mountProduct(factory)
+
+    expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).exists()).toBe(true)
+    expect(subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).exists()).toBe(false)
   })
 })
