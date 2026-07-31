@@ -56,6 +56,32 @@
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
+    <!-- Node purity belongs next to the extractor standing on the node, with no operator
+         between them: it describes the miner rather than being another input to the sum. -->
+    <template v-if="isExtraction">
+      <div v-if="purityOptions.length > 1">
+        <v-chip
+          class="sf-chip input cyan mx-1"
+          variant="tonal"
+        >
+          <tooltip classes="ml-2" text="Node purity">
+            <v-icon icon="fas fa-gem" size="20" />
+          </tooltip>
+          <v-select
+            :id="`${factory.id}-${group.id}-purity`"
+            class="inline-inputs ml-1 chip-select"
+            density="compact"
+            hide-details
+            :items="purityOptions"
+            :model-value="groupPurity"
+            variant="plain"
+            width="90px"
+            @update:model-value="updateGroupPurity(group, $event)"
+          />
+        </v-chip>
+        <div class="underchip text-cyan">x{{ purityMultiplier }} node yield</div>
+      </div>
+    </template>
     <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
     <template v-if="canBuildingOverclock(groupBuilding)">
       <div class="px-1">
@@ -105,7 +131,7 @@
         </div>
       </div>
     </template>
-    <div class="px-1">
+    <div v-if="!isExtraction" class="px-1">
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -158,33 +184,7 @@
         <div class="underchip text-purple-lighten-1">{{ somersloopBuildCost }} / building</div>
       </div>
     </template>
-    <!-- Extraction groups get node purity where a normal product gets somersloops: miners have
-         no amplification slots, and purity is the equivalent per-group output multiplier. -->
-    <template v-if="isExtraction">
-      <div v-if="purityOptions.length > 1">
-        <v-chip
-          class="sf-chip input cyan mx-1"
-          variant="tonal"
-        >
-          <tooltip classes="ml-2" text="Node purity">
-            <v-icon icon="fas fa-gem" size="20" />
-          </tooltip>
-          <v-select
-            :id="`${factory.id}-${group.id}-purity`"
-            class="inline-inputs ml-1 chip-select"
-            density="compact"
-            hide-details
-            :items="purityOptions"
-            :model-value="groupPurity"
-            variant="plain"
-            width="90px"
-            @update:model-value="updateGroupPurity(group, $event)"
-          />
-        </v-chip>
-        <div class="underchip text-cyan">x{{ purityMultiplier }} node yield</div>
-      </div>
-    </template>
-    <template v-else-if="group.type === ItemType.Product">
+    <template v-if="group.type === ItemType.Product && !isExtraction">
       <div>
         <v-chip
           class="sf-chip input sloop mx-1"
@@ -229,7 +229,7 @@
         </div>
       </div>
     </template>
-    <template v-if="group.type === ItemType.Product">
+    <template v-if="group.type === ItemType.Product && !isExtraction">
       <div :class="{'w-100': partCount > 4 && lgAndDown}" />
       <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
         <div>+</div>
