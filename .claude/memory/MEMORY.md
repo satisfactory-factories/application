@@ -28,3 +28,4 @@
 - [Factory status registry](factory-status-registry.md) — adding a status is one array entry; keep the warning tier out of the engine loop and mirror the product-less guard or saved plans change colour
 - [Extraction output multiplier](extraction-output-multiplier.md) — how miner mark + node purity plug into the building-group maths without forking the solver
 - [Raw input assumption](raw-input-assumption.md) — why it reaches the engine via a module accessor, and the spec pollution that causes
+- [Game data version cache](game-data-version-cache.md) — bump `dataVersion` every time the data is regenerated, or browsers keep serving the old JSON

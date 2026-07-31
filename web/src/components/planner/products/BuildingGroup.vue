@@ -70,10 +70,10 @@
             <v-icon icon="fas fa-gem" size="20" />
           </tooltip>
           <template v-for="purity in WELL_PURITIES" :key="purity">
-            <span class="ml-3 text-medium-emphasis">{{ PURITY_LABELS[purity] }}</span>
+            <span class="ml-3 mr-2 text-medium-emphasis">{{ PURITY_LABELS[purity] }}</span>
             <v-number-input
               :id="`${factory.id}-${group.id}-satellites-${purity}`"
-              class="inline-inputs ml-1"
+              class="inline-inputs ml-0"
               control-variant="stacked"
               density="compact"
               hide-details
@@ -85,7 +85,7 @@
               @update:model-value="updateGroupSatellites(group, purity, $event)"
             />
           </template>
-          <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}-satellites`" />
         </v-chip>
         <div class="underchip text-cyan">
           {{ formatNumberFully(wellPotential) }}/min potential &middot; {{ satelliteCount }} extractors
@@ -471,9 +471,20 @@
   const satelliteCount = computed(() => getGroupSatelliteCount(props.group, props.item.recipe))
   const wellPotential = computed(() => getGroupExtractionRate(props.group, props.item.recipe))
 
+  // Debounced under its own key so the spinner appears inside the satellite chip rather than
+  // beside the pressurizer count, where it would shove every input to its right mid-edit and
+  // make an increment you just clicked land somewhere else.
   const updateGroupSatellites = (group: BuildingGroup, purity: NodePurity, value: number) => {
     group.satellites = { ...getGroupSatellites(group), [purity]: Math.max(0, Math.round(value || 0)) }
-    updateGroup(group)
+
+    runDebounced(`group-${group.id}-satellites`, () => {
+      updateBuildingGroup(group)
+      updateFactory(props.factory, {
+        useBuildingGroupBuildings: true,
+        forceRebalance: false,
+        origin: 'buildingGroup',
+      })
+    })
   }
   const purityMultiplier = computed(() => PURITY_MULTIPLIERS[groupPurity.value])
   const extractorOptions = computed(() =>
