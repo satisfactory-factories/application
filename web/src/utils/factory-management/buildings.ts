@@ -3,7 +3,12 @@ import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterf
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { getGroupExtractor, isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
+import {
+  getGroupExtractor,
+  getGroupSatelliteCount,
+  getWell,
+  isExtractionRecipe,
+} from '@/utils/factory-management/building-groups/extraction'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -41,10 +46,18 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
       // groups in calculateFinalBuildingsAndPower; only seed the entries here.
       if (isExtractionRecipe(product.recipe)) {
         product.buildingRequirements.powerConsumed = 0
+        const well = getWell(product.recipe)
         product.buildingGroups.forEach(group => {
           const groupBuilding = getGroupExtractor(group, product.recipe)
           if (!factory.buildingRequirements[groupBuilding]) {
             factory.buildingRequirements[groupBuilding] = { name: groupBuilding, amount: 0, powerConsumed: 0 }
+          }
+          if (well && !factory.buildingRequirements[well.satelliteBuilding]) {
+            factory.buildingRequirements[well.satelliteBuilding] = {
+              name: well.satelliteBuilding,
+              amount: 0,
+              powerConsumed: 0,
+            }
           }
         })
         return
@@ -196,6 +209,21 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       buildingData.amount += group.buildingCount
       if (extraction) {
         buildingData.powerConsumed = formatNumberFully((buildingData.powerConsumed ?? 0) + group.powerUsage, 3)
+
+        // A well's satellite extractors have to be built too, though they draw no power —
+        // the pressurizer counted above pays for all of them.
+        const satellites = getGroupSatelliteCount(group, product.recipe)
+        if (satellites > 0) {
+          const satelliteBuilding = getWell(product.recipe)!.satelliteBuilding
+          if (!factory.buildingRequirements[satelliteBuilding]) {
+            factory.buildingRequirements[satelliteBuilding] = {
+              name: satelliteBuilding,
+              amount: 0,
+              powerConsumed: 0,
+            }
+          }
+          factory.buildingRequirements[satelliteBuilding].amount += satellites
+        }
       }
     })
   })

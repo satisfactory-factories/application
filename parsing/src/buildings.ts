@@ -26,6 +26,9 @@ const extractors = new Map([
     ['Build_MinerMk3_C', 'minermk3'],
     ['Build_WaterPump_C', 'waterpump'],
     ['Build_OilPump_C', 'oilpump'],
+    // Resource wells: the pressurizer draws the power, the satellites draw none.
+    ['Build_FrackingSmasher_C', 'frackingsmasher'],
+    ['Build_FrackingExtractor_C', 'frackingextractor'],
 ]);
 
 function getProducingBuildings(data: any[]): string[] {
@@ -106,8 +109,13 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
     // have 0 power) are excluded — they legitimately produce power rather than consume it.
     const generatorPrefix = 'generator';
     const generatorNames = new Set(fuellessGenerators.values());
+    // Resource Well Extractors are genuinely unpowered — the pressurizer driving them pays the
+    // whole 150 MW — so the sentinel must not invent a draw for them either.
+    const unpowered = new Set(['frackingextractor']);
     const isGenerator = (buildingName: string) =>
-        buildingName.startsWith(generatorPrefix) || generatorNames.has(buildingName);
+        buildingName.startsWith(generatorPrefix) ||
+        generatorNames.has(buildingName) ||
+        unpowered.has(buildingName);
     producingBuildings.forEach((buildingName: string) => {
         if (!Object.prototype.hasOwnProperty.call(buildingsPowerMap, buildingName)) {
             buildingsPowerMap[buildingName] = isGenerator(buildingName) ? 0 : 0.1;

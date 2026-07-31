@@ -1,5 +1,5 @@
 import { BuildingGroup } from '@/interfaces/planner/FactoryInterface'
-import { NodePurity, RecipeExtraction } from '@/interfaces/Recipes'
+import { NodePurity, RecipeExtraction, RecipeWell } from '@/interfaces/Recipes'
 import { getRecipe } from '@/utils/factory-management/common'
 import { fetchGameData } from '@/utils/gameDataService'
 
@@ -29,10 +29,46 @@ export const getExtraction = (recipeId?: string): RecipeExtraction | undefined =
 
 export const isExtractionRecipe = (recipeId?: string): boolean => !!getExtraction(recipeId)
 
+// The well behind a recipe, if it is one. Wells are extraction, but their output comes from
+// satellite nodes rather than from the (powered) building the group counts.
+export const getWell = (recipeId?: string): RecipeWell | undefined => getExtraction(recipeId)?.well
+
+export const isWellRecipe = (recipeId?: string): boolean => !!getWell(recipeId)
+
+// A well with no satellites produces nothing and reads as broken, so a new one starts on a
+// single normal node.
+export const DEFAULT_SATELLITES: { [purity in NodePurity]: number } = { impure: 0, normal: 1, pure: 0 }
+
+export const getGroupSatellites = (group: BuildingGroup): { [purity in NodePurity]: number } => {
+  const satellites = group.satellites ?? DEFAULT_SATELLITES
+  const clamp = (value: number) => Math.max(0, Math.round(Number.isFinite(value) ? value : 0))
+
+  return {
+    impure: clamp(satellites.impure ?? 0),
+    normal: clamp(satellites.normal ?? 0),
+    pure: clamp(satellites.pure ?? 0),
+  }
+}
+
+// Satellite extractors this group needs built, across all its wells.
+export const getGroupSatelliteCount = (group: BuildingGroup, recipeId?: string): number => {
+  if (!isWellRecipe(recipeId)) {
+    return 0
+  }
+  const satellites = getGroupSatellites(group)
+
+  return (satellites.impure + satellites.normal + satellites.pure) * group.buildingCount
+}
+
 // The recipe that extracts a raw resource, if one exists. Collectables (Leaves, alien remains,
 // power slugs) and resource-well gases have none, so callers must handle undefined.
-export const getExtractionRecipeForPart = (part: string): string | undefined =>
-  gameData.recipes.find(recipe => recipe.extraction && recipe.products[0]?.part === part)?.id
+// Prefers a plain extractor over a resource well: a well needs its satellites describing before
+// it means anything, so it is a poor thing to drop on someone from a one-click button.
+export const getExtractionRecipeForPart = (part: string): string | undefined => {
+  const candidates = gameData.recipes.filter(recipe => recipe.extraction && recipe.products[0]?.part === part)
+
+  return (candidates.find(recipe => !recipe.extraction?.well) ?? candidates[0])?.id
+}
 
 // The rate one reference extractor yields at 100% on a normal node. Effective building counts
 // are expressed in these units, so multiplying by it converts them back into items/min.
@@ -57,7 +93,9 @@ export const getGroupExtractor = (group: BuildingGroup, recipeId?: string): stri
 
 export const getGroupPurity = (group: BuildingGroup, recipeId?: string): NodePurity => {
   const extraction = getExtraction(recipeId)
-  if (!extraction) {
+  // Wells declare no purities — theirs sit on the satellites — so they fall back to normal,
+  // which leaves the group's own purity multiplier at 1.
+  if (!extraction || extraction.purities.length === 0) {
     return 'normal'
   }
 
@@ -81,6 +119,17 @@ export const sanitizeGroupExtraction = (group: BuildingGroup, recipeId?: string)
   if (group.purity !== purity) {
     group.purity = purity
   }
+
+  if (isWellRecipe(recipeId)) {
+    const satellites = getGroupSatellites(group)
+    const current = group.satellites
+    if (!current || current.impure !== satellites.impure ||
+      current.normal !== satellites.normal || current.pure !== satellites.pure) {
+      group.satellites = satellites
+    }
+  } else if (group.satellites) {
+    delete group.satellites
+  }
 }
 
 // This group's real output rate per building, at 100% clock.
@@ -88,6 +137,16 @@ export const getGroupExtractionRate = (group: BuildingGroup, recipeId?: string):
   const extraction = getExtraction(recipeId)
   if (!extraction) {
     return 0
+  }
+
+  // A well's rate is the sum of its satellites, not a single extractor's rate x purity.
+  if (extraction.well) {
+    const satellites = getGroupSatellites(group)
+    const rates = extraction.well.satelliteRates
+
+    return (satellites.impure * rates.impure) +
+      (satellites.normal * rates.normal) +
+      (satellites.pure * rates.pure)
   }
 
   const building = getGroupExtractor(group, recipeId)

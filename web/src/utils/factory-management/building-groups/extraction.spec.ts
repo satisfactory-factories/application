@@ -14,6 +14,7 @@ import {
   getGroupExtractor,
   getGroupPurity,
   isExtractionRecipe,
+  isWellRecipe,
   PURITY_MULTIPLIERS,
   sanitizeGroupExtraction,
 } from '@/utils/factory-management/building-groups/extraction'
@@ -55,11 +56,11 @@ describe('extraction', async () => {
       expect(getExtractionRecipeForPart('LiquidOil')).toBe('Extract_LiquidOil')
     })
 
-    it('has no extraction recipe for collectables or resource-well gases', () => {
+    it('has no extraction recipe for collectables', () => {
       // These drive whether the Raw Resources card offers a "mine it here" button.
       expect(getExtractionRecipeForPart('Leaves')).toBeUndefined()
       expect(getExtractionRecipeForPart('HogParts')).toBeUndefined()
-      expect(getExtractionRecipeForPart('NitrogenGas')).toBeUndefined()
+      expect(getExtractionRecipeForPart('Crystal')).toBeUndefined()
       expect(getExtractionRecipeForPart('IronIngot')).toBeUndefined()
     })
   })
@@ -275,6 +276,92 @@ describe('extraction', async () => {
 
       expect(groups[0].powerUsage).toBe(90) // 2 x Mk.3 @ 45 MW
       expect(groups[1].powerUsage).toBe(15) // 1 x Mk.2 @ 15 MW
+    })
+  })
+
+  // A well is a powered pressurizer driving unpowered satellite extractors, each on its own
+  // micro-node. Figures below are from a real 780 m3/min well: 1 normal + 6 pure satellites.
+  describe('resource wells', () => {
+    let mockFactory: Factory
+    let product: FactoryItem
+
+    const buildWell = (satellites: { impure: number, normal: number, pure: number }, clock = 100) => {
+      mockFactory = newFactory('Water Well')
+      addProductToFactory(mockFactory, { id: 'Water', recipe: 'Extract_Water_Well', amount: 60 })
+      product = mockFactory.products[0]
+      product.buildingGroupItemSync = true
+
+      const group = product.buildingGroups[0]
+      group.buildingCount = 1
+      group.satellites = satellites
+      group.overclockPercent = clock
+
+      calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
+    }
+
+    it('is recognised as a well, and a plain extractor is not', () => {
+      expect(isWellRecipe('Extract_Water_Well')).toBe(true)
+      expect(isWellRecipe('Extract_Water')).toBe(false)
+      expect(isWellRecipe('IngotIron')).toBe(false)
+    })
+
+    it('sums its satellites: 1 normal + 6 pure = 780/min at 150 MW', () => {
+      buildWell({ impure: 0, normal: 1, pure: 6 })
+
+      expect(product.amount).toBe(780)
+      expect(mockFactory.power.consumed).toBe(150)
+    })
+
+    it('scales every satellite with the pressurizer clock', () => {
+      buildWell({ impure: 0, normal: 1, pure: 6 }, 250)
+
+      expect(product.amount).toBe(1950)
+      // The pressurizer follows the usual curve: 150 x 2.5^1.321928 = 503.66
+      expect(mockFactory.power.consumed).toBeCloseTo(503.7, 1)
+    })
+
+    it('counts the pressurizer and every satellite extractor as buildings', () => {
+      buildWell({ impure: 0, normal: 1, pure: 6 })
+
+      expect(mockFactory.buildingRequirements.frackingsmasher.amount).toBe(1)
+      expect(mockFactory.buildingRequirements.frackingextractor.amount).toBe(7)
+      // Satellites are unpowered; the pressurizer pays for all of them.
+      expect(mockFactory.buildingRequirements.frackingextractor.powerConsumed).toBe(0)
+    })
+
+    it('rates satellites at 30 / 60 / 120 by purity', () => {
+      buildWell({ impure: 1, normal: 0, pure: 0 })
+      expect(product.amount).toBe(30)
+
+      buildWell({ impure: 0, normal: 1, pure: 0 })
+      expect(product.amount).toBe(60)
+
+      buildWell({ impure: 0, normal: 0, pure: 1 })
+      expect(product.amount).toBe(120)
+    })
+
+    it('starts a new well on a single normal satellite rather than nothing', () => {
+      const factory = newFactory('Nitrogen Well')
+      addProductToFactory(factory, { id: 'NitrogenGas', recipe: 'Extract_NitrogenGas_Well' })
+      calculateFactories([factory], gameData)
+
+      expect(factory.products[0].buildingGroups[0].satellites).toEqual({ impure: 0, normal: 1, pure: 0 })
+    })
+
+    it('does not leave satellite data on a non-well group', () => {
+      const factory = newFactory('Quartz Mine')
+      addProductToFactory(factory, { id: 'RawQuartz', recipe: 'Extract_RawQuartz' })
+      factory.products[0].buildingGroups[0].satellites = { impure: 1, normal: 1, pure: 1 }
+      calculateFactories([factory], gameData)
+
+      expect(factory.products[0].buildingGroups[0].satellites).toBeUndefined()
+    })
+
+    it('offers the plain extractor, not the well, for a one-click mine-it-here', () => {
+      expect(getExtractionRecipeForPart('Water')).toBe('Extract_Water')
+      expect(getExtractionRecipeForPart('LiquidOil')).toBe('Extract_LiquidOil')
+      // Nitrogen Gas has no other way of being extracted.
+      expect(getExtractionRecipeForPart('NitrogenGas')).toBe('Extract_NitrogenGas_Well')
     })
   })
 

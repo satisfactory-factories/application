@@ -63,6 +63,9 @@ export interface BuildingGroup {
   // group type; defaults are applied when missing.
   extractorBuilding?: string
   purity?: NodePurity
+  // Resource well groups only: how many satellite extractors sit on each purity of micro-node.
+  // The well's output is their sum; the group's clock is the pressurizer's and scales them all.
+  satellites?: { [purity in NodePurity]: number }
   type: ItemType
 }
 

@@ -58,7 +58,41 @@
     </div>
     <!-- Node purity belongs next to the extractor standing on the node, with no operator
          between them: it describes the miner rather than being another input to the sum. -->
-    <template v-if="isExtraction">
+    <!-- A resource well's purity lives on each satellite node, so the group carries how many
+         of each it has. The pressurizer's clock (below) scales all of them together. -->
+    <template v-if="isWell">
+      <div>
+        <v-chip
+          class="sf-chip input cyan mx-1"
+          variant="tonal"
+        >
+          <tooltip classes="ml-2" text="Satellite nodes on this well, by purity">
+            <v-icon icon="fas fa-gem" size="20" />
+          </tooltip>
+          <template v-for="purity in WELL_PURITIES" :key="purity">
+            <span class="ml-3 text-medium-emphasis">{{ PURITY_LABELS[purity] }}</span>
+            <v-number-input
+              :id="`${factory.id}-${group.id}-satellites-${purity}`"
+              class="inline-inputs ml-1"
+              control-variant="stacked"
+              density="compact"
+              hide-details
+              hide-spin-buttons
+              :min="0"
+              :model-value="groupSatellites[purity]"
+              type="number"
+              width="80px"
+              @update:model-value="updateGroupSatellites(group, purity, $event)"
+            />
+          </template>
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+        </v-chip>
+        <div class="underchip text-cyan">
+          {{ formatNumberFully(wellPotential) }}/min potential &middot; {{ satelliteCount }} extractors
+        </div>
+      </div>
+    </template>
+    <template v-else-if="isExtraction">
       <div v-if="purityOptions.length > 1">
         <v-chip
           class="sf-chip input cyan mx-1"
@@ -363,8 +397,12 @@
   } from '@/utils/factory-management/building-groups/somersloops'
   import {
     getExtraction,
+    getGroupExtractionRate,
     getGroupExtractor,
     getGroupPurity,
+    getGroupSatelliteCount,
+    getGroupSatellites,
+    isWellRecipe,
     PURITY_LABELS,
     PURITY_MULTIPLIERS,
   } from '@/utils/factory-management/building-groups/extraction'
@@ -424,6 +462,19 @@
   )
 
   const groupPurity = computed(() => getGroupPurity(props.group, props.item.recipe))
+
+  // ==== Resource wells
+  const WELL_PURITIES: NodePurity[] = ['impure', 'normal', 'pure']
+
+  const isWell = computed(() => isWellRecipe(props.item.recipe))
+  const groupSatellites = computed(() => getGroupSatellites(props.group))
+  const satelliteCount = computed(() => getGroupSatelliteCount(props.group, props.item.recipe))
+  const wellPotential = computed(() => getGroupExtractionRate(props.group, props.item.recipe))
+
+  const updateGroupSatellites = (group: BuildingGroup, purity: NodePurity, value: number) => {
+    group.satellites = { ...getGroupSatellites(group), [purity]: Math.max(0, Math.round(value || 0)) }
+    updateGroup(group)
+  }
   const purityMultiplier = computed(() => PURITY_MULTIPLIERS[groupPurity.value])
   const extractorOptions = computed(() =>
     (extraction.value?.extractors ?? []).map(extractor => ({

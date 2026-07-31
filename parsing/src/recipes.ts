@@ -225,6 +225,15 @@ const MINEABLE_SOLIDS = [
 const MINER_CLASSES = ['Build_MinerMk1_C', 'Build_MinerMk2_C', 'Build_MinerMk3_C'];
 const ALL_PURITIES: ParserPurity[] = ['impure', 'normal', 'pure'];
 
+// Fluids and gases with resource wells. Same figures as the game's other node purities, and
+// identical across all three resources.
+const WELL_RESOURCES = ['Water', 'LiquidOil', 'NitrogenGas'];
+const PURITY_MULTIPLIERS: { [purity in ParserPurity]: number } = {
+    impure: 0.5,
+    normal: 1,
+    pure: 2,
+};
+
 // Rates are per minute at 100% clock on a normal node. Fluid extractors count in cm3, so a
 // water pump's 2000 per second becomes 120 m3/min.
 function getExtractorRate(extractor: any, fluid: boolean): number {
@@ -292,6 +301,52 @@ function getExtractionRecipes(data: any[], items: ParserItemDataInterface): Pars
     // Water sources have no purity, so the Water Extractor is a plain producing building that
     // happens to output a raw resource. It still overclocks like anything else.
     build('Water', ['Build_WaterPump_C'], ['normal'], 'Water Extractor');
+
+    // Resource wells: a powered pressurizer driving unpowered satellite extractors. Purity sits
+    // on each satellite rather than on the well, so `purities` is empty and the composition is
+    // carried per building group instead. Nitrogen Gas is only obtainable this way.
+    const pressurizer = findClass('Build_FrackingSmasher_C');
+    const satellite = findClass('Build_FrackingExtractor_C');
+
+    if (pressurizer && satellite) {
+        // One satellite on a normal node is the reference rate every well is expressed against.
+        const normalRate = getExtractorRate(satellite, true);
+
+        WELL_RESOURCES.forEach(part => {
+            const resource = items.rawResources[part];
+            if (!resource) {
+                return;
+            }
+
+            recipes.push({
+                id: `Extract_${part}_Well`,
+                displayName: `${resource.name} (Resource Well)`,
+                ingredients: [],
+                products: [{ part, amount: 1, perMin: normalRate, isByProduct: false }],
+                building: {
+                    name: extractors.get('Build_FrackingSmasher_C') as string,
+                    power: Number(pressurizer.mPowerConsumption) || 0,
+                },
+                extraction: {
+                    purities: [],
+                    extractors: [{
+                        building: extractors.get('Build_FrackingSmasher_C') as string,
+                        ratePerMin: normalRate,
+                    }],
+                    well: {
+                        satelliteBuilding: extractors.get('Build_FrackingExtractor_C') as string,
+                        satelliteRates: {
+                            impure: normalRate * PURITY_MULTIPLIERS.impure,
+                            normal: normalRate,
+                            pure: normalRate * PURITY_MULTIPLIERS.pure,
+                        },
+                    },
+                },
+                isAlternate: false,
+                isFicsmas: false,
+            });
+        });
+    }
 
     return recipes;
 }

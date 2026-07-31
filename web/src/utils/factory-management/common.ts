@@ -99,6 +99,8 @@ export const getBuildingDisplayName = (building: string) => {
     ['assemblermk1', 'Assembler'],
     ['blender', 'Blender'],
     ['constructormk1', 'Constructor'],
+    ['frackingextractor', 'Resource Well Extractor'],
+    ['frackingsmasher', 'Resource Well Pressurizer'],
     ['converter', 'Converter'],
     ['foundrymk1', 'Foundry'],
     ['hadroncollider', 'Particle Accelerator'],

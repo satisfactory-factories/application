@@ -6,6 +6,8 @@
         "constructormk1": 4,
         "converter": 0.1,
         "foundrymk1": 16,
+        "frackingextractor": 0,
+        "frackingsmasher": 150,
         "generatorbiomass": 0,
         "generatorcoal": 0,
         "generatorfuel": 0,
@@ -6170,6 +6172,42 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_LiquidOil_Well",
+            "displayName": "Crude Oil (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "LiquidOil",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "CrystalOscillator",
             "displayName": "Crystal Oscillator",
             "ingredients": [
@@ -7917,6 +7955,42 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_NitrogenGas_Well",
+            "displayName": "Nitrogen Gas (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "NitrogenGas",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -10710,6 +10784,42 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Water_Well",
+            "displayName": "Water (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Water",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
             },
             "isAlternate": false,
             "isFicsmas": false

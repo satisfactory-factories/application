@@ -61,12 +61,12 @@ describe('common', () => {
         })
 
         test('recipe length should be correct', () => {
-            expect(results.recipes.length).toBe(303);
+            expect(results.recipes.length).toBe(306);
         })
 
 
         test('buildings should generate correct data', () => {
-            expect(Object.keys(results.buildings).length).toBe(22);
+            expect(Object.keys(results.buildings).length).toBe(24);
             expect(results.buildings).toStrictEqual({
                 assemblermk1: 15,
                 blender: 75,
@@ -92,6 +92,9 @@ describe('common', () => {
                 minermk3: 45,
                 oilpump: 40,
                 waterpump: 20,
+                // Resource wells: the pressurizer draws the power, the satellites draw none.
+                frackingsmasher: 150,
+                frackingextractor: 0,
             })
         })
 
@@ -263,6 +266,46 @@ describe('common', () => {
             untouched.forEach((recipe: ParserRecipe) => {
                 expect(recipe.displayName).not.toContain('Convert: ');
             });
+        });
+
+        // A resource well is a powered pressurizer driving unpowered satellite extractors, each
+        // on its own micro-node. Rates are identical across all three well resources.
+        test('every well resource gets a well recipe with satellite rates', () => {
+            ['Water', 'LiquidOil', 'NitrogenGas'].forEach(part => {
+                const recipe = findExtraction(`Extract_${part}_Well`);
+                expect(recipe).toBeDefined();
+                expect(recipe.ingredients).toEqual([]);
+                expect(recipe.products).toEqual([{ part, amount: 1, perMin: 60, isByProduct: false }]);
+                expect(recipe.building).toEqual({ name: 'frackingsmasher', power: 150 });
+                // Purity sits on each satellite, not on the well.
+                expect(recipe.extraction?.purities).toEqual([]);
+                expect(recipe.extraction?.well).toEqual({
+                    satelliteBuilding: 'frackingextractor',
+                    satelliteRates: { impure: 30, normal: 60, pure: 120 },
+                });
+            });
+        });
+
+        test('nitrogen gas is only obtainable from a well', () => {
+            const nitrogenExtraction = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.extraction && recipe.products[0].part === 'NitrogenGas');
+
+            expect(nitrogenExtraction.length).toBe(1);
+            expect(nitrogenExtraction[0].id).toBe('Extract_NitrogenGas_Well');
+        });
+
+        test('solid resources never get a well', () => {
+            ['OreIron', 'Coal', 'RawQuartz'].forEach(part => {
+                expect(findExtraction(`Extract_${part}_Well`)).toBeUndefined();
+                expect(findExtraction(`Extract_${part}`).extraction?.well).toBeUndefined();
+            });
+        });
+
+        test('the satellite extractor is recorded as drawing no power', () => {
+            // It genuinely draws nothing — the pressurizer pays the whole 150 MW — so the
+            // variable-power sentinel must not invent a draw for it.
+            expect(results.buildings.frackingextractor).toBe(0);
+            expect(results.buildings.frackingsmasher).toBe(150);
         });
 
         test('every extractor building is in the buildings map with its power draw', () => {
