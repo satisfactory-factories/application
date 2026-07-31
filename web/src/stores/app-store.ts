@@ -13,6 +13,10 @@ import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
 import { setAssumeRawInputs } from '@/utils/factory-management/settings'
 
+// Why the raw-input prompt is on screen. `migration` is the one-time notice for plans that
+// predate mining; the other two are loaded plans saying which way they were built.
+export type RawAssumptionReason = 'migration' | 'mines' | 'assumes'
+
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
   const gameData = gameDataStore.getGameData()
@@ -91,9 +95,8 @@ export const useAppStore = defineStore('app', () => {
   // would turn every factory in their plan red.
   const assumeRawInputs = ref<boolean>(true)
   const showRawAssumptionPrompt = ref<boolean>(false)
-  // Which situation raised the prompt, so it can explain itself accordingly: the one-time
-  // notice for plans that predate mining, or a freshly loaded plan that mines its own inputs.
-  const rawAssumptionPromptReason = ref<'migration' | 'template'>('migration')
+  // Which situation raised the prompt, so it can explain itself accordingly.
+  const rawAssumptionPromptReason = ref<RawAssumptionReason>('migration')
 
   const applyAssumeRawInputs = (value: boolean, persist = true) => {
     assumeRawInputs.value = value
@@ -121,9 +124,23 @@ export const useAppStore = defineStore('app', () => {
     forceCalculation()
   }
 
-  // Raised when a loaded plan has an opinion about raw inputs worth honouring, e.g. a template
-  // whose factories mine everything they need.
-  const askRawAssumption = (reason: 'migration' | 'template') => {
+  // Raised when a loaded plan was built for a particular answer: `mines` wants the assumption
+  // off, `assumes` wants it on. Only asks when the current setting disagrees — a plan that
+  // already reads correctly has nothing to offer the user but an interruption.
+  const askRawAssumption = (reason: RawAssumptionReason) => {
+    if (reason === 'migration') {
+      // Debug scenario only: put the setting back to never-answered and the assumption back on,
+      // so the one-time notice behaves exactly as it does for someone opening a plan they made
+      // before mining existed. Otherwise it is unreachable once answered.
+      localStorage.removeItem('assumeRawInputs')
+      applyAssumeRawInputs(true, false)
+    } else {
+      const planWantsAssumption = reason === 'assumes'
+      if (assumeRawInputs.value === planWantsAssumption) {
+        return
+      }
+    }
+
     rawAssumptionPromptReason.value = reason
     showRawAssumptionPrompt.value = true
   }

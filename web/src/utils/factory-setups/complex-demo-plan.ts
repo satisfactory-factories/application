@@ -7,6 +7,7 @@ import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
 let oilFac: Factory
 let copperIngotsFac: Factory
+let copperMineFac: Factory
 let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
 let computersFac: Factory
@@ -22,6 +23,7 @@ export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
   oilFac = newFactory('Oil Processing', 1, 1)
   copperIngotsFac = newFactory('Copper Ingots', 2, 2)
+  copperMineFac = newFactory('Copper Mine', 10, 10)
   copperBasicsFac = newFactory('Copper Basics', 3, 3)
   circuitBoardsFac = newFactory('Circuit Boards', 4, 4)
   computersFac = newFactory('Computers (end product)', 5, 5)
@@ -30,7 +32,7 @@ export const complexDemoPlan = (): TemplatePlan => {
   alienPowerFac = newFactory('Alien Power', 8, 8)
   geothermalFac = newFactory('Geothermal Power', 9, 9)
 
-  const factories = [oilFac, copperIngotsFac, copperBasicsFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
+  const factories = [oilFac, copperIngotsFac, copperMineFac, copperBasicsFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
 
   // Private methods to configure the factories
   const setupFactories = () => {
@@ -117,6 +119,30 @@ export const complexDemoPlan = (): TemplatePlan => {
     copperIngotsFac.inSync = true
     // =================
 
+    // === COPPER MINE FAC ===
+    // A mine mixing marks and purities, and over-producing a little: nodes come in fixed sizes,
+    // so a real mine rarely lands exactly on the number you wanted.
+    addProductToFactory(copperMineFac, {
+      id: 'OreCopper',
+      amount: 360,
+      recipe: 'Extract_OreCopper',
+    })
+    const copperOre = copperMineFac.products[0]
+    const [mk3Group] = copperOre.buildingGroups
+    Object.assign(mk3Group, { extractorBuilding: 'minermk3', purity: 'normal', buildingCount: 1 })
+    copperOre.buildingGroups.push({
+      ...mk3Group,
+      id: mk3Group.id + 1,
+      extractorBuilding: 'minermk1',
+      purity: 'pure',
+      buildingCount: 1,
+      parts: {},
+    })
+    // The ore it digs up is real, so this factory has nothing to assume.
+    copperMineFac.assumeRawInputs = false
+    copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
+    // =================
+
     // === COPPER BASICS FAC ===
     addProductToFactory(copperBasicsFac, {
       id: 'Wire',
@@ -153,6 +179,11 @@ export const complexDemoPlan = (): TemplatePlan => {
       factoryId: copperIngotsFac.id,
       outputPart: 'CopperIngot',
       amount: 320, // Deliberate shortage, should be 520.
+    })
+    addInputToFactory(copperIngotsFac, {
+      factoryId: copperMineFac.id,
+      outputPart: 'OreCopper',
+      amount: 320,
     })
     copperBasicsFac.notes = 'This factory is deliberately short on Copper Ingots to highlight the shortage functionality. It is also over producing cables by 40 to show trimming.'
     // =================

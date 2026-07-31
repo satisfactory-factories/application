@@ -78,9 +78,11 @@
     data: string
     show: boolean
     isDebug: boolean
-    // Plans that mine their own raw inputs ask, on load, whether to drop the raw assumption —
-    // with it left on, the mines in them are decorative and everything reads as satisfied.
-    asksRawAssumption?: boolean
+    // Which way the plan was built: `mines` digs up everything it needs, `assumes` takes its
+    // raw resources as supplied (how every plan worked before mining existed). On load it
+    // offers to match the setting to the plan, and stays quiet when they already agree.
+    // `migration` re-arms the one-time notice for testing; see askRawAssumption.
+    rawAssumption?: 'mines' | 'assumes' | 'migration'
   }
 
   interface TemplatePayload {
@@ -95,13 +97,14 @@
   const scenarioData = (factories: Factory[]) =>
     JSON.stringify({ factories, powerTarget: 0 } satisfies TemplatePayload)
 
-  const templates = [
+  const templates: Template[] = [
     {
       name: 'Demo',
       description: 'Contains 7 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
       data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,
+      rawAssumption: 'assumes',
     },
     {
       name: 'Mining',
@@ -109,7 +112,7 @@
       data: planData(createMiningDemoPlan()),
       show: true,
       isDebug: false,
-      asksRawAssumption: true,
+      rawAssumption: 'mines',
     },
     {
       name: 'Simple',
@@ -117,6 +120,7 @@
       data: planData(createSimple()),
       show: true,
       isDebug: false,
+      rawAssumption: 'assumes',
     },
     {
       name: 'Mael\'s "MegaPlan"',
@@ -124,6 +128,15 @@
       data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,
+      rawAssumption: 'assumes',
+    },
+    {
+      name: '#503: Pre-mining plan (migration modal)',
+      description: 'A plan built the way plans were before mining existed: it smelts ore that nothing digs up. Loading it puts the raw input setting back to never-answered and re-opens the one-time migration notice, which is otherwise unreachable once you have answered it. Related to issue #503.',
+      data: scenarioData(createSimple().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+      rawAssumption: 'migration',
     },
     {
       name: 'PowerOnlyImport',
@@ -243,8 +256,8 @@
     prepareLoader(factories, true)
     dialog.value = false
 
-    if (template.asksRawAssumption) {
-      askRawAssumption('template')
+    if (template.rawAssumption) {
+      askRawAssumption(template.rawAssumption)
     }
   }
 </script>

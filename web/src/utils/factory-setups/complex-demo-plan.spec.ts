@@ -37,7 +37,7 @@ describe('Complex Demo Plan', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(9)
+    expect(factories.length).toBe(10)
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
@@ -198,13 +198,11 @@ describe('Complex Demo Plan', () => {
       expect(copperIngotsFac.products[0].id).toBe('CopperIngot')
       expect(copperIngotsFac.products[0].amount).toBe(320)
 
-      // Inputs
-      expect(copperIngotsFac.inputs).toHaveLength(0) // Raw resources inputs
-      expect(copperIngotsFac.rawResources.OreCopper).toStrictEqual({
-        id: 'OreCopper',
-        name: 'Copper Ore',
-        amount: 320,
-      })
+      // Its ore is mined by the Copper Mine now, not assumed.
+      expect(copperIngotsFac.inputs).toHaveLength(1)
+      expect(copperIngotsFac.inputs[0].outputPart).toBe('OreCopper')
+      expect(copperIngotsFac.inputs[0].amount).toBe(320)
+      expect(copperIngotsFac.rawResources.OreCopper).toBeUndefined()
 
       // Dependencies
       expect(copperIngotsFac.dependencies.metrics.CopperIngot).toStrictEqual({

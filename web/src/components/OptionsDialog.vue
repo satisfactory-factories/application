@@ -43,10 +43,16 @@
         <i class="fas fa-hard-hat" /><span class="ml-2">{{ promptTitle }}</span>
       </v-card-title>
       <v-card-text class="text-body-2">
-        <p v-if="isTemplatePrompt" class="mb-3">
+        <p v-if="promptReason === 'mines'" class="mb-3">
           This plan mines everything it needs — the ore, the gas and the water are all extracted by
           buildings you can see in it. It reads best with the raw input assumption turned off, so
           anything you stop mining shows up as a shortage rather than being quietly filled in.
+        </p>
+        <p v-else-if="promptReason === 'assumes'" class="mb-3">
+          Nothing in this plan mines anything: its ore, water and oil are taken as supplied, which
+          is how every plan worked before mining existed. It reads as intended with the raw input
+          assumption left on. Turn it off and every unmined raw resource becomes a shortage — which
+          is a quick way to see what it would take to dig it all up yourself.
         </p>
         <template v-else>
           <p class="mb-3">
@@ -60,8 +66,8 @@
           </p>
         </template>
         <p class="mb-3">
-          <b>Do you want that assumption removed across all your factories?</b> Raw resources you
-          aren't mining or importing will then show as shortages.
+          <b>{{ promptQuestion }}</b> Raw resources you aren't mining or importing show as
+          shortages while the assumption is off.
         </p>
         <p class="text-medium-emphasis">
           You can change this at any time in Options, or on a per factory basis.
@@ -83,10 +89,19 @@
   const appStore = useAppStore()
   const { showRawAssumptionPrompt, rawAssumptionPromptReason } = storeToRefs(appStore)
 
-  const isTemplatePrompt = computed(() => rawAssumptionPromptReason.value === 'template')
-  const promptTitle = computed(() =>
-    isTemplatePrompt.value ? 'This plan mines its own raw resources' : 'Mines are now part of the planner'
-  )
+  const promptReason = computed(() => rawAssumptionPromptReason.value)
+
+  const promptTitle = computed(() => ({
+    mines: 'This plan mines its own raw resources',
+    assumes: 'This plan assumes its raw resources',
+    migration: 'Mines are now part of the planner',
+  }[promptReason.value]))
+
+  // "Yes" always means "remove the assumption", so an `assumes` plan is asking the opposite
+  // question and needs saying the other way round.
+  const promptQuestion = computed(() => promptReason.value === 'assumes'
+    ? 'Do you want the assumption removed anyway?'
+    : 'Do you want that assumption removed across all your factories?')
 
   const showOptions = ref(false)
   const assumeRawInputs = appStore.getAssumeRawInputsSetting()
