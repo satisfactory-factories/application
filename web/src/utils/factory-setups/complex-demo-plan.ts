@@ -21,18 +21,18 @@ let geothermalFac: Factory
 // Copper Basics has a deliberate shortage of Copper Ingots to highlight that functionality to new users.
 export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
-  oilFac = newFactory('Oil Processing', 1, 1)
+  copperMineFac = newFactory('Copper Mine', 1, 10)
   copperIngotsFac = newFactory('Copper Ingots', 2, 2)
-  copperMineFac = newFactory('Copper Mine', 10, 10)
   copperBasicsFac = newFactory('Copper Basics', 3, 3)
-  circuitBoardsFac = newFactory('Circuit Boards', 4, 4)
-  computersFac = newFactory('Computers (end product)', 5, 5)
-  uraniumFac = newFactory('☢️ Uranium Power', 6, 6)
-  plutoniumFac = newFactory('☢️ Plutonium Processing', 7, 7)
-  alienPowerFac = newFactory('Alien Power', 8, 8)
-  geothermalFac = newFactory('Geothermal Power', 9, 9)
+  oilFac = newFactory('Oil Processing', 4, 1)
+  circuitBoardsFac = newFactory('Circuit Boards', 5, 4)
+  computersFac = newFactory('Computers (end product)', 6, 5)
+  uraniumFac = newFactory('☢️ Uranium Power', 7, 6)
+  plutoniumFac = newFactory('☢️ Plutonium Processing', 8, 7)
+  alienPowerFac = newFactory('Alien Power', 9, 8)
+  geothermalFac = newFactory('Geothermal Power', 10, 9)
 
-  const factories = [oilFac, copperIngotsFac, copperMineFac, copperBasicsFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
+  const factories = [copperMineFac, copperIngotsFac, copperBasicsFac, oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
 
   // Private methods to configure the factories
   const setupFactories = () => {
