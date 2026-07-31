@@ -86,6 +86,12 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         return // Nothing to do as the factory doesn't exist.
       }
 
+      // A factory with no part ledger at all has not been calculated yet (a template, or a
+      // plan built in code), so "it doesn't make this" cannot be concluded from it — the
+      // ledger is built moments later. Judging it here deletes perfectly good export/import
+      // pairs on the plan's very first calculation.
+      const isCalculated = Object.keys(factory.parts).length > 0
+
       requests.forEach(request => {
         // A previous iteration (or the recalculation it triggered) may already have removed it.
         if (!factory.dependencies.requests[requestedFactoryId]?.includes(request)) {
@@ -96,7 +102,7 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         const foundPart = factory.parts[request.part]
 
         // If the product does not exist, remove the dependency and the input.
-        if (!foundPart) {
+        if (isCalculated && !foundPart) {
           console.warn(`flushInvalidRequests: partCheck Factory "${factory.name}" (${factory.id}) does not have the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)
@@ -110,7 +116,7 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
 
         // If a part is found, check if the part is produced within the factory. If it isn't, remove the dependency and the input.
         // Thankfully since we are doing the dependency calculation BEFORE the parts calculation, the part data will be eventually correct.
-        if (!foundProduct && !foundByProduct && !foundPowerProducerByProduct) {
+        if (isCalculated && !foundProduct && !foundByProduct && !foundPowerProducerByProduct) {
           console.warn(`flushInvalidRequests: productCheck: Factory "${factory.name}" (${factory.id}) does not produce the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)
@@ -217,7 +223,12 @@ export const calculateFactoryDependencies = (
     }
 
     // Check if the provider factory has the part that the dependant factory is requesting.
-    if (!loadMode && !provider.parts[input.outputPart]) {
+    // A provider with no part ledger at all has not been calculated yet — its ledger is
+    // built moments later, and concluding "it doesn't make this" from an empty one deletes
+    // valid imports. deleteRequestPair recalculates mid-flush, which is how that happens
+    // even when the caller passed loadMode.
+    const providerCalculated = Object.keys(provider.parts).length > 0
+    if (!loadMode && providerCalculated && !provider.parts[input.outputPart]) {
       console.error(`dependencies: calculateFactoryDependencies: Factory ${provider.name} (${provider.id}) does not have the part ${input.outputPart} requested by ${factory.name} (${factory.id}). Removing input.`)
       factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
       return

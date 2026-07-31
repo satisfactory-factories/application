@@ -103,9 +103,10 @@ describe('repair', () => {
         expect(megaPlant.powerProducers[0].fuelAmount).toBe(12000)
         expect(megaPlant.inputs[0].amount).toBe(12000)
 
-        // One heading per factory in the dialog, in plan order
+        // One heading per factory in the dialog, in plan order. The copied refinery drifts
+        // exactly as its original does, so it is reported alongside it.
         expect([...new Set(report.repairs.map(entry => entry.factoryName))]).toEqual([
-          'Rocket Fuel Refinery', 'FG TEST', 'Mega Rocket Fuel Plant',
+          'Rocket Fuel Refinery', 'FG TEST', 'Mega Rocket Fuel Plant', 'Rocket Fuel Refinery (copy)',
         ])
       })
 
@@ -114,9 +115,12 @@ describe('repair', () => {
 
         const report = repairPlanPrecision(factories, gameData)
 
-        // 0.012 and 0.01 — both beyond the runtime's flat 0.002 allowance
+        // 0.012 and 0.01 — both beyond the runtime's flat 0.002 allowance. The copied
+        // refinery contributes a second 14400.012.
         const large = report.repairs.filter(entry => Math.abs(entry.before - entry.after) > 0.002)
-        expect(large.map(entry => entry.before).sort()).toEqual([12000.01, 12000.01, 14400.012])
+        expect(large.map(entry => entry.before).sort((a, b) => a - b)).toEqual([
+          12000.01, 12000.01, 14400.012, 14400.012,
+        ])
       })
     })
 

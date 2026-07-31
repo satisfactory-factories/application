@@ -293,6 +293,54 @@ describe('export / import chain integrity', () => {
     })
   })
 
+  // A template, or any plan built in code, arrives with its exports written but no part
+  // ledger. "This factory doesn't make that" cannot be concluded from an empty ledger — it
+  // is built moments later — and doing so tore up perfectly good links on the first pass.
+  describe('a plan that has never been calculated', () => {
+    let plan: Factory[]
+
+    beforeEach(() => {
+      const supplier = newFactory('Ingots', 0, 11)
+      const consumer = newFactory('Plates', 1, 12)
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 1000, recipe: 'IngotIron' })
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 300, recipe: 'IronPlate' })
+      addInputToFactory(consumer, { factoryId: supplier.id, outputPart: 'IronIngot', amount: 450 })
+      supplier.dependencies.requests[consumer.id] = [{
+        requestingFactoryId: consumer.id,
+        part: 'IronIngot',
+        amount: 450,
+      }]
+
+      plan = [supplier, consumer]
+    })
+
+    it('keeps the links it was given', () => {
+      calculateFactories(plan, gameData)
+
+      expectIntegrity(plan)
+      expect(plan[1].inputs).toHaveLength(1)
+      expect(plan[0].dependencies.requests[plan[1].id]).toHaveLength(1)
+    })
+
+    // The flush recalculates mid-loop, so a bad link elsewhere used to take the good ones
+    // with it: that recalculation ran against factories whose ledgers were still empty.
+    it('keeps them even when another factory in the plan holds a ghost export', () => {
+      const stray = newFactory('Stray copy', 2, 13)
+      stray.dependencies.requests[plan[1].id] = [{
+        requestingFactoryId: plan[1].id,
+        part: 'IronIngot',
+        amount: 450,
+      }]
+      plan.push(stray)
+
+      calculateFactories(plan, gameData)
+
+      expectIntegrity(plan)
+      expect(plan[1].inputs).toHaveLength(1)
+      expect(stray.dependencies.requests).toEqual({})
+    })
+  })
+
   describe('the complex demo plan', () => {
     it('is internally consistent after a full recalculation', () => {
       const plan = complexDemoPlan().getFactories()
@@ -409,7 +457,7 @@ describe('load-time repairs', () => {
     plates.inputs.push({ factoryId: ingots.id, outputPart: 'IronIngot', amount: 300 })
     plates.inputs.push({ factoryId: ingots.id, outputPart: 'IronIngot', amount: 200 })
 
-    const repairs = mergeDuplicateInputs([ingots, plates])
+    const repairs = mergeDuplicateInputs([ingots, plates], gameData)
 
     expect(repairs).toHaveLength(1)
     expect(plates.inputs).toHaveLength(1)
@@ -421,7 +469,7 @@ describe('load-time repairs', () => {
     factory.inputs.push({ factoryId: null, outputPart: null, amount: 0 })
     factory.inputs.push({ factoryId: null, outputPart: null, amount: 0 })
 
-    expect(mergeDuplicateInputs([factory])).toEqual([])
+    expect(mergeDuplicateInputs([factory], gameData)).toEqual([])
     expect(factory.inputs).toHaveLength(2)
   })
 

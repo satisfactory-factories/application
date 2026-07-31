@@ -147,7 +147,7 @@ describe('plan repairs on load', () => {
     })
 
     it('reports it', () => {
-      expect(reported('Copper Ingots', 'importing CopperIngot from itself')).toBe(true)
+      expect(reported('Copper Ingots', 'importing Copper Ingot from itself')).toBe(true)
     })
   })
 

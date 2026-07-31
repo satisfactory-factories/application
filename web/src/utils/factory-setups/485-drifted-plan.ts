@@ -118,11 +118,17 @@ export const create485Scenario = (): Factory[] => {
   ] as unknown as Factory[]
 }
 
-// A fuller plan for exercising the repair by hand: three factories, each drifted in a
-// different way and by a different amount. Built on top of the captured factory above so
-// the headline case stays real save data rather than something we made up.
+// A fuller plan for exercising the repair dialog by hand. It carries both kinds of damage a
+// loaded plan can hold, so one load demonstrates the whole thing:
 //
-// Every figure here is what the old 59.999952 / 10.499996 mwPerItem actually produced:
+//   1. Drifted quantities — three factories, each off by a different amount, built on top
+//      of the captured factory above so the headline case stays real save data.
+//   2. A broken import/export chain — the faults the planner has actually produced: a copied
+//      factory inheriting the original's exports, an export amount that no longer matches
+//      the import, an import the supplier has no record of, an export entry emptied of its
+//      items, and two factories issued the same internal ID.
+//
+// Every drifted figure is what the old 59.999952 / 10.499996 mwPerItem actually produced:
 //   2,880 gens x 250 MW / 59.999952 = 12000.0096   -> 12000.01
 //     420 gens x  75 MW / 10.499996 =  3000.0012   ->  3000.001
 export const create485DemoPlan = (): TemplatePlan => {
@@ -167,8 +173,58 @@ export const create485DemoPlan = (): TemplatePlan => {
     amount: 12000.01,
   })
 
+  // Two factories that have nothing to do with the chain, purely to demonstrate the ID
+  // collision on its own. Colliding IDs inside the chain cascade — the plan genuinely
+  // cannot tell which factory supplied what — and that would bury everything else here.
+  const spareA = newFactory('Spare Ingots A', 3)
+  const spareB = newFactory('Spare Ingots B', 4)
+  addProductToFactory(spareA, { id: 'IronIngot', amount: 120, recipe: 'IngotIron' })
+  addProductToFactory(spareB, { id: 'IronIngot', amount: 120, recipe: 'IngotIron' })
+
+  const factories = [refinery, fgTest, megaPlant, spareA, spareB]
+
+  // The exports a saved plan would hold, matching the two imports above. Written out rather
+  // than calculated because this module is in the app's bundle and the calculator's game
+  // data loader is not; the template is force-recalculated on load anyway, and the repairs
+  // below are all found before that runs.
+  refinery.dependencies.requests[fgTest.id] = [{
+    requestingFactoryId: fgTest.id,
+    part: 'RocketFuel',
+    amount: 2400.002,
+  }]
+  refinery.dependencies.requests[megaPlant.id] = [{
+    requestingFactoryId: megaPlant.id,
+    part: 'RocketFuel',
+    amount: 12000.01,
+  }]
+
+  // --- Now break the chain, one fault at a time. ---
+
+  // Copying a factory used to clone its exports along with everything else, so the copy
+  // claims to supply factories that are still buying from the original. Its quantities are
+  // drifted too, so this factory's heading in the dialog carries both kinds of repair.
+  const refineryCopy: Factory = {
+    ...structuredClone(refinery),
+    id: 8501,
+    name: 'Rocket Fuel Refinery (copy)',
+    displayOrder: 5,
+  }
+  factories.push(refineryCopy)
+
+  // An export that no longer agrees with what the importing factory asks for.
+  refinery.dependencies.requests[fgTest.id][0].amount = 3200
+
+  // An import the supplying factory has no record of.
+  delete refinery.dependencies.requests[megaPlant.id]
+
+  // An export entry emptied of its items, which still renders as an export.
+  refinery.dependencies.requests[7777] = []
+
+  // Two factories issued the same random ID, which is how the planner used to hand them out.
+  spareB.id = spareA.id
+
   return {
-    getFactories: () => [refinery, fgTest, megaPlant],
+    getFactories: () => factories,
     powerTarget: 0,
   }
 }

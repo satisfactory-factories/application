@@ -198,8 +198,8 @@
       isDebug: true,
     },
     {
-      name: '#485: Micro-rounding repair',
-      description: 'Three factories whose saved quantities are a rounding hair off the numbers they mean, exactly as plans saved before the mwPerItem fix hold them. Loading it should raise the "Plan data repaired" dialog listing every correction, and leave the plan on whole numbers: the Refinery on 14,400 Rocket Fuel/min, FG TEST on 2,400 plus 3,000 Compacted Coal, and the Mega Plant on 12,000. The Mega Plant and Refinery drifts (0.01 and 0.012) are past the flat snap tolerance, so they prove the scaling one.',
+      name: '#485/#499: Plan repair',
+      description: 'A plan damaged in both of the ways a saved plan can be, to exercise the "Plan data repaired" dialog. It should open on load listing BOTH kinds of correction, grouped by factory. Micro-rounding: quantities a hair off the numbers they mean, left on whole numbers afterwards — the Refinery on 14,400 Rocket Fuel/min, FG TEST on 2,400 plus 3,000 Compacted Coal, the Mega Plant on 12,000 (its 0.01 and the Refinery\'s 0.012 are past the flat snap tolerance, so they prove the scaling one). Broken chain: the Refinery copy inherits the original\'s exports and should be reported as exporting to two factories that are not importing from it (its own quantities drift too, so that factory\'s heading carries both kinds at once); the Refinery\'s export to FG TEST reads 3,200 against an import of 2,400; the Mega Plant\'s import has no matching export; an export entry points at a factory that no longer exists; and Spare Ingots A and B share an internal ID, so one is reassigned. Afterwards no factory should list an export nobody imports.',
       data: scenarioData(create485DemoPlan().getFactories()),
       show: isDebugMode,
       isDebug: true,

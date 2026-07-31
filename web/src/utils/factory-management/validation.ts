@@ -2,7 +2,7 @@
 import { calculateFactory, findFac, generateFactoryId } from '@/utils/factory-management/factory'
 import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { createNewPart, rawArray } from '@/utils/factory-management/common'
+import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
 import { StructuralRepair } from '@/utils/factory-management/repair'
 
 const repair = (factory: Factory, summary: string): StructuralRepair => {
@@ -38,9 +38,10 @@ export const repairDuplicateFactoryIds = (factories: Factory[]): StructuralRepai
 // The UI blocks importing the same part from the same factory twice, but plans saved before
 // it did (and hand-edited share links) can hold duplicates. Only one request is ever raised
 // for a provider + part pair, so the rows have to be merged or the export understates demand.
-export const mergeDuplicateInputs = (factories: Factory[]): StructuralRepair[] => {
+export const mergeDuplicateInputs = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
   const repairs: StructuralRepair[] = []
   const nameFor = (id: number) => factories.find(factory => factory.id === id)?.name ?? `factory ${id}`
+  const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
 
   factories.forEach(factory => {
     const seen = new Map<string, FactoryInput>()
@@ -58,7 +59,7 @@ export const mergeDuplicateInputs = (factories: Factory[]): StructuralRepair[] =
 
       if (existing) {
         existing.amount += input.amount
-        repairs.push(repair(factory, `Imported ${input.outputPart} from ${nameFor(input.factoryId)} on more than one row, which understated what that factory had to make. The rows have been merged into one asking for ${existing.amount}/min.`))
+        repairs.push(repair(factory, `Imported ${partName(input.outputPart)} from ${nameFor(input.factoryId)} on more than one row, which understated what that factory had to make. The rows have been merged into one asking for ${existing.amount}/min.`))
         return
       }
 
@@ -78,9 +79,10 @@ export const mergeDuplicateInputs = (factories: Factory[]): StructuralRepair[] =
 // agree exactly. A plan whose figures look current is loaded without being recalculated,
 // which means drift saved by an older build would otherwise never be flushed — hence
 // repairing it here rather than leaving it to the recalculation.
-export const repairDependencyChain = (factories: Factory[]): StructuralRepair[] => {
+export const repairDependencyChain = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
   const repairs: StructuralRepair[] = []
   const byId = new Map(factories.map(factory => [factory.id, factory]))
+  const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
 
   factories.forEach(provider => {
     if (!provider.dependencies?.requests) {
@@ -104,13 +106,13 @@ export const repairDependencyChain = (factories: Factory[]): StructuralRepair[] 
         )
 
         if (inputs.length === 0) {
-          repairs.push(repair(provider, `Was exporting ${request.part} to "${requester.name}", which is not importing it. The export has been removed.`))
+          repairs.push(repair(provider, `Was exporting ${partName(request.part)} to "${requester.name}", which is not importing it. The export has been removed.`))
           return false
         }
 
         const expected = inputs.reduce((total, input) => total + input.amount, 0)
         if (request.amount !== expected) {
-          repairs.push(repair(provider, `Was set to export ${request.amount}/min of ${request.part} to "${requester.name}" while that factory asks for ${expected}/min. The export has been corrected.`))
+          repairs.push(repair(provider, `Was set to export ${request.amount}/min of ${partName(request.part)} to "${requester.name}" while that factory asks for ${expected}/min. The export has been corrected.`))
           request.amount = expected
         }
 
@@ -141,7 +143,7 @@ export const repairDependencyChain = (factories: Factory[]): StructuralRepair[] 
         ?.some(request => request.part === input.outputPart)
 
       if (provider && !hasRequest) {
-        repairs.push(repair(requester, `Imports ${input.outputPart} from "${provider.name}", which had no record of supplying it. The export has been restored.`))
+        repairs.push(repair(requester, `Imports ${partName(input.outputPart)} from "${provider.name}", which had no record of supplying it. The export has been restored.`))
       }
     })
   })
@@ -152,10 +154,12 @@ export const repairDependencyChain = (factories: Factory[]): StructuralRepair[] 
 // Repairs everything wrong with a loaded plan that can be put right automatically, and
 // returns what it corrected so the user can be told. An empty list means the plan was clean.
 export const validateFactories = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
+  const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
+
   // Both run before anything reads a factory by ID or pairs an input with a request.
   const repairs: StructuralRepair[] = [
     ...repairDuplicateFactoryIds(factories),
-    ...mergeDuplicateInputs(factories),
+    ...mergeDuplicateInputs(factories, gameData),
   ]
 
   factories.forEach(factory => {
@@ -163,7 +167,7 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
     // removes whichever input happens to match first and skips the next one along.
     factory.inputs = rawArray(factory.inputs.filter(input => {
       if (input.amount <= 0) {
-        repairs.push(repair(factory, `Had an import of ${input.outputPart ?? 'an item'} set to ${input.amount}/min, which cannot be planned against. It has been set to 1/min.`))
+        repairs.push(repair(factory, `Had an import of ${input.outputPart ? partName(input.outputPart) : 'an item'} set to ${input.amount}/min, which cannot be planned against. It has been set to 1/min.`))
         input.amount = 1
       }
 
@@ -175,12 +179,12 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
 
       const inputFac = findFac(input.factoryId, factories)
       if (!inputFac?.id) {
-        repairs.push(repair(factory, `Imported ${input.outputPart ?? 'an item'} from a factory the plan can no longer identify. The import has been removed — add it again if you still need it.`))
+        repairs.push(repair(factory, `Imported ${input.outputPart ? partName(input.outputPart) : 'an item'} from a factory the plan can no longer identify. The import has been removed — add it again if you still need it.`))
         return false
       }
 
       if (inputFac.id === factory.id) {
-        repairs.push(repair(factory, `Was importing ${input.outputPart ?? 'an item'} from itself, which is not possible. The import has been removed.`))
+        repairs.push(repair(factory, `Was importing ${input.outputPart ? partName(input.outputPart) : 'an item'} from itself, which is not possible. The import has been removed.`))
         return false
       }
 
@@ -198,7 +202,7 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
       }
 
       if (product && product.amount <= 0) {
-        repairs.push(repair(factory, `Was making ${product.id} at ${product.amount}/min, which cannot be planned against. It has been set to 0.1/min.`))
+        repairs.push(repair(factory, `Was making ${partName(product.id)} at ${product.amount}/min, which cannot be planned against. It has been set to 0.1/min.`))
         product.amount = 0.1
         needsRecalc = true
       }
@@ -207,7 +211,7 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
       if (product?.requirements) {
         Object.keys(product.requirements).forEach(part => {
           if (!factory.parts[part]) {
-            repairs.push(repair(factory, `Was missing the satisfaction entry for ${part}, an ingredient of ${product.id}. It has been added back.`))
+            repairs.push(repair(factory, `Was missing the satisfaction entry for ${partName(part)}, an ingredient of ${partName(product.id)}. It has been added back.`))
             createNewPart(factory, part)
           }
         })
@@ -223,7 +227,7 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
 
   // Last, once every factory has a unique ID and its inputs are sane, so the chain is being
   // reconciled against data that can be trusted.
-  repairs.push(...repairDependencyChain(factories))
+  repairs.push(...repairDependencyChain(factories, gameData))
 
   return repairs
 }
