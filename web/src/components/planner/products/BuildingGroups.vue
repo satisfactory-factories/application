@@ -61,8 +61,23 @@
   <div v-if="!isAlwaysSynced" class="mb-2 d-flex align-center">
     <div class="mr-2">
       <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
-        <i class="fas fa-building" />
-        <span class="ml-1">
+        <i :class="isExtraction ? 'fas fa-hard-hat' : 'fas fa-building'" />
+        <!-- Mines are measured in what they dig up, not in Miner Mk.1 equivalents. -->
+        <span v-if="isExtraction" class="ml-1">
+          Effective Output: <b><span :id="`${factory.id}-${item.id}-effective-output`">
+            {{ formatNumber(effectiveOutput) }}/min
+          </span></b>
+          |
+          <span
+            :id="`${factory.id}-${item.id}-remaining-output`"
+            :key="`${factory.id}-${item.id}-remaining-output-${outputRemaining}`"
+          >
+            {{ formatNumber(Math.abs(outputRemaining)) }}/min
+          </span>
+          <span v-if="buildingsRemaining > 0" :id="`${factory.id}-${item.id}-remaining-output-verb`"> short</span>
+          <span v-if="buildingsRemaining < 0" :id="`${factory.id}-${item.id}-remaining-output-verb`"> over</span>
+        </span>
+        <span v-else class="ml-1">
           Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
             {{ effectiveBuildings.toFixed(2) }}
           </span></b>
@@ -140,9 +155,13 @@
     FactoryPowerProducer,
     ItemType,
   } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumberFully } from '@/utils/numberFormatter'
+  import { formatNumber, formatNumberFully } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
   import { isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
+  import {
+    getExtractionReferenceRate,
+    isExtractionRecipe,
+  } from '@/utils/factory-management/building-groups/extraction'
   import {
     addBuildingGroup,
     calculateEffectiveBuildingCount,
@@ -164,8 +183,21 @@
   const effectiveBuildings = ref(0)
 
   const calculateEffectiveBuildings = () => {
-    effectiveBuildings.value = formatNumberFully(calculateEffectiveBuildingCount(props.item.buildingGroups, props.building))
+    effectiveBuildings.value = formatNumberFully(
+      calculateEffectiveBuildingCount(props.item.buildingGroups, props.building, props.item.recipe)
+    )
   }
+
+  // Extraction counts its effective buildings in reference-extractor units (Miner Mk.1 on a
+  // normal node), so "88 short" means 88 Mk.1-equivalents — meaningless to someone building
+  // Mk.3s. Mines report the same figures as output instead: the groups' combined rate against
+  // the quantity being asked for.
+  const isExtraction = computed(() => isExtractionRecipe(props.item.recipe))
+
+  const referenceRate = computed(() => getExtractionReferenceRate(props.item.recipe))
+
+  const effectiveOutput = computed(() => formatNumberFully(effectiveBuildings.value * referenceRate.value, 3))
+  const outputRemaining = computed(() => formatNumberFully(buildingsRemaining.value * referenceRate.value, 3))
 
   const calculateBuildingsRemaining = () => {
     console.log('BuildingGroups: calculateBuildingsRemaining', props.item.id, props.item)

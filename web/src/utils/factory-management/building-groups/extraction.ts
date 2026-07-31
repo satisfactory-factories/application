@@ -34,6 +34,15 @@ export const isExtractionRecipe = (recipeId?: string): boolean => !!getExtractio
 export const getExtractionRecipeForPart = (part: string): string | undefined =>
   gameData.recipes.find(recipe => recipe.extraction && recipe.products[0]?.part === part)?.id
 
+// The rate one reference extractor yields at 100% on a normal node. Effective building counts
+// are expressed in these units, so multiplying by it converts them back into items/min.
+export const getExtractionReferenceRate = (recipeId?: string): number => {
+  if (!isExtractionRecipe(recipeId)) {
+    return 0
+  }
+  return gameData.recipes.find(recipe => recipe.id === recipeId)?.products[0]?.perMin ?? 0
+}
+
 // The extractor a group uses, falling back to the recipe's reference extractor. A building the
 // recipe doesn't offer (bad save, changed game data) falls back rather than producing nonsense.
 export const getGroupExtractor = (group: BuildingGroup, recipeId?: string): string => {

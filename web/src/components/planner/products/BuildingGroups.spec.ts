@@ -749,4 +749,42 @@ describe('Component: BuildingGroups', () => {
       })
     })
   })
+
+  // Effective buildings for a mine are counted in reference-extractor units (Miner Mk.1 on a
+  // normal node), so "88 short" would mean 88 Mk.1-equivalents — meaningless to someone
+  // building Mk.3s. Mines report the same figures as output instead.
+  describe('extraction reports output rather than effective buildings', () => {
+    let product: FactoryItem
+
+    beforeEach(() => {
+      addProductToFactory(factory, {
+        id: 'Stone',
+        amount: 5760,
+        recipe: 'Extract_Stone',
+      })
+      product = factory.products[0]
+      product.buildingGroupsTrayOpen = true
+
+      // One Miner Mk.3 on a pure node: 240 x 2 = 480/min against a 5,760/min target.
+      const group = product.buildingGroups[0]
+      group.extractorBuilding = 'minermk3'
+      group.purity = 'pure'
+      group.buildingCount = 1
+      group.overclockPercent = 100
+
+      calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+      subject = mountProduct(factory)
+    })
+
+    it('shows the groups\' combined rate and the shortfall in items per minute', () => {
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-output"]`).text()).toBe('480/min')
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-output"]`).text()).toBe('5280/min')
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-output-verb"]`).text()).toBe('short')
+    })
+
+    it('does not render the effective buildings figure for a mine', () => {
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(false)
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).exists()).toBe(false)
+    })
+  })
 })
