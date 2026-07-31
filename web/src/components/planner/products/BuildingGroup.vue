@@ -2,7 +2,7 @@
   <div
     :id="`${factory.id}-${group.id}-building-group`"
     :key="`${factory.id}-${group.id}`"
-    class="d-flex flex-wrap items-center align-center"
+    class="d-flex flex-wrap items-center align-center building-group-row"
   >
     <div>
       <v-btn
@@ -38,7 +38,7 @@
           width="100px"
           @update:model-value="updateGroup(group)"
         />
-        <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+        <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -113,7 +113,7 @@
             density="compact"
             hide-details
             label="Inject Matrices"
-            @update:model-value="updateGroup(group)"
+            @update:model-value="updateGroup(group, 'matrixes')"
           />
         </v-chip>
         <div class="underchip text-boost">
@@ -168,7 +168,7 @@
             width="80px"
             @update:model-value="updateGroupSomersloops"
           />
-          <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}-somersloops`" />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
           <span v-if="somersloopSlots === 0">Cannot be amplified</span>
@@ -334,11 +334,12 @@
     building: string // Building name
   }>()
 
-  const updateGroup = (group: BuildingGroup) => {
+  // Each input gets its own debounce key so only the field being edited spins.
+  const updateGroup = (group: BuildingGroup, field = 'buildings') => {
     // The typed value echoes instantly via v-model; ALL derived work — including the
     // group's own power/parts recompute — waits for the debounce, otherwise dependent
     // displays update per keystroke and drag renders with them.
-    runDebounced(`group-${group.id}`, () => {
+    runDebounced(`group-${group.id}-${field}`, () => {
       updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
@@ -377,7 +378,7 @@
       nextTick(() => document.getElementById(`${props.factory.id}-${group.id}-somersloops`)?.focus())
     }
 
-    runDebounced(`group-${group.id}`, () => {
+    runDebounced(`group-${group.id}-somersloops`, () => {
       updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
@@ -514,6 +515,15 @@
 // Alien Power Augmenter circuit boost colour (single source: src/utils/colors.ts)
 .text-boost {
   color: var(--sf-circuit-boost);
+}
+
+// Each column is a chip stacked on its caption, and the two are rarely the same width —
+// a variable-power range under a clock chip is far wider than the input. Centre them on
+// each other so the chips stay on one visual line whatever the caption says.
+.building-group-row > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .underchip {
