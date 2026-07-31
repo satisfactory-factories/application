@@ -26,6 +26,12 @@ export const getSomersloopSlots = (building: string): number => {
   return SOMERSLOOP_SLOTS[building] ?? 0
 }
 
+// False for a building the planner has no slot data for, e.g. before the first
+// calculation resolves an item's building — distinct from a known 0-slot building.
+export const isAmplifiableBuilding = (building: string): boolean => {
+  return building in SOMERSLOOP_SLOTS
+}
+
 // Somersloops consumed by CONSTRUCTING certain buildings (from their build recipes) —
 // separate from amplification slots. The Alien Power Augmenter costs 10 each.
 export const SOMERSLOOP_BUILD_COST: { [building: string]: number } = {
@@ -41,7 +47,7 @@ export const getSomersloopBuildCost = (building: string): number => {
 export const sanitizeGroupSomersloops = (group: BuildingGroup, building: string): number => {
   // An unknown/empty building name (e.g. before the first calculation has resolved it)
   // gives no boost, but must not wipe the user's entered somersloops.
-  if (!(building in SOMERSLOOP_SLOTS)) {
+  if (!isAmplifiableBuilding(building)) {
     return 0
   }
 

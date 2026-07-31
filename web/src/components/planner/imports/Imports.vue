@@ -4,9 +4,11 @@
   </template>
   <template v-else>
     <v-card class="rounded sub-card border-md mb-2">
+      <!-- Keyed by index: every half-configured row reads as "null-null", and duplicate
+           keys make Vue patch the wrong row's selectors. -->
       <div
         v-for="(input, inputIndex) in factory.inputs"
-        :key="`${input.factoryId}-${input.outputPart}`"
+        :key="inputIndex"
         class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
@@ -20,7 +22,7 @@
             max-width="300px"
             variant="outlined"
             width="300px"
-            @update:model-value="handleInputFactoryChange(factory)"
+            @update:model-value="handleInputFactoryChange(factory, inputIndex)"
           />
         </div>
         <div class="input-row d-flex align-center">
@@ -138,6 +140,7 @@
     deleteInputPair,
     importFactorySelections,
     importPartSelections,
+    isDuplicateImport,
     isImportRedundant,
     satisfyImport,
     validateInput,
@@ -233,7 +236,13 @@
     return calculateAbleToImport(factory, importCandidates.value)
   }
 
-  const handleInputFactoryChange = (factory: Factory) => {
+  const handleInputFactoryChange = (factory: Factory, inputIndex: number) => {
+    // The part selector filters out combinations already in use, but switching the factory
+    // can land on one. Clear the part and let the user pick again.
+    if (isDuplicateImport(factory, inputIndex)) {
+      factory.inputs[inputIndex].outputPart = null
+    }
+
     // Initiate a factory update for all factories involved
     updateFactory(factory) // This factory
 

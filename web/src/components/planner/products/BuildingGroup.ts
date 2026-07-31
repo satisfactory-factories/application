@@ -3,6 +3,35 @@ import {
   BuildingGroup,
 } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import {
+  getSomersloopSlots,
+  isAmplifiableBuilding,
+  sanitizeGroupSomersloops,
+} from '@/utils/factory-management/building-groups/somersloops'
+
+// Applies a typed somersloop value to the group, clamped to the building's slot count.
+// Returns true when the entry was out of range, so the caller can force the field to
+// re-render — Vuetify keeps its own text and would otherwise leave e.g. "9" on screen.
+export const applyGroupSomersloops = (group: BuildingGroup, building: string, value: number | null): boolean => {
+  const raw = Number(value)
+  group.somersloops = Number.isFinite(raw) ? raw : 0
+
+  const requested = group.somersloops
+  sanitizeGroupSomersloops(group, building)
+
+  if (group.somersloops === requested) {
+    return false
+  }
+
+  if (isAmplifiableBuilding(building) && requested > getSomersloopSlots(building)) {
+    eventBus.emit('toast', {
+      message: `This building only has ${getSomersloopSlots(building)} somersloop slot(s) per building.`,
+      type: 'warning',
+    })
+  }
+
+  return true
+}
 
 export const updateBuildingGroup = (group: BuildingGroup) => {
   if (group.buildingCount === 0 || isNaN(group.buildingCount) || group.buildingCount === null) {

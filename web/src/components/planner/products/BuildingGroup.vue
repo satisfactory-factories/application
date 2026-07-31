@@ -2,7 +2,7 @@
   <div
     :id="`${factory.id}-${group.id}-building-group`"
     :key="`${factory.id}-${group.id}`"
-    class="d-flex flex-wrap items-center align-center"
+    class="d-flex flex-wrap items-center align-center building-group-row"
   >
     <div>
       <v-btn
@@ -38,7 +38,7 @@
           width="100px"
           @update:model-value="updateGroup(group)"
         />
-        <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+        <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -113,7 +113,7 @@
             density="compact"
             hide-details
             label="Inject Matrices"
-            @update:model-value="updateGroup(group)"
+            @update:model-value="updateGroup(group, 'matrixes')"
           />
         </v-chip>
         <div class="underchip text-boost">
@@ -155,7 +155,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-somersloops`"
-            v-model="group.somersloops"
+            :key="somersloopFieldKey"
             class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
@@ -163,11 +163,24 @@
             hide-details
             hide-spin-buttons
             :min="0"
+            :model-value="group.somersloops"
             type="number"
             width="80px"
-            @update:model-value="updateGroupSomersloops(group)"
-          />
-          <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
+            @update:model-value="updateGroupSomersloops"
+          >
+            <!-- Own increment button so it greys out at the slot cap. Vuetify's own does
+                 that via `max`, but `max` also stops the field emitting out-of-range
+                 entries, which is what the typed-value clamp needs to see. -->
+            <template #increment="{ props: incrementProps }">
+              <v-btn
+                v-bind="incrementProps"
+                aria-hidden="true"
+                :disabled="(group.somersloops ?? 0) >= somersloopSlots"
+                tabindex="-1"
+              />
+            </template>
+          </v-number-input>
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}-somersloops`" />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
           <span v-if="somersloopSlots === 0">Cannot be amplified</span>
@@ -307,9 +320,8 @@
     getSomersloopBuildCost,
     getSomersloopOutputMultiplier,
     getSomersloopSlots,
-    sanitizeGroupSomersloops,
   } from '@/utils/factory-management/building-groups/somersloops'
-  import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
+  import { applyGroupSomersloops, updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -334,11 +346,12 @@
     building: string // Building name
   }>()
 
-  const updateGroup = (group: BuildingGroup) => {
+  // Each input gets its own debounce key so only the field being edited spins.
+  const updateGroup = (group: BuildingGroup, field = 'buildings') => {
     // The typed value echoes instantly via v-model; ALL derived work — including the
     // group's own power/parts recompute — waits for the debounce, otherwise dependent
     // displays update per keystroke and drag renders with them.
-    runDebounced(`group-${group.id}`, () => {
+    runDebounced(`group-${group.id}-${field}`, () => {
       updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
@@ -349,6 +362,8 @@
   }
 
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
+  // Bumped to remount the somersloop field when a typed value has to be clamped.
+  const somersloopFieldKey = ref(0)
 
   const groupHasVariablePower = computed(() => {
     return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage
@@ -364,20 +379,18 @@
     return formatNumberFully((getSomersloopOutputMultiplier(props.group, props.building) - 1) * 100)
   })
 
-  const updateGroupSomersloops = (group: BuildingGroup) => {
-    // Sanitizing (and its toast) also waits for the debounce — clamping per keystroke
-    // rewrites the field and spams warnings while the user is still typing.
-    runDebounced(`group-${group.id}`, () => {
-      const requested = group.somersloops ?? 0
-      const clamped = sanitizeGroupSomersloops(group, props.building)
+  const updateGroupSomersloops = (value: number | null) => {
+    const group = props.group
+    // Clamp on entry, not on the debounce: an out-of-range value left on screen reads as
+    // though the planner accepted it, even though the calculation only ever uses the cap.
+    if (applyGroupSomersloops(group, props.building, value)) {
+      // Vuetify keeps the typed text regardless of the model, so remount the field to
+      // show the clamped value, then hand focus back where the user left it.
+      somersloopFieldKey.value++
+      nextTick(() => document.getElementById(`${props.factory.id}-${group.id}-somersloops`)?.focus())
+    }
 
-      if (requested > clamped) {
-        eventBus.emit('toast', {
-          message: `This building only has ${somersloopSlots.value} somersloop slot(s) per building.`,
-          type: 'warning',
-        })
-      }
-
+    runDebounced(`group-${group.id}-somersloops`, () => {
       updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
@@ -514,6 +527,15 @@
 // Alien Power Augmenter circuit boost colour (single source: src/utils/colors.ts)
 .text-boost {
   color: var(--sf-circuit-boost);
+}
+
+// Each column is a chip stacked on its caption, and the two are rarely the same width —
+// a variable-power range under a clock chip is far wider than the input. Centre them on
+// each other so the chips stay on one visual line whatever the caption says.
+.building-group-row > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .underchip {

@@ -19,7 +19,9 @@ import { snapDriftedInteger } from '@/utils/numberFormatter'
 // A user-dialled fractional clock (223.333%) is deliberate precision — 535.999 means
 // 535.999 — so items carrying one are left entirely alone, matching calculateProducts.
 
+// A quantity that was a rounding hair off the number it meant.
 export interface PlanRepairEntry {
+  kind: 'quantity'
   factoryName: string
   // Friendly name of the thing repaired — a part ("Rocket Fuel") or a building
   // ("Fuel-Powered Generator").
@@ -31,6 +33,19 @@ export interface PlanRepairEntry {
   before: number
   after: number
 }
+
+// Anything structural the loader had to put right: a broken import/export link, two
+// factories sharing an ID, an import of something that isn't made any more.
+export interface StructuralRepair {
+  kind: 'structural'
+  factoryName: string
+  // What was corrected, phrased for someone who has never read the code.
+  summary: string
+}
+
+// Every automatic correction made to a loaded plan, whatever found it. They are collected
+// into one list and reported in one dialog so the user sees the whole picture at once.
+export type PlanRepair = PlanRepairEntry | StructuralRepair
 
 export interface PlanRepairReport {
   repairs: PlanRepairEntry[]
@@ -67,7 +82,7 @@ export const repairPlanPrecision = (
   factories.forEach(factory => {
     const repair = (
       value: number,
-      entry: Omit<PlanRepairEntry, 'factoryName' | 'before' | 'after'>,
+      entry: Omit<PlanRepairEntry, 'kind' | 'factoryName' | 'before' | 'after'>,
     ): number => {
       if (!isDrifted(value)) return value
 
@@ -75,7 +90,7 @@ export const repairPlanPrecision = (
       const key = `${factory.id}|${entry.itemName}|${entry.context}|${value}|${after}`
       if (!reported.has(key)) {
         reported.add(key)
-        report.repairs.push({ ...entry, factoryName: factory.name, before: value, after })
+        report.repairs.push({ ...entry, kind: 'quantity', factoryName: factory.name, before: value, after })
       }
       return after
     }

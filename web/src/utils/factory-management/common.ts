@@ -1,6 +1,13 @@
 import { BuildingGroup, Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
+import { toRaw } from 'vue'
+
+// `factory.inputs = factory.inputs.filter(...)` on a reactive factory stores the *proxies*
+// filter() read out as the new array's elements. structuredClone — how the calculation
+// engine clones the plan — refuses a Proxy, so the next recalculation throws. Wrap any
+// array derived from a reactive one before assigning it back.
+export const rawArray = <T>(items: T[]): T[] => items.map(item => toRaw(item))
 
 // A fractional overclock the user dialled in themselves (223.333%) is deliberate precision —
 // quantities derived from it must be kept exact rather than snapped to the nearest whole
