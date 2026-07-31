@@ -8,8 +8,9 @@
       <v-divider />
       <v-card-text>
         <p class="mb-4">
-          We have detected some data errors in your plan (usually to do with micro-rounding)
-          and have fixed the following items:
+          We found some problems in your plan — micro-rounding on quantities, or imports and
+          exports that had fallen out of step with each other — and have corrected the
+          following:
         </p>
         <div v-for="group in groupedRepairs" :key="group.factoryName" class="mb-4">
           <h3 class="text-h6 mb-1">
@@ -18,19 +19,22 @@
           </h3>
           <ul class="repair-list">
             <li v-for="(repair, index) in group.repairs" :key="index" class="text-body-2 mb-1">
-              <strong>{{ repair.itemName }}</strong>
-              <span class="text-medium-emphasis">
-                — {{ repair.context }} ({{ repair.field }}):
-              </span>
-              <span class="repair-before">{{ repair.before }}</span>
-              <i class="fas fa-arrow-right mx-2" />
-              <span class="repair-after">{{ repair.after }}</span>
+              <template v-if="repair.kind === 'quantity'">
+                <strong>{{ repair.itemName }}</strong>
+                <span class="text-medium-emphasis">
+                  — {{ repair.context }} ({{ repair.field }}):
+                </span>
+                <span class="repair-before">{{ repair.before }}</span>
+                <i class="fas fa-arrow-right mx-2" />
+                <span class="repair-after">{{ repair.after }}</span>
+              </template>
+              <template v-else>{{ repair.summary }}</template>
             </li>
           </ul>
         </div>
         <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">
           Nothing you need to do — your plan has already been recalculated with the corrected
-          figures. If you had worked around this by hand, you can now undo that.
+          figures. If you had worked around any of this by hand, you can now undo that.
         </p>
       </v-card-text>
       <v-divider />
@@ -45,7 +49,7 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia'
   import { useAppStore } from '@/stores/app-store'
-  import { PlanRepairEntry } from '@/utils/factory-management/repair'
+  import { PlanRepair } from '@/utils/factory-management/repair'
 
   const appStore = useAppStore()
   const { planRepairs, isLoaded } = storeToRefs(appStore)
@@ -53,7 +57,7 @@
   const isOpen = ref(false)
   // Snapshotted on open: dismissing clears the store's list, which would otherwise empty
   // the dialog's content while it is still fading out.
-  const repairs = ref<PlanRepairEntry[]>([])
+  const repairs = ref<PlanRepair[]>([])
 
   // Held back until loading finishes, otherwise this lands behind the loading overlay on
   // the very load that produced it.
@@ -66,7 +70,7 @@
   // One heading per factory with its affected items beneath, rather than repeating the
   // factory name on every line. Insertion order is the plan's own factory order.
   const groupedRepairs = computed(() => {
-    const groups = new Map<string, PlanRepairEntry[]>()
+    const groups = new Map<string, PlanRepair[]>()
     for (const repair of repairs.value) {
       const existing = groups.get(repair.factoryName)
       if (existing) {

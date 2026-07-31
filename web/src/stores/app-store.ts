@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
-import { calculateFactories, regenerateSortOrders } from '@/utils/factory-management/factory'
+import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
 import eventBus from '@/utils/eventBus'
@@ -10,7 +10,7 @@ import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { PlanRepairEntry, repairPlanPrecision } from '@/utils/factory-management/repair'
+import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -79,7 +79,7 @@ export const useAppStore = defineStore('app', () => {
   const isDebugMode = ref<boolean>(false)
   const isLoaded = ref<boolean>(false)
   // Quantities repairPlanPrecision corrected on the last load, awaiting the user being told.
-  const planRepairs = ref<PlanRepairEntry[]>([])
+  const planRepairs = ref<PlanRepair[]>([])
   const showSatisfactionBreakdowns = ref<boolean>(
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
@@ -318,8 +318,14 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: initFactories', newFactories)
     let needsCalculation = false
 
+    // Everything the loader put right, from any source, reported together in one dialog.
+    // Reset first: the dialog describes the plan being loaded now, so repairs the previous
+    // plan needed (a template loaded over another, say) must not ride along with it.
+    const repairs: PlanRepair[] = []
+    planRepairs.value = []
+
     try {
-      validateFactories(newFactories, gameData) // Ensure the data is clean
+      repairs.push(...validateFactories(newFactories, gameData))
     } catch (err) {
       // If err is type of Error
       if (err instanceof Error) {
@@ -489,16 +495,22 @@ export const useAppStore = defineStore('app', () => {
 
     // Patch for #485. Runs after the shape migrations above, so it can rely on every
     // factory having its products, producers and building groups in place.
-    const repairs = repairPlanPrecision(newFactories, gameData)
-    if (repairs.repairs.length || repairs.staleRecipeFigures) {
+    const precision = repairPlanPrecision(newFactories, gameData)
+    if (precision.repairs.length || precision.staleRecipeFigures) {
       console.log(
-        `appStore: initFactories: Repaired ${repairs.repairs.length} drifted quantities and ${repairs.staleRecipeFigures} stale recipe figures`,
-        repairs.repairs
+        `appStore: initFactories: Repaired ${precision.repairs.length} drifted quantities and ${precision.staleRecipeFigures} stale recipe figures`,
+        precision.repairs
       )
+      repairs.push(...precision.repairs)
+      needsCalculation = true
+    }
+
+    if (repairs.length) {
       // Held for the dialog rather than emitted: a plan can be inited before the layout has
       // mounted its listeners (the factories getter inits on first read), and a repair the
       // user never sees reported is the thing we are trying to avoid.
-      planRepairs.value = [...planRepairs.value, ...repairs.repairs]
+      planRepairs.value = repairs
+      // Repaired seeds and a repaired import/export chain both leave derived figures stale.
       needsCalculation = true
     }
 
@@ -577,6 +589,15 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const addFactory = (factory: Factory) => {
+    // newFactory() cannot see the plan, so its random ID may already be taken. A collision
+    // makes the two factories indistinguishable to the dependency system, which keys every
+    // export request by factory ID.
+    if (factories.value.some(existing => existing.id === factory.id)) {
+      const oldId = factory.id
+      factory.id = generateFactoryId(factories.value)
+      console.warn(`appStore: addFactory: Factory ID ${oldId} was already taken, reassigned to ${factory.id}`)
+    }
+
     // Ensure the factory has the correct display order
     factory.displayOrder = factories.value.length
     factories.value.push(factory)

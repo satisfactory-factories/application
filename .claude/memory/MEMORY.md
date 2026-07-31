@@ -24,3 +24,4 @@
 - [Perf: devtools sync watcher](perf-devtools-sync-watcher.md) — the add-factory hang is Pinia devtools' deep+sync $subscribe (O(n²) traverse per write), not a calc cascade; benchmarks inside
 - [Perf: deep-watcher bottleneck](perf-deep-watcher-bottleneck.md) — post-diff-commit, 124-factory edits still block ~5s: three full-plan deep watchers + persistence stringify; fix plan inside
 - [VNumberInput clamping](vnumberinput-clamping.md) — clamp typed values on entry and remount the field; `:max` swallows the update event
+- [Export/import chain invariants](export-import-chain-invariants.md) — exports are derived from imports, factory IDs must be unique, and a loaded plan won't self-heal unless validation asks for a recalc
