@@ -30,6 +30,7 @@ describe('repair', () => {
         const report = repairPlanPrecision(factories, gameData)
 
         expect(report.repairs[0]).toEqual({
+          kind: 'quantity',
           factoryName: 'FG TEST',
           itemName: 'Rocket Fuel',
           context: 'Fuel-Powered Generator (Rocket Fuel)',

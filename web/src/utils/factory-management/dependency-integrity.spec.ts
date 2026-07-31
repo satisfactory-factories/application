@@ -425,7 +425,7 @@ describe('load-time repairs', () => {
     expect(factory.inputs).toHaveLength(2)
   })
 
-  it('reports a persisted ghost export so the plan is recalculated on load', () => {
+  it('repairs and reports a persisted ghost export on load', () => {
     const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {})
     alertMock.mockClear()
 
@@ -442,8 +442,10 @@ describe('load-time repairs', () => {
     plates.inputs = []
 
     expect(findDependencyChainViolations(factories)).not.toEqual([])
-    expect(validateFactories(factories, gameData)).toBe(true)
-    // Chain drift is not something the user did wrong, so it must not raise the alert.
+    const repairs = validateFactories(factories, gameData)
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].summary).toContain('is not importing it')
+    // Repairs are reported through the plan-repair dialog, never a browser alert.
     expect(alertMock).not.toHaveBeenCalled()
 
     calculateFactories(factories, gameData)
@@ -452,11 +454,11 @@ describe('load-time repairs', () => {
     alertMock.mockRestore()
   })
 
-  it('does not ask for a recalculation when the plan is already consistent', () => {
+  it('reports nothing when the plan is already consistent', () => {
     const plan = complexDemoPlan().getFactories()
     calculateFactories(plan, gameData)
 
-    expect(validateFactories(plan, gameData)).toBe(false)
+    expect(validateFactories(plan, gameData)).toEqual([])
   })
 
   it('does not throw on a plan saved mid-way through adding an import', () => {

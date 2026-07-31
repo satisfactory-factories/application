@@ -15,4 +15,6 @@ Two traps behind it, both of which produced "ghost exports" (a factory advertisi
 
 **Why:** the engine's happy paths were already sound — a straight delete/edit/retarget reconciles fine. Every real ghost came from data that got corrupt *outside* a calculation and then never got flushed, so detection at load matters more than another guard inside the engine.
 
+Corrections are surfaced, never silent: `validateFactories` returns a `StructuralRepair[]`, `initFactories` merges it with the precision repairs into `planRepairs`, and `PlanRepairDialog` renders the lot grouped by factory. Write summaries for someone who has never read the code and put the IDs in the console line instead — and never reach for `alert()`.
+
 **How to apply:** when adding a mutation path that touches inputs or requests, add a case to `dependency-integrity.spec.ts` rather than asserting on request shapes ad hoc. If a repair can't be expressed as "recalculate", it belongs in `validation.ts` next to `repairDuplicateFactoryIds` / `mergeDuplicateInputs`.

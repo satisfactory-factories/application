@@ -7,9 +7,11 @@ import { gameData } from '@/utils/gameData'
 import { addProductToFactory } from '@/utils/factory-management/products'
 
 describe('validation', () => {
-  const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {})
   let mockFactory: Factory
+
   beforeEach(() => {
+    // Every repair logs the detail for anyone debugging a shared plan; not under test here.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockFactory = newFactory('Iron Ingots')
   })
 
@@ -20,9 +22,12 @@ describe('validation', () => {
       amount: 123,
     })
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
+
     expect(mockFactory.inputs.length).toBe(0)
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].factoryName).toBe('Iron Ingots')
+    expect(repairs[0].summary).toContain('can no longer identify')
   })
 
   it('should successfully detect and delete an invalid dependency', () => {
@@ -32,9 +37,11 @@ describe('validation', () => {
       part: 'Foo',
     }]
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
+
     expect(mockFactory.dependencies.requests).toEqual({})
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].summary).toContain('can no longer identify')
   })
 
   it('should not inadvertently delete valid factory inputs', () => {
@@ -55,40 +62,45 @@ describe('validation', () => {
 
     expect(mockFactory.inputs.length).toBe(1)
     expect(mockFactory.inputs[0].factoryId).toBe(validFactory.id)
-    expect(alertMock).toHaveBeenCalled()
   })
 
   it('should not inadvertently delete valid dependencies', () => {
     const validFactory: Factory = newFactory('Some Factory')
 
-    mockFactory.dependencies.requests[validFactory.id] = []
-    mockFactory.dependencies.requests[validFactory.id].push({
+    // A request is only valid while the factory it names is actually importing that part.
+    addInputToFactory(validFactory, {
+      factoryId: mockFactory.id,
+      outputPart: 'IronOre',
+      amount: 123,
+    })
+    mockFactory.dependencies.requests[validFactory.id] = [{
       requestingFactoryId: validFactory.id,
       part: 'IronOre',
       amount: 123,
-    })
-    mockFactory.dependencies.requests[12345] = []
-    mockFactory.dependencies.requests[12345].push({
+    }]
+    mockFactory.dependencies.requests[12345] = [{
       requestingFactoryId: 12345,
       part: 'IronOre',
       amount: 123,
-    })
+    }]
 
-    validateFactories([mockFactory, validFactory], gameData)
+    const repairs = validateFactories([mockFactory, validFactory], gameData)
 
     expect(mockFactory.dependencies.requests[validFactory.id]).toBeDefined()
-    expect(mockFactory.dependencies.requests[123456]).toBeUndefined()
-    expect(alertMock).toHaveBeenCalled()
+    expect(mockFactory.dependencies.requests[12345]).toBeUndefined()
+    expect(repairs).toHaveLength(1)
   })
 
   it('should run validation on products when they contain a null array', () => {
     // @ts-ignore
     mockFactory.products = [null]
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products).toEqual([])
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs.map(entry => entry.summary)).toEqual([
+      'Had an empty product entry, which has been removed.',
+    ])
   })
 
   it('should run validation on products when they contain a <1 amount', () => {
@@ -99,10 +111,11 @@ describe('validation', () => {
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products[0].amount).toBe(0.1)
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].summary).toContain('0.1/min')
   })
 
   it('should NOT run validation on products when they contain a >1 amount', () => {
@@ -113,10 +126,10 @@ describe('validation', () => {
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
 
     expect(mockFactory.products[0].amount).toBe(2)
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs).toEqual([])
   })
 
   it('should run validation on products that somehow don\'t have their requirements in the part list', () => {
@@ -136,10 +149,11 @@ describe('validation', () => {
     } as FactoryItem
     mockFactory.products = [mockInvalidProduct]
 
-    validateFactories([mockFactory], gameData)
+    const repairs = validateFactories([mockFactory], gameData)
 
     expect(mockFactory.parts.MadeUpPart).toBeDefined()
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs).toHaveLength(1)
+    expect(repairs[0].summary).toContain('MadeUpPart')
   })
 
   it('should detect invalid inputs and set them to 1', () => {
@@ -156,8 +170,26 @@ describe('validation', () => {
       amount: 0,
     })
 
-    validateFactories([mockFactory, validFactory], gameData)
+    const repairs = validateFactories([mockFactory, validFactory], gameData)
+
     expect(mockFactory.inputs[0].amount).toBe(1)
-    expect(alertMock).toHaveBeenCalled()
+    expect(repairs.some(entry => entry.summary.includes('set to 1/min'))).toBe(true)
+  })
+
+  it('should report nothing for a clean plan', () => {
+    const supplier: Factory = newFactory('Some Factory')
+    addProductToFactory(supplier, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+    addInputToFactory(mockFactory, {
+      factoryId: supplier.id,
+      outputPart: 'IronIngot',
+      amount: 50,
+    })
+    supplier.dependencies.requests[mockFactory.id] = [{
+      requestingFactoryId: mockFactory.id,
+      part: 'IronIngot',
+      amount: 50,
+    }]
+
+    expect(validateFactories([mockFactory, supplier], gameData)).toEqual([])
   })
 })
