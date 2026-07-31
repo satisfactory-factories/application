@@ -47,6 +47,7 @@
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { createSimple } from '@/utils/factory-setups/simple-plan'
+  import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
   import { useAppStore } from '@/stores/app-store'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
@@ -66,7 +67,7 @@
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-  const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, askRawAssumption } = useAppStore()
 
   const dialog = ref(false)
 
@@ -77,6 +78,9 @@
     data: string
     show: boolean
     isDebug: boolean
+    // Plans that mine their own raw inputs ask, on load, whether to drop the raw assumption —
+    // with it left on, the mines in them are decorative and everything reads as satisfied.
+    asksRawAssumption?: boolean
   }
 
   interface TemplatePayload {
@@ -98,6 +102,14 @@
       data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,
+    },
+    {
+      name: 'Mining',
+      description: 'Shows the extraction features end to end: an Iron Mine mixing Mk.3 miners on pure nodes with a Mk.2 on a normal one, a Nitrogen resource well with its satellite spread, and a Nitric Acid factory extracting its own water on site. None of its factories assume raw inputs.',
+      data: planData(createMiningDemoPlan()),
+      show: true,
+      isDebug: false,
+      asksRawAssumption: true,
     },
     {
       name: 'Simple',
@@ -230,5 +242,9 @@
 
     prepareLoader(factories, true)
     dialog.value = false
+
+    if (template.asksRawAssumption) {
+      askRawAssumption('template')
+    }
   }
 </script>

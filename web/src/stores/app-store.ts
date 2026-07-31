@@ -91,6 +91,9 @@ export const useAppStore = defineStore('app', () => {
   // would turn every factory in their plan red.
   const assumeRawInputs = ref<boolean>(true)
   const showRawAssumptionPrompt = ref<boolean>(false)
+  // Which situation raised the prompt, so it can explain itself accordingly: the one-time
+  // notice for plans that predate mining, or a freshly loaded plan that mines its own inputs.
+  const rawAssumptionPromptReason = ref<'migration' | 'template'>('migration')
 
   const applyAssumeRawInputs = (value: boolean, persist = true) => {
     assumeRawInputs.value = value
@@ -116,6 +119,13 @@ export const useAppStore = defineStore('app', () => {
   const setAssumeRawInputsSetting = (value: boolean) => {
     applyAssumeRawInputs(value)
     forceCalculation()
+  }
+
+  // Raised when a loaded plan has an opinion about raw inputs worth honouring, e.g. a template
+  // whose factories mine everything they need.
+  const askRawAssumption = (reason: 'migration' | 'template') => {
+    rawAssumptionPromptReason.value = reason
+    showRawAssumptionPrompt.value = true
   }
 
   const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
@@ -786,6 +796,8 @@ export const useAppStore = defineStore('app', () => {
     getAssumeRawInputsSetting,
     setAssumeRawInputsSetting,
     showRawAssumptionPrompt,
+    rawAssumptionPromptReason,
+    askRawAssumption,
     answerRawAssumptionPrompt,
     prepareLoader,
     forceCalculation,

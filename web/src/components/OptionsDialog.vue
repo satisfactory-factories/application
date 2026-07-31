@@ -40,18 +40,25 @@
   <v-dialog max-width="640" :model-value="showRawAssumptionPrompt" persistent>
     <v-card>
       <v-card-title>
-        <i class="fas fa-hard-hat" /><span class="ml-2">Mines are now part of the planner</span>
+        <i class="fas fa-hard-hat" /><span class="ml-2">{{ promptTitle }}</span>
       </v-card-title>
       <v-card-text class="text-body-2">
-        <p class="mb-3">
-          You can now define mines inside your factories, or as dedicated mine factories, and export
-          the raw ore anywhere in your plan. Pick a raw resource as a product, choose the extractor,
-          and set each building group's miner mark and node purity.
+        <p v-if="isTemplatePrompt" class="mb-3">
+          This plan mines everything it needs — the ore, the gas and the water are all extracted by
+          buildings you can see in it. It reads best with the raw input assumption turned off, so
+          anything you stop mining shows up as a shortage rather than being quietly filled in.
         </p>
-        <p class="mb-3">
-          That replaces the old assumption that you were quietly supplying raw resources yourself —
-          extraction is a full-class citizen now.
-        </p>
+        <template v-else>
+          <p class="mb-3">
+            You can now define mines inside your factories, or as dedicated mine factories, and export
+            the raw ore anywhere in your plan. Pick a raw resource as a product, choose the extractor,
+            and set each building group's miner mark and node purity.
+          </p>
+          <p class="mb-3">
+            That replaces the old assumption that you were quietly supplying raw resources yourself —
+            extraction is a full-class citizen now.
+          </p>
+        </template>
         <p class="mb-3">
           <b>Do you want that assumption removed across all your factories?</b> Raw resources you
           aren't mining or importing will then show as shortages.
@@ -74,7 +81,12 @@
   import { useAppStore } from '@/stores/app-store'
 
   const appStore = useAppStore()
-  const { showRawAssumptionPrompt } = storeToRefs(appStore)
+  const { showRawAssumptionPrompt, rawAssumptionPromptReason } = storeToRefs(appStore)
+
+  const isTemplatePrompt = computed(() => rawAssumptionPromptReason.value === 'template')
+  const promptTitle = computed(() =>
+    isTemplatePrompt.value ? 'This plan mines its own raw resources' : 'Mines are now part of the planner'
+  )
 
   const showOptions = ref(false)
   const assumeRawInputs = appStore.getAssumeRawInputsSetting()
