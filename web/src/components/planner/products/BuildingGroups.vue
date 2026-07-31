@@ -22,7 +22,7 @@
       @click="remainderToLast(item, type, factory)"
     >
       <i class="fas fa-balance-scale-right" />
-      <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
+      <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" :text="`Attempts to apply the ${remainderNoun} to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands.`" /></span>
     </v-btn>
     <v-btn
       class="ml-2"
@@ -33,7 +33,7 @@
       @click="remainderToNewGroup(item, type, factory)"
     >
       <i class="fas fa-stream" />
-      <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
+      <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" :text="`Creates a new group and automatically applies the ${remainderNoun} to it.`" /></span>
     </v-btn>
     <v-btn
       class="ml-2"
@@ -229,6 +229,12 @@
   // Mk.3s. Mines report the same figures as output instead: the groups' combined rate against
   // the quantity being asked for.
   const isExtraction = computed(() => isExtractionRecipe(props.item.recipe))
+
+  // The remainder buttons work in buildings either way, but for a mine the figure the user is
+  // looking at is output, so name it the way the status line does.
+  const remainderNoun = computed(() =>
+    isExtraction.value ? 'outstanding output' : 'Effective Buildings remainder'
+  )
 
   const referenceRate = computed(() => getExtractionReferenceRate(props.item.recipe))
 

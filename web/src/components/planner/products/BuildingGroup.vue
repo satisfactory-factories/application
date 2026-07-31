@@ -613,6 +613,15 @@
   color: var(--sf-circuit-boost);
 }
 
+// A building group chip is a row of discrete controls — an icon, a value, a chevron — with no
+// flowing text, so lay it out as a flex row centred on the chip's own middle. Vuetify leaves
+// each piece on its own baseline, which at this size shows up as an icon a couple of pixels
+// high and a chevron a couple low.
+:deep(.v-chip__content) {
+  display: flex;
+  align-items: center;
+}
+
 // Each column is a chip stacked on its caption, and the two are rarely the same width —
 // a variable-power range under a clock chip is far wider than the input. Centre them on
 // each other so the chips stay on one visual line whatever the caption says.
@@ -626,6 +635,10 @@
 // labelled field: the chevron is top-aligned in a taller box and the input reserves trailing
 // space, which reads as a gap after "Miner Mk.1". Centre both and tighten the padding.
 .chip-select {
+  // The plain-underlined variant reserves space above the field for a floating label these
+  // selects don't have, which leaves the value and chevron sitting below the chip's centre.
+  padding-top: 0;
+
   :deep(.v-field) {
     align-items: center;
   }
