@@ -95,5 +95,24 @@ describe('exports', () => {
       expect(exportableFacs[1].id).toEqual(ironPlateFac.id)
       expect(exportableFacs[2].id).toEqual(ironRodsFac.id)
     })
+
+    it('should list a factory once however many parts it exports', () => {
+      addProductToFactory(ironIngotFac, {
+        id: 'CopperIngot',
+        amount: 1000,
+        recipe: 'IngotCopper',
+      })
+      addProductToFactory(ironIngotFac, {
+        id: 'CateriumIngot',
+        amount: 1000,
+        recipe: 'IngotCaterium',
+      })
+      calculateFactories(factories, gameData)
+
+      const exportableFacs = getExportableFactories(factories)
+
+      expect(exportableFacs).toHaveLength(3)
+      expect(new Set(exportableFacs.map(fac => fac.id)).size).toBe(3)
+    })
   })
 })
