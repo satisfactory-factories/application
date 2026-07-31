@@ -63,7 +63,7 @@
     <template v-if="isWell">
       <div>
         <v-chip
-          class="sf-chip input cyan mx-1"
+          class="sf-chip input node-setting mx-1"
           variant="tonal"
         >
           <tooltip classes="ml-2" text="Satellite nodes on this well, by purity">
@@ -87,7 +87,7 @@
           </template>
           <debounce-spinner :active="pendingRecalc === `group-${group.id}-satellites`" />
         </v-chip>
-        <div class="underchip text-cyan">
+        <div class="underchip text-node-setting">
           {{ formatNumberFully(wellPotential) }}/min potential &middot; {{ satelliteCount }} extractors
         </div>
       </div>
@@ -95,7 +95,7 @@
     <template v-else-if="isExtraction">
       <div v-if="purityOptions.length > 1">
         <v-chip
-          class="sf-chip input cyan mx-1"
+          class="sf-chip input node-setting mx-1"
           variant="tonal"
         >
           <tooltip classes="ml-2" text="Node purity">
@@ -113,7 +113,7 @@
             @update:model-value="updateGroupPurity(group, $event)"
           />
         </v-chip>
-        <div class="underchip text-cyan">x{{ purityMultiplier }} node yield</div>
+        <div class="underchip text-node-setting">x{{ purityMultiplier }} node yield</div>
       </div>
     </template>
     <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
@@ -673,6 +673,11 @@
 // Alien Power Augmenter circuit boost colour (single source: src/utils/colors.ts)
 .text-boost {
   color: var(--sf-circuit-boost);
+}
+
+// Extractor mark, node purity and satellite counts: settings, not raw resources.
+.text-node-setting {
+  color: var(--sf-node-setting);
 }
 
 // A building group chip is a row of discrete controls — an icon, a value, a chevron — with no

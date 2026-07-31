@@ -228,6 +228,11 @@
     border-color: var(--sf-raw-resource-border) !important;
   }
 
+  &.node-setting {
+    color: var(--sf-node-setting) !important;
+    border-color: var(--sf-node-setting-border) !important;
+  }
+
   &.orange, &.building {
     color: var(--sf-building) !important;
     border-color: var(--sf-building-border) !important;

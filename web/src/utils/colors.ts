@@ -36,6 +36,8 @@ export const palette = {
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
   greyBorder: '#7f7f7f',
+  offWhite: '#eceff1',
+  offWhiteBorder: '#8d9499',
 } as const
 
 export interface SfColor {
@@ -63,6 +65,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // A setting on a building group rather than something that flows through it: the node
+  // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
+  // these were reading as `rawResource` beige, which is the colour of the ore itself.
+  nodeSetting: { color: palette.offWhite, border: palette.offWhiteBorder },
 
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
