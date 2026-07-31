@@ -2,6 +2,7 @@ import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/pl
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { calculateParts } from '@/utils/factory-management/parts'
 import { DataInterface } from '@/interfaces/DataInterface'
+import { rawArray } from '@/utils/factory-management/common'
 
 // Adds dependencies between two factories.
 export const updateDependency = (
@@ -13,7 +14,7 @@ export const updateDependency = (
     const errorMsg = `Factory ${factory.name} is attempting to add a dependency to factory ${provider.name} with no output part. The invalid input has been deleted.`
     console.error(errorMsg)
     // Delete the invalid input
-    factory.inputs = factory.inputs.filter(i => i !== input)
+    factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
     alert(errorMsg)
     return
   }
@@ -123,7 +124,7 @@ export const removeFactoryDependants = (factory: Factory, factories: Factory[]) 
         console.error(`Dependent factory ${dependentId} not found!`)
         return
       }
-      dependent.inputs = dependent.inputs.filter(input => input.factoryId !== factory.id)
+      dependent.inputs = rawArray(dependent.inputs.filter(input => input.factoryId !== factory.id))
 
       // Remove the dependency from the calling factory
       // Not that this massively matters as the factory is likely getting deleted
@@ -183,14 +184,14 @@ export const calculateFactoryDependencies = (
       console.error(`Factory with ID ${input.factoryId} not found.`)
 
       // Remove it from the inputs if this is the case as it's invalid.
-      factory.inputs = factory.inputs.filter(i => i !== input)
+      factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
       return
     }
 
     // Check if the provider factory has the part that the dependant factory is requesting.
     if (!loadMode && !provider.parts[input.outputPart]) {
       console.error(`dependencies: calculateFactoryDependencies: Factory ${provider.name} (${provider.id}) does not have the part ${input.outputPart} requested by ${factory.name} (${factory.id}). Removing input.`)
-      factory.inputs = factory.inputs.filter(i => i !== input)
+      factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
       return
     }
 
@@ -220,7 +221,9 @@ export const removeDependency = (factory: Factory, dependantFactory: Factory, pa
   }
 
   if (part) {
-    factory.dependencies.requests[dependantFactory.id] = factory.dependencies.requests[dependantFactory.id].filter(req => req.part !== part)
+    factory.dependencies.requests[dependantFactory.id] = rawArray(
+      factory.dependencies.requests[dependantFactory.id].filter(req => req.part !== part)
+    )
   } else {
     delete factory.dependencies.requests[dependantFactory.id]
   }
