@@ -21,7 +21,7 @@
             </tr>
           </thead>
           <tbody>
-            <template v-for="template in templates" :key="template.name">
+            <template v-for="template in sortedTemplates" :key="template.name">
               <tr v-if="template.show">
                 <td class="text-center">
                   <v-btn
@@ -237,6 +237,28 @@
       isDebug: true,
     },
   ]
+
+  // Listed as: the real plans first, then the unnumbered debug scenarios, then the issue
+  // ones in issue order. Declaration order decides the rest, so related entries stay together.
+  const issueNumber = (name: string) => Number(/#(\d+)/.exec(name)?.[1] ?? NaN)
+
+  const sortedTemplates = computed(() => {
+    const rank = (template: Template) => {
+      if (!template.isDebug) return 0
+      return Number.isNaN(issueNumber(template.name)) ? 1 : 2
+    }
+
+    return [...templates]
+      .map((template, index) => ({ template, index }))
+      .sort((a, b) =>
+        rank(a.template) - rank(b.template) ||
+        // Only the issue group has a meaningful order of its own.
+        (rank(a.template) === 2
+          ? issueNumber(a.template.name) - issueNumber(b.template.name)
+          : 0) ||
+        a.index - b.index)
+      .map(entry => entry.template)
+  })
 
   const loadTemplate = (template: Template) => {
     console.log('Template loaded:', template.name, 'starting load')
