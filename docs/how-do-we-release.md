@@ -39,4 +39,4 @@ Two files on the server — its compose file and its `update.sh` — are mirrore
 ## Parser
 There are no deployments for the parser. It is run alongside a website deployment so that users browsers download the new game data.
 
-Please consult the root README for more information on how to run the parser and how it provides data to the web application.
+Please consult [`parsing/README.md`](../parsing/README.md) for more information on how to run the parser and how it provides data to the web application.
