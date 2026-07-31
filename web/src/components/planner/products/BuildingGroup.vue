@@ -167,7 +167,19 @@
             type="number"
             width="80px"
             @update:model-value="updateGroupSomersloops"
-          />
+          >
+            <!-- Own increment button so it greys out at the slot cap. Vuetify's own does
+                 that via `max`, but `max` also stops the field emitting out-of-range
+                 entries, which is what the typed-value clamp needs to see. -->
+            <template #increment="{ props: incrementProps }">
+              <v-btn
+                v-bind="incrementProps"
+                aria-hidden="true"
+                :disabled="(group.somersloops ?? 0) >= somersloopSlots"
+                tabindex="-1"
+              />
+            </template>
+          </v-number-input>
           <debounce-spinner :active="pendingRecalc === `group-${group.id}-somersloops`" />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
