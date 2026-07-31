@@ -166,7 +166,7 @@
           class="sf-chip input cyan mx-1"
           variant="tonal"
         >
-          <tooltip text="Node purity">
+          <tooltip classes="ml-2" text="Node purity">
             <v-icon icon="fas fa-gem" size="20" />
           </tooltip>
           <v-select
