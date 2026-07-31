@@ -2,6 +2,7 @@
 import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
+import { rawArray } from '@/utils/factory-management/common'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 
@@ -315,9 +316,9 @@ export const deleteInputPair = (factory: Factory, input: FactoryInput, factories
   }
 
   // Delete the source factory's input by factory and part
-  factory.inputs = factory.inputs.filter(inp => {
+  factory.inputs = rawArray(factory.inputs.filter(inp => {
     return !(inp.factoryId === input.factoryId && inp.outputPart === input.outputPart)
-  })
+  }))
 
   // Calculate the factory again as it's inputs have now changed
   calculateFactory(factory, factories, gameData)
