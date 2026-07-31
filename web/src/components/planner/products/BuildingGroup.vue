@@ -155,7 +155,7 @@
           </tooltip>
           <v-number-input
             :id="`${factory.id}-${group.id}-somersloops`"
-            v-model="group.somersloops"
+            :key="somersloopFieldKey"
             class="inline-inputs ml-0"
             control-variant="stacked"
             density="compact"
@@ -163,9 +163,10 @@
             hide-details
             hide-spin-buttons
             :min="0"
+            :model-value="group.somersloops"
             type="number"
             width="80px"
-            @update:model-value="updateGroupSomersloops(group)"
+            @update:model-value="updateGroupSomersloops"
           />
           <debounce-spinner :active="pendingRecalc === `group-${group.id}`" />
         </v-chip>
@@ -307,9 +308,8 @@
     getSomersloopBuildCost,
     getSomersloopOutputMultiplier,
     getSomersloopSlots,
-    sanitizeGroupSomersloops,
   } from '@/utils/factory-management/building-groups/somersloops'
-  import { updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
+  import { applyGroupSomersloops, updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -349,6 +349,8 @@
   }
 
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
+  // Bumped to remount the somersloop field when a typed value has to be clamped.
+  const somersloopFieldKey = ref(0)
 
   const groupHasVariablePower = computed(() => {
     return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage
@@ -364,20 +366,18 @@
     return formatNumberFully((getSomersloopOutputMultiplier(props.group, props.building) - 1) * 100)
   })
 
-  const updateGroupSomersloops = (group: BuildingGroup) => {
-    // Sanitizing (and its toast) also waits for the debounce — clamping per keystroke
-    // rewrites the field and spams warnings while the user is still typing.
+  const updateGroupSomersloops = (value: number | null) => {
+    const group = props.group
+    // Clamp on entry, not on the debounce: an out-of-range value left on screen reads as
+    // though the planner accepted it, even though the calculation only ever uses the cap.
+    if (applyGroupSomersloops(group, props.building, value)) {
+      // Vuetify keeps the typed text regardless of the model, so remount the field to
+      // show the clamped value, then hand focus back where the user left it.
+      somersloopFieldKey.value++
+      nextTick(() => document.getElementById(`${props.factory.id}-${group.id}-somersloops`)?.focus())
+    }
+
     runDebounced(`group-${group.id}`, () => {
-      const requested = group.somersloops ?? 0
-      const clamped = sanitizeGroupSomersloops(group, props.building)
-
-      if (requested > clamped) {
-        eventBus.emit('toast', {
-          message: `This building only has ${somersloopSlots.value} somersloop slot(s) per building.`,
-          type: 'warning',
-        })
-      }
-
       updateBuildingGroup(group)
       updateFactory(props.factory, {
         useBuildingGroupBuildings: true,
