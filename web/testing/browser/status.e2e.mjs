@@ -11,7 +11,7 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROMIUM || '/usr/bin/chromium',
@@ -48,12 +48,6 @@ await page.evaluate(() => {
 await sleep(1500)
 
 // --- helpers -------------------------------------------------------------
-// The sidebar list is in the DOM twice; take the first (desktop) instance.
-const sidebarRow = name => page.evaluateHandle(n => {
-  const cards = [...document.querySelectorAll('.factory-list .factory-card')]
-  return cards.find(c => c.innerText.split('\n')[0].trim().startsWith(n.slice(0, 14))) || null
-}, name)
-
 const rowInfo = async name => page.evaluate(n => {
   const cards = [...document.querySelectorAll('.factory-list .factory-card')]
   const card = cards.find(c => c.innerText.split('\n')[0].trim().startsWith(n.slice(0, 14)))
@@ -178,10 +172,10 @@ const growth = await page.evaluate(async () => {
   const open = card.getBoundingClientRect().height
   // Retract it and let the transition settle, then measure the closed height.
   wrap.classList.remove('open')
-  await new Promise(r => setTimeout(r, 500))
+  await new Promise(resolve => setTimeout(resolve, 500))
   const closed = card.getBoundingClientRect().height
   wrap.classList.add('open')
-  await new Promise(r => setTimeout(r, 500))
+  await new Promise(resolve => setTimeout(resolve, 500))
   const reopened = card.getBoundingClientRect().height
   return { open, closed, reopened }
 })
