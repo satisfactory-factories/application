@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Backend — a health check that can actually fail
+
+- The API had one health route, `GET /hello`, and it returned `200` for as long as the Node process was alive. It never spoke to Mongo, so the database could be dead, unreachable or out of disk and the monitoring would still show green — which is exactly what happened when the API box filled its disk. New `GET /health` runs a real `ping` against Mongo (the `SELECT 1` equivalent) and returns **503** with the error message when it doesn't answer, so an outage raises an alert instead of nothing. The response also carries process uptime, the Mongoose connection state and how long the ping took.
+- The ping is raced against a 3 second timeout. Mongoose is configured with `bufferCommands`, so with the database down a command doesn't fail — it queues for ten seconds, which is longer than any monitor or the Docker healthcheck will wait, and a dead database would have looked like a slow one.
+- `/health` gets its own rate limit of 10 requests a minute and is exempt from the global limiter, so no amount of other traffic can push a monitor into a `429` and a false outage.
+- The production container's Docker healthcheck now probes `/health` rather than `/hello`, so `docker ps` reports unhealthy when Mongo dies rather than only when the process does. Consequence: a deploy attempted while Mongo is down now fails at `up -d --wait` instead of going green. **The box's compose file is a hand-maintained mirror and no deploy syncs it** — see `docs/deployment.md`.
+- `/hello` stays as-is, as a pure liveness route.
+
 ### Sidebar — Active factory indicator
 
 - The sidebar's factory list now shows which factory you're currently looking at: an orange bar (the same orange as the selected tab's underline) on the left edge of that factory's entry, following you as you scroll the plan or jump between factories — no more losing your place in a 30-factory plan. A factory counts as "in view" when its card spans an eye-line 10% down the planner pane (not the pane's very top edge), so a factory scrolled slightly past its header is still credited as the one being viewed rather than the tail end of the factory above it. The Statistics and Factories Summary jump-links get the same treatment when their sections are in view, and while the eye-line crosses the divider gap between two cards the indicator stays put on the last entry instead of blinking off. Works in both the desktop sidebar and the mobile navigation drawer.

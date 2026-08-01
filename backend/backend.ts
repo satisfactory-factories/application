@@ -29,6 +29,10 @@ dotenv.config();
 // out of each other's way locally. Nothing deployed sets it.
 const PORT = Number(process.env.PORT) || 3001;
 
+// How long /health waits on Mongo before calling it dead. Well under the 5s
+// Docker healthcheck timeout, and under any monitor's default.
+const DB_PING_TIMEOUT_MS = 3000;
+
 // *************************************************
 // Setup Express
 // *************************************************
@@ -36,12 +40,22 @@ const PORT = Number(process.env.PORT) || 3001;
 // Configure rate limiter: maximum of 200 requests per 5 minutes (40 a minute)
 const apiRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 200
+  max: 200,
+  // /health has its own limiter below; exempting it here keeps it in one bucket
+  // rather than two, so other traffic can never rate-limit the monitor into
+  // reporting a false outage.
+  skip: (req) => req.path === '/health'
 });
 // Prevent people / bots from spamming the crap out of the button to 1 share a minute
 const shareRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 5
+});
+// updown.io probes from three sources and Docker probes every 30s, each on its
+// own IP bucket, so 10 a minute is generous.
+const healthRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10
 });
 
 const app: Express.Application = Express();
@@ -123,9 +137,48 @@ const optionalAuthenticate = (req: AuthenticatedRequest, res: Express.Response, 
 // Routes
 // *************************************************
 
-// Hello Endpoint
+// Hello Endpoint. Liveness only — it proves the process is up and nothing else.
+// Monitoring belongs on /health.
 app.get('/hello', function (_req: Express.Request, res: Express.Response) {
   res.status(200).json({ message: 'Hello, the server is running!' });
+});
+
+// Health Endpoint. 200 only if Mongo answers, 503 otherwise, so uptime
+// monitoring sees a database outage instead of a cheerful process.
+app.get('/health', healthRateLimit, async (_req: Express.Request, res: Express.Response) => {
+  const startedAt = Date.now();
+  let timer: NodeJS.Timeout | undefined;
+  let error: string | undefined;
+
+  try {
+    const db = mongoose.connection.db;
+    if (!db) throw new Error('No database handle');
+    // ping is Mongo's SELECT 1. Raced because bufferCommands queues the command
+    // for 10s when the connection is down — longer than any monitor will wait,
+    // which would make a dead database look like a slow one.
+    await Promise.race([
+      db.admin().command({ ping: 1 }),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`Timed out after ${DB_PING_TIMEOUT_MS}ms`)), DB_PING_TIMEOUT_MS);
+      })
+    ]);
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+    console.error(`Health check failed: ${error}`);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  res.status(error ? 503 : 200).json({
+    status: error ? 'fail' : 'ok',
+    uptime: Math.round(process.uptime()),
+    database: {
+      status: error ? 'fail' : 'ok',
+      state: mongoose.STATES[mongoose.connection.readyState],
+      responseTime: Date.now() - startedAt,
+      ...(error ? { error } : {})
+    }
+  });
 });
 
 // Register Endpoint
