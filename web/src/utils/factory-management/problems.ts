@@ -1,26 +1,9 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { hasFactoryProblem } from '@/utils/factory-management/status'
 
+// One detection path: the status registry decides what a problem is, this just rolls it up into
+// the persisted flag. hasFactoryProblem short-circuits and skips the warning tier entirely, which
+// matters because this runs O(n²) times per full recalculation.
 export const calculateHasProblem = (factory: Factory) => {
-  // Loop all factories to detect if they have problems
-  factory.hasProblem = false
-
-  if (!factory.requirementsSatisfied) {
-    factory.hasProblem = true
-    return // Nothing else to do, if the requirements are unsatisfied the exports will be unsatisfied as well.
-  }
-
-  // Loop through all the dependency metrics of a factory and ensure all requests are satisfied.
-  Object.keys(factory.dependencies.metrics).forEach(part => {
-  // We need to have !hasProblem because we don't want to overwrite the hasProblem flag if it's already set.
-    if (!factory.dependencies.metrics[part].isRequestSatisfied) {
-      factory.hasProblem = true
-    }
-  })
-
-  // Loop through all the products of a factory and check if any building groups have problems.
-  factory.products.forEach(product => {
-    if (product.buildingGroupsHaveProblem) {
-      factory.hasProblem = true
-    }
-  })
+  factory.hasProblem = hasFactoryProblem(factory)
 }
