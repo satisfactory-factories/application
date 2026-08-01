@@ -86,6 +86,11 @@ export const sfColors = {
   // background is deliberately OPAQUE — the old 0.4-alpha value composited to a
   // different shade depending on what surface sat behind it (sidebar vs card header).
   problem: { color: palette.red, border: '#a00000', background: '#4b171c' },
+  // The middle tier of a factory's status: coherent, but probably not what you meant, or your
+  // world is behind your plan. Deliberately the burnt orange the out-of-sync state already wore,
+  // carried over verbatim — naming it stops `building` (an item colour) doubling as a status
+  // colour. Not called `warning`: that name is taken by caution *text*, which is a yellow.
+  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: 'rgba(255, 136, 0, 0.16)' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors
