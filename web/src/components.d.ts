@@ -27,6 +27,7 @@ declare module 'vue' {
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
     FactoryImports: typeof import('./components/planner/imports/FactoryImports.vue')['default']
     FactoryNode: typeof import('./components/graph/FactoryNode.vue')['default']
+    FactoryStatusChips: typeof import('./components/planner/FactoryStatusChips.vue')['default']
     GameAsset: typeof import('./components/GameAsset.vue')['default']
     GameAssetContent: typeof import('./components/GameAssetContent.vue')['default']
     Graph: typeof import('./components/graph/Graph.vue')['default']

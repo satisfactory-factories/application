@@ -129,10 +129,12 @@
                   @click="goToFactory(factory.id as number)"
                 >
                   <td class="border-e-md factory-column">
-                    <v-chip class="sf-chip summary-chip factory-chip factory">
-                      <i class="fas fa-industry" />
-                      <b class="ml-2">{{ factory.name }}</b>
-                    </v-chip>
+                    <tooltip :text="statusTooltip(factory)">
+                      <v-chip class="sf-chip summary-chip factory-chip factory">
+                        <i class="fas fa-industry" />
+                        <b class="ml-2">{{ factory.name }}</b>
+                      </v-chip>
+                    </tooltip>
                   </td>
                   <td class="border-e-md">
                     <div class="cell-chips">
@@ -255,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-  import { nextTick, ref, watch } from 'vue'
+  import { computed, nextTick, ref, watch } from 'vue'
   import {
     Factory,
     FactoryItem,
@@ -267,6 +269,7 @@
   } from '@/utils/helpers'
   import { calculateExports, calculateImports, PartFlowSummary } from '@/utils/summary'
   import { formatNumber } from '@/utils/numberFormatter'
+  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
   import eventBus from '@/utils/eventBus'
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
@@ -363,10 +366,20 @@
     }
   })
 
-  const factoryClass = (factory: Factory) => {
-    return {
-      problem: factory.hasProblem,
-    }
+  // One pass over the plan, indexed per row — same reason as the sidebar's memo.
+  const statuses = computed(() => new Map(
+    props.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
+  ))
+
+  // This row never painted the amber state at all; factoryStatusClass fixes that for free.
+  const factoryClass = (factory: Factory) => factoryStatusClass(statuses.value.get(factory.id))
+
+  // No chips in this table — the Satisfaction column already itemises every shortage and the
+  // factory column is the narrowest. The names go in the factory chip's tooltip instead.
+  const statusTooltip = (factory: Factory) => {
+    const list = statuses.value.get(factory.id) ?? []
+    if (!list.length) return `<b>${factory.name}</b>`
+    return `<b>${factory.name}</b><br>${list.map(status => status.detailLabel).join('<br>')}`
   }
 
   const getFactoryName = (factoryId: number): string => {
@@ -448,6 +461,10 @@
 
         &.problem td {
           background-color: var(--sf-problem-bg);
+        }
+
+        &.warning td {
+          background-color: var(--sf-status-warning-bg);
         }
       }
 

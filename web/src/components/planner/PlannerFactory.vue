@@ -1,7 +1,7 @@
 <template>
   <v-row>
     <v-col>
-      <v-card :id="factory.id" :class="factoryClass(factory)">
+      <v-card :id="factory.id" :class="cardClass">
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
             <div class="text-h4 text-md-h5">
@@ -14,6 +14,14 @@
             </div>
             <!-- chips bar -->
             <div class="d-flex align-center flex-wrap mt-1 ga-2">
+              <!-- status chips: what is wrong, ahead of everything descriptive. outOfSync is
+                   excluded because the sync chip further down this same bar already says it,
+                   with help text and a reset button the status chip cannot offer. -->
+              <factory-status-chips
+                size="small"
+                :statuses="cardStatuses"
+                @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
+              />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
@@ -161,18 +169,24 @@
         </v-row>
         <v-card-text v-if="!factory.hidden">
           <products-and-power
+            :id="`${factory.id}-products`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
+            :id="`${factory.id}-imports`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
+            :id="`${factory.id}-satisfaction`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <v-row>
@@ -343,6 +357,8 @@
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
+  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
@@ -387,13 +403,16 @@
     return [...groups.entries()]
   })
 
-  const factoryClass = (factory: Factory) => {
-    return {
-      'factory-card': true,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync !== null ? !factory.inSync : false,
-    }
-  }
+  // Derived once here and passed down, rather than each section header calling the helper itself:
+  // that would run the predicates three more times per expanded card.
+  const statuses = computed(() => getFactoryStatuses(props.factory))
+
+  const cardStatuses = computed(() => statuses.value.filter(status => status.type !== 'outOfSync'))
+
+  const cardClass = computed(() => ({
+    'factory-card': true,
+    ...factoryStatusClass(statuses.value),
+  }))
 
   const confirmDelete = (message = 'Are you sure you want to delete this factory?') => {
     return confirm(message)

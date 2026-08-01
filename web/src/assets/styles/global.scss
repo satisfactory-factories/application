@@ -334,6 +334,11 @@
     color: var(--sf-power-consumption) !important;
 }
 
+// Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.
+.text-status-warning {
+    color: var(--sf-status-warning) !important;
+}
+
 // Plain-text item labels (building-group under-chip "x / building" lines) share
 // their chip colours so text and chips always agree.
 .text-product {

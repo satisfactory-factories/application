@@ -1,9 +1,12 @@
 <template>
   <div>
-    <h1 class="text-h5 mb-4">
-      <i class="fas fa-conveyor-belt-alt" />
-      <span class="ml-3">Products &amp; Power Generators</span>
-    </h1>
+    <div class="d-flex align-center flex-wrap mb-4 ga-2">
+      <h1 class="text-h5" :class="{ 'text-red': sectionStatuses.length > 0 }">
+        <i :class="sectionStatuses.length ? 'fas fa-times' : 'fas fa-conveyor-belt-alt'" />
+        <span class="ml-3">Products &amp; Power Generators</span>
+      </h1>
+      <factory-status-chips detailed size="small" :statuses="sectionStatuses" />
+    </div>
     <p v-show="helpText" class="text-body-2 mb-4">
       <i class="fas fa-info-circle" /> Products that are created within the factory. Products are first
       used to fulfil recipes internally, and any surplus is then available for Export.<br>
@@ -36,14 +39,21 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
   import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+  import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
+  import { FactoryStatus, getSectionStatuses } from '@/utils/factory-management/status'
 
-  defineProps<{
+  const props = defineProps<{
     factory: Factory;
     helpText: boolean;
+    statuses?: FactoryStatus[];
   }>()
+
+  // Only buildingGroupMismatch anchors here, and it is always a problem — hence no severity switch.
+  const sectionStatuses = computed(() => getSectionStatuses(props.statuses ?? [], 'products'))
 
   const addEmptyProduct = (factory: Factory) => {
     addProductToFactory(factory, {
