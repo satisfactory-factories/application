@@ -49,7 +49,8 @@ To tear the container back down, `pnpm db:down` from either the root or here.
 | `POST /validate-token` | Token check |
 | `POST /save`, `GET /load` | Authenticated plan sync |
 | `POST /share`, `GET /share/:id` | Shareable plans, separately rate-limited |
-| `GET /hello` | Health check |
+| `GET /hello` | Liveness only — 200 whenever the process is up. It never touches Mongo, so don't monitor it |
+| `GET /health` | The one to monitor. Pings Mongo and returns **503** if it doesn't answer inside 3s. Rate limited to 10 requests a minute, in its own bucket |
 
 Mongoose models are in `models/`.
 

@@ -209,6 +209,9 @@ Three lines are worth reading carefully:
 - **`Container state: healthy`** means `--wait` actually blocked on the
   healthcheck. If it says `NO HEALTHCHECK`, this box's compose file is missing
   the healthcheck block and the deploy only confirmed the container is *running*.
+  The healthcheck probes `/health`, which pings Mongo — so `healthy` means the
+  database answered too, and a deploy attempted while Mongo is down will fail
+  here rather than going green.
 - **`Deployment finished!`** is the last line of a successful run. If the log ends
   anywhere else, the deploy died — and a `DEPLOY FAILED (exit N) at line L` line
   should say where:
@@ -223,8 +226,8 @@ container sf-backend is unhealthy
 Then confirm the API itself:
 
 ```bash
-curl -s https://api.satisfactory-factories.app/hello
-# {"message":"Hello, the server is running!"}
+curl -s https://api.satisfactory-factories.app/health
+# {"status":"ok","uptime":142,"database":{"status":"ok","state":"connected","responseTime":3}}
 
 ssh sf 'docker ps --format "{{.Names}}\t{{.Image}}\t{{.Status}}"'
 # sf-backend  maelstromeous/satisfactory-factories:backend-latest  Up 2 minutes (healthy)
@@ -282,6 +285,9 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
 - `/root/docker/docker-compose.yml` must match `backend/docker-compose-server.yml`
   — the Docker Hub image and the healthcheck that `up --wait` blocks on. The
   existing `3001:3001` port line is already correct and needs no change.
+  **The healthcheck moved from `/hello` to `/health`** and the box's copy has to
+  be edited by hand for that to take effect; until it is, the container's health
+  state still only proves the process is up.
 - `/root/update.sh` must match `backend/update.sh`, mode `755`.
 - The webhooks box's deploy key must be in `/root/.ssh/authorized_keys`
   (fingerprint `SHA256:Y69lglv47Mp3dkMh9a/CL1u9PmYldx4u+NTDb0QiFDs`).
