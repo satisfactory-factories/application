@@ -21,6 +21,7 @@
  */
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
+import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
 
 export type FactoryStatusSeverity = 'problem' | 'warning'
 
@@ -29,6 +30,7 @@ export type FactoryStatusSection = 'satisfaction' | 'imports' | 'products'
 
 export type FactoryStatusType =
   | 'partShortage' |
+  'rawShortage' |
   'exportShortage' |
   'buildingGroupMismatch' |
   'outOfSync' |
@@ -108,6 +110,25 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
       ))
     },
     label: list => count(list, 'Shortage', 'shortages'),
+  },
+  {
+    type: 'rawShortage',
+    severity: 'problem',
+    icon: 'fas fa-mountain',
+    chip: true,
+    section: 'satisfaction',
+    detail: 'This factory needs raw resources it neither extracts nor imports, and it is not assuming they are supplied.',
+    // Deliberately no hasNoProducts guard: a generator burning Coal it doesn't import is a real
+    // shortage, and unlike partShortage there is no saved-plan colour to preserve — raw demand
+    // counted as satisfied until the assumption could be turned off.
+    detect: factory => {
+      if (factoryAssumesRawInputs(factory)) return null
+      return nonEmpty(subjects(
+        Object.keys(factory.parts).filter(part => factory.parts[part].isRaw && !factory.parts[part].satisfied)
+      ))
+    },
+    label: list => count(list, 'Raw shortage', 'raw shortages'),
+    detailLabel: list => count(list, 'Raw shortage', 'raw resources short'),
   },
   {
     type: 'exportShortage',
