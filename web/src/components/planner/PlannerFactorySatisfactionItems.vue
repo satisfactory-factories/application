@@ -246,8 +246,10 @@
               <template v-if="rawChipReason(factory, partId.toString()) === 'assumed'">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
+                    <!-- The amount, not just the fact: a factory mining 150 of the 200 it needs
+                         is assuming 50, and that number is the whole point of the chip. -->
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <i class="fas fa-shovel mr-2" /><span class="mr-2">Raw Assumed</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-shovel mr-2" /><span class="mr-2">{{ formatNumber(part.amountSuppliedViaRaw) }}/min assumed</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>

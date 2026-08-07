@@ -1,9 +1,10 @@
 <template>
+  <!-- Default size, not `small`: it shares a bar with the sidebar toggle and the share
+       button, and at small it rendered 28px tall against their 36 and 40. -->
   <v-btn
     id="options-button"
     color="grey-darken-1 rounded"
     prepend-icon="fas fa-wrench"
-    size="small"
     variant="flat"
     @click="showOptions = true"
   >
