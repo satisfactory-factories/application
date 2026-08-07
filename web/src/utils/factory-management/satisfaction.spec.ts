@@ -5,6 +5,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   addShortageToFactory,
   convertWasteToGeneratorFuel,
+  rawChipReason,
   showByProductChip,
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
@@ -488,6 +489,23 @@ describe('satisfaction', () => {
       })
       it('should NOT show for a product only', () => {
         expect(showRawChip(mockFactory, 'Plastic')).toBe(false)
+      })
+      it('should call an assumed raw part assumed', () => {
+        expect(rawChipReason(mockFactory, 'LiquidOil')).toBe('assumed')
+      })
+      // A mine's ore is still raw, it is just not being assumed — the chip has to say so, or a
+      // mine looks like it produces an ordinary part.
+      it('should show for a raw part the factory mines itself, flagged as extracted', () => {
+        const mine = newFactory('Copper Mine', 9, 9)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(showRawChip(mine, 'OreCopper')).toBe(true)
+        expect(rawChipReason(mine, 'OreCopper')).toBe('extracted')
       })
       it('should NOT show for a byproduct only', () => {
         expect(showRawChip(mockFactory, 'PolymerResin')).toBe(false)

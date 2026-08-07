@@ -241,7 +241,8 @@
                       <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
+                  <span v-if="rawChipReason(factory, partId.toString()) === 'extracted'">This is a raw resource, and this factory extracts it itself — nothing is being assumed. The extractors doing it are in Products &amp; Power above.</span>
+                  <span v-else>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
                 </v-tooltip>
               </template>
               <template v-if="showRawShortageChip(factory, partId.toString())">
@@ -397,6 +398,7 @@
   import {
     addShortageToFactory,
     convertWasteToGeneratorFuel,
+    rawChipReason,
     showByProductChip,
     showImportedChip,
     showInternalChip,

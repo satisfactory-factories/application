@@ -2,6 +2,7 @@ import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryI
 import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
 import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
+import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
@@ -158,12 +159,23 @@ export const showByProductChip = (factory: Factory, partId: string) => {
 export const showImportedChip = (factory: Factory, partId: string) => {
   return getAllInputs(factory, partId).length > 0
 }
-export const showRawChip = (factory: Factory, partId: string) => {
+// Why a part counts as raw here: the world hands it over under the assumption, or this factory
+// digs it up itself. Both are raw; only the first is an assumption, and the chip says which.
+export const rawChipReason = (factory: Factory, partId: string): 'assumed' | 'extracted' | null => {
   const part = factory.parts[partId]
-  // Only show when raw supply is actually being drawn from the world. A raw part fully
+  if (!part?.isRaw) {
+    return null
+  }
+  if (factory.products.some(product => product.id === partId && isExtractionRecipe(product.recipe))) {
+    return 'extracted'
+  }
+  // Otherwise only when raw supply is actually being drawn from the world. A raw part fully
   // supplied by unpackaging (e.g. Packaged Oil -> Crude Oil) is not a raw import. #431
-  return part.isRaw && part.amountSuppliedViaRaw > 0
+  return part.amountSuppliedViaRaw > 0 ? 'assumed' : null
 }
+
+export const showRawChip = (factory: Factory, partId: string) =>
+  rawChipReason(factory, partId) !== null
 
 // A raw part this factory is short of because it isn't assuming raw supply.
 export const showRawShortageChip = (factory: Factory, partId: string) => {

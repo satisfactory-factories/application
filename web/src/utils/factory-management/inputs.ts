@@ -209,6 +209,15 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
     return 'noProductsOrProducers'
   }
 
+  // A mine consumes nothing to do its job — extraction takes no ingredients — so there is
+  // nothing it could import, whatever the raw assumption says.
+  const parts = Object.values(factory.parts)
+  if (parts.length > 0 && parts.every(part =>
+    part.isRaw && part.amountRequiredProduction === 0 && part.amountRequiredPower === 0
+  )) {
+    return 'producesRawOnly'
+  }
+
   // A factory whose demand is entirely raw has nothing to import while it is assuming that
   // supply. Once it isn't, importing from a mine factory is exactly what it should be doing.
   if (factory.usingRawResourcesOnly && factoryAssumesRawInputs(factory)) {
