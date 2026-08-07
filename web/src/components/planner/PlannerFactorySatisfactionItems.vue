@@ -241,15 +241,16 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
-              <template v-if="showRawChip(factory, partId.toString())">
+              <!-- The balance only needs annotating where the number isn't earned: a raw resource
+                   this factory extracts is satisfied by its own miners, like any other product. -->
+              <template v-if="rawChipReason(factory, partId.toString()) === 'assumed'">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <i class="fas fa-shovel mr-2" /><span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-shovel mr-2" /><span class="mr-2">Raw Assumed</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span v-if="rawChipReason(factory, partId.toString()) === 'extracted'">This is a raw resource, and this factory extracts it itself — nothing is being assumed. The extractors doing it are in Products &amp; Power above.</span>
-                  <span v-else>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
+                  <span>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
                 </v-tooltip>
               </template>
               <template v-if="showRawShortageChip(factory, partId.toString())">
