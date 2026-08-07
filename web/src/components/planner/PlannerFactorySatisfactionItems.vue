@@ -57,6 +57,11 @@
                   <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip import x-small mr-2">
                     <i class="fas fa-dolly mr-1" />Imported
                   </v-chip>
+                  <!-- White to match the factory chips this part's export requests appear as
+                       in the Exports column to the right. -->
+                  <v-chip v-if="showExportedChip(factory, partId.toString())" class="sf-chip factory x-small mr-2">
+                    <i class="fas fa-truck-container mr-1" />Exported
+                  </v-chip>
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
                     <i class="fas fa-shovel mr-1" />Raw
                   </v-chip>
@@ -402,6 +407,7 @@
     convertWasteToGeneratorFuel,
     rawChipReason,
     showByProductChip,
+    showExportedChip,
     showImportedChip,
     showInternalChip,
     showProductChip,

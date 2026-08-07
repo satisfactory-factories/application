@@ -7,6 +7,7 @@ import {
   convertWasteToGeneratorFuel,
   rawChipReason,
   showByProductChip,
+  showExportedChip,
   showImportedChip, showInternalChip,
   showProductChip, showRawChip,
   showRecycledChip,
@@ -480,6 +481,24 @@ describe('satisfaction', () => {
       })
       it('should NOT show for a raw part', () => {
         expect(showImportedChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+    })
+
+    describe('showExportedChip', () => {
+      it('should show on the factory another factory imports from', () => {
+        // The Steel factory supplies mockFactory's SteelPlate import
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(true)
+      })
+      it('should NOT show on the importing side of the same link', () => {
+        expect(showExportedChip(mockFactory, 'SteelPlate')).toBe(false)
+      })
+      it('should NOT show for a product nobody has asked for', () => {
+        expect(showExportedChip(mockFactory, 'Plastic')).toBe(false)
+      })
+      it('should stop showing once the import is removed', () => {
+        mockFactory.inputs = []
+        calculateFactories(factories, gameData)
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(false)
       })
     })
 

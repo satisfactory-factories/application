@@ -69,6 +69,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 ### Satisfaction — Jump to a requesting factory
 
 - Each export chip in the satisfaction table now carries a small blue eye button on its right-hand edge that jumps straight to the requesting factory. Clicking the chip itself still selects that destination in the Export Calculator, which was the only thing a chip click could do before — reading a factory's name and having the calculator open instead of the factory was the wrong assumption often enough to be worth its own control.
+- **An "Exported" chip** now sits beside Product and Imported on any item another factory has asked for, so what leaves a factory reads off the item's own row rather than only off the Exports column. White, to match the factory chips that column shows.
 
 ### Fixes
 

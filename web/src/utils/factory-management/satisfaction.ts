@@ -1,6 +1,7 @@
 import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
+import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
 import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { PowerRecipe } from '@/interfaces/Recipes'
@@ -158,6 +159,10 @@ export const showByProductChip = (factory: Factory, partId: string) => {
 }
 export const showImportedChip = (factory: Factory, partId: string) => {
   return getAllInputs(factory, partId).length > 0
+}
+// Another factory has asked this one for the part — the mirror of the Imported chip.
+export const showExportedChip = (factory: Factory, partId: string) => {
+  return getPartExportRequests(factory, partId).length > 0
 }
 // Why a part counts as raw here: the world hands it over under the assumption, or this factory
 // digs it up itself. Both are raw; only the first is an assumption, and the chip says which.
