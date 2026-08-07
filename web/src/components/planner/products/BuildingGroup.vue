@@ -95,15 +95,15 @@
     <template v-else-if="isExtraction">
       <div v-if="purityOptions.length > 1">
         <v-chip
-          class="sf-chip input node-setting mx-1"
+          class="sf-chip input node-setting mx-1 purity-chip"
           variant="tonal"
         >
-          <tooltip classes="ml-2" text="Node purity">
+          <tooltip text="Node purity">
             <v-icon icon="fas fa-gem" size="25" />
           </tooltip>
           <v-select
             :id="`${factory.id}-${group.id}-purity`"
-            class="inline-inputs ml-1 chip-select fit-content"
+            class="inline-inputs ml-1 chip-select purity-select"
             density="compact"
             hide-details
             :items="purityOptions"
@@ -727,15 +727,23 @@
   }
 }
 
-// "Pure" is half the width of "Normal", so a field sized for the longest option strands the
-// short ones a chevron's width from their own chevron. Size to whatever is selected instead.
-.chip-select.fit-content {
-  flex: 0 0 auto;
-  width: auto;
+// One fixed width whatever the purity reads, so a column of groups lines up rather than
+// stepping in and out with "Pure" against "Normal".
+.purity-chip {
+  width: 125px;
+
+  :deep(.v-chip__content) {
+    width: 100%;
+  }
+}
+
+.purity-select {
+  flex: 1 1 auto;
   min-width: 0;
 
   :deep(.v-field__input) {
-    width: max-content;
+    justify-content: center;
+    padding: 0;
   }
 }
 
