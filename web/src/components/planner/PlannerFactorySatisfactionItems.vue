@@ -58,10 +58,10 @@
                     <i class="fas fa-dolly mr-1" />Imported
                   </v-chip>
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    <i class="fas fa-mountain mr-1" />Raw
+                    <i class="fas fa-pickaxe mr-1" />Raw
                   </v-chip>
                   <v-chip v-if="showRawShortageChip(factory, partId.toString())" class="sf-chip red x-small mr-2">
-                    <i class="fas fa-mountain mr-1" />Raw shortage
+                    <i class="fas fa-pickaxe mr-1" />Raw shortage
                   </v-chip>
                   <v-chip v-if="showUnpackagedChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
                     <i class="fas fa-box-open mr-1" />Unpackaged
@@ -240,7 +240,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <i class="fas fa-mountain mr-2" /><span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-pickaxe mr-2" /><span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span v-if="rawChipReason(factory, partId.toString()) === 'extracted'">This is a raw resource, and this factory extracts it itself — nothing is being assumed. The extractors doing it are in Products &amp; Power above.</span>
@@ -251,7 +251,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip red small">
-                      <i class="fas fa-mountain mr-2" /><span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-pickaxe mr-2" /><span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>This factory isn't assuming raw supply, so this shortfall is real. Add an extractor as a product to mine it here, or import it from a mine factory.</span>
