@@ -218,6 +218,10 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  // ID from src/data/factory-icons.json. Absent (old plans, or "use default") shows the
+  // generic industry glyph. Deliberately a bare ID: plans in localStorage, Mongo and share
+  // links cannot be migrated, so nothing about how it is drawn belongs in the stored value.
+  icon?: string
   dataVersion: string
 }
 

@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Factory icons
+
+- Every factory drew the same generic industry glyph, so a plan of twenty factories showed twenty identical icons and the only thing distinguishing a sidebar row was a truncated name. Factories now carry an **icon you choose**, and it shows everywhere the factory is referenced: the card header beside the name, the sidebar row, the Factories Summary table, the graph node, the import rows, and the import/export chips on collapsed cards and in the satisfaction table.
+- **Around 280 icons to pick from.** Real game art for the machines, extractors, generators, logistics buildings, vehicles, every raw resource and every component the planner knows about — plus emoji: coloured squares, circles, diamonds and triangles, the digits 0–10, and a row of symbols. No uploads: a shared plan can only ever carry an icon the app already ships, so there is nothing to process on anyone's behalf.
+- **Search covers everything at once.** Typing hides the tabs and searches the whole set — game art and emoji together — so you don't have to know which tab a thing lives in. Emoji carry keywords, so "red" finds the red square, the red circle and the red triangle, and "nuclear" finds the radiation symbol.
+- Click the icon in the card header or the sidebar to open the picker; it takes the same hover fill as the clickable item and building images elsewhere in the app. A tile applies immediately and closes, and "Use default" puts the generic glyph back.
+- **A factory stores only an icon ID.** Everything about how that ID is drawn — the artwork it points at, its label, its grouping, even which emoji character it means — lives in one generated registry file. Plans in local storage, in the cloud and in share links can't be migrated, so nothing about rendering is baked into what gets saved: the artwork behind an icon can be changed later without touching a single plan.
+- The registry is generated from the shipped artwork rather than from the game data, which means an item whose image was never shipped simply isn't offered. That caught the FICSMAS Gift, which is not flagged as a FICSMAS item and would have rendered as a broken image. A test asserts every icon in the registry resolves to a file that exists, so a bad entry fails the build instead of reaching the picker.
+- Plans saved before this change are untouched and show the default glyph until an icon is picked.
+
 ### Backend — a health check that can actually fail
 
 - The API had one health route, `GET /hello`, and it returned `200` for as long as the Node process was alive. It never spoke to Mongo, so the database could be dead, unreachable or out of disk and the monitoring would still show green — which is exactly what happened when the API box filled its disk. New `GET /health` runs a real `ping` against Mongo (the `SELECT 1` equivalent) and returns **503** with the error message when it doesn't answer, so an outage raises an alert instead of nothing. The response also carries process uptime, the Mongoose connection state and how long the ping took.

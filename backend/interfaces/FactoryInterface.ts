@@ -155,6 +155,7 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  icon?: string // ID from the frontend's factory-icons registry
   dataVersion: string
 }
 

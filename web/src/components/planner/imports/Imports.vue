@@ -12,7 +12,11 @@
         class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
-          <i class="fas fa-industry mr-2" style="width: 32px; height: 32px;" />
+          <factory-icon-display
+            class="mr-2"
+            :icon="input.factoryId ? findFactory(input.factoryId)?.icon : undefined"
+            size="32"
+          />
           <!-- This is being watched for changes to update the old factory -->
           <v-autocomplete
             v-model.number="input.factoryId"

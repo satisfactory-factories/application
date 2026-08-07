@@ -25,6 +25,8 @@ declare module 'vue' {
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
     ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
+    FactoryIconDialog: typeof import('./components/planner/FactoryIconDialog.vue')['default']
+    FactoryIconDisplay: typeof import('./components/planner/FactoryIconDisplay.vue')['default']
     FactoryImports: typeof import('./components/planner/imports/FactoryImports.vue')['default']
     FactoryNode: typeof import('./components/graph/FactoryNode.vue')['default']
     FactoryStatusChips: typeof import('./components/planner/FactoryStatusChips.vue')['default']
