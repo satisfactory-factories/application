@@ -6,7 +6,7 @@
           <i class="fas fa-box" /><span class="ml-2">Item</span>
         </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
-          <i class="fas fa-abacus" /><span class="ml-2">Satisfaction</span>
+          <i class="fas fa-balance-scale" /><span class="ml-2">Satisfaction</span>
           <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
         </th>
         <th class="text-h6 text-center" scope="row">
@@ -38,34 +38,36 @@
                   <div>
                     <b>{{ getPartDisplayName(partId.toString()) }}</b>
                   </div>
+                  <!-- Each chip leads with the icon its concept wears elsewhere in the app, so a
+                       row of them can be read at a glance rather than word by word. -->
                   <v-chip v-if="showProductChip(factory, partId.toString())" class="sf-chip blue x-small mr-2">
-                    Product
+                    <i class="fas fa-cube mr-1" />Product
                   </v-chip>
                   <v-chip v-if="showByProductChip(factory, partId.toString())" class="sf-chip byproduct x-small mr-2">
-                    Byproduct
+                    <i class="fas fa-cubes mr-1" />Byproduct
                   </v-chip>
                   <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
                     <template #activator="{ props: activatorProps }">
                       <v-chip v-bind="activatorProps" class="sf-chip green x-small mr-2">
-                        <span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
+                        <i class="fas fa-recycle mr-1" /><span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
                       </v-chip>
                     </template>
                     <span>This byproduct is used as an ingredient by other products within the same factory.<br>The planner subtracts it from the amount you need to supply via Imports, so you don't over-feed the system.</span>
                   </v-tooltip>
                   <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip import x-small mr-2">
-                    Imported
+                    <i class="fas fa-dolly mr-1" />Imported
                   </v-chip>
                   <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    Raw
+                    <i class="fas fa-mountain mr-1" />Raw
                   </v-chip>
                   <v-chip v-if="showRawShortageChip(factory, partId.toString())" class="sf-chip red x-small mr-2">
-                    Raw shortage
+                    <i class="fas fa-mountain mr-1" />Raw shortage
                   </v-chip>
                   <v-chip v-if="showUnpackagedChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    Unpackaged
+                    <i class="fas fa-box-open mr-1" />Unpackaged
                   </v-chip>
                   <v-chip v-if="showInternalChip(factory, partId.toString())" class="sf-chip green x-small mr-2">
-                    Internal
+                    <i class="fas fa-industry mr-1" />Internal
                   </v-chip>
                 </div>
               </div>
@@ -238,7 +240,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-mountain mr-2" /><span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span v-if="rawChipReason(factory, partId.toString()) === 'extracted'">This is a raw resource, and this factory extracts it itself — nothing is being assumed. The extractors doing it are in Products &amp; Power above.</span>
@@ -249,7 +251,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip red small">
-                      <span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-mountain mr-2" /><span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>This factory isn't assuming raw supply, so this shortfall is real. Add an extractor as a product to mine it here, or import it from a mine factory.</span>
@@ -259,7 +261,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-box-open mr-2" /><span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>This fluid is supplied by unpackaging within this factory rather than being drawn from raw resources.</span>

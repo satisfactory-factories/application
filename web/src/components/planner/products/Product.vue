@@ -100,7 +100,7 @@
         @click="doFixProduct(product, factory)"
       >Trim</v-btn>
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
-        Internal
+        <i class="fas fa-industry mr-1" />Internal
       </v-chip>
       <v-chip v-if="shouldShowNotInDemand(product, factory)" class="align-self-center sf-chip small orange">
         No demand!
@@ -140,7 +140,7 @@
             <debounce-spinner :active="pendingRecalc === `${product.id}-bp-${byProduct.id}`" />
           </v-chip>
           <v-chip v-if="shouldShowInternal(byProduct, factory)" class="sf-chip small green">
-            Internal
+            <i class="fas fa-industry mr-1" />Internal
           </v-chip>
         </template>
       </div>
