@@ -4,13 +4,13 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
+            <i class="mdi mdi-chart-line" /><span class="ml-3">Statistics</span>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
               v-show="!hidden"
               color="primary"
-              prepend-icon="fas fa-eye-slash"
+              prepend-icon="mdi mdi-eye-off"
               variant="flat"
               @click="toggleVisibility"
             >Hide
@@ -18,7 +18,7 @@
             <v-btn
               v-show="hidden"
               color="primary"
-              prepend-icon="fas fa-eye"
+              prepend-icon="mdi mdi-eye"
               variant="outlined"
               @click="toggleVisibility"
             >Show
@@ -31,7 +31,7 @@
           <span class="font-weight-bold">Power Target:</span>
           <v-chip class="sf-chip input no-margin" variant="tonal">
             <tooltip text="Power target">
-              <i class="fas fa-bullseye ml-3" />
+              <i class="mdi mdi-bullseye ml-3" />
             </tooltip>
             <v-number-input
               id="stats-power-target-collapsed"
@@ -47,15 +47,15 @@
             <span class="mx-2">MW</span>
           </v-chip>
           <v-chip class="sf-chip generation no-margin" variant="tonal">
-            <i class="fas fa-bolt" />
-            <i class="fas fa-plus" />
+            <i class="mdi mdi-lightning-bolt" />
+            <i class="mdi mdi-plus" />
             <span id="stats-power-generated-collapsed" class="ml-2">
               Generated: {{ formatMw(totalPower.totalPowerProduced) }}
             </span>
           </v-chip>
           <v-chip class="sf-chip consumption no-margin" variant="tonal">
-            <i class="fas fa-bolt" />
-            <i class="fas fa-minus" />
+            <i class="mdi mdi-lightning-bolt" />
+            <i class="mdi mdi-minus" />
             <span id="stats-power-consumed-collapsed" class="ml-2">
               Consumed: {{ formatMw(totalPower.totalPowerConsumed) }}
             </span>
@@ -66,14 +66,14 @@
               :class="balanceDifference >= 0 ? 'green' : 'red'"
               variant="tonal"
             >
-              <i class="fas fa-balance-scale" />
+              <i class="mdi mdi-scale-balance" />
               <span id="stats-power-target-difference-collapsed" class="ml-2">
                 Difference vs {{ hasTarget ? 'target' : 'plan' }}: {{ formatMw(balanceDifference) }}
               </span>
               <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
                    so class flips (and removal of the bare <i>) never reach the rendered icon. -->
-              <span v-if="hasTarget" class="ml-2"><i class="fas fa-bullseye" /></span>
-              <span v-else class="ml-2"><i class="fas fa-check-square" /></span>
+              <span v-if="hasTarget" class="ml-2"><i class="mdi mdi-bullseye" /></span>
+              <span v-else class="ml-2"><i class="mdi mdi-checkbox-marked" /></span>
             </v-chip>
           </tooltip>
         </v-card-text>
@@ -91,7 +91,7 @@
             <v-btn
               v-show="!hiddenProducts"
               color="primary"
-              prepend-icon="fas fa-eye-slash"
+              prepend-icon="mdi mdi-eye-off"
               variant="flat"
               @click="toggleProductsVisibility"
             >Hide all Products
@@ -99,7 +99,7 @@
             <v-btn
               v-show="hiddenProducts"
               color="primary"
-              prepend-icon="fas fa-eye"
+              prepend-icon="mdi mdi-eye"
               variant="outlined"
               @click="toggleProductsVisibility"
             >Show all Products

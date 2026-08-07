@@ -134,14 +134,14 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
 
     test('BG-E-AB-PROD-8: When effective is balanced, disable Remainder to Last button', () => {
       // Default single group is balanced (2 buildings), so remainder-to-last should be disabled.
-      const remainderToLastButton = subject.find('button:has(.fa-balance-scale-right)')
+      const remainderToLastButton = subject.find('button:has(.mdi-scale-unbalanced)')
       expect(remainderToLastButton.exists()).toBe(true)
       expect(remainderToLastButton.classes()).toContain('v-btn--disabled')
     })
 
     test('BG-E-AB-PROD-9: When effective is balanced, disable Remainder to New Group button', () => {
       // Default single group is balanced (2 buildings), so remainder-to-new-group should be disabled.
-      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      const remainderToNewGroupButton = subject.find('button:has(.mdi-format-list-group)')
       expect(remainderToNewGroupButton.exists()).toBe(true)
       expect(remainderToNewGroupButton.classes()).toContain('v-btn--disabled')
     })
@@ -156,7 +156,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(subject.text()).toContain('Under producing!')
 
-      const remainderToLastButton = subject.find('button:has(.fa-balance-scale-right)')
+      const remainderToLastButton = subject.find('button:has(.mdi-scale-unbalanced)')
       expect(remainderToLastButton.classes()).not.toContain('v-btn--disabled')
     })
 
@@ -169,7 +169,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(subject.text()).toContain('Under producing!')
 
-      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      const remainderToNewGroupButton = subject.find('button:has(.mdi-format-list-group)')
       expect(remainderToNewGroupButton.classes()).not.toContain('v-btn--disabled')
     })
 
@@ -183,7 +183,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(subject.text()).toContain('Under producing!')
 
-      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      const remainderToNewGroupButton = subject.find('button:has(.mdi-format-list-group)')
       expect(remainderToNewGroupButton.classes()).not.toContain('v-btn--disabled')
     })
 
@@ -195,7 +195,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       await new Promise(resolve => setTimeout(resolve, 100))
       const groupsBefore = product.buildingGroups.length
 
-      const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
+      const remainderToNewGroupButton = subject.find('button:has(.mdi-format-list-group)')
       await remainderToNewGroupButton.trigger('click')
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -209,7 +209,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       await subject.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      const ocButton = subject.find('button:has(.fa-history)')
+      const ocButton = subject.find('button:has(.mdi-history)')
       expect(ocButton.exists()).toBe(true)
       expect(ocButton.classes()).not.toContain('v-btn--disabled')
 

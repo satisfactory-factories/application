@@ -3,14 +3,14 @@
     <thead>
       <tr>
         <th class="text-h6 text-left border-e-md" scope="row">
-          <i class="fas fa-box" /><span class="ml-2">Item</span>
+          <i class="mdi mdi-package-variant-closed" /><span class="ml-2">Item</span>
         </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
-          <i class="fas fa-abacus" /><span class="ml-2">Satisfaction</span>
+          <i class="mdi mdi-abacus" /><span class="ml-2">Satisfaction</span>
           <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
         </th>
         <th class="text-h6 text-center" scope="row">
-          <i class="fas fa-truck-container" /><span class="ml-2">Exports</span>
+          <i class="mdi mdi-export" /><span class="ml-2">Exports</span>
         </th>
         <th class="text-h6 text-center" scope="row" />
       </tr>
@@ -29,10 +29,10 @@
                   width="48"
                 />
                 <span v-if="part.satisfied" class="ml-2">
-                  <v-icon icon="fas fa-check" />
+                  <v-icon icon="mdi mdi-check" />
                 </span>
                 <span v-else class="ml-2">
-                  <v-icon icon="fas fa-times" />
+                  <v-icon icon="mdi mdi-close" />
                 </span>
                 <div class="ml-2 text-body-1">
                   <div>
@@ -47,7 +47,7 @@
                   <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
                     <template #activator="{ props: activatorProps }">
                       <v-chip v-bind="activatorProps" class="sf-chip green x-small mr-2">
-                        <span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
+                        <span class="mr-1">Recycled</span> <i class="mdi mdi-information" />
                       </v-chip>
                     </template>
                     <span>This byproduct is used as an ingredient by other products within the same factory.<br>The planner subtracts it from the amount you need to supply via Imports, so you don't over-feed the system.</span>
@@ -76,7 +76,7 @@
                   variant="outlined"
                   @click="addProduct(factory, partId.toString(), part.amountRemaining)"
                 >
-                  +&nbsp;<i class="fas fa-cube" /><span class="ml-1">Product</span>
+                  +&nbsp;<i class="mdi mdi-cube" /><span class="ml-1">Product</span>
                 </v-btn>
                 <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'addGenerator')"
@@ -86,7 +86,7 @@
                   variant="outlined"
                   @click="addGenerator(factory, partId.toString(), part.amountRemaining)"
                 >
-                  +&nbsp;<i class="fas fa-bolt mr-0" style="max-height: 16px" /><span class="ml-1">Generator</span>
+                  +&nbsp;<i class="mdi mdi-lightning-bolt mr-0" style="max-height: 16px" /><span class="ml-1">Generator</span>
                 </v-btn>
                 <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGenerator')"
@@ -96,7 +96,7 @@
                   variant="outlined"
                   @click="doFixGenerator(factory, partId.toString(), part.amountRequired)"
                 >
-                  <i class="fas fa-wrench" /><span class="ml-1">Fix Generator</span>
+                  <i class="mdi mdi-wrench" /><span class="ml-1">Fix Generator</span>
                 </v-btn>
 
                 <template v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixGeneratorManually')">
@@ -110,7 +110,7 @@
                     <v-tooltip bottom>
                       <template #activator="{ props: activatorProps }">
                         <div v-bind="activatorProps">
-                          <i class="fas fa-exclamation-circle" /><span class="ml-1">FIX GENS MANUALLY</span>
+                          <i class="mdi mdi-alert-circle" /><span class="ml-1">FIX GENS MANUALLY</span>
                         </div>
                       </template>
                       <span>You have multiple Generator groups for this waste. Since the planner cannot read your mind, we don't know which group to fix.<br>Please either fix manually or reduce to one Generator & Fuel group.</span>
@@ -125,7 +125,7 @@
                   size="small"
                   @click="doFixProduct(partId.toString(), factory)"
                 >
-                  <i class="fas fa-wrench" /><span class="ml-1">Fix Product</span>
+                  <i class="mdi mdi-wrench" /><span class="ml-1">Fix Product</span>
                 </v-btn>
                 <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'correctManually')"
@@ -138,7 +138,7 @@
                   <v-tooltip bottom>
                     <template #activator="{ props: activatorProps }">
                       <div v-bind="activatorProps">
-                        <i class="fas fa-exclamation-circle" /><span class="ml-1">CORRECT MANUALLY</span>
+                        <i class="mdi mdi-alert-circle" /><span class="ml-1">CORRECT MANUALLY</span>
                       </div>
                     </template>
                     <span>This item is a byproduct, currently the planner does not know how to scale byproducts correctly<br> as there could be a number of ways to do it that the user may not want.<br> Please scale it manually.</span>
@@ -151,7 +151,7 @@
                   size="small"
                   @click="fixSatisfactionImport(factory, partId.toString())"
                 >
-                  &nbsp;<i class="fas fa-arrow-up" /><span class="ml-1">Fix Import</span>
+                  &nbsp;<i class="mdi mdi-arrow-up" /><span class="ml-1">Fix Import</span>
                 </v-btn>
                 <v-btn
                   v-if="showSatisfactionItemButton(factory, partId.toString(), 'fixImport') === 'multiple'"
@@ -164,7 +164,7 @@
                   <v-tooltip bottom>
                     <template #activator="{ props: activatorProps }">
                       <div v-bind="activatorProps">
-                        <i class="fas fa-exclamation-circle" /><span class="ml-1">Fix Import</span>
+                        <i class="mdi mdi-alert-circle" /><span class="ml-1">Fix Import</span>
                       </div>
                     </template>
                     <span>There are multiple Imports for this Item. The planner doesn't know which one you would want to be fixed.<br>Please correct manually by using the Satisfy buttons in the Imports section.</span>
@@ -235,7 +235,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
+                      <span class="mr-2">Raw</span> <i class="mdi mdi-information" />
                     </v-chip>
                   </template>
                   <span>Raw Items e.g. Iron Ore are always satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.</span>
@@ -245,7 +245,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
+                      <span class="mr-2">Unpackaged</span> <i class="mdi mdi-information" />
                     </v-chip>
                   </template>
                   <span>This fluid is supplied by unpackaging within this factory rather than being drawn from raw resources.</span>
@@ -268,7 +268,7 @@
                         <span>Adding...</span>
                       </template>
                       <template v-else>
-                        +&nbsp;<i class="fas fa-industry" /><span class="ml-1">New</span>
+                        +&nbsp;<i class="mdi mdi-factory" /><span class="ml-1">New</span>
                       </template>
                     </v-btn>
                   </template>
@@ -283,7 +283,7 @@
                       variant="outlined"
                       @click="openAddShortageDialog(partId.toString())"
                     >
-                      +&nbsp;<i class="fas fa-industry" /><span class="ml-1">Existing</span>
+                      +&nbsp;<i class="mdi mdi-factory" /><span class="ml-1">Existing</span>
                     </v-btn>
                   </template>
                   <span>Adds this shortage as a product of an existing factory of your choice,<br>and imports it into this factory.</span>
@@ -305,14 +305,14 @@
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
-                  <i class="fas fa-industry" />
+                  <i class="mdi mdi-factory" />
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
                   </span>
                   <v-btn
                     class="chip-jump-btn ml-2"
                     color="primary"
-                    icon="fas fa-eye"
+                    icon="mdi mdi-eye"
                     size="x-small"
                     title="Jump to this factory"
                     variant="flat"
@@ -327,7 +327,7 @@
               v-if="openedCalculator !== partId && getPartExportRequests(factory, partId.toString()).length > 0"
               class="rounded"
               color="primary"
-              icon="fas fa-calculator"
+              icon="mdi mdi-calculator"
               size="small"
               title="Export Calculator"
               variant="outlined"
@@ -337,7 +337,7 @@
               v-if="openedCalculator === partId"
               class="rounded"
               color="primary"
-              icon="fas fa-arrow-up"
+              icon="mdi mdi-arrow-up"
               size="small"
               title="Close Export Calculator"
               variant="outlined"

@@ -5,7 +5,7 @@
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.5</span>
         <v-btn
           density="comfortable"
-          icon="fas fa-times"
+          icon="mdi mdi-close"
           size="small"
           variant="text"
           @click="closeSplash"
@@ -32,7 +32,7 @@
         <!-- Slide 2: Building Groups -->
         <div v-if="currentSlide === 1">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-layer-group" /><span class="ml-2">Building Groups — Overclocking &amp; Somersloops</span>
+            <i class="mdi mdi-layers" /><span class="ml-2">Building Groups — Overclocking &amp; Somersloops</span>
           </h2>
           <v-img
             alt="Overclocking and Somersloops"
@@ -60,7 +60,7 @@
         <!-- Slide 3: The Power Update -->
         <div v-if="currentSlide === 2">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-bolt" /><span class="ml-2">The Power Update</span>
+            <i class="mdi mdi-lightning-bolt" /><span class="ml-2">The Power Update</span>
           </h2>
           <p class="mb-4">Power planning got a full overhaul:</p>
           <h3 class="text-h6 mb-2">Improved Power Planning</h3>
@@ -96,7 +96,7 @@
           </ul>
           <p class="text-center">
             <v-btn color="primary" variant="elevated" @click="goToStatistics">
-              <i class="fas fa-bolt" /><span class="ml-2">View your Power Statistics</span>
+              <i class="mdi mdi-lightning-bolt" /><span class="ml-2">View your Power Statistics</span>
             </v-btn>
           </p>
         </div>
@@ -104,7 +104,7 @@
         <!-- Slide 4: Parts & Recipes -->
         <div v-if="currentSlide === 3">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-hat-chef" /><span class="ml-2">Parts &amp; Recipes</span>
+            <i class="mdi mdi-chef-hat" /><span class="ml-2">Parts &amp; Recipes</span>
           </h2>
           <v-img
             alt="Parts and Recipes browser"
@@ -122,7 +122,7 @@
           </ul>
           <p class="text-center">
             <v-btn color="primary" variant="elevated" @click="goToParts">
-              <i class="fas fa-search" /><span class="ml-2">Explore Parts &amp; Recipes</span>
+              <i class="mdi mdi-magnify" /><span class="ml-2">Explore Parts &amp; Recipes</span>
             </v-btn>
           </p>
         </div>
@@ -130,7 +130,7 @@
         <!-- Slide 5: UI Refresh -->
         <div v-if="currentSlide === 4">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-paint-roller" /><span class="ml-2">UI Refresh</span>
+            <i class="mdi mdi-format-paint" /><span class="ml-2">UI Refresh</span>
           </h2>
           <p class="mb-4">The planner has been improved across the board, surfacing far more information at a glance:</p>
           <h3 class="text-h6 mb-2">The Sidebar</h3>
@@ -186,7 +186,7 @@
         <!-- Slide 6: Performance Overhaul -->
         <div v-if="currentSlide === 5">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-rocket-launch" /><span class="ml-2">Massive Performance Overhaul</span>
+            <i class="mdi mdi-rocket-launch" /><span class="ml-2">Massive Performance Overhaul</span>
           </h2>
           <p class="mb-4">
             The calculation engine has been <b>fundamentally reworked for large plans</b>. It used to rewrite your entire plan's data on every edit — even the values that hadn't changed — forcing huge amounts of unnecessary re-rendering. On big plans, adding a factory or tweaking a product could freeze the planner for seconds or even minutes.
@@ -202,7 +202,7 @@
         <!-- Slide 7: Fixes & Other Changes -->
         <div v-if="currentSlide === 6">
           <h2 class="text-h5 mb-2">
-            <i class="fas fa-wrench" /><span class="ml-2">Fixes</span>
+            <i class="mdi mdi-wrench" /><span class="ml-2">Fixes</span>
           </h2>
           <ul class="ml-6 mb-4">
             <li>Unpackaged liquids (e.g. Crude Oil) are no longer double-counted, and byproduct liquids (e.g. Water from Aluminum Scrap) are now treated as "Recycled" properly.</li>
@@ -211,7 +211,7 @@
             <li>Item quantities are now capped to the game's 0.001 precision, fixing several rounding oddities.</li>
           </ul>
           <h2 class="text-h5 mb-2">
-            <i class="fas fa-sparkles" /><span class="ml-2">Improvements</span>
+            <i class="mdi mdi-shimmer" /><span class="ml-2">Improvements</span>
           </h2>
           <ul class="ml-6 mb-4">
             <li>Shortages in Satisfaction now have <b>[+ New]</b> / <b>[+ Existing]</b> buttons that create or wire up a supplying factory and resolve the deficit automatically.</li>
@@ -227,17 +227,17 @@
       </v-card-text>
       <v-card-actions class="px-4 pb-4">
         <v-btn v-if="currentSlide > 0" variant="tonal" @click="prevSlide">
-          <i class="fas fa-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
+          <i class="mdi mdi-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
         </v-btn>
         <v-spacer />
         <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
         <v-spacer />
         <v-btn color="primary" variant="elevated" @click="nextSlide">
           <template v-if="currentSlide === slides.length - 1">
-            <i class="fas fa-check" /><span class="ml-2">Got it!</span>
+            <i class="mdi mdi-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
-            <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="fas fa-arrow-right" />
+            <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="mdi mdi-arrow-right" />
           </template>
         </v-btn>
       </v-card-actions>

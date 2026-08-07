@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center justify-center mb-4">
     <span class="mr-2">
-      <v-icon icon="fas fa-drone" />
+      <v-icon icon="mdi mdi-drone" />
     </span>
     <v-text-field
       v-model="timeString"

@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="border-b-md">
         <h1 class="text-h5">
-          <i class="fas fa-industry" /><span class="ml-2">{{ data.factory.name }}</span>
+          <i class="mdi mdi-factory" /><span class="ml-2">{{ data.factory.name }}</span>
         </h1>
       </v-card-title>
       <v-card-text class="py-0">

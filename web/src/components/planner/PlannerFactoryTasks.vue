@@ -1,7 +1,7 @@
 <template>
   <v-card class="factory-card sub-card">
     <v-card-title>
-      <i class="fas fa-tasks" />
+      <i class="mdi mdi-format-list-checks" />
       <span class="ml-3 text-h5">Tasks</span>
     </v-card-title>
     <v-card-text>
@@ -37,7 +37,7 @@
                 v-if="!task.completed"
                 color="blue rounded"
                 density="comfortable"
-                icon="fas fa-check-square"
+                icon="mdi mdi-checkbox-marked"
                 size="small"
                 @click="toggleTask(index)"
               />
@@ -45,7 +45,7 @@
                 v-if="task.completed"
                 color="grey rounded"
                 density="comfortable"
-                icon="fas fa-times"
+                icon="mdi mdi-close"
                 size="small"
                 @click="toggleTask(index)"
               />
@@ -53,7 +53,7 @@
                 class="ml-1"
                 color="red rounded"
                 density="comfortable"
-                icon="fas fa-trash"
+                icon="mdi mdi-delete"
                 size="small"
                 @click="removeTask(index)"
               />

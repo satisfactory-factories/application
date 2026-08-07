@@ -23,7 +23,7 @@
           video-id="YsWDeOU3e8o"
         />
 
-        <h2>🆕 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups</span></h2>
+        <h2>🆕 <i class="mdi mdi-layers ml-1" /><span class="ml-2">Building Groups</span></h2>
         <p>The headline feature of this update! Each product and power generator can now be split into <b>Building Groups</b>, letting you plan how your production lines are physically laid out in your world. Each group has its own building count and clock speed, and the planner keeps them in sync with your production targets.</p>
         <p>Open them via the new "Open Building Groups" bar underneath each product. With them come two long-requested features:</p>
 
@@ -39,7 +39,7 @@
 
         <v-divider class="subsection" />
 
-        <h2>🆕 <i class="fas fa-bolt ml-1" /><span class="ml-2">The Power Update</span></h2>
+        <h2>🆕 <i class="mdi mdi-lightning-bolt ml-1" /><span class="ml-2">The Power Update</span></h2>
         <p>Power planning got a full overhaul:</p>
         <ul>
           <li>
@@ -68,7 +68,7 @@
 
         <v-divider class="subsection" />
 
-        <h2>🆕 <i class="fas fa-hat-chef ml-1" /><span class="ml-2">Parts &amp; Recipes page</span></h2>
+        <h2>🆕 <i class="mdi mdi-chef-hat ml-1" /><span class="ml-2">Parts &amp; Recipes page</span></h2>
         <p>The old Recipes page has been completely reworked into <b>Parts &amp; Recipes</b>. Instead of a flat list of recipes, you now browse by <b>part</b> — open any part to see:</p>
         <ul>
           <li><b>Produced by</b>: every recipe that makes the part, now showing the products and rates per minute (previously missing entirely!), plus the building it's made in and its power usage.</li>
@@ -87,7 +87,7 @@
 
         <v-divider class="subsection" />
 
-        <h2>🆕 <i class="fas fa-paint-roller ml-1" /><span class="ml-2">UI Refresh</span></h2>
+        <h2>🆕 <i class="mdi mdi-format-paint ml-1" /><span class="ml-2">UI Refresh</span></h2>
         <p>The planner has been improved across the board, surfacing far more information at a glance:</p>
         <h3>The Sidebar</h3>
         <v-row>
@@ -140,7 +140,7 @@
 
         <v-divider class="subsection" />
 
-        <h2>🆕 <i class="fas fa-rocket-launch ml-1" /><span class="ml-2">Massive Performance Overhaul</span></h2>
+        <h2>🆕 <i class="mdi mdi-rocket-launch ml-1" /><span class="ml-2">Massive Performance Overhaul</span></h2>
         <p>The planner's calculation engine has been fundamentally reworked for <b>large plans</b>. Previously, every edit recalculated your entire plan directly on the live data — rewriting <i>everything</i>, even values that hadn't changed — which forced the planner to re-render far more than it needed to. On big plans this could freeze the planner for many seconds just from adding a factory or tweaking a product.</p>
         <p>The engine now runs its calculations off to the side and only applies the values that <b>actually changed</b> back to your plan. In numbers:</p>
         <ul>
@@ -216,7 +216,7 @@
 
         <v-divider class="subsection" />
 
-        <h2><i class="fas fa-conveyor-belt-alt" /><span class="ml-3">Products</span> section changes</h2>
+        <h2><i class="mdi mdi-cog-transfer" /><span class="ml-3">Products</span> section changes</h2>
         <p>The products section has been improved in a variety of ways:
         </p>
         <ul>
@@ -233,7 +233,7 @@
 
         <v-divider class="subsection" />
 
-        <h2><i class="fas fa-arrow-to-right" /><span class="ml-3">Imports</span> section improvements</h2>
+        <h2><i class="mdi mdi-import" /><span class="ml-3">Imports</span> section improvements</h2>
         <p>Large overhaul of the way factories are chosen as import candidates and fixes to various helper buttons.</p>
 
         <ul>
@@ -243,12 +243,12 @@
           <li>👍🔧 <b>TRIM and SATISFY buttons now take into account other imports of the same part</b>. Before, it would only check the import being trimmed / satisfied against the factory shortage / overflow, now it takes all other imports and calculates the difference.</li>
           <li>🔧 Imports no longer consider a factory a candidate if the source factory imports a raw resource which the destination factory needs.</li>
           <li>🆕 Redundant imports (where a singular import can handle the demands) are now highlighted with <v-chip class="sf-chip small orange ma-0">
-            <i class="fas fa-exclamation-triangle" />
+            <i class="mdi mdi-alert" />
             <span class="ml-2">Redundant!</span>
           </v-chip>. This way this mostly works is to not require re-balancing of imports, and if one import can do the job the others are marked as redundant.
           </li>
           <li>🆕 Imports with no amount set are marked with <v-chip class="sf-chip small red ma-0">
-            <i class="fas fa-exclamation-triangle" />
+            <i class="mdi mdi-alert" />
             <span class="ml-2">No amount set!</span>
           </v-chip>.
           </li>

@@ -5,7 +5,7 @@
         class="ma-1"
         color="blue"
         :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-compress-alt"
+        prepend-icon="mdi mdi-arrow-collapse"
 
         variant="tonal"
         @click="emit('hide-all')"
@@ -16,7 +16,7 @@
         class="ma-1"
         color="blue"
         :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-expand-alt"
+        prepend-icon="mdi mdi-arrow-expand"
 
         variant="tonal"
         @click="expandAll"
@@ -26,7 +26,7 @@
       <v-btn
         class="ma-1"
         color="blue"
-        prepend-icon="fas fa-info-circle"
+        prepend-icon="mdi mdi-information"
         variant="tonal"
         @click="emit('toggle-help-text')"
       >
@@ -35,7 +35,7 @@
       <v-btn
         class="ma-1"
         color="green"
-        prepend-icon="fas fa-users-class"
+        prepend-icon="mdi mdi-school"
         ripple
         variant="tonal"
         @click="eventBus.emit('introToggle', true)"
@@ -45,7 +45,7 @@
       <v-btn
         class="ma-1"
         color="yellow"
-        prepend-icon="fas fa-file-import"
+        prepend-icon="mdi mdi-file-import"
         ripple
         variant="tonal"
         @click="emit('import-world')"
@@ -56,7 +56,7 @@
         class="ma-1"
         color="red"
         :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-trash"
+        prepend-icon="mdi mdi-delete"
         variant="tonal"
         @click="confirmDelete('Are you really sure? This will delete literally everything!') && emit('clear-all')"
       >
@@ -66,7 +66,7 @@
         class="ma-1"
         color="secondary"
         :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-copy"
+        prepend-icon="mdi mdi-content-copy"
         variant="tonal"
         @click="copyPlanToClipboard"
       >
@@ -75,7 +75,7 @@
       <v-btn
         class="ma-1"
         color="secondary"
-        prepend-icon="fas fa-clipboard"
+        prepend-icon="mdi mdi-clipboard"
         variant="tonal"
         @click="confirmReplace() && pastePlanFromClipboard()"
       >
@@ -86,7 +86,7 @@
         class="ma-1"
         color="amber"
         :disabled="getFactories().length === 0 || disableRecalc"
-        prepend-icon="fas fa-calculator-alt"
+        prepend-icon="mdi mdi-calculator-variant"
         variant="tonal"
         @click="forceRecalc"
       >

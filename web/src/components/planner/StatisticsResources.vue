@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-globe" />
+      <i class="mdi mdi-earth" />
       <span class="ml-3">Raw Resources</span>
     </h4>
     <v-chip
@@ -15,7 +15,7 @@
     <v-btn
       class="ml-auto"
       color="primary"
-      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      :prepend-icon="hidden ? 'mdi mdi-eye' : 'mdi mdi-eye-off'"
       size="small"
       :variant="hidden ? 'outlined' : 'flat'"
       @click="hidden = !hidden"
@@ -23,7 +23,7 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount of raw resources
+      <i class="mdi mdi-information" /> Shows the amount of raw resources
       consumed by all your factories.
     </p>
     <div v-if="allFactoryRawResources.length > 0">

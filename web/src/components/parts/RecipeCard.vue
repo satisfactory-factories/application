@@ -23,7 +23,7 @@
       <v-spacer />
       <v-btn
         color="primary"
-        prepend-icon="fas fa-industry"
+        prepend-icon="mdi mdi-factory"
         size="small"
         variant="flat"
         @click="showAddDialog = true"
@@ -83,7 +83,7 @@
           </span>
         </v-chip>
         <v-chip class="sf-chip consumption">
-          <i class="fas fa-bolt" />
+          <i class="mdi mdi-lightning-bolt" />
           <span class="ml-2">{{ formatMw(recipe.building.power) }}</span>
         </v-chip>
       </div>

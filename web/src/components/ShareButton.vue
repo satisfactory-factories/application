@@ -2,7 +2,7 @@
   <v-btn
     color="blue rounded"
     :disabled="creating"
-    icon="fas fa-share-alt"
+    icon="mdi mdi-share-variant"
     size="small"
     variant="flat"
     @click="createShareLink"
@@ -14,7 +14,7 @@
         <p class="mb-4">Annoyingly your device / browser doesn't support copying to clipboard automatically. Please copy the link below manually.</p>
         <v-text-field v-model="link" readonly />
         <div class="text-center">
-          <v-btn color="green" variant="flat" @click="copyLink(link)"><i class="fas fa-copy mr-2" />Copy</v-btn>
+          <v-btn color="green" variant="flat" @click="copyLink(link)"><i class="mdi mdi-content-copy mr-2" />Copy</v-btn>
         </div>
       </v-card-text>
     </v-card>

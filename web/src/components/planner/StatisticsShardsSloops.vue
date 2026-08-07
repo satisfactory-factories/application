@@ -19,7 +19,7 @@
     <v-btn
       class="ml-auto"
       color="primary"
-      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      :prepend-icon="hidden ? 'mdi mdi-eye' : 'mdi mdi-eye-off'"
       size="small"
       :variant="hidden ? 'outlined' : 'flat'"
       @click="hidden = !hidden"
@@ -27,7 +27,7 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows which factories use Power Shards and Somersloops in their building groups.
+      <i class="mdi mdi-information" /> Shows which factories use Power Shards and Somersloops in their building groups.
     </p>
     <v-row id="stats-shards-sloops" class="mt-1">
       <v-col
@@ -57,7 +57,7 @@
               >
                 <td>
                   <v-chip class="sf-chip small factory">
-                    <i class="fas fa-industry" />
+                    <i class="mdi mdi-factory" />
                     <b class="ml-2">{{ entry.factory.name }}</b>
                   </v-chip>
                 </td>

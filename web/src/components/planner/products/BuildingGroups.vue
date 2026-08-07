@@ -10,7 +10,7 @@
       :variant="item.buildingGroups.length === 1 || isEvenlyBalanced ? 'outlined' : 'flat'"
       @click="rebalance()"
     >
-      <i class="fas fa-balance-scale" />
+      <i class="mdi mdi-scale-balance" />
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
     </v-btn>
     <v-btn
@@ -21,7 +21,7 @@
       :variant="correct || over ? 'outlined' : 'flat'"
       @click="remainderToLast(item, type, factory)"
     >
-      <i class="fas fa-balance-scale-right" />
+      <i class="mdi mdi-scale-unbalanced" />
       <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
     </v-btn>
     <v-btn
@@ -32,7 +32,7 @@
       :variant="correct || over ? 'outlined' : 'flat'"
       @click="remainderToNewGroup(item, type, factory)"
     >
-      <i class="fas fa-stream" />
+      <i class="mdi mdi-format-list-group" />
       <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
     </v-btn>
     <v-btn
@@ -44,7 +44,7 @@
 
       @click="resetClocks(item.buildingGroups)"
     >
-      <i class="fas fa-history" />
+      <i class="mdi mdi-history" />
       <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
     </v-btn>
     <v-btn
@@ -54,14 +54,14 @@
       variant="flat"
       @click="showTutorial"
     >
-      <v-icon icon="fas fa-graduation-cap" />
+      <v-icon icon="mdi mdi-school" />
       <span class="ml-2">Help</span>
     </v-btn>
   </div>
   <div v-if="!isAlwaysSynced" class="mb-2 d-flex align-center">
     <div class="mr-2">
       <span :id="`${factory.id}-${item.id}-buildings-status`" :class="{ 'text-green': correct, 'text-red': !correct }">
-        <i class="fas fa-building" />
+        <i class="mdi mdi-office-building" />
         <span class="ml-1">
           Effective Buildings: <b><span :id="`${factory.id}-${item.id}-effective-buildings`">
             {{ effectiveBuildings.toFixed(2) }}
@@ -80,13 +80,13 @@
     </div>
     <div :id="`${factory.id}-${item.id}-buildings-status-indicator`" class="ml-2" :isRed="over || under">
       <v-chip v-if="over" class="sf-chip red small">
-        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Over producing!</span>
+        <i class="mdi mdi-alert" /><span class="ml-2">Over producing!</span>
       </v-chip>
       <v-chip v-if="under" class="sf-chip red small">
-        <i class="fas fa-exclamation-triangle" /><span class="ml-2">Under producing!</span>
+        <i class="mdi mdi-alert" /><span class="ml-2">Under producing!</span>
       </v-chip>
       <v-chip v-if="!under && !over" class="sf-chip green small">
-        <i class="fas fa-check" /><span class="ml-2">Balanced</span>
+        <i class="mdi mdi-check" /><span class="ml-2">Balanced</span>
       </v-chip>
     </div>
     <div class="mr-2">|</div>
@@ -126,7 +126,7 @@
       color="primary"
       @click="addBuildingGroup(item, type, factory)"
     >
-      <i class="fas fa-plus" />
+      <i class="mdi mdi-plus" />
       <span class="ml-2">Add Building Group</span>
     </v-btn>
   </div>

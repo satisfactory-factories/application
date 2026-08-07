@@ -9,19 +9,19 @@
       >
         <v-row class="d-flex flex-wrap ma-0 align-center pa-2 ga-2">
           <v-spacer class="d-flex align-center text-body-1 pa-0 section-title">
-            <i class="fas fa-chart-line mr-2" />
+            <i class="mdi mdi-chart-line mr-2" />
             <span>Statistics</span>
           </v-spacer>
           <v-col class="d-flex align-center flex-wrap justify-end ga-1 pa-0" cols="auto">
             <tooltip :text="`Power generated: ${formatMw(totalPower.totalPowerProduced)}`">
               <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
-                <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" />
+                <i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-plus" />
                 <span class="ml-1">{{ formatGw(totalPower.totalPowerProduced) }}</span>
               </v-chip>
             </tooltip>
             <tooltip :text="`Power consumed: ${formatMw(totalPower.totalPowerConsumed)}`">
               <v-chip class="sf-chip x-small no-margin consumption" variant="tonal">
-                <i class="fas fa-bolt mr-1" /><i class="fas fa-minus" />
+                <i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-minus" />
                 <span class="ml-1">{{ formatGw(totalPower.totalPowerConsumed) }}</span>
               </v-chip>
             </tooltip>
@@ -31,10 +31,10 @@
                 :class="powerDeficit ? 'error' : 'success'"
                 variant="tonal"
               >
-                <i class="fas fa-balance-scale" />
+                <i class="mdi mdi-scale-balance" />
                 <span class="ml-1">{{ formatGw(powerDifference) }}</span>
-                <span v-if="hasTarget" class="ml-1"><i class="fas fa-bullseye" /></span>
-                <span v-else class="ml-1"><i class="fas fa-check-square" /></span>
+                <span v-if="hasTarget" class="ml-1"><i class="mdi mdi-bullseye" /></span>
+                <span v-else class="ml-1"><i class="mdi mdi-checkbox-marked" /></span>
               </v-chip>
             </tooltip>
           </v-col>
@@ -50,7 +50,7 @@
       >
         <v-row class="d-flex flex-nowrap ma-0 align-center">
           <v-spacer class="d-flex align-center text-body-1 pa-2">
-            <i class="fas fa-list mr-2" />
+            <i class="mdi mdi-format-list-bulleted mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
           <v-tooltip right>
@@ -60,7 +60,7 @@
                 cols="auto"
                 v-bind="props"
               >
-                <i class="d-inline fas fa-industry mr-1" />
+                <i class="d-inline mdi mdi-factory mr-1" />
                 <span>{{ factories.length }}</span>
               </v-col>
             </template>
@@ -76,7 +76,7 @@
                 v-bind="props"
                 @click.stop="eventBus.emit('openSummaryFullscreen')"
               >
-                <i class="fas fa-expand-alt" />
+                <i class="mdi mdi-arrow-expand" />
               </v-col>
             </template>
             <span>Open fullscreen summary</span>
@@ -104,8 +104,8 @@
                  entry when something needs attention. The cells to the right stretch to match. -->
             <v-spacer class="d-flex flex-column justify-center text-body-1 pa-2">
               <div class="d-flex align-center">
-                <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-                <i class="fas fa-industry mr-2" />
+                <i class="mdi mdi-drag-horizontal-variant text-grey-darken-1 mr-2" />
+                <i class="mdi mdi-factory mr-2" />
                 <span>{{ truncateFactoryName(element.name) }}</span>
               </div>
               <factory-status-chips
@@ -124,7 +124,7 @@
                   @click="navigateToFactory(element.id, `${element.id}-tasks`)"
                   @click.stop
                 >
-                  <i class="d-inline fas fa-tasks mr-1" />
+                  <i class="d-inline mdi mdi-format-list-checks mr-1" />
                   <span>{{ countActiveTasks(element as Factory) }}</span>
                 </v-col>
               </template>
@@ -140,7 +140,7 @@
                   @click="navigateToFactory(element.id, `${element.id}-notes`)"
                   @click.stop
                 >
-                  <i class="d-inline fas fa-sticky-note" />
+                  <i class="d-inline mdi mdi-note" />
                 </v-col>
               </template>
               <span>See notes</span>
@@ -154,13 +154,13 @@
                   v-bind="props"
                 >
                   <div v-if="element.inSync" class="d-inline">
-                    <i class="fas fa-check" />
+                    <i class="mdi mdi-check" />
                   </div>
                   <div v-if="element.inSync === false" class="d-inline">
-                    <i class="fas fa-times" />
+                    <i class="mdi mdi-close" />
                   </div>
                   <div v-if="element.inSync === null" class="d-inline">
-                    <i class="fas fa-question" />
+                    <i class="mdi mdi-help" />
                   </div>
                 </v-col>
               </template>
@@ -182,7 +182,7 @@
     <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
-        prepend-icon="fas fa-plus"
+        prepend-icon="mdi mdi-plus"
         ripple
         @click="createFactory"
       >

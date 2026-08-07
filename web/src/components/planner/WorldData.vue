@@ -22,7 +22,7 @@
               />
               <!-- <p>{{ building.name }}</p> -->
             </div>
-            <v-icon icon="fas fa-arrow-right" />
+            <v-icon icon="mdi mdi-arrow-right" />
             <div style="display: flex;flex-direction: column;gap: 8px;">
               <div v-for="product in building.products" :key="product.id">
                 <game-asset
@@ -65,7 +65,7 @@
       <!-- the icon does not seem to load properly -->
       <v-btn
         class="close"
-        icon="fas fa-xmark"
+        icon="mdi mdi-close"
         size="small"
         title="Close"
         @click="close"

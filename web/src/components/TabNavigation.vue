@@ -4,7 +4,7 @@
       <v-btn
         v-if="lgAndUp"
         class="mx-1 sidebar-toggle"
-        prepend-icon="fas fa-bars"
+        prepend-icon="mdi mdi-menu"
         variant="flat"
         @click="toggleSidebar()"
       >{{ sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar' }}</v-btn>
@@ -33,7 +33,7 @@
               v-if="isCurrentTab(index)"
               :key="`${isEditingName}`"
               class="ml-2 tab-action"
-              :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
+              :icon="`mdi ${isEditingName ? 'mdi-check': 'mdi-pencil'}`"
               size="x-small"
               variant="text"
               @click="onClickEditTabName"
@@ -42,7 +42,7 @@
         </v-tabs>
         <v-btn
           class="tab-action"
-          icon="fas fa-plus"
+          icon="mdi mdi-plus"
           size="x-small"
           variant="text"
           @click="appStore.addTab()"
@@ -55,7 +55,7 @@
       <v-btn
         v-if="appStore.factoryTabs.length > 1"
         color="red rounded"
-        icon="fas fa-trash"
+        icon="mdi mdi-delete"
         size="small"
         variant="flat"
         @click="confirmDelete() && appStore.removeCurrentTab()"

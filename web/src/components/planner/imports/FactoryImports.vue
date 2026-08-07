@@ -8,7 +8,7 @@
       <factory-status-chips detailed size="small" :statuses="sectionStatuses" />
     </div>
     <p v-show="helpText" class="text-body-2 mb-4">
-      <i class="fas fa-info-circle" /> Imports are the resources needed to produce the factory's products and ensure its satisfaction. To set up imports, you select another factory and choose one of its outputs. This creates a "request" for that output. The selected factory must fulfill this request, and you'll be notified if it cannot meet the demand. All available outputs are listed in the Outputs section of the factory you choose.
+      <i class="mdi mdi-information" /> Imports are the resources needed to produce the factory's products and ensure its satisfaction. To set up imports, you select another factory and choose one of its outputs. This creates a "request" for that output. The selected factory must fulfill this request, and you'll be notified if it cannot meet the demand. All available outputs are listed in the Outputs section of the factory you choose.
     </p>
     <div v-if="Object.keys(factory.rawResources).length > 0 || Object.keys(factory.parts).length > 0">
       <raw-resources :factory="factory" />
@@ -36,9 +36,9 @@
 
   const heading = computed(() => {
     switch (highestSeverity(sectionStatuses.value)) {
-      case 'problem': return { icon: 'fas fa-times', class: 'text-red' }
-      case 'warning': return { icon: 'fas fa-exclamation-triangle', class: 'text-status-warning' }
-      default: return { icon: 'fas fa-arrow-to-right', class: '' }
+      case 'problem': return { icon: 'mdi mdi-close', class: 'text-red' }
+      case 'warning': return { icon: 'mdi mdi-alert', class: 'text-status-warning' }
+      default: return { icon: 'mdi mdi-import', class: '' }
     }
   })
 </script>

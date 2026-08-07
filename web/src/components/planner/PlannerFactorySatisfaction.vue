@@ -80,11 +80,11 @@
 
   const heading = computed(() => {
     switch (highestSeverity(sectionStatuses.value)) {
-      case 'problem': return { icon: 'fas fa-times', class: 'text-red' }
-      case 'warning': return { icon: 'fas fa-exclamation-triangle', class: 'text-status-warning' }
+      case 'problem': return { icon: 'mdi mdi-close', class: 'text-red' }
+      case 'warning': return { icon: 'mdi mdi-alert', class: 'text-status-warning' }
       default: return hasParts.value
-        ? { icon: 'fas fa-check', class: '' }
-        : { icon: 'fas fa-question', class: '' }
+        ? { icon: 'mdi mdi-check', class: '' }
+        : { icon: 'mdi mdi-help', class: '' }
     }
   })
 

@@ -10,12 +10,12 @@
       @click="toggleBuildingGroupTray(item)"
     >
       <span class="mr-2">
-        <span v-if="item.buildingGroupsTrayOpen"><i class="fas fa-chevron-up" /></span>
-        <span v-else><i class="fas fa-chevron-down" /></span>
+        <span v-if="item.buildingGroupsTrayOpen"><i class="mdi mdi-chevron-up" /></span>
+        <span v-else><i class="mdi mdi-chevron-down" /></span>
       </span>
-      <i class="fas fa-layer-group" />
+      <i class="mdi mdi-layers" />
       <span v-if="item.buildingGroupsHaveProblem" class="ml-2">
-        <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
+        <i class="mdi mdi-alert" /> Building Groups have a problem!
       </span>
       <span v-else class="ml-2">
         {{ item.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ item.buildingGroups.length }})

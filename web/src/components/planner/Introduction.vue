@@ -21,11 +21,11 @@
         <div class="py-2 mb-4 border-t-md border-b-md rounded">
           <p class="text-h5">Enough yapping, how does it work?</p>
           <ul class="ml-4 mb-4">
-            <li>Firstly you create a <i class="fas fa-industry mr-2  fa-fw" /><b>Factory</b> (and give it a name!).</li>
-            <li><i class="fas fa-conveyor-belt-alt mr-2 fa-fw" /><b>Products</b>: is what the factory is intending to produce (or to produce internally, these will be marked as <v-chip color="green" size="small">internal</v-chip>).</li>
-            <li><i class="fas fa-arrow-to-right mr-2 fa-fw" /><b>Imports</b>: is where you are bringing in items needed for production. These use the <i class="fa fa-truck-container mr-2" /><b>Exports</b> of other factories.</li>
-            <li><i class="fas fa-check mr-2 fa-fw" /><b>Satisfaction</b>: informs you if you're short of inputs or <v-chip color="green" size="small">internal</v-chip> production to satisfy the factory's production requirements.</li>
-            <li><i class="fa fa-truck-container mr-2 fa-fw" /><b>Exports</b>: any items after internal production is factored in, are listed as Exports ready to be shipped to other factories.</li>
+            <li>Firstly you create a <i class="mdi mdi-factory mr-2 " /><b>Factory</b> (and give it a name!).</li>
+            <li><i class="mdi mdi-cog-transfer mr-2" /><b>Products</b>: is what the factory is intending to produce (or to produce internally, these will be marked as <v-chip color="green" size="small">internal</v-chip>).</li>
+            <li><i class="mdi mdi-import mr-2" /><b>Imports</b>: is where you are bringing in items needed for production. These use the <i class="mdi mdi-export mr-2" /><b>Exports</b> of other factories.</li>
+            <li><i class="mdi mdi-check mr-2" /><b>Satisfaction</b>: informs you if you're short of inputs or <v-chip color="green" size="small">internal</v-chip> production to satisfy the factory's production requirements.</li>
+            <li><i class="mdi mdi-export mr-2" /><b>Exports</b>: any items after internal production is factored in, are listed as Exports ready to be shipped to other factories.</li>
           </ul>
           <p class="mb-2">Factories that are:</p>
           <ul class="ml-4 mb-2">
@@ -45,18 +45,18 @@
       <v-card-actions>
         <template v-if="source === 'planner'">
           <v-btn color="blue" @click="close">
-            <i class="fas fa-file" /><span class="ml-2">Start with an empty plan</span>
+            <i class="mdi mdi-file" /><span class="ml-2">Start with an empty plan</span>
           </v-btn>
           <v-btn color="green" variant="elevated" @click="setupDemo">
-            <i class="fas fa-list" /><span class="ml-2">Start with a demo plan</span>
+            <i class="mdi mdi-format-list-bulleted" /><span class="ml-2">Start with a demo plan</span>
           </v-btn>
         </template>
         <template v-if="source === 'changelog'">
           <v-btn color="green" href="/?setupDemo=true" variant="elevated">
-            <i class="fas fa-list" /><span class="ml-2">Open Demo</span>
+            <i class="mdi mdi-format-list-bulleted" /><span class="ml-2">Open Demo</span>
           </v-btn>
           <v-btn color="blue" variant="elevated" @click="close">
-            <i class="fas fa-check" /><span class="ml-2">Close</span>
+            <i class="mdi mdi-check" /><span class="ml-2">Close</span>
           </v-btn>
         </template>
       </v-card-actions>

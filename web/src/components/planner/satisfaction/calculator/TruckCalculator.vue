@@ -1,10 +1,10 @@
 <template>
   <div class="d-flex align-center justify-center mb-4">
     <span v-if="timer === 0" class="mr-2">
-      <v-icon icon="fas fa-tire-rugged" />
+      <v-icon icon="mdi mdi-tire" />
     </span>
     <span v-if="timer > 0" class="mr-2">
-      <v-icon icon="fas fa-tire-rugged fa-spin" />
+      <v-icon icon="mdi mdi-tire mdi-spin" />
     </span>
     <v-number-input
       v-model="truckTime"

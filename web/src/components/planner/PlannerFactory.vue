@@ -5,7 +5,7 @@
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
             <div class="text-h4 text-md-h5">
-              <i class="fas fa-industry" />
+              <i class="mdi mdi-factory" />
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
@@ -25,21 +25,21 @@
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
-                  <i class="fas fa-tasks" />
+                  <i class="mdi mdi-format-list-checks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
                 <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
-                  <i class="fas fa-sticky-note" />
+                  <i class="mdi mdi-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
                 <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
-                  <i class="fas fa-check-square" />
+                  <i class="mdi mdi-checkbox-marked" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
                   <v-btn
@@ -49,13 +49,13 @@
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
                   >
-                    <i class="fas fa-times" />
+                    <i class="mdi mdi-close" />
                   </v-btn>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
                 <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
-                  <i class="fas fa-times-square" />
+                  <i class="mdi mdi-close-box" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
                   <v-btn
@@ -65,13 +65,13 @@
                     title="Reset sync status"
                     @click.stop="resetSyncState(factory)"
                   >
-                    <i class="fas fa-times" />
+                    <i class="mdi mdi-close" />
                   </v-btn>
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
                 <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
-                  <i class="fas fa-question" />
+                  <i class="mdi mdi-help" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
                 </v-chip>
@@ -85,8 +85,8 @@
                   class="sf-chip small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
-                  <i class="fas fa-bolt" />
-                  <i class="fas" :class="factoryPowerDifference > 0 ? 'fa-plus' : 'fa-minus'" />
+                  <i class="mdi mdi-lightning-bolt" />
+                  <i class="mdi" :class="factoryPowerDifference > 0 ? 'mdi-plus' : 'mdi-minus'" />
                   <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
@@ -112,7 +112,7 @@
               class="mr-2 rounded"
               :color="factory.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
               :disabled="factory.displayOrder === 0"
-              icon="fas fa-arrow-up"
+              icon="mdi mdi-arrow-up"
               size="small"
               title="Move Factory Up"
               variant="outlined"
@@ -122,7 +122,7 @@
               class="mr-2 rounded"
               :color="factory.displayOrder === totalFactories - 1 ? 'grey-darken-3' : 'primary'"
               :disabled="factory.displayOrder === totalFactories - 1"
-              icon="fas fa-arrow-down"
+              icon="mdi mdi-arrow-down"
               size="small"
               title="Move Factory Down"
               variant="outlined"
@@ -132,7 +132,7 @@
               v-show="!factory.hidden"
               class="mr-2 rounded"
               color="secondary"
-              icon="fas fa-compress-alt"
+              icon="mdi mdi-arrow-collapse"
               size="small"
               title="Collapse Factory"
               variant="outlined"
@@ -142,7 +142,7 @@
               v-show="factory.hidden"
               class="mr-2 rounded"
               color="secondary"
-              icon="fas fa-expand-alt"
+              icon="mdi mdi-arrow-expand"
               size="small"
               title="Expand Factory"
               variant="outlined"
@@ -151,7 +151,7 @@
             <v-btn
               class="mr-2"
               color="orange rounded"
-              icon="fas fa-copy"
+              icon="mdi mdi-content-copy"
               size="small"
               title="Copy Factory"
               variant="outlined"
@@ -159,7 +159,7 @@
             />
             <v-btn
               color="red rounded"
-              icon="fas fa-trash"
+              icon="mdi mdi-delete"
               size="small"
               title="Delete Factory"
               variant="outlined"
@@ -223,7 +223,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(inputFactoryId)"
               >
-                <i class="fas fa-industry ml-1" />
+                <i class="mdi mdi-factory ml-1" />
                 <span class="mx-2">
                   <b>{{ findFactory(inputFactoryId).name }}</b>
                 </span>
@@ -247,7 +247,7 @@
                 v-if="Object.keys(factory.rawResources).length > 0"
                 class="factory-group-chip"
               >
-                <i class="fas fa-hard-hat ml-1" />
+                <i class="mdi mdi-hard-hat ml-1" />
                 <span class="mx-2">
                   <b>Raw Resources</b>
                 </span>
@@ -318,7 +318,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(dependant)"
               >
-                <i class="fas fa-industry ml-1" />
+                <i class="mdi mdi-factory ml-1" />
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>

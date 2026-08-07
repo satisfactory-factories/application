@@ -14,7 +14,7 @@
             color="primary"
           >
             <template #prepend>
-              <i class="fas fa-industry mr-3" />
+              <i class="mdi mdi-factory mr-3" />
             </template>
             <v-list-item-title>
               {{ targetFactory.name }}
@@ -42,7 +42,7 @@
                   <span>Adding...</span>
                 </template>
                 <template v-else>
-                  <i class="fas fa-plus" /><span class="ml-1">Add</span>
+                  <i class="mdi mdi-plus" /><span class="ml-1">Add</span>
                 </template>
               </v-btn>
             </template>

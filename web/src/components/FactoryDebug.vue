@@ -6,7 +6,7 @@
         v-bind="activatorProps"
         class="mr-2 rounded"
         color="primary"
-        icon="fas fa-bug"
+        icon="mdi mdi-bug"
         ripple
         size="small"
         variant="flat"
@@ -16,7 +16,7 @@
         v-bind="activatorProps"
         class="mr-2"
         color="primary"
-        prepend-icon="fas fa-bug"
+        prepend-icon="mdi mdi-bug"
         ripple
         variant="flat"
       >
@@ -33,27 +33,27 @@
         <v-card-actions class="sticky">
           <v-btn
             color="yellow"
-            prepend-icon="fas fa-file"
+            prepend-icon="mdi mdi-file"
             text="Replace from Clipboard"
             @click="replaceWithClipboard(subject)"
           />
           <v-btn
             v-if="!isCopied"
             color="green"
-            prepend-icon="fas fa-file"
+            prepend-icon="mdi mdi-file"
             text="Copy data"
             @click="clipboard(subject)"
           />
           <v-btn
             v-if="isCopied"
             color="green"
-            prepend-icon="fas fa-file"
+            prepend-icon="mdi mdi-file"
             text="Copied!"
             @click="clipboard(subject)"
           />
           <v-btn
             color="primary"
-            prepend-icon="fas fa-times"
+            prepend-icon="mdi mdi-close"
             text="Close"
 
             @click="isActive.value = false"

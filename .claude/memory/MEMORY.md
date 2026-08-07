@@ -16,7 +16,8 @@
 - [Color system](color-system.md) — semantic colours live in utils/colors.ts → --sf-* CSS vars; use sfColors / semantic sf-chip classes, never new literal hexes
 - [Verify: tab navigation](verify-tab-navigation.md) — puppeteer recipe for adding/switching factory tabs (:scope > add btn; factory .v-tabs = the one without "Change Log")
 - [Verify: export calculator](verify-export-calculator.md) — open the tray via export chips w/ '/min' text (not the calc button); scope belt selectors to .belt-section
-- [FontAwesome dynamic icons](fontawesome-dynamic-icons.md) — FA SVG replacement detaches `<i>`; toggle a wrapper span, never `:class`-flip an icon
+- [Icon library choice](icon-library-choice.md) — why the planner runs MDI, and the conveyor-belt and Discord gaps it doesn't cover
+- [FontAwesome dynamic icons](fontawesome-dynamic-icons.md) — obsolete: MDI is a webfont, so `:class`-flipping an icon now works fine
 - [Rendering rework + loader intent](rendering-rework-loader-intent.md) — planned on-select factory rendering; loader should track calc not render; don't micro-opt the 75ms stagger before that lands
 - [Verify: colour iteration](verify-color-iteration.md) — compare style candidates by editing the file through HMR; DOM overrides get clobbered by Vue re-renders
 - [Perf: devtools sync watcher](perf-devtools-sync-watcher.md) — the add-factory hang was Pinia devtools' deep+sync $subscribe (O(n²) traverse per write); fixed by the clone-run-commit engine

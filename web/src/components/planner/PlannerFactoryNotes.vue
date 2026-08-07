@@ -1,7 +1,7 @@
 <template>
   <v-card class="factory-card sub-card">
     <v-card-title>
-      <i class="fas fa-sticky-note" />
+      <i class="mdi mdi-note" />
       <span class="text-h5 ml-3">Notes</span>
     </v-card-title>
     <v-card-text>

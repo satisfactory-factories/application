@@ -22,7 +22,7 @@
         v-if="producedIn.length"
         class="ml-3"
         color="primary"
-        prepend-icon="fas fa-check"
+        prepend-icon="mdi mdi-check"
         size="small"
         variant="tonal"
       >
@@ -38,7 +38,7 @@
     <v-expansion-panel-text>
       <div v-if="producedIn.length" class="mb-4">
         <h3 class="text-subtitle-1 font-weight-bold mb-2">
-          <i class="fas fa-industry" />
+          <i class="mdi mdi-factory" />
           <span class="ml-2">Produced in your plan by</span>
         </h3>
         <v-chip
@@ -50,7 +50,7 @@
           :title="`Go to ${factory.name} in the Planner`"
           @click="jumpToFactory(factory.id)"
         >
-          <i class="fas fa-industry" />
+          <i class="mdi mdi-factory" />
           <span class="ml-2">
             <b>{{ factory.name }}</b>: {{ formatNumber(factory.amount) }}/min
           </span>
@@ -59,7 +59,7 @@
       <v-expansion-panels v-if="part.standardRecipes.length" v-model="producedByOpen" class="mb-3" variant="accordion">
         <v-expansion-panel class="part-accordion" value="produced-by">
           <v-expansion-panel-title class="text-subtitle-1">
-            <i class="fas fa-hat-chef" />
+            <i class="mdi mdi-chef-hat" />
             <span class="ml-2 font-weight-bold">Produced by ({{ part.standardRecipes.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -78,13 +78,13 @@
         </v-expansion-panel>
       </v-expansion-panels>
       <p v-else class="text-body-2 text-medium-emphasis mb-2">
-        <i class="fas fa-mountain" />
+        <i class="mdi mdi-image-filter-hdr" />
         <span class="ml-2">Not produced by any recipe (raw resource or collectible).</span>
       </p>
       <v-expansion-panels v-if="part.alternateRecipes.length" class="mb-3" variant="accordion">
         <v-expansion-panel class="part-accordion">
           <v-expansion-panel-title class="text-subtitle-1">
-            <i class="fas fa-flask" />
+            <i class="mdi mdi-flask" />
             <span class="ml-2 font-weight-bold">Alternate Recipes ({{ part.alternateRecipes.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -105,7 +105,7 @@
       <v-expansion-panels v-if="part.usedIn.length" variant="accordion">
         <v-expansion-panel class="part-accordion">
           <v-expansion-panel-title class="text-subtitle-1">
-            <i class="fas fa-cogs" />
+            <i class="mdi mdi-cogs" />
             <span class="ml-2 font-weight-bold">Used in ({{ part.usedIn.length }})</span>
           </v-expansion-panel-title>
           <v-expansion-panel-text>

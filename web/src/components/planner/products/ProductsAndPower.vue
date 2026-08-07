@@ -2,13 +2,13 @@
   <div>
     <div class="d-flex align-center flex-wrap mb-4 ga-2">
       <h1 class="text-h5" :class="{ 'text-red': sectionStatuses.length > 0 }">
-        <i :class="sectionStatuses.length ? 'fas fa-times' : 'fas fa-conveyor-belt-alt'" />
+        <i :class="sectionStatuses.length ? 'mdi mdi-close' : 'mdi mdi-cog-transfer'" />
         <span class="ml-3">Products &amp; Power Generators</span>
       </h1>
       <factory-status-chips detailed size="small" :statuses="sectionStatuses" />
     </div>
     <p v-show="helpText" class="text-body-2 mb-4">
-      <i class="fas fa-info-circle" /> Products that are created within the factory. Products are first
+      <i class="mdi mdi-information" /> Products that are created within the factory. Products are first
       used to fulfil recipes internally, and any surplus is then available for Export.<br>
       e.g. if you add 200 Iron Rods and also 100 Screws, you'd have 100 surplus Rods remaining used as an
       Export (and the Screws as a end product).<br>
@@ -18,7 +18,7 @@
     <product :factory="factory" :help-text="helpText" />
     <v-btn
       color="primary mr-2 mt-n1"
-      prepend-icon="fas fa-cube"
+      prepend-icon="mdi mdi-cube"
       ripple
       variant="flat"
       @click="addEmptyProduct(factory)"
@@ -28,7 +28,7 @@
     <power-producer :factory="factory" :help-text="helpText" />
     <v-btn
       color="yellow-darken-3 mr-2 mt-n1"
-      prepend-icon="fas fa-bolt"
+      prepend-icon="mdi mdi-lightning-bolt"
       ripple
       variant="flat"
       @click="addEmptyPowerProducer(factory)"

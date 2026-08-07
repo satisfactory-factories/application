@@ -22,6 +22,7 @@ declare module 'vue' {
     BuildingGroupTutorial: typeof import('./components/planner/products/BuildingGroupTutorial.vue')['default']
     Copyright: typeof import('./components/Copyright.vue')['default']
     DebounceSpinner: typeof import('./components/planner/DebounceSpinner.vue')['default']
+    DiscordIcon: typeof import('./components/DiscordIcon.vue')['default']
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
     ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']

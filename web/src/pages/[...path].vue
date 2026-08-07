@@ -9,10 +9,10 @@
         </p>
         <div class="d-flex flex-wrap ga-2">
           <v-btn color="primary" to="/">
-            <i class="fas fa-industry mr-2" />Go to the planner
+            <i class="mdi mdi-factory mr-2" />Go to the planner
           </v-btn>
           <v-btn class="border" to="/parts">
-            <i class="fas fa-cubes mr-2" />Browse parts
+            <i class="mdi mdi-cube-outline mr-2" />Browse parts
           </v-btn>
         </div>
       </v-card-text>

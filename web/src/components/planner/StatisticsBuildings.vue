@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-building" />
+      <i class="mdi mdi-office-building" />
       <span class="ml-3">Building Summary</span>
     </h4>
     <v-chip
@@ -15,7 +15,7 @@
     <v-btn
       class="ml-auto"
       color="primary"
-      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      :prepend-icon="hidden ? 'mdi mdi-eye' : 'mdi mdi-eye-off'"
       size="small"
       :variant="hidden ? 'outlined' : 'flat'"
       @click="hidden = !hidden"
@@ -23,7 +23,7 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount buildings of each
+      <i class="mdi mdi-information" /> Shows the amount buildings of each
       type in all your factories.
     </p>
     <div v-if="totalBuildingsByType.length > 0">

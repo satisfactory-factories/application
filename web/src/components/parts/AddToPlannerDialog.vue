@@ -14,7 +14,7 @@
             color="primary"
           >
             <template #prepend>
-              <i class="fas fa-industry mr-3" />
+              <i class="mdi mdi-factory mr-3" />
             </template>
             <v-list-item-title>
               {{ factory.name }}
@@ -41,7 +41,7 @@
               <v-btn
                 color="primary"
                 :disabled="adding !== null && adding !== factory.id"
-                icon="fas fa-plus"
+                icon="mdi mdi-plus"
                 :loading="adding === factory.id"
                 size="small"
                 :title="`Add to ${factory.name}`"
@@ -61,7 +61,7 @@
           color="primary"
           :disabled="adding !== null && adding !== 'new'"
           :loading="adding === 'new'"
-          prepend-icon="fas fa-plus"
+          prepend-icon="mdi mdi-plus"
           variant="tonal"
           @click="addToNewFactory"
         >
@@ -73,7 +73,7 @@
         </v-btn>
         <v-btn
           color="green"
-          prepend-icon="fas fa-ruler-triangle"
+          prepend-icon="mdi mdi-ruler-square"
           variant="flat"
           @click="goToPlanner"
         >

@@ -7,20 +7,20 @@
     <v-card class="factory-card rounded-0">
       <v-row class="header flex-grow-0">
         <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
-          <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
+          <i class="mdi mdi-format-list-bulleted" /><span class="ml-3">Factories Summary</span>
           <v-chip
             v-if="factories.length > 0"
             class="sf-chip factory ml-3"
             variant="tonal"
           >
-            <i class="fas fa-industry" />
+            <i class="mdi mdi-factory" />
             <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
           </v-chip>
         </v-col>
         <v-col class="text-right" cols="4">
           <v-btn
             color="primary"
-            prepend-icon="fas fa-compress-alt"
+            prepend-icon="mdi mdi-arrow-collapse"
             variant="outlined"
             @click="expanded = false"
           >Close
@@ -38,14 +38,14 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
-            <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
+            <i class="mdi mdi-format-list-bulleted" /><span class="ml-3">Factories Summary</span>
             <v-chip
               v-if="factories.length > 0"
               id="factory-summary-count"
               class="sf-chip factory ml-3"
               variant="tonal"
             >
-              <i class="fas fa-industry" />
+              <i class="mdi mdi-factory" />
               <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
             </v-chip>
           </v-col>
@@ -54,7 +54,7 @@
               v-show="!hidden"
               class="mr-2"
               color="primary"
-              prepend-icon="fas fa-expand-alt"
+              prepend-icon="mdi mdi-arrow-expand"
               variant="outlined"
               @click="expanded = true"
             >Expand
@@ -62,7 +62,7 @@
             <v-btn
               v-show="!hidden"
               color="primary"
-              prepend-icon="fas fa-eye-slash"
+              prepend-icon="mdi mdi-eye-off"
               variant="flat"
               @click="toggleVisibility"
             >Hide
@@ -70,7 +70,7 @@
             <v-btn
               v-show="hidden"
               color="primary"
-              prepend-icon="fas fa-eye"
+              prepend-icon="mdi mdi-eye"
               variant="outlined"
               @click="toggleVisibility"
             >Show
@@ -79,7 +79,7 @@
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
           <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
+            <i class="mdi mdi-information" /> Showing an at-a-glance overview of each factory.
             Hover over a chip for the full details.
           </p>
 
@@ -104,19 +104,19 @@
               <thead>
                 <tr>
                   <th class="text-left text-h6 border-e-md factory-column" scope="row">
-                    <i class="fas fa-industry" /><span class="ml-2">Factory</span>
+                    <i class="mdi mdi-factory" /><span class="ml-2">Factory</span>
                   </th>
                   <th class="text-left text-h6 border-e-md" scope="row">
-                    <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
+                    <i class="mdi mdi-cog-transfer" /><span class="ml-2">Products</span>
                   </th>
                   <th class="text-left text-h6 border-e-md" scope="row">
-                    <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
+                    <i class="mdi mdi-check" /><span class="ml-2">Satisfaction</span>
                   </th>
                   <th class="text-left text-h6 border-e-md" scope="row">
-                    <i class="fas fa-arrow-to-right" /><span class="ml-2">Imports</span>
+                    <i class="mdi mdi-import" /><span class="ml-2">Imports</span>
                   </th>
                   <th class="text-left text-h6" scope="row">
-                    <i class="fas fa-truck-container" /><span class="ml-2">Exports</span>
+                    <i class="mdi mdi-export" /><span class="ml-2">Exports</span>
                   </th>
                 </tr>
               </thead>
@@ -131,7 +131,7 @@
                   <td class="border-e-md factory-column">
                     <tooltip :text="statusTooltip(factory)">
                       <v-chip class="sf-chip summary-chip factory-chip factory">
-                        <i class="fas fa-industry" />
+                        <i class="mdi mdi-factory" />
                         <b class="ml-2">{{ factory.name }}</b>
                       </v-chip>
                     </tooltip>
@@ -161,7 +161,7 @@
                   <td class="border-e-md">
                     <div class="cell-chips justify-center">
                       <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
-                        <i class="fas fa-check" />
+                        <i class="mdi mdi-check" />
                         <b class="ml-2">Satisfied</b>
                       </v-chip>
                       <tooltip
@@ -207,7 +207,7 @@
                               class="flow-factory"
                               @click.stop="goToFactory(source.factoryId)"
                             >
-                              <i class="fas fa-arrow-to-right" /> {{ getFactoryName(source.factoryId) }}
+                              <i class="mdi mdi-import" /> {{ getFactoryName(source.factoryId) }}
                             </div>
                           </div>
                         </v-chip>
@@ -239,7 +239,7 @@
                               class="flow-factory"
                               @click.stop="goToFactory(destination.factoryId)"
                             >
-                              <i class="fas fa-truck-container" /> {{ getFactoryName(destination.factoryId) }}
+                              <i class="mdi mdi-export" /> {{ getFactoryName(destination.factoryId) }}
                             </div>
                           </div>
                         </v-chip>

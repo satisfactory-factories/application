@@ -9,13 +9,13 @@
         v-model="searchTerm"
         clearable
         label="Search parts"
-        prepend-inner-icon="fas fa-search"
+        prepend-inner-icon="mdi mdi-magnify"
       />
       <div class="mb-4">
         <v-chip
           class="mr-2"
           color="primary"
-          prepend-icon="fas fa-industry"
+          prepend-icon="mdi mdi-factory"
           :variant="showProducedOnly ? 'flat' : 'outlined'"
           @click="showProducedOnly = !showProducedOnly"
         >

@@ -1,10 +1,10 @@
 <template>
   <h4 class="text-h4">
-    <i class="fas fa-conveyor-belt-alt" />
+    <i class="mdi mdi-cog-transfer" />
     <span class="ml-3">Produced Items</span>
   </h4>
   <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle" /> Shows all the items produced by all
+    <i class="mdi mdi-information" /> Shows all the items produced by all
     your factories.
   </p>
 

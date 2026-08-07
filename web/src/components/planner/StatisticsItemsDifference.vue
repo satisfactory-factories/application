@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-warehouse" />
+      <i class="mdi mdi-warehouse" />
       <span class="ml-3">Product Surplus & Deficit</span>
     </h4>
     <v-chip
@@ -24,7 +24,7 @@
     <v-btn
       class="ml-auto"
       color="primary"
-      :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      :prepend-icon="hidden ? 'mdi mdi-eye' : 'mdi mdi-eye-off'"
       size="small"
       :variant="hidden ? 'outlined' : 'flat'"
       @click="hidden = !hidden"
@@ -32,7 +32,7 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount of surplus or
+      <i class="mdi mdi-information" /> Shows the amount of surplus or
       deficit of items you have in your factory. These are items that
       either need to be produced more (in red), or items that can be
       stored or sunk (in green)!

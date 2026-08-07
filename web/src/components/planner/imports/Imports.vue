@@ -12,7 +12,7 @@
         class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
-          <i class="fas fa-industry mr-2" style="width: 32px; height: 32px;" />
+          <i class="mdi mdi-factory mr-2" style="width: 32px; height: 32px;" />
           <!-- This is being watched for changes to update the old factory -->
           <v-autocomplete
             v-model.number="input.factoryId"
@@ -27,7 +27,7 @@
         </div>
         <div class="input-row d-flex align-center">
           <span v-show="!input.outputPart" class="mr-2">
-            <i class="fas fa-cube" style="width: 32px; height: 32px" />
+            <i class="mdi mdi-cube" style="width: 32px; height: 32px" />
           </span>
           <span v-if="input.outputPart" class="mr-2">
             <game-asset
@@ -71,7 +71,7 @@
             v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
             class="rounded mr-2"
             color="yellow"
-            prepend-icon="fas fa-arrow-down"
+            prepend-icon="mdi mdi-arrow-down"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
           >Trim</v-btn>
@@ -79,7 +79,7 @@
             v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
             class="rounded mr-2"
             color="green"
-            prepend-icon="fas fa-arrow-up"
+            prepend-icon="mdi mdi-arrow-up"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
           >Satisfy</v-btn>
@@ -87,7 +87,7 @@
             class="rounded"
             color="primary"
             :disabled="!input.factoryId"
-            prepend-icon="fas fa-industry"
+            prepend-icon="mdi mdi-factory"
             size="default"
             variant="outlined"
             @click="navigateToFactory(input.factoryId)"
@@ -95,7 +95,7 @@
           <v-btn
             class="rounded ml-2"
             color="red"
-            icon="fas fa-trash"
+            icon="mdi mdi-delete"
             size="small"
             variant="outlined"
             @click="deleteInput(inputIndex, factory)"
@@ -103,11 +103,11 @@
         </div>
         <div class="input-row d-flex align-center">
           <v-chip v-if="input.amount === 0" class="sf-chip red small">
-            <i class="fas fa-exclamation-triangle" />
+            <i class="mdi mdi-alert" />
             <span class="ml-2">No amount set!</span>
           </v-chip>
           <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small orange">
-            <i class="fas fa-exclamation-triangle" />
+            <i class="mdi mdi-alert" />
             <span class="ml-2">Redundant!</span>
           </v-chip>
         </div>
@@ -118,7 +118,7 @@
         v-show="Object.keys(factory.parts).length > 0"
         color="green"
         :disabled="ableToImport(factory) !== true"
-        prepend-icon="fas fa-dolly"
+        prepend-icon="mdi mdi-dolly"
         ripple
         :variant="ableToImport(factory) === true ? 'flat' : 'outlined'"
         @click="addEmptyInput(factory)"

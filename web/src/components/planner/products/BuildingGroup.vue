@@ -9,7 +9,7 @@
         :id="`${factory.id}-${group.id}-delete`"
         color="red rounded mr-1"
         :disabled="item.buildingGroups.length === 1"
-        icon="fas fa-trash"
+        icon="mdi mdi-delete"
         size="small"
         title="Delete Building Group"
         variant="outlined"
@@ -72,7 +72,7 @@
           />
           <span>%</span>
           <span v-if="updatingOverclock">
-            <v-icon>fas fa-sync fa-spin</v-icon>
+            <v-icon>mdi mdi-sync mdi-spin</v-icon>
           </span>
         </v-chip>
         <div class="underchip text-power-consumption">
@@ -80,8 +80,8 @@
             v-if="group.type !== ItemType.Power"
             class="d-inline-flex align-center"
           >
-            <i class="fas fa-bolt" />
-            <i class="fas fa-minus" />
+            <i class="mdi mdi-lightning-bolt" />
+            <i class="mdi mdi-minus" />
             <span :id="`${factory.id}-${group.id}-group-power`" class="ml-1">{{ formatMw(group.powerUsage) }}</span>
             <span v-if="groupHasVariablePower" :id="`${factory.id}-${group.id}-group-power-range`" class="ml-1">
               ({{ formatMw(group.powerUsageMin ?? 0) }} – {{ formatMw(group.powerUsageMax ?? 0) }})
@@ -222,7 +222,7 @@
             @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
           <span v-if="updatingPart === part.toString()">
-            <v-icon>fas fa-sync fa-spin</v-icon>
+            <v-icon>mdi mdi-sync mdi-spin</v-icon>
           </span>
         </v-chip>
         <div
@@ -265,7 +265,7 @@
             @update:model-value="updateGroupPartsDebounce(part.toString())"
           />
           <span v-if="updatingPart === part.toString()">
-            <v-icon>fas fa-sync fa-spin</v-icon>
+            <v-icon>mdi mdi-sync mdi-spin</v-icon>
           </span>
         </v-chip>
 
@@ -286,8 +286,8 @@
           class="sf-chip green ml-1"
           variant="tonal"
         >
-          <i class="fas fa-bolt" />
-          <i class="fas fa-plus" />
+          <i class="mdi mdi-lightning-bolt" />
+          <i class="mdi mdi-plus" />
           <span :id="`${factory.id}-${group.id}-power`" class="ml-2">
             {{ formatMw(group.powerProduced ?? 0) }}
           </span>

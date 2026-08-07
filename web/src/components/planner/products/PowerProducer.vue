@@ -8,7 +8,7 @@
       <v-btn
         :color="producer.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
         :disabled="producer.displayOrder === 0"
-        icon="fas fa-arrow-up"
+        icon="mdi mdi-arrow-up"
         size="small"
         variant="flat"
         @click="updatePowerProducerOrder('up', producer)"
@@ -16,14 +16,14 @@
       <v-btn
         :color="producer.displayOrder === factory.powerProducers.length - 1 ? 'grey-darken-3' : 'primary'"
         :disabled="producer.displayOrder === factory.powerProducers.length - 1"
-        icon="fas fa-arrow-down"
+        icon="mdi mdi-arrow-down"
         size="small"
         variant="flat"
         @click="updatePowerProducerOrder('down', producer)"
       />
       <v-btn
         color="red"
-        icon="fas fa-trash"
+        icon="mdi mdi-delete"
         size="small"
         variant="flat"
         @click="deletePowerProducer(producerIndex, factory)"
@@ -32,7 +32,7 @@
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
       <div class="input-row d-flex align-center">
         <span v-show="!producer.building" class="mr-2">
-          <i class="fas fa-building" style="width: 42px; height: 42px" />
+          <i class="mdi mdi-office-building" style="width: 42px; height: 42px" />
         </span>
         <span v-if="producer.building" class="mr-2">
           <game-asset
@@ -68,7 +68,7 @@
           />
         </span>
         <span v-else class="mr-2">
-          <i class="fas fa-burn" style="width: 42px; height: 42px" />
+          <i class="mdi mdi-fire" style="width: 42px; height: 42px" />
         </span>
         <v-autocomplete
           :id="`${factory.id}-${producer.id}-recipe`"
@@ -122,8 +122,8 @@
         class="align-self-center sf-chip green"
         variant="tonal"
       >
-        <i class="fas fa-bolt" />
-        <i class="fas fa-plus" />
+        <i class="mdi mdi-lightning-bolt" />
+        <i class="mdi mdi-plus" />
         <span class="ml-2">{{ formatMw(producer.powerAmount) }}</span>
         <template v-if="producerHasVariablePower(producer)">
           <span class="ml-1">({{ formatMw(producerPowerRange(producer).min) }} – {{ formatMw(producerPowerRange(producer).max) }})</span>

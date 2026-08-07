@@ -4,7 +4,7 @@
       <template #activator="{ props }">
         <span v-bind="props">
           <v-icon
-            icon="fas fa-info-circle"
+            icon="mdi mdi-information"
           />
         </span>
       </template>

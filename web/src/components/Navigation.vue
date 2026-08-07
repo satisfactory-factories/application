@@ -3,7 +3,7 @@
        construction-orange next to the logo and deep-orange tab accent. -->
   <v-toolbar class="main-header" :color="sfColors.header.color" dark :density="toolbarDensity">
     <v-btn v-if="mdAndDown" icon @click="toggleDrawer">
-      <i class="fa fa-bars" />
+      <i class="mdi mdi-menu" />
     </v-btn>
     <template v-else>
       <img alt="Site logo" class="ml-3 site-logo" src="/assets/img/SF.png" style="max-width: 48px;">
@@ -127,10 +127,10 @@
   })
 
   const tabItems = [
-    { title: 'Planner', icon: 'fas fa-ruler-triangle', href: '/' },
-    { title: 'Graph (WIP)', icon: 'fas fa-project-diagram', href: '/graph' },
-    { title: 'Parts & Recipes', icon: 'fas fa-hat-chef', href: '/parts' },
-    { title: 'Change Log', icon: 'fas fa-scroll', href: '/changelog' },
+    { title: 'Planner', icon: 'mdi mdi-ruler-square', href: '/' },
+    { title: 'Graph (WIP)', icon: 'mdi mdi-sitemap', href: '/graph' },
+    { title: 'Parts & Recipes', icon: 'mdi mdi-chef-hat', href: '/parts' },
+    { title: 'Change Log', icon: 'mdi mdi-script-text', href: '/changelog' },
   ]
 
   onMounted(async () => {

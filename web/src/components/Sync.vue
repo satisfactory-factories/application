@@ -17,23 +17,23 @@
   </v-dialog>
   <div class="my-4">
     <p v-if="!syncing">
-      <i class="fas fa-save" /><span class="ml-2 font-weight-bold">Last synced:</span> {{ lastSavedDisplay }}
+      <i class="mdi mdi-content-save" /><span class="ml-2 font-weight-bold">Last synced:</span> {{ lastSavedDisplay }}
     </p>
     <p v-else>
-      <i class="fas fa-sync fa-spin" /><span class="ml-2 font-weight-bold">Syncing...</span>
+      <i class="mdi mdi-sync mdi-spin" /><span class="ml-2 font-weight-bold">Syncing...</span>
     </p>
   </div>
 
   <v-btn
     color="orange"
     @click="confirmForceSync('This will delete your local data and pull it from the server. Continue?') && handleDataLoad(true)"
-  ><i class="fas fa-download mr-2" />Force Download</v-btn>
+  ><i class="mdi mdi-download mr-2" />Force Download</v-btn>
   <v-btn
     v-if="isDebugMode"
     class="ml-2"
     color="secondary"
     @click="handleOutOfSyncEvent"
-  ><i class="fas fa-bug mr-2" />Trigger OOS</v-btn>
+  ><i class="mdi mdi-bug mr-2" />Trigger OOS</v-btn>
 </template>
 
 <script lang="ts" setup>

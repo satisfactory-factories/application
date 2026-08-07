@@ -1,11 +1,11 @@
 <template>
   <!-- Rendered only while a recalc is pending: an always-mounted opacity-0 spinner
-       would keep its fa-spin animation ticking invisibly and reserve blank space
+       would keep its mdi-spin animation ticking invisibly and reserve blank space
        beside every input. The transition slides the slot open as the user types and
        slides it closed again once the recalculation lands. -->
   <transition name="debounce-slide">
     <span v-if="active" class="debounce-spinner">
-      <v-icon icon="fas fa-sync fa-spin" size="small" />
+      <v-icon icon="mdi mdi-sync mdi-spin" size="small" />
     </span>
   </transition>
 </template>

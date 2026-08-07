@@ -8,7 +8,7 @@
       <v-btn
         :color="product.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
         :disabled="product.displayOrder === 0"
-        icon="fas fa-arrow-up"
+        icon="mdi mdi-arrow-up"
         size="small"
         variant="flat"
         @click="updateProductOrder('up', product)"
@@ -16,7 +16,7 @@
       <v-btn
         :color="product.displayOrder === factory.products.length - 1 ? 'grey-darken-3' : 'primary'"
         :disabled="product.displayOrder === factory.products.length - 1"
-        icon="fas fa-arrow-down"
+        icon="mdi mdi-arrow-down"
         size="small"
         variant="flat"
         @click="updateProductOrder('down', product)"
@@ -24,7 +24,7 @@
       <v-btn
         :id="`${factory.id}-item-${productIndex}-delete`"
         color="red"
-        icon="fas fa-trash"
+        icon="mdi mdi-delete"
         size="small"
         variant="flat"
         @click="deleteProduct(productIndex, factory)"
@@ -33,7 +33,7 @@
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
       <div class="input-row d-flex align-center">
         <span v-show="!product.id" class="mr-2">
-          <i class="fas fa-cube" style="width: 32px; height: 32px" />
+          <i class="mdi mdi-cube" style="width: 32px; height: 32px" />
         </span>
         <span v-if="product.id" class="mr-2">
           <game-asset
@@ -58,7 +58,7 @@
         />
       </div>
       <div class="input-row d-flex align-center">
-        <i class="fas fa-hat-chef mr-2" style="width: 32px; height: 32px" />
+        <i class="mdi mdi-chef-hat mr-2" style="width: 32px; height: 32px" />
         <v-autocomplete
           v-model="product.recipe"
           :disabled="!product.id"
@@ -88,14 +88,14 @@
         v-show="shouldShowFix(product, factory) == 'deficit'"
         class="rounded align-self-center"
         color="green"
-        prepend-icon="fas fa-arrow-up"
+        prepend-icon="mdi mdi-arrow-up"
         @click="doFixProduct(product, factory)"
       >Satisfy</v-btn>
       <v-btn
         v-show="shouldShowFix(product, factory) == 'surplus'"
         class="rounded align-self-center"
         color="yellow"
-        prepend-icon="fas fa-arrow-down"
+        prepend-icon="mdi mdi-arrow-down"
         size="default"
         @click="doFixProduct(product, factory)"
       >Trim</v-btn>
@@ -175,8 +175,8 @@
           class="sf-chip consumption"
           variant="tonal"
         >
-          <i class="fas fa-bolt" />
-          <i class="fas fa-minus" />
+          <i class="mdi mdi-lightning-bolt" />
+          <i class="mdi mdi-minus" />
           <span class="ml-2">{{ productPowerConsumed(product) }}</span>
           <template v-if="productHasVariablePower(product)">
             <span class="ml-1">({{ formatMw(productPowerRange(product).min) }} – {{ formatMw(productPowerRange(product).max) }})</span>

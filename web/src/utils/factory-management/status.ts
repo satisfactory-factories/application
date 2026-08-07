@@ -97,7 +97,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'partShortage',
     severity: 'problem',
-    icon: 'fas fa-exclamation-circle',
+    icon: 'mdi mdi-alert-circle',
     chip: true,
     section: 'satisfaction',
     detail: 'This factory needs more of these parts than it can supply.',
@@ -112,7 +112,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'exportShortage',
     severity: 'problem',
-    icon: 'fas fa-truck-container',
+    icon: 'mdi mdi-export',
     chip: true,
     section: 'satisfaction',
     detail: 'Another factory is requesting more of these parts than this one supplies.',
@@ -126,7 +126,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'buildingGroupMismatch',
     severity: 'problem',
-    icon: 'fas fa-industry',
+    icon: 'mdi mdi-factory',
     chip: true,
     section: 'products',
     detail: 'The building groups on these items do not add up to the buildings the item needs.',
@@ -143,7 +143,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'outOfSync',
     severity: 'warning',
-    icon: 'fas fa-times-square',
+    icon: 'mdi mdi-close-box',
     chip: true,
     // No section: the card already carries a full sync control, so this only ever renders in the
     // sidebar, where there is nothing but a 30px tick/cross cell.
@@ -154,7 +154,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'redundantImport',
     severity: 'warning',
-    icon: 'fas fa-arrow-to-right',
+    icon: 'mdi mdi-import',
     chip: true,
     section: 'imports',
     detail: 'These parts are already covered by internal production or by another import row.',
@@ -166,7 +166,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'duplicateImport',
     severity: 'warning',
-    icon: 'fas fa-clone',
+    icon: 'mdi mdi-content-duplicate',
     chip: true,
     section: 'imports',
     // The second row's amount is silently ignored, which is the surprising part.

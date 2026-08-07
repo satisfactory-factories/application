@@ -34,7 +34,6 @@
     "vuetify": "^4.0.0"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^7.0.0",
     "@babel/types": "^8.0.0",
     "@pinia/testing": "^2.0.1",
     "@stylistic/eslint-plugin": "5.10.0",

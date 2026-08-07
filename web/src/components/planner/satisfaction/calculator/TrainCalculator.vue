@@ -1,10 +1,10 @@
 <template>
   <div class="d-flex align-center justify-center mb-4">
     <span v-if="timer === 0" class="mr-2">
-      <v-icon icon="fas fa-train" />
+      <v-icon icon="mdi mdi-train" />
     </span>
     <span v-if="timer > 0" class="mr-2">
-      <v-icon icon="fas fa-sync fa-spin" />
+      <v-icon icon="mdi mdi-sync mdi-spin" />
     </span>
     <v-number-input
       v-model="trainTime"

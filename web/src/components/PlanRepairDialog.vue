@@ -2,7 +2,7 @@
   <v-dialog v-model="isOpen" max-width="700" scrollable>
     <v-card>
       <v-card-title class="text-h6 py-4">
-        <i class="fas fa-wrench mr-2" />
+        <i class="mdi mdi-wrench mr-2" />
         <span>Plan data repaired</span>
       </v-card-title>
       <v-divider />
@@ -14,7 +14,7 @@
         </p>
         <div v-for="group in groupedRepairs" :key="group.factoryName" class="mb-4">
           <h3 class="text-h6 mb-1">
-            <i class="fas fa-industry mr-2" />
+            <i class="mdi mdi-factory mr-2" />
             <span>{{ group.factoryName }}</span>
           </h3>
           <ul class="repair-list">
@@ -25,7 +25,7 @@
                   — {{ repair.context }} ({{ repair.field }}):
                 </span>
                 <span class="repair-before">{{ repair.before }}</span>
-                <i class="fas fa-arrow-right mx-2" />
+                <i class="mdi mdi-arrow-right mx-2" />
                 <span class="repair-after">{{ repair.after }}</span>
               </template>
               <template v-else>{{ repair.summary }}</template>

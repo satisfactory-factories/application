@@ -70,7 +70,7 @@
         <div class="mt-4 text-center">
           <v-btn
             color="primary"
-            prepend-icon="fas fa-plus"
+            prepend-icon="mdi mdi-plus"
             size="large"
             @click="createFactory()"
           >Add Factory</v-btn>

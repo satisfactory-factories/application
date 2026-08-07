@@ -2,7 +2,7 @@
   <v-card class="sub-card border-md">
     <v-card-title>
       <h2 class="text-h6">
-        <i class="fas fa-building" />
+        <i class="mdi mdi-office-building" />
         <span class="ml-3">Power &amp; Buildings</span>
       </h2>
     </v-card-title>
@@ -11,8 +11,8 @@
         class="sf-chip consumption"
         variant="tonal"
       >
-        <i class="fas fa-bolt" />
-        <i class="fas fa-minus" />
+        <i class="mdi mdi-lightning-bolt" />
+        <i class="mdi mdi-minus" />
         <span class="ml-2">
           Consumes:
           <span :id="`${factory.id}-buildings-power-consumed`">
@@ -24,8 +24,8 @@
         class="sf-chip max-consumption"
         variant="tonal"
       >
-        <i class="fas fa-bolt" />
-        <i class="fas fa-arrow-up" />
+        <i class="mdi mdi-lightning-bolt" />
+        <i class="mdi mdi-arrow-up" />
         <span class="ml-2">
           Max consumption:
           <span :id="`${factory.id}-buildings-power-consumed-max`">
@@ -39,8 +39,8 @@
         :class="factory.power.produced > 0 ? 'green' : 'generation'"
         variant="tonal"
       >
-        <i class="fas fa-bolt" />
-        <i class="fas fa-plus" />
+        <i class="mdi mdi-lightning-bolt" />
+        <i class="mdi mdi-plus" />
         <span class="ml-2">
           Produces:
           <span :id="`${factory.id}-buildings-power-produced`">
@@ -53,8 +53,8 @@
         class="sf-chip boost"
         variant="tonal"
       >
-        <i class="fas fa-bolt" />
-        <i class="fas fa-arrow-up" />
+        <i class="mdi mdi-lightning-bolt" />
+        <i class="mdi mdi-arrow-up" />
         <span class="ml-2">
           Circuit boost:
           <span :id="`${factory.id}-buildings-power-boost`">

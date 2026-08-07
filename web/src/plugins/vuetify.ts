@@ -6,11 +6,12 @@
 
 // Styles
 import 'vuetify/styles'
+import '@mdi/font/css/materialdesignicons.css'
 
 // Composables
 import { createVuetify } from 'vuetify'
 import { VNumberInput } from 'vuetify/components/VNumberInput'
-import { aliases, fa } from 'vuetify/iconsets/fa'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import { sfColors } from '@/utils/colors'
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
@@ -57,10 +58,10 @@ export default createVuetify({
     },
   },
   icons: {
-    defaultSet: 'fa',
+    defaultSet: 'mdi',
     aliases,
     sets: {
-      fa,
+      mdi,
     },
   },
 })

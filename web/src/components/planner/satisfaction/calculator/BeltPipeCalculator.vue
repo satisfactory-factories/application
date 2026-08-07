@@ -69,7 +69,7 @@
           v-if="groups.length > 1"
           class="ml-2"
           color="red rounded"
-          icon="fas fa-trash"
+          icon="mdi mdi-delete"
           size="small"
           :title="`Delete ${nounSingular.toLowerCase()} group`"
           variant="outlined"
@@ -80,7 +80,7 @@
   </v-row>
   <div class="d-flex align-center px-2 mt-2">
     <v-btn color="primary" density="comfortable" variant="outlined" @click="addGroup">
-      <i class="fas fa-plus" /><span class="ml-2">{{ nounSingular }} group</span>
+      <i class="mdi mdi-plus" /><span class="ml-2">{{ nounSingular }} group</span>
     </v-btn>
     <v-btn
       v-if="groups.length > 1"
@@ -90,18 +90,18 @@
       variant="outlined"
       @click="splitEvenly"
     >
-      <i class="fas fa-balance-scale" /><span class="ml-2">Split evenly</span>
+      <i class="mdi mdi-scale-balance" /><span class="ml-2">Split evenly</span>
     </v-btn>
     <v-chip v-if="allocationMismatch" class="ml-2" color="red">
-      <i class="fas fa-exclamation-triangle" />
+      <i class="mdi mdi-alert" />
       <span class="ml-2">{{ nounSingular }} groups carry {{ formatNumber(allocatedAmount) }}/min of the {{ formatNumber(request.amount) }}/min exported</span>
     </v-chip>
     <v-chip v-else-if="redundantGroupCount > 0" class="ml-2" color="orange">
-      <i class="fas fa-exclamation-triangle" />
+      <i class="mdi mdi-alert" />
       <span class="ml-2">{{ redundantGroupsMessage }}</span>
     </v-chip>
     <v-chip v-else class="ml-2" color="green">
-      <i class="fas fa-check" />
+      <i class="mdi mdi-check" />
       <span class="ml-2">All good</span>
     </v-chip>
     <template v-if="groups.length > 1">

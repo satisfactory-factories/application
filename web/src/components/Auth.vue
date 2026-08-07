@@ -16,11 +16,11 @@
   </v-dialog>
   <v-btn :color="buttonColor" variant="flat">
     <div v-if="loggedInUser">
-      <i class="fas fa-user mr-2" />
+      <i class="mdi mdi-account mr-2" />
       {{ loggedInUser }}
     </div>
     <span v-else>
-      <i class="fas fa-sign-in mr-2" />
+      <i class="mdi mdi-login mr-2" />
       Sign In, Pioneer!
     </span>
     <v-overlay
@@ -42,14 +42,14 @@
                 :variant="showLogin === true ? 'flat' : 'tonal'"
                 @click="showLoginForm"
               >
-                <i class="fas fa-sign-in mr-2" />Sign In
+                <i class="mdi mdi-login mr-2" />Sign In
               </v-btn>
               <v-btn
                 color="green"
                 :variant="showRegister ? 'flat' : 'tonal'"
                 @click="showRegisterForm"
               >
-                <i class="fas fa-pencil mr-2" />Register
+                <i class="mdi mdi-pencil mr-2" />Register
               </v-btn>
             </v-btn-group>
           </div>
@@ -101,7 +101,7 @@
             color="primary"
             @click="handleLogout"
           >
-            <i class="fas fa-sign-out mr-2" />Logout
+            <i class="mdi mdi-logout mr-2" />Logout
           </v-btn>
           <v-btn
             v-if="isDebugMode"
@@ -109,7 +109,7 @@
             color="secondary"
             @click="mangleToken"
           >
-            <i class="fas fa-bug mr-2" />Mangle token
+            <i class="mdi mdi-bug mr-2" />Mangle token
           </v-btn>
           <p class="mt-4">
             You are signed in. Your factory data will automatically saved every 10s upon a change. Should you wish to transfer the data to another device, ensure you're signed in then click the "Force Download" button.

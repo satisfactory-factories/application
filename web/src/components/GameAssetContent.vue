@@ -9,8 +9,8 @@
     :min-width="widthPx"
     :src="imgUrl"
   />
-  <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
-  <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  <v-icon v-if="ficsmas" icon="mdi mdi-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  <v-icon v-if="unknown" icon="mdi mdi-help" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
 </template>
 
 <script setup lang="ts">

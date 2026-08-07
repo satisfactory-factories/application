@@ -1,15 +1,15 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2">
     <h4 class="text-h4">
-      <i class="fas fa-power-off mr-3" />Power Consumption and Generation
+      <i class="mdi mdi-power mr-3" />Power Consumption and Generation
     </h4>
     <v-chip
       id="stats-power-summary-generation"
       class="sf-chip generation no-margin"
       variant="tonal"
     >
-      <i class="fas fa-bolt" />
-      <i class="fas fa-plus" />
+      <i class="mdi mdi-lightning-bolt" />
+      <i class="mdi mdi-plus" />
       <span class="ml-1">{{ mw(totalPower.totalPowerProduced) }}</span>
     </v-chip>
     <v-chip
@@ -17,8 +17,8 @@
       class="sf-chip consumption no-margin"
       variant="tonal"
     >
-      <i class="fas fa-bolt" />
-      <i class="fas fa-minus" />
+      <i class="mdi mdi-lightning-bolt" />
+      <i class="mdi mdi-minus" />
       <span class="ml-1">{{ mw(totalPower.totalPowerConsumed) }}</span>
     </v-chip>
     <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
@@ -28,17 +28,17 @@
         :class="balanceDifference >= 0 ? 'green' : 'red'"
         variant="tonal"
       >
-        <i class="fas fa-balance-scale" />
+        <i class="mdi mdi-scale-balance" />
         <span class="ml-1">{{ mw(balanceDifference) }}</span>
         <!-- Toggled via a wrapping span: FontAwesome's SVG replacement detaches the <i>,
              so class flips (and removal of the bare <i>) never reach the rendered icon. -->
-        <span v-if="hasTarget" class="ml-2"><i class="fas fa-bullseye" /></span>
-        <span v-else class="ml-2"><i class="fas fa-check-square" /></span>
+        <span v-if="hasTarget" class="ml-2"><i class="mdi mdi-bullseye" /></span>
+        <span v-else class="ml-2"><i class="mdi mdi-checkbox-marked" /></span>
       </v-chip>
     </tooltip>
   </div>
   <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
+    <i class="mdi mdi-information mr-2" />Shows world level power consumption and generation data.
   </p>
   <v-alert
     id="stats-power-accuracy-note"
@@ -55,7 +55,7 @@
   <v-row class="mt-1">
     <v-col cols="12" md="8">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-check-square mr-2" />Plan
+        <i class="mdi mdi-checkbox-marked mr-2" />Plan
       </h2>
       <v-table class="power-table" density="compact">
         <thead>
@@ -68,7 +68,7 @@
         </thead>
         <tbody>
           <tr class="generation-row">
-            <td><i class="fas fa-bolt mr-1" /><i class="fas fa-plus mr-2" />Generation</td>
+            <td><i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-plus mr-2" />Generation</td>
             <td id="stats-power-generation" class="text-right">
               {{ mw(totalPower.totalBasePower) }}
             </td>
@@ -81,7 +81,7 @@
           </tr>
           <tr v-if="hasBoost" class="boost-row">
             <td>
-              <i class="fas fa-bolt mr-1" /><i class="fas fa-arrow-up mr-2" />Circuit boost
+              <i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-arrow-up mr-2" />Circuit boost
               <span class="text-no-wrap">({{ boostBreakdown }})
                 <tooltip-info text="Alien Power Augmenters boost the whole grid's generation: +10% each, or +30% when injected with Alien Power Matrixes.<br>Assumes all factories are connected to one big power grid." />
               </span>
@@ -97,7 +97,7 @@
             </td>
           </tr>
           <tr v-if="hasBoost" class="font-weight-bold">
-            <td><i class="fas fa-bolt mr-1" /><i class="fas fa-equals mr-2" />Total generation</td>
+            <td><i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-equal mr-2" />Total generation</td>
             <td id="stats-power-total-generation" class="text-right">
               {{ mw(totalPower.totalPowerProduced) }}
             </td>
@@ -109,7 +109,7 @@
             </td>
           </tr>
           <tr class="consumption-row">
-            <td><i class="fas fa-bolt mr-1" /><i class="fas fa-minus mr-2" />Consumption</td>
+            <td><i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-minus mr-2" />Consumption</td>
             <td id="stats-power-consumption" class="text-right">
               {{ mw(totalPower.totalPowerConsumed) }}
             </td>
@@ -121,7 +121,7 @@
             </td>
           </tr>
           <tr class="font-weight-bold">
-            <td><i class="fas fa-balance-scale mr-2" />Difference<span v-if="hasVariance">&nbsp;*</span></td>
+            <td><i class="mdi mdi-scale-balance mr-2" />Difference<span v-if="hasVariance">&nbsp;*</span></td>
             <td
               id="stats-power-difference"
               class="text-right"
@@ -152,12 +152,12 @@
     </v-col>
     <v-col cols="12" md="4">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-bullseye mr-2" />Power Target
+        <i class="mdi mdi-bullseye mr-2" />Power Target
       </h2>
       <div class="d-flex align-center">
         <v-chip class="sf-chip input no-margin" variant="tonal">
           <tooltip text="Power target">
-            <i class="fas fa-bolt ml-3" />
+            <i class="mdi mdi-lightning-bolt ml-3" />
           </tooltip>
           <v-number-input
             id="stats-power-target"
@@ -192,17 +192,17 @@
       <v-table v-if="powerTarget > 0" class="power-table target-table mt-2" density="compact">
         <tbody>
           <tr>
-            <td><i class="fas fa-bolt mr-1" /><i class="fas fa-equals mr-2" />Total generation</td>
+            <td><i class="mdi mdi-lightning-bolt mr-1" /><i class="mdi mdi-equal mr-2" />Total generation</td>
             <td id="stats-power-target-generation" class="text-right">
               {{ mw(totalPower.totalPowerProduced) }}
             </td>
           </tr>
           <tr>
-            <td><i class="fas fa-bullseye mr-2" />Target</td>
+            <td><i class="mdi mdi-bullseye mr-2" />Target</td>
             <td class="text-right">{{ mw(powerTarget) }}</td>
           </tr>
           <tr class="font-weight-bold">
-            <td><i class="fas fa-balance-scale mr-2" />Difference vs target</td>
+            <td><i class="mdi mdi-scale-balance mr-2" />Difference vs target</td>
             <td
               id="stats-power-target-difference"
               class="text-right"

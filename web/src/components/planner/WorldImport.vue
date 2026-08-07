@@ -15,7 +15,7 @@
       </v-card-text>
       <v-card-actions>
         <v-btn color="blue" @click="selectFile">
-          <i class="fas fa-file-import" /><span class="ml-2">Select file (.sav)</span>
+          <i class="mdi mdi-file-import" /><span class="ml-2">Select file (.sav)</span>
         </v-btn>
       </v-card-actions>
     </v-card>

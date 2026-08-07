@@ -11,13 +11,13 @@
     width="auto"
   >
     <v-card
-      prepend-icon="fas fa-heart"
+      prepend-icon="mdi mdi-heart"
       title="Help support the project!"
       width="400"
     >
       <template #append>
         <v-btn
-          icon="fas fa-times"
+          icon="mdi mdi-close"
           size="small"
           variant="text"
           @click="open = false"
@@ -32,7 +32,7 @@
           class="mx-auto mb-4"
           color="blue"
           href="https://ko-fi.com/maelstrome"
-          prepend-icon="fas fa-mug-hot"
+          prepend-icon="mdi mdi-coffee"
           rel="noopener noreferrer"
           target="_blank"
           text="Donate on Ko-fi"

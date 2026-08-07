@@ -17,7 +17,7 @@
             density="compact"
             @click="copyData"
           >
-            <i class="fas fa-files-medical" />
+            <i class="mdi mdi-file-document-multiple" />
             <span class="ml-2">Copy Data</span>
           </v-btn>
           <v-btn
@@ -27,16 +27,16 @@
             density="compact"
             disabled
           >
-            <i class="fas fa-files-medical" />
+            <i class="mdi mdi-file-document-multiple" />
             <span class="ml-2">Copied!</span>
           </v-btn> which then you can paste into a message to us on <v-btn class="bg-indigo-darken-2 border" density="compact" href="https://discord.gg/vcFsjcWAFv" target="_blank">
-            <i class="fab fa-discord" />
+            <DiscordIcon />
             <span class="ml-2">Discord</span>
           </v-btn>.
         </p>
         <p class="mb-4">The chances of us being able to fix this for you are unfortunately slim. The project is still in an <b>ALPHA</b> state, unfortunately these things will happen.</p>
         <div class="text-center">
-          <v-btn class="mr-2" color="red" @click="wipeAndReload"><i class="fas fa-trash mr-2" />Reset factory data</v-btn>
+          <v-btn class="mr-2" color="red" @click="wipeAndReload"><i class="mdi mdi-delete mr-2" />Reset factory data</v-btn>
         </div>
       </v-card-text>
     </v-card>

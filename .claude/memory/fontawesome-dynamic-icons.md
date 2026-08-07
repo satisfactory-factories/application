@@ -1,14 +1,21 @@
 ---
 name: fontawesome-dynamic-icons
-description: Dynamic FA icon swaps need a Vue-owned wrapper element — :class flips on <i> render nothing
-metadata: 
+description: The old FA wrapper-span workaround for dynamic icons is obsolete — MDI is a webfont, so :class flips work
+metadata:
   node_type: memory
   type: project
-  originSessionId: 18072cbd-acce-416d-82ea-5233fe13a88f
 ---
 
-FontAwesome is loaded via its SVG-replacement JS (`index.html`: `fa.min.js` etc.), which replaces each `<i class="fas fa-*">` with an `<svg>` at insert time and detaches the `<i>` Vue is patching.
+Dynamic icon swaps used to need a Vue-owned wrapper element. They no longer do. The planner
+now uses Material Design Icons as a **webfont** (`@mdi/font`, `plugins/vuetify.ts`), which
+styles a `::before` glyph on the existing `<i>` rather than replacing the element.
 
-**Why:** A dynamic `:class` binding on the `<i>` (e.g. `:class="cond ? 'fas fa-bullseye' : 'fas fa-check-square'"`) silently never updates the rendered icon; even `v-if`/`v-else` on the bare `<i>` leaves the stale `<svg>` in the DOM because Vue removes only its detached `<i>`.
+**Why it mattered:** Font Awesome was loaded via its SVG-replacement JS, which swapped each
+`<i class="fas fa-*">` for an `<svg>` and detached the `<i>` Vue was patching. A `:class`
+binding on that `<i>` silently never updated, and `v-if`/`v-else` left a stale `<svg>` behind.
+The fix was to toggle a wrapper `<span>` with static icon classes inside.
 
-**How to apply:** Toggle a wrapping element Vue owns, with static icon classes inside: `<span v-if="cond"><i class="fas fa-bullseye" /></span><span v-else><i class="fas fa-check-square" /></span>`. Removing the wrapper removes the nested svg; the freshly mounted one gets converted by FA's MutationObserver. Same pattern as the sync-state icons in `PlannerFactoryList.vue`. See also [[verify-tab-navigation]] for browser-driving; dismiss both modals first via localStorage `dismissed-introduction='true'` and `seenV51Splash='true'` or clicks land on the overlay.
+**How to apply:** write the obvious thing — `:class="cond ? 'mdi-plus' : 'mdi-minus'"` on the
+`<i>` works, as does `v-if`/`v-else`. Wrapper spans left over from the FA era are harmless but
+no longer load-bearing, so don't copy the pattern into new code. See [[icon-library-choice]]
+for why MDI, and [[verify-tab-navigation]] for browser-driving the planner.

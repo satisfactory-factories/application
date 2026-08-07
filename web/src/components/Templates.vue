@@ -1,7 +1,7 @@
 <template>
   <v-btn
     class="ma-1"
-    prepend-icon="fas fa-files-medical"
+    prepend-icon="mdi mdi-file-document-multiple"
     @click="dialog = true"
   >Templates</v-btn>
   <v-dialog v-model="dialog" max-width="1200">
@@ -27,7 +27,7 @@
                   <v-btn
                     class="mr-2"
                     :color="template.isDebug ? 'secondary' : 'green'"
-                    :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
+                    :prepend-icon="template.isDebug ? 'mdi mdi-bug' : 'mdi mdi-file'"
                     @click="loadTemplate(template)"
                   >
                     {{ template.name }}
