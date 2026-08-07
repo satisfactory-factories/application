@@ -1,7 +1,8 @@
 <template>
-  <!-- The wrapper is always mounted, even with no chips: the grid row is what animates, and a
-       v-if would take it out of the layout so there would be nothing to grow from. -->
-  <div class="status-chips" :class="{ open: chips.length > 0, animated: animated && ready }">
+  <!-- Animated (sidebar) keeps the wrapper mounted with no chips: the grid row is what animates,
+       and a v-if would take it out of the layout so there would be nothing to grow from. Everywhere
+       else it goes, or its empty box still claims a slot in the parent's flex gap. -->
+  <div v-if="animated || chips.length" class="status-chips" :class="{ open: chips.length > 0, animated: animated && ready }">
     <div class="status-chips-inner" :class="[`size-${size}`, { detailed }]">
       <tooltip
         v-for="status in chips"
@@ -13,8 +14,8 @@
           :class="[size, `status-${status.severity}`, { clickable: !!status.section }]"
           @click.stop="status.section && emit('navigate', status.section)"
         >
-          <!-- One subject gets its icon; several would not fit the sidebar, so they get a count
-               and the generic severity glyph instead. The detailed variant shows them all. -->
+          <!-- Subjects get their own icons; the label carries the total, so an overflow count is
+               only worth showing where the label doesn't already say it. -->
           <template v-if="iconSubjects(status).length">
             <game-asset
               v-for="subject in iconSubjects(status)"
@@ -42,8 +43,9 @@
   import GameAsset from '@/components/GameAsset.vue'
   import Tooltip from '@/components/tooltip.vue'
 
-  // Beyond this the detailed chip would be wider than the header it sits in.
+  // Beyond these the chip would be wider than the header or sidebar entry it sits in.
   const MAX_DETAILED_ICONS = 6
+  const MAX_CONDENSED_ICONS = 4
 
   const props = withDefaults(defineProps<{
     statuses?: FactoryStatus[]
@@ -66,13 +68,12 @@
 
   const iconSize = computed(() => props.size === 'small' ? 20 : 16)
 
-  // Condensed mode shows an icon only when there is exactly one subject, so the chip's width does
-  // not swing wildly down a sidebar of 30 factories.
-  const iconSubjects = (status: FactoryStatus) => {
-    if (props.detailed) return status.subjects.slice(0, MAX_DETAILED_ICONS)
-    return status.subjects.length === 1 ? status.subjects : []
-  }
+  const iconLimit = computed(() => props.detailed ? MAX_DETAILED_ICONS : MAX_CONDENSED_ICONS)
 
+  const iconSubjects = (status: FactoryStatus) => status.subjects.slice(0, iconLimit.value)
+
+  // Condensed labels already give the total ("5 shortages"), so only the detailed variant, whose
+  // label names the subject instead, needs telling how many icons were dropped.
   const overflowCount = (status: FactoryStatus) =>
     props.detailed ? Math.max(0, status.subjects.length - MAX_DETAILED_ICONS) : 0
 
