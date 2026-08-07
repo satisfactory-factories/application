@@ -60,15 +60,19 @@ export const getGroupSatelliteCount = (group: BuildingGroup, recipeId?: string):
   return (satellites.impure + satellites.normal + satellites.pure) * group.buildingCount
 }
 
-// The recipe that extracts a raw resource, if one exists. Collectables (Leaves, alien remains,
-// power slugs) and resource-well gases have none, so callers must handle undefined.
-// Prefers a plain extractor over a resource well: a well needs its satellites describing before
-// it means anything, so it is a poor thing to drop on someone from a one-click button.
-export const getExtractionRecipeForPart = (part: string): string | undefined => {
-  const candidates = gameData.recipes.filter(recipe => recipe.extraction && recipe.products[0]?.part === part)
-
-  return (candidates.find(recipe => !recipe.extraction?.well) ?? candidates[0])?.id
-}
+// The recipe that extracts a raw resource with a plain extractor, if one exists. Collectables
+// (Leaves, alien remains, power slugs) and resource-well gases have none, so callers must handle
+// undefined.
+//
+// Wells are deliberately excluded rather than used as a fallback. A well's rate comes from its
+// satellite field, and a fresh group carries one normal satellite — so solving a target rate
+// against it multiplies the pressurizer instead, turning 600 m³/min into ten 150 MW pressurizers
+// where one would do. That reads as a solved plan while being an order of magnitude out, so a
+// well has to be placed deliberately and its satellites described.
+export const getExtractionRecipeForPart = (part: string): string | undefined =>
+  gameData.recipes.find(recipe =>
+    recipe.extraction && !recipe.extraction.well && recipe.products[0]?.part === part
+  )?.id
 
 // The rate one reference extractor yields at 100% on a normal node. Effective building counts
 // are expressed in these units, so multiplying by it converts them back into items/min.

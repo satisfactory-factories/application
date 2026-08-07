@@ -360,8 +360,13 @@ describe('extraction', async () => {
     it('offers the plain extractor, not the well, for a one-click mine-it-here', () => {
       expect(getExtractionRecipeForPart('Water')).toBe('Extract_Water')
       expect(getExtractionRecipeForPart('LiquidOil')).toBe('Extract_LiquidOil')
-      // Nitrogen Gas has no other way of being extracted.
-      expect(getExtractionRecipeForPart('NitrogenGas')).toBe('Extract_NitrogenGas_Well')
+    })
+
+    // Solving a target rate against a fresh well group multiplies the pressurizer, since the
+    // group starts on one normal satellite — ten 150 MW pressurizers for 600 m³/min of Nitrogen
+    // Gas, which looks solved and is an order of magnitude out. Wells get placed by hand.
+    it('offers nothing at all for a part only a resource well can extract', () => {
+      expect(getExtractionRecipeForPart('NitrogenGas')).toBeUndefined()
     })
   })
 
