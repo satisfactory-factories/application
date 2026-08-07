@@ -537,6 +537,82 @@ describe('app-store', () => {
     })
   })
 
+  describe('raw input assumption prompt', () => {
+    // Factories built before mining have no assumeRawInputs key at all, which is how a plan
+    // that predates the feature is recognised however it arrives.
+    const preMiningPlan = (): Factory[] => {
+      const factory = newFactory('Old Plan')
+      delete (factory as Partial<Factory>).assumeRawInputs
+      return [factory]
+    }
+
+    beforeEach(() => {
+      localStorage.removeItem('assumeRawInputs')
+      localStorage.removeItem('seenRawAssumptionNotice')
+      resetAppStore()
+    })
+
+    afterEach(() => {
+      localStorage.removeItem('assumeRawInputs')
+      localStorage.removeItem('seenRawAssumptionNotice')
+    })
+
+    it('raises the notice for a plan that predates mining', async () => {
+      await appStore.beginLoading(preMiningPlan())
+
+      expect(appStore.showRawAssumptionPrompt).toBe(true)
+      expect(appStore.rawAssumptionPromptReason).toBe('migration')
+    })
+
+    it('leaves a plan that already carries the setting alone', async () => {
+      await appStore.beginLoading([newFactory('New Plan')])
+
+      expect(appStore.showRawAssumptionPrompt).toBe(false)
+    })
+
+    // The bug this guards: the notice announces a change to the planner, so opening a second
+    // old plan after answering must not repeat the news.
+    it('never raises it again once answered, whatever the answer was', async () => {
+      for (const removeAssumption of [true, false]) {
+        localStorage.removeItem('assumeRawInputs')
+        localStorage.removeItem('seenRawAssumptionNotice')
+        resetAppStore()
+
+        await appStore.beginLoading(preMiningPlan())
+        expect(appStore.showRawAssumptionPrompt).toBe(true)
+
+        appStore.answerRawAssumptionPrompt(removeAssumption)
+        expect(appStore.showRawAssumptionPrompt).toBe(false)
+        expect(localStorage.getItem('seenRawAssumptionNotice')).toBe('true')
+
+        await appStore.beginLoading(preMiningPlan())
+        expect(appStore.showRawAssumptionPrompt).toBe(false)
+      }
+    })
+
+    // Someone who never had a plan gets the assumption switched off silently, so the notice is
+    // still owed to them the first time they open something built before mining.
+    it('still raises it for a user who was defaulted off without ever seeing it', async () => {
+      resetAppStore()
+      expect(localStorage.getItem('assumeRawInputs')).toBe('false')
+      expect(appStore.showRawAssumptionPrompt).toBe(false)
+
+      await appStore.beginLoading(preMiningPlan())
+
+      expect(appStore.showRawAssumptionPrompt).toBe(true)
+    })
+
+    it('comes back after the debug scenario re-arms it', async () => {
+      await appStore.beginLoading(preMiningPlan())
+      appStore.answerRawAssumptionPrompt(true)
+
+      appStore.rearmRawAssumption()
+
+      expect(appStore.showRawAssumptionPrompt).toBe(true)
+      expect(localStorage.getItem('seenRawAssumptionNotice')).toBeNull()
+    })
+  })
+
   describe('factory management', () => {
     describe('getFactories', () => {
       beforeEach(async () => {

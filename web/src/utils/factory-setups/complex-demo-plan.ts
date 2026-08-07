@@ -348,6 +348,14 @@ export const complexDemoPlan = (): TemplatePlan => {
   // Apply setup steps
   setupFactories()
 
+  // The demo is a tour of everything else, not of mining, and it draws ore, oil and water it
+  // never digs up. Pin the assumption on so it reads the same whichever way the user's global
+  // setting happens to be set — the Copper Mine is the one factory that opts out, so both
+  // halves of the feature are on screen at once.
+  for (const factory of factories) {
+    factory.assumeRawInputs ??= true
+  }
+
   // Return an object with a method to access the configured factories
   return {
     getFactories: () => factories,

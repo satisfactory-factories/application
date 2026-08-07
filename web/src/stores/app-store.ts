@@ -97,6 +97,10 @@ export const useAppStore = defineStore('app', () => {
   const showRawAssumptionPrompt = ref<boolean>(false)
   // Which situation raised the prompt, so it can explain itself accordingly.
   const rawAssumptionPromptReason = ref<RawAssumptionReason>('migration')
+  // Separate from the setting itself: someone who never had a plan gets the assumption turned
+  // off without ever seeing the notice, and should still get it the first time they open a plan
+  // built before mining. Once they have answered, no plan raises it again.
+  const seenRawAssumptionNotice = ref<boolean>(localStorage.getItem('seenRawAssumptionNotice') === 'true')
 
   const applyAssumeRawInputs = (value: boolean, persist = true) => {
     assumeRawInputs.value = value
@@ -128,9 +132,15 @@ export const useAppStore = defineStore('app', () => {
   // off, `assumes` wants it on. Only asks when the current setting disagrees — a plan that
   // already reads correctly has nothing to offer the user but an interruption.
   const askRawAssumption = (reason: RawAssumptionReason) => {
-    // A plan built before mining existed always gets asked; the other two only when the
-    // current setting disagrees with the plan, since otherwise there is nothing to offer.
-    if (reason !== 'migration') {
+    if (reason === 'migration') {
+      // The notice explains a change to the planner, so it is worth saying once and never again
+      // — otherwise every old plan the user opens interrupts them with the same news.
+      if (seenRawAssumptionNotice.value) {
+        return
+      }
+    } else {
+      // The other two only when the current setting disagrees with the plan, since otherwise
+      // there is nothing to offer the user but an interruption.
       const planWantsAssumption = reason === 'assumes'
       if (assumeRawInputs.value === planWantsAssumption) {
         return
@@ -146,6 +156,8 @@ export const useAppStore = defineStore('app', () => {
   // existed. Otherwise it is unreachable once answered.
   const rearmRawAssumption = () => {
     localStorage.removeItem('assumeRawInputs')
+    localStorage.removeItem('seenRawAssumptionNotice')
+    seenRawAssumptionNotice.value = false
     applyAssumeRawInputs(true, false)
     askRawAssumption('migration')
   }
@@ -159,6 +171,8 @@ export const useAppStore = defineStore('app', () => {
 
   const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
     applyAssumeRawInputs(!removeAssumption)
+    seenRawAssumptionNotice.value = true
+    localStorage.setItem('seenRawAssumptionNotice', 'true')
     showRawAssumptionPrompt.value = false
     forceCalculation()
   }
