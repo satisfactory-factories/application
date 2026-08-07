@@ -67,7 +67,7 @@
           variant="tonal"
         >
           <tooltip classes="ml-2" text="Satellite nodes on this well, by purity">
-            <v-icon icon="fas fa-gem" size="20" />
+            <v-icon icon="fas fa-gem" size="25" />
           </tooltip>
           <template v-for="purity in WELL_PURITIES" :key="purity">
             <span class="ml-3 mr-2 text-medium-emphasis">{{ PURITY_LABELS[purity] }}</span>
@@ -99,17 +99,16 @@
           variant="tonal"
         >
           <tooltip classes="ml-2" text="Node purity">
-            <v-icon icon="fas fa-gem" size="20" />
+            <v-icon icon="fas fa-gem" size="25" />
           </tooltip>
           <v-select
             :id="`${factory.id}-${group.id}-purity`"
-            class="inline-inputs ml-1 chip-select"
+            class="inline-inputs ml-1 chip-select fit-content"
             density="compact"
             hide-details
             :items="purityOptions"
             :model-value="groupPurity"
             variant="plain"
-            width="90px"
             @update:model-value="updateGroupPurity(group, $event)"
           />
         </v-chip>
@@ -725,6 +724,18 @@
       font-size: 20px;
       opacity: 0.85;
     }
+  }
+}
+
+// "Pure" is half the width of "Normal", so a field sized for the longest option strands the
+// short ones a chevron's width from their own chevron. Size to whatever is selected instead.
+.chip-select.fit-content {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+
+  :deep(.v-field__input) {
+    width: max-content;
   }
 }
 
