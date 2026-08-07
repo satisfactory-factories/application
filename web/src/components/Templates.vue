@@ -100,11 +100,12 @@
   const templates: Template[] = [
     {
       name: 'Demo',
-      description: 'Contains 7 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
+      description: 'Contains 10 factories with a mix of fluids, solids and multiple dependencies, along with power generation and mining — a dedicated Copper Mine feeding the ingots, and Oil Processing extracting its own crude on site. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
       data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,
-      rawAssumption: 'assumes',
+      // No rawAssumption: every factory in this plan answers for itself, so the global setting
+      // cannot change how it reads and there is nothing to ask about.
     },
     {
       name: 'Mining',

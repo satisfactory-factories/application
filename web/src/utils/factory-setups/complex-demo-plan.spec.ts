@@ -8,6 +8,7 @@ import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics
 
 let factories: Factory[]
 let oilFac: Factory
+let copperMineFac: Factory
 let copperIngotsFac: Factory
 let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
@@ -23,6 +24,7 @@ describe('Complex Demo Plan', () => {
     factories = complexDemoPlan().getFactories()
     calculateFactories(factories, gameData)
     oilFac = findFacByName('Oil Processing', factories)
+    copperMineFac = findFacByName('Copper Mine', factories)
     copperIngotsFac = findFacByName('Copper Ingots', factories)
     copperBasicsFac = findFacByName('Copper Basics', factories)
     circuitBoardsFac = findFacByName('Circuit Boards', factories)
@@ -41,11 +43,15 @@ describe('Complex Demo Plan', () => {
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
-      expect(oilFac.products.length).toBe(2)
-      expect(oilFac.products[0].id).toBe('Plastic')
-      expect(oilFac.products[0].amount).toBe(640)
-      expect(oilFac.products[1].id).toBe('LiquidFuel')
-      expect(oilFac.products[1].amount).toBe(40)
+      expect(oilFac.products.length).toBe(3)
+      // The oil comes first so the factory reads in the order it flows: extract, refine, burn.
+      expect(oilFac.products[0].id).toBe('LiquidOil')
+      expect(oilFac.products[0].amount).toBe(960)
+      expect(oilFac.products[0].recipe).toBe('Extract_LiquidOil')
+      expect(oilFac.products[1].id).toBe('Plastic')
+      expect(oilFac.products[1].amount).toBe(640)
+      expect(oilFac.products[2].id).toBe('LiquidFuel')
+      expect(oilFac.products[2].amount).toBe(40)
       // toMatchObject: the producer also carries building group state not asserted here
       expect(oilFac.powerProducers[0]).toMatchObject({
         building: 'generatorfuel',
@@ -66,22 +72,31 @@ describe('Complex Demo Plan', () => {
       })
     })
     it('should have product requirements calculated correctly', () => {
-      expect(oilFac.products[0].requirements).toStrictEqual({ LiquidOil: { amount: 960 } })
+      // Extraction takes no ingredients — the node is the ingredient.
+      expect(oilFac.products[0].requirements).toStrictEqual({})
+      expect(oilFac.products[1].requirements).toStrictEqual({ LiquidOil: { amount: 960 } })
     })
     it('should have byproducts calculated correctly', () => {
-      expect(oilFac.products[0].byProducts).toStrictEqual([{
+      expect(oilFac.products[1].byProducts).toStrictEqual([{
         id: 'HeavyOilResidue',
         byProductOf: 'Plastic',
         amount: 320,
       }])
     })
-    it('should have raw fluids correctly added as raw inputs', () => {
+    it('should extract its own oil rather than assuming it', () => {
       expect(oilFac.inputs).toHaveLength(0)
-      expect(oilFac.rawResources.LiquidOil).toStrictEqual({
-        id: 'LiquidOil',
-        name: 'Crude Oil',
-        amount: 960,
-      })
+      expect(oilFac.rawResources.LiquidOil).toBeUndefined()
+      expect(oilFac.assumeRawInputs).toBe(false)
+    })
+    it('should split the extraction across pure and normal nodes', () => {
+      const groups = oilFac.products[0].buildingGroups
+      expect(groups).toHaveLength(2)
+      expect(groups[0]).toMatchObject({ extractorBuilding: 'oilpump', purity: 'pure', buildingCount: 3 })
+      expect(groups[1]).toMatchObject({ extractorBuilding: 'oilpump', purity: 'normal', buildingCount: 2 })
+      // 3 x 240 + 2 x 120 lands exactly on what the Plastic line drinks.
+      expect(oilFac.products[0].amount).toBe(960)
+      // Open on load: the purity split is the thing worth seeing.
+      expect(oilFac.products[0].buildingGroupsTrayOpen).toBe(true)
     })
     it('should have fluid parts calculated correctly', () => {
       expect(oilFac.parts.LiquidOil).toEqual({
@@ -91,12 +106,13 @@ describe('Complex Demo Plan', () => {
         amountRequiredPower: 0,
         amountSupplied: 960,
         amountSuppliedViaInput: 0,
-        amountSuppliedViaRaw: 960,
-        amountSuppliedViaProduction: 0,
+        // Supplied by the extractors, not topped up from nowhere.
+        amountSuppliedViaRaw: 0,
+        amountSuppliedViaProduction: 960,
         amountRemaining: 0,
         satisfied: true,
         isRaw: true,
-        exportable: false,
+        exportable: true,
       })
       expect(oilFac.parts.LiquidFuel).toEqual({
         amountRequired: 40,
@@ -171,7 +187,8 @@ describe('Complex Demo Plan', () => {
 
     it('should have the correct amount of power calculated', () => {
       // 24 refineries @ 100% (720) + 4 @ 200% (2^1.321928 = 2.5x power, 300) + 1 fuel refinery (30)
-      expect(oilFac.power.consumed).toBe(1050)
+      // + 5 Oil Extractors @ 40 MW (200). Purity does not change the draw, only the yield.
+      expect(oilFac.power.consumed).toBe(1250)
     })
 
     it('should have the correct number of buildings calculated along with their power', () => {
@@ -180,6 +197,11 @@ describe('Complex Demo Plan', () => {
           amount: 2,
           name: 'generatorfuel',
           powerProduced: 500,
+        },
+        oilpump: {
+          amount: 5,
+          name: 'oilpump',
+          powerConsumed: 200,
         },
         oilrefinery: {
           // 24 + 4 overclocked for Plastic, plus 1 for Residual Fuel. powerConsumed here is
@@ -210,6 +232,34 @@ describe('Complex Demo Plan', () => {
         supply: 320,
         request: 320,
         difference: 0,
+        isRequestSatisfied: true,
+      })
+    })
+  })
+
+  describe('Copper Mine', () => {
+    it('should mine its ore rather than assume it, and open with the groups showing', () => {
+      expect(copperMineFac.displayOrder).toBe(1) // Top of the plan, where the chain starts
+      expect(copperMineFac.assumeRawInputs).toBe(false)
+      expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
+
+      const ore = copperMineFac.products[0]
+      expect(ore.id).toBe('OreCopper')
+      expect(ore.recipe).toBe('Extract_OreCopper')
+      expect(ore.buildingGroupsTrayOpen).toBe(true)
+      expect(ore.buildingGroups).toHaveLength(2)
+      expect(ore.buildingGroups[0]).toMatchObject({ extractorBuilding: 'minermk3', purity: 'normal', buildingCount: 1 })
+      expect(ore.buildingGroups[1]).toMatchObject({ extractorBuilding: 'minermk1', purity: 'pure', buildingCount: 1 })
+      // 240 + 120 — deliberately 40 more than the 320 the smelters ask for.
+      expect(ore.amount).toBe(360)
+    })
+
+    it('should ship its ore to Copper Ingots with a little to spare', () => {
+      expect(copperMineFac.dependencies.metrics.OreCopper).toStrictEqual({
+        part: 'OreCopper',
+        supply: 360,
+        request: 320,
+        difference: 40,
         isRequestSatisfied: true,
       })
     })
@@ -654,7 +704,7 @@ describe('Complex Demo Plan', () => {
 
   describe('overclocking', () => {
     it('should keep the Plastic line split of 24 @ 100% and 4 @ 200%, costing 8 shards', () => {
-      const plastic = oilFac.products[0]
+      const plastic = oilFac.products[1]
       expect(plastic.buildingGroups).toHaveLength(2)
       expect(plastic.buildingGroups[0]).toMatchObject({ buildingCount: 24, overclockPercent: 100 })
       expect(plastic.buildingGroups[1]).toMatchObject({ buildingCount: 4, overclockPercent: 200 })

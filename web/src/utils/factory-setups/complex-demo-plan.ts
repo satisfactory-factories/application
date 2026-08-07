@@ -37,15 +37,37 @@ export const complexDemoPlan = (): TemplatePlan => {
   // Private methods to configure the factories
   const setupFactories = () => {
     // === OIL FAC ===
+    // Extraction on site, as opposed to the Copper Mine's dedicated-factory approach: the oil
+    // comes out of the ground in the same factory that refines it. 3 pure nodes at 240/min plus
+    // 2 normal at 120 covers the 960/min the Plastic line drinks.
+    addProductToFactory(oilFac, {
+      id: 'LiquidOil',
+      amount: 960,
+      recipe: 'Extract_LiquidOil',
+    })
+    const crudeOil = oilFac.products[0]
+    const [pureOilGroup] = crudeOil.buildingGroups
+    Object.assign(pureOilGroup, { extractorBuilding: 'oilpump', purity: 'pure', buildingCount: 3 })
+    crudeOil.buildingGroups.push({
+      ...pureOilGroup,
+      id: pureOilGroup.id + 1,
+      extractorBuilding: 'oilpump',
+      purity: 'normal',
+      buildingCount: 2,
+      parts: {},
+    })
+    crudeOil.buildingGroupsTrayOpen = true
+
     addProductToFactory(oilFac, {
       id: 'Plastic',
       amount: 640,
       recipe: 'Plastic',
     })
+    const plastic = oilFac.products[1]
     // Overclocking showcase: most of the Plastic line runs at stock clock, with four
     // refineries pushed to 200% — costing 2 Power Shards per building (8 total), shown
     // in the Power Shards & Somersloops statistics. 24 + 4x2 = 32 effective buildings.
-    oilFac.products[0].buildingGroups = [
+    plastic.buildingGroups = [
       {
         id: 901,
         type: ItemType.Product,
@@ -68,9 +90,9 @@ export const complexDemoPlan = (): TemplatePlan => {
       },
     ]
     // Mirrors the app: adding a second group turns off item sync so the custom split sticks.
-    oilFac.products[0].buildingGroupItemSync = false
+    plastic.buildingGroupItemSync = false
     // Start with the tray open so the overclock showcase is visible immediately.
-    oilFac.products[0].buildingGroupsTrayOpen = true
+    plastic.buildingGroupsTrayOpen = true
     addProductToFactory(oilFac, {
       id: 'LiquidFuel',
       amount: 40,
@@ -82,8 +104,14 @@ export const complexDemoPlan = (): TemplatePlan => {
       recipe: 'GeneratorFuel_LiquidFuel',
       updated: FactoryPowerChangeType.Power,
     })
-    oilFac.notes = 'This factory is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
+    // Nothing left to assume: every drop of oil it uses comes out of its own extractors.
+    oilFac.assumeRawInputs = false
+    oilFac.notes = 'This factory extracts its own Crude Oil on site — 3 Oil Extractors on pure nodes and 2 on normal, for the 960/min the Plastic line drinks — rather than importing it from a dedicated mine like the Copper chain does.\n\nIt is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
     oilFac.syncState = {
+      LiquidOil: {
+        amount: 960,
+        recipe: 'Extract_LiquidOil',
+      },
       Plastic: {
         amount: 640,
         recipe: 'Plastic',
@@ -138,6 +166,8 @@ export const complexDemoPlan = (): TemplatePlan => {
       buildingCount: 1,
       parts: {},
     })
+    // Open on load, so the mixed marks and purities are the first thing you see.
+    copperOre.buildingGroupsTrayOpen = true
     // The ore it digs up is real, so this factory has nothing to assume.
     copperMineFac.assumeRawInputs = false
     copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
