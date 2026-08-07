@@ -788,7 +788,7 @@ describe('Component: BuildingGroups', () => {
     })
 
     // 5,280/min short: every purity is offered so the user doesn't have to guess which nodes
-    // the hint assumes. Counts round up — these are whole miners you'd place.
+    // the hint assumes. Counts are buildings at 100%, the same unit as the rest of the row.
     it('hints how many of each miner would close the gap, per purity', () => {
       // The separating spaces are CSS margins, so the DOM text runs the pills together.
       const hints = subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).text()
@@ -799,6 +799,26 @@ describe('Component: BuildingGroups', () => {
       expect(hints).toContain('Normal:Mk.1: 88|Mk.2: 44|Mk.3: 22')
       // Pure doubles it: 120 / 240 / 480
       expect(hints).toContain('Pure:Mk.1: 44|Mk.2: 22|Mk.3: 11')
+    })
+
+    // Crude Oil has one extractor, so naming it in every pill says only what the building
+    // group above it already says. It is also the clearest case for fractional counts:
+    // rounding 0.25 up to 1 would advise four times the extractor the gap needs.
+    it('names no building, and counts part buildings, for a single-extractor resource', () => {
+      const oilFactory = newFactory('Oil')
+      addProductToFactory(oilFactory, { id: 'LiquidOil', amount: 180, recipe: 'Extract_LiquidOil' })
+      const oil = oilFactory.products[0]
+      oil.buildingGroupsTrayOpen = true
+      oil.buildingGroups[0].buildingCount = 1 // 120/min of 180, so 60/min short
+      oil.buildingGroups[0].purity = 'normal'
+      oil.buildingGroups[0].overclockPercent = 100
+      calculateFactories([oilFactory], gameData, { origin: 'buildingGroup' })
+
+      const hints = mountProduct(oilFactory).find(`[id="${oilFactory.id}-${oil.id}-shortfall-hints"]`).text()
+
+      expect(hints).not.toContain('Oil Extractor')
+      // 60/min short against 60 / 120 / 240 per minute by purity
+      expect(hints).toBe('To cover the shortfall:Impure:1Normal:0.5Pure:0.25')
     })
 
     it('drops the hint once the mine is no longer short', () => {

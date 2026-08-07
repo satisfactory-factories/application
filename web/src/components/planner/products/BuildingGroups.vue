@@ -64,10 +64,10 @@
   <div v-if="!isAlwaysSynced" class="mb-2 d-flex align-center flex-wrap ga-3 group-status">
     <span
       :id="`${factory.id}-${item.id}-buildings-status`"
-      class="d-flex align-center ga-1"
+      class="d-flex align-center ga-2"
       :class="{ 'text-green': correct, 'text-red': !correct }"
     >
-      <i :class="isExtraction ? 'fas fa-hard-hat' : 'fas fa-building'" />
+      <i :class="isExtraction ? 'fas fa-cog' : 'fas fa-building'" />
       <!-- Mines are measured in what they dig up, not in Miner Mk.1 equivalents. -->
       <span v-if="isExtraction">
         Effective Output: <b><span :id="`${factory.id}-${item.id}-effective-output`">
@@ -140,7 +140,7 @@
     class="mb-2 d-flex align-center flex-wrap ga-2 group-status"
   >
     <i class="fas fa-arrow-right text-medium-emphasis" />
-    <span class="text-medium-emphasis">To cover the shortfall @ 100%:</span>
+    <span class="text-medium-emphasis">To cover the shortfall:</span>
     <v-chip
       v-for="hint in shortfallHints"
       :key="hint.purity"
@@ -151,7 +151,7 @@
       <b v-if="hint.showPurity" class="mr-1">{{ hint.label }}:</b>
       <template v-for="(mark, index) in hint.marks" :key="mark.building">
         <span v-if="index > 0" class="mx-1 text-medium-emphasis">|</span>
-        <span>{{ mark.label }}: <b>{{ mark.count }}</b></span>
+        <span><template v-if="mark.label">{{ mark.label }}: </template><b>{{ mark.count }}</b></span>
       </template>
     </v-chip>
   </div>
@@ -241,9 +241,10 @@
   const effectiveOutput = computed(() => formatNumberFully(effectiveBuildings.value * referenceRate.value, 3))
   const outputRemaining = computed(() => formatNumberFully(buildingsRemaining.value * referenceRate.value, 3))
 
-  // How many of each extractor would close the shortfall, at 100%, for every purity the
-  // resource can sit on. Showing all three sidesteps guessing which nodes the user has.
-  // Rounded up: these are whole miners you'd actually place.
+  // How many of each extractor would close the shortfall, for every purity the resource can
+  // sit on. Showing all three sidesteps guessing which nodes the user has. Counts are the
+  // same building unit the rest of the row uses — one building at 100% — so a gap half a
+  // miner wide reads 0.5 rather than being rounded up to a miner that would overshoot it.
   const shortfallHints = computed(() => {
     const extraction = getExtraction(props.item.recipe)
     if (!extraction || outputRemaining.value <= 0) {
@@ -256,11 +257,13 @@
       showPurity: extraction.purities.length > 1,
       marks: extraction.extractors.map(extractor => ({
         building: extractor.building,
-        // "Miner Mk.3" -> "Mk.3"; single-extractor resources keep the full name.
+        // "Miner Mk.3" -> "Mk.3". The label only exists to tell one count from another; a
+        // resource with a single extractor has nothing to tell apart, and the group above
+        // already says what it is being built with.
         label: extraction.extractors.length > 1
           ? getBuildingDisplayName(extractor.building).replace(/^Miner /, '')
-          : getBuildingDisplayName(extractor.building),
-        count: Math.ceil(outputRemaining.value / (extractor.ratePerMin * PURITY_MULTIPLIERS[purity])),
+          : '',
+        count: formatNumber(outputRemaining.value / (extractor.ratePerMin * PURITY_MULTIPLIERS[purity])),
       })),
     }))
   })

@@ -738,7 +738,7 @@
 // One fixed width whatever the purity reads, so a column of groups lines up rather than
 // stepping in and out with "Pure" against "Normal".
 .purity-chip {
-  width: 125px;
+  width: 135px;
 
   :deep(.v-chip__content) {
     width: 100%;
