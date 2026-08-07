@@ -715,14 +715,22 @@
     padding: 0 0 0 8px;
   }
 
+  // Vuetify pads the chevron away from a label these selects don't have, then holds the slack
+  // open with a fixed-width box — so the gap survives dropping the margin alone. Take both.
   :deep(.v-field__append-inner) {
     align-items: center;
     padding-top: 0;
     margin-inline-start: 0;
+    min-width: 0;
+    width: auto;
 
     .v-icon {
       font-size: 20px;
       opacity: 0.85;
+      margin-inline-start: 0;
+      // Sit the chevron off the chip edge by the same 9px the overclock's "%" gets.
+      margin-inline-end: 8px;
+      width: 20px;
     }
   }
 }
