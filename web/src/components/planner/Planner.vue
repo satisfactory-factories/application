@@ -210,8 +210,15 @@
   }
 
   const defaultSidebarWidth = 375
-  const minSidebarWidth = 150
-  const sidebarWidth = ref<number>(Number.parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
+  // The floor the status chips need: several item icons plus a label like "3 shortages" in one
+  // unbreakable chip, inside a column that hides its overflow. Narrower silently cut the label off.
+  const minSidebarWidth = 300
+  // Clamped on read as well as on drag — a width stored before this floor existed would otherwise
+  // stick until the next resize.
+  const storedSidebarWidth = Number.parseInt(localStorage.getItem('sidebarWidth') ?? '', 10)
+  const sidebarWidth = ref<number>(
+    storedSidebarWidth ? Math.max(storedSidebarWidth, minSidebarWidth) : defaultSidebarWidth
+  )
   const isResizingSidebar = ref<boolean>(false)
 
   const startSidebarResize = (event: MouseEvent) => {
