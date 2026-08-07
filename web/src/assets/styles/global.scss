@@ -184,6 +184,21 @@
     border-color: var(--sf-error-border) !important;
   }
 
+  // Factory status chips (#506). Filled rather than outlined, unlike every chip above: these sit
+  // on the same bar as the yellow tasks/notes chips, and outlined amber beside outlined yellow is
+  // indistinguishable. White text because the fills are dark enough to carry it.
+  &.status-problem {
+    color: white !important;
+    border-color: var(--sf-problem-border) !important;
+    background-color: var(--sf-problem-bg);
+  }
+
+  &.status-warning {
+    color: white !important;
+    border-color: var(--sf-status-warning-border) !important;
+    background-color: var(--sf-status-warning-bg);
+  }
+
   &.green, &.success {
     color: var(--sf-success) !important;
     border-color: var(--sf-success-border) !important;
@@ -319,6 +334,11 @@
     color: var(--sf-power-consumption) !important;
 }
 
+// Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.
+.text-status-warning {
+    color: var(--sf-status-warning) !important;
+}
+
 // Plain-text item labels (building-group under-chip "x / building" lines) share
 // their chip colours so text and chips always agree.
 .text-product {
@@ -414,19 +434,12 @@
     }
   }
 
-  &.needsSync {
-    border: 2px solid var(--sf-building-border) !important;
+  // Was `.needsSync`, which now names only one of several amber statuses (#506).
+  &.warning {
+    border: 2px solid var(--sf-status-warning-border) !important;
 
     .header {
-      background-color: rgba(255, 136, 0, 0.16);
-    }
-  }
-
-  &.inSync {
-    border: 2px solid var(--sf-success) !important;
-
-    .header {
-      background-color: rgba(76, 175, 80, 0.16);
+      background-color: var(--sf-status-warning-bg);
     }
   }
 }

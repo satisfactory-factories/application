@@ -100,10 +100,19 @@
           @click="navigateToFactory(element.id)"
         >
           <v-row class="d-flex flex-nowrap ma-0">
-            <v-spacer class="d-flex align-center text-body-1 pa-2">
-              <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-              <i class="fas fa-industry mr-2" />
-              <span>{{ truncateFactoryName(element.name) }}</span>
+            <!-- A column, not a row: the status chips line sits under the name and grows the
+                 entry when something needs attention. The cells to the right stretch to match. -->
+            <v-spacer class="d-flex flex-column justify-center text-body-1 pa-2">
+              <div class="d-flex align-center">
+                <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
+                <i class="fas fa-industry mr-2" />
+                <span>{{ truncateFactoryName(element.name) }}</span>
+              </div>
+              <factory-status-chips
+                animated
+                :statuses="statuses.get(element.id)"
+                @navigate="section => navigateToFactory(element.id, `${element.id}-${section}`)"
+              />
             </v-spacer>
             <v-tooltip right>
               <template #activator="{ props }">
@@ -190,6 +199,8 @@
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
 
@@ -238,12 +249,17 @@
     show.value = true
   })
 
+  // One pass over the plan rather than a call per row per chip — the sidebar renders every factory,
+  // so a template-expression call would multiply the predicates by the chip count.
+  const statuses = computed(() => new Map(
+    compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
+  ))
+
   const factoryClass = (factory: Factory) => {
     return {
       'factory-card': true,
       'active-view': factory.id === activeFactoryId.value,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync === false,
+      ...factoryStatusClass(statuses.value.get(factory.id)),
     }
   }
 

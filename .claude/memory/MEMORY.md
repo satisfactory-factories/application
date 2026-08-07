@@ -25,3 +25,4 @@
 - [Perf: deep-watcher bottleneck](perf-deep-watcher-bottleneck.md) — post-diff-commit, 124-factory edits still block ~5s: three full-plan deep watchers + persistence stringify; fix plan inside
 - [VNumberInput clamping](vnumberinput-clamping.md) — clamp typed values on entry and remount the field; `:max` swallows the update event
 - [Export/import chain invariants](export-import-chain-invariants.md) — exports are derived from imports, factory IDs must be unique, and a loaded plan won't self-heal unless validation asks for a recalc
+- [Factory status registry](factory-status-registry.md) — adding a status is one array entry; keep the warning tier out of the engine loop and mirror the product-less guard or saved plans change colour
