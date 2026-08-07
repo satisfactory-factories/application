@@ -175,7 +175,7 @@ export const calculatePartSupply = (factory: Factory) => {
 }
 
 // Whether this factory tops raw shortfalls up automatically. The factory's own setting wins;
-// absent (the normal case) it inherits the user's global choice.
+// absent (the normal case) it inherits the plan's default.
 export const factoryAssumesRawInputs = (factory: Factory): boolean =>
   factory.assumeRawInputs ?? getAssumeRawInputs()
 

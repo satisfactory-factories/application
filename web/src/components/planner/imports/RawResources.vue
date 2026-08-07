@@ -68,7 +68,7 @@
   const updateFactory = inject('updateFactory') as (factory: Factory, modes?: CalculationModes) => void
 
   const assumptionOptions = [
-    { title: 'Use global setting', value: null },
+    { title: 'Use plan default', value: null },
     { title: 'Assumed supplied', value: true },
     { title: 'Not assumed', value: false },
   ]

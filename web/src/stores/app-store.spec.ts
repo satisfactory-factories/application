@@ -11,6 +11,7 @@ import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
+import { getAssumeRawInputs } from '@/utils/factory-management/settings'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -561,13 +562,43 @@ describe('app-store', () => {
       await appStore.beginLoading(preMiningPlan())
 
       expect(appStore.showRawAssumptionPrompt).toBe(true)
-      expect(appStore.rawAssumptionPromptReason).toBe('migration')
+      // Pre-mining plans keep the old behaviour until answered, whatever this browser thinks.
+      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(true)
     })
 
     it('leaves a plan that already carries the setting alone', async () => {
       await appStore.beginLoading([newFactory('New Plan')])
 
       expect(appStore.showRawAssumptionPrompt).toBe(false)
+    })
+
+    // The whole point of the plan default: a plan built around mines has to mean the same
+    // thing to whoever opens it, not whatever their own last answer happened to be.
+    it('pins the plan default onto the tab so it travels with the plan', async () => {
+      await appStore.beginLoading([newFactory('New Plan')])
+
+      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(false)
+      expect(getAssumeRawInputs()).toBe(false)
+    })
+
+    it('honours a plan that arrives carrying its own answer', async () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) tab.assumeRawInputs = true
+
+      await appStore.beginLoading([newFactory('Shared Plan')])
+
+      expect(getAssumeRawInputs()).toBe(true)
+      expect(appStore.showRawAssumptionPrompt).toBe(false)
+    })
+
+    // Someone who answered before the setting moved onto the plan keeps that answer.
+    it('falls back to the answer this browser gave before the move', async () => {
+      localStorage.setItem('assumeRawInputs', 'true')
+      resetAppStore()
+
+      await appStore.beginLoading([newFactory('Old Browser Answer')])
+
+      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(true)
     })
 
     // The bug this guards: the notice announces a change to the planner, so opening a second
@@ -584,6 +615,8 @@ describe('app-store', () => {
         appStore.answerRawAssumptionPrompt(removeAssumption)
         expect(appStore.showRawAssumptionPrompt).toBe(false)
         expect(localStorage.getItem('seenRawAssumptionNotice')).toBe('true')
+        // The answer belongs to the plan that raised the question.
+        expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(!removeAssumption)
 
         await appStore.beginLoading(preMiningPlan())
         expect(appStore.showRawAssumptionPrompt).toBe(false)
@@ -594,7 +627,6 @@ describe('app-store', () => {
     // still owed to them the first time they open something built before mining.
     it('still raises it for a user who was defaulted off without ever seeing it', async () => {
       resetAppStore()
-      expect(localStorage.getItem('assumeRawInputs')).toBe('false')
       expect(appStore.showRawAssumptionPrompt).toBe(false)
 
       await appStore.beginLoading(preMiningPlan())

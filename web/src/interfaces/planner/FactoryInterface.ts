@@ -239,4 +239,9 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+  // The plan's default answer for "are raw resources supplied?", inherited by every
+  // factory that doesn't override it. On the plan rather than the browser because it
+  // changes what the plan means — see the app store. Optional so older tabs load; the
+  // store resolves and pins it on first use.
+  assumeRawInputs?: boolean;
 }

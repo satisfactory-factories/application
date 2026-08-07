@@ -32,7 +32,7 @@ interface Factory {
 Every part a factory touches gets one entry. Satisfaction is decided here and nowhere else:
 
 - Demand: `amountRequired` = `amountRequiredProduction` (internal recipe ingredients) + `amountRequiredExports` (other factories' requests) + `amountRequiredPower` (generator fuel).
-- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw` (raw resources are treated as always available — the player handles miners themselves).
+- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw`. Raw supply is conditional: `factoryAssumesRawInputs()` (`parts.ts`) resolves `factory.assumeRawInputs` against the **plan's** default, which lives on the factory tab and travels with the plan. When it assumes, a raw shortfall is topped up silently and always satisfied; when it doesn't, `amountSuppliedViaRaw` stays 0 and the shortfall flows through `amountRemaining` as a real deficit (the `rawShortage` status). The plan-level value reaches the engine through the module accessor in `factory-management/settings.ts`, not through `CalculationModes` — the engine re-enters itself from `dependencies.ts` and `inputs.ts` without forwarding its modes.
 - Verdict: `amountRemaining = supplied − required`; `satisfied = amountRemaining >= 0`. `exportable` marks parts other factories may import.
 
 ## The recalculation pipeline

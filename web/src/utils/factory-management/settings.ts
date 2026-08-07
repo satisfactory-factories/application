@@ -1,4 +1,4 @@
-// Calculation settings that come from the user rather than the plan.
+// Calculation settings that come from outside the factory being calculated.
 //
 // This is deliberately a module-level value rather than a parameter threaded through
 // calculateFactory: the engine re-enters itself from inside dependencies.ts and inputs.ts
@@ -6,8 +6,8 @@
 // The app store owns the value and pushes it in; specs set it directly.
 
 // Defaults to the historical behaviour so anything running before the store has resolved the
-// user's choice (and every spec that predates this setting) is unaffected. New plans get false
-// pushed in by the app store; see its first-run resolution.
+// plan's default (and every spec that predates this setting) is unaffected. The value belongs
+// to the plan, not the browser — see resolvePlanAssumption in the app store.
 let assumeRawInputs = true
 
 // When true, any raw resource demand a factory can't meet from imports or its own extraction

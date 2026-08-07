@@ -19,7 +19,7 @@
           id="assume-raw-inputs-toggle"
           color="primary"
           hide-details
-          label="Assume raw resource inputs are supplied"
+          label="This plan assumes raw resource inputs are supplied"
           :model-value="assumeRawInputs"
           @update:model-value="setAssumeRawInputs(!!$event)"
         />
@@ -27,6 +27,11 @@
           When on, any raw resource a factory needs but isn't extracting or importing is assumed to
           be arriving from somewhere. When off it counts as a shortage, so you can plan your mines
           properly. Individual factories can override this in their Raw Resources section.
+        </p>
+        <p class="mt-2 text-medium-emphasis">
+          This is the default for <b>this plan</b>, not a setting on your browser — it saves with the
+          plan and travels with it when you share, copy or sync it, so a plan built around mines
+          means the same thing to whoever opens it. Each plan tab has its own.
         </p>
       </v-card-text>
       <v-card-actions>
@@ -66,15 +71,7 @@
           </v-btn>
         </div>
 
-        <p v-if="promptReason === 'mines'" class="hero-blurb mb-4">
-          This plan mines everything it needs — the ore, the gas and the water are all extracted
-          by buildings you can see in it.
-        </p>
-        <p v-else-if="promptReason === 'assumes'" class="hero-blurb mb-4">
-          Nothing in this plan mines anything: its ore, water and oil are taken as supplied, which
-          is how every plan worked before mining existed.
-        </p>
-        <p v-else class="hero-blurb mb-4">
+        <p class="hero-blurb mb-4">
           You can now define mines inside your factories, or as dedicated mine factories, and
           export the raw ore anywhere in your plan.
         </p>
@@ -131,7 +128,7 @@
   import { useAppStore } from '@/stores/app-store'
 
   const appStore = useAppStore()
-  const { showRawAssumptionPrompt, rawAssumptionPromptReason } = storeToRefs(appStore)
+  const { showRawAssumptionPrompt } = storeToRefs(appStore)
 
   // The three shapes extraction takes, so the modal can show what it is actually talking about.
   const examples = [
@@ -159,19 +156,8 @@
   const activeExample = computed(() =>
     examples.find(example => example.key === activeExampleKey.value) ?? examples[0])
 
-  const promptReason = computed(() => rawAssumptionPromptReason.value)
-
-  const promptTitle = computed(() => ({
-    mines: 'This plan mines its own raw resources',
-    assumes: 'This plan assumes its raw resources',
-    migration: 'Mines are now part of the planner',
-  }[promptReason.value]))
-
-  // "Yes" always means "stop assuming", so an `assumes` plan is asking the opposite question
-  // and has to say so the other way round.
-  const promptQuestion = computed(() => promptReason.value === 'assumes'
-    ? 'Do you want to stop assuming raw resources anyway?'
-    : 'Do you want to stop assuming raw resources across all your factories?')
+  const promptTitle = 'Mines are now part of the planner'
+  const promptQuestion = 'Do you want to stop assuming raw resources across all your factories?'
 
   const showOptions = ref(false)
   const assumeRawInputs = appStore.getAssumeRawInputsSetting()
