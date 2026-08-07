@@ -68,8 +68,6 @@ Guards (verified against Docs.json + wiki, 2026-07-21 — see appendix):
 - **Radioactive items cannot be sunk** (Uranium Waste and everything derived from it, except Plutonium Fuel Rods). Until phase 4 lands, hardcode the exclusion list in an engine constant (`NuclearWaste`, `PlutoniumWaste`, `NonFissibleUranium`, `PlutoniumPellet`, `PlutoniumCell`, `Ficsonium`, `FicsoniumFuelRod`); phase 4 replaces it with the data-derived rule `sinkable = !isFluid && sinkPoints > 0`, which Docs.json confirms encodes the radioactive exclusions *and* the Plutonium/Uranium Fuel Rod exceptions exactly.
 - Raw-supplied parts (`isRaw`) — sinking raw inputs is nonsense; hide the toggle.
 
-**Eligibility is surplus-driven, never production-driven** (locked 2026-07-31, applies to the depot work in `498-dimensional-depot-tracking.md` too). Do not gate the sink toggle on "does this factory produce the part". A logistics centre that imports everything into one place and sinks or depots the overflow is a real and common build; requiring local production would exclude it. The rule is simply: there is a surplus, so the player may declare where it goes.
-
 Persistence/migration: backfill `sinks: {}` per factory and leave `autoSink` absent (absent ⇒ true) in `app-store.ts#initFactories`, following the existing issue-numbered patch pattern; also backfill in `validation.ts`. Recommendation: **auto-sink defaults on for existing plans too** — it matches the long-standing "assumed you are sinking" help text, the bracket display means no information is lost, and opting out is one click; flagged as an open question. Plans sync as opaque JSON so the backend needs nothing.
 
 ### 2. Per-part UI: the "Sunk" affordance

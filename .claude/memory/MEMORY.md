@@ -29,4 +29,3 @@
 - [Extraction output multiplier](extraction-output-multiplier.md) — how miner mark + node purity plug into the building-group maths without forking the solver
 - [Raw input assumption](raw-input-assumption.md) — why it reaches the engine via a module accessor, and the spec pollution that causes
 - [Game data version cache](game-data-version-cache.md) — bump `dataVersion` every time the data is regenerated, or browsers keep serving the old JSON
-- [Surplus disposition isn't production-tied](surplus-disposition-not-production-tied.md) — sink/depot toggles key off surplus alone, so logistics-centre factories aren't excluded
