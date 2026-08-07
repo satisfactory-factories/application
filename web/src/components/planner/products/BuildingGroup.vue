@@ -98,7 +98,7 @@
           class="sf-chip input node-setting mx-1 purity-chip"
           variant="tonal"
         >
-          <tooltip text="Node purity">
+          <tooltip classes="ml-2" text="Node purity">
             <v-icon icon="fas fa-gem" size="25" />
           </tooltip>
           <v-select
