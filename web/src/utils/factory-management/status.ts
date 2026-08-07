@@ -114,7 +114,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'rawShortage',
     severity: 'problem',
-    icon: 'fas fa-pickaxe',
+    icon: 'fas fa-shovel',
     chip: true,
     section: 'satisfaction',
     detail: 'This factory needs raw resources it neither extracts nor imports, and it is not assuming they are supplied.',

@@ -62,10 +62,9 @@
         </div>
       </div>
 
-      <!-- the icon does not seem to load properly -->
       <v-btn
         class="close"
-        icon="fas fa-xmark"
+        icon="fas fa-times"
         size="small"
         title="Close"
         @click="close"
