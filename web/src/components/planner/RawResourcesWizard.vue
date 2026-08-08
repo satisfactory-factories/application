@@ -286,8 +286,9 @@
           <v-alert class="mt-4" density="comfortable" type="warning" variant="tonal">
             <div class="d-flex align-center flex-wrap ga-3">
               <span class="flex-grow-1">
-                There is no undo. Download your plan as it stands first if you want a way back —
-                restore it later with <b>Paste plan</b>, which reads the same file.
+                There is no undo. Download your plan as it stands first if you want a way to
+                restore this — copy the contents of the file to your clipboard, then press
+                <b>Paste plan</b> on the planner.
               </span>
               <v-btn
                 id="wizard-backup"
@@ -526,7 +527,7 @@
       powerTarget: tab?.powerTarget ?? 0,
     })
     backedUp.value = true
-    eventBus.emit('toast', { message: 'Plan downloaded. Restore it any time with Paste plan.' })
+    eventBus.emit('toast', { message: 'Plan downloaded. To restore it, copy the file\'s contents and press Paste plan.' })
   }
 
   const editingId = ref<number | null>(null)
