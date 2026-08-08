@@ -84,11 +84,13 @@ export const sfColors = {
   // below); this is that tonal blue as rendered over the dark card surface.
   mutedBlue: { color: '#212f3a', border: '#212f3a' },
 
-  // Status
-  success: { color: palette.green, border: palette.green },
+  // Status. The backgrounds are the chip colour taken right down, for surfaces that carry the
+  // same meaning as the chip sitting on them — a heading saying "new", a row saying "added".
+  // Opaque for the same reason `problem` is: alpha composites differently per surface.
+  success: { color: palette.green, border: palette.green, background: '#1b3a1f' },
   error: { color: palette.red, border: palette.red },
   // Amber rather than red: something the user should read before acting, but not a failure.
-  warning: { color: palette.yellow, border: palette.yellowBorder },
+  warning: { color: palette.yellow, border: palette.yellowBorder, background: '#3d3311' },
   // A factory/card in a problem state. Historically this red drifted into four
   // different literals (#a00, #b50000, rgba(140,9,21,.4), rgba(128,0,0,.5)); the
   // background is deliberately OPAQUE — the old 0.4-alpha value composited to a

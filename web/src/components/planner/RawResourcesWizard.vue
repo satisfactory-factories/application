@@ -192,7 +192,7 @@
               </tr>
             </thead>
             <tbody v-for="plan in pending.summary.factories" :key="plan.factoryId" class="factory-group">
-              <tr class="factory-row">
+              <tr class="factory-row" :class="plan.isNew ? 'factory-row--new' : 'factory-row--modified'">
                 <td colspan="4">
                   <span class="d-flex align-center ga-2">
                     <i class="fas fa-industry" />
@@ -231,7 +231,11 @@
               </tr>
               <!-- Every cell is a stack of fixed-height lines, so the item, its rate and the
                    first factory it goes to sit on the same line as each other. -->
-              <tr v-for="line in factoryLines(plan)" :key="line.partId">
+              <tr
+                v-for="line in factoryLines(plan)"
+                :key="line.partId"
+                :class="{ 'item-row--new': line.change === 'new' }"
+              >
                 <td>
                   <span class="cell-line ga-2">
                     <game-asset :subject="line.partId" type="item" />
@@ -635,5 +639,28 @@
     align-items: center;
     display: flex;
     min-height: 34px;
+  }
+
+  // The heading carries the same colour as the chip on it, taken right down, so a plan of thirty
+  // factories can be read as created-vs-changed without reading a word of it.
+  .factory-row--new td {
+    background: var(--sf-success-bg);
+  }
+
+  .factory-row--modified td {
+    background: var(--sf-warning-bg);
+  }
+
+  // Weaker than the heading above it — the same green, saying the same thing about one line.
+  .item-row--new td {
+    background: color-mix(in srgb, var(--sf-success-bg) 45%, transparent);
+  }
+
+  // A coloured heading butted against the previous factory's last row reads as part of it, and a
+  // hairline is lost against the fill. `padding-box` is what makes the transparent border a gap
+  // rather than more of the heading's own colour.
+  .review-table .factory-group + .factory-group .factory-row td {
+    background-clip: padding-box;
+    border-top: 28px solid transparent;
   }
 </style>
