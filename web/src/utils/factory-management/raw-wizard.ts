@@ -49,15 +49,42 @@ export interface WizardRow {
   wellOnly: boolean
 }
 
+export interface WizardFactoryExport {
+  toFactoryId: number
+  toFactoryName: string
+  partId: string
+  partName: string
+  amount: number
+}
+
+// What a touched factory looks like once the run has been calculated — read off the result, not
+// predicted from the rows, so the review shows what will actually be committed.
+export interface WizardFactoryPlan {
+  factoryId: number
+  factoryName: string
+  isNew: boolean
+  products: { partId: string, partName: string, amount: number }[]
+  exports: WizardFactoryExport[]
+}
+
 export interface WizardSummary {
   minesCreated: string[]
   productsAdded: number
   importsWired: number
+  factories: WizardFactoryPlan[]
 }
 
 export interface WizardExtractorChoice {
   building: string
   purity: NodePurity
+}
+
+// Where the mines the wizard creates land in the plan.
+export type WizardPlacement = 'top' | 'bottom'
+
+export interface WizardApplyOptions {
+  extractor?: WizardExtractorChoice
+  placement?: WizardPlacement
 }
 
 // A miner one step up from the reference extractor, on an ordinary node: the middle-of-the-road
@@ -214,21 +241,57 @@ export interface WizardApplyResult {
   summary: WizardSummary
 }
 
+// Read off the calculated plan rather than accumulated as rows are applied: a mine feeding six
+// factories is one product and six exports, and only the finished dependency pass knows that.
+const describeTouchedFactories = (
+  factories: Factory[],
+  touched: Set<number>,
+  created: Set<Factory>,
+): WizardFactoryPlan[] => {
+  const names = new Map(factories.map(factory => [factory.id, factory.name]))
+
+  return factories
+    .filter(factory => touched.has(factory.id))
+    .map(factory => ({
+      factoryId: factory.id,
+      factoryName: factory.name,
+      isNew: created.has(factory),
+      products: factory.products.map(product => ({
+        partId: product.id,
+        partName: getPartDisplayName(product.id),
+        amount: product.amount,
+      })),
+      exports: Object.values(factory.dependencies.requests)
+        .flat()
+        .map(request => ({
+          toFactoryId: request.requestingFactoryId,
+          toFactoryName: names.get(request.requestingFactoryId) ?? 'Unknown factory',
+          partId: request.part,
+          partName: getPartDisplayName(request.part),
+          amount: request.amount,
+        })),
+    }))
+}
+
 export const applyRawWizard = (
   factories: Factory[],
   rows: WizardRow[],
   gameData: DataInterface,
-  extractor: WizardExtractorChoice = DEFAULT_EXTRACTOR,
+  options: WizardApplyOptions = {},
 ): WizardApplyResult => {
+  const extractor = options.extractor ?? DEFAULT_EXTRACTOR
+  const placement = options.placement ?? 'top'
+
   // Plain data throughout (it round-trips to localStorage already), so this is a true detached
   // copy — including through reactive proxies.
-  const working = JSON.parse(JSON.stringify(factories)) as Factory[]
+  let working = JSON.parse(JSON.stringify(factories)) as Factory[]
 
   validateRows(rows, working)
 
   const byId = new Map(working.map(factory => [factory.id, factory]))
-  const summary: WizardSummary = { minesCreated: [], productsAdded: 0, importsWired: 0 }
+  const summary: WizardSummary = { minesCreated: [], productsAdded: 0, importsWired: 0, factories: [] }
   const sizedProducts: FactoryItem[] = []
+  const touched = new Set<number>()
 
   // One mine per resource for the whole plan, sized to everything that asked for it — not one
   // per row, which would leave a plan short of iron in eight places with eight iron mines.
@@ -258,6 +321,7 @@ export const applyRawWizard = (
 
     const factory = byId.get(row.factoryId)!
     const recipe = getExtractionRecipeForPart(row.partId)
+    touched.add(factory.id)
 
     if (row.choice === 'onsite') {
       if (!recipe) {
@@ -275,6 +339,7 @@ export const applyRawWizard = (
 
     // 'mine' and 'import' both mean "somebody else produces it and ships it here".
     const target = row.choice === 'mine' ? mines.get(row.partId)! : byId.get(row.importFrom!)!
+    touched.add(target.id)
 
     if (row.choice === 'mine' && !hasExtractionProduct(target, row.partId)) {
       // First row to reach this mine: place the sized product, then wire the import by hand.
@@ -292,10 +357,23 @@ export const applyRawWizard = (
     summary.importsWired++
   }
 
+  // A dozen new mines appended to a long plan land where they'll never be seen, so where they go
+  // is the user's call. displayOrder is rewritten wholesale because it is the plan's running
+  // order, not a per-factory attribute.
+  if (mines.size) {
+    const created = [...mines.values()]
+    const createdIds = new Set(created.map(mine => mine.id))
+    const rest = working.filter(factory => !createdIds.has(factory.id))
+    working = placement === 'top' ? [...created, ...rest] : [...rest, ...created]
+    working.forEach((factory, index) => { factory.displayOrder = index })
+  }
+
   calculateFactories(working, gameData)
 
   // Back to the unsynced default every mine is created with, now that the groups are sized.
   sizedProducts.forEach(product => { product.buildingGroupItemSync = false })
+
+  summary.factories = describeTouchedFactories(working, touched, new Set(mines.values()))
 
   return { factories: working, summary }
 }

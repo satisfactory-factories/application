@@ -212,7 +212,7 @@ describe('raw wizard', async () => {
       const { factories: result, summary } = applyRawWizard(factories, rows, gameData)
 
       expect(result).toHaveLength(2)
-      expect(summary).toEqual({ minesCreated: [], productsAdded: 0, importsWired: 0 })
+      expect(summary).toEqual({ minesCreated: [], productsAdded: 0, importsWired: 0, factories: [] })
       expect(result[0].parts.OreIron.satisfied).toBe(false)
     })
 
@@ -230,6 +230,66 @@ describe('raw wizard', async () => {
       expect(oilProducts).toHaveLength(2)
       expect(oilProducts.map(product => product.recipe)).toContain('UnpackageOil')
       expect(oilProducts.map(product => product.recipe)).toContain('Extract_LiquidOil')
+    })
+
+    describe('placement of new mines', () => {
+      it('puts them at the top of the plan by default, renumbering everything', () => {
+        const { factories: result } = applyRawWizard(factories, rows, gameData)
+
+        expect(result.map(factory => factory.name)).toEqual(['Iron Ore Mine', 'Smelter A', 'Smelter B'])
+        expect(result.map(factory => factory.displayOrder)).toEqual([0, 1, 2])
+      })
+
+      it('puts them at the bottom when asked', () => {
+        const { factories: result } = applyRawWizard(factories, rows, gameData, { placement: 'bottom' })
+
+        expect(result.map(factory => factory.name)).toEqual(['Smelter A', 'Smelter B', 'Iron Ore Mine'])
+        expect(result.map(factory => factory.displayOrder)).toEqual([0, 1, 2])
+      })
+
+      // Nothing was created, so nothing should be shuffled.
+      it('leaves the order alone when no mine is created', () => {
+        rows.forEach(row => { row.choice = 'onsite' })
+        const { factories: result } = applyRawWizard(factories, rows, gameData)
+
+        expect(result.map(factory => factory.name)).toEqual(['Smelter A', 'Smelter B'])
+      })
+    })
+
+    describe('the review breakdown', () => {
+      it('describes every factory it touched, in plan order', () => {
+        const { summary } = applyRawWizard(factories, rows, gameData)
+
+        expect(summary.factories.map(plan => plan.factoryName))
+          .toEqual(['Iron Ore Mine', 'Smelter A', 'Smelter B'])
+        expect(summary.factories[0].isNew).toBe(true)
+        expect(summary.factories[1].isNew).toBe(false)
+      })
+
+      it('lists the mine once with an export per factory it feeds', () => {
+        const { summary } = applyRawWizard(factories, rows, gameData)
+        const mine = summary.factories[0]
+
+        expect(mine.products).toEqual([{ partId: 'OreIron', partName: 'Iron Ore', amount: 200 }])
+        expect(mine.exports.map(exported => [exported.toFactoryName, exported.partId, exported.amount]))
+          .toEqual([['Smelter A', 'OreIron', 100], ['Smelter B', 'OreIron', 100]])
+      })
+
+      it('shows a consumer everything it produces, with nothing exported', () => {
+        const { summary } = applyRawWizard(factories, rows, gameData)
+        const smelter = summary.factories[1]
+
+        expect(smelter.products).toEqual([{ partId: 'IronIngot', partName: 'Iron Ingot', amount: 100 }])
+        expect(smelter.exports).toEqual([])
+      })
+
+      it('includes the on-site extraction it just added', () => {
+        rows.forEach(row => { row.choice = 'onsite' })
+        const { summary } = applyRawWizard(factories, rows, gameData)
+
+        expect(summary.factories[0].products.map(product => product.partId))
+          .toEqual(['IronIngot', 'OreIron'])
+      })
     })
 
     describe('validation', () => {

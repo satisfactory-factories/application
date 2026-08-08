@@ -161,7 +161,71 @@
               {{ ignoredCount === 1 ? 'shortage' : 'shortages' }} alone
             </li>
           </ul>
-          <v-alert density="comfortable" type="warning" variant="tonal">
+
+          <!-- Where new factories land matters on a long plan: appended to the bottom they are
+               out of sight, which is where a migration's output is least useful. -->
+          <div v-if="pending.summary.minesCreated.length" class="placement mb-4 pa-3 rounded">
+            <p class="mb-2">
+              You are adding <b>{{ pending.summary.minesCreated.length }}</b> new
+              {{ pending.summary.minesCreated.length === 1 ? 'factory' : 'factories' }}. Where would
+              you like them on the plan?
+            </p>
+            <v-btn-toggle
+              v-model="placement"
+              color="primary"
+              density="compact"
+              mandatory
+              variant="outlined"
+            >
+              <v-btn prepend-icon="fas fa-arrow-up" value="top">Top of the plan</v-btn>
+              <v-btn append-icon="fas fa-arrow-down" value="bottom">Bottom of the plan</v-btn>
+            </v-btn-toggle>
+          </div>
+
+          <v-table class="wizard-table review-table" density="compact">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="text-right">Produced</th>
+                <th>Exported to</th>
+              </tr>
+            </thead>
+            <tbody v-for="plan in pending.summary.factories" :key="plan.factoryId" class="factory-group">
+              <tr class="factory-row">
+                <td colspan="3">
+                  <i class="fas fa-industry mr-2" /><b>{{ plan.factoryName }}</b>
+                  <v-chip v-if="plan.isNew" class="sf-chip green x-small ml-2">New factory</v-chip>
+                </td>
+              </tr>
+              <tr v-for="line in factoryLines(plan)" :key="line.partId">
+                <td>
+                  <span class="d-flex align-center ga-2">
+                    <game-asset :subject="line.partId" type="item" />
+                    <span>{{ line.partName }}</span>
+                  </span>
+                </td>
+                <td class="text-right text-no-wrap">
+                  <span v-if="line.produced === null" class="text-disabled">&mdash;</span>
+                  <span v-else>{{ formatNumber(line.produced) }}/min</span>
+                </td>
+                <td>
+                  <span v-if="!line.exports.length" class="text-disabled">Used here</span>
+                  <span
+                    v-for="exported in line.exports"
+                    :key="exported.toFactoryId"
+                    class="d-block text-no-wrap"
+                  >
+                    <v-chip class="sf-chip factory x-small">
+                      <i class="fas fa-industry mr-1" />{{ exported.toFactoryName }}
+                    </v-chip>
+                    <span class="text-medium-emphasis">{{ formatNumber(exported.amount) }}/min</span>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+
+          <v-alert class="mt-4" density="comfortable" type="warning" variant="tonal">
             There is no undo. Copy your plan to the clipboard first if you want a way back.
           </v-alert>
         </template>
@@ -207,6 +271,8 @@
     DEFAULT_EXTRACTOR,
     WizardApplyResult,
     WizardChoice,
+    WizardFactoryPlan,
+    WizardPlacement,
     WizardRow,
   } from '@/utils/factory-management/raw-wizard'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
@@ -222,6 +288,7 @@
   const pending = ref<WizardApplyResult | null>(null)
   const applying = ref(false)
   const error = ref('')
+  const placement = ref<WizardPlacement>('top')
 
   // Column order, and the header each one wears. Every row shows all four so the columns line up;
   // the ones a row can't use render as a dash.
@@ -265,6 +332,33 @@
   })
   const ignoredCount = computed(() => rows.value.filter(row => row.choice === 'ignore').length)
 
+  // One line per item the factory ends up with: what it makes, and where each of it goes. Exports
+  // of something the factory doesn't produce (surplus imports passing through) still get a line,
+  // with no production against them.
+  const factoryLines = (plan: WizardFactoryPlan) => {
+    const lines = plan.products.map(product => ({
+      partId: product.partId,
+      partName: product.partName,
+      produced: product.amount as number | null,
+      exports: plan.exports.filter(exported => exported.partId === product.partId),
+    }))
+
+    const produced = new Set(plan.products.map(product => product.partId))
+    for (const exported of plan.exports) {
+      if (produced.has(exported.partId) || lines.some(line => line.partId === exported.partId)) {
+        continue
+      }
+      lines.push({
+        partId: exported.partId,
+        partName: exported.partName,
+        produced: null,
+        exports: plan.exports.filter(other => other.partId === exported.partId),
+      })
+    }
+
+    return lines
+  }
+
   // Rebuild from the live plan every time it opens — the table is a snapshot, and a stale one
   // is exactly what the apply-time validation is there to reject.
   watch(() => props.modelValue, open => {
@@ -291,12 +385,19 @@
         appStore.getFactories(),
         rows.value,
         gameDataStore.getGameData(),
+        { placement: placement.value },
       )
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err)
       pending.value = null
     }
   }
+
+  // Placement is baked into the run, so changing it re-runs against the same rows rather than
+  // being applied to a result that was built for the other answer.
+  watch(placement, () => {
+    if (pending.value) review()
+  })
 
   const apply = () => {
     if (applying.value || !pending.value) return
@@ -345,5 +446,17 @@
 
   .import-select {
     min-width: 150px;
+  }
+
+  .placement {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  // A factory exporting to six others makes a tall cell; the item and its rate belong beside the
+  // first line of it, not floating in the middle.
+  .review-table tbody td {
+    vertical-align: top;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
   }
 </style>

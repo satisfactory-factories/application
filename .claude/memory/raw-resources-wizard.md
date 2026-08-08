@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 69e1d33d-d5de-48d6-b095-1de878166bc4
-  modified: 2026-08-08T01:56:32.971Z
+  modified: 2026-08-08T14:13:59.592Z
 ---
 
 The wizard (`utils/factory-management/raw-wizard.ts` + `components/planner/RawResourcesWizard.vue`)
@@ -34,6 +34,14 @@ building-group mismatch. Measured behaviour:
 
 So: set mark/purity → sync **on** → calculate → sync back **off** (the default mines are created
 with, so a later mark change doesn't rewrite the quantity). Verified stable across repeated recalcs.
+
+**Placement and the review breakdown are both properties of the run, not of the commit.** New mines
+go to the top of the plan by default (`options.placement`), which rewrites `displayOrder` across
+*every* factory — it is the plan's running order, not a per-factory attribute, and the array order
+the planner renders has to agree with it. Changing the answer re-runs the whole apply rather than
+reordering an already-built result. The same goes for the "Ready to apply" table: it is read off the
+calculated clone, so the exports it lists are the dependency pass's own numbers. Predicting them
+from the rows would be wrong the moment one mine feeds six factories.
 
 **Recipe identity matters on both apply paths.** `addShortageToFactory` bumps an existing product
 found by part id and *discards* the recipe argument, so a factory that merely unpackages Water could
