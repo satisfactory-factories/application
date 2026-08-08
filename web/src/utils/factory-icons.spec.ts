@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fuzzySearch } from '@/utils/fuzzySearch'
 import {
   emojiFactoryIcons,
   factoryIconAssetUrl,
   factoryIcons,
   factoryIconSearchText,
+  factoryIconTabs,
   findFactoryIcon,
   gameFactoryIcons,
-  popularFactoryIcons,
   resolveFactoryIcon,
 } from '@/utils/factory-icons'
 
@@ -16,7 +17,7 @@ const assetsRoot = path.resolve(__dirname, '../../public/assets/game')
 
 describe('factory-icons registry', () => {
   it('has entries', () => {
-    expect(factoryIcons.length).toBeGreaterThan(200)
+    expect(factoryIcons.length).toBeGreaterThan(300)
   })
 
   it('has unique IDs', () => {
@@ -55,12 +56,27 @@ describe('factory-icons registry', () => {
     expect(unkeyworded.map(entry => entry.id)).toEqual([])
   })
 
-  it('has a populated popular set that all resolves', () => {
-    expect(popularFactoryIcons.length).toBeGreaterThan(20)
-    const unresolved = popularFactoryIcons.filter(
-      entry => resolveFactoryIcon(entry.id).kind === 'default'
-    )
-    expect(unresolved.map(entry => entry.id)).toEqual([])
+  it('puts every entry in a tab, with the emoji collected into one', () => {
+    const tabbed = factoryIconTabs.flatMap(tab => tab.entries.map(entry => entry.id))
+
+    expect(new Set(tabbed).size).toBe(factoryIcons.length)
+    expect(factoryIconTabs.at(-1)?.label).toBe('Emoji')
+    expect(factoryIconTabs.at(-1)?.entries).toHaveLength(emojiFactoryIcons.length)
+  })
+
+  it('opens on a tab of game art rather than emoji', () => {
+    expect(factoryIconTabs[0].label).toBe('Buildings')
+    expect(factoryIconTabs[0].entries.every(entry => entry.asset)).toBe(true)
+  })
+
+  it('offers the machines, logistics and equipment that game data has no entry for', () => {
+    for (const id of [
+      'conveyor-belt-mk-5', 'conveyor-lift-mk-3', 'smart-splitter', 'pipeline-pump-mk-2',
+      'power-pole-mk-3', 'priority-power-switch', 'jetpack', 'blade-runners', 'hard-drive',
+      'miner-mk-3', 'train-station', 'somersloop',
+    ]) {
+      expect(resolveFactoryIcon(id).kind, id).toBe('image')
+    }
   })
 
   // The registry deliberately has no FICSMAS entries: their assets were never shipped.
@@ -125,8 +141,18 @@ describe('factoryIconSearchText', () => {
     expect(factoryIconSearchText(blueSquare)).toContain('square')
   })
 
-  it('is just the name when there are no keywords', () => {
+  // The game writes "Mk.5", so the dot sits exactly where a user types a space or nothing.
+  it.each([
+    ['conveyor belt mk 5', 'Conveyor Belt Mk.5'],
+    ['mk5', 'Conveyor Belt Mk.5'],
+    ['pipeline pump mk 2', 'Pipeline Pump Mk.2'],
+  ])('finds %s via the punctuation-stripped name', (query, name) => {
+    const results = fuzzySearch(query, factoryIcons, factoryIconSearchText)
+    expect(results.map(entry => entry.name)).toContain(name)
+  })
+
+  it('keeps the plain name in the search text', () => {
     expect(factoryIconSearchText({ id: 'x', name: 'Iron Ingot', group: 'Components' }))
-      .toBe('Iron Ingot')
+      .toContain('Iron Ingot')
   })
 })

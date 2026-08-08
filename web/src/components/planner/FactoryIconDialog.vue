@@ -22,8 +22,14 @@
 
       <!-- Tabs are for browsing. A query searches the whole registry at once, so they would
            only hide matches — they give way to a single flat grid until it is cleared. -->
-      <v-tabs v-if="!isSearching" v-model="tab" class="px-2" density="compact">
-        <v-tab v-for="option in tabs" :key="option.value" :value="option.value">
+      <v-tabs
+        v-if="!isSearching"
+        v-model="tab"
+        class="px-2"
+        density="compact"
+        show-arrows
+      >
+        <v-tab v-for="option in tabs" :key="option.label" :value="option.label">
           {{ option.label }}
         </v-tab>
       </v-tabs>
@@ -32,7 +38,7 @@
         <template v-if="isSearching">
           <p class="text-body-2 text-medium-emphasis mb-3">
             {{ searchResults.length }} {{ searchResults.length === 1 ? 'result' : 'results' }}
-            for "{{ debouncedSearchTerm }}"
+            for "{{ query }}"
           </p>
           <p v-if="!searchResults.length" class="text-body-2 text-medium-emphasis">
             No icons match your search.
@@ -53,8 +59,10 @@
         </template>
 
         <template v-else>
-          <div v-for="group in groupedTabEntries" :key="group.name" class="mb-4">
-            <p class="text-body-2 text-medium-emphasis mb-2">{{ group.name }}</p>
+          <div v-for="group in groupedTabEntries" :key="group.label" class="mb-4">
+            <!-- Only worth a heading when the tab holds more than one group: on the game tabs
+                 the single heading would just repeat the tab's own name. -->
+            <p v-if="groupedTabEntries.length > 1" class="text-body-2 text-medium-emphasis mb-2">{{ group.label }}</p>
             <div class="icon-grid">
               <button
                 v-for="entry in group.entries"
@@ -91,12 +99,10 @@
   import { computed, ref, watch } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import {
-    emojiFactoryIcons,
-    type FactoryIconEntry,
     factoryIcons,
     factoryIconSearchText,
-    gameFactoryIcons,
-    popularFactoryIcons,
+    factoryIconTabs,
+    groupFactoryIcons,
   } from '@/utils/factory-icons'
   import { fuzzySearch } from '@/utils/fuzzySearch'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
@@ -106,57 +112,31 @@
 
   const isOpen = defineModel<boolean>({ required: true })
 
-  const tabs = [
-    { value: 'popular', label: 'Popular', entries: popularFactoryIcons },
-    { value: 'game', label: 'All icons', entries: gameFactoryIcons },
-    { value: 'emoji', label: 'Emoji', entries: emojiFactoryIcons },
-  ]
+  const tabs = factoryIconTabs
+  const defaultTab = tabs[0].label
 
-  const tab = ref('popular')
+  const tab = ref(defaultTab)
   const searchTerm = ref('')
-
-  // Same debounce as the parts browser: ~280 tiles should not re-filter on every keystroke.
-  const debouncedSearchTerm = ref('')
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined
-  watch(searchTerm, value => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      debouncedSearchTerm.value = (value ?? '').trim()
-    }, 250)
-  })
 
   // Reopening should not land the user back in someone else's half-typed search.
   watch(isOpen, open => {
     if (!open) return
-    clearTimeout(debounceTimer)
     searchTerm.value = ''
-    debouncedSearchTerm.value = ''
-    tab.value = 'popular'
+    tab.value = defaultTab
   })
 
-  const isSearching = computed(() => debouncedSearchTerm.value.length > 0)
+  const query = computed(() => (searchTerm.value ?? '').trim())
+  const isSearching = computed(() => query.value.length > 0)
 
   // Deliberately the whole registry, not the active tab: an icon the user cannot see the tab
   // for is exactly the one they are searching for.
   const searchResults = computed(() =>
-    fuzzySearch(debouncedSearchTerm.value, factoryIcons, factoryIconSearchText)
+    fuzzySearch(query.value, factoryIcons, factoryIconSearchText)
   )
 
-  const groupedTabEntries = computed(() => {
-    const entries = tabs.find(option => option.value === tab.value)?.entries ?? []
-    const groups: { name: string, entries: FactoryIconEntry[] }[] = []
-
-    entries.forEach(entry => {
-      const group = groups.find(candidate => candidate.name === entry.group)
-      if (group) {
-        group.entries.push(entry)
-      } else {
-        groups.push({ name: entry.group, entries: [entry] })
-      }
-    })
-
-    return groups
-  })
+  const groupedTabEntries = computed(() =>
+    groupFactoryIcons(tabs.find(option => option.label === tab.value)?.entries ?? [])
+  )
 
   const apply = (id: string | undefined) => {
     props.factory.icon = id

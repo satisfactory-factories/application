@@ -3,623 +3,415 @@
     "id": "smelter",
     "name": "Smelter",
     "asset": "building/smeltermk1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "foundry",
     "name": "Foundry",
     "asset": "building/foundrymk1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "constructor",
     "name": "Constructor",
     "asset": "building/constructormk1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "assembler",
     "name": "Assembler",
     "asset": "building/assemblermk1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "manufacturer",
     "name": "Manufacturer",
     "asset": "building/manufacturermk1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "oil-refinery",
     "name": "Oil Refinery",
     "asset": "building/oilrefinery",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "packager",
     "name": "Packager",
     "asset": "building/packager",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "blender",
     "name": "Blender",
     "asset": "building/blender",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "particle-accelerator",
     "name": "Particle Accelerator",
     "asset": "building/hadroncollider",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "quantum-encoder",
     "name": "Quantum Encoder",
     "asset": "building/quantumencoder",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "converter",
     "name": "Converter",
     "asset": "building/converter",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "miner-mk-1",
     "name": "Miner Mk.1",
     "asset": "building/miner-mk-1",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "miner-mk-2",
     "name": "Miner Mk.2",
     "asset": "building/miner-mk-2",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "miner-mk-3",
     "name": "Miner Mk.3",
     "asset": "building/miner-mk-3",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "oil-extractor",
     "name": "Oil Extractor",
     "asset": "item/oil-extractor",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "water-extractor",
     "name": "Water Extractor",
     "asset": "item/water-extractor",
-    "group": "Buildings",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "resource-well-pressurizer",
     "name": "Resource Well Pressurizer",
     "asset": "item/resource-well-pressurizer",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "biomass-burner",
-    "name": "Biomass Burner",
-    "asset": "building/generatorbiomass",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "coal-generator",
-    "name": "Coal-Powered Generator",
-    "asset": "building/generatorcoal",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "fuel-generator",
-    "name": "Fuel-Powered Generator",
-    "asset": "building/generatorfuel",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "nuclear-power-plant",
-    "name": "Nuclear Power Plant",
-    "asset": "building/generatornuclear",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "geothermal-generator",
-    "name": "Geothermal Generator",
-    "asset": "building/geothermalgenerator",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "alien-power-augmenter",
-    "name": "Alien Power Augmenter",
-    "asset": "building/alienpoweraugmenter",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "power-storage",
-    "name": "Power Storage",
-    "asset": "building/powerstorage",
-    "group": "Buildings",
-    "popular": true
-  },
-  {
-    "id": "train-station",
-    "name": "Train Station",
-    "asset": "item/train-station",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "truck-station",
-    "name": "Truck Station",
-    "asset": "item/truck-station",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "drone-port",
-    "name": "Drone Port",
-    "asset": "item/drone-port",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "storage-container",
-    "name": "Storage Container",
-    "asset": "item/storage-container",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "dimensional-depot",
-    "name": "Dimensional Depot",
-    "asset": "item/dimensional-depot",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "awesome-sink",
-    "name": "AWESOME Sink",
-    "asset": "item/awesome-sink",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "space-elevator",
-    "name": "Space Elevator",
-    "asset": "item/space-elevator",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "the-hub",
-    "name": "The HUB",
-    "asset": "item/the-hub",
-    "group": "Logistics",
-    "popular": true
-  },
-  {
-    "id": "drone",
-    "name": "Drone",
-    "asset": "vehicle/drone",
-    "group": "Vehicles",
-    "popular": true
-  },
-  {
-    "id": "electric-locomotive",
-    "name": "Electric Locomotive",
-    "asset": "vehicle/electric-locomotive",
-    "group": "Vehicles",
-    "popular": true
-  },
-  {
-    "id": "truck",
-    "name": "Truck",
-    "asset": "vehicle/truck",
-    "group": "Vehicles",
-    "popular": true
-  },
-  {
-    "id": "tractor",
-    "name": "Tractor",
-    "asset": "vehicle/tractor",
-    "group": "Vehicles",
-    "popular": true
-  },
-  {
-    "id": "iron-ore",
-    "name": "Iron Ore",
-    "asset": "item/iron-ore",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "copper-ore",
-    "name": "Copper Ore",
-    "asset": "item/copper-ore",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "limestone",
-    "name": "Limestone",
-    "asset": "item/limestone",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "coal",
-    "name": "Coal",
-    "asset": "item/coal",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "caterium-ore",
-    "name": "Caterium Ore",
-    "asset": "item/caterium-ore",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "raw-quartz",
-    "name": "Raw Quartz",
-    "asset": "item/raw-quartz",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "sulfur",
-    "name": "Sulfur",
-    "asset": "item/sulfur",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "bauxite",
-    "name": "Bauxite",
-    "asset": "item/bauxite",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "uranium",
-    "name": "Uranium",
-    "asset": "item/uranium",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "crude-oil",
-    "name": "Crude Oil",
-    "asset": "item/crude-oil",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "water",
-    "name": "Water",
-    "asset": "item/water",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "nitrogen-gas",
-    "name": "Nitrogen Gas",
-    "asset": "item/nitrogen-gas",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "sam",
-    "name": "SAM",
-    "asset": "item/sam",
-    "group": "Raw Resources",
-    "popular": true
-  },
-  {
-    "id": "iron-ingot",
-    "name": "Iron Ingot",
-    "asset": "item/iron-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "copper-ingot",
-    "name": "Copper Ingot",
-    "asset": "item/copper-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "steel-ingot",
-    "name": "Steel Ingot",
-    "asset": "item/steel-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "caterium-ingot",
-    "name": "Caterium Ingot",
-    "asset": "item/caterium-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "aluminum-ingot",
-    "name": "Aluminum Ingot",
-    "asset": "item/aluminum-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "concrete",
-    "name": "Concrete",
-    "asset": "item/concrete",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "plastic",
-    "name": "Plastic",
-    "asset": "item/plastic",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "rubber",
-    "name": "Rubber",
-    "asset": "item/rubber",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "silica",
-    "name": "Silica",
-    "asset": "item/silica",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "quartz-crystal",
-    "name": "Quartz Crystal",
-    "asset": "item/quartz-crystal",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "fuel",
-    "name": "Fuel",
-    "asset": "item/fuel",
-    "group": "Fluids",
-    "popular": true
-  },
-  {
-    "id": "turbofuel",
-    "name": "Turbofuel",
-    "asset": "item/turbofuel",
-    "group": "Fluids",
-    "popular": true
-  },
-  {
-    "id": "reinforced-iron-plate",
-    "name": "Reinforced Iron Plate",
-    "asset": "item/reinforced-iron-plate",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "modular-frame",
-    "name": "Modular Frame",
-    "asset": "item/modular-frame",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "heavy-modular-frame",
-    "name": "Heavy Modular Frame",
-    "asset": "item/heavy-modular-frame",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "computer",
-    "name": "Computer",
-    "asset": "item/computer",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "supercomputer",
-    "name": "Supercomputer",
-    "asset": "item/supercomputer",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "motor",
-    "name": "Motor",
-    "asset": "item/motor",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "turbo-motor",
-    "name": "Turbo Motor",
-    "asset": "item/turbo-motor",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "nuclear-pasta",
-    "name": "Nuclear Pasta",
-    "asset": "item/nuclear-pasta",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "power-shard",
-    "name": "Power Shard",
-    "asset": "item/power-shard",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "somersloop",
-    "name": "Somersloop",
-    "asset": "item/somersloop",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "ficsite-ingot",
-    "name": "Ficsite Ingot",
-    "asset": "item/ficsite-ingot",
-    "group": "Components",
-    "popular": true
-  },
-  {
-    "id": "sq-red",
-    "name": "Red square",
-    "emoji": "🟥",
-    "group": "Squares",
-    "keywords": "red square block colour color",
-    "popular": true
-  },
-  {
-    "id": "sq-orange",
-    "name": "Orange square",
-    "emoji": "🟧",
-    "group": "Squares",
-    "keywords": "orange square block colour color",
-    "popular": true
-  },
-  {
-    "id": "sq-yellow",
-    "name": "Yellow square",
-    "emoji": "🟨",
-    "group": "Squares",
-    "keywords": "yellow square block colour color",
-    "popular": true
-  },
-  {
-    "id": "sq-green",
-    "name": "Green square",
-    "emoji": "🟩",
-    "group": "Squares",
-    "keywords": "green square block colour color",
-    "popular": true
-  },
-  {
-    "id": "sq-blue",
-    "name": "Blue square",
-    "emoji": "🟦",
-    "group": "Squares",
-    "keywords": "blue square block colour color",
-    "popular": true
-  },
-  {
-    "id": "sq-purple",
-    "name": "Purple square",
-    "emoji": "🟪",
-    "group": "Squares",
-    "keywords": "purple square block colour color",
-    "popular": true
-  },
-  {
-    "id": "num-1",
-    "name": "Number 1",
-    "emoji": "1️⃣",
-    "group": "Numbers",
-    "keywords": "1 number digit",
-    "popular": true
-  },
-  {
-    "id": "num-2",
-    "name": "Number 2",
-    "emoji": "2️⃣",
-    "group": "Numbers",
-    "keywords": "2 number digit",
-    "popular": true
-  },
-  {
-    "id": "num-3",
-    "name": "Number 3",
-    "emoji": "3️⃣",
-    "group": "Numbers",
-    "keywords": "3 number digit",
-    "popular": true
-  },
-  {
-    "id": "star",
-    "name": "Star",
-    "emoji": "⭐",
-    "group": "Symbols",
-    "keywords": "star favourite favorite important",
-    "popular": true
-  },
-  {
-    "id": "warning",
-    "name": "Warning",
-    "emoji": "⚠️",
-    "group": "Symbols",
-    "keywords": "warning caution alert triangle",
-    "popular": true
-  },
-  {
-    "id": "tick",
-    "name": "Tick",
-    "emoji": "✅",
-    "group": "Symbols",
-    "keywords": "tick check done complete green",
-    "popular": true
-  },
-  {
-    "id": "bolt",
-    "name": "Lightning bolt",
-    "emoji": "⚡",
-    "group": "Symbols",
-    "keywords": "bolt lightning power energy electric",
-    "popular": true
-  },
-  {
-    "id": "pickaxe",
-    "name": "Pickaxe",
-    "emoji": "⛏️",
-    "group": "Symbols",
-    "keywords": "pickaxe mine mining ore raw",
-    "popular": true
+    "group": "Buildings"
   },
   {
     "id": "resource-well-extractor",
     "name": "Resource Well Extractor",
     "asset": "item/resource-well-extractor",
     "group": "Buildings"
+  },
+  {
+    "id": "portable-miner",
+    "name": "Portable Miner",
+    "asset": "item/portable-miner",
+    "group": "Buildings"
+  },
+  {
+    "id": "crafting-bench",
+    "name": "Crafting Bench",
+    "asset": "item/crafting-bench",
+    "group": "Buildings"
+  },
+  {
+    "id": "equipment-workshop",
+    "name": "Equipment Workshop",
+    "asset": "item/equipment-workshop",
+    "group": "Buildings"
+  },
+  {
+    "id": "nutritional-processor",
+    "name": "Nutritional Processor",
+    "asset": "item/nutritional-processor",
+    "group": "Buildings"
+  },
+  {
+    "id": "biochemical-sculptor",
+    "name": "Biochemical Sculptor",
+    "asset": "item/biochemical-sculptor",
+    "group": "Buildings"
+  },
+  {
+    "id": "blueprint-designer-mk-1",
+    "name": "Blueprint Designer Mk.1",
+    "asset": "item/blueprint-designer-mk-1",
+    "group": "Buildings"
+  },
+  {
+    "id": "blueprint-designer-mk-2",
+    "name": "Blueprint Designer Mk.2",
+    "asset": "item/blueprint-designer-mk-2",
+    "group": "Buildings"
+  },
+  {
+    "id": "blueprint-designer-mk-3",
+    "name": "Blueprint Designer Mk.3",
+    "asset": "item/blueprint-designer-mk-3",
+    "group": "Buildings"
+  },
+  {
+    "id": "biomass-burner",
+    "name": "Biomass Burner",
+    "asset": "building/generatorbiomass",
+    "group": "Power"
+  },
+  {
+    "id": "coal-generator",
+    "name": "Coal-Powered Generator",
+    "asset": "building/generatorcoal",
+    "group": "Power"
+  },
+  {
+    "id": "fuel-generator",
+    "name": "Fuel-Powered Generator",
+    "asset": "building/generatorfuel",
+    "group": "Power"
+  },
+  {
+    "id": "nuclear-power-plant",
+    "name": "Nuclear Power Plant",
+    "asset": "building/generatornuclear",
+    "group": "Power"
+  },
+  {
+    "id": "geothermal-generator",
+    "name": "Geothermal Generator",
+    "asset": "building/geothermalgenerator",
+    "group": "Power"
+  },
+  {
+    "id": "alien-power-augmenter",
+    "name": "Alien Power Augmenter",
+    "asset": "building/alienpoweraugmenter",
+    "group": "Power"
+  },
+  {
+    "id": "power-storage",
+    "name": "Power Storage",
+    "asset": "building/powerstorage",
+    "group": "Power"
+  },
+  {
+    "id": "power-pole-mk-1",
+    "name": "Power Pole Mk.1",
+    "asset": "item/power-pole-mk-1",
+    "group": "Power"
+  },
+  {
+    "id": "power-pole-mk-2",
+    "name": "Power Pole Mk.2",
+    "asset": "item/power-pole-mk-2",
+    "group": "Power"
+  },
+  {
+    "id": "power-pole-mk-3",
+    "name": "Power Pole Mk.3",
+    "asset": "item/power-pole-mk-3",
+    "group": "Power"
+  },
+  {
+    "id": "power-tower",
+    "name": "Power Tower",
+    "asset": "item/power-tower",
+    "group": "Power"
+  },
+  {
+    "id": "power-line",
+    "name": "Power Line",
+    "asset": "item/power-line",
+    "group": "Power"
+  },
+  {
+    "id": "power-switch",
+    "name": "Power Switch",
+    "asset": "item/power-switch",
+    "group": "Power"
+  },
+  {
+    "id": "priority-power-switch",
+    "name": "Priority Power Switch",
+    "asset": "item/priority-power-switch",
+    "group": "Power"
+  },
+  {
+    "id": "wall-outlet-mk-1",
+    "name": "Wall Outlet Mk.1",
+    "asset": "item/wall-outlet-mk-1",
+    "group": "Power"
+  },
+  {
+    "id": "wall-outlet-mk-2",
+    "name": "Wall Outlet Mk.2",
+    "asset": "item/wall-outlet-mk-2",
+    "group": "Power"
+  },
+  {
+    "id": "wall-outlet-mk-3",
+    "name": "Wall Outlet Mk.3",
+    "asset": "item/wall-outlet-mk-3",
+    "group": "Power"
+  },
+  {
+    "id": "production-amplifier",
+    "name": "Production Amplifier",
+    "asset": "item/production-amplifier",
+    "group": "Power"
+  },
+  {
+    "id": "conveyor-belt-mk-1",
+    "name": "Conveyor Belt Mk.1",
+    "asset": "building/conveyor-belt-mk-1",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-belt-mk-2",
+    "name": "Conveyor Belt Mk.2",
+    "asset": "building/conveyor-belt-mk-2",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-belt-mk-3",
+    "name": "Conveyor Belt Mk.3",
+    "asset": "building/conveyor-belt-mk-3",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-belt-mk-4",
+    "name": "Conveyor Belt Mk.4",
+    "asset": "building/conveyor-belt-mk-4",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-belt-mk-5",
+    "name": "Conveyor Belt Mk.5",
+    "asset": "building/conveyor-belt-mk-5",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-belt-mk-6",
+    "name": "Conveyor Belt Mk.6",
+    "asset": "building/conveyor-belt-mk-6",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-1",
+    "name": "Conveyor Lift Mk.1",
+    "asset": "building/conveyor-lift-mk-1",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-2",
+    "name": "Conveyor Lift Mk.2",
+    "asset": "building/conveyor-lift-mk-2",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-3",
+    "name": "Conveyor Lift Mk.3",
+    "asset": "building/conveyor-lift-mk-3",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-4",
+    "name": "Conveyor Lift Mk.4",
+    "asset": "building/conveyor-lift-mk-4",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-5",
+    "name": "Conveyor Lift Mk.5",
+    "asset": "building/conveyor-lift-mk-5",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-lift-mk-6",
+    "name": "Conveyor Lift Mk.6",
+    "asset": "building/conveyor-lift-mk-6",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-splitter",
+    "name": "Conveyor Splitter",
+    "asset": "building/conveyor-splitter",
+    "group": "Logistics"
+  },
+  {
+    "id": "conveyor-merger",
+    "name": "Conveyor Merger",
+    "asset": "building/conveyor-merger",
+    "group": "Logistics"
+  },
+  {
+    "id": "smart-splitter",
+    "name": "Smart Splitter",
+    "asset": "item/smart-splitter",
+    "group": "Logistics"
+  },
+  {
+    "id": "programmable-splitter",
+    "name": "Programmable Splitter",
+    "asset": "item/programmable-splitter",
+    "group": "Logistics"
+  },
+  {
+    "id": "pipeline-mk-1",
+    "name": "Pipeline Mk.1",
+    "asset": "building/pipeline-mk-1",
+    "group": "Logistics"
+  },
+  {
+    "id": "pipeline-mk-2",
+    "name": "Pipeline Mk.2",
+    "asset": "building/pipeline-mk-2",
+    "group": "Logistics"
+  },
+  {
+    "id": "pipeline-pump-mk-1",
+    "name": "Pipeline Pump Mk.1",
+    "asset": "item/pipeline-pump-mk-1",
+    "group": "Logistics"
+  },
+  {
+    "id": "pipeline-pump-mk-2",
+    "name": "Pipeline Pump Mk.2",
+    "asset": "item/pipeline-pump-mk-2",
+    "group": "Logistics"
+  },
+  {
+    "id": "pipeline-junction",
+    "name": "Pipeline Junction",
+    "asset": "item/pipeline-junction",
+    "group": "Logistics"
+  },
+  {
+    "id": "valve",
+    "name": "Valve",
+    "asset": "item/valve",
+    "group": "Logistics"
+  },
+  {
+    "id": "train-station",
+    "name": "Train Station",
+    "asset": "item/train-station",
+    "group": "Logistics"
+  },
+  {
+    "id": "truck-station",
+    "name": "Truck Station",
+    "asset": "item/truck-station",
+    "group": "Logistics"
+  },
+  {
+    "id": "drone-port",
+    "name": "Drone Port",
+    "asset": "item/drone-port",
+    "group": "Logistics"
   },
   {
     "id": "freight-platform",
@@ -631,6 +423,24 @@
     "id": "fluid-freight-platform",
     "name": "Fluid Freight Platform",
     "asset": "item/fluid-freight-platform",
+    "group": "Logistics"
+  },
+  {
+    "id": "block-signal",
+    "name": "Block Signal",
+    "asset": "item/block-signal",
+    "group": "Logistics"
+  },
+  {
+    "id": "path-signal",
+    "name": "Path Signal",
+    "asset": "item/path-signal",
+    "group": "Logistics"
+  },
+  {
+    "id": "storage-container",
+    "name": "Storage Container",
+    "asset": "item/storage-container",
     "group": "Logistics"
   },
   {
@@ -646,9 +456,45 @@
     "group": "Logistics"
   },
   {
+    "id": "industrial-fluid-buffer",
+    "name": "Industrial Fluid Buffer",
+    "asset": "item/industrial-fluid-buffer",
+    "group": "Logistics"
+  },
+  {
+    "id": "dimensional-depot",
+    "name": "Dimensional Depot",
+    "asset": "item/dimensional-depot",
+    "group": "Logistics"
+  },
+  {
+    "id": "dimensional-depot-uploader",
+    "name": "Dimensional Depot Uploader",
+    "asset": "item/dimensional-depot-uploader",
+    "group": "Logistics"
+  },
+  {
+    "id": "awesome-sink",
+    "name": "AWESOME Sink",
+    "asset": "item/awesome-sink",
+    "group": "Logistics"
+  },
+  {
     "id": "awesome-shop",
     "name": "AWESOME Shop",
     "asset": "item/awesome-shop",
+    "group": "Logistics"
+  },
+  {
+    "id": "the-hub",
+    "name": "The HUB",
+    "asset": "item/the-hub",
+    "group": "Logistics"
+  },
+  {
+    "id": "space-elevator",
+    "name": "Space Elevator",
+    "asset": "item/space-elevator",
     "group": "Logistics"
   },
   {
@@ -658,16 +504,58 @@
     "group": "Logistics"
   },
   {
-    "id": "blueprint-designer",
-    "name": "Blueprint Designer",
-    "asset": "item/ficsit-blueprints",
+    "id": "hypertube",
+    "name": "Hypertube",
+    "asset": "item/hypertube",
     "group": "Logistics"
   },
   {
-    "id": "mercer-sphere",
-    "name": "Mercer Sphere",
-    "asset": "item/inflated-pocket-dimension",
-    "group": "Components"
+    "id": "hypertube-entrance",
+    "name": "Hypertube Entrance",
+    "asset": "item/hypertube-entrance",
+    "group": "Logistics"
+  },
+  {
+    "id": "jump-pad",
+    "name": "Jump Pad",
+    "asset": "item/jump-pad",
+    "group": "Logistics"
+  },
+  {
+    "id": "radar-tower",
+    "name": "Radar Tower",
+    "asset": "item/radar-tower",
+    "group": "Logistics"
+  },
+  {
+    "id": "lookout-tower",
+    "name": "Lookout Tower",
+    "asset": "item/lookout-tower",
+    "group": "Logistics"
+  },
+  {
+    "id": "main-portal",
+    "name": "Portal",
+    "asset": "item/main-portal",
+    "group": "Logistics"
+  },
+  {
+    "id": "satellite-portal",
+    "name": "Satellite Portal",
+    "asset": "item/satellite-portal",
+    "group": "Logistics"
+  },
+  {
+    "id": "drone",
+    "name": "Drone",
+    "asset": "vehicle/drone",
+    "group": "Vehicles"
+  },
+  {
+    "id": "electric-locomotive",
+    "name": "Electric Locomotive",
+    "asset": "vehicle/electric-locomotive",
+    "group": "Vehicles"
   },
   {
     "id": "freight-car",
@@ -676,10 +564,40 @@
     "group": "Vehicles"
   },
   {
+    "id": "truck",
+    "name": "Truck",
+    "asset": "vehicle/truck",
+    "group": "Vehicles"
+  },
+  {
     "id": "fluid-truck",
     "name": "Fluid Truck",
     "asset": "vehicle/fluid-truck",
     "group": "Vehicles"
+  },
+  {
+    "id": "tractor",
+    "name": "Tractor",
+    "asset": "vehicle/tractor",
+    "group": "Vehicles"
+  },
+  {
+    "id": "explorer",
+    "name": "Explorer",
+    "asset": "item/explorer",
+    "group": "Vehicles"
+  },
+  {
+    "id": "cyber-wagon",
+    "name": "Cyber Wagon",
+    "asset": "item/cyber-wagon",
+    "group": "Vehicles"
+  },
+  {
+    "id": "coal",
+    "name": "Coal",
+    "asset": "item/coal",
+    "group": "Raw Resources"
   },
   {
     "id": "blue-power-slug",
@@ -718,9 +636,63 @@
     "group": "Raw Resources"
   },
   {
+    "id": "crude-oil",
+    "name": "Crude Oil",
+    "asset": "item/crude-oil",
+    "group": "Raw Resources"
+  },
+  {
     "id": "mycelia",
     "name": "Mycelia",
     "asset": "item/mycelia",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "nitrogen-gas",
+    "name": "Nitrogen Gas",
+    "asset": "item/nitrogen-gas",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "bauxite",
+    "name": "Bauxite",
+    "asset": "item/bauxite",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "copper-ore",
+    "name": "Copper Ore",
+    "asset": "item/copper-ore",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "caterium-ore",
+    "name": "Caterium Ore",
+    "asset": "item/caterium-ore",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "iron-ore",
+    "name": "Iron Ore",
+    "asset": "item/iron-ore",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "uranium",
+    "name": "Uranium",
+    "asset": "item/uranium",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "raw-quartz",
+    "name": "Raw Quartz",
+    "asset": "item/raw-quartz",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "sam",
+    "name": "SAM",
+    "asset": "item/sam",
     "group": "Raw Resources"
   },
   {
@@ -736,10 +708,112 @@
     "group": "Raw Resources"
   },
   {
+    "id": "limestone",
+    "name": "Limestone",
+    "asset": "item/limestone",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "sulfur",
+    "name": "Sulfur",
+    "asset": "item/sulfur",
+    "group": "Raw Resources"
+  },
+  {
+    "id": "water",
+    "name": "Water",
+    "asset": "item/water",
+    "group": "Raw Resources"
+  },
+  {
     "id": "wood",
     "name": "Wood",
     "asset": "item/wood",
     "group": "Raw Resources"
+  },
+  {
+    "id": "alumina-solution",
+    "name": "Alumina Solution",
+    "asset": "item/alumina-solution",
+    "group": "Fluids"
+  },
+  {
+    "id": "dark-matter-residue",
+    "name": "Dark Matter Residue",
+    "asset": "item/dark-matter-residue",
+    "group": "Fluids"
+  },
+  {
+    "id": "dissolved-silica",
+    "name": "Dissolved Silica",
+    "asset": "item/dissolved-silica",
+    "group": "Fluids"
+  },
+  {
+    "id": "heavy-oil-residue",
+    "name": "Heavy Oil Residue",
+    "asset": "item/heavy-oil-residue",
+    "group": "Fluids"
+  },
+  {
+    "id": "ionized-fuel",
+    "name": "Ionized Fuel",
+    "asset": "item/ionized-fuel",
+    "group": "Fluids"
+  },
+  {
+    "id": "liquid-biofuel",
+    "name": "Liquid Biofuel",
+    "asset": "item/liquid-biofuel",
+    "group": "Fluids"
+  },
+  {
+    "id": "fuel",
+    "name": "Fuel",
+    "asset": "item/fuel",
+    "group": "Fluids"
+  },
+  {
+    "id": "turbofuel",
+    "name": "Turbofuel",
+    "asset": "item/turbofuel",
+    "group": "Fluids"
+  },
+  {
+    "id": "nitric-acid",
+    "name": "Nitric Acid",
+    "asset": "item/nitric-acid",
+    "group": "Fluids"
+  },
+  {
+    "id": "excited-photonic-matter",
+    "name": "Excited Photonic Matter",
+    "asset": "item/excited-photonic-matter",
+    "group": "Fluids"
+  },
+  {
+    "id": "rocket-fuel",
+    "name": "Rocket Fuel",
+    "asset": "item/rocket-fuel",
+    "group": "Fluids"
+  },
+  {
+    "id": "sulfuric-acid",
+    "name": "Sulfuric Acid",
+    "asset": "item/sulfuric-acid",
+    "group": "Fluids"
+  },
+  {
+    "id": "somersloop",
+    "name": "Somersloop",
+    "asset": "item/somersloop",
+    "group": "Components"
+  },
+  {
+    "id": "mercer-sphere",
+    "name": "Mercer Sphere",
+    "asset": "item/inflated-pocket-dimension",
+    "group": "Components"
   },
   {
     "id": "alien-dna-capsule",
@@ -760,15 +834,15 @@
     "group": "Components"
   },
   {
-    "id": "alumina-solution",
-    "name": "Alumina Solution",
-    "asset": "item/alumina-solution",
-    "group": "Fluids"
-  },
-  {
     "id": "aluminum-casing",
     "name": "Aluminum Casing",
     "asset": "item/aluminum-casing",
+    "group": "Components"
+  },
+  {
+    "id": "aluminum-ingot",
+    "name": "Aluminum Ingot",
+    "asset": "item/aluminum-ingot",
     "group": "Components"
   },
   {
@@ -826,6 +900,12 @@
     "group": "Components"
   },
   {
+    "id": "concrete",
+    "name": "Concrete",
+    "asset": "item/concrete",
+    "group": "Components"
+  },
+  {
     "id": "circuit-board",
     "name": "Circuit Board",
     "asset": "item/circuit-board",
@@ -844,6 +924,18 @@
     "group": "Components"
   },
   {
+    "id": "computer",
+    "name": "Computer",
+    "asset": "item/computer",
+    "group": "Components"
+  },
+  {
+    "id": "supercomputer",
+    "name": "Supercomputer",
+    "asset": "item/supercomputer",
+    "group": "Components"
+  },
+  {
     "id": "cooling-system",
     "name": "Cooling System",
     "asset": "item/cooling-system",
@@ -853,6 +945,12 @@
     "id": "copper-powder",
     "name": "Copper Powder",
     "asset": "item/copper-powder",
+    "group": "Components"
+  },
+  {
+    "id": "copper-ingot",
+    "name": "Copper Ingot",
+    "asset": "item/copper-ingot",
     "group": "Components"
   },
   {
@@ -868,10 +966,10 @@
     "group": "Components"
   },
   {
-    "id": "dark-matter-residue",
-    "name": "Dark Matter Residue",
-    "asset": "item/dark-matter-residue",
-    "group": "Fluids"
+    "id": "power-shard",
+    "name": "Power Shard",
+    "asset": "item/power-shard",
+    "group": "Components"
   },
   {
     "id": "dark-matter-crystal",
@@ -886,12 +984,6 @@
     "group": "Components"
   },
   {
-    "id": "dissolved-silica",
-    "name": "Dissolved Silica",
-    "asset": "item/dissolved-silica",
-    "group": "Fluids"
-  },
-  {
     "id": "electromagnetic-control-rod",
     "name": "Electromagnetic Control Rod",
     "asset": "item/electromagnetic-control-rod",
@@ -901,6 +993,12 @@
     "id": "fabric",
     "name": "Fabric",
     "asset": "item/fabric",
+    "group": "Components"
+  },
+  {
+    "id": "ficsite-ingot",
+    "name": "Ficsite Ingot",
+    "asset": "item/ficsite-ingot",
     "group": "Components"
   },
   {
@@ -952,6 +1050,12 @@
     "group": "Components"
   },
   {
+    "id": "caterium-ingot",
+    "name": "Caterium Ingot",
+    "asset": "item/caterium-ingot",
+    "group": "Components"
+  },
+  {
     "id": "black-powder",
     "name": "Black Powder",
     "asset": "item/black-powder",
@@ -970,12 +1074,6 @@
     "group": "Components"
   },
   {
-    "id": "heavy-oil-residue",
-    "name": "Heavy Oil Residue",
-    "asset": "item/heavy-oil-residue",
-    "group": "Fluids"
-  },
-  {
     "id": "high-speed-connector",
     "name": "High-Speed Connector",
     "asset": "item/high-speed-connector",
@@ -988,15 +1086,21 @@
     "group": "Components"
   },
   {
-    "id": "ionized-fuel",
-    "name": "Ionized Fuel",
-    "asset": "item/ionized-fuel",
-    "group": "Fluids"
+    "id": "iron-ingot",
+    "name": "Iron Ingot",
+    "asset": "item/iron-ingot",
+    "group": "Components"
   },
   {
     "id": "iron-plate",
     "name": "Iron Plate",
     "asset": "item/iron-plate",
+    "group": "Components"
+  },
+  {
+    "id": "reinforced-iron-plate",
+    "name": "Reinforced Iron Plate",
+    "asset": "item/reinforced-iron-plate",
     "group": "Components"
   },
   {
@@ -1012,15 +1116,21 @@
     "group": "Components"
   },
   {
-    "id": "liquid-biofuel",
-    "name": "Liquid Biofuel",
-    "asset": "item/liquid-biofuel",
-    "group": "Fluids"
+    "id": "modular-frame",
+    "name": "Modular Frame",
+    "asset": "item/modular-frame",
+    "group": "Components"
   },
   {
     "id": "fused-modular-frame",
     "name": "Fused Modular Frame",
     "asset": "item/fused-modular-frame",
+    "group": "Components"
+  },
+  {
+    "id": "heavy-modular-frame",
+    "name": "Heavy Modular Frame",
+    "asset": "item/heavy-modular-frame",
     "group": "Components"
   },
   {
@@ -1030,10 +1140,16 @@
     "group": "Components"
   },
   {
-    "id": "nitric-acid",
-    "name": "Nitric Acid",
-    "asset": "item/nitric-acid",
-    "group": "Fluids"
+    "id": "motor",
+    "name": "Motor",
+    "asset": "item/motor",
+    "group": "Components"
+  },
+  {
+    "id": "turbo-motor",
+    "name": "Turbo Motor",
+    "asset": "item/turbo-motor",
+    "group": "Components"
   },
   {
     "id": "cluster-nobelisk",
@@ -1162,6 +1278,12 @@
     "group": "Components"
   },
   {
+    "id": "plastic",
+    "name": "Plastic",
+    "asset": "item/plastic",
+    "group": "Components"
+  },
+  {
     "id": "encased-plutonium-cell",
     "name": "Encased Plutonium Cell",
     "asset": "item/encased-plutonium-cell",
@@ -1192,27 +1314,21 @@
     "group": "Components"
   },
   {
-    "id": "portable-miner",
-    "name": "Portable Miner",
-    "asset": "item/portable-miner",
-    "group": "Components"
-  },
-  {
     "id": "pressure-conversion-cube",
     "name": "Pressure Conversion Cube",
     "asset": "item/pressure-conversion-cube",
     "group": "Components"
   },
   {
-    "id": "excited-photonic-matter",
-    "name": "Excited Photonic Matter",
-    "asset": "item/excited-photonic-matter",
-    "group": "Fluids"
-  },
-  {
     "id": "superposition-oscillator",
     "name": "Superposition Oscillator",
     "asset": "item/superposition-oscillator",
+    "group": "Components"
+  },
+  {
+    "id": "quartz-crystal",
+    "name": "Quartz Crystal",
+    "asset": "item/quartz-crystal",
     "group": "Components"
   },
   {
@@ -1234,15 +1350,15 @@
     "group": "Components"
   },
   {
-    "id": "rocket-fuel",
-    "name": "Rocket Fuel",
-    "asset": "item/rocket-fuel",
-    "group": "Fluids"
-  },
-  {
     "id": "rotor",
     "name": "Rotor",
     "asset": "item/rotor",
+    "group": "Components"
+  },
+  {
+    "id": "rubber",
+    "name": "Rubber",
+    "asset": "item/rubber",
     "group": "Components"
   },
   {
@@ -1258,6 +1374,12 @@
     "group": "Components"
   },
   {
+    "id": "silica",
+    "name": "Silica",
+    "asset": "item/silica",
+    "group": "Components"
+  },
+  {
     "id": "singularity-cell",
     "name": "Singularity Cell",
     "asset": "item/singularity-cell",
@@ -1267,12 +1389,6 @@
     "id": "smart-plating",
     "name": "Smart Plating",
     "asset": "item/smart-plating",
-    "group": "Components"
-  },
-  {
-    "id": "biochemical-sculptor",
-    "name": "Biochemical Sculptor",
-    "asset": "item/biochemical-sculptor",
     "group": "Components"
   },
   {
@@ -1330,6 +1446,12 @@
     "group": "Components"
   },
   {
+    "id": "nuclear-pasta",
+    "name": "Nuclear Pasta",
+    "asset": "item/nuclear-pasta",
+    "group": "Components"
+  },
+  {
     "id": "iron-rebar",
     "name": "Iron Rebar",
     "asset": "item/iron-rebar",
@@ -1339,6 +1461,12 @@
     "id": "stator",
     "name": "Stator",
     "asset": "item/stator",
+    "group": "Components"
+  },
+  {
+    "id": "steel-ingot",
+    "name": "Steel Ingot",
+    "asset": "item/steel-ingot",
     "group": "Components"
   },
   {
@@ -1358,12 +1486,6 @@
     "name": "Encased Industrial Beam",
     "asset": "item/encased-industrial-beam",
     "group": "Components"
-  },
-  {
-    "id": "sulfuric-acid",
-    "name": "Sulfuric Acid",
-    "asset": "item/sulfuric-acid",
-    "group": "Fluids"
   },
   {
     "id": "neural-quantum-processor",
@@ -1388,6 +1510,186 @@
     "name": "Wire",
     "asset": "item/wire",
     "group": "Components"
+  },
+  {
+    "id": "jetpack",
+    "name": "Jetpack",
+    "asset": "item/jetpack",
+    "group": "Equipment"
+  },
+  {
+    "id": "hoverpack",
+    "name": "Hoverpack",
+    "asset": "item/hoverpack",
+    "group": "Equipment"
+  },
+  {
+    "id": "blade-runners",
+    "name": "Blade Runners",
+    "asset": "item/blade-runners",
+    "group": "Equipment"
+  },
+  {
+    "id": "parachute",
+    "name": "Parachute",
+    "asset": "item/parachute",
+    "group": "Equipment"
+  },
+  {
+    "id": "zipline",
+    "name": "Zipline",
+    "asset": "item/zipline",
+    "group": "Equipment"
+  },
+  {
+    "id": "gas-mask",
+    "name": "Gas Mask",
+    "asset": "item/gas-mask",
+    "group": "Equipment"
+  },
+  {
+    "id": "hazmat-suit",
+    "name": "Hazmat Suit",
+    "asset": "item/hazmat-suit",
+    "group": "Equipment"
+  },
+  {
+    "id": "object-scanner",
+    "name": "Object Scanner",
+    "asset": "item/object-scanner",
+    "group": "Equipment"
+  },
+  {
+    "id": "chainsaw",
+    "name": "Chainsaw",
+    "asset": "item/chainsaw",
+    "group": "Equipment"
+  },
+  {
+    "id": "rebar-gun",
+    "name": "Rebar Gun",
+    "asset": "item/rebar-gun",
+    "group": "Equipment"
+  },
+  {
+    "id": "rifle",
+    "name": "Rifle",
+    "asset": "item/rifle",
+    "group": "Equipment"
+  },
+  {
+    "id": "xeno-zapper",
+    "name": "Xeno-Zapper",
+    "asset": "item/xeno-zapper",
+    "group": "Equipment"
+  },
+  {
+    "id": "xeno-basher",
+    "name": "Xeno-Basher",
+    "asset": "item/xeno-basher",
+    "group": "Equipment"
+  },
+  {
+    "id": "nobelisk-detonator",
+    "name": "Nobelisk Detonator",
+    "asset": "item/nobelisk-detonator",
+    "group": "Equipment"
+  },
+  {
+    "id": "boombox",
+    "name": "Boombox",
+    "asset": "item/boombox",
+    "group": "Equipment"
+  },
+  {
+    "id": "hard-drive",
+    "name": "Hard Drive",
+    "asset": "item/hard-drive",
+    "group": "Equipment"
+  },
+  {
+    "id": "personal-storage-box",
+    "name": "Personal Storage Box",
+    "asset": "item/personal-storage-box",
+    "group": "Equipment"
+  },
+  {
+    "id": "medical-storage-box",
+    "name": "Medical Storage Box",
+    "asset": "item/medical-storage-box",
+    "group": "Equipment"
+  },
+  {
+    "id": "hazard-storage-box",
+    "name": "Hazard Storage Box",
+    "asset": "item/hazard-storage-box",
+    "group": "Equipment"
+  },
+  {
+    "id": "medicinal-inhaler",
+    "name": "Medicinal Inhaler",
+    "asset": "item/medicinal-inhaler",
+    "group": "Equipment"
+  },
+  {
+    "id": "bacon-agaric",
+    "name": "Bacon Agaric",
+    "asset": "item/bacon-agaric",
+    "group": "Equipment"
+  },
+  {
+    "id": "beryl-nut",
+    "name": "Beryl Nut",
+    "asset": "item/beryl-nut",
+    "group": "Equipment"
+  },
+  {
+    "id": "paleberry",
+    "name": "Paleberry",
+    "asset": "item/paleberry",
+    "group": "Equipment"
+  },
+  {
+    "id": "sq-red",
+    "name": "Red square",
+    "emoji": "🟥",
+    "group": "Squares",
+    "keywords": "red square block colour color"
+  },
+  {
+    "id": "sq-orange",
+    "name": "Orange square",
+    "emoji": "🟧",
+    "group": "Squares",
+    "keywords": "orange square block colour color"
+  },
+  {
+    "id": "sq-yellow",
+    "name": "Yellow square",
+    "emoji": "🟨",
+    "group": "Squares",
+    "keywords": "yellow square block colour color"
+  },
+  {
+    "id": "sq-green",
+    "name": "Green square",
+    "emoji": "🟩",
+    "group": "Squares",
+    "keywords": "green square block colour color"
+  },
+  {
+    "id": "sq-blue",
+    "name": "Blue square",
+    "emoji": "🟦",
+    "group": "Squares",
+    "keywords": "blue square block colour color"
+  },
+  {
+    "id": "sq-purple",
+    "name": "Purple square",
+    "emoji": "🟪",
+    "group": "Squares",
+    "keywords": "purple square block colour color"
   },
   {
     "id": "sq-brown",
@@ -1544,6 +1846,27 @@
     "keywords": "0 number digit"
   },
   {
+    "id": "num-1",
+    "name": "Number 1",
+    "emoji": "1️⃣",
+    "group": "Numbers",
+    "keywords": "1 number digit"
+  },
+  {
+    "id": "num-2",
+    "name": "Number 2",
+    "emoji": "2️⃣",
+    "group": "Numbers",
+    "keywords": "2 number digit"
+  },
+  {
+    "id": "num-3",
+    "name": "Number 3",
+    "emoji": "3️⃣",
+    "group": "Numbers",
+    "keywords": "3 number digit"
+  },
+  {
     "id": "num-4",
     "name": "Number 4",
     "emoji": "4️⃣",
@@ -1593,6 +1916,20 @@
     "keywords": "10 ten number digit"
   },
   {
+    "id": "star",
+    "name": "Star",
+    "emoji": "⭐",
+    "group": "Symbols",
+    "keywords": "star favourite favorite important"
+  },
+  {
+    "id": "tick",
+    "name": "Tick",
+    "emoji": "✅",
+    "group": "Symbols",
+    "keywords": "tick check done complete green"
+  },
+  {
     "id": "exclamation",
     "name": "Exclamation",
     "emoji": "❗",
@@ -1600,11 +1937,25 @@
     "keywords": "exclamation important attention red"
   },
   {
+    "id": "warning",
+    "name": "Warning",
+    "emoji": "⚠️",
+    "group": "Symbols",
+    "keywords": "warning caution alert triangle"
+  },
+  {
     "id": "fire",
     "name": "Fire",
     "emoji": "🔥",
     "group": "Symbols",
     "keywords": "fire burn hot fuel"
+  },
+  {
+    "id": "bolt",
+    "name": "Lightning bolt",
+    "emoji": "⚡",
+    "group": "Symbols",
+    "keywords": "bolt lightning power energy electric"
   },
   {
     "id": "recycle",
@@ -1710,6 +2061,13 @@
     "emoji": "🧱",
     "group": "Symbols",
     "keywords": "brick concrete wall build"
+  },
+  {
+    "id": "pickaxe",
+    "name": "Pickaxe",
+    "emoji": "⛏️",
+    "group": "Symbols",
+    "keywords": "pickaxe mine mining ore raw"
   },
   {
     "id": "nut-and-bolt",

@@ -27,7 +27,11 @@ broken image (this is real — the FICSMAS Gift is not flagged `isFicsmas` and s
 filter). `factory-icons.spec.ts` asserts every entry resolves to a file that exists, so a bad
 entry fails the suite instead of reaching the picker.
 
-Buildings and the machines game data has no entry for (miners, extractors, stations, vehicles) are
-hand-listed in the script so their IDs read like their names — `smelter`, not `smeltermk1`.
+Buildings and everything game data has no entry for (miners, belts, splitters, pipes, power
+infrastructure, stations, vehicles, equipment) are hand-listed in the script rather than swept up
+from the asset folder — so their IDs read like their names (`smelter`, not `smeltermk1`), and
+because that folder also holds ~110 alternate-recipe icons that reuse the art of the item they
+make, ~430 foundation/wall/ramp variants, and milestone and cosmetic icons, all of which would
+bury the useful ones in near-identical tiles.
 `FactoryIconDisplay.vue` wraps each variant in its own element for the reason in
 [[fontawesome-dynamic-icons]].

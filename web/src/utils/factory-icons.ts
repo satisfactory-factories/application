@@ -22,7 +22,11 @@ export interface FactoryIconEntry {
   emoji?: string
   group: string
   keywords?: string
-  popular?: boolean
+}
+
+export interface FactoryIconGroup {
+  label: string
+  entries: FactoryIconEntry[]
 }
 
 export type ResolvedFactoryIcon =
@@ -34,9 +38,32 @@ export const factoryIcons = registry as FactoryIconEntry[]
 
 const byId = new Map(factoryIcons.map(entry => [entry.id, entry]))
 
-export const popularFactoryIcons = factoryIcons.filter(entry => entry.popular)
 export const emojiFactoryIcons = factoryIcons.filter(entry => entry.emoji)
 export const gameFactoryIcons = factoryIcons.filter(entry => entry.asset)
+
+// Groups in the order the registry lists them, which is the order the generator's `groupOrder`
+// sets — so the picker's tabs are ordered from one place, not two.
+export const groupFactoryIcons = (entries: FactoryIconEntry[]): FactoryIconGroup[] => {
+  const groups: FactoryIconGroup[] = []
+
+  entries.forEach(entry => {
+    const group = groups.find(candidate => candidate.label === entry.group)
+    if (group) {
+      group.entries.push(entry)
+    } else {
+      groups.push({ label: entry.group, entries: [entry] })
+    }
+  })
+
+  return groups
+}
+
+// One tab per game-art group, then a single Emoji tab holding all the emoji groups — otherwise
+// squares, circles, shapes, numbers and symbols would be five more tabs on their own.
+export const factoryIconTabs: FactoryIconGroup[] = [
+  ...groupFactoryIcons(gameFactoryIcons),
+  { label: 'Emoji', entries: emojiFactoryIcons },
+]
 
 export const findFactoryIcon = (id?: string | null): FactoryIconEntry | undefined =>
   id ? byId.get(id) : undefined
@@ -61,7 +88,12 @@ export const resolveFactoryIcon = (id?: string | null): ResolvedFactoryIcon => {
 export const factoryIconAssetUrl = (asset: string, size: number): string =>
   `/assets/game/${asset}_${size > 64 ? 256 : 64}.png`
 
-// Text the picker's search matches against. Game entries get their keywords from the display
-// name; emoji need theirs spelled out so a colour or shape finds them.
-export const factoryIconSearchText = (entry: FactoryIconEntry): string =>
-  `${entry.name} ${entry.keywords ?? ''}`.trim()
+// Text the picker's search matches against. Emoji carry explicit keywords so a colour or shape
+// finds them; game entries also get punctuation-stripped spellings of their name, because the
+// game's own "Mk.5" style otherwise blocks both "mk 5" and "mk5" from matching anything.
+export const factoryIconSearchText = (entry: FactoryIconEntry): string => [
+  entry.name,
+  entry.name.replace(/[.\-_/]+/g, ' '),
+  entry.name.replace(/[.\-_/\s]+/g, ''),
+  entry.keywords,
+].filter(Boolean).join(' ')

@@ -82,26 +82,33 @@
   line-height: 1;
 }
 
+// Positioned so it paints above the hover halo below, which is absolutely positioned and
+// would otherwise cover the icon.
 .factory-icon-variant {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
 }
 
-// The same affordance GameAsset.vue gives clickable item/building images: padding plus equal
-// negative margin, so the hover fill gets a halo without taking any extra layout space.
+// The same affordance GameAsset.vue gives clickable item/building images, but drawn as a
+// pseudo-element rather than padding + negative margin: that margin silently ate 4px off
+// whatever spacing the caller set, so `mr-2` beside the icon rendered as 4px.
 .clickable {
+  position: relative;
   cursor: pointer;
-  border-radius: 4px;
-  // content-box so the halo is added around the icon rather than eaten out of it — the
-  // app sets border-box globally, which would shrink a 20px icon to 12px.
-  box-sizing: content-box;
-  padding: 4px;
-  margin: -4px;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: transform 0.2s ease;
 
-  &:hover {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  &:hover::before {
     background-color: rgba(0, 0, 0, 0.4);
   }
 

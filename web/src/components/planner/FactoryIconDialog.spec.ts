@@ -18,25 +18,30 @@ const openDialog = (factory = newFactory('Iron Ingots')) => {
   return { factory, ...rendered }
 }
 
-// The debounce is real time, so search assertions have to wait it out.
+// Filtering is instant — no debounce to wait out.
 const search = async (term: string) => {
   const input = body().querySelector<HTMLInputElement>('input[type="text"]')!
   await fireEvent.update(input, term)
-  await vi.advanceTimersByTimeAsync(300)
   await nextTick()
 }
 
 describe('FactoryIconDialog', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
-    vi.useFakeTimers()
     vi.spyOn(eventBus, 'emit')
   })
 
-  it('opens on the Popular tab with all three tabs available', () => {
+  it('opens on Buildings, with a tab per category and one for emoji', () => {
     openDialog()
 
-    expect(tabLabels()).toEqual(['Popular', 'All icons', 'Emoji'])
+    const tabs = tabLabels()
+    expect(tabs[0]).toBe('Buildings')
+    expect(tabs.at(-1)).toBe('Emoji')
+    expect(tabs).toEqual(expect.arrayContaining([
+      'Buildings', 'Power', 'Logistics', 'Vehicles', 'Raw Resources', 'Fluids', 'Components',
+      'Equipment', 'Emoji',
+    ]))
+    expect(tabs).not.toContain('Popular')
     expect(tileFor('Smelter')).toBeTruthy()
   })
 
@@ -82,12 +87,23 @@ describe('FactoryIconDialog', () => {
   describe('search', () => {
     it('hides the tabs while a query is active and restores them when cleared', async () => {
       openDialog()
+      const tabsWhenIdle = tabLabels()
 
       await search('smelter')
       expect(tabLabels()).toEqual([])
 
       await search('')
-      expect(tabLabels()).toEqual(['Popular', 'All icons', 'Emoji'])
+      expect(tabLabels()).toEqual(tabsWhenIdle)
+    })
+
+    // No debounce: the grid filters on the keystroke, not 250ms later.
+    it('filters immediately, without waiting on a timer', async () => {
+      openDialog()
+
+      await search('jetpack')
+
+      expect(tileFor('Jetpack')).toBeTruthy()
+      expect(tileFor('Smelter')).toBeNull()
     })
 
     // The point of a global search: the Emoji tab is not open, but its matches still show.
@@ -108,7 +124,7 @@ describe('FactoryIconDialog', () => {
       expect(tileFor('Radiation')).toBeTruthy()
     })
 
-    it('finds game icons outside the Popular tab', async () => {
+    it('finds game icons on tabs other than the open one', async () => {
       openDialog()
 
       expect(tileFor('Fabric')).toBeNull()
