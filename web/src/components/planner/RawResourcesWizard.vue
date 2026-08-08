@@ -659,8 +659,11 @@
     background: var(--group-fill);
   }
 
+  // An inset shadow rather than a border: the gap above each heading is a transparent top
+  // border, and a real border-left paints through it — leaving a stray stub of colour floating
+  // in the space between two factories. Inset shadows stop at the padding edge.
   .review-table .factory-group td:first-child {
-    border-left: 4px solid var(--group-accent);
+    box-shadow: inset 4px 0 0 var(--group-accent);
   }
 
   .review-table .factory-group tr:last-child td {
