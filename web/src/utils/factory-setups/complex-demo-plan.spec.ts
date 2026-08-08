@@ -39,7 +39,7 @@ describe('Complex Demo Plan', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(10)
+    expect(factories.length).toBe(11)
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
@@ -334,7 +334,7 @@ describe('Complex Demo Plan', () => {
 
   describe('Uranium Power', () => {
     it('should have Uranium Power factory configured correctly', () => {
-      expect(uraniumFac.products.length).toBe(5)
+      expect(uraniumFac.products.length).toBe(6)
       expect(uraniumFac.products[0].id).toBe('Cement')
       expect(uraniumFac.products[0].amount).toBe(60)
       expect(uraniumFac.products[1].id).toBe('SulfuricAcid')
@@ -390,19 +390,18 @@ describe('Complex Demo Plan', () => {
         isRaw: false,
         exportable: true,
       })
-      // The demo has always advertised "multiple missing resources" on Uranium Power. With raw
-      // supply no longer assumed, that is what missing looks like.
+      // Imported from the Raw Materials Mine rather than assumed out of thin air.
       expect(uraniumFac.parts.Stone).toEqual({
         amountRequired: 180,
         amountRequiredExports: 0,
         amountRequiredProduction: 180,
         amountRequiredPower: 0,
-        amountSupplied: 0,
-        amountSuppliedViaInput: 0,
+        amountSupplied: 180,
+        amountSuppliedViaInput: 180,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
-        amountRemaining: -180,
-        satisfied: false,
+        amountRemaining: 0,
+        satisfied: true,
         isRaw: true,
         exportable: false,
       })
@@ -425,28 +424,30 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
-        amountSupplied: 0,
-        amountSuppliedViaInput: 0,
+        amountSupplied: 160,
+        amountSuppliedViaInput: 160,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
-        amountRemaining: -160,
-        satisfied: false,
+        amountRemaining: 0,
+        satisfied: true,
         isRaw: true,
         exportable: false,
       })
+      // Pumped on site: 22 Water Extractors, over-producing 80/min because 2560 isn't a multiple
+      // of the 120/min a pump gives.
       expect(uraniumFac.parts.Water).toEqual({
         amountRequired: 2560,
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 2400,
-        amountSupplied: 0,
+        amountSupplied: 2640,
         amountSuppliedViaInput: 0,
-        amountSuppliedViaProduction: 0,
+        amountSuppliedViaProduction: 2640,
         amountSuppliedViaRaw: 0,
-        amountRemaining: -2560,
-        satisfied: false,
+        amountRemaining: 80,
+        satisfied: true,
         isRaw: true,
-        exportable: false,
+        exportable: true,
       })
       expect(uraniumFac.parts.ElectromagneticControlRod).toEqual({
         amountRequired: 10,
@@ -537,12 +538,12 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 200,
         amountRequiredPower: 0,
-        amountSupplied: 0,
-        amountSuppliedViaInput: 0,
+        amountSupplied: 200,
+        amountSuppliedViaInput: 200,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
-        amountRemaining: -200,
-        satisfied: false,
+        amountRemaining: 0,
+        satisfied: true,
         isRaw: true,
         exportable: false,
       })

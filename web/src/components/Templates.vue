@@ -98,7 +98,7 @@
   const templates: Template[] = [
     {
       name: 'Demo',
-      description: 'Contains 10 factories with a mix of fluids, solids and multiple dependencies, along with power generation and mining — a dedicated Copper Mine feeding the ingots, and Oil Processing extracting its own crude on site. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
+      description: 'Contains 11 factories with a mix of fluids, solids and multiple dependencies, along with power generation and all three ways of mining — a dedicated Copper Mine feeding the ingots, a Raw Materials Mine hosting three resources for the nuclear chain, and Oil Processing and Uranium Power extracting their own crude and water on site. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and missing Stators, High-Speed Connectors and Encased Beams for the Uranium Power.',
       data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,

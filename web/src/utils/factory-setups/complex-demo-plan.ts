@@ -8,6 +8,7 @@ import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 let oilFac: Factory
 let copperIngotsFac: Factory
 let copperMineFac: Factory
+let rawMineFac: Factory
 let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
 let computersFac: Factory
@@ -31,8 +32,9 @@ export const complexDemoPlan = (): TemplatePlan => {
   plutoniumFac = newFactory('☢️ Plutonium Processing', 8, 7)
   alienPowerFac = newFactory('Alien Power', 9, 8)
   geothermalFac = newFactory('Geothermal Power', 10, 9)
+  rawMineFac = newFactory('Raw Materials Mine', 11, 11)
 
-  const factories = [copperMineFac, copperIngotsFac, copperBasicsFac, oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
+  const factories = [copperMineFac, copperIngotsFac, copperBasicsFac, oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac, rawMineFac]
 
   // Private methods to configure the factories
   const setupFactories = () => {
@@ -169,6 +171,37 @@ export const complexDemoPlan = (): TemplatePlan => {
     copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
     // =================
 
+    // === RAW MATERIALS MINE FAC ===
+    // One mine factory hosting three resources, feeding the nuclear chain. Like the Copper Mine it
+    // over-produces where the nodes don't divide neatly: extractor rates are all multiples of 30,
+    // so 160 Sulfur and 200 Uranium are unreachable exactly without clocking a miner down.
+    addProductToFactory(rawMineFac, { id: 'Stone', amount: 180, recipe: 'Extract_Stone' })
+    const stone = rawMineFac.products[0]
+    const [stoneGroup] = stone.buildingGroups
+    Object.assign(stoneGroup, { extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1 })
+    stone.buildingGroups.push({
+      ...stoneGroup,
+      id: stoneGroup.id + 1,
+      extractorBuilding: 'minermk1',
+      purity: 'normal',
+      buildingCount: 1,
+      parts: {},
+    })
+    stone.buildingGroupsTrayOpen = true
+
+    addProductToFactory(rawMineFac, { id: 'Sulfur', amount: 240, recipe: 'Extract_Sulfur' })
+    Object.assign(rawMineFac.products[1].buildingGroups[0], {
+      extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 2,
+    })
+
+    addProductToFactory(rawMineFac, { id: 'OreUranium', amount: 240, recipe: 'Extract_OreUranium' })
+    Object.assign(rawMineFac.products[2].buildingGroups[0], {
+      extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 2,
+    })
+
+    rawMineFac.notes = 'Limestone, Sulfur and Uranium for the nuclear chain. A mine factory can host several resources — the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur and Uranium groups over-produce: miner rates are all multiples of 30, so the 160 and 200 those factories want cannot be hit exactly without underclocking a miner.'
+    // =================
+
     // === COPPER BASICS FAC ===
     addProductToFactory(copperBasicsFac, {
       id: 'Wire',
@@ -282,13 +315,23 @@ export const complexDemoPlan = (): TemplatePlan => {
       amount: 100,
       recipe: 'UraniumCell',
     })
+    // Water on site — there is no purity to choose, so a Water Extractor is a plain producing
+    // building that happens to output a raw resource. 22 of them against the 2560 it drinks.
+    addProductToFactory(uraniumFac, {
+      id: 'Water',
+      amount: 2640,
+      recipe: 'Extract_Water',
+    })
     addPowerProducerToFactory(uraniumFac, {
       building: 'generatornuclear',
       powerAmount: 25000,
       recipe: 'GeneratorNuclear_NuclearFuelRod',
       updated: FactoryPowerChangeType.Power,
     })
-    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.'
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Stone', amount: 180 })
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Sulfur', amount: 160 })
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'OreUranium', amount: 200 })
+    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts ore comes from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams — those are the missing pieces the plan is meant to show you.'
     uraniumFac.tasks.push(
       { title: 'Add Stators factory to supply this one', completed: false },
       { title: 'Make a place for the waste to go', completed: false },
@@ -374,9 +417,9 @@ export const complexDemoPlan = (): TemplatePlan => {
   // Apply setup steps
   setupFactories()
 
-  // Uranium Power is left deliberately short of Limestone, Sulfur, Water and Uranium — the demo
-  // has always advertised "multiple missing resources" there, and raw shortages are now what
-  // that looks like. Everything else in the plan mines or imports what it needs.
+  // Every raw resource in this plan is mined or imported. What is left short is deliberate and
+  // manufactured: the Copper Basics bottleneck, and the Stators / High-Speed Connectors / Encased
+  // Beams that Uranium Power has no supplier for.
 
   // Return an object with a method to access the configured factories
   return {
