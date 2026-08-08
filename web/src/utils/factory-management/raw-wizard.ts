@@ -15,7 +15,7 @@ import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { NodePurity } from '@/interfaces/Recipes'
 import { calculateFactories, generateFactoryId, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory, getProduct } from '@/utils/factory-management/products'
-import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
 import { addShortageToFactory } from '@/utils/factory-management/satisfaction'
 import {
   getExtractionRecipeForPart,
@@ -57,13 +57,27 @@ export interface WizardFactoryExport {
   amount: number
 }
 
+// What the run did to a line the review is showing: created it, or raised an amount that was
+// already there. Null means it was already like that and the run left it alone.
+export type WizardChange = 'new' | 'increased' | null
+
+export interface WizardFactoryImport {
+  fromFactoryId: number
+  fromFactoryName: string
+  partId: string
+  partName: string
+  amount: number
+  change: WizardChange
+}
+
 // What a touched factory looks like once the run has been calculated — read off the result, not
 // predicted from the rows, so the review shows what will actually be committed.
 export interface WizardFactoryPlan {
   factoryId: number
   factoryName: string
   isNew: boolean
-  products: { partId: string, partName: string, amount: number, isNew: boolean }[]
+  products: { partId: string, partName: string, amount: number, change: WizardChange }[]
+  imports: WizardFactoryImport[]
   exports: WizardFactoryExport[]
 }
 
@@ -241,13 +255,39 @@ export interface WizardApplyResult {
   summary: WizardSummary
 }
 
+const importKey = (consumerId: number, partId: string, supplierId: number) =>
+  `${consumerId}:${partId}:${supplierId}`
+
+// Where the factories the run created sit in the plan. Pure presentation — nothing calculated
+// depends on the order — so the review can re-run it on an already-calculated result rather than
+// applying the whole wizard again, which would throw away anything renamed since.
+export const placeNewFactories = (
+  factories: Factory[],
+  newIds: Set<number>,
+  placement: WizardPlacement,
+): Factory[] => {
+  if (!newIds.size) {
+    return factories
+  }
+
+  const created = factories.filter(factory => newIds.has(factory.id))
+  const rest = factories.filter(factory => !newIds.has(factory.id))
+  const ordered = placement === 'top' ? [...created, ...rest] : [...rest, ...created]
+  ordered.forEach((factory, index) => { factory.displayOrder = index })
+
+  return ordered
+}
+
 // Read off the calculated plan rather than accumulated as rows are applied: a mine feeding six
 // factories is one product and six exports, and only the finished dependency pass knows that.
 const describeTouchedFactories = (
   factories: Factory[],
   touched: Set<number>,
   created: Set<Factory>,
-  addedProducts: Set<FactoryItem>,
+  productChanges: Map<FactoryItem, WizardChange>,
+  // Inputs are keyed rather than held by identity: the engine rebuilds them as it prunes and
+  // rebalances, so a reference captured while applying may not be the one that survives.
+  importChanges: Map<string, WizardChange>,
 ): WizardFactoryPlan[] => {
   const names = new Map(factories.map(factory => [factory.id, factory.name]))
 
@@ -261,8 +301,18 @@ const describeTouchedFactories = (
         partId: product.id,
         partName: getPartDisplayName(product.id),
         amount: product.amount,
-        isNew: addedProducts.has(product),
+        change: productChanges.get(product) ?? null,
       })),
+      imports: factory.inputs
+        .filter(input => input.factoryId != null && input.outputPart)
+        .map(input => ({
+          fromFactoryId: input.factoryId!,
+          fromFactoryName: names.get(input.factoryId!) ?? 'Unknown factory',
+          partId: input.outputPart!,
+          partName: getPartDisplayName(input.outputPart!),
+          amount: input.amount,
+          change: importChanges.get(importKey(factory.id, input.outputPart!, input.factoryId!)) ?? null,
+        })),
       exports: Object.values(factory.dependencies.requests)
         .flat()
         .map(request => ({
@@ -294,6 +344,18 @@ export const applyRawWizard = (
   const summary: WizardSummary = { minesCreated: [], productsAdded: 0, importsWired: 0, factories: [] }
   const sizedProducts: FactoryItem[] = []
   const touched = new Set<number>()
+  // What the review says about each line it shows. Recorded as the change is made, because
+  // afterwards a raised amount is indistinguishable from one that was always that size.
+  const productChanges = new Map<FactoryItem, WizardChange>()
+  const importChanges = new Map<string, WizardChange>()
+
+  // A mine's product is created by the first row that wants it and raised by every row after, so
+  // "new" has to win — otherwise the second consumer relabels it as merely increased.
+  const noteProduct = (product: FactoryItem, change: WizardChange) => {
+    if (change === 'new' || !productChanges.has(product)) {
+      productChanges.set(product, change)
+    }
+  }
 
   // One mine per resource for the whole plan, sized to everything that asked for it — not one
   // per row, which would leave a plan short of iron in eight places with eight iron mines.
@@ -332,8 +394,11 @@ export const applyRawWizard = (
       const existing = getProduct(factory, row.partId, true) as FactoryItem | undefined
       if (existing && isExtractionRecipe(existing.recipe)) {
         existing.amount += row.shortfall
+        noteProduct(existing, 'increased')
       } else {
-        sizedProducts.push(addSizedExtraction(factory, row.partId, recipe, row.shortfall, extractor))
+        const added = addSizedExtraction(factory, row.partId, recipe, row.shortfall, extractor)
+        sizedProducts.push(added)
+        noteProduct(added, 'new')
       }
       summary.productsAdded++
       continue
@@ -349,26 +414,30 @@ export const applyRawWizard = (
       if (!recipe) {
         throw new WizardValidationError(`There is no extractor for ${row.partName}.`)
       }
-      sizedProducts.push(addSizedExtraction(target, row.partId, recipe, row.shortfall, extractor))
+      const added = addSizedExtraction(target, row.partId, recipe, row.shortfall, extractor)
+      sizedProducts.push(added)
+      noteProduct(added, 'new')
       summary.productsAdded++
       addInputToFactory(factory, { factoryId: target.id, outputPart: row.partId, amount: row.shortfall })
+      importChanges.set(importKey(factory.id, row.partId, target.id), 'new')
     } else {
-      // Every later row bumps the mine's product and adds its own import.
+      // Every later row bumps the mine's product and adds its own import — or raises them, if the
+      // factory already had some of either. Read before, because afterwards they look the same.
+      const existingProduct = getProduct(target, row.partId, true) as FactoryItem | undefined
+      const hadInput = getAllInputs(factory, row.partId, target.id).length > 0
+
       addShortageToFactory(factory, target, row.partId, recipe ?? '', row.shortfall)
+
+      const product = existingProduct ?? target.products[target.products.length - 1]
+      noteProduct(product, existingProduct ? 'increased' : 'new')
+      importChanges.set(importKey(factory.id, row.partId, target.id), hadInput ? 'increased' : 'new')
     }
     summary.importsWired++
   }
 
   // A dozen new mines appended to a long plan land where they'll never be seen, so where they go
-  // is the user's call. displayOrder is rewritten wholesale because it is the plan's running
-  // order, not a per-factory attribute.
-  if (mines.size) {
-    const created = [...mines.values()]
-    const createdIds = new Set(created.map(mine => mine.id))
-    const rest = working.filter(factory => !createdIds.has(factory.id))
-    working = placement === 'top' ? [...created, ...rest] : [...rest, ...created]
-    working.forEach((factory, index) => { factory.displayOrder = index })
-  }
+  // is the user's call.
+  working = placeNewFactories(working, new Set([...mines.values()].map(mine => mine.id)), placement)
 
   calculateFactories(working, gameData)
 
@@ -379,7 +448,8 @@ export const applyRawWizard = (
     working,
     touched,
     new Set(mines.values()),
-    new Set(sizedProducts),
+    productChanges,
+    importChanges,
   )
 
   return { factories: working, summary }

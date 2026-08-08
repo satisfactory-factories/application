@@ -187,15 +187,46 @@
               <tr>
                 <th>Item</th>
                 <th class="text-right">Produced</th>
+                <th>Imported from</th>
                 <th>Exported to</th>
               </tr>
             </thead>
             <tbody v-for="plan in pending.summary.factories" :key="plan.factoryId" class="factory-group">
               <tr class="factory-row">
-                <td colspan="3">
-                  <i class="fas fa-industry mr-2" /><b>{{ plan.factoryName }}</b>
-                  <v-chip v-if="plan.isNew" class="sf-chip green x-small ml-2">New factory</v-chip>
-                  <v-chip v-else class="sf-chip yellow x-small ml-2">Modified</v-chip>
+                <td colspan="4">
+                  <span class="d-flex align-center ga-2">
+                    <i class="fas fa-industry" />
+                    <!-- Renaming here rather than after the fact: the wizard's own names for the
+                         mines it built are the ones most worth changing, and this is the last
+                         moment before they are committed. -->
+                    <template v-if="editingId === plan.factoryId">
+                      <v-text-field
+                        ref="renameField"
+                        v-model="editingName"
+                        autofocus
+                        class="rename-field"
+                        density="compact"
+                        hide-details
+                        variant="outlined"
+                        @blur="commitRename(plan.factoryId)"
+                        @keydown.enter="commitRename(plan.factoryId)"
+                        @keydown.esc="editingId = null"
+                      />
+                    </template>
+                    <template v-else>
+                      <b>{{ plan.factoryName }}</b>
+                      <v-btn
+                        density="compact"
+                        icon="fas fa-pencil"
+                        size="x-small"
+                        :title="`Rename ${plan.factoryName}`"
+                        variant="text"
+                        @click="startRename(plan)"
+                      />
+                    </template>
+                    <v-chip v-if="plan.isNew" class="sf-chip green x-small no-margin">New factory</v-chip>
+                    <v-chip v-else class="sf-chip yellow x-small no-margin">Modified</v-chip>
+                  </span>
                 </td>
               </tr>
               <tr v-for="line in factoryLines(plan)" :key="line.partId">
@@ -203,7 +234,9 @@
                   <span class="d-flex align-center ga-2">
                     <game-asset :subject="line.partId" type="item" />
                     <span>{{ line.partName }}</span>
-                    <v-chip v-if="line.isNew" class="sf-chip green x-small no-margin">New product</v-chip>
+                    <v-chip v-if="line.change" class="sf-chip x-small no-margin" :class="changeClass(line.change)">
+                      {{ changeLabels[line.change] }}
+                    </v-chip>
                   </span>
                 </td>
                 <td class="text-right text-no-wrap">
@@ -211,7 +244,27 @@
                   <span v-else>{{ formatNumber(line.produced) }}/min</span>
                 </td>
                 <td>
-                  <span v-if="!line.exports.length" class="text-disabled">Used here</span>
+                  <span v-if="!line.imports.length" class="text-disabled">&mdash;</span>
+                  <span
+                    v-for="imported in line.imports"
+                    :key="imported.fromFactoryId"
+                    class="d-block text-no-wrap"
+                  >
+                    <v-chip class="sf-chip factory x-small">
+                      <i class="fas fa-industry mr-1" />{{ imported.fromFactoryName }}
+                    </v-chip>
+                    <span class="text-medium-emphasis">{{ formatNumber(imported.amount) }}/min</span>
+                    <v-chip
+                      v-if="imported.change"
+                      class="sf-chip x-small no-margin ml-1"
+                      :class="changeClass(imported.change)"
+                    >
+                      {{ importChangeLabels[imported.change] }}
+                    </v-chip>
+                  </span>
+                </td>
+                <td>
+                  <span v-if="!line.exports.length" class="text-disabled">Used internally</span>
                   <span
                     v-for="exported in line.exports"
                     :key="exported.toFactoryId"
@@ -271,7 +324,9 @@
     choicesForRow,
     collectRawWizardRows,
     DEFAULT_EXTRACTOR,
+    placeNewFactories,
     WizardApplyResult,
+    WizardChange,
     WizardChoice,
     WizardFactoryPlan,
     WizardPlacement,
@@ -334,36 +389,64 @@
   })
   const ignoredCount = computed(() => rows.value.filter(row => row.choice === 'ignore').length)
 
-  // One line per item the factory ends up with: what it makes, and where each of it goes. Exports
-  // of something the factory doesn't produce (surplus imports passing through) still get a line,
-  // with no production against them.
+  const changeLabels: Record<'new' | 'increased', string> = {
+    new: 'New product',
+    increased: 'Increased',
+  }
+
+  const importChangeLabels: Record<'new' | 'increased', string> = {
+    new: 'New import',
+    increased: 'Increased',
+  }
+
+  const changeClass = (change: 'new' | 'increased') => change === 'new' ? 'green' : 'yellow'
+
+  // One line per item the factory ends up with: what it makes, what it brings in, and where each
+  // of it goes. Imports are the whole answer for a factory the run only wired up — nothing about
+  // its products changes, so without them "Modified" would have nothing to point at.
   const factoryLines = (plan: WizardFactoryPlan) => {
     // "New factory" on the header already said everything below it is new.
-    const allNew = plan.isNew && plan.products.every(product => product.isNew)
+    const allNew = plan.isNew && plan.products.every(product => product.change === 'new')
 
-    const lines = plan.products.map(product => ({
-      partId: product.partId,
-      partName: product.partName,
-      produced: product.amount as number | null,
-      isNew: product.isNew && !allNew,
-      exports: plan.exports.filter(exported => exported.partId === product.partId),
-    }))
-
-    const produced = new Set(plan.products.map(product => product.partId))
-    for (const exported of plan.exports) {
-      if (produced.has(exported.partId) || lines.some(line => line.partId === exported.partId)) {
-        continue
+    const partIds: string[] = []
+    const seen = new Set<string>()
+    const addPart = (partId: string) => {
+      if (!seen.has(partId)) {
+        seen.add(partId)
+        partIds.push(partId)
       }
-      lines.push({
-        partId: exported.partId,
-        partName: exported.partName,
-        produced: null,
-        isNew: false,
-        exports: plan.exports.filter(other => other.partId === exported.partId),
-      })
     }
+    plan.products.forEach(product => addPart(product.partId))
+    plan.imports.forEach(imported => addPart(imported.partId))
+    plan.exports.forEach(exported => addPart(exported.partId))
 
-    return lines
+    return partIds.map(partId => {
+      // A factory can make the same part twice (unpackaging it and extracting it, say), so the
+      // line sums them and takes the strongest of the two changes.
+      const products = plan.products.filter(entry => entry.partId === partId)
+      const imports = plan.imports.filter(entry => entry.partId === partId)
+
+      let change: WizardChange = null
+      if (products.some(entry => entry.change === 'increased')) {
+        change = 'increased'
+      }
+      if (products.some(entry => entry.change === 'new')) {
+        change = 'new'
+      }
+
+      return {
+        partId,
+        partName: products[0]?.partName ??
+          imports[0]?.partName ??
+          plan.exports.find(entry => entry.partId === partId)!.partName,
+        produced: products.length
+          ? products.reduce((total, entry) => total + entry.amount, 0)
+          : null,
+        change: allNew ? null : change,
+        imports,
+        exports: plan.exports.filter(entry => entry.partId === partId),
+      }
+    })
   }
 
   // Rebuild from the live plan every time it opens — the table is a snapshot, and a stale one
@@ -400,11 +483,52 @@
     }
   }
 
-  // Placement is baked into the run, so changing it re-runs against the same rows rather than
-  // being applied to a result that was built for the other answer.
+  // Reordering the built result rather than applying the wizard again: a re-run would rebuild the
+  // mines from scratch and lose anything renamed on this screen.
   watch(placement, () => {
-    if (pending.value) review()
+    if (!pending.value) return
+    const newIds = new Set(pending.value.summary.factories.filter(plan => plan.isNew).map(plan => plan.factoryId))
+    pending.value.factories = placeNewFactories(pending.value.factories, newIds, placement.value)
+
+    // The table below claims to be in plan order, so it moves with them.
+    const order = new Map(pending.value.factories.map((factory, index) => [factory.id, index]))
+    pending.value.summary.factories.sort((a, b) =>
+      (order.get(a.factoryId) ?? 0) - (order.get(b.factoryId) ?? 0))
   })
+
+  const editingId = ref<number | null>(null)
+  const editingName = ref('')
+
+  const startRename = (plan: WizardFactoryPlan) => {
+    editingId.value = plan.factoryId
+    editingName.value = plan.factoryName
+  }
+
+  // The name has to land on the factory that gets committed AND on every chip naming it, since
+  // the review's imports and exports carry their own copy of it.
+  const commitRename = (factoryId: number) => {
+    if (editingId.value !== factoryId || !pending.value) return
+    editingId.value = null
+
+    const name = editingName.value.trim()
+    const factory = pending.value.factories.find(entry => entry.id === factoryId)
+    if (!name || !factory || name === factory.name) return
+
+    const previous = factory.name
+    factory.name = name
+    pending.value.summary.minesCreated = pending.value.summary.minesCreated
+      .map(mine => mine === previous ? name : mine)
+
+    for (const plan of pending.value.summary.factories) {
+      if (plan.factoryId === factoryId) plan.factoryName = name
+      plan.imports.forEach(imported => {
+        if (imported.fromFactoryId === factoryId) imported.fromFactoryName = name
+      })
+      plan.exports.forEach(exported => {
+        if (exported.toFactoryId === factoryId) exported.toFactoryName = name
+      })
+    }
+  }
 
   const apply = () => {
     if (applying.value || !pending.value) return
@@ -457,6 +581,10 @@
 
   .placement {
     background: rgba(255, 255, 255, 0.05);
+  }
+
+  .rename-field {
+    max-width: 320px;
   }
 
   // A factory exporting to six others makes a tall cell; the item and its rate belong beside the

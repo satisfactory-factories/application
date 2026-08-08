@@ -3,12 +3,14 @@ import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInt
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { fetchGameData } from '@/utils/gameDataService'
 import {
   applyRawWizard,
   choicesForRow,
   collectRawWizardRows,
   DEFAULT_EXTRACTOR,
+  placeNewFactories,
   WizardRow,
   WizardValidationError,
 } from '@/utils/factory-management/raw-wizard'
@@ -254,6 +256,20 @@ describe('raw wizard', async () => {
 
         expect(result.map(factory => factory.name)).toEqual(['Smelter A', 'Smelter B'])
       })
+
+      // The review moves an already-built result rather than applying again, so that anything
+      // renamed on that screen survives changing the answer.
+      it('can be changed on a built result without re-applying', () => {
+        const { factories: result, summary } = applyRawWizard(factories, rows, gameData)
+        const newIds = new Set(summary.factories.filter(plan => plan.isNew).map(plan => plan.factoryId))
+
+        const moved = placeNewFactories(result, newIds, 'bottom')
+
+        expect(moved.map(factory => factory.name)).toEqual(['Smelter A', 'Smelter B', 'Iron Ore Mine'])
+        expect(moved.map(factory => factory.displayOrder)).toEqual([0, 1, 2])
+        expect(placeNewFactories(moved, newIds, 'top').map(factory => factory.name))
+          .toEqual(['Iron Ore Mine', 'Smelter A', 'Smelter B'])
+      })
     })
 
     describe('the review breakdown', () => {
@@ -270,17 +286,29 @@ describe('raw wizard', async () => {
         const { summary } = applyRawWizard(factories, rows, gameData)
         const mine = summary.factories[0]
 
-        expect(mine.products).toEqual([{ partId: 'OreIron', partName: 'Iron Ore', amount: 200, isNew: true }])
+        expect(mine.products)
+          .toEqual([{ partId: 'OreIron', partName: 'Iron Ore', amount: 200, change: 'new' }])
         expect(mine.exports.map(exported => [exported.toFactoryName, exported.partId, exported.amount]))
           .toEqual([['Smelter A', 'OreIron', 100], ['Smelter B', 'OreIron', 100]])
       })
 
-      it('shows a consumer everything it produces, with nothing exported', () => {
+      // A factory the run only wired up shows no change to its products at all — the import is
+      // the entire change, and without it the review would say "modified" and show nothing.
+      it('lists the import it wired into a consumer', () => {
         const { summary } = applyRawWizard(factories, rows, gameData)
         const smelter = summary.factories[1]
+        const mineId = summary.factories[0].factoryId
 
         expect(smelter.products)
-          .toEqual([{ partId: 'IronIngot', partName: 'Iron Ingot', amount: 100, isNew: false }])
+          .toEqual([{ partId: 'IronIngot', partName: 'Iron Ingot', amount: 100, change: null }])
+        expect(smelter.imports).toEqual([{
+          fromFactoryId: mineId,
+          fromFactoryName: 'Iron Ore Mine',
+          partId: 'OreIron',
+          partName: 'Iron Ore',
+          amount: 100,
+          change: 'new',
+        }])
         expect(smelter.exports).toEqual([])
       })
 
@@ -289,22 +317,27 @@ describe('raw wizard', async () => {
         rows.forEach(row => { row.choice = 'onsite' })
         const { summary } = applyRawWizard(factories, rows, gameData)
 
-        expect(summary.factories[0].products.map(product => [product.partId, product.isNew]))
-          .toEqual([['IronIngot', false], ['OreIron', true]])
+        expect(summary.factories[0].products.map(product => [product.partId, product.change]))
+          .toEqual([['IronIngot', null], ['OreIron', 'new']])
+        expect(summary.factories[0].imports).toEqual([])
       })
 
-      // Bumping a mine's existing product is a change to it, not a new one.
-      it('does not mark a bumped product as new', () => {
+      // Bumping what is already there is a change to it, not a new one — on both sides of the wire.
+      it('separates a raised product and import from a created one', () => {
         const mine = newFactory('Iron Mine', 2, 3)
         addProductToFactory(mine, { id: 'OreIron', amount: 500, recipe: 'Extract_OreIron' })
+        const consumer = factories[0]
+        addInputToFactory(consumer, { factoryId: 3, outputPart: 'OreIron', amount: 40 })
         const plan = build([...factories, mine])
         const importRows = collectRawWizardRows(plan)
 
         const { summary } = applyRawWizard(plan, importRows, gameData)
         const described = summary.factories.find(entry => entry.factoryName === 'Iron Mine')!
+        const smelterA = summary.factories.find(entry => entry.factoryName === 'Smelter A')!
 
         expect(described.isNew).toBe(false)
-        expect(described.products[0]).toMatchObject({ partId: 'OreIron', isNew: false })
+        expect(described.products[0]).toMatchObject({ partId: 'OreIron', change: 'increased' })
+        expect(smelterA.imports[0]).toMatchObject({ partId: 'OreIron', amount: 100, change: 'increased' })
       })
     })
 
