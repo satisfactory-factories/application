@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { createNewPart } from '@/utils/factory-management/common'
@@ -12,7 +12,6 @@ import {
   hasFactoryProblem,
   highestSeverity,
 } from '@/utils/factory-management/status'
-import { setAssumeRawInputs } from '@/utils/factory-management/settings'
 
 const typesOf = (factory: Factory) => getFactoryStatuses(factory).map(status => status.type)
 const statusOf = (factory: Factory, type: string) =>
@@ -91,17 +90,13 @@ describe('status', () => {
   })
 
   describe('rawShortage', () => {
-    // The module-level setting outlives the spec that changes it, so put it back either way.
-    afterEach(() => setAssumeRawInputs(true))
-
     const shortOfOre = () => {
       createNewPart(factory, 'OreIron')
       factory.parts.OreIron.isRaw = true
       factory.parts.OreIron.satisfied = false
     }
 
-    test('fires for an unsatisfied raw part once the factory stops assuming supply', () => {
-      setAssumeRawInputs(false)
+    test('fires for an unsatisfied raw part', () => {
       shortOfOre()
 
       expect(statusOf(factory, 'rawShortage')).toMatchObject({
@@ -112,27 +107,17 @@ describe('status', () => {
       })
     })
 
-    test('stays silent while the assumption is on, however short the factory is', () => {
-      setAssumeRawInputs(true)
-      shortOfOre()
+    // Hand-gathered resources leave the engine satisfied, so the !satisfied filter is the only
+    // guard this needs — there is no assumption left to check.
+    test('stays silent for a raw part the engine left satisfied', () => {
+      createNewPart(factory, 'Leaves')
+      factory.parts.Leaves.isRaw = true
+      factory.parts.Leaves.satisfied = true
 
-      expect(typesOf(factory)).not.toContain('rawShortage')
-    })
-
-    test("a factory's own override beats the global setting in both directions", () => {
-      shortOfOre()
-
-      setAssumeRawInputs(true)
-      factory.assumeRawInputs = false
-      expect(typesOf(factory)).toContain('rawShortage')
-
-      setAssumeRawInputs(false)
-      factory.assumeRawInputs = true
       expect(typesOf(factory)).not.toContain('rawShortage')
     })
 
     test('counts rather than lists when several raw resources are short', () => {
-      setAssumeRawInputs(false)
       shortOfOre()
       createNewPart(factory, 'Coal')
       factory.parts.Coal.isRaw = true
@@ -144,7 +129,6 @@ describe('status', () => {
     // A mine that extracts everything it exports is the point of the feature, so it must not
     // report a shortage merely for having raw parts.
     test('ignores a raw part the factory satisfies itself', () => {
-      setAssumeRawInputs(false)
       createNewPart(factory, 'OreIron')
       factory.parts.OreIron.isRaw = true
 
@@ -153,7 +137,6 @@ describe('status', () => {
 
     // Unlike partShortage, which mirrors the engine's product-less shortcut for back-compat.
     test('still fires on a factory with no products, such as a generator burning coal', () => {
-      setAssumeRawInputs(false)
       factory.products = []
       createNewPart(factory, 'Coal')
       factory.parts.Coal.isRaw = true
@@ -322,7 +305,6 @@ describe('status', () => {
           createNewPart(factory, 'OreIron')
           factory.parts.OreIron.isRaw = true
           factory.parts.OreIron.satisfied = false
-          factory.assumeRawInputs = false
         },
       ]
 

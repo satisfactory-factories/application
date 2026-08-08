@@ -67,7 +67,7 @@
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-  const { prepareLoader, isDebugMode, getCurrentTab, rearmRawAssumption } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, rearmRawBreakingNotice } = useAppStore()
 
   const dialog = ref(false)
 
@@ -78,10 +78,9 @@
     data: string
     show: boolean
     isDebug: boolean
-    // The plan's own answer on raw supply: `mines` digs up everything it needs, `assumes` takes
-    // its raw resources as supplied (how every plan worked before mining existed). Set on the
-    // tab at load. `migration` re-arms the one-time notice for testing.
-    rawAssumption?: 'mines' | 'assumes' | 'migration'
+    // Re-arms the one-time raw-resources breaking-change notice, which is otherwise
+    // unreachable once dismissed.
+    rearmNotice?: boolean
   }
 
   interface TemplatePayload {
@@ -103,16 +102,13 @@
       data: planData(complexDemoPlan()),
       show: true,
       isDebug: false,
-      // No rawAssumption: every factory in this plan answers for itself, so the plan default
-      // cannot change how it reads.
     },
     {
       name: 'Mining',
-      description: 'Shows the extraction features end to end: an Iron Mine mixing Mk.3 miners on pure nodes with a Mk.2 on a normal one, a Nitrogen resource well with its satellite spread, and a Nitric Acid factory extracting its own water on site. None of its factories assume raw inputs.',
+      description: 'Shows the extraction features end to end: an Iron Mine mixing Mk.3 miners on pure nodes with a Mk.2 on a normal one, a Nitrogen resource well with its satellite spread, and a Nitric Acid factory extracting its own water on site.',
       data: planData(createMiningDemoPlan()),
       show: true,
       isDebug: false,
-      rawAssumption: 'mines',
     },
     {
       name: 'Simple',
@@ -120,7 +116,6 @@
       data: planData(createSimple()),
       show: true,
       isDebug: false,
-      rawAssumption: 'assumes',
     },
     {
       name: 'Mael\'s "MegaPlan"',
@@ -128,15 +123,14 @@
       data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,
-      rawAssumption: 'assumes',
     },
     {
       name: '#503: Pre-mining plan (migration modal)',
-      description: 'A plan built the way plans were before mining existed: it smelts ore that nothing digs up. Loading it puts the raw input setting back to never-answered and re-opens the one-time migration notice, which is otherwise unreachable once you have answered it. Related to issue #503.',
+      description: 'A plan built the way plans were before mining existed: it smelts ore that nothing digs up, so it now shows raw shortages. Loading it re-opens the one-time breaking-change notice, which is otherwise unreachable once dismissed. Related to issue #503.',
       data: scenarioData(createSimple().getFactories()),
       show: isDebugMode,
       isDebug: true,
-      rawAssumption: 'migration',
+      rearmNotice: true,
     },
     {
       name: 'PowerOnlyImport',
@@ -273,19 +267,10 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
-      // What the plan assumes about raw supply is part of the plan, so a template states it
-      // rather than asking — with it wrong, the Mining plan's mines would be decorative and
-      // the Simple plan would be red. `undefined` hands it back to the store to resolve from
-      // the factories, which is right for a plan that has no opinion.
-      tab.assumeRawInputs = template.rawAssumption === 'mines'
-        ? false
-        : template.rawAssumption === 'assumes' ? true : undefined
     }
 
-    // Re-arming has to happen before the load, so the plan is resolved against a
-    // never-answered setting exactly as it would be for someone who has never answered.
-    if (template.rawAssumption === 'migration') {
-      rearmRawAssumption()
+    if (template.rearmNotice) {
+      rearmRawBreakingNotice()
     }
 
     prepareLoader(factories, true)

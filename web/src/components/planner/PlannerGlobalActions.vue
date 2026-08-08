@@ -148,9 +148,6 @@
       name: getCurrentTab()?.name,
       factories: getFactories(),
       powerTarget: powerTarget.value,
-      // Without this the plan means whatever the recipient's own answer says, which can
-      // make its mines decorative and its shortages vanish.
-      assumeRawInputs: getCurrentTab()?.assumeRawInputs,
     })
     navigator.clipboard.writeText(plan)
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
@@ -170,21 +167,14 @@
         emit('clear-all')
 
         setTimeout(() => {
-          // Replace the current tab's settings with the pasted plan's (keeps its id) BEFORE
-          // loading: the raw supply answer decides what the load calculates, so arriving
-          // after it would leave the plan reading against the old tab's answer.
+          // Replace the current tab's settings with the pasted plan's (keeps its id) before
+          // loading, so the plan is calculated against its own settings rather than the
+          // outgoing tab's.
           if (!isLegacy) {
             powerTarget.value = Number(parsedPlan.powerTarget) || 0
             const tab = getCurrentTab()
             if (tab && parsedPlan.name) {
               tab.name = parsedPlan.name
-            }
-            if (tab) {
-              // Absent on plans copied before this travelled with them; the store then
-              // resolves it from the factories, as it does for any other unanswered plan.
-              tab.assumeRawInputs = typeof parsedPlan.assumeRawInputs === 'boolean'
-                ? parsedPlan.assumeRawInputs
-                : undefined
             }
           }
           prepareLoader(factoriesToLoad)

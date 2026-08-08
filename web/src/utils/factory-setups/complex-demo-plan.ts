@@ -104,8 +104,6 @@ export const complexDemoPlan = (): TemplatePlan => {
       recipe: 'GeneratorFuel_LiquidFuel',
       updated: FactoryPowerChangeType.Power,
     })
-    // Nothing left to assume: every drop of oil it uses comes out of its own extractors.
-    oilFac.assumeRawInputs = false
     oilFac.notes = 'This factory extracts its own Crude Oil on site — 3 Oil Extractors on pure nodes and 2 on normal, for the 960/min the Plastic line drinks — rather than importing it from a dedicated mine like the Copper chain does.\n\nIt is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
     oilFac.syncState = {
       LiquidOil: {
@@ -168,8 +166,6 @@ export const complexDemoPlan = (): TemplatePlan => {
     })
     // Open on load, so the mixed marks and purities are the first thing you see.
     copperOre.buildingGroupsTrayOpen = true
-    // The ore it digs up is real, so this factory has nothing to assume.
-    copperMineFac.assumeRawInputs = false
     copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
     // =================
 
@@ -378,13 +374,9 @@ export const complexDemoPlan = (): TemplatePlan => {
   // Apply setup steps
   setupFactories()
 
-  // The demo is a tour of everything else, not of mining, and it draws ore, oil and water it
-  // never digs up. Pin the assumption on so it reads the same whichever way the user's global
-  // setting happens to be set — the Copper Mine is the one factory that opts out, so both
-  // halves of the feature are on screen at once.
-  for (const factory of factories) {
-    factory.assumeRawInputs ??= true
-  }
+  // Uranium Power is left deliberately short of Limestone, Sulfur, Water and Uranium — the demo
+  // has always advertised "multiple missing resources" there, and raw shortages are now what
+  // that looks like. Everything else in the plan mines or imports what it needs.
 
   // Return an object with a method to access the configured factories
   return {

@@ -15,11 +15,6 @@ export const createMiningDemoPlan = (): TemplatePlan => {
 
   const factories = [ironMine, ironWorks, nitrogenWell, nitricAcid]
 
-  // Every factory here mines what it needs, so none of them should assume raw supply.
-  factories.forEach(factory => {
-    factory.assumeRawInputs = false
-  })
-
   const addMining = () => {
     // 2 x Mk.3 on pure nodes (960/min) alongside 1 x Mk.2 on a normal one (120/min).
     addProductToFactory(ironMine, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 1080 })

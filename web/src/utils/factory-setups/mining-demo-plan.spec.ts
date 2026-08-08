@@ -41,9 +41,8 @@ describe('mining demo plan', async () => {
     expect(acid.buildingRequirements.waterpump.amount).toBe(1)
   })
 
-  it('assumes no raw inputs anywhere, and has none left unmined', () => {
+  it('has no raw resources left unmined', () => {
     load().forEach(factory => {
-      expect(factory.assumeRawInputs).toBe(false)
       expect(Object.keys(factory.rawResources)).toEqual([])
     })
   })

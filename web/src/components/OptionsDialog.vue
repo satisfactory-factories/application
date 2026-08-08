@@ -16,24 +16,21 @@
         <i class="fas fa-wrench" /><span class="ml-2">Options</span>
       </v-card-title>
       <v-card-text class="text-body-2">
-        <v-switch
-          id="assume-raw-inputs-toggle"
+        <h3 class="text-subtitle-1 font-weight-bold mb-1">Raw resources</h3>
+        <p class="mb-3 text-medium-emphasis">
+          Every raw resource has to be mined or imported. The wizard lists each factory that is
+          short of one and offers to build the mines, add the extractors, or wire the imports for
+          you. Run it whenever a new factory comes up short — it isn't only for migrating.
+        </p>
+        <v-btn
+          id="run-raw-wizard"
           color="primary"
-          hide-details
-          label="This plan assumes raw resource inputs are supplied"
-          :model-value="assumeRawInputs"
-          @update:model-value="setAssumeRawInputs(!!$event)"
-        />
-        <p class="mt-2 text-medium-emphasis">
-          When on, any raw resource a factory needs but isn't extracting or importing is assumed to
-          be arriving from somewhere. When off it counts as a shortage, so you can plan your mines
-          properly. Individual factories can override this in their Raw Resources section.
-        </p>
-        <p class="mt-2 text-medium-emphasis">
-          This is the default for <b>this plan</b>, not a setting on your browser — it saves with the
-          plan and travels with it when you share, copy or sync it, so a plan built around mines
-          means the same thing to whoever opens it. Each plan tab has its own.
-        </p>
+          prepend-icon="fas fa-shovel"
+          variant="flat"
+          @click="openWizard"
+        >
+          Run Raw Resources Wizard
+        </v-btn>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
@@ -42,15 +39,15 @@
     </v-card>
   </v-dialog>
 
-  <!-- Styled like the update announcement: this is a decision that changes how every factory
-       in the plan reads, so it gets room to explain itself rather than a terse yes/no. -->
-  <v-dialog max-width="1000" :model-value="showRawAssumptionPrompt" persistent scrollable>
+  <!-- Styled like the update announcement: this changes how every plan reads, so it gets room
+       to explain itself. Not persistent — dismissing it has to leave a usable plan. -->
+  <v-dialog max-width="1000" :model-value="showRawBreakingNotice" scrollable @update:model-value="dismiss">
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
-        <span class="header-accent flex-grow-1 text-center">Raw resources</span>
+        <span class="header-accent flex-grow-1 text-center">Breaking change</span>
       </v-card-title>
       <v-card-text>
-        <h2 class="text-h4 text-center mb-4">{{ promptTitle }}</h2>
+        <h2 class="text-h4 text-center mb-4">Raw resources are no longer assumed</h2>
         <!-- Bound rather than a literal path: these live in public/, and a static src makes
              vite try to resolve them at transform time. -->
         <v-img
@@ -79,57 +76,69 @@
 
         <p class="mb-2">
           Pick a raw resource as a product, choose the extractor, and set each building group's
-          miner mark and node purity — or describe a resource well by its satellite nodes. That
-          replaces the old assumption that you were quietly supplying raw resources yourself.
+          miner mark and node purity — or describe a resource well by its satellite nodes.
         </p>
 
         <v-alert
           class="mt-6"
           density="comfortable"
-          type="info"
+          type="warning"
           variant="tonal"
         >
-          <h3 class="text-h6 mb-2">{{ promptQuestion }}</h3>
+          <h3 class="text-h6 mb-2">What this means for your existing plans</h3>
           <p class="mb-2">
-            <b>Yes</b> — raw resources you aren't mining or importing become shortages, so the plan
-            tells you what is missing. Best if you intend to plan your mining out.
-            <b class="text-caution">This will likely result in a lot of factories in your plan
-              going red, just so you're aware.</b>
+            The planner used to quietly assume you were supplying raw resources yourself. It
+            doesn't any more — anything a factory doesn't mine or import is now a real shortage,
+            so <b class="text-caution">plans built before this will show factories in red.</b>
+            Nothing in your plan has been changed or lost; it is only being honest about what
+            was already missing.
           </p>
           <p class="mb-2">
-            <b>No</b> — raw resources stay assumed as supplied, exactly as they are today. Nothing
-            in your plan changes.
+            There is no setting to turn this back on. An optional assumption meant two people
+            could open the same plan and see different things, with nothing on screen to say so.
           </p>
-          <p class="mb-0 text-medium-emphasis">
-            Either way you can change it whenever you like in Options, or on a per factory basis.
+          <p class="mb-0">
+            The one exception is the resources the game gives you no extractor for — Leaves,
+            Wood, Mycelia, alien remains, power slugs and FICSMAS gifts. Those are still taken
+            as supplied, and say so on the item.
           </p>
         </v-alert>
+
+        <p class="mt-4 mb-0">
+          The <b>Raw Resources Wizard</b> can fix a plan in one pass: it lists every factory that
+          is short, and builds the mines, adds the extractors or wires the imports for you. It
+          lives in <b>Options</b> whenever you want it again.
+        </p>
       </v-card-text>
       <v-card-actions class="pa-4 pt-0">
         <v-spacer />
-        <v-btn id="raw-assumption-prompt-no" size="large" variant="text" @click="answerRawAssumptionPrompt(false)">
-          No, keep assuming
+        <v-btn id="raw-notice-dismiss" size="large" variant="text" @click="dismiss">
+          I'll sort it myself
         </v-btn>
         <v-btn
-          id="raw-assumption-prompt-yes"
+          id="raw-notice-wizard"
           color="green"
+          prepend-icon="fas fa-shovel"
           size="large"
           variant="flat"
-          @click="answerRawAssumptionPrompt(true)"
+          @click="dismissAndOpenWizard"
         >
-          Yes, stop assuming
+          Run the wizard
         </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <raw-resources-wizard v-model="showWizard" />
 </template>
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia'
   import { useAppStore } from '@/stores/app-store'
+  import RawResourcesWizard from '@/components/planner/RawResourcesWizard.vue'
 
   const appStore = useAppStore()
-  const { showRawAssumptionPrompt } = storeToRefs(appStore)
+  const { showRawBreakingNotice } = storeToRefs(appStore)
 
   // The three shapes extraction takes, so the modal can show what it is actually talking about.
   const examples = [
@@ -157,18 +166,21 @@
   const activeExample = computed(() =>
     examples.find(example => example.key === activeExampleKey.value) ?? examples[0])
 
-  const promptTitle = 'Mines are now part of the planner'
-  const promptQuestion = 'Do you want to stop assuming raw resources across all your factories?'
-
   const showOptions = ref(false)
-  const assumeRawInputs = appStore.getAssumeRawInputsSetting()
+  const showWizard = ref(false)
 
-  const setAssumeRawInputs = (value: boolean) => {
-    appStore.setAssumeRawInputsSetting(value)
+  const openWizard = () => {
+    showOptions.value = false
+    showWizard.value = true
   }
 
-  const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
-    appStore.answerRawAssumptionPrompt(removeAssumption)
+  const dismiss = () => {
+    appStore.dismissRawBreakingNotice()
+  }
+
+  const dismissAndOpenWizard = () => {
+    dismiss()
+    showWizard.value = true
   }
 </script>
 

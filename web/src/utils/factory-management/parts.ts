@@ -3,7 +3,6 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
-import { getAssumeRawInputs } from '@/utils/factory-management/settings'
 
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
@@ -174,13 +173,40 @@ export const calculatePartSupply = (factory: Factory) => {
   }
 }
 
-// Whether this factory tops raw shortfalls up automatically. The factory's own setting wins;
-// absent (the normal case) it inherits the plan's default.
-export const factoryAssumesRawInputs = (factory: Factory): boolean =>
-  factory.assumeRawInputs ?? getAssumeRawInputs()
+// Raw resources the game gives no extractor for: Leaves, Wood, Mycelia, the alien remains, the
+// power slugs and the FICSMAS Gift. Nothing to build and nothing to import, so the planner takes
+// them as gathered by hand rather than reporting a shortage nobody could act on.
+//
+// Wells count as extractors here. Nitrogen Gas is well-only, and classing it hand-gathered would
+// erase every Nitrogen shortage in every plan. getExtractionRecipeForPart deliberately excludes
+// wells, but it answers a different question — "can this be created automatically", not "does an
+// extractor exist at all". Don't swap one for the other.
+const handGatheredCache = new WeakMap<DataInterface, Set<string>>()
+
+export const getHandGatheredParts = (gameData: DataInterface): Set<string> => {
+  const cached = handGatheredCache.get(gameData)
+  if (cached) {
+    return cached
+  }
+
+  const extractable = new Set<string>()
+  for (const recipe of gameData.recipes) {
+    if (recipe.extraction) {
+      recipe.products.forEach(product => extractable.add(product.part))
+    }
+  }
+
+  // Keyed on the game data object rather than built once: this is parameterised by gameData, and
+  // specs pass their own. A stale set would mark ores permanently satisfied.
+  const handGathered = new Set(
+    Object.keys(gameData.items.rawResources).filter(part => !extractable.has(part))
+  )
+  handGatheredCache.set(gameData, handGathered)
+  return handGathered
+}
 
 export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
-  const assumed = factoryAssumesRawInputs(factory)
+  const handGathered = getHandGatheredParts(gameData)
 
   for (const part in factory.parts) {
     const partData = factory.parts[part]
@@ -202,9 +228,9 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
       partData.amountSuppliedViaProduction
     )
 
-    // With the assumption on, the shortfall is taken as supplied by the player. With it off it
-    // stays unmet, so it flows through amountRemaining and lands as a genuine shortage.
-    partData.amountSuppliedViaRaw = assumed ? shortfall : 0
+    // Hand-gathered resources are taken as supplied. Everything else has to be mined or imported,
+    // so its shortfall stays unmet and flows through amountRemaining as a genuine shortage.
+    partData.amountSuppliedViaRaw = handGathered.has(part) ? shortfall : 0
 
     partData.amountSupplied =
       partData.amountSuppliedViaInput +

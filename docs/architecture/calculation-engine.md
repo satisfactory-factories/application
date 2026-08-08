@@ -18,7 +18,7 @@ interface Factory {
   requirementsSatisfied: boolean      // every ledger entry satisfied?
   dependencies: FactoryDependency     // requests other factories make OF this one
   exportCalculator: {...}             // train/truck/drone transport math settings
-  rawResources: {...}                 // raw parts assumed handled by the player
+  rawResources: {...}                 // raw parts the world would have to provide
   power: FactoryPower                 // {consumed, produced, difference}
   hasProblem: boolean                 // aggregate flag the UI paints red
   inSync: boolean | null              // sync-with-game state (null = never synced)
@@ -32,7 +32,7 @@ interface Factory {
 Every part a factory touches gets one entry. Satisfaction is decided here and nowhere else:
 
 - Demand: `amountRequired` = `amountRequiredProduction` (internal recipe ingredients) + `amountRequiredExports` (other factories' requests) + `amountRequiredPower` (generator fuel).
-- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw`. Raw supply is conditional: `factoryAssumesRawInputs()` (`parts.ts`) resolves `factory.assumeRawInputs` against the **plan's** default, which lives on the factory tab and travels with the plan. When it assumes, a raw shortfall is topped up silently and always satisfied; when it doesn't, `amountSuppliedViaRaw` stays 0 and the shortfall flows through `amountRemaining` as a real deficit (the `rawShortage` status). The plan-level value reaches the engine through the module accessor in `factory-management/settings.ts`, not through `CalculationModes` — the engine re-enters itself from `dependencies.ts` and `inputs.ts` without forwarding its modes.
+- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw`. **Raw resources are not assumed to be supplied** — anything a factory doesn't extract or import is a real deficit that flows through `amountRemaining` (the `rawShortage` status). There is no setting. The one exception is decided by the game data: `getHandGatheredParts()` (`parts.ts`) is the raw resources with no extractor of any kind — Leaves, Wood, Mycelia, alien remains, power slugs, the FICSMAS Gift — and only those get `amountSuppliedViaRaw` topped up. That rule **counts resource wells**; reusing `getExtractionRecipeForPart` (which excludes them) would class well-only Nitrogen Gas as hand-gathered and erase every Nitrogen shortage. The set is memoised per `gameData` object and pinned by spec.
 - Verdict: `amountRemaining = supplied − required`; `satisfied = amountRemaining >= 0`. `exportable` marks parts other factories may import.
 
 ## The recalculation pipeline

@@ -62,8 +62,8 @@
                   <v-chip v-if="showExportedChip(factory, partId.toString())" class="sf-chip factory x-small mr-2">
                     <i class="fas fa-truck-container mr-1" />Exported
                   </v-chip>
-                  <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    <i class="fas fa-shovel mr-1" />Raw
+                  <v-chip v-if="showManuallyGatheredChip(factory, partId.toString())" class="sf-chip hand-gathered x-small mr-2">
+                    <i class="fas fa-hands mr-1" />Manually gathered
                   </v-chip>
                   <v-chip v-if="showRawShortageChip(factory, partId.toString())" class="sf-chip red x-small mr-2">
                     <i class="fas fa-shovel mr-1" />Raw shortage
@@ -241,18 +241,16 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
-              <!-- The balance only needs annotating where the number isn't earned: a raw resource
-                   this factory extracts is satisfied by its own miners, like any other product. -->
-              <template v-if="rawChipReason(factory, partId.toString()) === 'assumed'">
+              <!-- The balance only needs annotating where the number isn't earned, which is now
+                   only ever the resources the game gives you no way to extract. -->
+              <template v-if="showManuallyGatheredChip(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <!-- The amount, not just the fact: a factory mining 150 of the 200 it needs
-                         is assuming 50, and that number is the whole point of the chip. -->
-                    <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <i class="fas fa-shovel mr-2" /><span class="mr-2">{{ formatNumber(part.amountSuppliedViaRaw) }}/min assumed</span> <i class="fas fa-info-circle" />
+                    <v-chip v-bind="activatorProps" class="sf-chip hand-gathered small">
+                      <i class="fas fa-hands mr-2" /><span class="mr-2">{{ formatNumber(part.amountSuppliedViaRaw) }}/min gathered</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>This factory assumes you'll supply Raw Items e.g. Iron Ore yourself, so they always count as satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.<br>Turn that assumption off in Options, or per factory in the Imports section, to plan the mining out instead.</span>
+                  <span>There is no extractor in the game for this resource — Leaves, Wood, Mycelia, alien remains, power slugs and FICSMAS gifts are all picked up by hand.<br>The planner takes them as supplied, because there is nothing it could ask you to build.</span>
                 </v-tooltip>
               </template>
               <template v-if="showRawShortageChip(factory, partId.toString())">
@@ -262,7 +260,7 @@
                       <i class="fas fa-shovel mr-2" /><span class="mr-2">Raw shortage</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>This factory isn't assuming raw supply, so this shortfall is real. Add an extractor as a product to mine it here, or import it from a mine factory.</span>
+                  <span>This factory needs a raw resource it doesn't extract or import. Add an extractor as a product to mine it here, or import it from a mine factory.</span>
                 </v-tooltip>
               </template>
               <template v-if="showUnpackagedChip(factory, partId.toString())">
@@ -408,13 +406,12 @@
   import {
     addShortageToFactory,
     convertWasteToGeneratorFuel,
-    rawChipReason,
     showByProductChip,
     showExportedChip,
     showImportedChip,
     showInternalChip,
+    showManuallyGatheredChip,
     showProductChip,
-    showRawChip,
     showRawShortageChip,
     showRecycledChip,
     showSatisfactionItemButton,
@@ -502,7 +499,7 @@
       const targetFactory = newFactory(`${getPartDisplayName(part)} Factory`)
       appStore.addFactory(targetFactory)
 
-      addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part))
+      addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part), Math.abs(factory.parts[part]?.amountRemaining ?? 0))
       calculateFactories(appStore.getFactories(), getGameData())
       eventBus.emit('toast', { message: `Created "${targetFactory.name}" producing "${getPartDisplayName(part)}"!` })
 

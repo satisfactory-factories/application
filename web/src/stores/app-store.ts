@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -11,7 +11,6 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
-import { setAssumeRawInputs } from '@/utils/factory-management/settings'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -85,112 +84,37 @@ export const useAppStore = defineStore('app', () => {
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
 
-  // ==== RAW INPUT ASSUMPTION
-  // The plan's default answer for raw supply, inherited by every factory that doesn't override
-  // it. It lives on the tab rather than in localStorage because it changes what the plan MEANS:
-  // a plan built around mines, opened by someone whose browser said "assume", would quietly
-  // have its mines made decorative and its shortages erased. `powerTarget` moved the same way.
-  // New plans do not assume — mining is modelled properly now — but a plan built before mining
-  // keeps the old behaviour until its owner answers the one-time notice, since flipping it
-  // silently would turn every factory in a saved plan red.
-  const assumeRawInputs = ref<boolean>(true)
-  const showRawAssumptionPrompt = ref<boolean>(false)
-  // Separate from the setting itself: someone who never had a plan gets the assumption turned
-  // off without ever seeing the notice, and should still get it the first time they open a plan
-  // built before mining. Once they have answered, no plan raises it again.
-  const seenRawAssumptionNotice = ref<boolean>(localStorage.getItem('seenRawAssumptionNotice') === 'true')
+  // ==== RAW RESOURCES BREAKING-CHANGE NOTICE
+  // Raw resources are no longer assumed to be supplied — they are mined or imported like anything
+  // else, and only the resources the game gives no extractor for (Leaves, Wood, alien remains...)
+  // are still taken as gathered by hand. There is deliberately no setting: an optional assumption
+  // meant two plans could disagree about what they meant, and the answer was invisible on the card.
+  //
+  // That silently turns saved plans red, so say so once. Once, and never again — otherwise every
+  // old plan the user opens interrupts them with the same news.
+  const showRawBreakingNotice = ref<boolean>(false)
+  const seenRawBreakingNotice = ref<boolean>(localStorage.getItem('seenRawBreakingNotice') === 'true')
 
-  // The answer used to be per-browser. Read it once so anyone who already gave one keeps it on
-  // the plans they had at the time, rather than being silently switched to the new default.
-  const legacyRawAssumption = (() => {
-    const stored = localStorage.getItem('assumeRawInputs')
-    return stored === null ? null : stored === 'true'
-  })()
-
-  const applyAssumeRawInputs = (value: boolean) => {
-    assumeRawInputs.value = value
-    setAssumeRawInputs(value)
-  }
-
-  // A plan whose factories predate mining has no `assumeRawInputs` key at all — newFactory has
-  // written one (null) ever since. Whatever brought it in (paste, share link, account sync), the
-  // user is looking at a plan built on the old assumption and deserves the same one-time notice
-  // that a saved plan gets on first load.
-  const planPredatesMining = (plan: Factory[]) =>
-    plan.some(factory => !('assumeRawInputs' in factory))
-
-  // Pins the plan's default onto the tab the first time it is needed, so it travels with every
-  // share, paste, file and account sync from then on. A plan that predates mining resolves to
-  // "assume" whatever this browser thinks — that is how it was built.
-  const resolvePlanAssumption = (tab?: FactoryTab, factories?: Factory[]) => {
-    if (!tab) return
-    if (tab.assumeRawInputs != null) {
-      applyAssumeRawInputs(tab.assumeRawInputs)
+  const askRawBreakingNotice = () => {
+    if (seenRawBreakingNotice.value) {
       return
     }
 
-    const plan = factories ?? tab.factories ?? []
-    const resolved = planPredatesMining(plan) ? true : legacyRawAssumption ?? false
-    // An empty tab has no plan to judge, so don't pin an answer the plan about to load would
-    // have given differently. The load calls back here with its own factories.
-    if (plan.length > 0) {
-      tab.assumeRawInputs = resolved
-    }
-    applyAssumeRawInputs(resolved)
+    showRawBreakingNotice.value = true
   }
 
-  // Settle it up front: the engine can be asked to calculate before any plan finishes loading.
-  resolvePlanAssumption(factoryTabs.value[currentFactoryTabIndex.value])
-
-  const getAssumeRawInputsSetting = () => assumeRawInputs
-
-  const setAssumeRawInputsSetting = (value: boolean) => {
-    const tab = getCurrentTab()
-    if (tab) {
-      tab.assumeRawInputs = value
-    }
-    applyAssumeRawInputs(value)
-    schedulePersist()
-    forceCalculation()
+  const dismissRawBreakingNotice = () => {
+    seenRawBreakingNotice.value = true
+    localStorage.setItem('seenRawBreakingNotice', 'true')
+    showRawBreakingNotice.value = false
   }
 
-  // The notice explains a change to the planner, so it is worth saying once and never again —
-  // otherwise every old plan the user opens interrupts them with the same news. Plans no longer
-  // need asking about beyond this: each one carries its own answer.
-  const askRawAssumption = () => {
-    if (seenRawAssumptionNotice.value) {
-      return
-    }
-
-    showRawAssumptionPrompt.value = true
-  }
-
-  // Debug scenario only: put the setting back to never-answered and the assumption back on, so
-  // the one-time notice behaves as it does for someone opening a plan made before mining
-  // existed. Otherwise it is unreachable once answered.
-  const rearmRawAssumption = () => {
-    localStorage.removeItem('assumeRawInputs')
-    localStorage.removeItem('seenRawAssumptionNotice')
-    seenRawAssumptionNotice.value = false
-    const tab = getCurrentTab()
-    if (tab) {
-      delete tab.assumeRawInputs
-    }
-    applyAssumeRawInputs(true)
-    askRawAssumption()
-  }
-
-  const answerRawAssumptionPrompt = (removeAssumption: boolean) => {
-    const tab = getCurrentTab()
-    if (tab) {
-      tab.assumeRawInputs = !removeAssumption
-    }
-    applyAssumeRawInputs(!removeAssumption)
-    seenRawAssumptionNotice.value = true
-    localStorage.setItem('seenRawAssumptionNotice', 'true')
-    showRawAssumptionPrompt.value = false
-    schedulePersist()
-    forceCalculation()
+  // Debug scenario only: put the notice back to never-seen so it behaves as it does for someone
+  // opening a plan built before this change. Otherwise it is unreachable once dismissed.
+  const rearmRawBreakingNotice = () => {
+    localStorage.removeItem('seenRawBreakingNotice')
+    seenRawBreakingNotice.value = false
+    askRawBreakingNotice()
   }
 
   const shownFactories = (factories: Factory[]) => {
@@ -214,10 +138,6 @@ export const useAppStore = defineStore('app', () => {
     afterPaint(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
-
-      // Each plan answers the raw supply question for itself, so switching tabs switches the
-      // answer the engine calculates against.
-      resolvePlanAssumption(currentFactoryTab.value)
 
       // Update localstorage with the tab index
       localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
@@ -367,13 +287,20 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
 
-    // Every plan arrives here — first load, paste, share link, template, account sync — so it
-    // is the one place that both settles what the plan assumes and catches one built before
-    // mining, regardless of how it got in.
-    resolvePlanAssumption(getCurrentTab(), newFactories)
-    if (planPredatesMining(newFactories)) {
-      askRawAssumption()
+    // Every plan arrives here — first load, paste, share link, template, account sync — so it is
+    // the one place to catch a plan built while raw supply was still assumed. Any non-empty plan
+    // predates the change in the only sense that matters: it may have gone red without warning.
+    if (newFactories.length > 0) {
+      askRawBreakingNotice()
     }
+
+    // The assumption is gone; drop what saved plans still carry for it so they stop hauling a
+    // dead field through every share, paste and sync from here on.
+    const tab = getCurrentTab() as (FactoryTab & LegacyRawAssumptionFields) | undefined
+    if (tab) {
+      delete tab.assumeRawInputs
+    }
+    newFactories.forEach(factory => delete (factory as Factory & LegacyRawAssumptionFields).assumeRawInputs)
 
     // Reset the factories currently loaded, if there is any
     if (currentFactoryTab.value.factories.length > 0) {
@@ -764,16 +691,14 @@ export const useAppStore = defineStore('app', () => {
     name = 'New Tab',
     factories = [],
     powerTarget,
-    assumeRawInputs: tabAssumeRawInputs,
   } = {} as Partial<FactoryTab>) => {
     factoryTabs.value.push({
       id,
       name,
       factories,
-      // Preserve the plan's power target and raw supply answer when importing a tab
-      // (e.g. from a share link) — both describe the plan, not the browser.
+      // Preserve the plan's power target when importing a tab (e.g. from a share link) —
+      // it describes the plan, not the browser.
       powerTarget,
-      assumeRawInputs: tabAssumeRawInputs,
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
@@ -867,12 +792,10 @@ export const useAppStore = defineStore('app', () => {
     removeCurrentTab,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
-    getAssumeRawInputsSetting,
-    setAssumeRawInputsSetting,
-    showRawAssumptionPrompt,
-    askRawAssumption,
-    rearmRawAssumption,
-    answerRawAssumptionPrompt,
+    showRawBreakingNotice,
+    askRawBreakingNotice,
+    dismissRawBreakingNotice,
+    rearmRawBreakingNotice,
     prepareLoader,
     forceCalculation,
 

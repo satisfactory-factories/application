@@ -217,9 +217,6 @@ export interface Factory {
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
-  // Per-factory override for whether unmet raw demand is assumed to be supplied by the player.
-  // null/undefined inherits the user's global setting, which is what almost every factory does.
-  assumeRawInputs?: boolean | null;
   usingRawResourcesOnly: boolean;
   hidden: boolean; // Whether to hide the card or not
   hasProblem: boolean
@@ -239,9 +236,10 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
-  // The plan's default answer for "are raw resources supplied?", inherited by every
-  // factory that doesn't override it. On the plan rather than the browser because it
-  // changes what the plan means — see the app store. Optional so older tabs load; the
-  // store resolves and pins it on first use.
-  assumeRawInputs?: boolean;
+}
+
+// Fields saved plans still carry from before raw supply stopped being assumable. Typed only so
+// the load path can strip them; nothing reads them.
+export interface LegacyRawAssumptionFields {
+  assumeRawInputs?: boolean | null;
 }

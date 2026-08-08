@@ -86,7 +86,6 @@ describe('Complex Demo Plan', () => {
     it('should extract its own oil rather than assuming it', () => {
       expect(oilFac.inputs).toHaveLength(0)
       expect(oilFac.rawResources.LiquidOil).toBeUndefined()
-      expect(oilFac.assumeRawInputs).toBe(false)
     })
     it('should split the extraction across pure and normal nodes', () => {
       const groups = oilFac.products[0].buildingGroups
@@ -240,7 +239,6 @@ describe('Complex Demo Plan', () => {
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
       expect(copperMineFac.displayOrder).toBe(1) // Top of the plan, where the chain starts
-      expect(copperMineFac.assumeRawInputs).toBe(false)
       expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
 
       const ore = copperMineFac.products[0]
@@ -392,17 +390,19 @@ describe('Complex Demo Plan', () => {
         isRaw: false,
         exportable: true,
       })
+      // The demo has always advertised "multiple missing resources" on Uranium Power. With raw
+      // supply no longer assumed, that is what missing looks like.
       expect(uraniumFac.parts.Stone).toEqual({
         amountRequired: 180,
         amountRequiredExports: 0,
         amountRequiredProduction: 180,
         amountRequiredPower: 0,
-        amountSupplied: 180,
+        amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 180,
-        amountRemaining: 0,
-        satisfied: true,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: -180,
+        satisfied: false,
         isRaw: true,
         exportable: false,
       })
@@ -425,12 +425,12 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
-        amountSupplied: 160,
+        amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 160,
-        amountRemaining: 0,
-        satisfied: true,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: -160,
+        satisfied: false,
         isRaw: true,
         exportable: false,
       })
@@ -439,12 +439,12 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 2400,
-        amountSupplied: 2560,
+        amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 2560,
-        amountRemaining: 0,
-        satisfied: true,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: -2560,
+        satisfied: false,
         isRaw: true,
         exportable: false,
       })
@@ -537,12 +537,12 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 200,
         amountRequiredPower: 0,
-        amountSupplied: 200,
+        amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 200,
-        amountRemaining: 0,
-        satisfied: true,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: -200,
+        satisfied: false,
         isRaw: true,
         exportable: false,
       })

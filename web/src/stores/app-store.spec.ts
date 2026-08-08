@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
@@ -11,7 +11,6 @@ import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
-import { getAssumeRawInputs } from '@/utils/factory-management/settings'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -538,110 +537,65 @@ describe('app-store', () => {
     })
   })
 
-  describe('raw input assumption prompt', () => {
-    // Factories built before mining have no assumeRawInputs key at all, which is how a plan
-    // that predates the feature is recognised however it arrives.
-    const preMiningPlan = (): Factory[] => {
-      const factory = newFactory('Old Plan')
-      delete (factory as Partial<Factory>).assumeRawInputs
-      return [factory]
-    }
-
+  describe('raw resources breaking-change notice', () => {
     beforeEach(() => {
-      localStorage.removeItem('assumeRawInputs')
-      localStorage.removeItem('seenRawAssumptionNotice')
+      localStorage.removeItem('seenRawBreakingNotice')
       resetAppStore()
     })
 
     afterEach(() => {
-      localStorage.removeItem('assumeRawInputs')
-      localStorage.removeItem('seenRawAssumptionNotice')
+      localStorage.removeItem('seenRawBreakingNotice')
     })
 
-    it('raises the notice for a plan that predates mining', async () => {
-      await appStore.beginLoading(preMiningPlan())
+    it('raises the notice for anyone loading an existing plan', async () => {
+      await appStore.beginLoading([newFactory('Old Plan')])
 
-      expect(appStore.showRawAssumptionPrompt).toBe(true)
-      // Pre-mining plans keep the old behaviour until answered, whatever this browser thinks.
-      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(true)
+      expect(appStore.showRawBreakingNotice).toBe(true)
     })
 
-    it('leaves a plan that already carries the setting alone', async () => {
-      await appStore.beginLoading([newFactory('New Plan')])
+    // Someone starting from nothing has no plan to have been broken, so there is no news.
+    it('stays silent for an empty plan', async () => {
+      await appStore.beginLoading([])
 
-      expect(appStore.showRawAssumptionPrompt).toBe(false)
-    })
-
-    // The whole point of the plan default: a plan built around mines has to mean the same
-    // thing to whoever opens it, not whatever their own last answer happened to be.
-    it('pins the plan default onto the tab so it travels with the plan', async () => {
-      await appStore.beginLoading([newFactory('New Plan')])
-
-      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(false)
-      expect(getAssumeRawInputs()).toBe(false)
-    })
-
-    it('honours a plan that arrives carrying its own answer', async () => {
-      const tab = appStore.getCurrentTab()
-      if (tab) tab.assumeRawInputs = true
-
-      await appStore.beginLoading([newFactory('Shared Plan')])
-
-      expect(getAssumeRawInputs()).toBe(true)
-      expect(appStore.showRawAssumptionPrompt).toBe(false)
-    })
-
-    // Someone who answered before the setting moved onto the plan keeps that answer.
-    it('falls back to the answer this browser gave before the move', async () => {
-      localStorage.setItem('assumeRawInputs', 'true')
-      resetAppStore()
-
-      await appStore.beginLoading([newFactory('Old Browser Answer')])
-
-      expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(true)
+      expect(appStore.showRawBreakingNotice).toBe(false)
     })
 
     // The bug this guards: the notice announces a change to the planner, so opening a second
-    // old plan after answering must not repeat the news.
-    it('never raises it again once answered, whatever the answer was', async () => {
-      for (const removeAssumption of [true, false]) {
-        localStorage.removeItem('assumeRawInputs')
-        localStorage.removeItem('seenRawAssumptionNotice')
-        resetAppStore()
+    // plan after dismissing it must not repeat the news.
+    it('never raises it again once dismissed', async () => {
+      await appStore.beginLoading([newFactory('Old Plan')])
+      expect(appStore.showRawBreakingNotice).toBe(true)
 
-        await appStore.beginLoading(preMiningPlan())
-        expect(appStore.showRawAssumptionPrompt).toBe(true)
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+      expect(localStorage.getItem('seenRawBreakingNotice')).toBe('true')
 
-        appStore.answerRawAssumptionPrompt(removeAssumption)
-        expect(appStore.showRawAssumptionPrompt).toBe(false)
-        expect(localStorage.getItem('seenRawAssumptionNotice')).toBe('true')
-        // The answer belongs to the plan that raised the question.
-        expect(appStore.getCurrentTab()?.assumeRawInputs).toBe(!removeAssumption)
-
-        await appStore.beginLoading(preMiningPlan())
-        expect(appStore.showRawAssumptionPrompt).toBe(false)
-      }
+      await appStore.beginLoading([newFactory('Another Plan')])
+      expect(appStore.showRawBreakingNotice).toBe(false)
     })
 
-    // Someone who never had a plan gets the assumption switched off silently, so the notice is
-    // still owed to them the first time they open something built before mining.
-    it('still raises it for a user who was defaulted off without ever seeing it', async () => {
-      resetAppStore()
-      expect(appStore.showRawAssumptionPrompt).toBe(false)
+    // Saved plans still carry the field the assumption used to live on. It means nothing now,
+    // so it must not ride along through every share, paste and sync from here on.
+    it('strips the dead assumption field from a loaded plan', async () => {
+      const factory = newFactory('Old Plan')
+      ;(factory as Factory & LegacyRawAssumptionFields).assumeRawInputs = true
+      const tab = appStore.getCurrentTab()
+      if (tab) (tab as FactoryTab & LegacyRawAssumptionFields).assumeRawInputs = true
 
-      await appStore.beginLoading(preMiningPlan())
+      await appStore.beginLoading([factory])
 
-      expect(appStore.showRawAssumptionPrompt).toBe(true)
+      expect('assumeRawInputs' in factory).toBe(false)
+      expect('assumeRawInputs' in (appStore.getCurrentTab() ?? {})).toBe(false)
     })
 
     it('comes back after the debug scenario re-arms it', async () => {
-      await appStore.beginLoading(preMiningPlan())
-      appStore.answerRawAssumptionPrompt(true)
+      await appStore.beginLoading([newFactory('Old Plan')])
+      appStore.dismissRawBreakingNotice()
 
-      appStore.rearmRawAssumption()
+      appStore.rearmRawBreakingNotice()
 
-      expect(appStore.showRawAssumptionPrompt).toBe(true)
-      expect(localStorage.getItem('seenRawAssumptionNotice')).toBeNull()
+      expect(appStore.showRawBreakingNotice).toBe(true)
+      expect(localStorage.getItem('seenRawBreakingNotice')).toBeNull()
     })
   })
 

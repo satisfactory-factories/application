@@ -5,7 +5,6 @@ import { calculateFactories, newFactory } from '../../../src/utils/factory-manag
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
 import { BuildingGroup, Factory, FactoryItem } from '../../../src/interfaces/planner/FactoryInterface'
 import { fetchGameData } from '../../../src/utils/gameDataService'
-import { setAssumeRawInputs } from '../../../src/utils/factory-management/settings'
 import { mountItem, mountSatisfaction } from '../../helpers'
 
 // @ts-ignore // this is fine, it works, stop moaning
@@ -36,7 +35,6 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   beforeEach(async () => {
     // These assertions read the raw-supply row, so pin the assumption on: mounting a component
     // spins up the app store, which otherwise resolves it from the (empty) saved plan.
-    setAssumeRawInputs(true)
     factory = newFactory('BG-E-B-PROD Factory')
     addProductToFactory(factory, {
       id: 'IronIngot',
@@ -215,17 +213,20 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       // Increase
       await buildingGroupCount.setValue(4)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('0')
-      expect(factory.parts.OreIron.amountSupplied).toBe(120)
-      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+120/min')
+      // Nothing mines the ore here, and raw supply is no longer assumed, so the ore reads as a
+      // shortage. What this case is about — the building count driving what is CONSUMED — is
+      // the required-production line, which is unchanged.
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('-120')
+      expect(factory.parts.OreIron.amountSupplied).toBe(0)
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+0/min')
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-required-production"]`).text()).toBe('-120/min')
 
       // Reduce
       await buildingGroupCount.setValue(2)
       await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
-      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('0')
-      expect(factory.parts.OreIron.amountSupplied).toBe(60)
-      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+60/min')
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('-60')
+      expect(factory.parts.OreIron.amountSupplied).toBe(0)
+      expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+0/min')
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-required-production"]`).text()).toBe('-60/min')
     })
 

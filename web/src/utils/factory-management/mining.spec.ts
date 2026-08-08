@@ -64,7 +64,6 @@ describe('mining scenarios', async () => {
       // Drop to a single Mk.2 on a pure node: 240/min against a 960/min export request.
       // The mine must not quietly assume the missing 720/min — that is the whole point of
       // having modelled the miners.
-      mine.assumeRawInputs = false
       mine.products[0].buildingGroups[0].buildingCount = 1
       calculateFactories(factories, gameData, { origin: 'buildingGroup' })
 
@@ -72,14 +71,6 @@ describe('mining scenarios', async () => {
       expect(mine.parts.OreIron.amountSuppliedViaRaw).toBe(0)
       expect(mine.parts.OreIron.satisfied).toBe(false)
       expect(mine.hasProblem).toBe(true)
-    })
-
-    it('still assumes the missing ore while the assumption is left on', () => {
-      mine.products[0].buildingGroups[0].buildingCount = 1
-      calculateFactories(factories, gameData, { origin: 'buildingGroup' })
-
-      expect(mine.parts.OreIron.amountSuppliedViaRaw).toBe(720)
-      expect(mine.parts.OreIron.satisfied).toBe(true)
     })
   })
 

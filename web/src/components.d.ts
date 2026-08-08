@@ -58,6 +58,7 @@ declare module 'vue' {
     Product: typeof import('./components/planner/products/Product.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
     RawResources: typeof import('./components/planner/imports/RawResources.vue')['default']
+    RawResourcesWizard: typeof import('./components/planner/RawResourcesWizard.vue')['default']
     RecipeCard: typeof import('./components/parts/RecipeCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

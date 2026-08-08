@@ -228,6 +228,14 @@
     border-color: var(--sf-raw-resource-border) !important;
   }
 
+  // Raw resources with no extractor in the game. Amber because it is an assumption the planner
+  // is making on your behalf, not a state of the plan — the factory itself stays green, since
+  // there is nothing to build and nothing to fix.
+  &.hand-gathered {
+    color: var(--sf-status-warning) !important;
+    border-color: var(--sf-status-warning-border) !important;
+  }
+
   &.node-setting {
     color: var(--sf-node-setting) !important;
     border-color: var(--sf-node-setting-border) !important;

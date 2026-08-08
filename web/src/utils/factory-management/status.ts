@@ -21,7 +21,6 @@
  */
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
-import { factoryAssumesRawInputs } from '@/utils/factory-management/parts'
 
 export type FactoryStatusSeverity = 'problem' | 'warning'
 
@@ -117,12 +116,14 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     icon: 'fas fa-shovel',
     chip: true,
     section: 'satisfaction',
-    detail: 'This factory needs raw resources it neither extracts nor imports, and it is not assuming they are supplied.',
+    detail: 'This factory needs raw resources it neither extracts nor imports.',
     // Deliberately no hasNoProducts guard: a generator burning Coal it doesn't import is a real
     // shortage, and unlike partShortage there is no saved-plan colour to preserve — raw demand
-    // counted as satisfied until the assumption could be turned off.
+    // counted as satisfied until extraction could be modelled.
+    //
+    // Hand-gathered resources need no guard here: the engine leaves them satisfied, so the
+    // !satisfied filter already excludes them.
     detect: factory => {
-      if (factoryAssumesRawInputs(factory)) return null
       return nonEmpty(subjects(
         Object.keys(factory.parts).filter(part => factory.parts[part].isRaw && !factory.parts[part].satisfied)
       ))
