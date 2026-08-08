@@ -195,6 +195,7 @@
                 <td colspan="3">
                   <i class="fas fa-industry mr-2" /><b>{{ plan.factoryName }}</b>
                   <v-chip v-if="plan.isNew" class="sf-chip green x-small ml-2">New factory</v-chip>
+                  <v-chip v-else class="sf-chip yellow x-small ml-2">Modified</v-chip>
                 </td>
               </tr>
               <tr v-for="line in factoryLines(plan)" :key="line.partId">
@@ -202,6 +203,7 @@
                   <span class="d-flex align-center ga-2">
                     <game-asset :subject="line.partId" type="item" />
                     <span>{{ line.partName }}</span>
+                    <v-chip v-if="line.isNew" class="sf-chip green x-small no-margin">New product</v-chip>
                   </span>
                 </td>
                 <td class="text-right text-no-wrap">
@@ -340,6 +342,7 @@
       partId: product.partId,
       partName: product.partName,
       produced: product.amount as number | null,
+      isNew: product.isNew,
       exports: plan.exports.filter(exported => exported.partId === product.partId),
     }))
 
@@ -352,6 +355,7 @@
         partId: exported.partId,
         partName: exported.partName,
         produced: null,
+        isNew: false,
         exports: plan.exports.filter(other => other.partId === exported.partId),
       })
     }

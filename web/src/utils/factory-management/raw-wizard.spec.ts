@@ -270,7 +270,7 @@ describe('raw wizard', async () => {
         const { summary } = applyRawWizard(factories, rows, gameData)
         const mine = summary.factories[0]
 
-        expect(mine.products).toEqual([{ partId: 'OreIron', partName: 'Iron Ore', amount: 200 }])
+        expect(mine.products).toEqual([{ partId: 'OreIron', partName: 'Iron Ore', amount: 200, isNew: true }])
         expect(mine.exports.map(exported => [exported.toFactoryName, exported.partId, exported.amount]))
           .toEqual([['Smelter A', 'OreIron', 100], ['Smelter B', 'OreIron', 100]])
       })
@@ -279,16 +279,32 @@ describe('raw wizard', async () => {
         const { summary } = applyRawWizard(factories, rows, gameData)
         const smelter = summary.factories[1]
 
-        expect(smelter.products).toEqual([{ partId: 'IronIngot', partName: 'Iron Ingot', amount: 100 }])
+        expect(smelter.products)
+          .toEqual([{ partId: 'IronIngot', partName: 'Iron Ingot', amount: 100, isNew: false }])
         expect(smelter.exports).toEqual([])
       })
 
-      it('includes the on-site extraction it just added', () => {
+      // The whole point of the flag: telling the wizard's addition apart from what was there.
+      it('marks only the on-site extraction it just added as new', () => {
         rows.forEach(row => { row.choice = 'onsite' })
         const { summary } = applyRawWizard(factories, rows, gameData)
 
-        expect(summary.factories[0].products.map(product => product.partId))
-          .toEqual(['IronIngot', 'OreIron'])
+        expect(summary.factories[0].products.map(product => [product.partId, product.isNew]))
+          .toEqual([['IronIngot', false], ['OreIron', true]])
+      })
+
+      // Bumping a mine's existing product is a change to it, not a new one.
+      it('does not mark a bumped product as new', () => {
+        const mine = newFactory('Iron Mine', 2, 3)
+        addProductToFactory(mine, { id: 'OreIron', amount: 500, recipe: 'Extract_OreIron' })
+        const plan = build([...factories, mine])
+        const importRows = collectRawWizardRows(plan)
+
+        const { summary } = applyRawWizard(plan, importRows, gameData)
+        const described = summary.factories.find(entry => entry.factoryName === 'Iron Mine')!
+
+        expect(described.isNew).toBe(false)
+        expect(described.products[0]).toMatchObject({ partId: 'OreIron', isNew: false })
       })
     })
 

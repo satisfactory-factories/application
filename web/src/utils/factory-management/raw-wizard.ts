@@ -63,7 +63,7 @@ export interface WizardFactoryPlan {
   factoryId: number
   factoryName: string
   isNew: boolean
-  products: { partId: string, partName: string, amount: number }[]
+  products: { partId: string, partName: string, amount: number, isNew: boolean }[]
   exports: WizardFactoryExport[]
 }
 
@@ -247,6 +247,7 @@ const describeTouchedFactories = (
   factories: Factory[],
   touched: Set<number>,
   created: Set<Factory>,
+  addedProducts: Set<FactoryItem>,
 ): WizardFactoryPlan[] => {
   const names = new Map(factories.map(factory => [factory.id, factory.name]))
 
@@ -260,6 +261,7 @@ const describeTouchedFactories = (
         partId: product.id,
         partName: getPartDisplayName(product.id),
         amount: product.amount,
+        isNew: addedProducts.has(product),
       })),
       exports: Object.values(factory.dependencies.requests)
         .flat()
@@ -373,7 +375,12 @@ export const applyRawWizard = (
   // Back to the unsynced default every mine is created with, now that the groups are sized.
   sizedProducts.forEach(product => { product.buildingGroupItemSync = false })
 
-  summary.factories = describeTouchedFactories(working, touched, new Set(mines.values()))
+  summary.factories = describeTouchedFactories(
+    working,
+    touched,
+    new Set(mines.values()),
+    new Set(sizedProducts),
+  )
 
   return { factories: working, summary }
 }
