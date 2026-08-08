@@ -256,7 +256,7 @@
                     <span class="text-medium-emphasis">{{ formatNumber(imported.amount) }}/min</span>
                     <v-chip
                       v-if="imported.change"
-                      class="sf-chip x-small no-margin ml-1"
+                      class="sf-chip x-small change-chip"
                       :class="changeClass(imported.change)"
                     >
                       {{ importChangeLabels[imported.change] }}
@@ -585,6 +585,11 @@
 
   .rename-field {
     max-width: 320px;
+  }
+
+  // The rate and this chip are inline, so nothing else puts a gap between them.
+  .change-chip {
+    margin: 0 0 0 8px !important;
   }
 
   // A factory exporting to six others makes a tall cell; the item and its rate belong beside the
