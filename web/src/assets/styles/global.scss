@@ -662,6 +662,13 @@
     display: none;
   }
 
+  // The real click target is this input, stretched over the control with inset:0 — but the browser's
+  // own margin for a radio/checkbox (3px 5px) shifts it down and right of the mark you can see.
+  // Clicking the middle of a radio missed it entirely; clicking low and right worked.
+  .v-selection-control__input > input {
+    margin: 0;
+  }
+
   &.v-selection-control--dirty .v-selection-control__input::after {
     background: currentcolor;
     opacity: 1;

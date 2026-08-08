@@ -1,5 +1,5 @@
 <template>
-  <v-dialog max-width="1100" :model-value="modelValue" scrollable @update:model-value="close">
+  <v-dialog max-width="1250" :model-value="modelValue" scrollable @update:model-value="close">
     <v-card>
       <v-card-title class="d-flex align-center">
         <i class="fas fa-shovel" /><span class="ml-2">Raw Resources Wizard</span>
@@ -35,13 +35,15 @@
             <v-btn size="small" variant="outlined" @click="setAll('ignore')">Ignore all</v-btn>
           </div>
 
-          <v-table density="compact">
+          <v-table class="wizard-table" density="compact">
             <thead>
               <tr>
                 <th>Factory</th>
                 <th>Resource</th>
                 <th class="text-right">Short by</th>
-                <th>What to do</th>
+                <th v-for="choice in ALL_CHOICES" :key="choice" class="text-center choice-heading">
+                  {{ choiceLabels[choice] }}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -52,42 +54,44 @@
                     <game-asset :subject="row.partId" type="item" />
                     <span>{{ row.partName }}</span>
                   </span>
-                </td>
-                <td class="text-right text-no-wrap">{{ formatNumber(row.shortfall) }}/min</td>
-                <td>
-                  <v-radio-group
-                    density="compact"
-                    hide-details
-                    inline
-                    :model-value="row.choice"
-                    @update:model-value="row.choice = $event as WizardChoice"
-                  >
-                    <v-radio
-                      v-for="choice in choicesForRow(row)"
-                      :key="choice"
-                      :label="choiceLabels[choice]"
-                      :value="choice"
-                    />
-                  </v-radio-group>
                   <!-- Wells are the one thing the wizard can't build for you. -->
                   <div v-if="row.wellOnly" class="text-caption text-medium-emphasis">
-                    Comes from a resource well — place the pressurizer and describe its satellites
-                    yourself, then the plan can import from it.
+                    From a resource well — place the pressurizer and describe its satellites
+                    yourself, then this can import from it.
                   </div>
-                  <v-select
-                    v-if="row.choice === 'import' && row.candidates.length > 1"
-                    class="mt-2"
-                    density="compact"
-                    hide-details
-                    item-title="name"
-                    item-value="id"
-                    :items="row.candidates"
-                    label="Import from"
-                    :model-value="row.importFrom"
-                    style="max-width: 260px"
-                    variant="outlined"
-                    @update:model-value="row.importFrom = $event"
-                  />
+                </td>
+                <td class="text-right text-no-wrap">{{ formatNumber(row.shortfall) }}/min</td>
+                <!-- The whole cell is the target, not just the 18px mark: a radio alone is a
+                     fiddly thing to hit in a dense table. -->
+                <td
+                  v-for="choice in ALL_CHOICES"
+                  :key="choice"
+                  class="text-center choice-cell"
+                  :class="{ 'choice-cell--available': choicesForRow(row).includes(choice) }"
+                  @click="selectChoice(row, choice)"
+                >
+                  <template v-if="choicesForRow(row).includes(choice)">
+                    <v-radio
+                      density="compact"
+                      hide-details
+                      :model-value="row.choice"
+                      :value="choice"
+                    />
+                    <v-select
+                      v-if="choice === 'import' && row.choice === 'import' && row.candidates.length > 1"
+                      class="mt-1 import-select"
+                      density="compact"
+                      hide-details
+                      item-title="name"
+                      item-value="id"
+                      :items="row.candidates"
+                      :model-value="row.importFrom"
+                      variant="outlined"
+                      @click.stop
+                      @update:model-value="row.importFrom = $event"
+                    />
+                  </template>
+                  <span v-else class="text-disabled">&mdash;</span>
                 </td>
               </tr>
             </tbody>
@@ -186,11 +190,21 @@
   const applying = ref(false)
   const error = ref('')
 
+  // Column order, and the header each one wears. Every row shows all four so the columns line up;
+  // the ones a row can't use render as a dash.
+  const ALL_CHOICES: WizardChoice[] = ['mine', 'onsite', 'import', 'ignore']
+
   const choiceLabels: Record<WizardChoice, string> = {
     mine: 'New mine factory',
     onsite: 'Mine it here',
     import: 'Import',
     ignore: 'Ignore',
+  }
+
+  const selectChoice = (row: WizardRow, choice: WizardChoice) => {
+    if (choicesForRow(row).includes(choice)) {
+      row.choice = choice
+    }
   }
 
   const extractorLabel = computed(() =>
@@ -249,3 +263,26 @@
     emit('update:modelValue', value)
   }
 </script>
+
+<style lang="scss" scoped>
+  .choice-heading {
+    min-width: 96px;
+  }
+
+  // Only the cells that can actually be picked look and behave clickable.
+  .choice-cell--available {
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .choice-cell :deep(.v-selection-control) {
+    justify-content: center;
+  }
+
+  .import-select {
+    min-width: 150px;
+  }
+</style>
