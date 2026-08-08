@@ -229,9 +229,11 @@
                   </span>
                 </td>
               </tr>
+              <!-- Every cell is a stack of fixed-height lines, so the item, its rate and the
+                   first factory it goes to sit on the same line as each other. -->
               <tr v-for="line in factoryLines(plan)" :key="line.partId">
                 <td>
-                  <span class="d-flex align-center ga-2">
+                  <span class="cell-line ga-2">
                     <game-asset :subject="line.partId" type="item" />
                     <span>{{ line.partName }}</span>
                     <v-chip v-if="line.change" class="sf-chip x-small no-margin" :class="changeClass(line.change)">
@@ -239,24 +241,25 @@
                     </v-chip>
                   </span>
                 </td>
-                <td class="text-right text-no-wrap">
-                  <span v-if="line.produced === null" class="text-disabled">&mdash;</span>
-                  <span v-else>{{ formatNumber(line.produced) }}/min</span>
+                <td class="text-no-wrap">
+                  <span class="cell-line justify-end" :class="{ 'text-disabled': line.produced === null }">
+                    {{ line.produced === null ? '—' : `${formatNumber(line.produced)}/min` }}
+                  </span>
                 </td>
                 <td>
-                  <span v-if="!line.imports.length" class="text-disabled">&mdash;</span>
+                  <span v-if="!line.imports.length" class="cell-line text-disabled">&mdash;</span>
                   <span
                     v-for="imported in line.imports"
                     :key="imported.fromFactoryId"
-                    class="d-block text-no-wrap"
+                    class="cell-line ga-2 text-no-wrap"
                   >
-                    <v-chip class="sf-chip factory x-small">
+                    <v-chip class="sf-chip factory x-small no-margin">
                       <i class="fas fa-industry mr-1" />{{ imported.fromFactoryName }}
                     </v-chip>
                     <span class="text-medium-emphasis">{{ formatNumber(imported.amount) }}/min</span>
                     <v-chip
                       v-if="imported.change"
-                      class="sf-chip x-small change-chip"
+                      class="sf-chip x-small no-margin"
                       :class="changeClass(imported.change)"
                     >
                       {{ importChangeLabels[imported.change] }}
@@ -264,13 +267,13 @@
                   </span>
                 </td>
                 <td>
-                  <span v-if="!line.exports.length" class="text-disabled">Used internally</span>
+                  <span v-if="!line.exports.length" class="cell-line text-disabled">Used internally</span>
                   <span
                     v-for="exported in line.exports"
                     :key="exported.toFactoryId"
-                    class="d-block text-no-wrap"
+                    class="cell-line ga-2 text-no-wrap"
                   >
-                    <v-chip class="sf-chip factory x-small">
+                    <v-chip class="sf-chip factory x-small no-margin">
                       <i class="fas fa-industry mr-1" />{{ exported.toFactoryName }}
                     </v-chip>
                     <span class="text-medium-emphasis">{{ formatNumber(exported.amount) }}/min</span>
@@ -617,16 +620,19 @@
     max-width: 320px;
   }
 
-  // The rate and this chip are inline, so nothing else puts a gap between them.
-  .change-chip {
-    margin: 0 0 0 8px !important;
-  }
-
   // A factory exporting to six others makes a tall cell; the item and its rate belong beside the
   // first line of it, not floating in the middle.
   .review-table tbody td {
     vertical-align: top;
     padding-top: 8px !important;
     padding-bottom: 8px !important;
+  }
+
+  // One line height for every column. Chips, item icons and plain rates are all different
+  // heights, so without this each column starts at its own baseline and nothing lines up.
+  .review-table .cell-line {
+    align-items: center;
+    display: flex;
+    min-height: 34px;
   }
 </style>
