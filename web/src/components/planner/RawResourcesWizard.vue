@@ -187,8 +187,8 @@
               <tr>
                 <th>Item</th>
                 <th class="text-right">Produced</th>
-                <th>Imported from</th>
-                <th>Exported to</th>
+                <th>Imports from</th>
+                <th>Exports to</th>
               </tr>
             </thead>
             <tbody
@@ -230,7 +230,7 @@
                       />
                     </template>
                     <v-chip v-if="plan.isNew" class="sf-chip green x-small no-margin">New factory</v-chip>
-                    <v-chip v-else class="sf-chip yellow x-small no-margin">Modified</v-chip>
+                    <v-chip v-else class="sf-chip status-warning-outlined x-small no-margin">Modified</v-chip>
                   </span>
                 </td>
               </tr>
@@ -423,7 +423,8 @@
     increased: 'Increased',
   }
 
-  const changeClass = (change: 'new' | 'increased') => change === 'new' ? 'green' : 'yellow'
+  const changeClass = (change: 'new' | 'increased') =>
+    change === 'new' ? 'green' : 'status-warning-outlined'
 
   // One line per item the factory ends up with: what it makes, what it brings in, and where each
   // of it goes. Imports are the whole answer for a factory the run only wired up — nothing about
@@ -647,16 +648,17 @@
   // factories then reads as created-vs-changed without reading a word of it.
   .factory-group--new {
     --group-accent: var(--sf-success);
-    --group-fill: var(--sf-success-bg);
   }
 
+  // The same amber the planner uses for a factory that needs looking at, not the caution yellow.
   .factory-group--modified {
-    --group-accent: var(--sf-warning);
-    --group-fill: var(--sf-warning-bg);
+    --group-accent: var(--sf-status-warning);
   }
 
+  // Derived from the accent so the two headings always sit in the same relationship. Translucent
+  // is safe here where an opaque fill would be elsewhere — one surface sits behind this table.
   .review-table .factory-row td {
-    background: var(--group-fill);
+    background: color-mix(in srgb, var(--group-accent) 18%, transparent);
   }
 
   // An inset shadow rather than a border: the gap above each heading is a transparent top
@@ -664,10 +666,6 @@
   // in the space between two factories. Inset shadows stop at the padding edge.
   .review-table .factory-group td:first-child {
     box-shadow: inset 4px 0 0 var(--group-accent);
-  }
-
-  .review-table .factory-group tr:last-child td {
-    border-bottom: 4px solid color-mix(in srgb, var(--group-accent) 45%, transparent);
   }
 
   // The name alone, not the whole row: a green band per added product turned the table into
