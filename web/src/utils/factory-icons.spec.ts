@@ -56,17 +56,23 @@ describe('factory-icons registry', () => {
     expect(unkeyworded.map(entry => entry.id)).toEqual([])
   })
 
-  it('puts every entry in a tab, with the emoji collected into one', () => {
-    const tabbed = factoryIconTabs.flatMap(tab => tab.entries.map(entry => entry.id))
-
-    expect(new Set(tabbed).size).toBe(factoryIcons.length)
-    expect(factoryIconTabs.at(-1)?.label).toBe('Emoji')
-    expect(factoryIconTabs.at(-1)?.entries).toHaveLength(emojiFactoryIcons.length)
+  it('leads with an All tab holding the whole registry', () => {
+    expect(factoryIconTabs[0].label).toBe('All')
+    expect(factoryIconTabs[0].entries).toHaveLength(factoryIcons.length)
   })
 
-  it('opens on a tab of game art rather than emoji', () => {
-    expect(factoryIconTabs[0].label).toBe('Buildings')
-    expect(factoryIconTabs[0].entries.every(entry => entry.asset)).toBe(true)
+  it('breaks the rest down by category, with the emoji collected into one tab', () => {
+    const breakdown = factoryIconTabs.slice(1)
+
+    expect(breakdown.map(tab => tab.label)).toEqual([
+      'Buildings', 'Power', 'Logistics', 'Vehicles', 'Raw Resources', 'Fluids', 'Components',
+      'Equipment', 'Emoji',
+    ])
+    // Every icon reachable by category too, each in exactly one of those tabs.
+    const categorised = breakdown.flatMap(tab => tab.entries.map(entry => entry.id))
+    expect(categorised).toHaveLength(factoryIcons.length)
+    expect(new Set(categorised).size).toBe(factoryIcons.length)
+    expect(breakdown.at(-1)?.entries).toHaveLength(emojiFactoryIcons.length)
   })
 
   it('offers the machines, logistics and equipment that game data has no entry for', () => {

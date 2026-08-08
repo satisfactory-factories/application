@@ -20,19 +20,22 @@
         />
       </div>
 
-      <!-- Tabs are for browsing. A query searches the whole registry at once, so they would
-           only hide matches — they give way to a single flat grid until it is cleared. -->
-      <v-tabs
-        v-if="!isSearching"
-        v-model="tab"
-        class="px-2"
-        density="compact"
-        show-arrows
-      >
-        <v-tab v-for="option in tabs" :key="option.label" :value="option.label">
+      <!-- Always visible, so the categories read as a map of what is in here rather than
+           vanishing the moment you type. A query searches everything at once, so none of them
+           is active while one is running; picking one clears the search. -->
+      <div class="d-flex flex-wrap ga-2 px-4 pt-3">
+        <v-chip
+          v-for="option in tabs"
+          :key="option.label"
+          class="category-chip"
+          color="primary"
+          size="small"
+          :variant="!isSearching && tab === option.label ? 'flat' : 'outlined'"
+          @click="selectCategory(option.label)"
+        >
           {{ option.label }}
-        </v-tab>
-      </v-tabs>
+        </v-chip>
+      </div>
 
       <v-card-text class="pt-2" style="max-height: 55vh;">
         <template v-if="isSearching">
@@ -137,6 +140,12 @@
   const groupedTabEntries = computed(() =>
     groupFactoryIcons(tabs.find(option => option.label === tab.value)?.entries ?? [])
   )
+
+  // Picking a category is a way out of a search, not something to combine with it.
+  const selectCategory = (label: string) => {
+    searchTerm.value = ''
+    tab.value = label
+  }
 
   const apply = (id: string | undefined) => {
     props.factory.icon = id

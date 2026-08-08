@@ -58,9 +58,11 @@ export const groupFactoryIcons = (entries: FactoryIconEntry[]): FactoryIconGroup
   return groups
 }
 
-// One tab per game-art group, then a single Emoji tab holding all the emoji groups — otherwise
-// squares, circles, shapes, numbers and symbols would be five more tabs on their own.
+// Everything first, so the picker opens on the whole set and browsing by category is a
+// narrowing rather than the only way in. Then one tab per game-art group, then a single Emoji
+// tab — otherwise squares, circles, shapes, numbers and symbols would be five tabs of their own.
 export const factoryIconTabs: FactoryIconGroup[] = [
+  { label: 'All', entries: factoryIcons },
   ...groupFactoryIcons(gameFactoryIcons),
   { label: 'Emoji', entries: emojiFactoryIcons },
 ]
