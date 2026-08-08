@@ -51,6 +51,7 @@
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <OptionsDialog />
       <ShareButton />
       <v-btn
         v-if="appStore.factoryTabs.length > 1"

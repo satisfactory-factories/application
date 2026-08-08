@@ -1,6 +1,8 @@
 import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
+import { getPartExportRequests } from '@/utils/factory-management/exports'
+import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 
@@ -39,23 +41,35 @@ export const showSatisfactionItemButton = (
   }
 }
 
-// Shown for any shortage that could be produced by another factory (i.e. not raw, not nuclear waste).
+// Hand-gathered raws need no guard in any of these: the engine leaves them satisfied, and every
+// predicate below already requires !part.satisfied. An unmet raw part is now a shortage like any
+// other — fixed by mining it here or importing it from a mine factory.
+
+// Shown for any shortage that could be produced by another factory (i.e. not nuclear waste).
 export const showAddToFactory = (factory: Factory, part: PartMetrics, partId: string) => {
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !part.isRaw && !part.satisfied
+  return !part.satisfied
 }
 
 // Adds the shortage of a part as a product on the target factory, and imports it back into the
 // shortage factory so the deficit is actually resolved. Caller is expected to recalculate factories.
+//
+// `amount` is explicit rather than read from amountRemaining here, so a caller that showed the
+// user a number applies that number. Validated rather than absolute-valued: a negative would mean
+// a surplus, and silently turning that into production is the bug an abs() would hide.
 export const addShortageToFactory = (
   shortageFactory: Factory,
   targetFactory: Factory,
   partId: string,
   recipe: string,
+  amount: number,
 ) => {
-  const shortage = Math.abs(shortageFactory.parts[partId]?.amountRemaining ?? 0)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error(`addShortageToFactory: refusing to add ${amount} of ${partId} to ${targetFactory.name}`)
+  }
+  const shortage = amount
 
   const existingProduct = getProduct(targetFactory, partId, true) as FactoryItem | undefined
   if (existingProduct) {
@@ -85,17 +99,17 @@ export const showAddProduct = (factory: Factory, part: PartMetrics, partId: stri
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !getProduct(factory, partId) && !part.isRaw && !part.satisfied
+  return !getProduct(factory, partId) && !part.satisfied
 }
 
 export const showFixProduct = (factory: Factory, part: PartMetrics, partId: string) => {
-  return getProduct(factory, partId, true) && !part.isRaw && !part.satisfied
+  return getProduct(factory, partId, true) && !part.satisfied
 }
 
 export const showCorrectManually = (factory: Factory, part: PartMetrics, partId: string) => {
   const isByProduct = factory.byProducts.find(byProduct => byProduct.id === partId)
-  // If the product is already a byproduct, isn't raw and isn't satisfied, show it
-  if (isByProduct && !part.isRaw && !part.satisfied) {
+  // If the product is already a byproduct and isn't satisfied, show it
+  if (isByProduct && !part.satisfied) {
     return true
   }
 
@@ -151,12 +165,33 @@ export const showByProductChip = (factory: Factory, partId: string) => {
 export const showImportedChip = (factory: Factory, partId: string) => {
   return getAllInputs(factory, partId).length > 0
 }
-export const showRawChip = (factory: Factory, partId: string) => {
-  const part = factory.parts[partId]
-  // Only show when raw supply is actually being drawn from the world. A raw part fully
-  // supplied by unpackaging (e.g. Packaged Oil -> Crude Oil) is not a raw import. #431
-  return part.isRaw && part.amountSuppliedViaRaw > 0
+// Another factory has asked this one for the part — the mirror of the Imported chip.
+export const showExportedChip = (factory: Factory, partId: string) => {
+  return getPartExportRequests(factory, partId).length > 0
 }
+// Extraction, import and gathering are independent facts about a part, so they get independent
+// predicates. Encoding them as one mutually exclusive value is what once let a factory mining
+// 100 of the 180 it needed report as fully satisfied: 'extracted' won, and the assumed 80 was
+// never mentioned.
+
+// A raw resource the game gives no extractor for, so the planner takes it as gathered by hand.
+// amountSuppliedViaRaw is only ever non-zero for those now, which makes it the whole test.
+export const showManuallyGatheredChip = (factory: Factory, partId: string) => {
+  const part = factory.parts[partId]
+  return !!part?.isRaw && part.amountSuppliedViaRaw > 0
+}
+
+// This factory digs the part up itself.
+export const showExtractedChip = (factory: Factory, partId: string) => {
+  return factory.products.some(product => product.id === partId && isExtractionRecipe(product.recipe))
+}
+
+// A raw part this factory neither extracts nor imports enough of.
+export const showRawShortageChip = (factory: Factory, partId: string) => {
+  const part = factory.parts[partId]
+  return part.isRaw && !part.satisfied
+}
+
 export const showUnpackagedChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]
   if (!part.isRaw) {

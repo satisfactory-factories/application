@@ -173,7 +173,41 @@ export const calculatePartSupply = (factory: Factory) => {
   }
 }
 
+// Raw resources the game gives no extractor for: Leaves, Wood, Mycelia, the alien remains, the
+// power slugs and the FICSMAS Gift. Nothing to build and nothing to import, so the planner takes
+// them as gathered by hand rather than reporting a shortage nobody could act on.
+//
+// Wells count as extractors here. Nitrogen Gas is well-only, and classing it hand-gathered would
+// erase every Nitrogen shortage in every plan. getExtractionRecipeForPart deliberately excludes
+// wells, but it answers a different question — "can this be created automatically", not "does an
+// extractor exist at all". Don't swap one for the other.
+const handGatheredCache = new WeakMap<DataInterface, Set<string>>()
+
+export const getHandGatheredParts = (gameData: DataInterface): Set<string> => {
+  const cached = handGatheredCache.get(gameData)
+  if (cached) {
+    return cached
+  }
+
+  const extractable = new Set<string>()
+  for (const recipe of gameData.recipes) {
+    if (recipe.extraction) {
+      recipe.products.forEach(product => extractable.add(product.part))
+    }
+  }
+
+  // Keyed on the game data object rather than built once: this is parameterised by gameData, and
+  // specs pass their own. A stale set would mark ores permanently satisfied.
+  const handGathered = new Set(
+    Object.keys(gameData.items.rawResources).filter(part => !extractable.has(part))
+  )
+  handGatheredCache.set(gameData, handGathered)
+  return handGathered
+}
+
 export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
+  const handGathered = getHandGatheredParts(gameData)
+
   for (const part in factory.parts) {
     const partData = factory.parts[part]
 
@@ -185,22 +219,27 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
       continue // Nothing else to do
     }
 
-    // Raw resources are assumed to be supplied by the user, but only for the shortfall left after
-    // inputs and internal production (e.g. unpackaging Packaged Oil into Crude Oil) are accounted for.
-    // Otherwise the same supply would be counted twice. Fixes #431.
-    partData.amountSuppliedViaRaw = Math.max(0,
+    // The shortfall left after inputs and internal production (extraction, or unpackaging
+    // Packaged Oil into Crude Oil) are accounted for. Counting the whole requirement here
+    // would double up that supply. Fixes #431.
+    const shortfall = Math.max(0,
       partData.amountRequired -
       partData.amountSuppliedViaInput -
       partData.amountSuppliedViaProduction
     )
+
+    // Hand-gathered resources are taken as supplied. Everything else has to be mined or imported,
+    // so its shortfall stays unmet and flows through amountRemaining as a genuine shortage.
+    partData.amountSuppliedViaRaw = handGathered.has(part) ? shortfall : 0
 
     partData.amountSupplied =
       partData.amountSuppliedViaInput +
       partData.amountSuppliedViaProduction +
       partData.amountSuppliedViaRaw
 
-    // Also fill the rawResources array, only with the amount actually needed from raw supply
-    if (partData.amountSuppliedViaRaw > 0) {
+    // Fill the rawResources array with what the world has to provide either way — when the
+    // assumption is off this is what the factory is short of, which is worth showing.
+    if (shortfall > 0) {
       if (!factory.rawResources[part]) {
         factory.rawResources[part] = {
           id: part,
@@ -208,7 +247,7 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
           amount: 0,
         }
       }
-      factory.rawResources[part].amount += partData.amountSuppliedViaRaw
+      factory.rawResources[part].amount += shortfall
     }
   }
 }

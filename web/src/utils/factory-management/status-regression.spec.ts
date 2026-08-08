@@ -40,12 +40,12 @@ const legacyHasProblem = (factory: Factory): boolean => {
   return hasProblem
 }
 
-// `expectsProblems` keeps each case honest about what it proves. The big plan is healthy, so it
-// guards against newly-introduced FALSE POSITIVES across 30-odd factories; the demo plan carries a
-// deliberate shortage, so it guards against losing a detection. Two empty lists agreeing is not
-// evidence of either.
+// `expectsProblems` keeps each case honest: two empty lists agreeing is not evidence of anything.
+// Both plans now carry raw shortages — they draw ore they do not mine, and that stopped being
+// assumed — so the work is done by comparing WHICH factories each rollup flags, name for name,
+// rather than by one plan being clean.
 const plans: [string, () => Factory[], boolean][] = [
-  ['Mael\'s big boi plan', () => createMaelsBigBoiPlan().getFactories(), false],
+  ['Mael\'s big boi plan', () => createMaelsBigBoiPlan().getFactories(), true],
   ['complex demo plan', () => complexDemoPlan().getFactories(), true],
 ]
 

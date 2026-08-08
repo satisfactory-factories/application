@@ -4,8 +4,45 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { getHandGatheredParts } from '@/utils/factory-management/parts'
 
 describe('parts', () => {
+  // The one place the assumption still lives, and it is decided by the game data rather than by
+  // a setting. Pinned exactly: game data is versioned and regenerated, and without this a new
+  // recipe could silently turn a hand-gathered resource into a mandatory planned input, or turn
+  // a mineable one into something the planner quietly supplies for free.
+  //
+  // Wells count as extractors here. Nitrogen Gas is well-only, and classing it hand-gathered
+  // would erase every Nitrogen shortage in every plan.
+  describe('hand-gathered resources', () => {
+    it('is exactly the resources the game gives no extractor for', () => {
+      expect([...getHandGatheredParts(gameData)].sort()).toEqual([
+        'Crystal',
+        'Crystal_mk2',
+        'Crystal_mk3',
+        'Gift',
+        'HatcherParts',
+        'HogParts',
+        'Leaves',
+        'Mycelia',
+        'SpitterParts',
+        'StingerParts',
+        'Wood',
+      ])
+    })
+
+    it('does not class a well-only resource as hand-gathered', () => {
+      expect(getHandGatheredParts(gameData).has('NitrogenGas')).toBe(false)
+    })
+
+    it('memoises per game data object rather than once for the process', () => {
+      const other = { ...gameData, items: { ...gameData.items, rawResources: {} } }
+      expect(getHandGatheredParts(gameData).size).toBe(11)
+      expect(getHandGatheredParts(other).size).toBe(0)
+      expect(getHandGatheredParts(gameData).size).toBe(11)
+    })
+  })
+
   describe('calculateParts', () => {
     let mockFactory: Factory
 
@@ -58,10 +95,13 @@ describe('parts', () => {
       calculateFactories([mockFactory], gameData)
 
       // Expect that all parts involved with creating Alumina have been added, including water.
+      // Water has an extractor, so nothing supplies it for free — it is a shortage until the
+      // factory pumps it or imports it.
       expect(mockFactory.parts.Water.amountRequired).toBe(150)
-      expect(mockFactory.parts.Water.amountSupplied).toBe(150)
-      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(150)
-      expect(mockFactory.parts.Water.amountRemaining).toBe(0)
+      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.Water.amountSupplied).toBe(0)
+      expect(mockFactory.parts.Water.amountRemaining).toBe(-150)
+      expect(mockFactory.parts.Water.satisfied).toBe(false)
     })
 
     it('should calculate metrics properly when a product is used by another product', () => {
@@ -174,13 +214,15 @@ describe('parts', () => {
 
       expect(mockFactory.parts.LiquidOil.amountRequired).toBe(60)
       expect(mockFactory.parts.LiquidOil.amountSuppliedViaProduction).toBe(30)
-      // Only the shortfall is assumed to be supplied raw
-      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(30)
-      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(60)
-      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(0)
-      expect(mockFactory.parts.LiquidOil.satisfied).toBe(true)
+      // The half unpackaging doesn't cover is a real shortfall now. This is the exact shape of
+      // the bug that killed the assumption: partially covering a raw part used to read as
+      // fully satisfied, with the assumed remainder invisible.
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(30)
+      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(-30)
+      expect(mockFactory.parts.LiquidOil.satisfied).toBe(false)
 
-      // The raw resources list should only show the shortfall
+      // The raw resources list still shows what the world would have to provide
       expect(mockFactory.rawResources.LiquidOil.amount).toBe(30)
     })
 
@@ -220,8 +262,10 @@ describe('parts', () => {
 
       calculateFactories([packagerFactory, consumerFactory], gameData)
 
-      // The packager genuinely draws raw crude oil from the world
-      expect(packagerFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(300)
+      // The packager needs raw crude oil it doesn't extract, so it is short of it — the world
+      // no longer hands it over.
+      expect(packagerFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(packagerFactory.parts.LiquidOil.satisfied).toBe(false)
       expect(packagerFactory.rawResources.LiquidOil.amount).toBe(300)
 
       // The consumer's crude oil demand is fully met by unpackaging - no raw import, no surplus

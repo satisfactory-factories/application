@@ -1,6 +1,6 @@
 // noinspection DuplicatedCode
 // Duplicated by backend
-import { PowerItem } from '@/interfaces/Recipes'
+import { NodePurity, PowerItem } from '@/interfaces/Recipes'
 
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
@@ -58,6 +58,14 @@ export interface BuildingGroup {
   // Alien Power Matrixes (raises their circuit boost and creates fuel demand).
   supplyMatrixes?: boolean
   somersloops?: number
+  // Extraction groups only: which extractor sits on the nodes and how pure they are. Both are
+  // per group because one ore line routinely mixes marks and purities. Absent on every other
+  // group type; defaults are applied when missing.
+  extractorBuilding?: string
+  purity?: NodePurity
+  // Resource well groups only: how many satellite extractors sit on each purity of micro-node.
+  // The well's output is their sum; the group's clock is the pressurizer's and scales them all.
+  satellites?: { [purity in NodePurity]: number }
   type: ItemType
 }
 
@@ -228,4 +236,10 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+}
+
+// Fields saved plans still carry from before raw supply stopped being assumable. Typed only so
+// the load path can strip them; nothing reads them.
+export interface LegacyRawAssumptionFields {
+  assumeRawInputs?: boolean | null;
 }

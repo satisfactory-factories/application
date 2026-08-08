@@ -89,6 +89,63 @@ describe('status', () => {
     })
   })
 
+  describe('rawShortage', () => {
+    const shortOfOre = () => {
+      createNewPart(factory, 'OreIron')
+      factory.parts.OreIron.isRaw = true
+      factory.parts.OreIron.satisfied = false
+    }
+
+    test('fires for an unsatisfied raw part', () => {
+      shortOfOre()
+
+      expect(statusOf(factory, 'rawShortage')).toMatchObject({
+        severity: 'problem',
+        section: 'satisfaction',
+        label: 'Raw shortage',
+        subjects: [{ id: 'OreIron', type: 'item' }],
+      })
+    })
+
+    // Hand-gathered resources leave the engine satisfied, so the !satisfied filter is the only
+    // guard this needs — there is no assumption left to check.
+    test('stays silent for a raw part the engine left satisfied', () => {
+      createNewPart(factory, 'Leaves')
+      factory.parts.Leaves.isRaw = true
+      factory.parts.Leaves.satisfied = true
+
+      expect(typesOf(factory)).not.toContain('rawShortage')
+    })
+
+    test('counts rather than lists when several raw resources are short', () => {
+      shortOfOre()
+      createNewPart(factory, 'Coal')
+      factory.parts.Coal.isRaw = true
+      factory.parts.Coal.satisfied = false
+
+      expect(statusOf(factory, 'rawShortage')?.label).toBe('2 raw shortages')
+    })
+
+    // A mine that extracts everything it exports is the point of the feature, so it must not
+    // report a shortage merely for having raw parts.
+    test('ignores a raw part the factory satisfies itself', () => {
+      createNewPart(factory, 'OreIron')
+      factory.parts.OreIron.isRaw = true
+
+      expect(typesOf(factory)).not.toContain('rawShortage')
+    })
+
+    // Unlike partShortage, which mirrors the engine's product-less shortcut for back-compat.
+    test('still fires on a factory with no products, such as a generator burning coal', () => {
+      factory.products = []
+      createNewPart(factory, 'Coal')
+      factory.parts.Coal.isRaw = true
+      factory.parts.Coal.satisfied = false
+
+      expect(typesOf(factory)).toContain('rawShortage')
+    })
+  })
+
   describe('exportShortage', () => {
     beforeEach(() => {
       factory.dependencies.metrics = {
@@ -244,6 +301,11 @@ describe('status', () => {
         () => { factory.products[0].buildingGroupsHaveProblem = true },
         () => { factory.inSync = false },
         () => { withRequiredImport(factory, 'IronOre'); factory.parts.IronOre.amountSuppliedViaProduction = 100 },
+        () => {
+          createNewPart(factory, 'OreIron')
+          factory.parts.OreIron.isRaw = true
+          factory.parts.OreIron.satisfied = false
+        },
       ]
 
       for (const apply of cases) {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
@@ -534,6 +534,68 @@ describe('app-store', () => {
           expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
         })
       })
+    })
+  })
+
+  describe('raw resources breaking-change notice', () => {
+    beforeEach(() => {
+      localStorage.removeItem('seenRawBreakingNotice')
+      resetAppStore()
+    })
+
+    afterEach(() => {
+      localStorage.removeItem('seenRawBreakingNotice')
+    })
+
+    it('raises the notice for anyone loading an existing plan', async () => {
+      await appStore.beginLoading([newFactory('Old Plan')])
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // Someone starting from nothing has no plan to have been broken, so there is no news.
+    it('stays silent for an empty plan', async () => {
+      await appStore.beginLoading([])
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // The bug this guards: the notice announces a change to the planner, so opening a second
+    // plan after dismissing it must not repeat the news.
+    it('never raises it again once dismissed', async () => {
+      await appStore.beginLoading([newFactory('Old Plan')])
+      expect(appStore.showRawBreakingNotice).toBe(true)
+
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+      expect(localStorage.getItem('seenRawBreakingNotice')).toBe('true')
+
+      await appStore.beginLoading([newFactory('Another Plan')])
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // Saved plans still carry the field the assumption used to live on. It means nothing now,
+    // so it must not ride along through every share, paste and sync from here on.
+    it('strips the dead assumption field from a loaded plan', async () => {
+      const factory = newFactory('Old Plan')
+      ;(factory as Factory & LegacyRawAssumptionFields).assumeRawInputs = true
+      const tab = appStore.getCurrentTab()
+      if (tab) (tab as FactoryTab & LegacyRawAssumptionFields).assumeRawInputs = true
+
+      await appStore.beginLoading([factory])
+
+      expect('assumeRawInputs' in factory).toBe(false)
+      expect('assumeRawInputs' in (appStore.getCurrentTab() ?? {})).toBe(false)
+    })
+
+    it('comes back after the debug scenario re-arms it', async () => {
+      await appStore.beginLoading([newFactory('Old Plan')])
+      appStore.dismissRawBreakingNotice()
+
+      appStore.rearmRawBreakingNotice()
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+      expect(localStorage.getItem('seenRawBreakingNotice')).toBeNull()
     })
   })
 
