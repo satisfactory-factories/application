@@ -231,15 +231,11 @@
               </tr>
               <!-- Every cell is a stack of fixed-height lines, so the item, its rate and the
                    first factory it goes to sit on the same line as each other. -->
-              <tr
-                v-for="line in factoryLines(plan)"
-                :key="line.partId"
-                :class="{ 'item-row--new': line.change === 'new' }"
-              >
+              <tr v-for="line in factoryLines(plan)" :key="line.partId">
                 <td>
                   <span class="cell-line ga-2">
                     <game-asset :subject="line.partId" type="item" />
-                    <span>{{ line.partName }}</span>
+                    <span :class="{ 'item-name--new': line.change === 'new' }">{{ line.partName }}</span>
                     <v-chip v-if="line.change" class="sf-chip x-small no-margin" :class="changeClass(line.change)">
                       {{ changeLabels[line.change] }}
                     </v-chip>
@@ -651,9 +647,11 @@
     background: var(--sf-warning-bg);
   }
 
-  // Weaker than the heading above it — the same green, saying the same thing about one line.
-  .item-row--new td {
-    background: color-mix(in srgb, var(--sf-success-bg) 45%, transparent);
+  // The name alone, not the whole row: a green band per added product turned the table into
+  // stripes and competed with the factory heading it sits under.
+  .item-name--new {
+    color: var(--sf-success);
+    font-weight: 700;
   }
 
   // A coloured heading butted against the previous factory's last row reads as part of it, and a
