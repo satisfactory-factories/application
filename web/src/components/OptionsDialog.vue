@@ -44,10 +44,12 @@
   <v-dialog max-width="1000" :model-value="showRawBreakingNotice" scrollable @update:model-value="dismiss">
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
-        <span class="header-accent flex-grow-1 text-center">Breaking change</span>
+        <span class="breaking-headline flex-grow-1 text-center">Breaking change</span>
       </v-card-title>
       <v-card-text>
-        <h2 class="text-h4 text-center mb-4">Raw resources are no longer assumed</h2>
+        <h2 class="text-h5 text-center text-medium-emphasis mb-4">
+          Raw resources are no longer assumed
+        </h2>
         <!-- Bound rather than a literal path: these live in public/, and a static src makes
              vite try to resolve them at transform time. -->
         <v-img
@@ -70,8 +72,16 @@
         </div>
 
         <p class="hero-blurb mb-4">
-          You can now define mines inside your factories, or as dedicated mine factories, and
-          export the raw ore anywhere in your plan.
+          Originally I felt that making you build a factory just to export its ore straight into
+          another one was wrong. The feedback since has been the opposite — it is what people want —
+          so raw materials are now mandatory, and every form of assumption is gone, to keep the
+          planner as accurate as it can possibly be.
+        </p>
+
+        <p class="mb-2">
+          You can produce raw materials as a product inside the factory that needs them, or build a
+          dedicated mine factory and export to whatever needs feeding. The choice is now entirely
+          yours.
         </p>
 
         <p class="mb-2">
@@ -185,12 +195,14 @@
 </script>
 
 <style lang="scss" scoped>
-  // Matches the update announcement's header and lead paragraph.
-  .header-accent {
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    opacity: 0.7;
+  // The headline, not a kicker: this changes what every existing plan reports, so it leads in the
+  // error colour rather than sitting above the real title in grey.
+  .breaking-headline {
+    color: var(--sf-error);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
     text-transform: uppercase;
   }
 

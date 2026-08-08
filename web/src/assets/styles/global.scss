@@ -638,3 +638,49 @@
     border-left-color: var(--sf-error) !important;
   }
 }
+// Radio and checkbox marks, drawn rather than iconned.
+//
+// Two things break the icon route. Vuetify's fa iconset points these at `far` (Regular), which the
+// vendored build doesn't ship — so nothing rendered at all. Swapping in solid names doesn't fix it
+// either: Font Awesome replaces the <i> Vuetify renders with an <svg>, detaching the node Vue owns,
+// so flipping the class between the on and off state never reaches the DOM and the glyph freezes at
+// whatever it first drew. A radio would show the selected mark on a row the user had moved away
+// from. Same trap as #fontawesome-dynamic-icons.
+//
+// `--dirty` is Vuetify's own selected-state class, so this tracks the control rather than guessing.
+%selection-mark {
+  border: 2px solid currentcolor;
+  box-sizing: border-box;
+  content: '';
+  height: 18px;
+  opacity: 0.55;
+  width: 18px;
+}
+
+.v-radio, .v-checkbox, .v-checkbox-btn {
+  .v-selection-control__input > :is(.v-icon, svg) {
+    display: none;
+  }
+
+  &.v-selection-control--dirty .v-selection-control__input::after {
+    background: currentcolor;
+    opacity: 1;
+  }
+}
+
+.v-radio .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 50%;
+}
+
+// Filled from the inside so the ring stays visible: background-clip keeps the fill off the border.
+.v-radio.v-selection-control--dirty .v-selection-control__input::after {
+  background-clip: content-box;
+  padding: 3px;
+}
+
+.v-checkbox .v-selection-control__input::after,
+.v-checkbox-btn .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 3px;
+}

@@ -4,7 +4,7 @@
       <v-card-title class="d-flex align-center">
         <i class="fas fa-shovel" /><span class="ml-2">Raw Resources Wizard</span>
         <v-spacer />
-        <v-btn icon="fas fa-times" size="small" variant="text" @click="close" />
+        <v-btn icon="fas fa-times" size="small" variant="text" @click="close(false)" />
       </v-card-title>
 
       <v-card-text>
@@ -133,7 +133,7 @@
       <v-card-actions class="pa-4">
         <v-spacer />
         <v-btn v-if="pending" variant="text" @click="pending = null">Back</v-btn>
-        <v-btn v-else variant="text" @click="close">Cancel</v-btn>
+        <v-btn v-else variant="text" @click="close(false)">Cancel</v-btn>
         <v-btn
           v-if="rows.length && !pending"
           color="primary"
