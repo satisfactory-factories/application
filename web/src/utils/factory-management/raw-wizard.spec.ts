@@ -122,7 +122,10 @@ describe('raw wizard', async () => {
       expect(() => applyRawWizard(factories, rows, gameData)).toThrow(WizardValidationError)
     })
 
-    it('still offers an import from a factory that has a well', () => {
+    // Even with a well already in the plan. One lone option on a row that otherwise says "not
+    // possible" reads as though the wizard half-solved it; wiring that import by hand is one
+    // click in Imports.
+    it('offers nothing even when a factory already has a well', () => {
       const well = newFactory('Nitrogen Well', 1, 2)
       addProductToFactory(well, { id: 'NitrogenGas', amount: 500, recipe: 'Extract_NitrogenGas_Well' })
       const factories = nitrogenFactory()
@@ -130,7 +133,8 @@ describe('raw wizard', async () => {
       calculateFactories(factories, gameData)
 
       const row = rowFor(collectRawWizardRows(factories), 1, 'NitrogenGas')
-      expect(choicesForRow(row)).toEqual(['import', 'ignore'])
+      expect(row.wellOnly).toBe(true)
+      expect(choicesForRow(row)).toEqual(['ignore'])
     })
   })
 

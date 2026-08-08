@@ -118,11 +118,17 @@ export const collectRawWizardRows = (factories: Factory[]): WizardRow[] => {
 
 // What a row is allowed to be set to. Kept here rather than in the component so the rule is
 // testable and the two cannot drift.
+//
+// A well-only resource offers nothing at all. The wizard cannot build the well, and while it could
+// technically wire an import from one that already exists, offering that single option on a row
+// that otherwise says "not possible" reads as though the wizard half-solved it. Those rows stay
+// shortages and say so; wiring the import by hand afterwards is one click in Imports.
 export const choicesForRow = (row: WizardRow): WizardChoice[] => {
-  const choices: WizardChoice[] = []
-  if (!row.wellOnly) {
-    choices.push('mine', 'onsite')
+  if (row.wellOnly) {
+    return ['ignore']
   }
+
+  const choices: WizardChoice[] = ['mine', 'onsite']
   if (row.candidates.length > 0) {
     choices.push('import')
   }

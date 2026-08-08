@@ -21,6 +21,11 @@
             factory that already mines it, or leave it as a shortage to deal with yourself.
           </p>
 
+          <p v-if="hasWellRows" class="mb-4 text-body-2 text-medium-emphasis">
+            <i class="fas fa-exclamation-triangle mr-1" />
+            Resource wells can't be set up for you — those rows are listed, but left alone.
+          </p>
+
           <v-alert
             v-if="error"
             class="mb-4"
@@ -38,7 +43,6 @@
           <v-table class="wizard-table" density="compact">
             <thead>
               <tr>
-                <th>Factory</th>
                 <th>Resource</th>
                 <th class="text-right">Short by</th>
                 <th v-for="choice in ALL_CHOICES" :key="choice" class="text-center choice-heading">
@@ -46,25 +50,53 @@
                 </th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="row in rows" :key="`${row.factoryId}-${row.partId}`">
-                <td>{{ row.factoryName }}</td>
+            <!-- A tbody per factory: with a dozen factories short the flat list was a wall, and
+                 the factory a row belongs to is the first thing you need to know. -->
+            <tbody v-for="group in groupedRows" :key="group.factoryId" class="factory-group">
+              <tr class="factory-row">
+                <td :colspan="2 + ALL_CHOICES.length">
+                  <i class="fas fa-industry mr-2" /><b>{{ group.factoryName }}</b>
+                  <span class="ml-2 text-caption text-medium-emphasis">
+                    {{ group.rows.length }} {{ group.rows.length === 1 ? 'resource' : 'resources' }} short
+                  </span>
+                </td>
+              </tr>
+              <tr v-for="row in group.rows" :key="row.partId">
                 <td>
                   <span class="d-flex align-center ga-2">
                     <game-asset :subject="row.partId" type="item" />
                     <span>{{ row.partName }}</span>
                   </span>
-                  <!-- Wells are the one thing the wizard can't build for you. -->
-                  <div v-if="row.wellOnly" class="text-caption text-medium-emphasis">
-                    From a resource well — place the pressurizer and describe its satellites
-                    yourself, then this can import from it.
-                  </div>
                 </td>
                 <td class="text-right text-no-wrap">{{ formatNumber(row.shortfall) }}/min</td>
+                <!-- Wells are the one thing the wizard cannot build, so the row says so rather
+                     than offering choices that don't apply. -->
+                <td v-if="row.wellOnly" class="text-center" :colspan="ALL_CHOICES.length">
+                  <v-tooltip bottom max-width="420">
+                    <template #activator="{ props: activatorProps }">
+                      <v-chip v-bind="activatorProps" class="sf-chip hand-gathered x-small">
+                        <i class="fas fa-exclamation-triangle mr-1" />
+                        <span class="mr-1">Can't fix, requires manual intervention</span>
+                        <i class="fas fa-info-circle" />
+                      </v-chip>
+                    </template>
+                    <span>
+                      {{ row.partName }} only comes out of a Resource Well, and the wizard can't
+                      move it to one automatically.<br><br>
+                      A well's output is decided by how many satellite nodes it covers and how pure
+                      they are — something only you can know from your own map. Sizing one from the
+                      amount alone would multiply the pressurizer instead of its satellites, giving
+                      you ten where one would do, and the plan would read as solved while being an
+                      order of magnitude out.<br><br>
+                      Add a Resource Well Pressurizer as a product yourself, describe its
+                      satellites, then export it to whatever needs feeding.
+                    </span>
+                  </v-tooltip>
+                </td>
                 <!-- The whole cell is the target, not just the 18px mark: a radio alone is a
                      fiddly thing to hit in a dense table. -->
                 <td
-                  v-for="choice in ALL_CHOICES"
+                  v-for="choice in (row.wellOnly ? [] : ALL_CHOICES)"
                   :key="choice"
                   class="text-center choice-cell"
                   :class="{ 'choice-cell--available': choicesForRow(row).includes(choice) }"
@@ -79,7 +111,7 @@
                     />
                     <v-select
                       v-if="choice === 'import' && row.choice === 'import' && row.candidates.length > 1"
-                      class="mt-1 import-select"
+                      class="import-select mt-1"
                       density="compact"
                       hide-details
                       item-title="name"
@@ -211,6 +243,19 @@
     `${getBuildingDisplayName(DEFAULT_EXTRACTOR.building)} on ${PURITY_LABELS[DEFAULT_EXTRACTOR.purity].toLowerCase()} nodes`)
 
   const actionableCount = computed(() => rows.value.filter(row => row.choice !== 'ignore').length)
+  const hasWellRows = computed(() => rows.value.some(row => row.wellOnly))
+
+  // Grouped for display only; the flat list stays the thing that gets applied.
+  const groupedRows = computed(() => {
+    const groups = new Map<number, { factoryId: number, factoryName: string, rows: WizardRow[] }>()
+    for (const row of rows.value) {
+      const group = groups.get(row.factoryId) ??
+        { factoryId: row.factoryId, factoryName: row.factoryName, rows: [] }
+      group.rows.push(row)
+      groups.set(row.factoryId, group)
+    }
+    return [...groups.values()]
+  })
   const ignoredCount = computed(() => rows.value.filter(row => row.choice === 'ignore').length)
 
   // Rebuild from the live plan every time it opens — the table is a snapshot, and a stale one
@@ -267,6 +312,15 @@
 <style lang="scss" scoped>
   .choice-heading {
     min-width: 96px;
+  }
+
+  // Each factory reads as its own block rather than every row running together.
+  .factory-row td {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .factory-group + .factory-group .factory-row td {
+    border-top: 2px solid rgba(255, 255, 255, 0.14);
   }
 
   // Only the cells that can actually be picked look and behave clickable.
