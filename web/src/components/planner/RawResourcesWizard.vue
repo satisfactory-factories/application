@@ -17,8 +17,12 @@
         <template v-else-if="!pending">
           <p class="mb-4 text-body-2">
             These factories need raw resources they don't extract or import. Choose how to cover
-            each one — a shared mine factory per resource, extraction on the spot, an import from a
-            factory that already mines it, or leave it as a shortage to deal with yourself.
+            each one — a shared mine factory per resource, extraction on the spot, or leave it as
+            a shortage to deal with yourself.{{ ' ' }}
+            <template v-if="columns.includes('import')">
+              <b>Import</b> is offered where a factory in this plan already mines the resource, so
+              you don't build a second mine next to the one you have.
+            </template>
           </p>
 
           <p v-if="hasWellRows" class="mb-4 text-body-2 text-medium-emphasis">
@@ -45,7 +49,7 @@
               <tr>
                 <th>Resource</th>
                 <th class="text-right">Short by</th>
-                <th v-for="choice in ALL_CHOICES" :key="choice" class="text-center choice-heading">
+                <th v-for="choice in columns" :key="choice" class="text-center choice-heading">
                   {{ choiceLabels[choice] }}
                 </th>
               </tr>
@@ -54,7 +58,7 @@
                  the factory a row belongs to is the first thing you need to know. -->
             <tbody v-for="group in groupedRows" :key="group.factoryId" class="factory-group">
               <tr class="factory-row">
-                <td :colspan="2 + ALL_CHOICES.length">
+                <td :colspan="2 + columns.length">
                   <i class="fas fa-industry mr-2" /><b>{{ group.factoryName }}</b>
                   <span class="ml-2 text-caption text-medium-emphasis">
                     {{ group.rows.length }} {{ group.rows.length === 1 ? 'resource' : 'resources' }} short
@@ -71,7 +75,7 @@
                 <td class="text-right text-no-wrap">{{ formatNumber(row.shortfall) }}/min</td>
                 <!-- Wells are the one thing the wizard cannot build, so the row says so rather
                      than offering choices that don't apply. -->
-                <td v-if="row.wellOnly" class="text-center" :colspan="ALL_CHOICES.length">
+                <td v-if="row.wellOnly" class="text-center" :colspan="columns.length">
                   <v-tooltip bottom max-width="420">
                     <template #activator="{ props: activatorProps }">
                       <v-chip v-bind="activatorProps" class="sf-chip hand-gathered x-small">
@@ -84,10 +88,7 @@
                       {{ row.partName }} only comes out of a Resource Well, and the wizard can't
                       move it to one automatically.<br><br>
                       A well's output is decided by how many satellite nodes it covers and how pure
-                      they are — something only you can know from your own map. Sizing one from the
-                      amount alone would multiply the pressurizer instead of its satellites, giving
-                      you ten where one would do, and the plan would read as solved while being an
-                      order of magnitude out.<br><br>
+                      they are — something only you can know from your own map.<br><br>
                       Add a Resource Well Pressurizer as a product yourself, describe its
                       satellites, then export it to whatever needs feeding.
                     </span>
@@ -96,7 +97,7 @@
                 <!-- The whole cell is the target, not just the 18px mark: a radio alone is a
                      fiddly thing to hit in a dense table. -->
                 <td
-                  v-for="choice in (row.wellOnly ? [] : ALL_CHOICES)"
+                  v-for="choice in (row.wellOnly ? [] : columns)"
                   :key="choice"
                   class="text-center choice-cell"
                   :class="{ 'choice-cell--available': choicesForRow(row).includes(choice) }"
@@ -244,6 +245,12 @@
 
   const actionableCount = computed(() => rows.value.filter(row => row.choice !== 'ignore').length)
   const hasWellRows = computed(() => rows.value.some(row => row.wellOnly))
+
+  // Import only means anything when something in the plan already mines the resource, which is
+  // never true on a first migration — the column was 30-odd rows of dashes. Drop it until it can
+  // actually be picked.
+  const columns = computed(() =>
+    ALL_CHOICES.filter(choice => choice !== 'import' || rows.value.some(row => row.candidates.length > 0)))
 
   // Grouped for display only; the flat list stays the thing that gets applied.
   const groupedRows = computed(() => {
