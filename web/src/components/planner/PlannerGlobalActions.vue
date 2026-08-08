@@ -100,6 +100,7 @@
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { confirmDialog } from '@/utils/helpers'
+  import { serializePlan } from '@/utils/plan-backup'
   import eventBus from '@/utils/eventBus'
 
   const { getFactories, getCurrentTab, prepareLoader, forceCalculation } = useAppStore()
@@ -144,7 +145,7 @@
     // settings, tasks, notes, collapse state, sync state, etc). The tab id is
     // intentionally omitted — a paste replaces the current tab and keeps its own id.
     // Older exports were a bare Factory[] array, which paste still accepts.
-    const plan = JSON.stringify({
+    const plan = serializePlan({
       name: getCurrentTab()?.name,
       factories: getFactories(),
       powerTarget: powerTarget.value,

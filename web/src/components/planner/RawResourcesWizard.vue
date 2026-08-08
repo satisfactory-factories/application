@@ -281,7 +281,21 @@
           </v-table>
 
           <v-alert class="mt-4" density="comfortable" type="warning" variant="tonal">
-            There is no undo. Copy your plan to the clipboard first if you want a way back.
+            <div class="d-flex align-center flex-wrap ga-3">
+              <span class="flex-grow-1">
+                There is no undo. Download your plan as it stands first if you want a way back —
+                restore it later with <b>Paste plan</b>, which reads the same file.
+              </span>
+              <v-btn
+                id="wizard-backup"
+                :color="backedUp ? 'grey' : 'warning'"
+                :prepend-icon="backedUp ? 'fas fa-check' : 'fas fa-download'"
+                variant="flat"
+                @click="downloadBackup"
+              >
+                {{ backedUp ? 'Downloaded' : 'Download a backup' }}
+              </v-btn>
+            </div>
           </v-alert>
         </template>
       </v-card-text>
@@ -333,6 +347,7 @@
     WizardRow,
   } from '@/utils/factory-management/raw-wizard'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { downloadPlan } from '@/utils/plan-backup'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
 
   const props = defineProps<{ modelValue: boolean }>()
@@ -456,6 +471,7 @@
     rows.value = collectRawWizardRows(appStore.getFactories())
     pending.value = null
     error.value = ''
+    backedUp.value = false
   }, { immediate: true })
 
   const setAll = (choice: WizardChoice) => {
@@ -495,6 +511,20 @@
     pending.value.summary.factories.sort((a, b) =>
       (order.get(a.factoryId) ?? 0) - (order.get(b.factoryId) ?? 0))
   })
+
+  // The plan exactly as it stands, in the shape "Paste plan" reads — the only way back, since
+  // applying can't be undone.
+  const backedUp = ref(false)
+  const downloadBackup = () => {
+    const tab = appStore.getCurrentTab()
+    downloadPlan({
+      name: tab?.name,
+      factories: appStore.getFactories(),
+      powerTarget: tab?.powerTarget ?? 0,
+    })
+    backedUp.value = true
+    eventBus.emit('toast', { message: 'Plan downloaded. Restore it any time with Paste plan.' })
+  }
 
   const editingId = ref<number | null>(null)
   const editingName = ref('')
