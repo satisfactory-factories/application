@@ -338,11 +338,14 @@
   // of something the factory doesn't produce (surplus imports passing through) still get a line,
   // with no production against them.
   const factoryLines = (plan: WizardFactoryPlan) => {
+    // "New factory" on the header already said everything below it is new.
+    const allNew = plan.isNew && plan.products.every(product => product.isNew)
+
     const lines = plan.products.map(product => ({
       partId: product.partId,
       partName: product.partName,
       produced: product.amount as number | null,
-      isNew: product.isNew,
+      isNew: product.isNew && !allNew,
       exports: plan.exports.filter(exported => exported.partId === product.partId),
     }))
 
