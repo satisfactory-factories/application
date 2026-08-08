@@ -191,8 +191,13 @@
                 <th>Exported to</th>
               </tr>
             </thead>
-            <tbody v-for="plan in pending.summary.factories" :key="plan.factoryId" class="factory-group">
-              <tr class="factory-row" :class="plan.isNew ? 'factory-row--new' : 'factory-row--modified'">
+            <tbody
+              v-for="plan in pending.summary.factories"
+              :key="plan.factoryId"
+              class="factory-group"
+              :class="plan.isNew ? 'factory-group--new' : 'factory-group--modified'"
+            >
+              <tr class="factory-row">
                 <td colspan="4">
                   <span class="d-flex align-center ga-2">
                     <i class="fas fa-industry" />
@@ -592,7 +597,7 @@
     background: rgba(255, 255, 255, 0.05);
   }
 
-  .factory-group + .factory-group .factory-row td {
+  .wizard-table:not(.review-table) .factory-group + .factory-group .factory-row td {
     border-top: 2px solid rgba(255, 255, 255, 0.14);
   }
 
@@ -637,14 +642,29 @@
     min-height: 34px;
   }
 
-  // The heading carries the same colour as the chip on it, taken right down, so a plan of thirty
-  // factories can be read as created-vs-changed without reading a word of it.
-  .factory-row--new td {
-    background: var(--sf-success-bg);
+  // Each factory is a block, not a run of rows: the heading carries the chip's own colour taken
+  // right down, and an accent stripe down the side ties its rows to it. A plan of thirty
+  // factories then reads as created-vs-changed without reading a word of it.
+  .factory-group--new {
+    --group-accent: var(--sf-success);
+    --group-fill: var(--sf-success-bg);
   }
 
-  .factory-row--modified td {
-    background: var(--sf-warning-bg);
+  .factory-group--modified {
+    --group-accent: var(--sf-warning);
+    --group-fill: var(--sf-warning-bg);
+  }
+
+  .review-table .factory-row td {
+    background: var(--group-fill);
+  }
+
+  .review-table .factory-group td:first-child {
+    border-left: 4px solid var(--group-accent);
+  }
+
+  .review-table .factory-group tr:last-child td {
+    border-bottom: 4px solid color-mix(in srgb, var(--group-accent) 45%, transparent);
   }
 
   // The name alone, not the whole row: a green band per added product turned the table into
