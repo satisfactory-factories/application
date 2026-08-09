@@ -67,14 +67,15 @@
             density="compact"
             @click="toggle(factory.id)"
           >
-            <!-- A drawn box rather than <v-checkbox-btn>: Vuetify's FA aliases use `far
-                 fa-square` for the unchecked state and this app ships no Font Awesome regular
-                 family, so the empty box renders as nothing at all. -->
+            <!-- Box and tick are both drawn in CSS, with no icon anywhere in it.
+                 <v-checkbox-btn> is out because Vuetify's FA aliases use `far fa-square` for the
+                 unchecked state and this app ships no Font Awesome regular family, so the empty
+                 box renders as nothing at all. A Font Awesome tick is out for the opposite
+                 reason: FA replaces the <i> with an <svg> Vue no longer owns, so v-if removed
+                 nothing and unticking left the tick behind. A class on a pseudo-element cannot
+                 fall out of step with the state that drives it. -->
             <template #prepend>
-              <span class="tick mr-3" :class="{ on: selected.has(factory.id) }">
-                <i v-if="selected.has(factory.id)" class="fas fa-check" />
-              </span>
-            </template>
+              <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
             <div class="d-flex align-center ga-2">
               <factory-icon-display :icon="factory.icon" size="20" />
               <span>{{ factory.name }}</span>
@@ -191,14 +192,12 @@
 }
 
 .tick {
+  position: relative;
   width: 18px;
   height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.45);
   border-radius: 3px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  display: inline-block;
   flex: 0 0 auto;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -206,7 +205,19 @@
 .tick.on {
   background-color: rgb(var(--v-theme-primary));
   border-color: rgb(var(--v-theme-primary));
-  color: #fff;
+}
+
+// Two borders of a rotated box: the short arm and the long arm of a tick.
+.tick.on::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .dot {
