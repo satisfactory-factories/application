@@ -2,7 +2,6 @@
   <v-row>
     <v-col>
       <v-card :id="factory.id" :class="cardClass" :style="groupStyle">
-        <span v-if="factory.group" class="group-spine" />
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
             <div class="text-h4 text-md-h5 d-flex align-center">

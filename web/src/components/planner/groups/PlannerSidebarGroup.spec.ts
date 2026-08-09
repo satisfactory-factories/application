@@ -27,6 +27,7 @@ import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
 import { useGroupCollapse } from '@/composables/useGroupCollapse'
+import { useFactoryDrag } from '@/composables/useFactoryDrag'
 
 const group = (overrides: Partial<FactoryGroup> = {}): FactoryGroup => ({
   id: 'g1',
@@ -61,9 +62,11 @@ const renderGroup = (section: FactoryGroupSection) =>
 // Collapse is view state shared at module scope, so it has to be reset between tests or one
 // collapsed group leaks into every case after it.
 const { isCollapsed, setCollapsed } = useGroupCollapse()
+const { draggingFactory } = useFactoryDrag()
 afterEach(() => {
   setCollapsed('g1', false)
   setCollapsed(null, false)
+  draggingFactory.value = false
   localStorage.clear()
 })
 
@@ -123,10 +126,12 @@ describe('PlannerSidebarGroup', () => {
   })
 
   describe('the drop strip', () => {
-    // Sortable needs a target with real geometry. Without the strip these two states are zero
-    // pixels tall and cannot be dragged into at all.
-    it('appears when the group is collapsed', () => {
+    // Sortable needs a target with real geometry, and these two states are otherwise zero pixels
+    // tall — but only while something is actually being dragged, or it is just clutter under every
+    // shut group.
+    it('appears when the group is collapsed and a factory is in the air', () => {
       setCollapsed('g1', true)
+      draggingFactory.value = true
       const { container } = renderGroup({
         group: group(),
         factories: [withProducts('Alpha', 1, [])],
@@ -135,13 +140,22 @@ describe('PlannerSidebarGroup', () => {
       expect(container.querySelector('.drop-strip')?.textContent).toContain('Aluminium')
     })
 
-    it('appears when the group is expanded but empty', () => {
+    it('appears when the group is empty and a factory is in the air', () => {
+      draggingFactory.value = true
       const { container } = renderGroup({ group: group(), factories: [] })
 
       expect(container.querySelector('.drop-strip')?.textContent).toContain('Drop a factory here')
     })
 
+    it('stays out of the way when nothing is being dragged', () => {
+      setCollapsed('g1', true)
+      const { container } = renderGroup({ group: group(), factories: [] })
+
+      expect(container.querySelector('.drop-strip')).toBeNull()
+    })
+
     it('stays out of the way when there are rows to aim at', () => {
+      draggingFactory.value = true
       const { container } = renderGroup({
         group: group(),
         factories: [withProducts('Alpha', 1, [])],

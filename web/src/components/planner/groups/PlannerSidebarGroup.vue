@@ -14,6 +14,7 @@
              the chevron pointing down forever. A keyed element forces a fresh node. -->
         <v-btn
           class="chevron"
+          density="compact"
           icon
           size="small"
           :title="collapsed ? 'Expand group' : 'Collapse group'"
@@ -65,10 +66,10 @@
         <game-asset
           v-for="part in visibleProducts"
           :key="part"
-          height="18"
+          height="36"
           :subject="part"
           type="item"
-          width="18"
+          width="36"
         />
         <v-tooltip v-if="hiddenProducts.length" location="bottom">
           <template #activator="{ props: activatorProps }">
@@ -91,6 +92,8 @@
       item-key="id"
       :model-value="rows"
       @change="onChange"
+      @end="draggingFactory = false"
+      @start="draggingFactory = true"
     >
       <template #header>
         <div v-if="showDropStrip" class="drop-strip">
@@ -117,6 +120,7 @@
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
+  import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { groupColorVars } from '@/utils/colors'
   import { getPartDisplayName } from '@/utils/helpers'
   import FactoryGroupColorMenu from '@/components/planner/groups/FactoryGroupColorMenu.vue'
@@ -132,6 +136,7 @@
   }>()
 
   const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
+  const { draggingFactory } = useFactoryDrag()
   const { isCollapsed, isMounted, toggleCollapsed } = useGroupCollapse()
 
   const group = computed(() => props.section.group)
@@ -147,9 +152,12 @@
   )
 
   // The strip is the group's only drop target when there are no rows to aim at — collapsed, or
-  // simply empty. Without it an expanded empty group is zero pixels tall and cannot be dragged
-  // into at all, which is exactly the state a freshly created group is in.
-  const showDropStrip = computed(() => collapsed.value || props.section.factories.length === 0)
+  // simply empty — and an expanded empty group is otherwise zero pixels tall and cannot be dragged
+  // into at all. Only while a factory is in the air, though: it is an instruction, not a
+  // decoration, and Sortable measures drop targets as the pointer moves rather than at dragstart.
+  const showDropStrip = computed(() =>
+    draggingFactory.value && (collapsed.value || props.section.factories.length === 0)
+  )
 
   const draftName = ref(group.value?.name ?? '')
   watch(() => group.value?.name, name => {
@@ -209,6 +217,8 @@ $tree-line: 3px;
 // Half the gutter the row's own mb-1 contributes to the wrapper, discounted so the elbow lands on
 // the middle of the card rather than the middle of card-plus-gap.
 $tree-gutter: 4px;
+// The drop strip's dashed border, which its own tree lines have to be shifted back over.
+$strip-border: 1px;
 
 .sidebar-group {
   border-radius: 4px;
@@ -220,28 +230,29 @@ $tree-gutter: 4px;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.04));
   font-size: 0.9rem;
 
-  // The top of the trunk. Same width and same x as the rows' segments below it, so header line
-  // and elbows read as one line down the group's edge.
+  // The top of the trunk. Same width and same x as the segments below it, so header line and
+  // elbows read as one line down the group's edge. It overhangs by the body's top gutter, so the
+  // breathing room under the header doesn't break the line — drawn from here rather than from the
+  // first row, which would fight the last row's rule when a group holds exactly one factory.
   &::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0;
-    bottom: 0;
+    bottom: -$tree-gutter;
     width: $tree-line;
     background-color: var(--sf-group, #616161);
   }
-
 }
 
 .group-drag-handle {
   cursor: grab;
 }
 
-// The hover/ripple target was tight enough around the glyph to look like a stray icon rather than
-// a control.
+// A big glyph in a tight box: the default was the other way round, which read as a stray icon
+// floating in a lot of empty button.
 .chevron {
-  font-size: 0.8rem;
+  font-size: 1.1rem;
 }
 
 .group-name {
@@ -263,8 +274,10 @@ $tree-gutter: 4px;
   font-style: italic;
 }
 
-.group-body:not(.collapsed) {
-  padding-left: $tree-indent;
+.group-body {
+  // The same gutter the rows keep between themselves, so the header doesn't sit flush on the
+  // first one. The header's trunk bridges it.
+  padding: $tree-gutter 0 0 $tree-indent;
 }
 
 // Collapsed hides the rows rather than dropping them — see `rows` above. The strip stays.
@@ -312,17 +325,43 @@ $tree-gutter: 4px;
   }
 }
 
-// The "overlay over the group you could be entering" — only rendered while collapsed, and the
-// element Sortable actually measures.
+// The "overlay over the group you could be entering" — the element Sortable actually measures
+// when there is no row to aim at. It hangs off the trunk exactly as a row does, so a group with
+// nothing in it still reads as part of the tree rather than as a panel below it.
 .drop-strip {
-  margin: 4px 6px 6px;
+  position: relative;
+  margin: 0 0 6px;
   padding: 6px;
-  border: 1px dashed var(--sf-group, #777);
+  border: $strip-border dashed var(--sf-group, #777);
   border-radius: 4px;
   text-align: center;
   font-size: 0.72rem;
   color: #bdbdbd;
   transition: background-color 0.15s ease;
+
+  // Everything below is offset by the strip's own border: an absolutely positioned child measures
+  // from the PADDING box, so without this the trunk and elbow sit 1px right of the header's line
+  // and the join reads as a stair-step.
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -($tree-indent + $strip-border);
+    background-color: var(--sf-group, #616161);
+  }
+
+  // Nothing follows it, so its trunk always ends at its own elbow.
+  &::before {
+    top: -($tree-gutter + $strip-border);
+    height: calc(50% + #{$tree-gutter + $strip-border} + #{$tree-line * 0.5});
+    width: $tree-line;
+  }
+
+  &::after {
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent + $strip-border;
+    height: $tree-line;
+  }
 }
 
 .group-body.collapsed:hover .drop-strip {
@@ -333,12 +372,12 @@ $tree-gutter: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
+  min-width: 36px;
+  height: 36px;
   padding: 0 4px;
   border-radius: 3px;
   background-color: rgba(255, 255, 255, 0.14);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   cursor: default;
 }
 </style>

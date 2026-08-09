@@ -33,6 +33,23 @@
             <i class="fas fa-plus" />
           </button>
         </div>
+
+        <!-- What this browser has reached for before. Local only — see useGroupColorHistory. -->
+        <template v-if="customColors.length">
+          <div class="section-caption">Custom Colors</div>
+          <div class="swatch-grid">
+            <button
+              v-for="color in customColors"
+              :key="color"
+              class="group-swatch large"
+              :class="{ selected: color === modelValue.toLowerCase() }"
+              :style="{ backgroundColor: color }"
+              :title="color"
+              type="button"
+              @click="pick(color)"
+            />
+          </div>
+        </template>
       </template>
       <template v-else>
         <v-color-picker
@@ -42,6 +59,12 @@
           :modes="['hex']"
           width="216"
         />
+        <!-- The shortlist simply omits red and amber; the custom picker can't, so it says why. -->
+        <div class="colour-caution mt-2">
+          <i class="fas fa-exclamation-triangle mr-1" />
+          Please try not to use <span class="text-red">red</span> or <span class="text-orange">amber</span> — those are the "something is wrong" colours, and a
+          group wearing one reads as a broken factory.
+        </div>
         <div class="d-flex justify-space-between mt-2">
           <v-btn size="small" variant="text" @click="custom = false">Back</v-btn>
           <v-btn color="primary" size="small" variant="flat" @click="pick(draft)">Apply</v-btn>
@@ -54,6 +77,7 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
   import { groupPalette } from '@/utils/colors'
+  import { useGroupColorHistory } from '@/composables/useGroupColorHistory'
 
   const props = defineProps<{ modelValue: string }>()
   const emit = defineEmits<{ (event: 'update:modelValue', color: string): void }>()
@@ -70,9 +94,13 @@
     draft.value = props.modelValue
   })
 
+  const { customColors, remember } = useGroupColorHistory()
+
   const pick = (color: string) => {
     // v-color-picker hands back #rrggbbaa in some modes; the alpha is meaningless here.
-    emit('update:modelValue', color.slice(0, 7))
+    const hex = color.slice(0, 7)
+    remember(hex)
+    emit('update:modelValue', hex)
     open.value = false
   }
 </script>
@@ -106,6 +134,21 @@
   display: grid;
   grid-template-columns: repeat(6, 28px);
   gap: 8px;
+}
+
+.section-caption {
+  margin: 12px 0 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9e9e9e;
+}
+
+.colour-caution {
+  max-width: 216px;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: #bdbdbd;
 }
 
 .custom-trigger {

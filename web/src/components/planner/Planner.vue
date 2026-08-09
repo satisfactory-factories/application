@@ -67,21 +67,29 @@
             v-if="groupSections.length > 1"
             :collapsed="sectionCollapsed(section)"
             :count="section.factories.length"
+            :factories="section.factories"
             :group="section.group"
             @toggle="toggleSection(section)"
           />
           <!-- Hidden rather than removed once the group has been open: rebuilding forty cards on
                every collapse is what made the toggle take seconds. A group already shut when the
-               plan loads never mounts them at all. -->
+               plan loads never mounts them at all.
+
+               The wrapper is load-bearing: PlannerFactory renders a row AND the divider that
+               follows it, and v-show on a two-root component is silently dropped, so collapsing
+               hid nothing at all. -->
           <template v-if="sectionMounted(section)">
-            <planner-factory
+            <div
               v-for="factory in section.factories"
               v-show="!sectionCollapsed(section)"
               :key="factory.id"
-              :factory="factory"
-              :help-text="helpText"
-              :total-factories="getFactories().length"
-            />
+            >
+              <planner-factory
+                :factory="factory"
+                :help-text="helpText"
+                :total-factories="getFactories().length"
+              />
+            </div>
           </template>
         </template>
         <div class="mt-4 text-center">

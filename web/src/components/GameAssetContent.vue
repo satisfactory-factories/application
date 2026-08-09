@@ -1,8 +1,10 @@
 <template>
-  <!-- The wrapper exists to carry the tooltip. VImg drops a `title` — it renders its own root and
-       forwards attributes to the inner <img>, which does not exist until the image loads — so
-       every game icon in the app was silently tooltip-less. -->
-  <span class="game-asset-content" :title="title">
+  <!-- The wrapper exists to carry the tooltip mark. It is a data attribute rather than a `title`
+       or a <v-tooltip> of its own: one delegated <game-asset-tooltip> at the app shell reads it on
+       hover, so hundreds of images across a plan cost one overlay component between them. (A
+       `title` would not have worked on the VImg anyway — it renders its own root and forwards
+       attributes to an inner <img> that does not exist until the image loads.) -->
+  <span class="game-asset-content" :data-asset-tooltip="title">
     <v-img
       v-if="!ficsmas && !unknown"
       :alt="subject"

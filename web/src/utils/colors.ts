@@ -151,7 +151,10 @@ export const mixHex = (hex: string, amount: number, base: string = cardSurface):
 // the raw colour draws the spine and the swatch.
 export const groupColorVars = (color: string): Record<string, string> => ({
   '--sf-group': color,
-  '--sf-group-muted': mixHex(color, 0.22),
+  // Kept faint deliberately. The border and the tree already say which group a thing is in, so the
+  // fill only has to hint at it — at any real strength a sidebar of six groups reads as six
+  // differently-coloured panels rather than one list.
+  '--sf-group-muted': mixHex(color, 0.12),
 })
 
 const toKebab = (name: string) => name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
