@@ -40,6 +40,8 @@ export const palette = {
   pink: '#ec407a',
   indigo: '#5c6bc0',
   lime: '#c0ca33',
+  offWhite: '#eceff1',
+  offWhiteBorder: '#8d9499',
 } as const
 
 export interface SfColor {
@@ -67,6 +69,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // A setting on a building group rather than something that flows through it: the node
+  // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
+  // these were reading as `rawResource` beige, which is the colour of the ore itself.
+  nodeSetting: { color: palette.offWhite, border: palette.offWhiteBorder },
 
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
@@ -85,6 +91,8 @@ export const sfColors = {
   // Status
   success: { color: palette.green, border: palette.green },
   error: { color: palette.red, border: palette.red },
+  // Amber rather than red: something the user should read before acting, but not a failure.
+  warning: { color: palette.yellow, border: palette.yellowBorder },
   // A factory/card in a problem state. Historically this red drifted into four
   // different literals (#a00, #b50000, rgba(140,9,21,.4), rgba(128,0,0,.5)); the
   // background is deliberately OPAQUE — the old 0.4-alpha value composited to a

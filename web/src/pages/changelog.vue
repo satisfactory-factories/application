@@ -14,6 +14,55 @@
           <li>🔧: Fixes</li>
         </ul>
         <v-divider />
+        <h1>Beta v0.6 - The "Mining" Update</h1>
+        <p>Raw resources are no longer an assumption. Ore, water, oil and gas can now be dug up by buildings you place, planned and exported like anything else.</p>
+
+        <h2>🆕 <i class="fas fa-hard-hat ml-1" /><span class="ml-2">Mines</span></h2>
+        <p>Pick a raw resource as a product and the planner offers its extractor as the recipe. Because one ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one, the <b>miner mark and node purity are set per building group</b> — and both stack with the group's clock exactly as they do in game. Build a dedicated mine and export the ore anywhere in your plan, or mine on site and smelt it in the same factory.</p>
+        <v-img
+          alt="A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one"
+          max-width="1200"
+          src="/assets/changelog/beta6/miners.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-water ml-1" /><span class="ml-2">Resource Wells</span></h2>
+        <p>A well is one building group: the pressurizer, and how many satellite extractors stand on impure, normal and pure micro-nodes. The pressurizer's clock scales every satellite at once, so a well of 1 normal and 6 pure satellites reads 780 m³/min at 150 MW — and 1,950 m³/min at 503.7 MW once you shove three power shards in it. The satellites are counted as buildings to place but draw no power, because the pressurizer pays for all of them.</p>
+        <p><b>Nitrogen Gas becomes extractable for the first time</b>, wells being its only source.</p>
+        <v-img
+          alt="A resource well pressurizer with its satellite nodes by purity"
+          max-width="1200"
+          src="/assets/changelog/beta6/resource-well.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-tint ml-1" /><span class="ml-2">Water &amp; Oil</span></h2>
+        <p>Water sources have no purity, so the Water Extractor is simply a building that produces a raw resource at a flat 120 m³/min — and overclocks like everything else. Oil Extractors work off node purity in the usual way.</p>
+        <v-img
+          alt="Water Extractors, which have no node purity"
+          max-width="1200"
+          src="/assets/changelog/beta6/water-extractor.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
+        <p>Until now the planner quietly topped up any raw resource you were short of, so a plan could never tell you it was missing ore. There's now an <b>Options</b> dialog — the wrench beside the share button — with a global switch for it, overridable per factory from its Raw Resources card. With it off, an unmet raw resource is a real shortage, with the usual buttons to mine it on the spot or import it from a mine factory.</p>
+        <p>New plans default to not assuming. Existing plans keep the old behaviour and are asked once, on load — flipping it silently would turn every factory in a saved plan red.</p>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-file ml-1" /><span class="ml-2">Smaller things</span></h2>
+        <ul class="ml-6">
+          <li>A new <b>Mining</b> template plan showing all of the above end to end, and the Demo plan gains a Copper Mine feeding its Copper Ingots.</li>
+          <li>Every raw resource in the Imports section gets a one-click button to mine it in that factory, at exactly the amount you're short of.</li>
+          <li>A mine's building groups report <b>Effective Output</b> rather than effective buildings, and when short they list how many of each miner mark would cover the gap, at every node purity.</li>
+          <li>The Converter's ore recipes now name the conversion — "Iron Ore (Convert: Limestone)" — so they don't read as though the ore simply came from limestone.</li>
+        </ul>
+
+        <v-divider />
         <h1>Beta v0.5 - The "Overclocked" Update</h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
         <p>Check out what's new in the video below!</p>

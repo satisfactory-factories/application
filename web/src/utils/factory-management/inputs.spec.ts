@@ -401,10 +401,24 @@ describe('inputs', () => {
         const result = calculateAbleToImport(ingotFactory, [])
         expect(result).toBe('noProductsOrProducers')
       })
-      it('should return rawOnly if the factory is only using raw resources', () => {
+      // A mine's only part is the ore it digs up, and extraction takes no ingredients, so there
+      // is nothing it could import however the raw assumption is set.
+      it('should return producesRawOnly for a mine', () => {
+        const mine = newFactory('Copper Mine', 3, 4)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(calculateAbleToImport(mine, [ironIngotFac])).toBe('producesRawOnly')
+      })
+      // A factory whose demand is entirely raw used to be blocked from importing, because its
+      // supply was assumed. Importing from a mine factory is now exactly what it should do.
+      it('should offer imports to a factory that only consumes raw resources', () => {
         ingotFactory.usingRawResourcesOnly = true
-        const result = calculateAbleToImport(ingotFactory, [])
-        expect(result).toBe('rawOnly')
+        expect(calculateAbleToImport(ingotFactory, [ironIngotFac])).toBe(true)
       })
       it('should return noImportFacs if there are no import candidates', () => {
         const result = calculateAbleToImport(ingotFactory, [])

@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -83,6 +83,39 @@ export const useAppStore = defineStore('app', () => {
   const showSatisfactionBreakdowns = ref<boolean>(
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
+
+  // ==== RAW RESOURCES BREAKING-CHANGE NOTICE
+  // Raw resources are no longer assumed to be supplied — they are mined or imported like anything
+  // else, and only the resources the game gives no extractor for (Leaves, Wood, alien remains...)
+  // are still taken as gathered by hand. There is deliberately no setting: an optional assumption
+  // meant two plans could disagree about what they meant, and the answer was invisible on the card.
+  //
+  // That silently turns saved plans red, so say so once. Once, and never again — otherwise every
+  // old plan the user opens interrupts them with the same news.
+  const showRawBreakingNotice = ref<boolean>(false)
+  const seenRawBreakingNotice = ref<boolean>(localStorage.getItem('seenRawBreakingNotice') === 'true')
+
+  const askRawBreakingNotice = () => {
+    if (seenRawBreakingNotice.value) {
+      return
+    }
+
+    showRawBreakingNotice.value = true
+  }
+
+  const dismissRawBreakingNotice = () => {
+    seenRawBreakingNotice.value = true
+    localStorage.setItem('seenRawBreakingNotice', 'true')
+    showRawBreakingNotice.value = false
+  }
+
+  // Debug scenario only: put the notice back to never-seen so it behaves as it does for someone
+  // opening a plan built before this change. Otherwise it is unreachable once dismissed.
+  const rearmRawBreakingNotice = () => {
+    localStorage.removeItem('seenRawBreakingNotice')
+    seenRawBreakingNotice.value = false
+    askRawBreakingNotice()
+  }
 
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
@@ -253,6 +286,21 @@ export const useAppStore = defineStore('app', () => {
   const beginLoading = async (newFactories: Factory[], loadMode = false) => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
+
+    // Every plan arrives here — first load, paste, share link, template, account sync — so it is
+    // the one place to catch a plan built while raw supply was still assumed. Any non-empty plan
+    // predates the change in the only sense that matters: it may have gone red without warning.
+    if (newFactories.length > 0) {
+      askRawBreakingNotice()
+    }
+
+    // The assumption is gone; drop what saved plans still carry for it so they stop hauling a
+    // dead field through every share, paste and sync from here on.
+    const tab = getCurrentTab() as (FactoryTab & LegacyRawAssumptionFields) | undefined
+    if (tab) {
+      delete tab.assumeRawInputs
+    }
+    newFactories.forEach(factory => delete (factory as Factory & LegacyRawAssumptionFields).assumeRawInputs)
 
     // Reset the factories currently loaded, if there is any
     if (currentFactoryTab.value.factories.length > 0) {
@@ -653,7 +701,8 @@ export const useAppStore = defineStore('app', () => {
       id,
       name,
       factories,
-      // Preserve the plan's power target when importing a tab (e.g. from a share link).
+      // Preserve the plan's power target when importing a tab (e.g. from a share link) —
+      // it describes the plan, not the browser.
       powerTarget,
     })
 
@@ -748,6 +797,10 @@ export const useAppStore = defineStore('app', () => {
     removeCurrentTab,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
+    showRawBreakingNotice,
+    askRawBreakingNotice,
+    dismissRawBreakingNotice,
+    rearmRawBreakingNotice,
     prepareLoader,
     forceCalculation,
 

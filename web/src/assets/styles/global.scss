@@ -228,6 +228,20 @@
     border-color: var(--sf-raw-resource-border) !important;
   }
 
+  // The warning tier as an outlined chip rather than the fill `.status-warning` carries.
+  // `hand-gathered` is a raw resource with no extractor in the game — amber because it is an
+  // assumption the planner is making on your behalf, not a state of the plan, so the factory
+  // itself stays green.
+  &.hand-gathered, &.status-warning-outlined {
+    color: var(--sf-status-warning) !important;
+    border-color: var(--sf-status-warning-border) !important;
+  }
+
+  &.node-setting {
+    color: var(--sf-node-setting) !important;
+    border-color: var(--sf-node-setting-border) !important;
+  }
+
   &.orange, &.building {
     color: var(--sf-building) !important;
     border-color: var(--sf-building-border) !important;
@@ -373,6 +387,13 @@
 
 .sub-card {
   background-color: rgb(50, 50, 50) !important;
+
+  // A sub-card in a problem state (e.g. Raw Resources the factory is short of) is flagged
+  // the same way an unsatisfied factory card is.
+  &.problem {
+    border-color: var(--sf-problem-border) !important;
+    background-color: var(--sf-problem-bg) !important;
+  }
 
   // This `border-bottom` has never actually applied: Vuetify 3 emitted
   // `.border-md` with `!important`, which beat it. v4 layers the helper instead,
@@ -651,4 +672,57 @@
   &.problem {
     border-left-color: var(--sf-error) !important;
   }
+}
+// Radio and checkbox marks, drawn rather than iconned.
+//
+// Two things break the icon route. Vuetify's fa iconset points these at `far` (Regular), which the
+// vendored build doesn't ship — so nothing rendered at all. Swapping in solid names doesn't fix it
+// either: Font Awesome replaces the <i> Vuetify renders with an <svg>, detaching the node Vue owns,
+// so flipping the class between the on and off state never reaches the DOM and the glyph freezes at
+// whatever it first drew. A radio would show the selected mark on a row the user had moved away
+// from. Same trap as #fontawesome-dynamic-icons.
+//
+// `--dirty` is Vuetify's own selected-state class, so this tracks the control rather than guessing.
+%selection-mark {
+  border: 2px solid currentcolor;
+  box-sizing: border-box;
+  content: '';
+  height: 18px;
+  opacity: 0.55;
+  width: 18px;
+}
+
+.v-radio, .v-checkbox, .v-checkbox-btn {
+  .v-selection-control__input > :is(.v-icon, svg) {
+    display: none;
+  }
+
+  // The real click target is this input, stretched over the control with inset:0 — but the browser's
+  // own margin for a radio/checkbox (3px 5px) shifts it down and right of the mark you can see.
+  // Clicking the middle of a radio missed it entirely; clicking low and right worked.
+  .v-selection-control__input > input {
+    margin: 0;
+  }
+
+  &.v-selection-control--dirty .v-selection-control__input::after {
+    background: currentcolor;
+    opacity: 1;
+  }
+}
+
+.v-radio .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 50%;
+}
+
+// Filled from the inside so the ring stays visible: background-clip keeps the fill off the border.
+.v-radio.v-selection-control--dirty .v-selection-control__input::after {
+  background-clip: content-box;
+  padding: 3px;
+}
+
+.v-checkbox .v-selection-control__input::after,
+.v-checkbox-btn .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 3px;
 }

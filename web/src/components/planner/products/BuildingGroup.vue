@@ -22,8 +22,8 @@
         class="sf-chip orange input mx-1"
         variant="tonal"
       >
-        <tooltip :text="getBuildingDisplayName(building)">
-          <game-asset clickable :subject="building" type="building" />
+        <tooltip :text="getBuildingDisplayName(groupBuilding)">
+          <game-asset clickable :subject="groupBuilding" type="building" />
         </tooltip>
         <v-number-input
           :id="`${factory.id}-${group.id}-building-count`"
@@ -38,12 +38,85 @@
           width="100px"
           @update:model-value="updateGroup(group)"
         />
+        <!-- Extraction only: the mark sits on the group because one ore line routinely
+             mixes a Mk.3 on a pure node with a Mk.2 on a normal one. -->
+        <v-select
+          v-if="isExtraction && extractorOptions.length > 1"
+          :id="`${factory.id}-${group.id}-extractor`"
+          class="inline-inputs ml-1 chip-select"
+          density="compact"
+          hide-details
+          :items="extractorOptions"
+          :model-value="groupBuilding"
+          variant="plain"
+          width="125px"
+          @update:model-value="updateGroupExtractor(group, $event)"
+        />
         <debounce-spinner :active="pendingRecalc === `group-${group.id}-buildings`" />
       </v-chip>
       <div class="underchip">&nbsp;</div>
     </div>
+    <!-- Node purity belongs next to the extractor standing on the node, with no operator
+         between them: it describes the miner rather than being another input to the sum. -->
+    <!-- A resource well's purity lives on each satellite node, so the group carries how many
+         of each it has. The pressurizer's clock (below) scales all of them together. -->
+    <template v-if="isWell">
+      <div>
+        <v-chip
+          class="sf-chip input node-setting mx-1"
+          variant="tonal"
+        >
+          <tooltip classes="ml-2" text="Satellite nodes on this well, by purity">
+            <v-icon icon="fas fa-gem" size="25" />
+          </tooltip>
+          <template v-for="purity in WELL_PURITIES" :key="purity">
+            <span class="ml-3 mr-2 text-medium-emphasis">{{ PURITY_LABELS[purity] }}</span>
+            <v-number-input
+              :id="`${factory.id}-${group.id}-satellites-${purity}`"
+              class="inline-inputs ml-0"
+              control-variant="stacked"
+              density="compact"
+              hide-details
+              hide-spin-buttons
+              :min="0"
+              :model-value="groupSatellites[purity]"
+              type="number"
+              width="80px"
+              @update:model-value="updateGroupSatellites(group, purity, $event)"
+            />
+          </template>
+          <debounce-spinner :active="pendingRecalc === `group-${group.id}-satellites`" />
+        </v-chip>
+        <div class="underchip text-node-setting">
+          {{ formatNumberFully(wellPotential) }}/min potential &middot; {{ satelliteCount }} extractors
+        </div>
+      </div>
+    </template>
+    <template v-else-if="isExtraction">
+      <div v-if="purityOptions.length > 1">
+        <v-chip
+          class="sf-chip input node-setting mx-1 purity-chip"
+          variant="tonal"
+        >
+          <tooltip classes="ml-2" text="Node purity">
+            <v-icon icon="fas fa-gem" size="25" />
+          </tooltip>
+          <v-select
+            :id="`${factory.id}-${group.id}-purity`"
+            class="inline-inputs ml-1 chip-select purity-select"
+            density="compact"
+            hide-details
+            :items="purityOptions"
+            :model-value="groupPurity"
+            variant="plain"
+            @update:model-value="updateGroupPurity(group, $event)"
+          />
+        </v-chip>
+        <div class="underchip text-node-setting">x{{ purityMultiplier }} node yield</div>
+      </div>
+    </template>
     <!-- Buildings without shard slots (Geothermal, Alien Power Augmenter) get no clock UI at all -->
-    <template v-if="canBuildingOverclock(building)">
+    <template v-if="canBuildingOverclock(groupBuilding)">
       <div class="px-1">
         <div>@</div>
         <div class="underchip">&nbsp;</div>
@@ -91,7 +164,7 @@
         </div>
       </div>
     </template>
-    <div class="px-1">
+    <div v-if="!isExtraction" class="px-1">
       <div>+</div>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -144,7 +217,7 @@
         <div class="underchip text-purple-lighten-1">{{ somersloopBuildCost }} / building</div>
       </div>
     </template>
-    <template v-if="group.type === ItemType.Product">
+    <template v-if="group.type === ItemType.Product && !isExtraction">
       <div>
         <v-chip
           class="sf-chip input sloop mx-1"
@@ -189,7 +262,7 @@
         </div>
       </div>
     </template>
-    <template v-if="group.type === ItemType.Product">
+    <template v-if="group.type === ItemType.Product && !isExtraction">
       <div :class="{'w-100': partCount > 4 && lgAndDown}" />
       <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
         <div>+</div>
@@ -321,6 +394,18 @@
     getSomersloopOutputMultiplier,
     getSomersloopSlots,
   } from '@/utils/factory-management/building-groups/somersloops'
+  import {
+    getExtraction,
+    getGroupExtractionRate,
+    getGroupExtractor,
+    getGroupPurity,
+    getGroupSatelliteCount,
+    getGroupSatellites,
+    isWellRecipe,
+    PURITY_LABELS,
+    PURITY_MULTIPLIERS,
+  } from '@/utils/factory-management/building-groups/extraction'
+  import { NodePurity } from '@/interfaces/Recipes'
   import { applyGroupSomersloops, updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
   import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
@@ -364,6 +449,66 @@
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
   // Bumped to remount the somersloop field when a typed value has to be clamped.
   const somersloopFieldKey = ref(0)
+
+  // ==== Extraction
+  const extraction = computed(() => getExtraction(props.item.recipe))
+  const isExtraction = computed(() => !!extraction.value)
+
+  // The building shown and priced for this group: its own extractor when extracting, since a
+  // single product can span several marks, otherwise the item's one building.
+  const groupBuilding = computed(() =>
+    isExtraction.value ? getGroupExtractor(props.group, props.item.recipe) : props.building
+  )
+
+  const groupPurity = computed(() => getGroupPurity(props.group, props.item.recipe))
+
+  // ==== Resource wells
+  const WELL_PURITIES: NodePurity[] = ['impure', 'normal', 'pure']
+
+  const isWell = computed(() => isWellRecipe(props.item.recipe))
+  const groupSatellites = computed(() => getGroupSatellites(props.group))
+  const satelliteCount = computed(() => getGroupSatelliteCount(props.group, props.item.recipe))
+  const wellPotential = computed(() => getGroupExtractionRate(props.group, props.item.recipe))
+
+  // Debounced under its own key so the spinner appears inside the satellite chip rather than
+  // beside the pressurizer count, where it would shove every input to its right mid-edit and
+  // make an increment you just clicked land somewhere else.
+  const updateGroupSatellites = (group: BuildingGroup, purity: NodePurity, value: number) => {
+    group.satellites = { ...getGroupSatellites(group), [purity]: Math.max(0, Math.round(value || 0)) }
+
+    runDebounced(`group-${group.id}-satellites`, () => {
+      updateBuildingGroup(group)
+      updateFactory(props.factory, {
+        useBuildingGroupBuildings: true,
+        forceRebalance: false,
+        origin: 'buildingGroup',
+      })
+    })
+  }
+  const purityMultiplier = computed(() => PURITY_MULTIPLIERS[groupPurity.value])
+  const extractorOptions = computed(() =>
+    (extraction.value?.extractors ?? []).map(extractor => ({
+      title: getBuildingDisplayName(extractor.building),
+      value: extractor.building,
+    }))
+  )
+
+  const purityOptions = computed(() =>
+    (extraction.value?.purities ?? []).map(purity => ({
+      title: PURITY_LABELS[purity],
+      value: purity,
+    }))
+  )
+
+  const updateGroupExtractor = (group: BuildingGroup, building: string) => {
+    group.extractorBuilding = building
+    updateGroup(group)
+  }
+
+  const updateGroupPurity = (group: BuildingGroup, purity: NodePurity) => {
+    group.purity = purity
+    updateGroup(group)
+  }
 
   const groupHasVariablePower = computed(() => {
     return props.group.powerUsageMax !== undefined && props.group.powerUsageMax !== props.group.powerUsage
@@ -529,6 +674,20 @@
   color: var(--sf-circuit-boost);
 }
 
+// Extractor mark, node purity and satellite counts: settings, not raw resources.
+.text-node-setting {
+  color: var(--sf-node-setting);
+}
+
+// A building group chip is a row of discrete controls — an icon, a value, a chevron — with no
+// flowing text, so lay it out as a flex row centred on the chip's own middle. Vuetify leaves
+// each piece on its own baseline, which at this size shows up as an icon a couple of pixels
+// high and a chevron a couple low.
+:deep(.v-chip__content) {
+  display: flex;
+  align-items: center;
+}
+
 // Each column is a chip stacked on its caption, and the two are rarely the same width —
 // a variable-power range under a clock chip is far wider than the input. Centre them on
 // each other so the chips stay on one visual line whatever the caption says.
@@ -536,6 +695,64 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+// A select sitting inside a chip alongside other inputs. Vuetify sizes the control for a
+// labelled field: the chevron is top-aligned in a taller box and the input reserves trailing
+// space, which reads as a gap after "Miner Mk.1". Centre both and tighten the padding.
+.chip-select {
+  // The plain-underlined variant reserves space above the field for a floating label these
+  // selects don't have, which leaves the value and chevron sitting below the chip's centre.
+  padding-top: 0;
+
+  :deep(.v-field) {
+    align-items: center;
+  }
+
+  :deep(.v-field__input) {
+    align-items: center;
+    min-height: 0;
+    padding: 0 0 0 8px;
+  }
+
+  // Vuetify pads the chevron away from a label these selects don't have, then holds the slack
+  // open with a fixed-width box — so the gap survives dropping the margin alone. Take both.
+  :deep(.v-field__append-inner) {
+    align-items: center;
+    padding-top: 0;
+    margin-inline-start: 0;
+    min-width: 0;
+    width: auto;
+
+    .v-icon {
+      font-size: 20px;
+      opacity: 0.85;
+      margin-inline-start: 0;
+      // Sit the chevron off the chip edge by the same 9px the overclock's "%" gets.
+      margin-inline-end: 8px;
+      width: 20px;
+    }
+  }
+}
+
+// One fixed width whatever the purity reads, so a column of groups lines up rather than
+// stepping in and out with "Pure" against "Normal".
+.purity-chip {
+  width: 135px;
+
+  :deep(.v-chip__content) {
+    width: 100%;
+  }
+}
+
+.purity-select {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  :deep(.v-field__input) {
+    justify-content: center;
+    padding: 0;
+  }
 }
 
 .underchip {

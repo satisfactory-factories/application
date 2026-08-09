@@ -314,19 +314,21 @@ describe('power', () => {
         expect(factory.powerProducers[0].buildingCount).toBe(1)
       })
 
+      // A generator's supplemental water is raw demand like any other: nothing supplies it
+      // until the factory extracts or imports it.
       it('should add the supplemental fuel to the factory.parts array and it be raw and not exportable', () => {
         expect(factory.parts.Water).toEqual({
           amountRequired: 240,
           amountRequiredProduction: 0,
           amountRequiredExports: 0,
           amountRequiredPower: 240,
-          amountSupplied: 240,
+          amountSupplied: 0,
           amountSuppliedViaInput: 0,
-          amountSuppliedViaRaw: 240,
+          amountSuppliedViaRaw: 0,
           amountSuppliedViaProduction: 0,
-          amountRemaining: 0,
+          amountRemaining: -240,
           isRaw: true,
-          satisfied: true,
+          satisfied: false,
           exportable: false,
         })
       })

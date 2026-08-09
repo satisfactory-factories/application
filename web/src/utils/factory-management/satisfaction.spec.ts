@@ -6,8 +6,12 @@ import {
   addShortageToFactory,
   convertWasteToGeneratorFuel,
   showByProductChip,
-  showImportedChip, showInternalChip,
-  showProductChip, showRawChip,
+  showExportedChip,
+  showExtractedChip, showImportedChip,
+  showInternalChip,
+  showManuallyGatheredChip,
+  showProductChip,
+  showRawShortageChip,
   showRecycledChip,
   showSatisfactionItemButton,
   showUnpackagedChip,
@@ -50,7 +54,9 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addProduct')).toBe(false)
+        // Reversed by design: an unmet raw part is a shortage like any other now, and
+        // "+ Product" is how you mine it here.
+        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addProduct')).toBe(true)
       })
       it('should NOT show for a part that is satisfied', () => {
         // Add import to satisfy the part
@@ -324,7 +330,9 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addToFactory')).toBe(false)
+        // Reversed by design: importing ore from a mine factory is exactly what should be
+        // offered now that nothing supplies it for free.
+        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addToFactory')).toBe(true)
       })
       it('should NOT show for a part that is satisfied', () => {
         const steelFac = newFactory('Steel 2')
@@ -364,7 +372,7 @@ describe('satisfaction', () => {
       const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
       expect(shortage).toBeGreaterThan(0)
 
-      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate', Math.abs(mockFactory.parts.SteelPlate.amountRemaining))
       calculateFactories(factories, gameData)
 
       expect(targetFactory.products.length).toBe(1)
@@ -392,7 +400,7 @@ describe('satisfaction', () => {
       const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
       expect(shortage).toBeGreaterThan(0)
 
-      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate', Math.abs(mockFactory.parts.SteelPlate.amountRemaining))
       calculateFactories(factories, gameData)
 
       expect(targetFactory.products.length).toBe(1)
@@ -482,28 +490,108 @@ describe('satisfaction', () => {
       })
     })
 
-    describe('showRawChip', () => {
-      it('should show for a raw part', () => {
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(true)
+    describe('showExportedChip', () => {
+      it('should show on the factory another factory imports from', () => {
+        // The Steel factory supplies mockFactory's SteelPlate import
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(true)
       })
-      it('should NOT show for a product only', () => {
-        expect(showRawChip(mockFactory, 'Plastic')).toBe(false)
+      it('should NOT show on the importing side of the same link', () => {
+        expect(showExportedChip(mockFactory, 'SteelPlate')).toBe(false)
       })
-      it('should NOT show for a byproduct only', () => {
-        expect(showRawChip(mockFactory, 'PolymerResin')).toBe(false)
+      it('should NOT show for a product nobody has asked for', () => {
+        expect(showExportedChip(mockFactory, 'Plastic')).toBe(false)
       })
-      it('should NOT show for an imported part', () => {
-        expect(showRawChip(mockFactory, 'SteelPlate')).toBe(false)
+      it('should stop showing once the import is removed', () => {
+        mockFactory.inputs = []
+        calculateFactories(factories, gameData)
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(false)
       })
-      // #431: unpackaging supplies the raw part, so there is no genuine raw import
+    })
+
+    describe('showManuallyGatheredChip', () => {
+      // Mycelia has no extractor in the game — you walk up to it and press E — so the planner
+      // takes it as gathered by hand rather than reporting a shortage nobody could act on.
+      // Fabric needs Mycelia (hand-gathered), the ingots need Iron Ore (mineable). One factory
+      // wanting both is the clearest statement of where the line now sits.
+      const mixedFactory = () => {
+        const factory = newFactory('Mixed', 9, 9)
+        addProductToFactory(factory, { id: 'Fabric', amount: 30, recipe: 'Fabric' })
+        addProductToFactory(factory, { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+        calculateFactories([factory], gameData)
+        return factory
+      }
+
+      it('should show for a raw part the game gives no extractor for', () => {
+        const factory = mixedFactory()
+        expect(factory.parts.Mycelia.amountSuppliedViaRaw).toBeGreaterThan(0)
+        expect(showManuallyGatheredChip(factory, 'Mycelia')).toBe(true)
+        expect(factory.parts.Mycelia.satisfied).toBe(true)
+      })
+      // Iron Ore is mineable, so it is a shortage rather than something handed over.
+      it('should NOT show for a raw part that can be extracted', () => {
+        const factory = mixedFactory()
+        expect(factory.parts.OreIron.amountSuppliedViaRaw).toBe(0)
+        expect(showManuallyGatheredChip(factory, 'OreIron')).toBe(false)
+        expect(factory.parts.OreIron.satisfied).toBe(false)
+      })
+      it('should NOT show for a product', () => {
+        expect(showManuallyGatheredChip(mockFactory, 'Plastic')).toBe(false)
+      })
+      it('should NOT show for an extractable raw part left short', () => {
+        expect(showManuallyGatheredChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+    })
+
+    describe('showExtractedChip', () => {
+      it('should show for a raw part the factory mines itself', () => {
+        const mine = newFactory('Copper Mine', 9, 9)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(showExtractedChip(mine, 'OreCopper')).toBe(true)
+      })
+      // Unpackaging supplies the raw part, but it is not extraction. #431
+      it('should NOT show for a raw part supplied by unpackaging', () => {
+        addUnpackagedOilToCoverDemand(mockFactory)
+        calculateFactories(factories, gameData)
+
+        expect(showExtractedChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+      it('should NOT show for an ordinary product', () => {
+        expect(showExtractedChip(mockFactory, 'Plastic')).toBe(false)
+      })
+    })
+
+    describe('showRawShortageChip', () => {
+      it('should show for a raw part the factory neither extracts nor imports', () => {
+        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(true)
+      })
+      it('should NOT show once the factory extracts it', () => {
+        const mine = newFactory('Copper Mine', 9, 9)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(showRawShortageChip(mine, 'OreCopper')).toBe(false)
+      })
+      // #431: unpackaging covers the demand, so there is nothing short.
       it('should NOT show for a raw part fully supplied by unpackaging', () => {
         addUnpackagedOilToCoverDemand(mockFactory)
         calculateFactories(factories, gameData)
 
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(false)
+        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(false)
       })
-      it('should show for a raw part only partially supplied by unpackaging', () => {
-        // Cover only part of the crude oil demand, the rest still comes from raw supply
+      // The bug this whole change exists to kill: mining or unpackaging SOME of a raw part
+      // used to read as fully satisfied, because the chip that would have said otherwise was
+      // suppressed by the one saying "extracted".
+      it('should show for a raw part only partially supplied', () => {
         addProductToFactory(mockFactory, {
           id: 'LiquidOil',
           amount: 30,
@@ -511,8 +599,8 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBeGreaterThan(0)
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(true)
+        expect(mockFactory.parts.LiquidOil.satisfied).toBe(false)
+        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(true)
       })
     })
 

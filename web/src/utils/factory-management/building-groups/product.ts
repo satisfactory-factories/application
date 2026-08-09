@@ -3,10 +3,11 @@ import { formatNumberFully } from '@/utils/numberFormatter'
 import {
   calculateBuildingGroupParts,
   createBuildingGroup,
+  getGroupOutputMultiplier,
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
-import { getSomersloopOutputMultiplier } from '@/utils/factory-management/building-groups/somersloops'
+import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -26,6 +27,14 @@ export const addProductBuildingGroup = (
       ItemType.Product,
       factory,
     )
+
+    // Mines start unsynced. Almost nobody actually builds Mk.1 miners, so the first thing done
+    // to a new mine is swapping the default for a Mk.3 — and with sync on that writes the
+    // group's new output back over the quantity the user just typed. The balance above has
+    // already run, so the group is solved before sync is turned off.
+    if (isExtractionRecipe(product.recipe)) {
+      product.buildingGroupItemSync = false
+    }
   }
   calculateBuildingGroupParts([product], ItemType.Product, factory)
 }
@@ -55,9 +64,14 @@ export const buildingsNeededForPartsProducts = (
   }
 
   if (isProduct && !isIngredient) {
-    // This is a product — somersloops amplify output, so fewer buildings are needed.
-    const sloopMultiplier = getSomersloopOutputMultiplier(buildingGroup, product.buildingRequirements?.name ?? '')
-    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * sloopMultiplier
+    // This is a product — somersloops amplify output (and for extraction, the group's miner
+    // mark and node purity do too), so fewer buildings are needed.
+    const outputMultiplier = getGroupOutputMultiplier(
+      buildingGroup,
+      product.buildingRequirements?.name ?? '',
+      product.recipe
+    )
+    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * outputMultiplier
     return formatNumberFully(amount / perMinOverclocked)
   }
 

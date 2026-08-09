@@ -7,6 +7,8 @@ import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
 let oilFac: Factory
 let copperIngotsFac: Factory
+let copperMineFac: Factory
+let rawMineFac: Factory
 let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
 let computersFac: Factory
@@ -20,30 +22,54 @@ let geothermalFac: Factory
 // Copper Basics has a deliberate shortage of Copper Ingots to highlight that functionality to new users.
 export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
-  oilFac = newFactory('Oil Processing', 1, 1)
+  copperMineFac = newFactory('Copper Mine', 1, 10)
   copperIngotsFac = newFactory('Copper Ingots', 2, 2)
   copperBasicsFac = newFactory('Copper Basics', 3, 3)
-  circuitBoardsFac = newFactory('Circuit Boards', 4, 4)
-  computersFac = newFactory('Computers (end product)', 5, 5)
-  uraniumFac = newFactory('☢️ Uranium Power', 6, 6)
-  plutoniumFac = newFactory('☢️ Plutonium Processing', 7, 7)
-  alienPowerFac = newFactory('Alien Power', 8, 8)
-  geothermalFac = newFactory('Geothermal Power', 9, 9)
+  oilFac = newFactory('Oil Processing', 4, 1)
+  circuitBoardsFac = newFactory('Circuit Boards', 5, 4)
+  computersFac = newFactory('Computers (end product)', 6, 5)
+  uraniumFac = newFactory('☢️ Uranium Power', 7, 6)
+  plutoniumFac = newFactory('☢️ Plutonium Processing', 8, 7)
+  alienPowerFac = newFactory('Alien Power', 9, 8)
+  geothermalFac = newFactory('Geothermal Power', 10, 9)
+  rawMineFac = newFactory('Raw Materials Mine', 11, 11)
 
-  const factories = [oilFac, copperIngotsFac, copperBasicsFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
+  const factories = [copperMineFac, copperIngotsFac, copperBasicsFac, oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac, rawMineFac]
 
   // Private methods to configure the factories
   const setupFactories = () => {
     // === OIL FAC ===
+    // Extraction on site, as opposed to the Copper Mine's dedicated-factory approach: the oil
+    // comes out of the ground in the same factory that refines it. 3 pure nodes at 240/min plus
+    // 2 normal at 120 covers the 960/min the Plastic line drinks.
+    addProductToFactory(oilFac, {
+      id: 'LiquidOil',
+      amount: 960,
+      recipe: 'Extract_LiquidOil',
+    })
+    const crudeOil = oilFac.products[0]
+    const [pureOilGroup] = crudeOil.buildingGroups
+    Object.assign(pureOilGroup, { extractorBuilding: 'oilpump', purity: 'pure', buildingCount: 3 })
+    crudeOil.buildingGroups.push({
+      ...pureOilGroup,
+      id: pureOilGroup.id + 1,
+      extractorBuilding: 'oilpump',
+      purity: 'normal',
+      buildingCount: 2,
+      parts: {},
+    })
+    crudeOil.buildingGroupsTrayOpen = true
+
     addProductToFactory(oilFac, {
       id: 'Plastic',
       amount: 640,
       recipe: 'Plastic',
     })
+    const plastic = oilFac.products[1]
     // Overclocking showcase: most of the Plastic line runs at stock clock, with four
     // refineries pushed to 200% — costing 2 Power Shards per building (8 total), shown
     // in the Power Shards & Somersloops statistics. 24 + 4x2 = 32 effective buildings.
-    oilFac.products[0].buildingGroups = [
+    plastic.buildingGroups = [
       {
         id: 901,
         type: ItemType.Product,
@@ -66,9 +92,9 @@ export const complexDemoPlan = (): TemplatePlan => {
       },
     ]
     // Mirrors the app: adding a second group turns off item sync so the custom split sticks.
-    oilFac.products[0].buildingGroupItemSync = false
+    plastic.buildingGroupItemSync = false
     // Start with the tray open so the overclock showcase is visible immediately.
-    oilFac.products[0].buildingGroupsTrayOpen = true
+    plastic.buildingGroupsTrayOpen = true
     addProductToFactory(oilFac, {
       id: 'LiquidFuel',
       amount: 40,
@@ -80,8 +106,12 @@ export const complexDemoPlan = (): TemplatePlan => {
       recipe: 'GeneratorFuel_LiquidFuel',
       updated: FactoryPowerChangeType.Power,
     })
-    oilFac.notes = 'This factory is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
+    oilFac.notes = 'This factory extracts its own Crude Oil on site — 3 Oil Extractors on pure nodes and 2 on normal, for the 960/min the Plastic line drinks — rather than importing it from a dedicated mine like the Copper chain does.\n\nIt is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
     oilFac.syncState = {
+      LiquidOil: {
+        amount: 960,
+        recipe: 'Extract_LiquidOil',
+      },
       Plastic: {
         amount: 640,
         recipe: 'Plastic',
@@ -115,6 +145,61 @@ export const complexDemoPlan = (): TemplatePlan => {
       },
     }
     copperIngotsFac.inSync = true
+    // =================
+
+    // === COPPER MINE FAC ===
+    // A mine mixing marks and purities, and over-producing a little: nodes come in fixed sizes,
+    // so a real mine rarely lands exactly on the number you wanted.
+    addProductToFactory(copperMineFac, {
+      id: 'OreCopper',
+      amount: 360,
+      recipe: 'Extract_OreCopper',
+    })
+    const copperOre = copperMineFac.products[0]
+    const [mk3Group] = copperOre.buildingGroups
+    Object.assign(mk3Group, { extractorBuilding: 'minermk3', purity: 'normal', buildingCount: 1 })
+    copperOre.buildingGroups.push({
+      ...mk3Group,
+      id: mk3Group.id + 1,
+      extractorBuilding: 'minermk1',
+      purity: 'pure',
+      buildingCount: 1,
+      parts: {},
+    })
+    // Open on load, so the mixed marks and purities are the first thing you see.
+    copperOre.buildingGroupsTrayOpen = true
+    copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
+    // =================
+
+    // === RAW MATERIALS MINE FAC ===
+    // One mine factory hosting three resources, feeding the nuclear chain. Like the Copper Mine it
+    // over-produces where the nodes don't divide neatly: extractor rates are all multiples of 30,
+    // so 160 Sulfur and 200 Uranium are unreachable exactly without clocking a miner down.
+    addProductToFactory(rawMineFac, { id: 'Stone', amount: 180, recipe: 'Extract_Stone' })
+    const stone = rawMineFac.products[0]
+    const [stoneGroup] = stone.buildingGroups
+    Object.assign(stoneGroup, { extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1 })
+    stone.buildingGroups.push({
+      ...stoneGroup,
+      id: stoneGroup.id + 1,
+      extractorBuilding: 'minermk1',
+      purity: 'normal',
+      buildingCount: 1,
+      parts: {},
+    })
+    stone.buildingGroupsTrayOpen = true
+
+    addProductToFactory(rawMineFac, { id: 'Sulfur', amount: 240, recipe: 'Extract_Sulfur' })
+    Object.assign(rawMineFac.products[1].buildingGroups[0], {
+      extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 2,
+    })
+
+    addProductToFactory(rawMineFac, { id: 'OreUranium', amount: 240, recipe: 'Extract_OreUranium' })
+    Object.assign(rawMineFac.products[2].buildingGroups[0], {
+      extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 2,
+    })
+
+    rawMineFac.notes = 'Limestone, Sulfur and Uranium for the nuclear chain. A mine factory can host several resources — the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur and Uranium groups over-produce: miner rates are all multiples of 30, so the 160 and 200 those factories want cannot be hit exactly without underclocking a miner.'
     // =================
 
     // === COPPER BASICS FAC ===
@@ -153,6 +238,11 @@ export const complexDemoPlan = (): TemplatePlan => {
       factoryId: copperIngotsFac.id,
       outputPart: 'CopperIngot',
       amount: 320, // Deliberate shortage, should be 520.
+    })
+    addInputToFactory(copperIngotsFac, {
+      factoryId: copperMineFac.id,
+      outputPart: 'OreCopper',
+      amount: 320,
     })
     copperBasicsFac.notes = 'This factory is deliberately short on Copper Ingots to highlight the shortage functionality. It is also over producing cables by 40 to show trimming.'
     // =================
@@ -225,13 +315,23 @@ export const complexDemoPlan = (): TemplatePlan => {
       amount: 100,
       recipe: 'UraniumCell',
     })
+    // Water on site — there is no purity to choose, so a Water Extractor is a plain producing
+    // building that happens to output a raw resource. 22 of them against the 2560 it drinks.
+    addProductToFactory(uraniumFac, {
+      id: 'Water',
+      amount: 2640,
+      recipe: 'Extract_Water',
+    })
     addPowerProducerToFactory(uraniumFac, {
       building: 'generatornuclear',
       powerAmount: 25000,
       recipe: 'GeneratorNuclear_NuclearFuelRod',
       updated: FactoryPowerChangeType.Power,
     })
-    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.'
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Stone', amount: 180 })
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Sulfur', amount: 160 })
+    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'OreUranium', amount: 200 })
+    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts ore comes from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams — those are the missing pieces the plan is meant to show you.'
     uraniumFac.tasks.push(
       { title: 'Add Stators factory to supply this one', completed: false },
       { title: 'Make a place for the waste to go', completed: false },
@@ -316,6 +416,10 @@ export const complexDemoPlan = (): TemplatePlan => {
 
   // Apply setup steps
   setupFactories()
+
+  // Every raw resource in this plan is mined or imported. What is left short is deliberate and
+  // manufactured: the Copper Basics bottleneck, and the Stators / High-Speed Connectors / Encased
+  // Beams that Uranium Power has no supplier for.
 
   // Return an object with a method to access the configured factories
   return {

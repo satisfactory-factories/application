@@ -21,7 +21,7 @@
             </tr>
           </thead>
           <tbody>
-            <template v-for="template in templates" :key="template.name">
+            <template v-for="template in sortedTemplates" :key="template.name">
               <tr v-if="template.show">
                 <td class="text-center">
                   <v-btn
@@ -47,6 +47,7 @@
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { createSimple } from '@/utils/factory-setups/simple-plan'
+  import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
   import { useAppStore } from '@/stores/app-store'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
@@ -66,7 +67,7 @@
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
-  const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, rearmRawBreakingNotice } = useAppStore()
 
   const dialog = ref(false)
 
@@ -77,6 +78,9 @@
     data: string
     show: boolean
     isDebug: boolean
+    // Re-arms the one-time raw-resources breaking-change notice, which is otherwise
+    // unreachable once dismissed.
+    rearmNotice?: boolean
   }
 
   interface TemplatePayload {
@@ -91,11 +95,18 @@
   const scenarioData = (factories: Factory[]) =>
     JSON.stringify({ factories, powerTarget: 0 } satisfies TemplatePayload)
 
-  const templates = [
+  const templates: Template[] = [
     {
       name: 'Demo',
-      description: 'Contains 7 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
+      description: 'Contains 11 factories with a mix of fluids, solids and multiple dependencies, along with power generation and all three ways of mining — a dedicated Copper Mine feeding the ingots, a Raw Materials Mine hosting three resources for the nuclear chain, and Oil Processing and Uranium Power extracting their own crude and water on site. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and missing Stators, High-Speed Connectors and Encased Beams for the Uranium Power.',
       data: planData(complexDemoPlan()),
+      show: true,
+      isDebug: false,
+    },
+    {
+      name: 'Mining',
+      description: 'Shows the extraction features end to end: an Iron Mine mixing Mk.3 miners on pure nodes with a Mk.2 on a normal one, a Nitrogen resource well with its satellite spread, and a Nitric Acid factory extracting its own water on site.',
+      data: planData(createMiningDemoPlan()),
       show: true,
       isDebug: false,
     },
@@ -112,6 +123,14 @@
       data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,
+    },
+    {
+      name: '#503: Pre-mining plan (migration modal)',
+      description: 'A plan built the way plans were before mining existed: it smelts ore that nothing digs up, so it now shows raw shortages. Loading it re-opens the one-time breaking-change notice, which is otherwise unreachable once dismissed. Related to issue #503.',
+      data: scenarioData(createSimple().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+      rearmNotice: true,
     },
     {
       name: 'PowerOnlyImport',
@@ -213,6 +232,28 @@
     },
   ]
 
+  // Listed as: the real plans first, then the unnumbered debug scenarios, then the issue
+  // ones in issue order. Declaration order decides the rest, so related entries stay together.
+  const issueNumber = (name: string) => Number(/#(\d+)/.exec(name)?.[1] ?? NaN)
+
+  const sortedTemplates = computed(() => {
+    const rank = (template: Template) => {
+      if (!template.isDebug) return 0
+      return Number.isNaN(issueNumber(template.name)) ? 1 : 2
+    }
+
+    return [...templates]
+      .map((template, index) => ({ template, index }))
+      .sort((a, b) =>
+        rank(a.template) - rank(b.template) ||
+        // Only the issue group has a meaningful order of its own.
+        (rank(a.template) === 2
+          ? issueNumber(a.template.name) - issueNumber(b.template.name)
+          : 0) ||
+        a.index - b.index)
+      .map(entry => entry.template)
+  })
+
   const loadTemplate = (template: Template) => {
     console.log('Template loaded:', template.name, 'starting load')
 
@@ -226,6 +267,10 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
+    }
+
+    if (template.rearmNotice) {
+      rearmRawBreakingNotice()
     }
 
     prepareLoader(factories, true)
