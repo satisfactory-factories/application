@@ -305,7 +305,7 @@
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
-                  <i class="fas fa-industry" />
+                  <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
                   </span>

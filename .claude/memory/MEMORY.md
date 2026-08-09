@@ -26,3 +26,4 @@
 - [VNumberInput clamping](vnumberinput-clamping.md) — clamp typed values on entry and remount the field; `:max` swallows the update event
 - [Export/import chain invariants](export-import-chain-invariants.md) — exports are derived from imports, factory IDs must be unique, and a loaded plan won't self-heal unless validation asks for a recalc
 - [Factory status registry](factory-status-registry.md) — adding a status is one array entry; keep the warning tier out of the engine loop and mirror the product-less guard or saved plans change colour
+- [Factory icon registry](factory-icon-registry.md) — plans store a bare icon ID we can never migrate; regenerate the registry after a game data change and never rename an ID

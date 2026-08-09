@@ -105,7 +105,13 @@
             <v-spacer class="d-flex flex-column justify-center text-body-1 pa-2">
               <div class="d-flex align-center">
                 <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-                <i class="fas fa-industry mr-2" />
+                <factory-icon-display
+                  class="mr-2"
+                  clickable
+                  :icon="element.icon"
+                  size="20"
+                  @click.stop="iconDialogFactory = element as Factory"
+                />
                 <span>{{ truncateFactoryName(element.name) }}</span>
               </div>
               <factory-status-chips
@@ -178,6 +184,14 @@
       </div>
     </template>
   </draggable>
+  <!-- One dialog for the whole list rather than one per row: the sidebar renders every
+       factory in the plan, and a v-dialog each is a lot of dead weight for a picker. -->
+  <factory-icon-dialog
+    v-if="iconDialogFactory"
+    :key="iconDialogFactory.id"
+    v-model="iconDialogOpen"
+    :factory="iconDialogFactory"
+  />
   <v-row class="pa-0 ma-0">
     <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
@@ -230,6 +244,15 @@
     ? totalPower.value.totalPowerProduced - powerTarget.value
     : totalPower.value.totalPowerDifference)
   const powerDeficit = computed(() => powerDifference.value < 0)
+
+  // The row whose icon picker is open, or null when it is closed.
+  const iconDialogFactory = ref<Factory | null>(null)
+  const iconDialogOpen = computed({
+    get: () => iconDialogFactory.value !== null,
+    set: value => {
+      if (!value) iconDialogFactory.value = null
+    },
+  })
 
   const factoriesCopy = ref([...compProps.factories])
 

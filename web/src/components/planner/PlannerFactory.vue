@@ -4,14 +4,20 @@
       <v-card :id="factory.id" :class="cardClass">
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
-            <div class="text-h4 text-md-h5">
-              <i class="fas fa-industry" />
+            <div class="text-h4 text-md-h5 d-flex align-center">
+              <factory-icon-display
+                clickable
+                :icon="factory.icon"
+                size="32"
+                @click="iconDialogOpen = true"
+              />
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
               >
             </div>
+            <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
             <!-- chips bar -->
             <div class="d-flex align-center flex-wrap mt-1 ga-2">
               <!-- status chips: what is wrong, ahead of everything descriptive. outOfSync is
@@ -223,7 +229,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(inputFactoryId)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(inputFactoryId).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(inputFactoryId).name }}</b>
                 </span>
@@ -318,7 +324,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(dependant)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(dependant).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
@@ -349,7 +355,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject } from 'vue'
+  import { computed, inject, ref } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks } from '@/utils/factory-management/factory'
@@ -373,6 +379,8 @@
   }>()
 
   const { smAndDown } = useDisplay()
+
+  const iconDialogOpen = ref(false)
 
   const gameSyncHelpText = 'Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory\'s products are changed, the factory will be out of sync, or if you set it manually.'
 
