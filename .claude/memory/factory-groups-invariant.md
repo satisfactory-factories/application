@@ -16,8 +16,17 @@ templates and crash recovery all carry factories rather than tabs. A group held 
 be dropped by every one of those, stranding factories that still claimed membership — and the
 load-time repair would then clear them. Denormalised, every existing transport carries groups for
 free and a cloud restore rebuilds the whole set from the factories alone. The cost is a
-write-fanout: renaming or collapsing a group writes to N factories, which is also what gives group
+write-fanout: renaming or recolouring a group writes to N factories, which is also what gives group
 edits their `factoryUpdated` emit and therefore their save and cloud-sync-dirty semantics.
+
+**That fanout is why collapse is not a group field.** It used to be, and a toggle on a
+forty-factory group rewrote forty records and emitted forty `factoryUpdated`s — each of which every
+mounted `BuildingGroups` listens to and recalculates from — then unmounted and rebuilt forty
+`PlannerFactory` cards. Measured: ~3.6s to reopen, against ~60ms once it moved to
+`useGroupCollapse` (its own localStorage key, no plan writes) and the cards were hidden rather than
+destroyed. The general lesson: **anything that fans out to every factory pays the emit tax, so
+never put view state on the group record.** Cards stay mounted once seen; a group shut at load
+never mounts them, which is the only reason a collapsed plan opens faster rather than slower.
 
 **Grouping is a sort of the one flat factories array**, not a parallel structure:
 group-contiguous, in group order, Ungrouped first, `displayOrder` still the index. The planner's

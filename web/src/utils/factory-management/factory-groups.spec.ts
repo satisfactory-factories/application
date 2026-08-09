@@ -15,7 +15,7 @@ import {
   reorderFactoryInGroup,
   reorderGroup,
   repairFactoryGroups,
-  setGroupCollapsed,
+  setGroupColor,
   sortFactoriesByGroup,
 } from '@/utils/factory-management/factory-groups'
 import { groupPalette, mixHex, sfColors } from '@/utils/colors'
@@ -25,7 +25,6 @@ const group = (id: string, order: number, overrides: Partial<FactoryGroup> = {})
   name: id.toUpperCase(),
   color: '#4caf50',
   order,
-  collapsed: false,
   ...overrides,
 })
 
@@ -224,13 +223,15 @@ describe('factory-groups', () => {
       expect(factoriesInGroup(factories, created.id).map(f => f.group?.name)).toEqual(['New', 'New'])
     })
 
-    it('collapses on all of them, so the state travels with the plan', () => {
+    it('recolours on all of them', () => {
       const created = createGroup(factories, tab, 'Group')
       moveFactoryToGroup(factories, tab, factories[0].id, created.id)
+      moveFactoryToGroup(factories, tab, factories[1].id, created.id)
 
-      setGroupCollapsed(factories, tab, created.id, true)
+      const touched = setGroupColor(factories, tab, created.id, '#2196f3')
 
-      expect(factoriesInGroup(factories, created.id)[0].group?.collapsed).toBe(true)
+      expect(touched).toHaveLength(2)
+      expect(factoriesInGroup(factories, created.id).map(f => f.group?.color)).toEqual(['#2196f3', '#2196f3'])
     })
 
     it('sends a deleted group\'s factories where it is told, never deleting one', () => {

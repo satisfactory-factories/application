@@ -92,8 +92,6 @@
       v-if="ungroupedSection"
       :section="ungroupedSection"
       :statuses="statuses"
-      :ungrouped-collapsed="ungroupedCollapsed"
-      @toggle-ungrouped="ungroupedCollapsed = !ungroupedCollapsed"
     />
 
     <draggable
@@ -107,7 +105,6 @@
         <planner-sidebar-group
           :section="element"
           :statuses="statuses"
-          :ungrouped-collapsed="ungroupedCollapsed"
           @delete="requestGroupDelete"
         />
       </template>
@@ -183,7 +180,7 @@
   // Groups. Every mutation goes through the composable, which is the single writer — this
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
-  const { countIn, deleteGroup, sections, setGroupOrder, ungroupedCollapsed } = useFactoryGroups()
+  const { countIn, deleteGroup, sections, setGroupOrder } = useFactoryGroups()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))

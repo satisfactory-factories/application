@@ -12,6 +12,7 @@
                 size="32"
                 @click="iconDialogOpen = true"
               />
+              <factory-group-tray :factory="factory" />
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
@@ -114,7 +115,6 @@
             </div>
           </v-col>
           <v-col class="text-right pt-0 pt-md-3" cols="auto" md="4">
-            <factory-group-tray :factory="factory" />
             <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"

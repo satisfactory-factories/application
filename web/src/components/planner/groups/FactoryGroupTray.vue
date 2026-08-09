@@ -1,18 +1,18 @@
 <template>
   <v-menu location="bottom end">
     <template #activator="{ props: activatorProps }">
-      <v-btn
-        class="mr-2 rounded"
-        :color="factory.group ? undefined : 'primary'"
-        size="small"
-        :style="factory.group ? groupButtonStyle : undefined"
+      <!-- Sits on the title line beside the factory icon rather than in the status bar below: where
+           a factory lives is not a thing that has gone wrong with it. -->
+      <v-chip
+        class="sf-chip small group-chip"
+        :class="{ ungrouped: !factory.group }"
+        :style="factory.group ? groupChipStyle : undefined"
         title="Set this factory's group"
-        variant="outlined"
         v-bind="activatorProps"
       >
         <i class="fas fa-folder" />
-        <span class="ml-2">{{ factory.group?.name ?? 'Group' }}</span>
-      </v-btn>
+        <span class="ml-2">{{ factory.group?.name ?? 'Ungrouped' }}</span>
+      </v-chip>
     </template>
 
     <v-card min-width="240">
@@ -67,15 +67,33 @@
 
   const createOpen = ref(false)
 
-  // Wearing the group's own colour, so the button says which group without reading it.
-  const groupButtonStyle = computed(() => ({
-    ...groupColorVars(props.factory.group?.color ?? '#ffffff'),
-    borderColor: 'var(--sf-group)',
-    color: 'var(--sf-group)',
-  }))
+  // Wearing the group's own colour, so the chip says which group without reading it. Only the
+  // custom properties — the colours themselves are applied in CSS, where they can carry the
+  // `!important` needed to beat .sf-chip's border.
+  const groupChipStyle = computed(() =>
+    groupColorVars(props.factory.group?.color ?? '#ffffff')
+  )
 </script>
 
 <style scoped>
+/* Own margin rather than a utility class: .sf-chip's margins are !important, and only a scoped
+   rule outranks them. */
+.group-chip {
+  cursor: pointer;
+  margin: 0 0 0 12px !important;
+}
+
+/* .sf-chip's border is `!important`, so the group colour needs to be too or the chip stays grey. */
+.group-chip:not(.ungrouped) {
+  border-color: var(--sf-group) !important;
+  background-color: var(--sf-group-muted) !important;
+}
+
+.group-chip.ungrouped {
+  font-style: italic;
+  opacity: 0.75;
+}
+
 .dot {
   width: 12px;
   height: 12px;

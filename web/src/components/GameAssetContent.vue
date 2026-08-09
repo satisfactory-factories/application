@@ -1,16 +1,21 @@
 <template>
-  <v-img
-    v-if="!ficsmas && !unknown"
-    :alt="subject"
-    aspect-ratio="1/1"
-    :max-height="heightPx"
-    :max-width="widthPx"
-    :min-height="heightPx"
-    :min-width="widthPx"
-    :src="imgUrl"
-  />
-  <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
-  <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  <!-- The wrapper exists to carry the tooltip. VImg drops a `title` — it renders its own root and
+       forwards attributes to the inner <img>, which does not exist until the image loads — so
+       every game icon in the app was silently tooltip-less. -->
+  <span class="game-asset-content" :title="title">
+    <v-img
+      v-if="!ficsmas && !unknown"
+      :alt="subject"
+      aspect-ratio="1/1"
+      :max-height="heightPx"
+      :max-width="widthPx"
+      :min-height="heightPx"
+      :min-width="widthPx"
+      :src="imgUrl"
+    />
+    <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+    <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  </span>
 </template>
 
 <script setup lang="ts">
@@ -23,6 +28,7 @@
     height?: string | number | undefined
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
+    title?: string
   }>()
 
   // State
@@ -104,3 +110,13 @@
     return `/assets/game/${type}/${name}_${pxSize}.png`
   }
 </script>
+
+<style scoped>
+/* Sized entirely by the image inside it — inline-flex so it neither adds a line box nor
+   baseline-aligns, which would drop icons a few pixels inside chips. */
+.game-asset-content {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+</style>

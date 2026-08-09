@@ -9,15 +9,20 @@
           class="fas fa-grip-lines group-drag-handle text-grey-darken-1"
           title="Drag to reorder group"
         />
+        <!-- Two keyed icons rather than one with a bound class: Font Awesome replaces the <i> with
+             an <svg> of its own, which Vue's patch then no longer owns, so flipping the class left
+             the chevron pointing down forever. A keyed element forces a fresh node. -->
         <v-btn
           class="chevron"
-          density="compact"
-          :icon="collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-down'"
-          size="x-small"
+          icon
+          size="small"
           :title="collapsed ? 'Expand group' : 'Collapse group'"
           variant="text"
           @click="toggle"
-        />
+        >
+          <span v-if="collapsed" key="shut"><i class="fas fa-chevron-right" /></span>
+          <span v-else key="open"><i class="fas fa-chevron-down" /></span>
+        </v-btn>
 
         <factory-group-color-menu
           v-if="group"
@@ -76,15 +81,15 @@
 
     <!--
       Always rendered, never v-if'd away: a Sortable list that is not in the DOM is not a drop
-      target, so a collapsed group could not be dropped into. Collapsed, it holds no rows and
-      shows a strip instead — a real element with real height for Sortable to aim at.
+      target, so a collapsed group could not be dropped into. Collapsed, its rows are hidden by CSS
+      and the strip shows instead — a real element with real height for Sortable to aim at.
     -->
     <draggable
       class="group-body"
       :class="{ collapsed }"
       :group="{ name: 'sidebar-factories' }"
       item-key="id"
-      :model-value="collapsed ? [] : section.factories"
+      :model-value="rows"
       @change="onChange"
     >
       <template #header>
@@ -93,8 +98,12 @@
           <span v-else>Drop a factory here</span>
         </div>
       </template>
+      <!-- The wrapper carries the tree: the trunk segment and the elbow into the row are drawn on
+           it, leaving the row itself exactly as it renders outside a group. -->
       <template #item="{ element }">
-        <planner-sidebar-factory-row :factory="element" :statuses="statuses.get(element.id)" />
+        <div class="tree-item">
+          <planner-sidebar-factory-row :factory="element" :statuses="statuses.get(element.id)" />
+        </div>
       </template>
     </draggable>
   </div>
@@ -107,6 +116,7 @@
   import { FactoryStatus } from '@/utils/factory-management/status'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { groupColorVars } from '@/utils/colors'
   import { getPartDisplayName } from '@/utils/helpers'
   import FactoryGroupColorMenu from '@/components/planner/groups/FactoryGroupColorMenu.vue'
@@ -115,20 +125,22 @@
   const props = defineProps<{
     section: FactoryGroupSection
     statuses: Map<number, FactoryStatus[]>
-    ungroupedCollapsed: boolean
   }>()
 
   const emit = defineEmits<{
     (event: 'delete', group: NonNullable<FactoryGroupSection['group']>): void
-    (event: 'toggle-ungrouped'): void
   }>()
 
-  const { renameGroup, setGroupColor, setGroupCollapsed, moveFactoryToGroup } = useFactoryGroups()
+  const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
+  const { isCollapsed, isMounted, toggleCollapsed } = useGroupCollapse()
 
   const group = computed(() => props.section.group)
-  // Ungrouped has nowhere to persist a collapse flag — it is not a stored group — so its state
-  // is held by the list and shared between the two mounted sidebars.
-  const collapsed = computed(() => group.value?.collapsed ?? props.ungroupedCollapsed)
+  const groupId = computed(() => group.value?.id ?? null)
+  const collapsed = computed(() => isCollapsed(groupId.value))
+
+  // Rows survive a collapse and are hidden instead, so reopening is a style change rather than
+  // forty components being rebuilt. A group shut when the plan loads renders none of them.
+  const rows = computed(() => isMounted(groupId.value) ? props.section.factories : [])
 
   const colorVars = computed(() =>
     group.value ? groupColorVars(group.value.color) : {}
@@ -149,10 +161,7 @@
     renameGroup(group.value.id, draftName.value)
   }
 
-  const toggle = () => {
-    if (group.value) setGroupCollapsed(group.value.id, !group.value.collapsed)
-    else emit('toggle-ungrouped')
-  }
+  const toggle = () => toggleCollapsed(groupId.value)
 
   const requestDelete = () => {
     if (group.value) emit('delete', group.value)
@@ -193,28 +202,46 @@
 </script>
 
 <style lang="scss" scoped>
+// Tree geometry. The trunk hangs off the header and each row is indented clear of it, so the
+// group reads like `tree` output rather than a run of cards with a heading over it.
+$tree-indent: 18px;
+$tree-line: 3px;
+// Half the gutter the row's own mb-1 contributes to the wrapper, discounted so the elbow lands on
+// the middle of the card rather than the middle of card-plus-gap.
+$tree-gutter: 4px;
+
 .sidebar-group {
   border-radius: 4px;
   overflow: hidden;
-  border-left: 3px solid var(--sf-group, transparent);
 }
 
 .group-header {
+  position: relative;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.04));
   font-size: 0.9rem;
 
-  .delete-group {
-    opacity: 0;
-    transition: opacity 0.15s ease;
+  // The top of the trunk. Same width and same x as the rows' segments below it, so header line
+  // and elbows read as one line down the group's edge.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: $tree-line;
+    background-color: var(--sf-group, #616161);
   }
 
-  &:hover .delete-group {
-    opacity: 1;
-  }
 }
 
 .group-drag-handle {
   cursor: grab;
+}
+
+// The hover/ripple target was tight enough around the glyph to look like a stray icon rather than
+// a control.
+.chevron {
+  font-size: 0.8rem;
 }
 
 .group-name {
@@ -236,8 +263,53 @@
   font-style: italic;
 }
 
+.group-body:not(.collapsed) {
+  padding-left: $tree-indent;
+}
+
+// Collapsed hides the rows rather than dropping them — see `rows` above. The strip stays.
 .group-body.collapsed {
   min-height: 0;
+
+  .tree-item {
+    display: none;
+  }
+}
+
+.tree-item {
+  position: relative;
+  // Contains the row's own bottom margin, so consecutive trunk segments meet instead of leaving a
+  // gap the height of the gutter between rows.
+  display: flow-root;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -$tree-indent;
+    background-color: var(--sf-group, #616161);
+  }
+
+  // Trunk, one segment per row. The last row ends it at its own elbow, giving the corner.
+  &::before {
+    top: 0;
+    bottom: 0;
+    width: $tree-line;
+  }
+
+  &:last-child::before {
+    bottom: auto;
+    height: calc(50% - #{$tree-gutter * 0.5} + #{$tree-line * 0.5});
+  }
+
+  // Elbow, reaching from the trunk to the row's left edge. Level with the middle of the row, not
+  // its first line — a row carrying status chips is two lines tall, and an elbow pinned to the top
+  // one points at nothing in particular.
+  &::after {
+    top: calc(50% - #{$tree-gutter * 0.5} - #{$tree-line * 0.5});
+    width: $tree-indent;
+    height: $tree-line;
+  }
 }
 
 // The "overlay over the group you could be entering" — only rendered while collapsed, and the

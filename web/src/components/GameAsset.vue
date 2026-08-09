@@ -18,6 +18,7 @@
     v-else
     :height="height"
     :subject="subject"
+    :title="displayName"
     :type="type"
     :width="width"
   />

@@ -212,7 +212,8 @@ export interface FactoryGroup {
   name: string;
   color: string; // Hex, from groupPalette or a custom pick
   order: number; // Position of the group within the plan
-  collapsed: boolean;
+  // No `collapsed` here on purpose: it is view state, held by useGroupCollapse. Fanning it out to
+  // every member on each toggle cost a save and a recalculation per factory.
 }
 
 export interface Factory {

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
 import {
   applyGroupOrder,
@@ -10,10 +10,10 @@ import {
   moveFactoryToGroup as moveFactoryToGroupIn,
   renameGroup as renameGroupIn,
   reorderGroup as reorderGroupIn,
-  setGroupCollapsed as setGroupCollapsedIn,
   setGroupColor as setGroupColorIn,
 } from '@/utils/factory-management/factory-groups'
 import { useAppStore } from '@/stores/app-store'
+import { useGroupCollapse } from '@/composables/useGroupCollapse'
 import eventBus from '@/utils/eventBus'
 
 /**
@@ -25,12 +25,9 @@ import eventBus from '@/utils/eventBus'
  * what drives both the local save and the cloud sync dirty flag — a group rename touches no
  * calculation, so nothing else would announce it.
  */
-// Ungrouped is synthesised rather than stored, so it has nowhere in the plan to keep a collapse
-// flag. Module scope, not component state, so the two mounted sidebars agree on it.
-const ungroupedCollapsed = ref(false)
-
 export const useFactoryGroups = () => {
   const appStore = useAppStore()
+  const { forgetGroup } = useGroupCollapse()
 
   const factories = () => appStore.getFactories()
   const tab = () => appStore.getCurrentTab()
@@ -67,13 +64,6 @@ export const useFactoryGroups = () => {
     if (current) announce(setGroupColorIn(factories(), current, groupId, color))
   }
 
-  const setGroupCollapsed = (groupId: string, collapsed: boolean) => {
-    const current = tab()
-    if (current) announce(setGroupCollapsedIn(factories(), current, groupId, collapsed))
-  }
-
-  const toggleGroup = (group: FactoryGroup) => setGroupCollapsed(group.id, !group.collapsed)
-
   const reorderGroup = (groupId: string, direction: 'up' | 'down') => {
     const current = tab()
     if (!current) return
@@ -95,7 +85,9 @@ export const useFactoryGroups = () => {
 
   const deleteGroup = (groupId: string, reassignTo: string | null = null) => {
     const current = tab()
-    if (current) announce(deleteGroupIn(factories(), current, groupId, reassignTo))
+    if (!current) return
+    announce(deleteGroupIn(factories(), current, groupId, reassignTo))
+    forgetGroup(groupId)
   }
 
   const countIn = (groupId: string | null) => factoriesInGroup(appStore.factories, groupId).length
@@ -104,12 +96,9 @@ export const useFactoryGroups = () => {
     sections,
     groups,
     countIn,
-    ungroupedCollapsed,
     createGroup,
     renameGroup,
     setGroupColor,
-    setGroupCollapsed,
-    toggleGroup,
     reorderGroup,
     setGroupOrder,
     moveFactoryToGroup,

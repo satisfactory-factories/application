@@ -169,15 +169,15 @@ export const createGroup = (
     name: name.trim() || 'New group',
     color: color ?? defaultGroupColor(groups),
     order: groups.length,
-    collapsed: false,
   }
 
   tab.groups = [...(tab.groups ?? []), cloneGroup(group)]
   return group
 }
 
-// One helper behind rename / recolour / collapse: they differ only in which field changes, and
-// all three have to fan the new record out to every member.
+// One helper behind rename and recolour: they differ only in which field changes, and both have
+// to fan the new record out to every member. Collapse is deliberately not one of them — see
+// useGroupCollapse, which keeps it out of the plan precisely because this fan-out is expensive.
 const updateGroup = (
   factories: Factory[],
   tab: FactoryTab,
@@ -204,9 +204,6 @@ export const renameGroup = (factories: Factory[], tab: FactoryTab, groupId: stri
 
 export const setGroupColor = (factories: Factory[], tab: FactoryTab, groupId: string, color: string) =>
   updateGroup(factories, tab, groupId, { color })
-
-export const setGroupCollapsed = (factories: Factory[], tab: FactoryTab, groupId: string, collapsed: boolean) =>
-  updateGroup(factories, tab, groupId, { collapsed })
 
 /** Move a group up or down the plan, taking its factories with it. */
 export const reorderGroup = (

@@ -70,9 +70,13 @@
             :group="section.group"
             @toggle="toggleSection(section)"
           />
-          <template v-if="!sectionCollapsed(section)">
+          <!-- Hidden rather than removed once the group has been open: rebuilding forty cards on
+               every collapse is what made the toggle take seconds. A group already shut when the
+               plan loads never mounts them at all. -->
+          <template v-if="sectionMounted(section)">
             <planner-factory
               v-for="factory in section.factories"
+              v-show="!sectionCollapsed(section)"
               :key="factory.id"
               :factory="factory"
               :help-text="helpText"
@@ -115,6 +119,7 @@
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
@@ -125,19 +130,12 @@
 
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
-  const {
-    sections: groupSections,
-    setGroupCollapsed,
-    ungroupedCollapsed,
-  } = useFactoryGroups()
+  const { sections: groupSections } = useFactoryGroups()
+  const { isCollapsed, isMounted, setCollapsed, toggleCollapsed } = useGroupCollapse()
 
-  const sectionCollapsed = (section: FactoryGroupSection) =>
-    section.group?.collapsed ?? ungroupedCollapsed.value
-
-  const toggleSection = (section: FactoryGroupSection) => {
-    if (section.group) setGroupCollapsed(section.group.id, !section.group.collapsed)
-    else ungroupedCollapsed.value = !ungroupedCollapsed.value
-  }
+  const sectionCollapsed = (section: FactoryGroupSection) => isCollapsed(section.group?.id ?? null)
+  const sectionMounted = (section: FactoryGroupSection) => isMounted(section.group?.id ?? null)
+  const toggleSection = (section: FactoryGroupSection) => toggleCollapsed(section.group?.id ?? null)
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -570,14 +568,10 @@
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
     factory.hidden = false
 
-    // Same reasoning one step out: a card inside a collapsed group has no element to scroll to,
-    // so every jump into one — a status chip, a pending session navigation, a link from another
-    // page — would silently do nothing. Open the group first.
-    if (factory.group?.collapsed) {
-      setGroupCollapsed(factory.group.id, false)
-    } else if (!factory.group && ungroupedCollapsed.value) {
-      ungroupedCollapsed.value = false
-    }
+    // Same reasoning one step out: a card inside a collapsed group is hidden and has nothing to
+    // scroll to, so every jump into one — a status chip, a pending session navigation, a link from
+    // another page — would silently do nothing. Open the group first.
+    setCollapsed(factory.group?.id ?? null, false)
 
     // Wait a bit for the factory to unhide fully. Hack but works well.
     setTimeout(() => scrollToElement(subsection ?? `${factoryId}`), 50)

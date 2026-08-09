@@ -137,7 +137,6 @@ export interface FactoryGroup {
   name: string;
   color: string;
   order: number;
-  collapsed: boolean;
 }
 
 export interface Factory {

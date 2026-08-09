@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent } from '@testing-library/vue'
 import PlannerSidebarGroup from './PlannerSidebarGroup.vue'
 
@@ -26,13 +26,13 @@ import { vuetifyRender } from '@/utils/ui-test-bootstrap'
 import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
+import { useGroupCollapse } from '@/composables/useGroupCollapse'
 
 const group = (overrides: Partial<FactoryGroup> = {}): FactoryGroup => ({
   id: 'g1',
   name: 'Aluminium',
   color: '#4caf50',
   order: 0,
-  collapsed: false,
   ...overrides,
 })
 
@@ -53,10 +53,19 @@ const withProducts = (name: string, id: number, productIds: string[]): Factory =
   return factory
 }
 
-const renderGroup = (section: FactoryGroupSection, ungroupedCollapsed = false) =>
+const renderGroup = (section: FactoryGroupSection) =>
   vuetifyRender(PlannerSidebarGroup, {
-    props: { section, statuses: new Map(), ungroupedCollapsed },
+    props: { section, statuses: new Map() },
   })
+
+// Collapse is view state shared at module scope, so it has to be reset between tests or one
+// collapsed group leaks into every case after it.
+const { isCollapsed, setCollapsed } = useGroupCollapse()
+afterEach(() => {
+  setCollapsed('g1', false)
+  setCollapsed(null, false)
+  localStorage.clear()
+})
 
 describe('PlannerSidebarGroup', () => {
   it('shows the group name and its factory count', () => {
@@ -117,8 +126,9 @@ describe('PlannerSidebarGroup', () => {
     // Sortable needs a target with real geometry. Without the strip these two states are zero
     // pixels tall and cannot be dragged into at all.
     it('appears when the group is collapsed', () => {
+      setCollapsed('g1', true)
       const { container } = renderGroup({
-        group: group({ collapsed: true }),
+        group: group(),
         factories: [withProducts('Alpha', 1, [])],
       })
 
@@ -142,21 +152,35 @@ describe('PlannerSidebarGroup', () => {
   })
 
   describe('collapse', () => {
-    it('hides the rows when collapsed', () => {
-      const open = renderGroup({ group: group(), factories: [withProducts('Alpha', 1, [])] })
-      const shut = renderGroup({ group: group({ collapsed: true }), factories: [withProducts('Alpha', 1, [])] })
-
-      expect(open.container.querySelectorAll('.group-body .factory-card')).toHaveLength(1)
-      expect(shut.container.querySelectorAll('.group-body .factory-card')).toHaveLength(0)
-    })
-
-    it('asks the list to toggle Ungrouped, which has nowhere of its own to store it', async () => {
-      const { container, emitted } = renderGroup({ group: null, factories: [] })
+    // Collapsing marks the body rather than dropping the rows: rebuilding forty of them on every
+    // toggle is what made a large group take seconds to open, so CSS hides what is already there.
+    it('marks the body collapsed, keeping the rows it has already rendered', async () => {
+      const { container } = renderGroup({ group: group(), factories: [withProducts('Alpha', 1, [])] })
+      expect(container.querySelector('.group-body.collapsed')).toBeNull()
 
       await fireEvent.click(container.querySelector('.chevron')!)
 
-      expect(emitted()['toggle-ungrouped']).toHaveLength(1)
+      expect(container.querySelector('.group-body.collapsed')).not.toBeNull()
+      expect(container.querySelectorAll('.group-body .factory-card')).toHaveLength(1)
     })
+
+    it('toggles Ungrouped too, which has nowhere in the plan of its own to store it', async () => {
+      const { container } = renderGroup({ group: null, factories: [] })
+
+      await fireEvent.click(container.querySelector('.chevron')!)
+
+      expect(isCollapsed(null)).toBe(true)
+    })
+  })
+
+  it('hangs each row off a tree wrapper, so the trunk and elbow miss the row itself', () => {
+    const { container } = renderGroup({
+      group: group(),
+      factories: [withProducts('Alpha', 1, []), withProducts('Bravo', 2, [])],
+    })
+
+    expect(container.querySelectorAll('.group-body > .tree-item')).toHaveLength(2)
+    expect(container.querySelectorAll('.tree-item > .factory-card')).toHaveLength(2)
   })
 
   it('asks the list to delete, rather than deleting behind its back', async () => {
