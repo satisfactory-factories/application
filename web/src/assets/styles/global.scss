@@ -426,6 +426,31 @@
     }
   }
 
+  // A card in a group. This MUST come before .problem/.warning below: the three rules have equal
+  // specificity, so source order decides, and a status has to keep the header. A broken factory
+  // reading as "green group" would hide the one thing that needs attention. The spine is
+  // unaffected either way, so the group stays legible on a factory that is in trouble.
+  &.grouped {
+    position: relative;
+
+    .header {
+      background-color: var(--sf-group-muted);
+    }
+  }
+
+  // Deliberately an element and not `.factory-card::before`: this class is on the sidebar rows
+  // too, where that pseudo-element is already the scroll-spy indicator.
+  .group-spine {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 5px;
+    background-color: var(--sf-group);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   &.problem {
     border: 2px solid var(--sf-problem-border) !important;
 

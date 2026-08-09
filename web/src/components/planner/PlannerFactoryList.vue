@@ -85,115 +85,40 @@
       </v-card>
     </div>
   </div>
-  <draggable
-    v-show="show"
-    v-model="factoriesCopy"
-    class="factory-list"
-    item-key="id"
-    @end="onDragEnd"
-  >
-    <template #item="{ element }">
-      <div :key="element.id" class="mb-1 rounded" :class="factoryClass(element)">
-        <v-card
-          class="w-100 header list px-0 rounded-0 "
-          style="box-shadow: none !important;"
-          @click="navigateToFactory(element.id)"
-        >
-          <v-row class="d-flex flex-nowrap ma-0">
-            <!-- A column, not a row: the status chips line sits under the name and grows the
-                 entry when something needs attention. The cells to the right stretch to match. -->
-            <v-spacer class="d-flex flex-column justify-center text-body-1 pa-2">
-              <div class="d-flex align-center">
-                <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-                <factory-icon-display
-                  class="mr-2"
-                  clickable
-                  :icon="element.icon"
-                  size="20"
-                  @click.stop="iconDialogFactory = element as Factory"
-                />
-                <span>{{ truncateFactoryName(element.name) }}</span>
-              </div>
-              <factory-status-chips
-                animated
-                :statuses="statuses.get(element.id)"
-                @navigate="section => navigateToFactory(element.id, `${element.id}-${section}`)"
-              />
-            </v-spacer>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  v-if="countActiveTasks(element as Factory)"
-                  class="context-icon align-content-center text-center py-0 px-1"
-                  cols="auto"
-                  v-bind="props"
-                  @click="navigateToFactory(element.id, `${element.id}-tasks`)"
-                  @click.stop
-                >
-                  <i class="d-inline fas fa-tasks mr-1" />
-                  <span>{{ countActiveTasks(element as Factory) }}</span>
-                </v-col>
-              </template>
-              <span>Tasks: {{ countActiveTasks(element as Factory) }}</span>
-            </v-tooltip>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  v-if="element.notes"
-                  class="context-icon align-content-center text-center py-0 px-1"
-                  cols="auto"
-                  v-bind="props"
-                  @click="navigateToFactory(element.id, `${element.id}-notes`)"
-                  @click.stop
-                >
-                  <i class="d-inline fas fa-sticky-note" />
-                </v-col>
-              </template>
-              <span>See notes</span>
-            </v-tooltip>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  class="pa-0 ml-2 align-content-center text-center sync-state"
-                  :class="syncStateClass(element)"
-                  cols="auto"
-                  v-bind="props"
-                >
-                  <div v-if="element.inSync" class="d-inline">
-                    <i class="fas fa-check" />
-                  </div>
-                  <div v-if="element.inSync === false" class="d-inline">
-                    <i class="fas fa-times" />
-                  </div>
-                  <div v-if="element.inSync === null" class="d-inline">
-                    <i class="fas fa-question" />
-                  </div>
-                </v-col>
-              </template>
-              <span>
-                {{ element.inSync === true
-                  ? 'In sync with game'
-                  : element.inSync === false
-                    ? 'Out of sync with game'
-                    : 'Game sync unknown'
-                }}
-              </span>
-            </v-tooltip>
-          </v-row>
-        </v-card>
-      </div>
-    </template>
-  </draggable>
-  <!-- One dialog for the whole list rather than one per row: the sidebar renders every
-       factory in the plan, and a v-dialog each is a lot of dead weight for a picker. -->
-  <factory-icon-dialog
-    v-if="iconDialogFactory"
-    :key="iconDialogFactory.id"
-    v-model="iconDialogOpen"
-    :factory="iconDialogFactory"
-  />
+  <div v-show="show" class="factory-list">
+    <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
+         not stored, so there is no group record to reorder. -->
+    <planner-sidebar-group
+      v-if="ungroupedSection"
+      :section="ungroupedSection"
+      :statuses="statuses"
+      :ungrouped-collapsed="ungroupedCollapsed"
+      @toggle-ungrouped="ungroupedCollapsed = !ungroupedCollapsed"
+    />
+
+    <draggable
+      :group="{ name: 'sidebar-groups' }"
+      handle=".group-drag-handle"
+      item-key="id"
+      :model-value="groupSections"
+      @change="onGroupOrderChange"
+    >
+      <template #item="{ element }">
+        <planner-sidebar-group
+          :section="element"
+          :statuses="statuses"
+          :ungrouped-collapsed="ungroupedCollapsed"
+          @delete="requestGroupDelete"
+        />
+      </template>
+    </draggable>
+  </div>
+
+  <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
+
   <v-row class="pa-0 ma-0">
-    <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
+    <v-col class="text-center d-flex justify-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
         prepend-icon="fas fa-plus"
@@ -202,26 +127,36 @@
       >
         Add Factory
       </v-btn>
+      <v-btn
+        class="create-group-btn"
+        color="secondary"
+        prepend-icon="fas fa-folder-plus"
+        ripple
+        variant="outlined"
+        @click="createGroupOpen = true"
+      >
+        Group
+      </v-btn>
     </v-col>
   </v-row>
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, type Ref, watch } from 'vue'
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { countActiveTasks } from '@/utils/factory-management/factory'
+  import { computed, inject, ref, type Ref } from 'vue'
+  import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
-  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
-  import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
+  import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { getFactoryStatuses } from '@/utils/factory-management/status'
+  import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
+  import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
+  import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
 
-  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
-  // Scroll-spy from Planner.vue: the factory id (or section element id, e.g.
-  // 'statistics') currently under the user's eye-line.
+  // Scroll-spy from Planner.vue, used by the two jump-link cards above the factory list.
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const emit = defineEmits<{
@@ -245,23 +180,30 @@
     : totalPower.value.totalPowerDifference)
   const powerDeficit = computed(() => powerDifference.value < 0)
 
-  // The row whose icon picker is open, or null when it is closed.
-  const iconDialogFactory = ref<Factory | null>(null)
-  const iconDialogOpen = computed({
-    get: () => iconDialogFactory.value !== null,
-    set: value => {
-      if (!value) iconDialogFactory.value = null
-    },
-  })
+  // Groups. Every mutation goes through the composable, which is the single writer — this
+  // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
+  // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
+  const { sections, setGroupOrder, ungroupedCollapsed } = useFactoryGroups()
 
-  const factoriesCopy = ref([...compProps.factories])
+  const ungroupedSection = computed(() => sections.value.find(section => !section.group))
+  const groupSections = computed(() => sections.value.filter(section => section.group))
 
-  // The copy holds the same factory objects, so name/status changes flow through them
-  // reactively — it only goes stale when membership or order changes. Watching that
-  // via an id fingerprint avoids a deep watch re-traversing the whole plan per flush.
-  watch(() => compProps.factories.map(factory => factory.id).join('|'), () => {
-    factoriesCopy.value = [...compProps.factories]
-  })
+  const createGroupOpen = ref(false)
+  const deleteGroupOpen = ref(false)
+  const groupPendingDelete = ref<FactoryGroup | null>(null)
+
+  const requestGroupDelete = (group: FactoryGroup) => {
+    groupPendingDelete.value = group
+    deleteGroupOpen.value = true
+  }
+
+  const onGroupOrderChange = (event: { moved?: { newIndex: number, oldIndex: number } }) => {
+    if (!event.moved) return
+    const ordered = groupSections.value.map(section => section.group as FactoryGroup)
+    const [group] = ordered.splice(event.moved.oldIndex, 1)
+    ordered.splice(event.moved.newIndex, 0, group)
+    setGroupOrder(ordered)
+  }
 
   // "Cheat" here by when a load is requested we hide the list
   eventBus.on('prepareForLoad', () => {
@@ -278,32 +220,8 @@
     compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
   ))
 
-  const factoryClass = (factory: Factory) => {
-    return {
-      'factory-card': true,
-      'active-view': factory.id === activeFactoryId.value,
-      ...factoryStatusClass(statuses.value.get(factory.id)),
-    }
-  }
-
   const createFactory = () => {
     emit('createFactory')
-  }
-
-  const truncateFactoryName = (name: string, limit: number = 24) => {
-    return name.length > limit ? name.substring(0, limit) + '...' : name
-  }
-
-  const onDragEnd = () => {
-    emit('updateFactories', factoriesCopy.value)
-  }
-
-  const syncStateClass = (factory: Factory) => {
-    return {
-      'bg-green-darken-2': factory.inSync,
-      'bg-orange-darken-2': factory.inSync === false,
-      'bg-grey-darken-2': factory.inSync === null,
-    }
   }
 </script>
 

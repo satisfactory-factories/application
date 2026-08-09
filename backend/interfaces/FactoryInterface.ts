@@ -131,6 +131,15 @@ export interface FactoryPower {
   difference: number;
 }
 
+// Denormalised onto every member factory, because the save payload is a bare Factory[]
+export interface FactoryGroup {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  collapsed: boolean;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -156,6 +165,7 @@ export interface Factory {
   tasks: FactoryTask[]
   notes: string
   icon?: string // ID from the frontend's factory-icons registry
+  group?: FactoryGroup // Absent means ungrouped
   dataVersion: string
 }
 
@@ -163,4 +173,5 @@ export interface FactoryTab {
   id: string;
   name: string;
   factories: Factory[];
+  groups?: FactoryGroup[]; // Registry for groups with no member factory to carry them
 }

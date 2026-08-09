@@ -399,26 +399,43 @@ export const countActiveTasks = (factory: Factory) => {
   return factory.tasks.filter(task => !task.completed).length
 }
 
+// Position of a factory among the others in its own group, and how many of them there are.
+// The up/down buttons and the reorder below both work in these terms rather than global ones:
+// a swap across a group boundary would either tear the group apart or, once the grouping sort
+// re-ran, silently undo itself.
+export const factoryPositionInGroup = (
+  factory: Factory,
+  allFactories: Factory[],
+): { index: number, total: number } => {
+  const siblings = allFactories.filter(
+    candidate => (candidate.group?.id ?? null) === (factory.group?.id ?? null)
+  )
+  return { index: siblings.indexOf(factory), total: siblings.length }
+}
+
 export const reorderFactory = (factory: Factory, direction: string, allFactories: Factory[]) => {
-  const currentOrder = factory.displayOrder
-  let targetOrder
+  const siblings = allFactories.filter(
+    candidate => (candidate.group?.id ?? null) === (factory.group?.id ?? null)
+  )
+  const currentIndex = siblings.indexOf(factory)
+  const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-  if (direction === 'up' && currentOrder > 0) {
-    targetOrder = currentOrder - 1
-  } else if (direction === 'down' && currentOrder < allFactories.length - 1) {
-    targetOrder = currentOrder + 1
-  } else {
-    return // Invalid move
+  if (currentIndex === -1 || targetIndex < 0 || targetIndex >= siblings.length) {
+    return // At the edge of its own group
   }
 
-  // Find the target factory and swap display orders
-  const targetFactory = allFactories.find(fac => fac.displayOrder === targetOrder)
-  if (targetFactory) {
-    targetFactory.displayOrder = currentOrder
-    factory.displayOrder = targetOrder
-  }
+  // Swap the two within the flat array, which keeps the group contiguous by construction, then
+  // reindex from position. Not regenerateSortOrders(): that sorts by the OLD displayOrder first,
+  // which would put the swap straight back.
+  const target = siblings[targetIndex]
+  const from = allFactories.indexOf(factory)
+  const to = allFactories.indexOf(target)
+  allFactories[from] = target
+  allFactories[to] = factory
 
-  regenerateSortOrders(allFactories)
+  allFactories.forEach((entry, index) => {
+    entry.displayOrder = index
+  })
 }
 
 export const regenerateSortOrders = (factories: Factory[]) => {

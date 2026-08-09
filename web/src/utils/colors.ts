@@ -36,6 +36,10 @@ export const palette = {
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
   greyBorder: '#7f7f7f',
+  teal: '#26a69a',
+  pink: '#ec407a',
+  indigo: '#5c6bc0',
+  lime: '#c0ca33',
 } as const
 
 export interface SfColor {
@@ -94,6 +98,61 @@ export const sfColors = {
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors
+
+/**
+ * Colours a factory group may be given.
+ *
+ * Red, orange and yellow are deliberately absent: `problem` and `statusWarning` own them, and a
+ * group wearing a status colour would read as a broken factory at a glance. Everything else in
+ * the palette is fair game, and the user can pick anything at all through the custom picker —
+ * this list is the offered grid, not a restriction.
+ */
+export const groupPalette: { name: string, value: string }[] = [
+  { name: 'Green', value: palette.green },
+  { name: 'Teal', value: palette.teal },
+  { name: 'Cyan', value: palette.cyan },
+  { name: 'Light blue', value: palette.lightBlue },
+  { name: 'Blue', value: palette.blue },
+  { name: 'Indigo', value: palette.indigo },
+  { name: 'Purple', value: palette.purple },
+  { name: 'Pink', value: palette.pink },
+  { name: 'Lime', value: palette.lime },
+  { name: 'Beige', value: palette.beige },
+  { name: 'Grey', value: palette.grey },
+]
+
+// The card surface a group's muted header is blended into. Matches --sf-factory-bg's opaque
+// equivalent — see sfColors.factory, whose background is the same grey at 40%.
+const cardSurface = '#2b2b2b'
+
+const parseHex = (hex: string): [number, number, number] => {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean
+  return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) || 0) as [number, number, number]
+}
+
+/**
+ * Blend `hex` into `base` by `amount` (0 = all base, 1 = all hex), returning an opaque colour.
+ *
+ * Opaque on purpose. The `problem` background above had to stop being an alpha value because it
+ * composited to a different shade over the sidebar than over a card; a group's muted header has
+ * exactly the same problem, and is used on both surfaces.
+ */
+export const mixHex = (hex: string, amount: number, base: string = cardSurface): string => {
+  const [r1, g1, b1] = parseHex(hex)
+  const [r2, g2, b2] = parseHex(base)
+  const mix = (a: number, b: number) => Math.round(b + (a - b) * amount)
+  return `#${[mix(r1, r2), mix(g1, g2), mix(b1, b2)]
+    .map(channel => channel.toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+// The two values every group-coloured surface binds. `muted` fills a card or sidebar header;
+// the raw colour draws the spine and the swatch.
+export const groupColorVars = (color: string): Record<string, string> => ({
+  '--sf-group': color,
+  '--sf-group-muted': mixHex(color, 0.22),
+})
 
 const toKebab = (name: string) => name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
 

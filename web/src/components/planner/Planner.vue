@@ -60,13 +60,26 @@
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
-        <planner-factory
-          v-for="(factory) in getFactories()"
-          :key="factory.id"
-          :factory="factory"
-          :help-text="helpText"
-          :total-factories="getFactories().length"
-        />
+        <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
+          <!-- A plan that has never used groups is one Ungrouped section, and a band over the
+               whole plan says nothing — so it only appears once there is something to divide. -->
+          <planner-group-band
+            v-if="groupSections.length > 1"
+            :collapsed="sectionCollapsed(section)"
+            :count="section.factories.length"
+            :group="section.group"
+            @toggle="toggleSection(section)"
+          />
+          <template v-if="!sectionCollapsed(section)">
+            <planner-factory
+              v-for="factory in section.factories"
+              :key="factory.id"
+              :factory="factory"
+              :help-text="helpText"
+              :total-factories="getFactories().length"
+            />
+          </template>
+        </template>
         <div class="mt-4 text-center">
           <v-btn
             color="primary"
@@ -101,13 +114,30 @@
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
+  import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
+
+  const {
+    sections: groupSections,
+    setGroupCollapsed,
+    ungroupedCollapsed,
+  } = useFactoryGroups()
+
+  const sectionCollapsed = (section: FactoryGroupSection) =>
+    section.group?.collapsed ?? ungroupedCollapsed.value
+
+  const toggleSection = (section: FactoryGroupSection) => {
+    if (section.group) setGroupCollapsed(section.group.id, !section.group.collapsed)
+    else ungroupedCollapsed.value = !ungroupedCollapsed.value
+  }
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -330,7 +360,16 @@
     const activationLine = getActivationLine()
     // Sections then factories, matching document order — so once an entry starts
     // below the line, no later one can span it.
-    const entries: (number | string)[] = ['statistics', 'factory-summary', ...getFactories().map(factory => factory.id)]
+    // Group bands are in the list too: a collapsed group contributes no cards, so without its
+    // band there is a stretch of the page nothing claims and the highlight sticks behind.
+    const entries: (number | string)[] = [
+      'statistics',
+      'factory-summary',
+      ...groupSections.value.flatMap(section => [
+        `group-${section.group?.id ?? 'ungrouped'}`,
+        ...(sectionCollapsed(section) ? [] : section.factories.map(factory => factory.id)),
+      ]),
+    ]
     for (const entry of entries) {
       const rect = document.getElementById(`${entry}`)?.getBoundingClientRect()
       if (!rect) continue
@@ -465,17 +504,17 @@
     // tears them (and a recalculation of every affected factory) back down.
     newFactory.dependencies = { requests: {}, metrics: {} }
 
-    getFactories().push(newFactory)
-
-    // Update the display order of the other factory
-    if (newFactory.displayOrder > originalFactory.displayOrder && newFactory.id !== newId) {
-      newFactory.displayOrder += 1
-    }
+    // The clone inherits the original's group (structuredClone carried it), so seat it directly
+    // after the original. Appending and re-sorting would drop it at the end of that group.
+    const originalIndex = getFactories().indexOf(originalFactory)
+    getFactories().splice(originalIndex + 1, 0, newFactory)
+    getFactories().forEach((entry, index) => {
+      entry.displayOrder = index
+    })
 
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
-    regenerateSortOrders(getFactories())
     navigateToFactory(newId)
   }
 
@@ -530,6 +569,15 @@
     }
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
     factory.hidden = false
+
+    // Same reasoning one step out: a card inside a collapsed group has no element to scroll to,
+    // so every jump into one — a status chip, a pending session navigation, a link from another
+    // page — would silently do nothing. Open the group first.
+    if (factory.group?.collapsed) {
+      setGroupCollapsed(factory.group.id, false)
+    } else if (!factory.group && ungroupedCollapsed.value) {
+      ungroupedCollapsed.value = false
+    }
 
     // Wait a bit for the factory to unhide fully. Hack but works well.
     setTimeout(() => scrollToElement(subsection ?? `${factoryId}`), 50)
