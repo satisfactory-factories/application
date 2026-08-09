@@ -9,9 +9,10 @@
     <game-asset-content
       :height="height"
       :subject="subject"
-      :title="`${wikiName ?? displayName} — open on the Satisfactory Wiki`"
+      :title="wikiName ?? displayName"
       :type="type"
       :width="width"
+      wiki
     />
   </a>
   <game-asset-content

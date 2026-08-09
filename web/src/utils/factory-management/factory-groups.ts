@@ -282,6 +282,38 @@ export const moveFactoryToGroup = (
   return [factory]
 }
 
+/**
+ * Move a batch of factories into one group (or out of all of them), keeping their existing
+ * relative order and landing them at the end of the target.
+ *
+ * Not a loop over moveFactoryToGroup: that re-sorts the whole plan per factory, so assigning forty
+ * of them would run forty full passes over the array. This rewrites every membership first and
+ * sorts once. Factories already in the target are skipped, so they are not announced as changed.
+ */
+export const moveFactoriesToGroup = (
+  factories: Factory[],
+  tab: FactoryTab,
+  factoryIds: number[],
+  groupId: string | null,
+): Factory[] => {
+  const groups = collectGroups(factories, tab)
+  const target = groupId ? groups.find(group => group.id === groupId) : null
+  if (groupId && !target) return []
+
+  const wanted = new Set(factoryIds)
+  const touched: Factory[] = []
+
+  for (const factory of factories) {
+    if (!wanted.has(factory.id)) continue
+    if ((factory.group?.id ?? null) === (groupId ?? null)) continue
+    factory.group = target ? cloneGroup(target) : undefined
+    touched.push(factory)
+  }
+
+  applyGroupOrder(factories, tab, groups)
+  return touched
+}
+
 /** Reposition a factory inside the group it is already in. */
 export const reorderFactoryInGroup = (
   factories: Factory[],

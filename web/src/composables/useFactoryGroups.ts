@@ -7,6 +7,7 @@ import {
   deleteGroup as deleteGroupIn,
   factoriesInGroup,
   groupedFactories,
+  moveFactoriesToGroup as moveFactoriesToGroupIn,
   moveFactoryToGroup as moveFactoryToGroupIn,
   renameGroup as renameGroupIn,
   reorderGroup as reorderGroupIn,
@@ -83,6 +84,11 @@ export const useFactoryGroups = () => {
     if (current) announce(moveFactoryToGroupIn(factories(), current, factoryId, groupId, position))
   }
 
+  const moveFactoriesToGroup = (factoryIds: number[], groupId: string | null) => {
+    const current = tab()
+    if (current) announce(moveFactoriesToGroupIn(factories(), current, factoryIds, groupId))
+  }
+
   const deleteGroup = (groupId: string, reassignTo: string | null = null) => {
     const current = tab()
     if (!current) return
@@ -102,6 +108,7 @@ export const useFactoryGroups = () => {
     reorderGroup,
     setGroupOrder,
     moveFactoryToGroup,
+    moveFactoriesToGroup,
     deleteGroup,
   }
 }

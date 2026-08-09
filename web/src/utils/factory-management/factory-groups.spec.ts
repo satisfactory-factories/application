@@ -9,6 +9,7 @@ import {
   deleteGroup,
   factoriesInGroup,
   groupedFactories,
+  moveFactoriesToGroup,
   moveFactoryToGroup,
   reconcileGroups,
   renameGroup,
@@ -232,6 +233,52 @@ describe('factory-groups', () => {
 
       expect(touched).toHaveLength(2)
       expect(factoriesInGroup(factories, created.id).map(f => f.group?.color)).toEqual(['#2196f3', '#2196f3'])
+    })
+
+    it('moves a batch in one pass, keeping their relative order', () => {
+      const from = createGroup(factories, tab, 'From')
+      const to = createGroup(factories, tab, 'To')
+      const ids = [factories[0].id, factories[1].id, factories[2].id]
+      moveFactoriesToGroup(factories, tab, ids, from.id)
+
+      const touched = moveFactoriesToGroup(factories, tab, [ids[0], ids[2]], to.id)
+
+      expect(touched.map(f => f.id)).toEqual([ids[0], ids[2]])
+      expect(factoriesInGroup(factories, to.id).map(f => f.id)).toEqual([ids[0], ids[2]])
+      expect(factoriesInGroup(factories, from.id).map(f => f.id)).toEqual([ids[1]])
+      expectInvariant(factories, tab)
+    })
+
+    it('leaves factories already in the target alone, so nothing spurious is announced', () => {
+      const target = createGroup(factories, tab, 'Target')
+      // Snapshot up front: the mutation re-sorts the array, so positional reads afterwards point
+      // at different factories.
+      const ids = [factories[0].id, factories[1].id]
+      moveFactoriesToGroup(factories, tab, [ids[0]], target.id)
+
+      const touched = moveFactoriesToGroup(factories, tab, ids, target.id)
+
+      expect(touched).toHaveLength(1)
+      expect(factoriesInGroup(factories, target.id)).toHaveLength(2)
+    })
+
+    it('sends a batch back to Ungrouped', () => {
+      const created = createGroup(factories, tab, 'Group')
+      const ids = [factories[0].id, factories[1].id]
+      moveFactoriesToGroup(factories, tab, ids, created.id)
+
+      moveFactoriesToGroup(factories, tab, ids, null)
+
+      expect(factoriesInGroup(factories, created.id)).toHaveLength(0)
+      expect(factoriesInGroup(factories, null)).toHaveLength(4)
+      expectInvariant(factories, tab)
+    })
+
+    it('does nothing at all for a group that does not exist', () => {
+      const before = factories.map(f => f.group?.id ?? null)
+
+      expect(moveFactoriesToGroup(factories, tab, [factories[0].id], 'nope')).toEqual([])
+      expect(factories.map(f => f.group?.id ?? null)).toEqual(before)
     })
 
     it('sends a deleted group\'s factories where it is told, never deleting one', () => {

@@ -309,8 +309,11 @@
 
     // A text label directly after an icon: the image already carries its own 8px
     // gutter (inside the link wrapper when clickable), so the span's left margin
-    // would double it.
+    // would double it. `.game-asset-content` is the tooltip wrapper every game
+    // image now sits in — no markup pairs it with a bare label today, but leaving
+    // it out is a doubled gap waiting for the first one that does.
     .game-asset-clickable + span:not([class]),
+    .game-asset-content + span:not([class]),
     img + span:not([class]),
     .v-img + span:not([class]) {
       margin-left: 0 !important;
@@ -415,6 +418,13 @@
     &.list {
       padding: 0 !important;
       border-bottom: 0;
+    }
+
+    // Everything in a card header takes the same small radius as the action buttons at its right
+    // edge. Vuetify chips are pills, which put three different corner treatments on one line.
+    .sf-chip,
+    .v-btn {
+      border-radius: 4px !important;
     }
 
     // A collapsed card renders the header alone: its divider would sit flush on the

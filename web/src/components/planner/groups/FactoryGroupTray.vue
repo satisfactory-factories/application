@@ -6,8 +6,8 @@
       <v-chip
         class="sf-chip small group-chip"
         :class="{ ungrouped: !factory.group }"
+        :data-hover-tooltip="factory.group ? `In group: ${factory.group.name} — click to change` : 'Not in a group — click to assign one'"
         :style="factory.group ? groupChipStyle : undefined"
-        title="Set this factory's group"
         v-bind="activatorProps"
       >
         <i class="fas fa-folder" />

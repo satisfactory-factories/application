@@ -139,7 +139,18 @@
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
   const { sections: groupSections } = useFactoryGroups()
-  const { isCollapsed, isMounted, setCollapsed, toggleCollapsed } = useGroupCollapse()
+  const { isCollapsed, isMounted, setCollapsed, toggleCollapsed, usePlan } = useGroupCollapse()
+
+  // Which plan's collapse state is in play. Group ids survive a copied plan, and Ungrouped has no
+  // id at all, so without this two tabs would drive each other's sections.
+  const appStore = useAppStore()
+  watch(
+    () => appStore.getCurrentTab()?.id,
+    id => {
+      if (id) usePlan(id)
+    },
+    { immediate: true },
+  )
 
   const sectionCollapsed = (section: FactoryGroupSection) => isCollapsed(section.group?.id ?? null)
   const sectionMounted = (section: FactoryGroupSection) => isMounted(section.group?.id ?? null)

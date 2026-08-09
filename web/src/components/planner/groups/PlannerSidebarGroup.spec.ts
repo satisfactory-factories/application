@@ -61,7 +61,9 @@ const renderGroup = (section: FactoryGroupSection) =>
 
 // Collapse is view state shared at module scope, so it has to be reset between tests or one
 // collapsed group leaks into every case after it.
-const { isCollapsed, setCollapsed } = useGroupCollapse()
+const { isCollapsed, setCollapsed, usePlan } = useGroupCollapse()
+// Collapse state is namespaced per plan, so one has to be on screen before any of it applies.
+usePlan('spec-plan')
 const { draggingFactory } = useFactoryDrag()
 afterEach(() => {
   setCollapsed('g1', false)

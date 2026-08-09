@@ -112,10 +112,11 @@
   </div>
 
   <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-group-bulk-dialog v-model="bulkGroupOpen" />
   <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
 
   <v-row class="pa-0 ma-0">
-    <v-col class="text-center d-flex justify-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
+    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
         prepend-icon="fas fa-plus"
@@ -124,16 +125,33 @@
       >
         Add Factory
       </v-btn>
-      <v-btn
-        class="create-group-btn"
-        color="secondary"
-        prepend-icon="fas fa-folder-plus"
-        ripple
-        variant="outlined"
-        @click="createGroupOpen = true"
-      >
-        Group
-      </v-btn>
+      <!-- Group management sits on its own line under it: neither button is the thing you reach
+           for most, and side by side they competed with Add Factory for the same glance. -->
+      <div class="d-flex justify-center flex-wrap ga-2">
+        <v-btn
+          class="create-group-btn"
+          color="secondary"
+          prepend-icon="fas fa-folder-plus"
+          ripple
+          size="small"
+          variant="outlined"
+          @click="createGroupOpen = true"
+        >
+          Group
+        </v-btn>
+        <v-btn
+          class="bulk-group-btn"
+          color="secondary"
+          :disabled="factories.length === 0"
+          prepend-icon="fas fa-object-group"
+          ripple
+          size="small"
+          variant="outlined"
+          @click="bulkGroupOpen = true"
+        >
+          Multi-Group Edit
+        </v-btn>
+      </div>
     </v-col>
   </v-row>
 </template>
@@ -148,6 +166,7 @@
   import { getFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
+  import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
   import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
@@ -186,6 +205,7 @@
   const groupSections = computed(() => sections.value.filter(section => section.group))
 
   const createGroupOpen = ref(false)
+  const bulkGroupOpen = ref(false)
   const deleteGroupOpen = ref(false)
   const groupPendingDelete = ref<FactoryGroup | null>(null)
 

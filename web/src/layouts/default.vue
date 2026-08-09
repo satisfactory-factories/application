@@ -13,7 +13,7 @@
     <v-main>
       <router-view />
       <toast />
-      <game-asset-tooltip />
+      <hover-tooltip />
       <plan-repair-dialog v-if="!hasError" />
     </v-main>
   </v-app>

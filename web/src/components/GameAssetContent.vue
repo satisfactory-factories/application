@@ -4,7 +4,11 @@
        hover, so hundreds of images across a plan cost one overlay component between them. (A
        `title` would not have worked on the VImg anyway — it renders its own root and forwards
        attributes to an inner <img> that does not exist until the image loads.) -->
-  <span class="game-asset-content" :data-asset-tooltip="title">
+  <span
+    class="game-asset-content"
+    :data-hover-link="wiki ? '' : undefined"
+    :data-hover-tooltip="title"
+  >
     <v-img
       v-if="!ficsmas && !unknown"
       :alt="subject"
@@ -31,6 +35,8 @@
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
     title?: string
+    // Marks the image as a wiki link, so the tooltip can say so on its own line.
+    wiki?: boolean
   }>()
 
   // State
