@@ -30,4 +30,3 @@
 - [Raw input assumption](raw-input-assumption.md) — removed entirely; the only survivors are decided by the game data, and misjudging that rule erases shortages silently
 - [Raw Resources Wizard](raw-resources-wizard.md) — why apply is transactional, and the building-group sync dance a created mine needs
 - [Game data version cache](game-data-version-cache.md) — bump `dataVersion` every time the data is regenerated, or browsers keep serving the old JSON
-- [Concise PR bodies](feedback-concise-pr-bodies.md) — cover manual steps, breaks and risky calls; the reasoning trail belongs elsewhere
