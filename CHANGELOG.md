@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## [Unreleased]
 
+### Factory groups
+
+- A plan of thirty factories was a flat list. The only ways to organise it were the name and the drag order, and that order was one long sequence with nothing marking where one concern ended and the next began. Factories now belong to a **group**: a named, coloured folder that collapses like a toggle, reorders, and can be dragged in and out of. Anything in no group falls into **Ungrouped**, pinned to the top.
+- **In the sidebar**, each group is a header with its colour swatch, an editable name, a factory count, and a second line showing what the group makes — up to eight item icons, then a `+N` tile whose tooltip lists the rest. Drag a factory between groups, reorder factories inside one, or drag the groups themselves. A group with no rows to aim at — collapsed, or simply empty — shows a dashed drop strip so it can still be dropped into.
+- **In the planner**, cards sit under a collapsible heading band per group, Ungrouped first. Bands only appear once there is more than one section, so a plan that has never used groups looks exactly as it did.
+- **Colour.** Pick from a palette or any colour you like through the picker. Red and amber are deliberately not offered: they are the problem and warning tiers, and a group wearing one would read as a broken factory. A group's colour gives its cards a muted header and a bright left spine — **and a status still wins the border and the header**, so a factory short of copper stays red while its spine keeps saying which group it is in.
+- **Assigning** is either a drag, or the new **Group** button on a factory's header, which lists the groups and can make a new one on the spot.
+- **Deleting a group never deletes a factory.** An empty group goes immediately; one that still holds factories asks where they should go first — Ungrouped, or another group.
+- Groups travel with the plan through save, share links, templates and cloud sync, with no migration and nothing to set up. Plans made before this change load untouched, entirely ungrouped.
+- One known limitation: a group you have created but not yet put anything in has no factory to travel on, so it will not appear on a different machine until it has at least one member.
+
 ### Factory icons
 
 - Every factory drew the same generic industry glyph, so a plan of twenty factories showed twenty identical icons and the only thing distinguishing a sidebar row was a truncated name. Factories now carry an **icon you choose**, and it shows everywhere the factory is referenced: the card header beside the name, the sidebar row, the Factories Summary table, the graph node, the import rows, and the import/export chips on collapsed cards and in the satisfaction table.

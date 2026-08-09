@@ -183,7 +183,7 @@
   // Groups. Every mutation goes through the composable, which is the single writer — this
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
-  const { sections, setGroupOrder, ungroupedCollapsed } = useFactoryGroups()
+  const { countIn, deleteGroup, sections, setGroupOrder, ungroupedCollapsed } = useFactoryGroups()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
@@ -193,6 +193,11 @@
   const groupPendingDelete = ref<FactoryGroup | null>(null)
 
   const requestGroupDelete = (group: FactoryGroup) => {
+    // Nothing to reassign, so nothing to ask about — an empty group just goes.
+    if (countIn(group.id) === 0) {
+      deleteGroup(group.id)
+      return
+    }
     groupPendingDelete.value = group
     deleteGroupOpen.value = true
   }
