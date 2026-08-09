@@ -106,6 +106,7 @@
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { FactoryGroupSection, UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
   import { groupColorVars } from '@/utils/colors'
+  import eventBus from '@/utils/eventBus'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
 
   const isOpen = defineModel<boolean>({ required: true })
@@ -136,6 +137,11 @@
     targets.value.find(entry => entry.value === target.value)?.title ?? 'Ungrouped'
   )
 
+  // The select needs "Ungrouped (remove from group)" to be unambiguous; a toast does not.
+  const shortTargetName = computed(() =>
+    groups.value.find(group => group.id === target.value)?.name ?? 'Ungrouped'
+  )
+
   const sectionVars = (section: FactoryGroupSection) =>
     section.group ? groupColorVars(section.group.color) : {}
 
@@ -161,10 +167,16 @@
     }
   }
 
+  // Stays open so several groups can be filled in one visit — the list re-sections in place, and
+  // the toast is what says the move landed.
   const apply = () => {
     // Snapshot the ids first: the mutation reorders the factories array in place.
-    moveFactoriesToGroup([...selected], target.value === UNGROUPED_ID ? null : target.value)
-    isOpen.value = false
+    const moved = moveFactoriesToGroup([...selected], target.value === UNGROUPED_ID ? null : target.value)
+    selected.clear()
+    eventBus.emit('toast', {
+      message: `Groups Assigned — ${moved.length} moved to ${shortTargetName.value}`,
+      type: 'info',
+    })
   }
 </script>
 

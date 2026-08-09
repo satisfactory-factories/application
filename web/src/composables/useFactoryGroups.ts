@@ -84,9 +84,13 @@ export const useFactoryGroups = () => {
     if (current) announce(moveFactoryToGroupIn(factories(), current, factoryId, groupId, position))
   }
 
-  const moveFactoriesToGroup = (factoryIds: number[], groupId: string | null) => {
+  // Returns the factories that actually moved — ones already in the target are not a move.
+  const moveFactoriesToGroup = (factoryIds: number[], groupId: string | null): Factory[] => {
     const current = tab()
-    if (current) announce(moveFactoriesToGroupIn(factories(), current, factoryIds, groupId))
+    if (!current) return []
+    const touched = moveFactoriesToGroupIn(factories(), current, factoryIds, groupId)
+    announce(touched)
+    return touched
   }
 
   const deleteGroup = (groupId: string, reassignTo: string | null = null) => {
