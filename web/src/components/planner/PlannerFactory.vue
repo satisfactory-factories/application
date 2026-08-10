@@ -452,8 +452,6 @@
 .factory-name {
   width: 85%;
   padding: 6px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
 
   // The markup's `pl-0` beat this on `!important` until Vuetify 4 layered the
   // spacing helpers. Scoped so it outranks the rule above deterministically.
@@ -461,9 +459,12 @@
     padding-left: revert-layer;
   }
 
-  &:hover {
-    cursor: pointer;
-    background-color: #323232;
+  // Underline the name itself rather than filling the field: the field runs to 85% of the
+  // header, so a fill highlighted far more than the thing you were about to edit. A text
+  // caret, not a hand, for the same reason — this is a field you type in, not a button.
+  &:hover, &:focus {
+    cursor: text;
+    text-decoration: underline;
   }
 }
 
