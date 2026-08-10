@@ -30,3 +30,6 @@
 - [Raw input assumption](raw-input-assumption.md) — removed entirely; the only survivors are decided by the game data, and misjudging that rule erases shortages silently
 - [Raw Resources Wizard](raw-resources-wizard.md) — why apply is transactional, and the building-group sync dance a created mine needs
 - [Game data version cache](game-data-version-cache.md) — bump `dataVersion` every time the data is regenerated, or browsers keep serving the old JSON
+- [Factory icon registry](factory-icon-registry.md) — plans store a bare icon ID we can never migrate; regenerate the registry after a game data change and never rename an ID
+- [Factory groups invariant](factory-groups-invariant.md) — groups ride on the factory (the save payload is a bare Factory[]) and are a sort of the one flat array; both break silently
+- [Game asset tooltips](game-asset-tooltips.md) — why every game image went tooltip-less: VImg eats a `title`, and a three-root component drops it with no warning

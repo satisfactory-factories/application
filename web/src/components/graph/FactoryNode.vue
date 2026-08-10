@@ -2,8 +2,8 @@
   <div class="node">
     <v-card>
       <v-card-title class="border-b-md">
-        <h1 class="text-h5">
-          <i class="fas fa-industry" /><span class="ml-2">{{ data.factory.name }}</span>
+        <h1 class="text-h5 d-flex align-center">
+          <factory-icon-display :icon="data.factory.icon" size="24" /><span class="ml-2">{{ data.factory.name }}</span>
         </h1>
       </v-card-title>
       <v-card-text class="py-0">

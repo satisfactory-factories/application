@@ -131,7 +131,7 @@
                   <td class="border-e-md factory-column">
                     <tooltip :text="statusTooltip(factory)">
                       <v-chip class="sf-chip summary-chip factory-chip factory">
-                        <i class="fas fa-industry" />
+                        <factory-icon-display :icon="factory.icon" size="20" />
                         <b class="ml-2">{{ factory.name }}</b>
                       </v-chip>
                     </tooltip>

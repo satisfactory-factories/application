@@ -68,6 +68,20 @@ if (typeof globalThis.visualViewport === 'undefined') {
   }
 }
 
+// jsdom has no ResizeObserver, and Vuetify's VSlideGroup constructs one unconditionally —
+// so every v-tabs / v-slide-group / v-chip-group throws on mount without this. jsdom does no
+// layout, so a no-op that never fires is the honest stand-in.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class NoopResizeObserver implements ResizeObserver {
+    observe (): void {}
+    unobserve (): void {}
+    disconnect (): void {}
+  }
+  for (const target of [globalThis, window]) {
+    Object.defineProperty(target, 'ResizeObserver', { value: NoopResizeObserver, writable: true, configurable: true })
+  }
+}
+
 // jsdom never loads images, so an <img> stays `complete: false` with a zero natural
 // size forever — and Vuetify's VImg keeps re-arming its 100ms size poll to wait for
 // one. Nothing unmounts those components, so the timers outlive the jsdom teardown

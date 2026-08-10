@@ -1,17 +1,24 @@
 <template>
   <v-row>
     <v-col>
-      <v-card :id="factory.id" :class="cardClass">
+      <v-card :id="factory.id" :class="cardClass" :style="groupStyle">
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
-            <div class="text-h4 text-md-h5">
-              <i class="fas fa-industry" />
+            <div class="text-h4 text-md-h5 d-flex align-center">
+              <factory-icon-display
+                clickable
+                :icon="factory.icon"
+                size="32"
+                @click="iconDialogOpen = true"
+              />
+              <factory-group-tray :factory="factory" />
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
               >
             </div>
+            <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
             <!-- chips bar -->
             <div class="d-flex align-center flex-wrap mt-1 ga-2">
               <!-- status chips: what is wrong, ahead of everything descriptive. outOfSync is
@@ -110,21 +117,21 @@
             <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"
-              :color="factory.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
-              :disabled="factory.displayOrder === 0"
+              :color="atGroupStart ? 'grey-darken-3' : 'primary'"
+              :disabled="atGroupStart"
               icon="fas fa-arrow-up"
               size="small"
-              title="Move Factory Up"
+              :title="atGroupStart ? 'Already first in its group' : 'Move Factory Up'"
               variant="outlined"
               @click="moveFactory(factory, 'up')"
             />
             <v-btn
               class="mr-2 rounded"
-              :color="factory.displayOrder === totalFactories - 1 ? 'grey-darken-3' : 'primary'"
-              :disabled="factory.displayOrder === totalFactories - 1"
+              :color="atGroupEnd ? 'grey-darken-3' : 'primary'"
+              :disabled="atGroupEnd"
               icon="fas fa-arrow-down"
               size="small"
-              title="Move Factory Down"
+              :title="atGroupEnd ? 'Already last in its group' : 'Move Factory Down'"
               variant="outlined"
               @click="moveFactory(factory, 'down')"
             />
@@ -223,7 +230,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(inputFactoryId)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(inputFactoryId).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(inputFactoryId).name }}</b>
                 </span>
@@ -318,7 +325,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(dependant)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(dependant).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
@@ -349,16 +356,19 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject } from 'vue'
+  import { computed, inject, ref } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { countActiveTasks } from '@/utils/factory-management/factory'
+  import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
+  import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
   import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
+  import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
+  import { groupColorVars } from '@/utils/colors'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
@@ -372,7 +382,18 @@
     totalFactories: number;
   }>()
 
+  const { getFactories } = useAppStore()
+
   const { smAndDown } = useDisplay()
+
+  const iconDialogOpen = ref(false)
+
+  // Up/down move a factory within its own group, so the buttons disable at the group's edges
+  // rather than the plan's. Keyed on global position they sat enabled at every group boundary
+  // and did nothing when pressed.
+  const groupPosition = computed(() => factoryPositionInGroup(props.factory, getFactories()))
+  const atGroupStart = computed(() => groupPosition.value.index <= 0)
+  const atGroupEnd = computed(() => groupPosition.value.index === groupPosition.value.total - 1)
 
   const gameSyncHelpText = 'Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory\'s products are changed, the factory will be out of sync, or if you set it manually.'
 
@@ -411,8 +432,15 @@
 
   const cardClass = computed(() => ({
     'factory-card': true,
+    grouped: !!props.factory.group,
     ...factoryStatusClass(statuses.value),
   }))
+
+  // Per-group data, so custom properties rather than a class — there is no fixed set of colours
+  // to write rules for.
+  const groupStyle = computed(() =>
+    props.factory.group ? groupColorVars(props.factory.group.color) : undefined
+  )
 
   const confirmDelete = (message = 'Are you sure you want to delete this factory?') => {
     return confirm(message)

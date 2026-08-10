@@ -646,9 +646,14 @@ export const useAppStore = defineStore('app', () => {
       console.warn(`appStore: addFactory: Factory ID ${oldId} was already taken, reassigned to ${factory.id}`)
     }
 
-    // Ensure the factory has the correct display order
-    factory.displayOrder = factories.value.length
-    factories.value.push(factory)
+    // A new factory is ungrouped, and ungrouped sorts to the top of the plan — so append it to
+    // the end of the Ungrouped block rather than the end of the array, or the grouping sort
+    // would immediately move it somewhere the user did not put it.
+    const lastUngrouped = factories.value.findLastIndex(candidate => !candidate.group)
+    factories.value.splice(lastUngrouped + 1, 0, factory)
+    factories.value.forEach((entry, index) => {
+      entry.displayOrder = index
+    })
     console.log('appStore: addFactory: Factory added', factories.value)
 
     // Adding a factory doesn't necessarily run a calculation, so announce and persist

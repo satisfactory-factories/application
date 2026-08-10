@@ -202,6 +202,28 @@ export interface FactoryPower {
   difference: number;
 }
 
+/**
+ * A folder a factory belongs to. Denormalised: the whole record is carried by every member
+ * factory rather than referenced by id from the tab.
+ *
+ * That looks redundant and is deliberate. Cloud sync uploads a bare Factory[] (sync-actions.ts),
+ * addTab() rebuilds a tab from four named fields, and templates and crash recovery all move
+ * factories rather than tabs — a group held only on the tab would be dropped by every one of
+ * them, stranding factories that still claimed membership. Riding on the factory means every
+ * path that already carries a plan carries its groups, with no transport changes at all.
+ *
+ * FactoryTab.groups is a registry for the one case a factory cannot carry: a group with no
+ * members yet. See reconcileGroups() in utils/factory-management/factory-groups.ts.
+ */
+export interface FactoryGroup {
+  id: string;
+  name: string;
+  color: string; // Hex, from groupPalette or a custom pick
+  order: number; // Position of the group within the plan
+  // No `collapsed` here on purpose: it is view state, held by useGroupCollapse. Fanning it out to
+  // every member on each toggle cost a save and a recalculation per factory.
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -226,6 +248,13 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  // ID from src/data/factory-icons.json. Absent (old plans, or "use default") shows the
+  // generic industry glyph. Deliberately a bare ID: plans in localStorage, Mongo and share
+  // links cannot be migrated, so nothing about how it is drawn belongs in the stored value.
+  icon?: string
+  // The group this factory belongs to. Absent means Ungrouped. Source of truth — see
+  // FactoryGroup above for why the whole record lives here rather than an id.
+  group?: FactoryGroup
   dataVersion: string
 }
 
@@ -236,6 +265,9 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+  // Registry for groups that currently have no member factory to carry them. Everything else
+  // is derived from the factories themselves; reconcileGroups() keeps the two in step.
+  groups?: FactoryGroup[];
 }
 
 // Fields saved plans still carry from before raw supply stopped being assumable. Typed only so
