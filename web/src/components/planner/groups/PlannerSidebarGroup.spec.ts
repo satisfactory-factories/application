@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { fireEvent } from '@testing-library/vue'
 import PlannerSidebarGroup from './PlannerSidebarGroup.vue'
 
@@ -59,6 +60,41 @@ const renderGroup = (section: FactoryGroupSection) =>
     props: { section, statuses: new Map() },
   })
 
+// The app's test bootstrap installs a ResizeObserver that never fires, which is honest for a DOM
+// that never lays anything out. The product line is laid out against a measured width, so this
+// one keeps its callback and `resizeTo` reports a size to it by hand.
+const observed = new Map<Element, ResizeObserverCallback>()
+class RecordingResizeObserver implements ResizeObserver {
+  callback: ResizeObserverCallback
+  constructor (callback: ResizeObserverCallback) {
+    this.callback = callback
+  }
+
+  observe (element: Element) {
+    observed.set(element, this.callback)
+  }
+
+  unobserve (element: Element) {
+    observed.delete(element)
+  }
+
+  disconnect () {
+    for (const [element, callback] of observed) {
+      if (callback === this.callback) observed.delete(element)
+    }
+  }
+}
+vi.stubGlobal('ResizeObserver', RecordingResizeObserver)
+
+const resizeTo = async (element: Element, width: number) => {
+  // The observer is armed by a post-flush watch, so it does not exist yet on the tick a render
+  // returns on.
+  await nextTick()
+  const entry = { target: element, contentRect: { width } } as unknown as ResizeObserverEntry
+  observed.get(element)?.([entry], {} as ResizeObserver)
+  await nextTick()
+}
+
 // Collapse is view state shared at module scope, so it has to be reset between tests or one
 // collapsed group leaks into every case after it.
 const { isCollapsed, setCollapsed, usePlan } = useGroupCollapse()
@@ -114,7 +150,7 @@ describe('PlannerSidebarGroup', () => {
       expect(container.querySelector('.overflow-count')).toBeNull()
     })
 
-    it('caps the icons and counts the rest', () => {
+    it('caps the icons and counts the rest before the row has been measured', () => {
       // Real part keys: an unrecognised id renders a question-mark glyph, not an <img>.
       const products = Object.keys(gameData.items.parts).slice(0, 12)
       const { container } = renderGroup({
@@ -122,8 +158,60 @@ describe('PlannerSidebarGroup', () => {
         factories: [withProducts('Alpha', 1, products)],
       })
 
-      expect(container.querySelectorAll('.group-header img')).toHaveLength(8)
-      expect(container.querySelector('.overflow-count')?.textContent).toBe('+4')
+      // Seven icons and the +N tile: the count occupies a slot of its own, so eight of each
+      // would be nine tiles in eight slots — which is what used to wrap the row.
+      expect(container.querySelectorAll('.group-header img')).toHaveLength(7)
+      expect(container.querySelector('.overflow-count')?.textContent).toBe('+5')
+    })
+
+    // jsdom does no layout, so the width the component lays out against is fed in by hand —
+    // which is also the only way to drive a resize without a real browser.
+    it.each([
+      // width, icons, count. A 36px tile with a 4px gap: n tiles need n * 40 - 4.
+      [436, 10, '+2'], // 11 slots, so ten icons and the count
+      [396, 9, '+3'], // 10 slots
+      [156, 3, '+9'], // 4 slots
+      [76, 1, '+11'], // 2 slots
+      [36, 0, '+12'], // 1 slot, and the count wins it
+    ])('fits the icons to a %ipx row', async (width, icons, count) => {
+      const products = Object.keys(gameData.items.parts).slice(0, 12)
+      const { container } = renderGroup({
+        group: group(),
+        factories: [withProducts('Alpha', 1, products)],
+      })
+
+      await resizeTo(container.querySelector('.product-row')!, width)
+
+      expect(container.querySelectorAll('.group-header img')).toHaveLength(icons)
+      expect(container.querySelector('.overflow-count')?.textContent).toBe(count)
+    })
+
+    it('drops the count entirely once everything fits', async () => {
+      const products = Object.keys(gameData.items.parts).slice(0, 12)
+      const { container } = renderGroup({
+        group: group(),
+        factories: [withProducts('Alpha', 1, products)],
+      })
+
+      await resizeTo(container.querySelector('.product-row')!, 476) // 12 slots, 12 products
+
+      expect(container.querySelectorAll('.group-header img')).toHaveLength(12)
+      expect(container.querySelector('.overflow-count')).toBeNull()
+    })
+
+    it('keeps the last measured width when the sidebar is hidden', async () => {
+      const products = Object.keys(gameData.items.parts).slice(0, 12)
+      const { container } = renderGroup({
+        group: group(),
+        factories: [withProducts('Alpha', 1, products)],
+      })
+      const row = container.querySelector('.product-row')!
+
+      await resizeTo(row, 156)
+      await resizeTo(row, 0) // display: none reports zero for everything inside it
+
+      expect(container.querySelectorAll('.group-header img')).toHaveLength(3)
+      expect(container.querySelector('.overflow-count')?.textContent).toBe('+9')
     })
   })
 

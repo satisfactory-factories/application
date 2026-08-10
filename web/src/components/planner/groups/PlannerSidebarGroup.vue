@@ -61,8 +61,9 @@
         />
       </div>
 
-      <!-- Second line: what this group actually makes. -->
-      <div v-if="visibleProducts.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-1">
+      <!-- Second line: what this group actually makes. Kept to one line, with as many icons on it
+           as the sidebar's current width allows — see `fits`. -->
+      <div v-if="products.length" ref="productRow" class="product-row d-flex align-center ga-1 px-2 pb-1">
         <game-asset
           v-for="part in visibleProducts"
           :key="part"
@@ -121,6 +122,7 @@
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
+  import { useElementWidth } from '@/composables/useElementWidth'
   import { groupColorVars } from '@/utils/colors'
   import { getPartDisplayName } from '@/utils/helpers'
   import FactoryGroupColorMenu from '@/components/planner/groups/FactoryGroupColorMenu.vue'
@@ -175,7 +177,13 @@
     if (group.value) emit('delete', group.value)
   }
 
-  const PRODUCT_LIMIT = 8
+  // Must match the tile size and gap the template asks for, since the fit is arithmetic rather
+  // than measurement: laying the icons out to find out how many fit would mean rendering the
+  // overflow the count exists to avoid.
+  const TILE = 36
+  const GAP = 4
+  // Only until the observer's first callback, which lands in the same frame as the first paint.
+  const UNMEASURED_LIMIT = 8
 
   // What the group makes, deduped across its factories and in the order the factories declare
   // them, so the icons stay put as the plan changes rather than reshuffling on every recalc.
@@ -189,8 +197,22 @@
     return [...seen]
   })
 
-  const visibleProducts = computed(() => products.value.slice(0, PRODUCT_LIMIT))
-  const hiddenProducts = computed(() => products.value.slice(PRODUCT_LIMIT))
+  const productRow = ref<HTMLElement>()
+  const { width: rowWidth } = useElementWidth(productRow)
+
+  // n tiles need n widths and n-1 gaps, so the gap is added to both sides of the division.
+  const fits = computed(() =>
+    rowWidth.value ? Math.floor((rowWidth.value + GAP) / (TILE + GAP)) : UNMEASURED_LIMIT
+  )
+
+  // The +N tile occupies a slot of its own, so it is only worth showing when it hides more than
+  // the one icon it displaces.
+  const shownCount = computed(() =>
+    products.value.length <= fits.value ? products.value.length : Math.max(fits.value - 1, 0)
+  )
+
+  const visibleProducts = computed(() => products.value.slice(0, shownCount.value))
+  const hiddenProducts = computed(() => products.value.slice(shownCount.value))
 
   // The single write. Only the destination list acts: Sortable fires `removed` on the source
   // and `added` on the target for one move, and handling both would apply it twice.
@@ -366,6 +388,18 @@ $strip-border: 1px;
 
 .group-body.collapsed:hover .drop-strip {
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.08));
+}
+
+/* One line, never wrapped: the count is calculated to fit, so wrapping would only ever be the
+   symptom of a miscalculation — and a hidden overflow says so quietly instead of shoving the
+   whole sidebar down a row. */
+.product-row {
+  min-width: 0;
+  overflow: hidden;
+
+  > * {
+    flex: 0 0 auto;
+  }
 }
 
 .overflow-count {
