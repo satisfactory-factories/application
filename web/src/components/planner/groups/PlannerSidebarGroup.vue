@@ -403,6 +403,9 @@ $strip-border: 1px;
 }
 
 .overflow-count {
+  /* Pinned to the right edge, so the slack a whole tile never fits into sits between the icons
+     and the count rather than trailing after it. */
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
