@@ -57,6 +57,11 @@ describe('Complex Demo Plan', () => {
       // template does not shuffle the moment it is opened.
       expect(factories.slice(-grouped.length)).toEqual(grouped)
     })
+    it('should number displayOrder as the index into the array', () => {
+      factories.forEach((factory, index) => {
+        expect(factory.displayOrder, factory.name).toBe(index)
+      })
+    })
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
@@ -255,7 +260,7 @@ describe('Complex Demo Plan', () => {
 
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
-      expect(copperMineFac.displayOrder).toBe(9) // Head of the Copper group, where the chain starts
+      expect(copperMineFac.displayOrder).toBe(8) // Head of the Copper group, where the chain starts
       expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
 
       const ore = copperMineFac.products[0]
