@@ -20,17 +20,18 @@ let geothermalFac: Factory
 // Copper Basics has a deliberate shortage of Copper Ingots to highlight that functionality to new users.
 export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
-  oilFac = newFactory('Oil Processing', 1, 1)
-  circuitBoardsFac = newFactory('Circuit Boards', 2, 4)
-  computersFac = newFactory('Computers (end product)', 3, 5)
-  uraniumFac = newFactory('Uranium Power', 4, 6)
-  plutoniumFac = newFactory('Plutonium Processing', 5, 7)
-  alienPowerFac = newFactory('Alien Power', 6, 8)
-  geothermalFac = newFactory('Geothermal Power', 7, 9)
+  // displayOrder is the zero-based index into the array below, as the other templates author it.
+  oilFac = newFactory('Oil Processing', 0, 1)
+  circuitBoardsFac = newFactory('Circuit Boards', 1, 4)
+  computersFac = newFactory('Computers (end product)', 2, 5)
+  uraniumFac = newFactory('Uranium Power', 3, 6)
+  plutoniumFac = newFactory('Plutonium Processing', 4, 7)
+  alienPowerFac = newFactory('Alien Power', 5, 8)
+  geothermalFac = newFactory('Geothermal Power', 6, 9)
   // Grouped factories sort below the ungrouped ones, so the copper chain is authored last to
   // match the order the plan actually loads in. See factory-groups.ts.
-  copperIngotsFac = newFactory('Copper Ingots', 8, 2)
-  copperBasicsFac = newFactory('Copper Basics', 9, 3)
+  copperIngotsFac = newFactory('Copper Ingots', 7, 2)
+  copperBasicsFac = newFactory('Copper Basics', 8, 3)
 
   // The demo's one group, so a new plan shows what folders are for. The copper is a custom
   // colour rather than a palette entry — nothing offered reads as copper.

@@ -55,6 +55,11 @@ describe('Complex Demo Plan', () => {
       // template does not shuffle the moment it is opened.
       expect(factories.slice(-grouped.length)).toEqual(grouped)
     })
+    it('should number displayOrder as the index into the array', () => {
+      factories.forEach((factory, index) => {
+        expect(factory.displayOrder, factory.name).toBe(index)
+      })
+    })
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
