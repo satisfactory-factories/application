@@ -5,6 +5,7 @@ import { gameData } from '@/utils/gameData'
 import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
+import { resolveFactoryIcon } from '@/utils/factory-icons'
 
 let factories: Factory[]
 let oilFac: Factory
@@ -29,8 +30,8 @@ describe('Complex Demo Plan', () => {
     copperBasicsFac = findFacByName('Copper Basics', factories)
     circuitBoardsFac = findFacByName('Circuit Boards', factories)
     computersFac = findFacByName('Computers (end product)', factories)
-    uraniumFac = findFacByName('☢️ Uranium Power', factories)
-    plutoniumFac = findFacByName('☢️ Plutonium Processing', factories)
+    uraniumFac = findFacByName('Uranium Power', factories)
+    plutoniumFac = findFacByName('Plutonium Processing', factories)
     alienPowerFac = findFacByName('Alien Power', factories)
     geothermalFac = findFacByName('Geothermal Power', factories)
   })
@@ -40,6 +41,22 @@ describe('Complex Demo Plan', () => {
   })
   it('should have the expected number of factories', () => {
     expect(factories.length).toBe(11)
+  })
+  describe('Presentation', () => {
+    it('should give every factory an icon the registry knows', () => {
+      factories.forEach(factory => {
+        expect(factory.icon, `${factory.name} has no icon`).toBeDefined()
+        expect(resolveFactoryIcon(factory.icon).kind, `${factory.name}: ${factory.icon}`).not.toBe('default')
+      })
+    })
+    it('should put the copper chain in one group, sorted below the ungrouped factories', () => {
+      const grouped = factories.filter(factory => factory.group)
+      expect(grouped.map(factory => factory.name)).toEqual(['Copper Mine', 'Copper Ingots', 'Copper Basics'])
+      expect(new Set(grouped.map(factory => factory.group?.id)).size).toBe(1)
+      // The invariant repairFactoryGroups enforces on load; authored the same way so the
+      // template does not shuffle the moment it is opened.
+      expect(factories.slice(-grouped.length)).toEqual(grouped)
+    })
   })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
@@ -238,7 +255,7 @@ describe('Complex Demo Plan', () => {
 
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
-      expect(copperMineFac.displayOrder).toBe(1) // Top of the plan, where the chain starts
+      expect(copperMineFac.displayOrder).toBe(9) // Head of the Copper group, where the chain starts
       expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
 
       const ore = copperMineFac.products[0]
@@ -760,7 +777,7 @@ describe('Complex Demo Plan', () => {
       calculateFactories(freshFactories, gameData, { origin: 'recalculate' })
 
       expect(findFacByName('Oil Processing', freshFactories).power.produced).toBe(500)
-      expect(findFacByName('☢️ Uranium Power', freshFactories).power.produced).toBe(25000)
+      expect(findFacByName('Uranium Power', freshFactories).power.produced).toBe(25000)
       const alien = findFacByName('Alien Power', freshFactories)
       expect(alien.power.produced).toBe(1500)
       // 70% boost of the whole grid's base generation (500 + 25,000 + 1,500 + 1,800 = 28,800 MW)
