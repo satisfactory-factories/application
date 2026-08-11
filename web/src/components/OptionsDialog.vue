@@ -146,6 +146,7 @@
   import { storeToRefs } from 'pinia'
   import { useAppStore } from '@/stores/app-store'
   import RawResourcesWizard from '@/components/planner/RawResourcesWizard.vue'
+  import eventBus from '@/utils/eventBus'
 
   const appStore = useAppStore()
   const { showRawBreakingNotice } = storeToRefs(appStore)
@@ -183,6 +184,11 @@
     showOptions.value = false
     showWizard.value = true
   }
+
+  // The wizard is mounted here and nowhere else, so anything that wants to offer it — the v0.6
+  // splash, for one — asks through the bus rather than mounting a second copy.
+  onMounted(() => eventBus.on('openRawWizard', openWizard))
+  onUnmounted(() => eventBus.off('openRawWizard', openWizard))
 
   const dismiss = () => {
     appStore.dismissRawBreakingNotice()

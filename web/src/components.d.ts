@@ -76,6 +76,7 @@ declare module 'vue' {
     SaveLoader: typeof import('./components/SaveLoader.vue')['default']
     ShareButton: typeof import('./components/ShareButton.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
+    SplashV6: typeof import('./components/SplashV6.vue')['default']
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
     StatisticsBuildings: typeof import('./components/planner/StatisticsBuildings.vue')['default']
     StatisticsFactorySummary: typeof import('./components/planner/StatisticsFactorySummary.vue')['default']

@@ -8,6 +8,9 @@
       </navigation>
 
       <tab-navigation v-if="showTabNavigation" />
+      <splash-v6 />
+      <!-- The previous release's deck. Mounted for the whole session but only ever opened by
+           hand, from the last slide of the one above. -->
       <splash />
     </template>
     <v-main>

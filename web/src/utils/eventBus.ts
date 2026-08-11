@@ -25,7 +25,14 @@ type Events = {
 
   // Intro
   introToggle: boolean;
+  // Fired when the introduction closes, so the splash can stop waiting for it. `introToggle` is
+  // the inbound request to open or close it, which is not the same thing.
+  introDismissed: undefined;
   splashShow: undefined;
+  // The previous release's splash, kept for anyone who missed it. Only ever opened by hand.
+  splashShowV5: undefined;
+  // The Raw Resources Wizard lives inside OptionsDialog; this is how anything else asks for it.
+  openRawWizard: undefined;
 
   navigationReady: undefined;
 

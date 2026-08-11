@@ -102,6 +102,7 @@
     console.log('Introduction: Closing introduction')
     showDialog.value = false
     localStorage.setItem('dismissed-introduction', 'true')
+    eventBus.emit('introDismissed')
   }
 
   const setupDemo = () => {
