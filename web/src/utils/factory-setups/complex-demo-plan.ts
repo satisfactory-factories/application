@@ -1,4 +1,4 @@
-import { Factory, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryGroup, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { newFactory } from '@/utils/factory-management/factory'
@@ -21,16 +21,35 @@ let geothermalFac: Factory
 export const complexDemoPlan = (): TemplatePlan => {
   // Initialize factories
   oilFac = newFactory('Oil Processing', 1, 1)
-  copperIngotsFac = newFactory('Copper Ingots', 2, 2)
-  copperBasicsFac = newFactory('Copper Basics', 3, 3)
-  circuitBoardsFac = newFactory('Circuit Boards', 4, 4)
-  computersFac = newFactory('Computers (end product)', 5, 5)
-  uraniumFac = newFactory('☢️ Uranium Power', 6, 6)
-  plutoniumFac = newFactory('☢️ Plutonium Processing', 7, 7)
-  alienPowerFac = newFactory('Alien Power', 8, 8)
-  geothermalFac = newFactory('Geothermal Power', 9, 9)
+  circuitBoardsFac = newFactory('Circuit Boards', 2, 4)
+  computersFac = newFactory('Computers (end product)', 3, 5)
+  uraniumFac = newFactory('Uranium Power', 4, 6)
+  plutoniumFac = newFactory('Plutonium Processing', 5, 7)
+  alienPowerFac = newFactory('Alien Power', 6, 8)
+  geothermalFac = newFactory('Geothermal Power', 7, 9)
+  // Grouped factories sort below the ungrouped ones, so the copper chain is authored last to
+  // match the order the plan actually loads in. See factory-groups.ts.
+  copperIngotsFac = newFactory('Copper Ingots', 8, 2)
+  copperBasicsFac = newFactory('Copper Basics', 9, 3)
 
-  const factories = [oilFac, copperIngotsFac, copperBasicsFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac]
+  // The demo's one group, so a new plan shows what folders are for. The copper is a custom
+  // colour rather than a palette entry — nothing offered reads as copper.
+  const copperGroup: FactoryGroup = { id: 'g-copper', name: 'Copper', color: '#b87333', order: 0 }
+  copperIngotsFac.group = { ...copperGroup }
+  copperBasicsFac.group = { ...copperGroup }
+
+  // Bare IDs from src/data/factory-icons.json.
+  oilFac.icon = 'packaged-oil'
+  circuitBoardsFac.icon = 'circuit-board'
+  computersFac.icon = 'computer'
+  uraniumFac.icon = 'nuclear-power-plant'
+  plutoniumFac.icon = 'plutonium-fuel-rod'
+  alienPowerFac.icon = 'alien-power-augmenter'
+  geothermalFac.icon = 'geothermal-generator'
+  copperIngotsFac.icon = 'copper-ingot'
+  copperBasicsFac.icon = 'wire'
+
+  const factories = [oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac, copperIngotsFac, copperBasicsFac]
 
   // Private methods to configure the factories
   const setupFactories = () => {
