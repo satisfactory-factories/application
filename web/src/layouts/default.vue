@@ -13,6 +13,7 @@
     <v-main>
       <router-view />
       <toast />
+      <hover-tooltip />
       <plan-repair-dialog v-if="!hasError" />
     </v-main>
   </v-app>

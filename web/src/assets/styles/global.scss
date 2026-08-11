@@ -309,8 +309,11 @@
 
     // A text label directly after an icon: the image already carries its own 8px
     // gutter (inside the link wrapper when clickable), so the span's left margin
-    // would double it.
+    // would double it. `.game-asset-content` is the tooltip wrapper every game
+    // image now sits in — no markup pairs it with a bare label today, but leaving
+    // it out is a doubled gap waiting for the first one that does.
     .game-asset-clickable + span:not([class]),
+    .game-asset-content + span:not([class]),
     img + span:not([class]),
     .v-img + span:not([class]) {
       margin-left: 0 !important;
@@ -417,6 +420,13 @@
       border-bottom: 0;
     }
 
+    // Everything in a card header takes the same small radius as the action buttons at its right
+    // edge. Vuetify chips are pills, which put three different corner treatments on one line.
+    .sf-chip,
+    .v-btn {
+      border-radius: 4px !important;
+    }
+
     // A collapsed card renders the header alone: its divider would sit flush on the
     // card's own bottom border and read as one extra-thick line, so drop it when no
     // body follows. (:last-child can't express this — Vuetify appends a
@@ -426,12 +436,36 @@
     }
   }
 
+  // A card in a group. This MUST come before .problem/.warning below: the three rules have equal
+  // specificity, so source order decides, and a status has to keep the header. A broken factory
+  // reading as "green group" would hide the one thing that needs attention. The spine is
+  // unaffected either way, so the group stays legible on a factory that is in trouble.
+  &.grouped {
+    position: relative;
+    border: 2px solid var(--sf-group) !important;
+
+    .header {
+      background-color: var(--sf-group-muted);
+      border-bottom-color: var(--sf-group) !important;
+    }
+  }
+
   &.problem {
     border: 2px solid var(--sf-problem-border) !important;
 
     .header {
       background-color: var(--sf-problem-bg);
     }
+  }
+
+  // A status takes the border back off the group, so the header's rule has to follow it — left on
+  // the group colour it reads as a green line drawn inside a red card.
+  &.grouped.problem .header {
+    border-bottom-color: var(--sf-problem-border) !important;
+  }
+
+  &.grouped.warning .header {
+    border-bottom-color: var(--sf-status-warning-border) !important;
   }
 
   // Was `.needsSync`, which now names only one of several amber statuses (#506).
