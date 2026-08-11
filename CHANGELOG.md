@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 - **A factory stores only an icon ID.** Everything about how that ID is drawn — the artwork it points at, its label, its grouping, even which emoji character it means — lives in one generated registry file. Plans in local storage, in the cloud and in share links can't be migrated, so nothing about rendering is baked into what gets saved: the artwork behind an icon can be changed later without touching a single plan.
 - The registry is generated from the shipped artwork rather than from the game data, which means an item whose image was never shipped simply isn't offered. That caught the FICSMAS Gift, which is not flagged as a FICSMAS item and would have rendered as a broken image. A test asserts every icon in the registry resolves to a file that exists, so a bad entry fails the build instead of reaching the picker.
 - Plans saved before this change are untouched and show the default glyph until an icon is picked.
+- **The Demo plan wears them.** Every factory in it carries the icon of the thing it makes, and the copper chain sits in its own copper-coloured group, so both features are visible in the first plan anyone opens. The two nuclear factories dropped the ☢️ from their names with it — the nuclear plant and fuel rod icons say the same thing better.
 
 ### Factory groups
 
