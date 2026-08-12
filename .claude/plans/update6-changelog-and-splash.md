@@ -18,9 +18,12 @@ version-stamped in that file yet.
 - Expand the Beta v0.6 section of `web/src/pages/changelog.vue` to cover every feature merged
   since v0.5, not just mining. The page is the complete record; the slide deck is a highlights
   reel and is deliberately selective.
-- Hold the v0.6 splash back while the raw-resources breaking notice is open, and show it once
-  that is dismissed. The notice is already gated on a non-empty plan (`beginLoading`), so a fresh
-  visitor with no plan gets the splash alone — which is the intended behaviour.
+- Let the v0.6 splash take the raw-resources breaking notice over rather than queuing behind it:
+  slide 1 is that warning, so for anyone whose plan predates the change it leads with an
+  **Action needed** banner and the deck refuses to close until they run the wizard or say they
+  will sort it themselves. The notice is deferred, not marked seen, so an unanswered one comes
+  back on the next load. The notice is already gated on a non-empty plan (`beginLoading`), so a
+  fresh visitor with no plan gets the slide without the banner or the lock.
 - Add an `openRawWizard` event so the splash's wizard button works: the wizard is local state
   inside `OptionsDialog.vue` and is not reachable from anywhere else today.
 - Gate the v0.6 splash on the `introToggle` event rather than reading `dismissed-introduction`

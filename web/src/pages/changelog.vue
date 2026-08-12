@@ -14,8 +14,8 @@
           <li>🔧: Fixes</li>
         </ul>
         <v-divider />
-        <h1>Beta v0.6 - The "Mining" Update</h1>
-        <p>Raw resources are no longer an assumption. Ore, water, oil and gas can now be dug up by buildings you place, planned and exported like anything else.</p>
+        <h1>Beta v0.6 - The "Groundwork" Update</h1>
+        <p>Everything your plan needs now comes from somewhere. Raw resources are no longer an assumption — ore, water, oil and gas are dug up by buildings you place, planned and exported like anything else — and the plan they feed got the folders, icons and status chips to keep track of it all.</p>
 
         <h2>🆕 <i class="fas fa-hard-hat ml-1" /><span class="ml-2">Mines</span></h2>
         <p>Pick a raw resource as a product and the planner offers its extractor as the recipe. Because one ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one, the <b>miner mark and node purity are set per building group</b> — and both stack with the group's clock exactly as they do in game. Build a dedicated mine and export the ore anywhere in your plan, or mine on site and smelt it in the same factory.</p>

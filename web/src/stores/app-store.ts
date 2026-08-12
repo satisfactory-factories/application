@@ -109,6 +109,14 @@ export const useAppStore = defineStore('app', () => {
     showRawBreakingNotice.value = false
   }
 
+  // Hand the notice over to something that is about to say the same thing better — the v0.6
+  // splash, whose first slide IS this warning and which will not close until it is acknowledged.
+  // Deliberately NOT marked as seen: if that acknowledgement never comes (the tab is closed on
+  // the slide), the next load raises the notice again rather than losing it silently.
+  const deferRawBreakingNotice = () => {
+    showRawBreakingNotice.value = false
+  }
+
   // Debug scenario only: put the notice back to never-seen so it behaves as it does for someone
   // opening a plan built before this change. Otherwise it is unreachable once dismissed.
   const rearmRawBreakingNotice = () => {
@@ -800,6 +808,7 @@ export const useAppStore = defineStore('app', () => {
     showRawBreakingNotice,
     askRawBreakingNotice,
     dismissRawBreakingNotice,
+    deferRawBreakingNotice,
     rearmRawBreakingNotice,
     prepareLoader,
     forceCalculation,

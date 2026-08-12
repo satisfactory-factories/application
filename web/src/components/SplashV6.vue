@@ -1,9 +1,17 @@
 <template>
-  <v-dialog v-model="showSplash" :max-width="currentSlide === 0 ? 1400 : 1000" scrollable>
+  <v-dialog
+    v-model="showSplash"
+    :max-width="currentSlide === 0 ? 1400 : 1000"
+    :persistent="locked"
+    scrollable
+  >
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
+        <!-- No way out while the breaking change is unacknowledged: the two buttons on slide 1
+             are the exits, and one of them is "I'll sort it myself". -->
         <v-btn
+          v-if="!locked"
           density="comfortable"
           icon="fas fa-times"
           size="small"
@@ -15,8 +23,25 @@
         <!-- Slide 1: The breaking change. It leads because it changes what every existing plan
              reports, and the wizard below is the way out of it. -->
         <div v-if="currentSlide === 0">
-          <h2 class="text-h4 text-center mb-2">The "Mining" Update is here!</h2>
-          <p class="text-center text-medium-emphasis mb-4">Extraction is now part of the plan.</p>
+          <h2 class="text-h4 text-center mb-2">The "Groundwork" Update is here!</h2>
+          <p class="text-center text-medium-emphasis mb-4">Everything your plan needs now comes from somewhere.</p>
+          <!-- Only for someone who has a plan this can have broken. Someone arriving with nothing
+               saved is being told news, not handed a job. -->
+          <v-alert
+            v-if="actionRequired"
+            class="mb-4 action-banner"
+            density="comfortable"
+            prominent
+            type="error"
+            variant="tonal"
+          >
+            <h3 class="text-h5 mb-1">Action needed — this one breaks existing plans</h3>
+            <p class="mb-0">
+              This release changes what every plan built before it reports, so it needs a decision
+              from you rather than a nod. Read on, then either <b>run the wizard</b> or say you'll
+              <b>sort it yourself</b>. This window won't close until you pick one.
+            </p>
+          </v-alert>
           <youtube-embed
             v-if="launchVideoId"
             class="mb-4"
@@ -63,10 +88,15 @@
               or run it now.
             </p>
           </v-alert>
-          <p class="text-center mb-4">
+          <!-- While locked the pair lives in the footer instead, where it cannot scroll out of
+               reach — a dialog that will not close needs its exits on screen. -->
+          <p v-if="!locked" class="text-center mb-4">
             <v-btn color="green" prepend-icon="fas fa-shovel" variant="flat" @click="runWizard">
               Run the Raw Resources Wizard
             </v-btn>
+          </p>
+          <p v-if="acknowledged" class="text-center text-success mb-4">
+            <i class="fas fa-check" /><span class="ml-2">Noted — the wizard is in <b>Options</b> whenever you want it.</span>
           </p>
           <p class="mb-2">There's a lot in this one — jump to what interests you, or take the full tour!</p>
           <ul class="contents-list ml-6">
@@ -331,14 +361,33 @@
         </div>
       </v-card-text>
       <v-card-actions class="px-4 pb-4">
+        <!-- The two exits, pinned for as long as the decision is outstanding: they stay on screen
+             on every slide rather than scrolling away with slide 1. -->
         <v-btn v-if="currentSlide > 0" variant="tonal" @click="prevSlide">
           <i class="fas fa-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
         </v-btn>
+        <template v-if="locked">
+          <v-btn
+            class="ml-2"
+            color="green"
+            prepend-icon="fas fa-shovel"
+            variant="flat"
+            @click="runWizard"
+          >
+            Run the wizard
+          </v-btn>
+          <v-btn class="ml-2" variant="outlined" @click="acknowledge">
+            I'll sort it myself
+          </v-btn>
+        </template>
         <v-spacer />
         <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
         <v-spacer />
         <v-btn color="primary" variant="elevated" @click="nextSlide">
-          <template v-if="currentSlide === slides.length - 1">
+          <template v-if="currentSlide === slides.length - 1 && locked">
+            <i class="fas fa-exclamation-triangle" /><span class="ml-2">Back to the breaking change</span>
+          </template>
+          <template v-else-if="currentSlide === slides.length - 1">
             <i class="fas fa-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
@@ -387,6 +436,15 @@
   const showSplash = ref<boolean>(false)
   const currentSlide = ref(0)
 
+  // Whether this user has a plan the breaking change can have broken. Decided once, from the
+  // notice the store raised on load — it only asks when a plan actually has factories in it, so
+  // someone arriving with nothing saved is shown the same slide without the demand.
+  const actionRequired = ref(false)
+  const acknowledged = ref(false)
+
+  // No X, no click-outside, no escape while a decision is outstanding.
+  const locked = computed(() => actionRequired.value && !acknowledged.value)
+
   const introDismissed = () => localStorage.getItem('dismissed-introduction') === 'true'
   const seen = () => localStorage.getItem(key) === 'true'
 
@@ -397,14 +455,20 @@
   let loadSettled = false
   let showTimer: ReturnType<typeof setTimeout> | undefined
 
-  // Three things can be true before this deck is allowed to open, and any of them can become true
-  // last: the load has settled, the introduction is out of the way, and the raw-resources
-  // breaking notice has been dealt with. That notice covers the same ground as slide 1 and is
-  // raised for anyone with an existing plan, so the two must never be on screen together — it
-  // goes first, and this follows once it is gone.
+  // Two things must be true before this deck opens, and either can become true last: the load has
+  // settled, and the introduction is out of the way.
+  //
+  // The raw-resources breaking notice is the third party here, and this deck takes it over rather
+  // than queuing behind it. Both ship in the same release, so otherwise every returning user is
+  // handed two dialogs saying the same thing — and slide 1 says it better, with the tour attached.
+  // Taking it over is what makes the lock honest: the notice demanded a decision, so this must too.
   const tryShow = () => {
-    if (!loadSettled || seen() || !introDismissed() || showRawBreakingNotice.value) {
+    if (!loadSettled || seen() || !introDismissed()) {
       return
+    }
+    actionRequired.value = showRawBreakingNotice.value
+    if (actionRequired.value) {
+      appStore.deferRawBreakingNotice()
     }
     teardownLoadListeners()
     showSplash.value = true
@@ -430,14 +494,6 @@
     eventBus.off('introDismissed', tryShow)
   }
 
-  // The notice is dismissed by the user, not by us, so watch for it clearing rather than assuming
-  // an order of events.
-  watch(showRawBreakingNotice, value => {
-    if (!value) {
-      tryShow()
-    }
-  })
-
   onMounted(() => {
     if (!seen()) {
       eventBus.on('loadingCompleted', onLoadingCompleted)
@@ -457,7 +513,7 @@
   const router = useRouter()
 
   const slides = [
-    { title: 'The "Mining" Update is here!', nav: 'Intro' },
+    { title: 'The "Groundwork" Update is here!', nav: 'Intro' },
     { title: 'Mining', nav: 'Mining' },
     { title: 'The Raw Resources Wizard', nav: 'The Wizard' },
     { title: 'Factory Groups', nav: 'Factory Groups' },
@@ -501,8 +557,24 @@
   })
 
   const closeSplash = () => {
+    // The lock. Nothing closes this deck while the breaking change is unanswered — including the
+    // "Got it!" button on the last slide, which sends them back to the decision instead.
+    if (locked.value) {
+      showSplash.value = true
+      currentSlide.value = 0
+      return
+    }
     showSplash.value = false
     localStorage.setItem(key, 'true')
+  }
+
+  // The decision the lock is waiting for. Marks the breaking notice seen, since this deck spoke
+  // for it — without this it would be raised again on the next load.
+  const acknowledge = () => {
+    acknowledged.value = true
+    if (actionRequired.value) {
+      appStore.dismissRawBreakingNotice()
+    }
   }
 
   const nextSlide = () => {
@@ -526,6 +598,7 @@
   // The wizard is mounted by the planner's options dialog, which does not exist on the other
   // pages — so get back to the planner first and give it a moment to listen.
   const runWizard = async () => {
+    acknowledge()
     closeSplash()
     if (router.currentRoute.value.path !== '/') {
       await router.push('/')
