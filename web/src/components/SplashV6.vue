@@ -8,8 +8,8 @@
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
-        <!-- No way out while the breaking change is unacknowledged: the two buttons on slide 1
-             are the exits, and one of them is "I'll sort it myself". -->
+        <!-- No way out of the automatic showing: slide 1 has to be answered, and the way out
+             after that is the end of the tour. Reopening it by hand later has no such lock. -->
         <v-btn
           v-if="!locked"
           density="comfortable"
@@ -25,10 +25,10 @@
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-2">The "Groundwork" Update is here!</h2>
           <p class="text-center text-medium-emphasis mb-4">Everything your plan needs now comes from somewhere.</p>
-          <!-- Only for someone who has a plan this can have broken. Someone arriving with nothing
-               saved is being told news, not handed a job. -->
+          <!-- Shown to everyone, not only to someone with a plan open right now: a plan arrives
+               by share link and paste as often as it does from local storage, and the one thing
+               nobody must miss is that the old ones now read differently. -->
           <v-alert
-            v-if="actionRequired"
             class="mb-4 action-banner"
             density="comfortable"
             prominent
@@ -36,10 +36,15 @@
             variant="tonal"
           >
             <h3 class="text-h5 mb-1">Action needed — this one breaks existing plans</h3>
-            <p class="mb-0">
-              This release changes what every plan built before it reports, so it needs a decision
-              from you rather than a nod. Read on, then either <b>run the wizard</b> or say you'll
-              <b>sort it yourself</b>. This window won't close until you pick one.
+            <p class="mb-2">
+              Raw resources are no longer assumed. <b>Any plan built before this release will show
+                factories in red</b> until what they need is mined or imported — yours, or one
+              shared with you. Nothing has been lost, and the <b>Raw Resources Wizard</b> fixes a
+              plan in one pass.
+            </p>
+            <p v-if="awaitingAnswer" class="mb-0">
+              Answer this slide before going on. This window doesn't close until you have been
+              through what changed.
             </p>
           </v-alert>
           <youtube-embed
@@ -88,9 +93,9 @@
               or run it now.
             </p>
           </v-alert>
-          <!-- While locked the pair lives in the footer instead, where it cannot scroll out of
-               reach — a dialog that will not close needs its exits on screen. -->
-          <p v-if="!locked" class="text-center mb-4">
+          <!-- While slide 1 is unanswered the buttons live in the footer instead, where they
+               cannot scroll out of reach — a window that will not close needs them on screen. -->
+          <p v-if="!awaitingAnswer" class="text-center mb-4">
             <v-btn color="green" prepend-icon="fas fa-shovel" variant="flat" @click="runWizard">
               Run the Raw Resources Wizard
             </v-btn>
@@ -361,12 +366,12 @@
         </div>
       </v-card-text>
       <v-card-actions class="px-4 pb-4">
-        <!-- The two exits, pinned for as long as the decision is outstanding: they stay on screen
-             on every slide rather than scrolling away with slide 1. -->
+        <!-- The answer to slide 1 lives here rather than in the slide, so it cannot scroll out of
+             reach in a window that will not close. -->
         <v-btn v-if="currentSlide > 0" variant="tonal" @click="prevSlide">
           <i class="fas fa-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
         </v-btn>
-        <template v-if="locked">
+        <template v-if="awaitingAnswer && actionRequired">
           <v-btn
             class="ml-2"
             color="green"
@@ -380,14 +385,27 @@
             I'll sort it myself
           </v-btn>
         </template>
+        <!-- Nothing of theirs is broken yet, so there is no job to accept — only the warning to
+             take in, which is the one thing this whole lock exists to make them do. -->
+        <v-btn
+          v-else-if="awaitingAnswer"
+          class="ml-2"
+          color="primary"
+          variant="outlined"
+          @click="acknowledge"
+        >
+          I understand
+        </v-btn>
         <v-spacer />
         <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
         <v-spacer />
-        <v-btn color="primary" variant="elevated" @click="nextSlide">
-          <template v-if="currentSlide === slides.length - 1 && locked">
-            <i class="fas fa-exclamation-triangle" /><span class="ml-2">Back to the breaking change</span>
-          </template>
-          <template v-else-if="currentSlide === slides.length - 1">
+        <v-btn
+          color="primary"
+          :disabled="awaitingAnswer"
+          variant="elevated"
+          @click="nextSlide"
+        >
+          <template v-if="currentSlide === slides.length - 1">
             <i class="fas fa-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
@@ -437,13 +455,22 @@
   const currentSlide = ref(0)
 
   // Whether this user has a plan the breaking change can have broken. Decided once, from the
-  // notice the store raised on load — it only asks when a plan actually has factories in it, so
-  // someone arriving with nothing saved is shown the same slide without the demand.
+  // notice the store raised on load — it only asks when a plan actually has factories in it. It
+  // changes what slide 1 offers (the wizard, or just an acknowledgement), never whether the
+  // warning is shown: a plan arrives by share link and paste as often as from local storage.
   const actionRequired = ref(false)
   const acknowledged = ref(false)
 
-  // No X, no click-outside, no escape while a decision is outstanding.
-  const locked = computed(() => actionRequired.value && !acknowledged.value)
+  // The lock belongs to the automatic showing, not to the plan. This deck is the only warning
+  // most people will get, and a dialog that can be waved away in the corner of the eye is not a
+  // warning — so on first sight there is no X, no click-outside and no escape: answer slide 1,
+  // then leave by the far end of the tour. Reopening it later from "Show changes" is unlocked,
+  // because by then it is reference material rather than news.
+  const autoShown = ref(false)
+  const locked = computed(() => autoShown.value && showSplash.value)
+
+  // Slide 1 cannot be skipped past until it is answered.
+  const awaitingAnswer = computed(() => locked.value && !acknowledged.value)
 
   const introDismissed = () => localStorage.getItem('dismissed-introduction') === 'true'
   const seen = () => localStorage.getItem(key) === 'true'
@@ -471,6 +498,7 @@
       appStore.deferRawBreakingNotice()
     }
     teardownLoadListeners()
+    autoShown.value = true
     showSplash.value = true
   }
 
@@ -557,14 +585,16 @@
   })
 
   const closeSplash = () => {
-    // The lock. Nothing closes this deck while the breaking change is unanswered — including the
-    // "Got it!" button on the last slide, which sends them back to the decision instead.
-    if (locked.value) {
+    // Nothing closes this deck while slide 1 is unanswered. Answering it does not open the exit
+    // either — the X and the escape stay off for the whole automatic showing, so the way out is
+    // the "Got it!" at the end of the tour.
+    if (awaitingAnswer.value) {
       showSplash.value = true
       currentSlide.value = 0
       return
     }
     showSplash.value = false
+    autoShown.value = false
     localStorage.setItem(key, 'true')
   }
 
@@ -614,8 +644,11 @@
     eventBus.emit('splashShowV5')
   }
 
+  // Opened by hand from the header, long after the news landed. Nothing is locked: they came
+  // looking for it, and the warning has already been answered once.
   const show = () => {
     currentSlide.value = 0
+    autoShown.value = false
     showSplash.value = true
   }
   defineExpose({ show })
