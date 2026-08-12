@@ -27,7 +27,7 @@
         <v-chip
           v-for="option in tabs"
           :key="option.label"
-          class="category-chip"
+          class="category-chip sf-chip-clickable"
           color="primary"
           size="small"
           :variant="!isSearching && tab === option.label ? 'flat' : 'outlined'"

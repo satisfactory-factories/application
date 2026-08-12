@@ -10,7 +10,7 @@
           <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
           <v-chip
             v-if="factories.length > 0"
-            class="sf-chip factory ml-3"
+            class="sf-chip sf-chip-info factory ml-3"
             variant="tonal"
           >
             <i class="fas fa-industry" />
@@ -33,7 +33,7 @@
     </v-card>
   </v-dialog>
 
-  <v-row id="factory-summary">
+  <v-row id="factory-summary" class="mb-4">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
@@ -42,7 +42,7 @@
             <v-chip
               v-if="factories.length > 0"
               id="factory-summary-count"
-              class="sf-chip factory ml-3"
+              class="sf-chip sf-chip-info factory ml-3"
               variant="tonal"
             >
               <i class="fas fa-industry" />

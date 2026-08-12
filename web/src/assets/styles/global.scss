@@ -147,6 +147,23 @@
   }
 }
 
+// Shape says whether a chip does anything. Anything pressable — @click, menu or dialog activator —
+// must carry `sf-chip-clickable` and takes the 4px corner of the buttons beside it. Vuetify cannot
+// work this out for us: it hangs `v-chip--link` off any bound click listener, so a chip whose
+// handler is an inert guard reads as pressable to it. Pills are the default, so `sf-chip-info` is
+// only worth spelling out where a static chip shares a bar with pressable ones.
+.sf-chip-clickable {
+  border-radius: 4px !important;
+  cursor: pointer;
+}
+
+.sf-chip-info {
+  border-radius: 9999px !important;
+  // v-chip--link brings a pointer cursor with it, so the shape and the cursor have to be put back
+  // together or the chip still invites a click.
+  cursor: default;
+}
+
 .sf-chip {
   padding: 20px 12px !important;
   border: 2px solid #7f7f7f !important;
@@ -441,9 +458,9 @@
       border-bottom: 0;
     }
 
-    // Everything in a card header takes the same small radius as the action buttons at its right
-    // edge. Vuetify chips are pills, which put three different corner treatments on one line.
-    .sf-chip,
+    // Buttons in a card header all take the same small radius. Chips follow the app-wide rule
+    // above instead — squared only when they are pressable, so the header's static readouts
+    // (power, shards, sloops) stop looking like controls.
     .v-btn {
       border-radius: 4px !important;
     }

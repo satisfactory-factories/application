@@ -29,6 +29,7 @@
           </div>
           <factory-status-chips
             animated
+            navigable
             :statuses="statuses"
             @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
           />

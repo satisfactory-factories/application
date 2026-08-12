@@ -25,27 +25,28 @@
                    excluded because the sync chip further down this same bar already says it,
                    with help text and a reset button the status chip cannot offer. -->
               <factory-status-chips
+                navigable
                 size="small"
                 :statuses="cardStatuses"
                 @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
               />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
+                <v-chip class="sf-chip sf-chip-clickable small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                <v-chip class="sf-chip sf-chip-clickable small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -61,7 +62,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small orange no-margin" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -77,7 +78,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
+                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -89,7 +90,7 @@
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small no-margin"
+                  class="sf-chip sf-chip-info small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
@@ -99,14 +100,14 @@
               </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow no-margin">
+                <v-chip class="sf-chip sf-chip-info small yellow no-margin">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
                 </v-chip>
               </tooltip>
               <!-- somersloops chip -->
               <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop no-margin">
+                <v-chip class="sf-chip sf-chip-info small sloop no-margin">
                   <game-asset height="18" subject="somersloop" type="item_id" width="18" />
                   <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
