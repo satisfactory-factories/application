@@ -57,9 +57,34 @@
             <div class="section-head px-4 py-2" :style="sectionVars(section)">
               <div class="d-flex align-center ga-2">
                 <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
-                <span :class="{ 'ungrouped-label': !section.group }">
-                  {{ section.group?.name ?? 'Ungrouped' }}
-                </span>
+                <!-- Rename in place: the pencil is the affordance, the name itself is the bigger
+                     target. Ungrouped is not a group and has no name to change. -->
+                <input
+                  v-if="editingId && editingId === section.group?.id"
+                  ref="nameInput"
+                  v-model="draftName"
+                  class="group-name-input"
+                  @blur="commitName"
+                  @keydown.esc.stop="cancelName"
+                  @keyup.enter="commitName"
+                >
+                <template v-else>
+                  <span
+                    :class="section.group ? 'group-name' : 'ungrouped-label'"
+                    @click.stop="section.group && startRename(section.group)"
+                  >
+                    {{ section.group?.name ?? 'Ungrouped' }}
+                  </span>
+                  <v-btn
+                    v-if="section.group"
+                    density="compact"
+                    icon="fas fa-pencil"
+                    size="x-small"
+                    title="Rename group"
+                    variant="text"
+                    @click.stop="startRename(section.group)"
+                  />
+                </template>
                 <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
                 <v-spacer />
                 <v-btn size="x-small" variant="text" @click="selectSection(section)">
@@ -173,22 +198,50 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, reactive, ref, watch } from 'vue'
+  import { computed, nextTick, reactive, ref, watch } from 'vue'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { useElementWidth } from '@/composables/useElementWidth'
   import { FactoryGroupSection, UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
   import { groupColorVars } from '@/utils/colors'
   import { getPartDisplayName } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
 
   const isOpen = defineModel<boolean>({ required: true })
 
-  const { groups, moveFactoriesToGroup, reorderGroup, sections } = useFactoryGroups()
+  const { groups, moveFactoriesToGroup, renameGroup, reorderGroup, sections } = useFactoryGroups()
 
   const groupIndex = (section: FactoryGroupSection) =>
     groups.value.findIndex(group => group.id === section.group?.id)
+
+  const editingId = ref<string | null>(null)
+  const draftName = ref('')
+  // A ref inside v-for is collected as an array, even when only one element ever carries it.
+  const nameInput = ref<HTMLInputElement | HTMLInputElement[]>()
+
+  const startRename = async (group: FactoryGroup) => {
+    editingId.value = group.id
+    draftName.value = group.name
+    await nextTick()
+    const input = Array.isArray(nameInput.value) ? nameInput.value[0] : nameInput.value
+    input?.focus()
+    input?.select()
+  }
+
+  // Enter blurs, and blur commits, so this runs twice for one accept — clearing the id first makes
+  // the second pass a no-op rather than a second rename.
+  const commitName = () => {
+    const id = editingId.value
+    if (!id) return
+    editingId.value = null
+    const name = draftName.value.trim()
+    if (name && name !== groups.value.find(group => group.id === id)?.name) renameGroup(id, name)
+  }
+
+  const cancelName = () => {
+    editingId.value = null
+  }
 
   const selected = reactive(new Set<number>())
   const target = ref<string>(UNGROUPED_ID)
@@ -326,6 +379,25 @@
 .ungrouped-label {
   color: #bdbdbd;
   font-style: italic;
+}
+
+// Nothing else in this dialog is editable, so the name has to say that it is.
+.group-name {
+  cursor: text;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.group-name-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-weight: 500;
+  min-width: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .factory-row {

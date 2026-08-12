@@ -37,7 +37,7 @@
           class="group-name"
           placeholder="Group name"
           @blur="commitName"
-          @keyup.enter="commitName"
+          @keyup.enter="acceptName"
         >
         <span v-else class="group-name ungrouped-label">Ungrouped</span>
 
@@ -169,6 +169,14 @@
   const commitName = () => {
     if (!group.value || draftName.value === group.value.name) return
     renameGroup(group.value.id, draftName.value)
+  }
+
+  // Enter has always committed, but it left the caret sitting in the field with nothing to say the
+  // rename had landed — which reads as "it needs a click elsewhere". Leaving the field is the
+  // feedback.
+  const acceptName = (event: KeyboardEvent) => {
+    commitName()
+    ;(event.target as HTMLInputElement).blur()
   }
 
   const toggle = () => toggleCollapsed(groupId.value)

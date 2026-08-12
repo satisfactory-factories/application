@@ -33,6 +33,7 @@ const groupsApi = vi.hoisted(() => {
     groups: ref([] as any[]),
     sections: ref([] as any[]),
     moveFactoriesToGroup: vi.fn(() => []),
+    renameGroup: vi.fn(),
     reorderGroup: vi.fn(),
   }
 })
@@ -74,6 +75,9 @@ const tooltipsIn = (element: Element | null | undefined, selector = '[data-hover
 const rowFor = (name: string) => rows().find(row => row.textContent?.includes(name))
 const arrowsIn = (head: HTMLElement) =>
   [...head.querySelectorAll('button')].filter(button => button.title.startsWith('Move group'))
+const pencilIn = (head: HTMLElement) =>
+  [...head.querySelectorAll('button')].find(button => button.title === 'Rename group')
+const nameField = () => body().querySelector<HTMLInputElement>('.group-name-input')
 
 const open = () => vuetifyRender(FactoryGroupBulkDialog, { props: { modelValue: true } })
 
@@ -117,6 +121,7 @@ describe('FactoryGroupBulkDialog', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     groupsApi.reorderGroup.mockClear()
+    groupsApi.renameGroup.mockClear()
     groupsApi.groups.value = [group('g1', 'Copper', 0), group('g2', 'Nuclear', 1)]
     groupsApi.sections.value = [
       {
@@ -193,6 +198,69 @@ describe('FactoryGroupBulkDialog', () => {
       open()
 
       expect(tooltipsIn(heads()[1])).toEqual(['Copper Ingot', 'Wire'])
+    })
+  })
+
+  describe('renaming', () => {
+    it('opens the name for editing from the pencil, ready to be typed over', async () => {
+      open()
+
+      await fireEvent.click(pencilIn(heads()[1])!)
+      await nextTick()
+
+      expect(nameField()?.value).toBe('Copper')
+    })
+
+    it('opens it from the name itself too', async () => {
+      open()
+
+      await fireEvent.click(heads()[1].querySelector('.group-name')!)
+      await nextTick()
+
+      expect(nameField()).not.toBeNull()
+    })
+
+    it('applies on Enter, without waiting for a click elsewhere', async () => {
+      open()
+      await fireEvent.click(pencilIn(heads()[1])!)
+      await nextTick()
+
+      await fireEvent.update(nameField()!, 'Copper Chain')
+      await fireEvent.keyUp(nameField()!, { key: 'Enter' })
+
+      expect(groupsApi.renameGroup).toHaveBeenCalledWith('g1', 'Copper Chain')
+      // And it goes back to being a label, so nothing is left looking half-edited.
+      expect(nameField()).toBeNull()
+    })
+
+    it('renames once when Enter is followed by the blur it causes', async () => {
+      open()
+      await fireEvent.click(pencilIn(heads()[1])!)
+      await nextTick()
+
+      await fireEvent.update(nameField()!, 'Copper Chain')
+      const field = nameField()!
+      await fireEvent.keyUp(field, { key: 'Enter' })
+      await fireEvent.blur(field)
+
+      expect(groupsApi.renameGroup).toHaveBeenCalledTimes(1)
+    })
+
+    it('discards the edit on Escape', async () => {
+      open()
+      await fireEvent.click(pencilIn(heads()[1])!)
+      await nextTick()
+
+      await fireEvent.update(nameField()!, 'Discarded')
+      await fireEvent.keyDown(nameField()!, { key: 'Escape' })
+
+      expect(groupsApi.renameGroup).not.toHaveBeenCalled()
+    })
+
+    it('offers no rename on Ungrouped, which is not a group', () => {
+      open()
+
+      expect(pencilIn(heads()[0])).toBeUndefined()
     })
   })
 
