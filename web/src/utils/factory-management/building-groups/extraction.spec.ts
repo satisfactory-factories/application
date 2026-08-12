@@ -14,6 +14,7 @@ import {
   getGroupExtractor,
   getGroupPurity,
   isExtractionRecipe,
+  isPlainExtraction,
   isWellRecipe,
   PURITY_MULTIPLIERS,
   sanitizeGroupExtraction,
@@ -140,6 +141,35 @@ describe('extraction', async () => {
       addProductToFactory(mockFactory, { id: 'IronIngot', recipe: 'IngotIron', amount: 480 })
 
       expect(mockFactory.products[0].buildingGroupItemSync).toBe(true)
+    })
+
+    // A Water Extractor has one mark and no purity, so its groups never need to differ — the
+    // reason mines start unsynced does not apply to it.
+    it('keeps sync on for water, which is plain extraction', () => {
+      addProductToFactory(mockFactory, { id: 'Water', recipe: 'Extract_Water', amount: 480 })
+
+      expect(mockFactory.products[0].buildingGroupItemSync).toBe(true)
+    })
+  })
+
+  describe('plain extraction', () => {
+    it('is water, and only water', () => {
+      expect(isPlainExtraction('Extract_Water')).toBe(true)
+    })
+
+    it('is not a mine, which spans three marks and three purities', () => {
+      expect(isPlainExtraction('Extract_OreIron')).toBe(false)
+      // One extractor, but purity still changes what it yields.
+      expect(isPlainExtraction('Extract_LiquidOil')).toBe(false)
+    })
+
+    it('is not a well, whose output comes from its satellites', () => {
+      expect(isPlainExtraction('Extract_Water_Well')).toBe(false)
+    })
+
+    it('is not anything that does not extract at all', () => {
+      expect(isPlainExtraction('IngotIron')).toBe(false)
+      expect(isPlainExtraction(undefined)).toBe(false)
     })
   })
 

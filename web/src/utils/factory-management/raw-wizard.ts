@@ -20,6 +20,7 @@ import { addShortageToFactory } from '@/utils/factory-management/satisfaction'
 import {
   getExtractionRecipeForPart,
   isExtractionRecipe,
+  isPlainExtraction,
 } from '@/utils/factory-management/building-groups/extraction'
 import { getPartDisplayName } from '@/utils/helpers'
 
@@ -442,7 +443,10 @@ export const applyRawWizard = (
   calculateFactories(working, gameData)
 
   // Back to the unsynced default every mine is created with, now that the groups are sized.
-  sizedProducts.forEach(product => { product.buildingGroupItemSync = false })
+  // Water extractors are not mines — one mark, no purity — so they keep sync like anything else.
+  sizedProducts
+    .filter(product => !isPlainExtraction(product.recipe))
+    .forEach(product => { product.buildingGroupItemSync = false })
 
   summary.factories = describeTouchedFactories(
     working,

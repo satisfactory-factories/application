@@ -195,6 +195,7 @@
     getExtraction,
     getExtractionReferenceRate,
     isExtractionRecipe,
+    isPlainExtraction,
     PURITY_LABELS,
     PURITY_MULTIPLIERS,
   } from '@/utils/factory-management/building-groups/extraction'
@@ -228,7 +229,11 @@
   // normal node), so "88 short" means 88 Mk.1-equivalents — meaningless to someone building
   // Mk.3s. Mines report the same figures as output instead: the groups' combined rate against
   // the quantity being asked for.
-  const isExtraction = computed(() => isExtractionRecipe(props.item.recipe))
+  // Plain extraction (water) is excluded throughout: one extractor at a flat rate means its
+  // effective-building count is already the number the user is building, so it reads like any
+  // other producing building rather than needing the output-based treatment a mine does.
+  const isExtraction = computed(() =>
+    isExtractionRecipe(props.item.recipe) && !isPlainExtraction(props.item.recipe))
 
   // The remainder buttons work in buildings either way, but for a mine the figure the user is
   // looking at is output, so name it the way the status line does.
@@ -247,7 +252,7 @@
   // miner wide reads 0.5 rather than being rounded up to a miner that would overshoot it.
   const shortfallHints = computed(() => {
     const extraction = getExtraction(props.item.recipe)
-    if (!extraction || outputRemaining.value <= 0) {
+    if (!extraction || !isExtraction.value || outputRemaining.value <= 0) {
       return []
     }
 

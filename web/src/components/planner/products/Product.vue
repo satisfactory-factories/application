@@ -258,7 +258,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
-  import { getGroupExtractor, isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
+  import { getGroupExtractor, isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
   import { inject } from 'vue'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -316,10 +316,12 @@
     updateFactory(factory)
   }
 
-  // Extraction only: how many of each extractor the product's groups add up to. Empty for
-  // everything else, which keeps the normal single-building row in place.
+  // Mines only: how many of each extractor the product's groups add up to, because a mine spans
+  // several marks and one editable count would be a lie. Empty for everything else — including
+  // plain extraction like water, which is a single building at a flat rate and takes the ordinary
+  // editable row.
   const extractorCounts = (product: FactoryItem) => {
-    if (!isExtractionRecipe(product.recipe)) {
+    if (!isExtractionRecipe(product.recipe) || isPlainExtraction(product.recipe)) {
       return []
     }
 

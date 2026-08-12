@@ -35,6 +35,18 @@ export const getWell = (recipeId?: string): RecipeWell | undefined => getExtract
 
 export const isWellRecipe = (recipeId?: string): boolean => !!getWell(recipeId)
 
+// Extraction that behaves like any other producing building: one extractor, one purity, no
+// satellites. Its building count is the whole story — one building is one Water Extractor at a
+// flat rate — where a mine's count is in reference-extractor units and says nothing on its own.
+// Water is the only resource shaped this way today, and it takes the ordinary building UI.
+export const isPlainExtraction = (recipeId?: string): boolean => {
+  const extraction = getExtraction(recipeId)
+  if (!extraction || extraction.well) {
+    return false
+  }
+  return extraction.extractors.length === 1 && extraction.purities.length <= 1
+}
+
 // A well with no satellites produces nothing and reads as broken, so a new one starts on a
 // single normal node.
 export const DEFAULT_SATELLITES: { [purity in NodePurity]: number } = { impure: 0, normal: 1, pure: 0 }
