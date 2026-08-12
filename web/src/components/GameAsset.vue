@@ -5,19 +5,21 @@
     :href="getWikiUrl(wikiName ?? displayName)"
     rel="noopener noreferrer"
     target="_blank"
-    :title="`Open ${wikiName ?? displayName} on Satisfactory Wiki`"
   >
     <game-asset-content
       :height="height"
       :subject="subject"
+      :title="wikiName ?? displayName"
       :type="type"
       :width="width"
+      wiki
     />
   </a>
   <game-asset-content
     v-else
     :height="height"
     :subject="subject"
+    :title="displayName"
     :type="type"
     :width="width"
   />

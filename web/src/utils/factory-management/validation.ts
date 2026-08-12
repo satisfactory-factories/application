@@ -4,6 +4,7 @@ import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
 import { StructuralRepair } from '@/utils/factory-management/repair'
+import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
 
 const repair = (factory: Factory, summary: string): StructuralRepair => {
   // Kept alongside the dialog: the console line carries the IDs, which are noise to the
@@ -239,6 +240,11 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
   // Last, once every factory has a unique ID and its inputs are sane, so the chain is being
   // reconciled against data that can be trusted.
   repairs.push(...repairDependencyChain(factories, gameData))
+
+  // Converges disagreeing copies of a group record and re-establishes the group ordering
+  // invariant. Silent by design: a group that has drifted is cosmetic, and nothing here can
+  // lose a factory, so it does not deserve a line in the plan-repair dialog.
+  repairFactoryGroups(factories)
 
   return repairs
 }
