@@ -5,7 +5,8 @@ Branch: `update6` (PR #512). Everything below ships in that PR.
 **Status: built.** Every task below is done bar the launch video, which needs a real YouTube ID
 in `SplashV6.vue`'s `launchVideoId` before merge — the embed renders only once that is set.
 
-Beta v0.6 is "The Mining Update". Two user-facing artefacts need writing before it launches: the
+Beta v0.6 is "The Groundwork Update" (renamed from "The Mining Update" as its scope grew past
+mining). Two user-facing artefacts need writing before it launches: the
 in-app **Change Log** page, which currently covers only the mining half of the release, and a
 **What's new** slide deck, the equivalent of the Beta v0.5 splash. `CHANGELOG.md` already carries
 the full technical record under `[Unreleased]` and stays there — the release is deliberately not

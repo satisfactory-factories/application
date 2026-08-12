@@ -10,6 +10,7 @@
 - [Scope plans per session](feedback-scope-plans-per-session.md) — split big multi-part features into separate plans/branches/sessions
 - [Graph rebuild plan (parked)](project-graph-rebuild-plan.md) — Vue Flow graph-view rebuild plan saved to repo `.claude/plans/graph-view-vue-flow-rebuild.md`, decisions locked, M1–M6 not started
 - [AWESOME Sink plan (Beta v0.6)](project-awesome-sink-plan.md) — sink + byproduct routing plan approved, in `.claude/plans/awesome-sink-and-byproduct-routing.md`; do NOT implement during Beta v0.5
+- [Surplus disposition is not production-tied](surplus-disposition-not-production-tied.md) — sink/depot features key off surplus alone, never off whether the factory makes the part
 - [TDD specs fail intentionally](tdd-specs-fail-intentionally.md) — web/testing/tdd/ holds WIP specs written before implementation; failures there may be pre-existing user work
 - [Dependency modernization plan](dependency-modernization-plan.md) — phased upgrade programme state; TS capped at 6.0, ESLint target 9+neostandard, vue-router pinned ~4.4.5, VNumberInput gotchas
 - [Vuetify 4 migration](vuetify-4-migration-checklist.md) — done in PR #490; cascade layers invert app-vs-Vuetify precedence, and one layer bug only shows in a production build
