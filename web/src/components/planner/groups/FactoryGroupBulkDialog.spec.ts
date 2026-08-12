@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { fireEvent } from '@testing-library/vue'
 
 // <game-asset> reads the game data store outright and throws when it is empty, and
@@ -76,6 +77,42 @@ const arrowsIn = (head: HTMLElement) =>
 
 const open = () => vuetifyRender(FactoryGroupBulkDialog, { props: { modelValue: true } })
 
+// The app's test bootstrap installs a ResizeObserver that never fires, which is honest for a DOM
+// that never lays anything out — but it leaves the icon counts permanently on their unmeasured
+// fallback. This one keeps its callback so `widen` can report a size to it by hand.
+const observed = new Map<Element, ResizeObserverCallback>()
+class RecordingResizeObserver implements ResizeObserver {
+  callback: ResizeObserverCallback
+  constructor (callback: ResizeObserverCallback) {
+    this.callback = callback
+  }
+
+  observe (element: Element) {
+    observed.set(element, this.callback)
+  }
+
+  unobserve (element: Element) {
+    observed.delete(element)
+  }
+
+  disconnect () {
+    for (const [element, callback] of observed) {
+      if (callback === this.callback) observed.delete(element)
+    }
+  }
+}
+vi.stubGlobal('ResizeObserver', RecordingResizeObserver)
+
+const widen = async (width: number) => {
+  // The observer is armed by a post-flush watch, so it does not exist yet on the tick a render
+  // returns on.
+  await nextTick()
+  const [element, callback] = [...observed][0] ?? []
+  if (!element) throw new Error('nothing is being measured')
+  callback!([{ target: element, contentRect: { width } } as unknown as ResizeObserverEntry], {} as ResizeObserver)
+  await nextTick()
+}
+
 describe('FactoryGroupBulkDialog', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
@@ -119,18 +156,33 @@ describe('FactoryGroupBulkDialog', () => {
       expect(rowFor('Alien Power')!.querySelector('.product-strip')).toBeNull()
     })
 
-    it('caps a long list and names the rest in the overflow', () => {
+    it('fills the width it is given, and names the rest in the overflow', async () => {
       groupsApi.sections.value[0].factories = [
         withProducts('Everything', 9, [
           'IronIngot', 'IronPlate', 'IronRod', 'Screw', 'Wire', 'Cable', 'Concrete',
         ]),
       ]
       open()
+      await widen(720)
+
+      // Everything fits at the dialog's own width, so nothing is hidden.
+      expect(tooltipsIn(rowFor('Everything'), '.product-strip [data-hover-tooltip]')).toHaveLength(7)
+      expect(rowFor('Everything')!.querySelector('.overflow-count')).toBeNull()
+    })
+
+    it('drops icons rather than squeezing the names when there is no room', async () => {
+      groupsApi.sections.value[0].factories = [
+        withProducts('Everything', 9, [
+          'IronIngot', 'IronPlate', 'IronRod', 'Screw', 'Wire', 'Cable', 'Concrete',
+        ]),
+      ]
+      open()
+      await widen(400)
 
       const row = rowFor('Everything')!
-      // Five icons and a +2, not six and a +1: the overflow tile takes a slot of its own.
-      expect(tooltipsIn(row, '.product-strip [data-hover-tooltip]')).toHaveLength(5)
-      expect(row.querySelector('.overflow-count')?.textContent).toBe('+2')
+      // Three icons and a +4, not four and a +3: the overflow tile takes a slot of its own.
+      expect(tooltipsIn(row, '.product-strip [data-hover-tooltip]')).toHaveLength(3)
+      expect(row.querySelector('.overflow-count')?.textContent).toBe('+4')
     })
 
     it('rolls the whole group up on its header, deduped', () => {

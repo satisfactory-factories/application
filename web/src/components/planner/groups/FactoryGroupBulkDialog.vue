@@ -45,109 +45,113 @@
       <v-divider />
 
       <v-card-text class="pa-0 factory-list">
-        <div
-          v-for="{ section, summary, rows } in decoratedSections"
-          :key="section.group?.id ?? 'ungrouped'"
-        >
-          <!-- Grouped by where each factory is now, because the useful selection is almost always
-               "everything currently in X" or "everything not in a group yet". -->
-          <div class="section-head px-4 py-2" :style="sectionVars(section)">
-            <div class="d-flex align-center ga-2">
-              <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
-              <span :class="{ 'ungrouped-label': !section.group }">
-                {{ section.group?.name ?? 'Ungrouped' }}
-              </span>
-              <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
-              <v-spacer />
-              <v-btn size="x-small" variant="text" @click="selectSection(section)">
-                {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
-              </v-btn>
-              <!-- Arrows rather than a drag: this list re-sections itself as factories move, so a
-                   drag would be aiming at rows that shift under it. Ungrouped has no arrows — it
-                   is pinned to the top and is not a group that can be ordered. -->
-              <template v-if="section.group">
-                <v-btn
-                  density="compact"
-                  :disabled="groupIndex(section) === 0"
-                  icon="fas fa-chevron-up"
-                  size="x-small"
-                  title="Move group up"
-                  variant="text"
-                  @click="reorderGroup(section.group.id, 'up')"
-                />
-                <v-btn
-                  density="compact"
-                  :disabled="groupIndex(section) === groups.length - 1"
-                  icon="fas fa-chevron-down"
-                  size="x-small"
-                  title="Move group down"
-                  variant="text"
-                  @click="reorderGroup(section.group.id, 'down')"
-                />
-              </template>
-            </div>
-
-            <!-- Everything the group makes, rolled up across its factories — the same summary the
-                 sidebar's group header carries. -->
-            <div v-if="summary.shown.length" class="d-flex align-center ga-1 mt-1">
-              <game-asset
-                v-for="part in summary.shown"
-                :key="part"
-                height="24"
-                :subject="part"
-                type="item"
-                width="24"
-              />
-              <v-tooltip v-if="summary.hidden.length" location="bottom">
-                <template #activator="{ props: activatorProps }">
-                  <span class="overflow-count" v-bind="activatorProps">+{{ summary.hidden.length }}</span>
-                </template>
-                <span>{{ summary.hidden.map(getPartDisplayName).join(', ') }}</span>
-              </v-tooltip>
-            </div>
-          </div>
-
-          <v-list-item
-            v-for="{ factory, shown, hidden } in rows"
-            :key="factory.id"
-            class="factory-row"
-            density="compact"
-            @click="toggle(factory.id)"
+        <!-- The measured element is this inner div, not the scroll container: its content width is
+             what a row actually has, with the scrollbar already taken off. -->
+        <div ref="listEl">
+          <div
+            v-for="{ section, summary, rows } in decoratedSections"
+            :key="section.group?.id ?? 'ungrouped'"
           >
-            <!-- Box and tick are both drawn in CSS, with no icon anywhere in it.
-                 <v-checkbox-btn> is out because Vuetify's FA aliases use `far fa-square` for the
-                 unchecked state and this app ships no Font Awesome regular family, so the empty
-                 box renders as nothing at all. A Font Awesome tick is out for the opposite
-                 reason: FA replaces the <i> with an <svg> Vue no longer owns, so v-if removed
-                 nothing and unticking left the tick behind. A class on a pseudo-element cannot
-                 fall out of step with the state that drives it. -->
-            <template #prepend>
-              <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
-            <div class="d-flex align-center ga-2 w-100">
-              <factory-icon-display :icon="factory.icon" size="20" />
-              <span class="text-truncate">{{ factory.name }}</span>
-              <v-spacer />
-              <!-- What the factory makes. Right-aligned rather than trailing the name so the
-                   strips line up in a column, and so a long name truncates instead of shoving
-                   them off the row. -->
-              <div v-if="shown.length" class="product-strip d-flex align-center ga-1">
+            <!-- Grouped by where each factory is now, because the useful selection is almost always
+                 "everything currently in X" or "everything not in a group yet". -->
+            <div class="section-head px-4 py-2" :style="sectionVars(section)">
+              <div class="d-flex align-center ga-2">
+                <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
+                <span :class="{ 'ungrouped-label': !section.group }">
+                  {{ section.group?.name ?? 'Ungrouped' }}
+                </span>
+                <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
+                <v-spacer />
+                <v-btn size="x-small" variant="text" @click="selectSection(section)">
+                  {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
+                </v-btn>
+                <!-- Arrows rather than a drag: this list re-sections itself as factories move, so a
+                     drag would be aiming at rows that shift under it. Ungrouped has no arrows — it
+                     is pinned to the top and is not a group that can be ordered. -->
+                <template v-if="section.group">
+                  <v-btn
+                    density="compact"
+                    :disabled="groupIndex(section) === 0"
+                    icon="fas fa-chevron-up"
+                    size="x-small"
+                    title="Move group up"
+                    variant="text"
+                    @click="reorderGroup(section.group.id, 'up')"
+                  />
+                  <v-btn
+                    density="compact"
+                    :disabled="groupIndex(section) === groups.length - 1"
+                    icon="fas fa-chevron-down"
+                    size="x-small"
+                    title="Move group down"
+                    variant="text"
+                    @click="reorderGroup(section.group.id, 'down')"
+                  />
+                </template>
+              </div>
+
+              <!-- Everything the group makes, rolled up across its factories — the same summary the
+                   sidebar's group header carries. -->
+              <div v-if="summary.shown.length" class="d-flex align-center ga-1 mt-1">
                 <game-asset
-                  v-for="part in shown"
+                  v-for="part in summary.shown"
                   :key="part"
-                  height="20"
+                  height="24"
                   :subject="part"
                   type="item"
-                  width="20"
+                  width="24"
                 />
-                <v-tooltip v-if="hidden.length" location="bottom">
+                <v-tooltip v-if="summary.hidden.length" location="bottom">
                   <template #activator="{ props: activatorProps }">
-                    <span class="overflow-count" v-bind="activatorProps">+{{ hidden.length }}</span>
+                    <span class="overflow-count" v-bind="activatorProps">+{{ summary.hidden.length }}</span>
                   </template>
-                  <span>{{ hidden.map(getPartDisplayName).join(', ') }}</span>
+                  <span>{{ summary.hidden.map(getPartDisplayName).join(', ') }}</span>
                 </v-tooltip>
               </div>
             </div>
-          </v-list-item>
+
+            <v-list-item
+              v-for="{ factory, shown, hidden } in rows"
+              :key="factory.id"
+              class="factory-row"
+              density="compact"
+              @click="toggle(factory.id)"
+            >
+              <!-- Box and tick are both drawn in CSS, with no icon anywhere in it.
+                   <v-checkbox-btn> is out because Vuetify's FA aliases use `far fa-square` for the
+                   unchecked state and this app ships no Font Awesome regular family, so the empty
+                   box renders as nothing at all. A Font Awesome tick is out for the opposite
+                   reason: FA replaces the <i> with an <svg> Vue no longer owns, so v-if removed
+                   nothing and unticking left the tick behind. A class on a pseudo-element cannot
+                   fall out of step with the state that drives it. -->
+              <template #prepend>
+                <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
+              <div class="d-flex align-center ga-2 w-100">
+                <factory-icon-display :icon="factory.icon" size="20" />
+                <span class="text-truncate">{{ factory.name }}</span>
+                <v-spacer />
+                <!-- What the factory makes. Right-aligned rather than trailing the name so the
+                     strips line up in a column, and so a long name truncates instead of shoving
+                     them off the row. -->
+                <div v-if="shown.length" class="product-strip d-flex align-center ga-1">
+                  <game-asset
+                    v-for="part in shown"
+                    :key="part"
+                    height="20"
+                    :subject="part"
+                    type="item"
+                    width="20"
+                  />
+                  <v-tooltip v-if="hidden.length" location="bottom">
+                    <template #activator="{ props: activatorProps }">
+                      <span class="overflow-count" v-bind="activatorProps">+{{ hidden.length }}</span>
+                    </template>
+                    <span>{{ hidden.map(getPartDisplayName).join(', ') }}</span>
+                  </v-tooltip>
+                </div>
+              </div>
+            </v-list-item>
+          </div>
         </div>
       </v-card-text>
 
@@ -171,6 +175,7 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { useElementWidth } from '@/composables/useElementWidth'
   import { FactoryGroupSection, UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
   import { groupColorVars } from '@/utils/colors'
   import { getPartDisplayName } from '@/utils/helpers'
@@ -223,9 +228,30 @@
   //
   // A flat cap rather than the sidebar's measured fit — this dialog is a fixed 720px, so there is
   // no width to react to and nothing to gain from an observer per row.
-  const MAX_PRODUCT_ICONS = 6
-  // The group's roll-up gets the whole width of the dialog to itself, so it holds far more.
-  const MAX_SUMMARY_ICONS = 16
+  // Measured off the list rather than fixed, so a narrow dialog drops icons instead of squeezing
+  // the names, and a wide one uses the room it has. One observer for the whole list, not one per
+  // row: every row has the same geometry, and the name is the only thing that varies — it
+  // truncates, so it is budgeted rather than measured.
+  //
+  // The lead is what sits left of a row's strip at 720px: 72 of v-list-item padding, the 20px
+  // factory icon, two 8px gaps, and 200 kept for the name (the longest in the demo plan is 190).
+  const TILE = 20
+  const HEAD_TILE = 24
+  const GAP = 4
+  const ROW_LEAD = 308
+  const HEAD_LEAD = 32
+  // Only until the observer's first callback, which lands in the same frame as the first paint.
+  const UNMEASURED_ROW_FITS = 6
+
+  const listEl = ref<HTMLElement>()
+  const { width: listWidth } = useElementWidth(listEl)
+
+  // n tiles need n widths and n-1 gaps, so the gap is added to both sides of the division.
+  const fits = (lead: number, tile: number) =>
+    Math.max(1, Math.floor((listWidth.value - lead + GAP) / (tile + GAP)))
+
+  const rowFits = computed(() => listWidth.value ? fits(ROW_LEAD, TILE) : UNMEASURED_ROW_FITS)
+  const summaryFits = computed(() => listWidth.value ? fits(HEAD_LEAD, HEAD_TILE) : UNMEASURED_ROW_FITS)
 
   // Deduped, in the order the factories declare them, so the icons stay put as the plan changes
   // rather than reshuffling on every recalc.
@@ -241,10 +267,10 @@
 
   const decoratedSections = computed(() => sections.value.map(section => ({
     section,
-    summary: split(productIds(section.factories), MAX_SUMMARY_ICONS),
+    summary: split(productIds(section.factories), summaryFits.value),
     rows: section.factories.map(factory => ({
       factory,
-      ...split(productIds([factory]), MAX_PRODUCT_ICONS),
+      ...split(productIds([factory]), rowFits.value),
     })),
   })))
 
