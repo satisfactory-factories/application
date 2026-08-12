@@ -45,23 +45,70 @@
       <v-divider />
 
       <v-card-text class="pa-0 factory-list">
-        <div v-for="section in sections" :key="section.group?.id ?? 'ungrouped'">
+        <div
+          v-for="{ section, summary, rows } in decoratedSections"
+          :key="section.group?.id ?? 'ungrouped'"
+        >
           <!-- Grouped by where each factory is now, because the useful selection is almost always
                "everything currently in X" or "everything not in a group yet". -->
-          <div class="section-head d-flex align-center ga-2 px-4 py-2" :style="sectionVars(section)">
-            <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
-            <span :class="{ 'ungrouped-label': !section.group }">
-              {{ section.group?.name ?? 'Ungrouped' }}
-            </span>
-            <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
-            <v-spacer />
-            <v-btn size="x-small" variant="text" @click="selectSection(section)">
-              {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
-            </v-btn>
+          <div class="section-head px-4 py-2" :style="sectionVars(section)">
+            <div class="d-flex align-center ga-2">
+              <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
+              <span :class="{ 'ungrouped-label': !section.group }">
+                {{ section.group?.name ?? 'Ungrouped' }}
+              </span>
+              <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
+              <v-spacer />
+              <v-btn size="x-small" variant="text" @click="selectSection(section)">
+                {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
+              </v-btn>
+              <!-- Arrows rather than a drag: this list re-sections itself as factories move, so a
+                   drag would be aiming at rows that shift under it. Ungrouped has no arrows — it
+                   is pinned to the top and is not a group that can be ordered. -->
+              <template v-if="section.group">
+                <v-btn
+                  density="compact"
+                  :disabled="groupIndex(section) === 0"
+                  icon="fas fa-chevron-up"
+                  size="x-small"
+                  title="Move group up"
+                  variant="text"
+                  @click="reorderGroup(section.group.id, 'up')"
+                />
+                <v-btn
+                  density="compact"
+                  :disabled="groupIndex(section) === groups.length - 1"
+                  icon="fas fa-chevron-down"
+                  size="x-small"
+                  title="Move group down"
+                  variant="text"
+                  @click="reorderGroup(section.group.id, 'down')"
+                />
+              </template>
+            </div>
+
+            <!-- Everything the group makes, rolled up across its factories — the same summary the
+                 sidebar's group header carries. -->
+            <div v-if="summary.shown.length" class="d-flex align-center ga-1 mt-1">
+              <game-asset
+                v-for="part in summary.shown"
+                :key="part"
+                height="24"
+                :subject="part"
+                type="item"
+                width="24"
+              />
+              <v-tooltip v-if="summary.hidden.length" location="bottom">
+                <template #activator="{ props: activatorProps }">
+                  <span class="overflow-count" v-bind="activatorProps">+{{ summary.hidden.length }}</span>
+                </template>
+                <span>{{ summary.hidden.map(getPartDisplayName).join(', ') }}</span>
+              </v-tooltip>
+            </div>
           </div>
 
           <v-list-item
-            v-for="factory in section.factories"
+            v-for="{ factory, shown, hidden } in rows"
             :key="factory.id"
             class="factory-row"
             density="compact"
@@ -76,9 +123,29 @@
                  fall out of step with the state that drives it. -->
             <template #prepend>
               <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
-            <div class="d-flex align-center ga-2">
+            <div class="d-flex align-center ga-2 w-100">
               <factory-icon-display :icon="factory.icon" size="20" />
-              <span>{{ factory.name }}</span>
+              <span class="text-truncate">{{ factory.name }}</span>
+              <v-spacer />
+              <!-- What the factory makes. Right-aligned rather than trailing the name so the
+                   strips line up in a column, and so a long name truncates instead of shoving
+                   them off the row. -->
+              <div v-if="shown.length" class="product-strip d-flex align-center ga-1">
+                <game-asset
+                  v-for="part in shown"
+                  :key="part"
+                  height="20"
+                  :subject="part"
+                  type="item"
+                  width="20"
+                />
+                <v-tooltip v-if="hidden.length" location="bottom">
+                  <template #activator="{ props: activatorProps }">
+                    <span class="overflow-count" v-bind="activatorProps">+{{ hidden.length }}</span>
+                  </template>
+                  <span>{{ hidden.map(getPartDisplayName).join(', ') }}</span>
+                </v-tooltip>
+              </div>
             </div>
           </v-list-item>
         </div>
@@ -106,12 +173,17 @@
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { FactoryGroupSection, UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
   import { groupColorVars } from '@/utils/colors'
+  import { getPartDisplayName } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
+  import { Factory } from '@/interfaces/planner/FactoryInterface'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
 
   const isOpen = defineModel<boolean>({ required: true })
 
-  const { groups, moveFactoriesToGroup, sections } = useFactoryGroups()
+  const { groups, moveFactoriesToGroup, reorderGroup, sections } = useFactoryGroups()
+
+  const groupIndex = (section: FactoryGroupSection) =>
+    groups.value.findIndex(group => group.id === section.group?.id)
 
   const selected = reactive(new Set<number>())
   const target = ref<string>(UNGROUPED_ID)
@@ -144,6 +216,37 @@
 
   const sectionVars = (section: FactoryGroupSection) =>
     section.group ? groupColorVars(section.group.color) : {}
+
+  // A factory is recognised by what it makes far faster than by a name someone picked months ago,
+  // so each row carries its products. Byproducts are left out, as in the sidebar's group row: they
+  // are not what the factory is for, and they double the strip on the refinery lines.
+  //
+  // A flat cap rather than the sidebar's measured fit — this dialog is a fixed 720px, so there is
+  // no width to react to and nothing to gain from an observer per row.
+  const MAX_PRODUCT_ICONS = 6
+  // The group's roll-up gets the whole width of the dialog to itself, so it holds far more.
+  const MAX_SUMMARY_ICONS = 16
+
+  // Deduped, in the order the factories declare them, so the icons stay put as the plan changes
+  // rather than reshuffling on every recalc.
+  const productIds = (factories: Factory[]) =>
+    [...new Set(factories.flatMap(factory => factory.products.map(product => product.id)))]
+
+  // The +N tile takes a slot of its own, so it only earns one when it hides more than the icon it
+  // displaces.
+  const split = (parts: string[], cap: number) => {
+    const shownCount = parts.length <= cap ? parts.length : cap - 1
+    return { shown: parts.slice(0, shownCount), hidden: parts.slice(shownCount) }
+  }
+
+  const decoratedSections = computed(() => sections.value.map(section => ({
+    section,
+    summary: split(productIds(section.factories), MAX_SUMMARY_ICONS),
+    rows: section.factories.map(factory => ({
+      factory,
+      ...split(productIds([factory]), MAX_PRODUCT_ICONS),
+    })),
+  })))
 
   const toggle = (id: number) => {
     if (selected.has(id)) selected.delete(id)
@@ -201,6 +304,17 @@
 
 .factory-row {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+// Never squeezed by a long factory name — the name truncates instead.
+.product-strip {
+  flex: 0 0 auto;
+}
+
+.overflow-count {
+  font-size: 0.75rem;
+  color: #bdbdbd;
+  white-space: nowrap;
 }
 
 .tick {
