@@ -1,17 +1,17 @@
 <template>
   <v-dialog
     v-model="showSplash"
-    :max-width="currentSlide === 0 ? 1400 : 1000"
-    :persistent="locked"
+    :max-width="currentSlide === 0 ? 1200 : 1000"
+    :persistent="noEscape"
     scrollable
   >
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
-        <!-- No way out of the automatic showing: slide 1 has to be answered, and the way out
-             after that is the end of the tour. Reopening it by hand later has no such lock. -->
+        <!-- Never on slide 1: the warning is not something to flick away from the corner of the
+             eye. On the automatic showing it stays off for the whole tour. -->
         <v-btn
-          v-if="!locked"
+          v-if="!noEscape"
           density="comfortable"
           icon="fas fa-times"
           size="small"
@@ -23,8 +23,8 @@
         <!-- Slide 1: The breaking change. It leads because it changes what every existing plan
              reports, and the wizard below is the way out of it. -->
         <div v-if="currentSlide === 0">
-          <h2 class="text-h4 text-center mb-2">The "Groundwork" Update is here!</h2>
-          <p class="text-center text-medium-emphasis mb-4">Everything your plan needs now comes from somewhere.</p>
+          <h2 class="text-h4 text-center mb-2">The "Groundwork" Update</h2>
+          <p class="text-center text-medium-emphasis mb-4">Everything your plan needs now comes from the ground somewhere.</p>
           <!-- Shown to everyone, not only to someone with a plan open right now: a plan arrives
                by share link and paste as often as it does from local storage, and the one thing
                nobody must miss is that the old ones now read differently. -->
@@ -35,12 +35,12 @@
             type="error"
             variant="tonal"
           >
-            <h3 class="text-h5 mb-1">Action needed — this one breaks existing plans</h3>
+            <h3 class="text-h4 mb-1 font-weight-bold">Action needed: Raw Resources are no longer assumed!</h3>
             <p class="mb-2">
-              Raw resources are no longer assumed. <b>Any plan built before this release will show
-                factories in red</b> until what they need is mined or imported — yours, or one
-              shared with you. Nothing has been lost, and the <b>Raw Resources Wizard</b> fixes a
-              plan in one pass.
+              <b>Any plan built before this release will show
+                factories in red</b> until what they need is mined or imported. Nothing has been
+              lost, and the <b>Raw Resources Wizard</b> will help you get started, removing a lot of the annoyance of creating
+              a bunch of new factories.
             </p>
             <p v-if="awaitingAnswer" class="mb-0">
               Answer this slide before going on. This window doesn't close until you have been
@@ -54,7 +54,7 @@
           />
           <v-img
             :alt="activeExample.alt"
-            class="mb-2 rounded"
+            class="mb-2 mx-auto rounded"
             max-width="1200"
             :src="activeExample.image"
           />
@@ -71,10 +71,11 @@
             </v-btn>
           </div>
           <p class="hero-blurb mb-4">
-            <b>Raw resources are no longer assumed.</b> Mine them with real miners on real nodes,
-            pump them out of a resource well, or import them from a factory that does — but
-            something in your plan has to produce them.
+            <b>Raw resources are now first class citizens in the planner.</b> If nothing in your plan digs up the ore,
+            you're short of it, the same as you would be with any other part. Create mining factories and export the resources to dependants,
+            or produce the raw resource locally (e.g. water), the choice is now yours, with full logistics demand tracking baked in.
           </p>
+          <p class="text-body-medium mb-4">Miners, Resource Wells and Water Extractors are now full class citizens in the planner. Per each one, there are different mechanics which is handled in the building groups, where you have multiple types of the same building (e.g. multiple raw extractors) on the map and manage them in one place. This also has a side benefit of the power statistics being more accurate as there's more buildings accounted for.</p>
           <v-alert
             class="mb-4"
             density="comfortable"
@@ -118,7 +119,7 @@
           </h2>
           <v-img
             alt="A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one"
-            class="mb-4 rounded"
+            class="mb-4 mx-auto rounded"
             max-width="1200"
             :src="shots.miners"
           />
@@ -141,7 +142,7 @@
           </h3>
           <v-img
             alt="A resource well pressurizer with its satellite nodes by purity"
-            class="mb-2 rounded"
+            class="mb-2 mx-auto rounded"
             max-width="1200"
             :src="shots.well"
           />
@@ -168,7 +169,7 @@
           <v-img
             v-if="hasWizardShot"
             alt="The Raw Resources Wizard listing factories short of a raw resource"
-            class="mb-4 rounded"
+            class="mb-4 mx-auto rounded"
             max-width="1200"
             :src="shots.wizard"
           />
@@ -211,7 +212,7 @@
           <v-img
             v-if="hasGroupsShot"
             alt="Factories organised into coloured groups in the sidebar"
-            class="mb-4 rounded"
+            class="mb-4 mx-auto rounded"
             max-width="1200"
             :src="shots.groups"
           />
@@ -239,7 +240,7 @@
           <v-img
             v-if="hasIconsShot"
             alt="The factory icon picker"
-            class="mb-4 rounded"
+            class="mb-4 mx-auto rounded"
             max-width="1200"
             :src="shots.icons"
           />
@@ -271,7 +272,7 @@
           <v-img
             v-if="hasStatusShot"
             alt="A factory carrying status chips under its name"
-            class="mb-2 rounded"
+            class="mb-2 mx-auto rounded"
             max-width="1200"
             :src="shots.status"
           />
@@ -290,7 +291,7 @@
           <v-img
             v-if="hasTasksShot"
             alt="The factory tasks card with drag handles and checkboxes"
-            class="mb-2 rounded"
+            class="mb-2 mx-auto rounded"
             max-width="1200"
             :src="shots.tasks"
           />
@@ -471,6 +472,11 @@
 
   // Slide 1 cannot be skipped past until it is answered.
   const awaitingAnswer = computed(() => locked.value && !acknowledged.value)
+
+  // Slide 1 is never escapable, however the deck was opened — no cross, no click-outside, no
+  // escape key. Someone who came looking for it through "Show changes" can leave the moment they
+  // step past the warning; someone being shown it for the first time cannot leave until the end.
+  const noEscape = computed(() => locked.value || currentSlide.value === 0)
 
   const introDismissed = () => localStorage.getItem('dismissed-introduction') === 'true'
   const seen = () => localStorage.getItem(key) === 'true'

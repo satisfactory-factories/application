@@ -15,8 +15,10 @@ import { vuetifyRender } from '@/utils/ui-test-bootstrap'
 import { useAppStore } from '@/stores/app-store'
 import eventBus from '@/utils/eventBus'
 
-// v-dialog teleports its content to the document body, so assertions read from there.
-const isOpen = () => (document.body.textContent ?? '').includes('The "Groundwork" Update is here!')
+// v-dialog teleports into the body and leaves its content there once closed, so "is it open" is
+// the overlay's own state — not whether some slide's words are in the DOM, which stays true after
+// the deck has gone and is false merely for being on a different slide.
+const isOpen = () => !!document.querySelector('.v-overlay--active')
 
 // Walk to the end of the deck by clicking its Next button, whatever the slide count is. Each
 // click has to settle before the next one: the counter it reads is rendered a tick later.
@@ -157,17 +159,37 @@ describe('SplashV6', () => {
     })
   })
 
-  // Reopened from the header long after the news landed: reference material, not a warning.
-  it('should not lock when it is opened by hand', async () => {
-    localStorage.setItem('seenV6Splash', 'true')
-    mount()
+  // Reopened from the header long after the news landed: reference material rather than a
+  // warning, so there is no tour to walk and nothing to answer — but slide 1 is still not
+  // something to flick away without reading, so the cross only appears once they step past it.
+  describe('when it is opened by hand', () => {
+    const reopen = async () => {
+      localStorage.setItem('seenV6Splash', 'true')
+      mount()
+      eventBus.emit('splashShow')
+      await nextTick()
+    }
+    const closeButton = () => document.querySelector('.v-card-title button')
+    const nextButton = () =>
+      [...document.querySelectorAll('.v-card-actions button')].at(-1) as HTMLButtonElement
 
-    eventBus.emit('splashShow')
-    await nextTick()
+    it('should still hold slide 1 shut', async () => {
+      await reopen()
 
-    expect(isOpen()).toBe(true)
-    expect(document.querySelector('.v-card-title button')).not.toBeNull()
-    expect(([...document.querySelectorAll('.v-card-actions button')].at(-1) as HTMLButtonElement).disabled).toBe(false)
+      expect(isOpen()).toBe(true)
+      expect(closeButton()).toBeNull()
+      // Nothing to answer this time — they can walk straight past it.
+      expect(nextButton().disabled).toBe(false)
+    })
+
+    it('should let them close from any other slide', async () => {
+      await reopen()
+
+      nextButton().click()
+      await nextTick()
+
+      expect(closeButton()).not.toBeNull()
+    })
   })
 
   it('should wait behind the introduction, and open when it is dismissed', async () => {
@@ -202,6 +224,9 @@ describe('SplashV6', () => {
     await nextTick()
     localStorage.removeItem('seenV6Splash')
 
+    // Step off slide 1, which is the only slide with no way out.
+    ;([...document.querySelectorAll('.v-card-actions button')].at(-1) as HTMLElement).click()
+    await nextTick()
     document.querySelector<HTMLElement>('.v-card-title button')?.click()
     await nextTick()
 
