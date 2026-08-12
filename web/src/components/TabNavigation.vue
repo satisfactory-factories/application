@@ -62,6 +62,10 @@
         @click="confirmDelete() && appStore.removeCurrentTab()"
       />
     </div>
+
+    <!-- Mounted here rather than in the layout so it shares a lifetime with OptionsDialog, which
+         owns the wizard it hands off to. -->
+    <raw-migration-prompt />
   </div>
 </template>
 

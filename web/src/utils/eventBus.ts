@@ -35,7 +35,7 @@ type Events = {
   splashShow: undefined;
   // The previous release's splash, kept for anyone who missed it. Only ever opened by hand.
   splashShowV5: undefined;
-  // The Raw Resources Wizard lives inside OptionsDialog; this is how anything else asks for it.
+  // The Raw Resources Wizard is mounted by OptionsDialog; this is how anything else asks for it.
   openRawWizard: undefined;
 
   navigationReady: undefined;

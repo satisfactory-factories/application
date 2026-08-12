@@ -68,6 +68,7 @@ declare module 'vue' {
     PowerProducer: typeof import('./components/planner/products/PowerProducer.vue')['default']
     Product: typeof import('./components/planner/products/Product.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
+    RawMigrationPrompt: typeof import('./components/planner/RawMigrationPrompt.vue')['default']
     RawResources: typeof import('./components/planner/imports/RawResources.vue')['default']
     RawResourcesWizard: typeof import('./components/planner/RawResourcesWizard.vue')['default']
     RecipeCard: typeof import('./components/parts/RecipeCard.vue')['default']
