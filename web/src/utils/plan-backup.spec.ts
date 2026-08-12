@@ -22,6 +22,15 @@ describe('plan-backup', () => {
     expect(parsed.powerTarget).toBe(2500)
   })
 
+  // Every other group rides on a factory; these exist only on the tab, so the blob is the only
+  // thing that can carry them out and back.
+  it('carries memberless groups when the plan has them', () => {
+    const groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
+    const parsed = JSON.parse(serializePlan({ ...blob(), groups }))
+
+    expect(parsed.groups).toEqual(groups)
+  })
+
   it('names the file after the plan and the day', () => {
     const link = document.createElement('a')
     const click = vi.spyOn(link, 'click').mockImplementation(() => {})

@@ -546,6 +546,8 @@
       // Backed up as it stands, unanswered included: restoring it must put back the plan that
       // was there, warning and all.
       plannerVersion: tab?.plannerVersion,
+      // The only group state the factories don't carry themselves.
+      groups: tab?.groups,
     })
     backedUp.value = true
     eventBus.emit('toast', { message: 'Plan downloaded. To restore it, copy the file\'s contents and press Paste plan.' })

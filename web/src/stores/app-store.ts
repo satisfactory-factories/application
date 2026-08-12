@@ -711,6 +711,11 @@ export const useAppStore = defineStore('app', () => {
   const clearFactories = () => {
     factories.value.length = 0
     factories.value = []
+    // Memberless groups are the one piece of group state no factory carries, so clearing the
+    // factories does not take them with it. Left behind, they outlive the plan they belonged to
+    // and turn up in whatever is loaded next.
+    const tab = getCurrentTab()
+    if (tab) delete tab.groups
   }
   // ==== END FACTORY MANAGEMENT
 
@@ -750,6 +755,7 @@ export const useAppStore = defineStore('app', () => {
       name = 'New Tab',
       factories = [],
       powerTarget,
+      groups,
     } = tab
 
     factoryTabs.value.push({
@@ -759,6 +765,9 @@ export const useAppStore = defineStore('app', () => {
       // Preserve the plan's power target when importing a tab (e.g. from a share link) —
       // it describes the plan, not the browser.
       powerTarget,
+      // And its memberless groups, which are the only ones no factory carries — a share link
+      // that dropped them would arrive missing folders the sender could see.
+      groups,
       // Same for the answer to the raw-resources change. Checked with `in` rather than a
       // default, because an imported plan that carries no version is a plan from before the
       // change — defaulting it would mark it answered and swallow the warning it needs.

@@ -152,6 +152,8 @@
       // Travels with the plan: pasting a plan that has already been answered for must not ask
       // again, and pasting one from before the change must.
       plannerVersion: getCurrentTab()?.plannerVersion,
+      // The only group state the factories don't carry themselves.
+      groups: getCurrentTab()?.groups,
     })
     navigator.clipboard.writeText(plan)
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
@@ -172,6 +174,9 @@
           const tab = getCurrentTab()
           if (tab) {
             delete tab.plannerVersion
+            // A blob from before groups existed has none, so anything here belongs to the plan
+            // being replaced.
+            delete tab.groups
           }
         }
 
@@ -189,6 +194,10 @@
             }
             if (tab) {
               tab.plannerVersion = parsedPlan.plannerVersion
+              // Assigned rather than merged, and assigned even when the blob has none: clearing
+              // the factories cannot take memberless groups with it, so anything left here
+              // belongs to the plan being replaced.
+              tab.groups = parsedPlan.groups
             }
           }
           prepareLoader(factoriesToLoad)

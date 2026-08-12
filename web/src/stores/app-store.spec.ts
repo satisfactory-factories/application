@@ -835,6 +835,16 @@ describe('app-store', () => {
 
         expect(appStore.getFactories()).toEqual([])
       })
+
+      // No factory carries a memberless group, so nothing else would take it with the plan.
+      it('should take the memberless groups with it', () => {
+        appStore.addFactory(newFactory('Foobarbaz'))
+        appStore.getCurrentTab().groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
+
+        appStore.clearFactories()
+
+        expect(appStore.getCurrentTab().groups).toBeUndefined()
+      })
     })
   })
 
@@ -866,6 +876,21 @@ describe('app-store', () => {
         appStore.addTab(newTab)
 
         expect(appStore.getCurrentTab().powerTarget).toBe(5000)
+      })
+
+      // Share links and templates arrive through here, and a memberless group is the only kind
+      // no factory carries in for us.
+      it('should preserve memberless groups when importing a tab', () => {
+        appStore.addTab({
+          id: '13579',
+          name: 'Shared Tab',
+          factories: [],
+          groups: [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }],
+        })
+
+        expect(appStore.getCurrentTab().groups).toEqual([
+          { id: 'g1', name: 'Empty', color: '#4caf50', order: 0 },
+        ])
       })
     })
     describe('removeCurrentTab', () => {

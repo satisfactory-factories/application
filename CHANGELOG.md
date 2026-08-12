@@ -55,7 +55,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 - **Groups can be renamed and reordered from that dialog too**, rather than only from the sidebar: a pencil beside each name (or a click on the name itself) opens it for editing, and up/down arrows move the group, disabled at each end of the order. Renaming applies on Enter and the field closes, so nothing is left looking half-edited — the sidebar's rename does the same now, where it previously needed a click elsewhere to commit and gave no sign it had.
 - **Deleting a group never deletes a factory.** An empty group goes immediately; one that still holds factories asks where they should go first — Ungrouped, or another group.
 - Groups travel with the plan through save, share links, templates and cloud sync, with no migration and nothing to set up. Plans made before this change load untouched, entirely ungrouped.
-- One known limitation: a group you have created but not yet put anything in has no factory to travel on, so it will not appear on a different machine until it has at least one member.
+- **A group travels even before you put anything in it.** A group's record lives on its member factories, which is what carries it through every save, share and restore for free — but that leaves a group you have made and not yet filled with nothing to ride on. Those are kept on the plan itself, so they survive a copy and paste, the wizard's backup file, a share link, and a restore from your account. Replacing a plan takes them with it, too: pasting over a plan no longer leaves its empty folders behind in the new one. The one case that still won't travel is a plan with no factories at all, which nothing syncs.
 
 ### Factory icons
 
