@@ -16,9 +16,8 @@
 
         <template v-else-if="!pending">
           <p class="mb-4 text-body-2">
-            These factories need raw resources they don't extract or import. Choose how to cover
-            each one — a shared mine factory per resource, extraction on the spot, or leave it as
-            a shortage to deal with yourself.{{ ' ' }}
+            The below factories are lacking raw resources. Choose how to cover each one — produce them on site, or import them in from
+            a dedicated mine factory.
             <template v-if="columns.includes('import')">
               <b>Import</b> is offered where a factory in this plan already mines the resource, so
               you don't build a second mine next to the one you have.
@@ -27,7 +26,7 @@
 
           <p v-if="hasWellRows" class="mb-4 text-body-2 text-medium-emphasis">
             <i class="fas fa-exclamation-triangle mr-1" />
-            Resource wells can't be set up for you — those rows are listed, but left alone.
+            Resource wells can't be set up for you due to their complexity with Satellites — those rows are listed, but left alone.
           </p>
 
           <v-alert
@@ -240,7 +239,7 @@
                 <td>
                   <span class="cell-line ga-2">
                     <game-asset :subject="line.partId" type="item" />
-                    <span :class="{ 'item-name--new': line.change === 'new' }">{{ line.partName }}</span>
+                    <span :class="{ 'item-name--new': line.isNew }">{{ line.partName }}</span>
                     <v-chip v-if="line.change" class="sf-chip x-small no-margin" :class="changeClass(line.change)">
                       {{ changeLabels[line.change] }}
                     </v-chip>
@@ -330,6 +329,14 @@
           variant="flat"
           @click="apply"
         >
+          <!-- The default loader hides its label, and this is the one button whose wait is long
+               enough to need saying out loud. -->
+          <template #loader>
+            <span class="d-flex align-center ga-2">
+              <v-progress-circular indeterminate size="18" width="2" />
+              Applying, please wait
+            </span>
+          </template>
           Apply
         </v-btn>
       </v-card-actions>
@@ -377,7 +384,7 @@
 
   const choiceLabels: Record<WizardChoice, string> = {
     mine: 'New mine factory',
-    onsite: 'Mine it here',
+    onsite: 'Produce it locally',
     import: 'Import',
     ignore: 'Ignore',
   }
@@ -459,6 +466,10 @@
         change = 'new'
       }
 
+      // The name goes green for anything new to this factory, however it arrived — a factory the
+      // run only wired up gains the item as an import, and that is just as new as a product.
+      const isNew = change === 'new' || imports.some(entry => entry.change === 'new')
+
       return {
         partId,
         partName: products[0]?.partName ??
@@ -468,6 +479,7 @@
           ? products.reduce((total, entry) => total + entry.amount, 0)
           : null,
         change: allNew ? null : change,
+        isNew: allNew ? false : isNew,
         imports,
         exports: plan.exports.filter(entry => entry.partId === partId),
       }
@@ -573,9 +585,21 @@
     }
   }
 
-  const apply = () => {
+  // Commits on a plan this size block the main thread for seconds. Vue writing the button's
+  // loading state is not the same as the browser having drawn it, so wait for a frame to actually
+  // land first — one rAF fires before the paint, the second after it. Without this the button
+  // never visibly changes and the whole dialog simply freezes.
+  const afterPaint = async () => {
+    await nextTick()
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    })
+  }
+
+  const apply = async () => {
     if (applying.value || !pending.value) return
     applying.value = true
+    await afterPaint()
 
     try {
       appStore.setFactories(pending.value.factories)
