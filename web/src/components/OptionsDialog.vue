@@ -39,17 +39,25 @@
     </v-card>
   </v-dialog>
 
-  <!-- Styled like the update announcement: this changes how every plan reads, so it gets room
-       to explain itself. Not persistent — dismissing it has to leave a usable plan. -->
+  <!-- Only raised for a plan that predates the change and is actually short, so it speaks about
+       this plan rather than the release. Not persistent — dismissing it has to leave a usable
+       plan. -->
   <v-dialog max-width="1000" :model-value="showRawBreakingNotice" scrollable @update:model-value="dismiss">
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
-        <span class="breaking-headline flex-grow-1 text-center">Breaking change</span>
+        <span class="action-headline flex-grow-1 text-center">Action needed</span>
       </v-card-title>
       <v-card-text>
         <h2 class="text-h5 text-center text-medium-emphasis mb-4">
-          Raw resources are no longer assumed
+          Raw resource migration required
         </h2>
+
+        <p class="hero-blurb mb-4">
+          This plan has raw resources that nothing in it produces any more, so its factories are
+          now showing red. Hit <b>Run the wizard</b> below to fix that and bring the plan up to
+          date.
+        </p>
+
         <!-- Bound rather than a literal path: these live in public/, and a static src makes
              vite try to resolve them at transform time. -->
         <v-img
@@ -71,22 +79,17 @@
           </v-btn>
         </div>
 
-        <p class="hero-blurb mb-4">
-          Originally I felt that making you build a factory just to export its ore straight into
-          another one was wrong. The feedback since has been the opposite — it is what people want —
-          so raw materials are now mandatory, and every form of assumption is gone, to keep the
-          planner as accurate as it can possibly be.
+        <p class="mb-2">
+          The planner used to assume you were supplying raw resources yourself. It doesn't any
+          more: anything a factory doesn't mine or import is a real shortage. Nothing in your plan
+          has been changed or lost — it is only being honest about what was already missing.
         </p>
 
         <p class="mb-2">
           You can produce raw materials as a product inside the factory that needs them, or build a
-          dedicated mine factory and export to whatever needs feeding. The choice is now entirely
-          yours.
-        </p>
-
-        <p class="mb-2">
-          Pick a raw resource as a product, choose the extractor, and set each building group's
-          miner mark and node purity — or describe a resource well by its satellite nodes.
+          dedicated mine factory and export to whatever needs feeding. Pick a raw resource as a
+          product, choose the extractor, and set each building group's miner mark and node purity —
+          or describe a resource well by its satellite nodes.
         </p>
 
         <v-alert
@@ -95,14 +98,6 @@
           type="warning"
           variant="tonal"
         >
-          <h3 class="text-h6 mb-2">What this means for your existing plans</h3>
-          <p class="mb-2">
-            The planner used to quietly assume you were supplying raw resources yourself. It
-            doesn't any more — anything a factory doesn't mine or import is now a real shortage,
-            so <b class="text-caution">plans built before this will show factories in red.</b>
-            Nothing in your plan has been changed or lost; it is only being honest about what
-            was already missing.
-          </p>
           <p class="mb-2">
             There is no setting to turn this back on. An optional assumption meant two people
             could open the same plan and see different things, with nothing on screen to say so.
@@ -115,9 +110,8 @@
         </v-alert>
 
         <p class="mt-4 mb-0">
-          The <b>Raw Resources Wizard</b> can fix a plan in one pass: it lists every factory that
-          is short, and builds the mines, adds the extractors or wires the imports for you. It
-          lives in <b>Options</b> whenever you want it again.
+          The wizard lists every factory that is short and builds the mines, adds the extractors or
+          wires the imports for you. It lives in <b>Options</b> whenever you want it again.
         </p>
       </v-card-text>
       <v-card-actions class="pa-4 pt-0">
@@ -201,9 +195,9 @@
 </script>
 
 <style lang="scss" scoped>
-  // The headline, not a kicker: this changes what every existing plan reports, so it leads in the
-  // error colour rather than sitting above the real title in grey.
-  .breaking-headline {
+  // The headline, not a kicker: the plan is reporting shortages until this is answered, so it
+  // leads in the error colour rather than sitting above the real title in grey.
+  .action-headline {
     color: var(--sf-error);
     font-size: 2rem;
     font-weight: 800;
@@ -215,10 +209,5 @@
   .hero-blurb {
     font-size: 1.35rem;
     line-height: 1.5;
-  }
-
-  // Not `.text-warning` — Vuetify already ships that as a theme colour class.
-  .text-caution {
-    color: var(--sf-warning);
   }
 </style>
