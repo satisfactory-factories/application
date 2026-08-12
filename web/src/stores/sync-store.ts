@@ -114,6 +114,9 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
   }
 
   eventBus.on('factoryUpdated', detectedChange)
+  // Plan-level edits change what gets uploaded now that the whole tab is sent, so they have to
+  // mark the account copy dirty as well.
+  eventBus.on('planUpdated', detectedChange)
   eventBus.on('loggedIn', handleLoggedInEvent)
   console.log('syncStore: Listening for changes...')
 

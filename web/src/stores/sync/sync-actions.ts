@@ -39,7 +39,7 @@ export class SyncActions {
     // Don't care about sync state if we're forcing a load
     if (forceLoad) {
       console.log('loadServerData: Forcing data load.')
-      this.appStore.setFactories(dataObject.data)
+      this.appStore.loadServerPlan(dataObject.data)
       return true
     }
 
@@ -81,8 +81,11 @@ export class SyncActions {
       }
     }
 
-    const data = this.appStore.getFactories()
-    if (!data || !Object.keys(data).length) {
+    // The whole tab, not just its factories: the planner version, the power target and any
+    // memberless groups are plan state, and uploading only the array quietly dropped them on
+    // every restore. The API accepts both shapes — see the note on /save.
+    const data = this.appStore.getCurrentTab()
+    if (!data?.factories?.length) {
       console.warn('syncData: No data to save!')
       return
     }

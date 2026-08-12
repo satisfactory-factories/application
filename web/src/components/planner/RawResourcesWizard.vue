@@ -531,6 +531,9 @@
       name: tab?.name,
       factories: appStore.getFactories(),
       powerTarget: tab?.powerTarget ?? 0,
+      // Backed up as it stands, unanswered included: restoring it must put back the plan that
+      // was there, warning and all.
+      plannerVersion: tab?.plannerVersion,
     })
     backedUp.value = true
     eventBus.emit('toast', { message: 'Plan downloaded. To restore it, copy the file\'s contents and press Paste plan.' })
@@ -576,6 +579,9 @@
 
     try {
       appStore.setFactories(pending.value.factories)
+      // The plan has now been answered for, whichever door the wizard was opened through —
+      // running it from Options never went past the notice that would otherwise stamp it.
+      appStore.dismissRawBreakingNotice()
       eventBus.emit('toast', { message: 'Raw resources sorted!' })
       close(false)
     } finally {

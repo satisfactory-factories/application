@@ -268,6 +268,14 @@ export interface FactoryTab {
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];
+  // The planner version this plan has been reconciled with.
+  //
+  // It records that the user has ANSWERED for this plan, not that the plan is correct: it is
+  // stamped both when the Raw Resources Wizard fixes a plan and when the user dismisses the
+  // notice saying they will sort it themselves. Absent means the plan was built before v0.6,
+  // when raw resources were still assumed. Do not read it as "this plan's raw supply is met" —
+  // ask collectRawWizardRows() for that.
+  plannerVersion?: string;
 }
 
 // Fields saved plans still carry from before raw supply stopped being assumable. Typed only so

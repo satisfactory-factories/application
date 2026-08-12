@@ -3,6 +3,10 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 type Events = {
   factoryUpdated: Factory;
+  // Plan-level state changed (the planner version, and anything else held on the tab rather
+  // than on a factory). Persistence and the cloud dirty flag both hang off factoryUpdated, so
+  // without this a tab-level edit is saved by nothing.
+  planUpdated: undefined;
   loggedIn: undefined;
   sessionExpired: undefined;
   dataSynced: undefined;

@@ -50,6 +50,7 @@
   import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
   import { useAppStore } from '@/stores/app-store'
+  import { config } from '@/config/config'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
   import { create315Scenario } from '@/utils/factory-setups/315-non-exportable-parts-imports'
@@ -267,6 +268,10 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
+      // Templates are built by today's code, so they have never assumed a raw resource and are
+      // answered by construction. The exception is the one that exists to reproduce a plan from
+      // before the change: it must arrive unanswered or it cannot reproduce anything.
+      tab.plannerVersion = template.rearmNotice ? undefined : config.plannerVersion
     }
 
     if (template.rearmNotice) {

@@ -10,6 +10,9 @@ export interface PlanBlob {
   name?: string
   factories: Factory[]
   powerTarget: number
+  // Whether this plan has been answered for the raw-resources change. Absent means it predates
+  // it, which is the correct reading of every backup taken before v0.6.
+  plannerVersion?: string
 }
 
 export const serializePlan = (blob: PlanBlob): string => JSON.stringify(blob)

@@ -263,7 +263,15 @@ app.post('/validate-token', (req: TypedRequestBody<{ token: string }>, res: Expr
 app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestBody<{ data: any }>, res: Express.Response) => {
   try {
     const { username } = req.user as jwt.JwtPayload & { username: string };
-    const factoryData: Factory[] = req.body;
+    const payload = req.body;
+
+    // Two shapes arrive here and both must keep working. Clients up to v0.5 send a bare
+    // Factory[]; from v0.6 they send the whole tab, so plan-level state (the planner version,
+    // the power target, groups with no members yet) survives a restore instead of being
+    // silently dropped. Whatever arrives is stored as-is — `data` is Mixed — and the frontend
+    // reads both. An array here is not legacy data to migrate; it is a client that has not
+    // reloaded yet, and it will keep sending arrays until it does.
+    const factoryData: Factory[] = Array.isArray(payload) ? payload : payload?.factories ?? [];
 
     // Check users are not doing naughty things with the notes and task fields
     factoryData.forEach((factory) => {
@@ -294,15 +302,17 @@ app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestB
       }
     })
 
+    // The sanitising above mutates the factories in place, so storing the payload keeps those
+    // corrections whichever shape it came in as.
     await FactoryData.findOneAndUpdate(
       { user: username },
-      { data: factoryData, lastSaved: new Date() },
+      { data: payload, lastSaved: new Date() },
       { returnDocument: 'after', upsert: true }
     );
 
     console.log(`Data saved for ${username}`);
 
-    res.json({ message: 'Data saved successfully', userData: factoryData });
+    res.json({ message: 'Data saved successfully', userData: payload });
   } catch (error) {
     console.error(`Data save failed: ${error}`);
     res.status(500).json({ message: 'Data save failed', error });

@@ -149,6 +149,9 @@
       name: getCurrentTab()?.name,
       factories: getFactories(),
       powerTarget: powerTarget.value,
+      // Travels with the plan: pasting a plan that has already been answered for must not ask
+      // again, and pasting one from before the change must.
+      plannerVersion: getCurrentTab()?.plannerVersion,
     })
     navigator.clipboard.writeText(plan)
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
@@ -165,6 +168,13 @@
         if (!Array.isArray(factoriesToLoad)) {
           throw new Error('Plan does not contain a factories array.')
         }
+        if (isLegacy) {
+          const tab = getCurrentTab()
+          if (tab) {
+            delete tab.plannerVersion
+          }
+        }
+
         emit('clear-all')
 
         setTimeout(() => {
@@ -176,6 +186,9 @@
             const tab = getCurrentTab()
             if (tab && parsedPlan.name) {
               tab.name = parsedPlan.name
+            }
+            if (tab) {
+              tab.plannerVersion = parsedPlan.plannerVersion
             }
           }
           prepareLoader(factoriesToLoad)

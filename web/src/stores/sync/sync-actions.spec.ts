@@ -24,8 +24,19 @@ const mockAppStore = {
   getLastEdit: vi.fn(() => new Date(Date.now() - 1000 * 60)), // 1 minute ago
   getFactories: vi.fn(),
   setFactories: vi.fn(),
+  getCurrentTab: vi.fn(),
+  loadServerPlan: vi.fn(),
   isLoaded: true,
 }
+
+// What the app uploads from v0.6: the whole tab, so plan-level state survives a restore.
+const mockTab = (factories = [newFactory('Foo1')]) => ({
+  id: 'tab-1',
+  name: 'Default',
+  factories,
+  powerTarget: 40000,
+  plannerVersion: '0.6',
+})
 
 const mockServerData = {
   user: 'foo',
@@ -147,7 +158,20 @@ describe('SyncActions', () => {
       vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(true)
 
       expect(await syncActions.loadServerData(true)).toBe(true)
-      expect(mockAppStore.setFactories).toHaveBeenCalledWith(mockData.data)
+      // Both shapes are in accounts right now, so the store is handed the payload as it came.
+      expect(mockAppStore.loadServerPlan).toHaveBeenCalledWith(mockData.data)
+    })
+
+    it('should hand a whole-tab payload to the store untouched', async () => {
+      const tab = mockTab()
+      vi.spyOn(syncActions, 'getServerData').mockResolvedValue({
+        user: 'foo',
+        data: tab,
+        lastSaved: new Date(),
+      })
+
+      expect(await syncActions.loadServerData(true)).toBe(true)
+      expect(mockAppStore.loadServerPlan).toHaveBeenCalledWith(tab)
     })
   })
 
@@ -165,7 +189,8 @@ describe('SyncActions', () => {
     })
 
     it('should send sync with expected request params', async () => {
-      mockAppStore.getFactories.mockReturnValueOnce({ someData: 'foo' })
+      const tab = mockTab()
+      mockAppStore.getCurrentTab.mockReturnValueOnce(tab)
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -184,12 +209,14 @@ describe('SyncActions', () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer mock-token`,
         },
-        body: JSON.stringify({ someData: 'foo' }),
+        // The tab, not the bare factory array: the planner version, the power target and any
+        // memberless groups are plan state and were being dropped on every restore.
+        body: JSON.stringify(tab),
       })
     })
 
     it('should handle server errors during sync', async () => {
-      mockAppStore.getFactories.mockReturnValueOnce({ someData: 'foo' })
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
 
       mockFetch.mockResolvedValue({
         ok: false,

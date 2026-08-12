@@ -11,6 +11,8 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
+import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
+import { config } from '@/config/config'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -21,12 +23,17 @@ export const useAppStore = defineStore('app', () => {
   const factoryTabs = ref<FactoryTab[]>(JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[])
 
   if (factoryTabs.value.length === 0) {
+    // Fill the tabs from the legacy factories array if present so no data gets lost
+    const legacyFactories: Factory[] = JSON.parse(localStorage.getItem('factories') ?? '[]')
     factoryTabs.value = [
       {
         id: crypto.randomUUID(),
         name: 'Default',
-        // Fill the tabs from the legacy factories array if present so no data gets lost
-        factories: JSON.parse(localStorage.getItem('factories') ?? '[]'),
+        factories: legacyFactories,
+        // A tab conjured out of nothing has never assumed a raw resource in its life, so it is
+        // born answered. One filled from the legacy array is a plan from before the change and
+        // must still be asked about.
+        plannerVersion: legacyFactories.length > 0 ? undefined : config.plannerVersion,
       },
     ]
   }
@@ -93,20 +100,35 @@ export const useAppStore = defineStore('app', () => {
   // That silently turns saved plans red, so say so once. Once, and never again — otherwise every
   // old plan the user opens interrupts them with the same news.
   const showRawBreakingNotice = ref<boolean>(false)
-  const seenRawBreakingNotice = ref<boolean>(localStorage.getItem('seenRawBreakingNotice') === 'true')
 
+  // Answered per PLAN, not per browser. A single localStorage flag meant dismissing this once
+  // silenced it for every plan the user opened afterwards — so the next pre-v0.6 plan they
+  // pasted, opened from a share link or restored from their account sat there red with nothing
+  // on screen explaining why. The answer belongs to the plan, and travels with it.
   const askRawBreakingNotice = () => {
-    if (seenRawBreakingNotice.value) {
-      return
-    }
+    const tab = getCurrentTab()
 
-    showRawBreakingNotice.value = true
+    // A plan that has been answered, and one that has nothing to answer for, are both silent.
+    // The second half matters: a plan from before the change that happens to import everything
+    // it needs is not worth interrupting anyone about.
+    showRawBreakingNotice.value = Boolean(tab) &&
+      !tab.plannerVersion &&
+      collectRawWizardRows(factories.value).length > 0
   }
 
+  // Stamping on dismissal is deliberate: the flag records that the user has ANSWERED for this
+  // plan, not that the plan is fixed. Saying "I'll sort it myself" is an answer, and being asked
+  // again every time they open their own plan would be the wrong reward for it.
   const dismissRawBreakingNotice = () => {
-    seenRawBreakingNotice.value = true
-    localStorage.setItem('seenRawBreakingNotice', 'true')
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.plannerVersion = config.plannerVersion
+    }
     showRawBreakingNotice.value = false
+    // Tab-level state reaches neither the local save nor the cloud dirty flag on its own —
+    // both hang off factory events — so say so explicitly.
+    eventBus.emit('planUpdated')
+    schedulePersist()
   }
 
   // Hand the notice over to something that is about to say the same thing better — the v0.6
@@ -120,9 +142,12 @@ export const useAppStore = defineStore('app', () => {
   // Debug scenario only: put the notice back to never-seen so it behaves as it does for someone
   // opening a plan built before this change. Otherwise it is unreachable once dismissed.
   const rearmRawBreakingNotice = () => {
-    localStorage.removeItem('seenRawBreakingNotice')
-    seenRawBreakingNotice.value = false
-    askRawBreakingNotice()
+    const tab = getCurrentTab()
+    if (tab) {
+      delete tab.plannerVersion
+    }
+    // Deliberately does not ask here: the plan being re-armed has not loaded yet, so the only
+    // thing to evaluate at this point is the one on its way out. loadingCompleted does it.
   }
 
   const shownFactories = (factories: Factory[]) => {
@@ -295,13 +320,6 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
 
-    // Every plan arrives here — first load, paste, share link, template, account sync — so it is
-    // the one place to catch a plan built while raw supply was still assumed. Any non-empty plan
-    // predates the change in the only sense that matters: it may have gone red without warning.
-    if (newFactories.length > 0) {
-      askRawBreakingNotice()
-    }
-
     // The assumption is gone; drop what saved plans still carry for it so they stop hauling a
     // dead field through every share, paste and sync from here on.
     const tab = getCurrentTab() as (FactoryTab & LegacyRawAssumptionFields) | undefined
@@ -361,6 +379,14 @@ export const useAppStore = defineStore('app', () => {
 
   const loadingCompleted = () => {
     console.log('appStore: ============= LOADING COMPLETED =============', factories.value)
+
+    // Asked here rather than at the top of the load for two reasons: the loader may swap in a
+    // recovered plan part way through, so this is the first point the plan is the one being
+    // loaded; and the check reads the part ledgers, which do not exist until the plan has been
+    // through initFactories. It also has to settle before loadingCompleted is announced, since
+    // the v0.6 splash opens on that event and needs to know whether this plan is asking anything.
+    askRawBreakingNotice()
+
     eventBus.emit('loadingCompleted')
     isLoaded.value = true
 
@@ -692,6 +718,25 @@ export const useAppStore = defineStore('app', () => {
   const getTab = (id: string) => {
     return factoryTabs.value.find(tab => tab.id === id)
   }
+  // A plan restored from the user's account. Clients up to v0.5 stored a bare Factory[]; from
+  // v0.6 the whole tab is stored. An array is not old data to migrate — it is a client that has
+  // not reloaded yet — so both shapes load, and an array is read as a plan from before the
+  // change, which is exactly what it is.
+  const loadServerPlan = (data: Factory[] | FactoryTab) => {
+    if (Array.isArray(data)) {
+      setFactories(data)
+      return
+    }
+
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.powerTarget = data.powerTarget
+      tab.groups = data.groups
+      tab.plannerVersion = data.plannerVersion
+    }
+    setFactories(data.factories ?? [])
+  }
+
   const getCurrentTab = () => {
     return factoryTabs.value[currentFactoryTabIndex.value]
   }
@@ -699,12 +744,14 @@ export const useAppStore = defineStore('app', () => {
     return factoryTabs.value
   }
 
-  const addTab = ({
-    id = crypto.randomUUID(),
-    name = 'New Tab',
-    factories = [],
-    powerTarget,
-  } = {} as Partial<FactoryTab>) => {
+  const addTab = (tab: Partial<FactoryTab> = {}) => {
+    const {
+      id = crypto.randomUUID(),
+      name = 'New Tab',
+      factories = [],
+      powerTarget,
+    } = tab
+
     factoryTabs.value.push({
       id,
       name,
@@ -712,6 +759,10 @@ export const useAppStore = defineStore('app', () => {
       // Preserve the plan's power target when importing a tab (e.g. from a share link) —
       // it describes the plan, not the browser.
       powerTarget,
+      // Same for the answer to the raw-resources change. Checked with `in` rather than a
+      // default, because an imported plan that carries no version is a plan from before the
+      // change — defaulting it would mark it answered and swallow the warning it needs.
+      plannerVersion: 'plannerVersion' in tab ? tab.plannerVersion : config.plannerVersion,
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
@@ -809,6 +860,7 @@ export const useAppStore = defineStore('app', () => {
     askRawBreakingNotice,
     dismissRawBreakingNotice,
     deferRawBreakingNotice,
+    loadServerPlan,
     rearmRawBreakingNotice,
     prepareLoader,
     forceCalculation,

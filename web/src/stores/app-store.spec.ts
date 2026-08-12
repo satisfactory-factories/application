@@ -9,6 +9,7 @@ import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
+import { config } from '@/config/config'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 
@@ -539,16 +540,26 @@ describe('app-store', () => {
 
   describe('raw resources breaking-change notice', () => {
     beforeEach(() => {
-      localStorage.removeItem('seenRawBreakingNotice')
       resetAppStore()
     })
 
-    afterEach(() => {
-      localStorage.removeItem('seenRawBreakingNotice')
-    })
+    // A plan short of a raw resource nothing digs up: exactly what a plan built before
+    // extraction existed looks like once it is loaded.
+    const unmigratedPlan = () => {
+      const factory = newFactory('Old Plan')
+      addProductToFactory(factory, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      return [factory]
+    }
 
-    it('raises the notice for anyone loading an existing plan', async () => {
-      await appStore.beginLoading([newFactory('Old Plan')])
+    const loadAsLegacyPlan = async (factories: Factory[]) => {
+      const tab = appStore.getCurrentTab()
+      if (tab) delete tab.plannerVersion
+      appStore.setFactories(factories, true)
+      await appStore.beginLoading(factories)
+    }
+
+    it('raises the notice for a plan that predates the change', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
 
       expect(appStore.showRawBreakingNotice).toBe(true)
     })
@@ -560,18 +571,53 @@ describe('app-store', () => {
       expect(appStore.showRawBreakingNotice).toBe(false)
     })
 
-    // The bug this guards: the notice announces a change to the planner, so opening a second
-    // plan after dismissing it must not repeat the news.
-    it('never raises it again once dismissed', async () => {
-      await appStore.beginLoading([newFactory('Old Plan')])
+    // A plan from before the change that happens to need nothing is not worth interrupting for.
+    it('stays silent when there is nothing to migrate', async () => {
+      const factory = newFactory('Fine As It Is')
+      const tab = appStore.getCurrentTab()
+      if (tab) delete tab.plannerVersion
+      appStore.setFactories([factory], true)
+
+      await appStore.beginLoading([factory])
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // The answer belongs to the plan. Dismissing it once must not silence the next pre-v0.6
+    // plan the user pastes, opens from a share link or restores from their account.
+    it('stamps the plan when dismissed, and never asks that plan again', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
       expect(appStore.showRawBreakingNotice).toBe(true)
 
       appStore.dismissRawBreakingNotice()
-      expect(appStore.showRawBreakingNotice).toBe(false)
-      expect(localStorage.getItem('seenRawBreakingNotice')).toBe('true')
 
-      await appStore.beginLoading([newFactory('Another Plan')])
       expect(appStore.showRawBreakingNotice).toBe(false)
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe(config.plannerVersion)
+
+      await appStore.beginLoading(appStore.getFactories())
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    it('asks again for a different plan that has not been answered for', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+
+      // What a share link, a paste or a cloud restore of an older plan amounts to.
+      await loadAsLegacyPlan(unmigratedPlan())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    it('comes back after the debug scenario re-arms it', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+
+      appStore.rearmRawBreakingNotice()
+      await appStore.beginLoading(appStore.getFactories())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
     })
 
     // Saved plans still carry the field the assumption used to live on. It means nothing now,
@@ -587,15 +633,40 @@ describe('app-store', () => {
       expect('assumeRawInputs' in factory).toBe(false)
       expect('assumeRawInputs' in (appStore.getCurrentTab() ?? {})).toBe(false)
     })
+  })
 
-    it('comes back after the debug scenario re-arms it', async () => {
-      await appStore.beginLoading([newFactory('Old Plan')])
-      appStore.dismissRawBreakingNotice()
+  // The reason the marker sits on the tab and the whole tab is uploaded: /save used to take a
+  // bare Factory[], so everything plan-level was dropped the moment a plan came back from an
+  // account — and the plan would then ask about raw resources it had already been answered for.
+  describe('loadServerPlan', () => {
+    beforeEach(() => {
+      resetAppStore()
+    })
 
-      appStore.rearmRawBreakingNotice()
+    it('restores plan-level state from a whole-tab payload', () => {
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [newFactory('Foo')],
+        powerTarget: 40000,
+        plannerVersion: '0.6',
+      })
 
-      expect(appStore.showRawBreakingNotice).toBe(true)
-      expect(localStorage.getItem('seenRawBreakingNotice')).toBeNull()
+      const tab = appStore.getCurrentTab()
+      expect(tab?.plannerVersion).toBe('0.6')
+      expect(tab?.powerTarget).toBe(40000)
+      expect(appStore.getFactories()).toHaveLength(1)
+    })
+
+    // A client that has not reloaded yet still saves the old shape, and every account saved
+    // before v0.6 holds one. Read as what it is: a plan from before the change.
+    it('reads a bare factory array as a plan that predates the change', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) tab.plannerVersion = '0.6'
+
+      appStore.loadServerPlan([newFactory('Foo')])
+
+      expect(appStore.getFactories()).toHaveLength(1)
     })
   })
 
