@@ -105,7 +105,6 @@
           <li><b>Assigning</b> is a drag, or the group chip on the factory's header, which lists the groups and can make a new one on the spot. <b>Multi-group edit</b> does the same to a whole selection, so organising an existing plan doesn't mean opening forty cards in turn.</li>
           <li><b>Group power</b> shows generated, consumed and the balance per group, plus a <b>circuit boost</b> chip wherever Alien Power Augmenters are involved — that boost is a share of the whole plan's generation, so without it a group generating 3.3 GW read as 61 GW.</li>
           <li><b>Deleting a group never deletes a factory</b> — one that still holds factories asks where they should go first.</li>
-          <li>Groups travel with the plan through save, share links, templates and cloud sync, with nothing to set up. Plans made before this load untouched, entirely ungrouped. One limitation: a group with no members yet has no factory to travel on, so it won't appear on another machine until something is in it.</li>
         </ul>
 
         <v-divider class="subsection" />
