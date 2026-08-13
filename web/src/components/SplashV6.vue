@@ -283,10 +283,7 @@
               <ul class="ml-6">
                 <li>Any colour you like, from the shortlist or the custom picker.</li>
                 <li><b>Click the group's dot in the sidebar</b> to change it later.</li>
-                <li>
-                  We recommend avoiding red and amber. A status still wins the factory's border, and
-                  a group wearing those reads as a plan full of broken factories.
-                </li>
+                <li>Red and amber are best avoided — a status still wins the factory's border.</li>
               </ul>
             </v-col>
             <v-col class="d-flex flex-column ga-3" cols="12" md="5">
@@ -302,7 +299,9 @@
           <v-divider class="my-4" />
 
           <h3 class="text-h6 mb-2">How to edit groups</h3>
-          <p class="mb-2">Click the group chip on any factory to move it, or to make a new group.</p>
+          <p class="mb-2">
+            Click the group chip on any factory to move it between groups, or to make a new one.
+          </p>
           <v-img
             v-if="hasGroupMenuShot"
             alt="The group chip on a factory header, with its menu open"
@@ -310,20 +309,36 @@
             max-width="880"
             :src="shots.groupAssign"
           />
-          <v-img
-            v-if="hasGroupColourShot"
-            alt="The new group dialog, naming a group and picking its colour"
-            class="mb-4 mx-auto rounded"
-            max-width="320"
-            :src="shots.groupColour"
-          />
+          <p class="mb-2">The <b>Group</b> button at the foot of the sidebar makes one too.</p>
           <v-img
             v-if="hasGroupButtonsShot"
             alt="The Group and Multi-group edit buttons at the foot of the sidebar"
-            class="mb-3 mx-auto rounded"
+            class="mb-4 mx-auto rounded"
             max-width="420"
             :src="shots.groupButtons"
           />
+
+          <!-- The new-group dialog with the sentence about it beside it, rather than a picture
+               dropped between two paragraphs about something else. -->
+          <v-row class="mb-4" no-gutters>
+            <v-col class="pr-md-6" cols="12" md="5">
+              <v-img
+                v-if="hasGroupColourShot"
+                alt="The new group dialog, naming a group and picking its colour"
+                class="rounded"
+                max-width="320"
+                :src="shots.groupColour"
+              />
+            </v-col>
+            <v-col cols="12" md="7">
+              <p>
+                Either way you get this: a name, and any colour you like from the shortlist or the
+                picker. <b>Resist red and amber</b> — they are the problem and warning tiers, and a
+                group wearing one reads as a plan full of broken factories.
+              </p>
+            </v-col>
+          </v-row>
+
           <p class="mb-2">
             <b>Multi-group edit</b> assigns a whole selection at once, with <i>Select these</i> for
             the case it is nearly always going to be. Both buttons are at the bottom of the sidebar.
