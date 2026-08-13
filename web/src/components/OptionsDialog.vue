@@ -12,8 +12,19 @@
   </v-btn>
   <v-dialog v-model="showOptions" max-width="820">
     <v-card>
-      <v-card-title>
-        <i class="fas fa-wrench" /><span class="ml-2">Options</span>
+      <v-card-title class="d-flex align-center py-4">
+        <i class="fas fa-wrench" /><span class="ml-3">Options</span>
+        <v-spacer />
+        <!-- The way out is the corner of the dialog, where a dialog's way out is. It used to be a
+             Close button at the bottom right, under the settings and out of the eyeline. -->
+        <v-btn
+          id="options-close"
+          density="comfortable"
+          icon="fas fa-times"
+          title="Close options"
+          variant="text"
+          @click="showOptions = false"
+        />
       </v-card-title>
       <v-card-text class="text-body-2">
         <h3 class="text-subtitle-1 font-weight-bold mb-1">Raw resources</h3>
@@ -35,75 +46,124 @@
         <v-divider class="my-4" />
 
         <h3 class="text-subtitle-1 font-weight-bold mb-1">Sidebar</h3>
-        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-2">Factory groups</h4>
-        <!-- The explanations are tooltips rather than paragraphs: three settings each carrying a
-             three-line blurb read as an essay with checkboxes in it, and the list of what you can
-             turn on was the part that got lost. Box and tick drawn in CSS, as in the multi-group
-             editor: Vuetify's FA aliases use `far fa-square` for the unchecked state and this app
-             ships no Font Awesome regular family, so a v-checkbox has nothing to draw until it is
-             ticked and reads as a stray filled square. -->
-        <div
-          :aria-checked="options.showGroupProducts"
-          class="option-toggle d-flex align-center ga-3"
-          role="checkbox"
-          tabindex="0"
-          @click="options.showGroupProducts = !options.showGroupProducts"
-          @keydown.enter.prevent="options.showGroupProducts = !options.showGroupProducts"
-          @keydown.space.prevent="options.showGroupProducts = !options.showGroupProducts"
-        >
-          <span class="tick" :class="{ on: options.showGroupProducts }" />
-          <span>Show group products</span>
-          <tooltip-info
-            :is-caption="false"
-            text="A group's product row lists what the group delivers to other factories, with its surplus or shortfall."
-            @click.stop
-          />
-        </div>
+        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Factory groups</h4>
 
-        <!-- Indented because it only qualifies the row above, and disabled with it: internal
-             products of a row that isn't drawn is not a state worth being able to set. -->
-        <div
-          :aria-checked="options.showInternalGroupProducts"
-          :aria-disabled="!options.showGroupProducts"
-          class="option-toggle option-child d-flex align-center ga-3"
-          :class="{ disabled: !options.showGroupProducts }"
-          role="checkbox"
-          :tabindex="options.showGroupProducts ? 0 : -1"
-          @click="toggleInternalProducts"
-          @keydown.enter.prevent="toggleInternalProducts"
-          @keydown.space.prevent="toggleInternalProducts"
-        >
-          <span class="tick" :class="{ on: options.showInternalGroupProducts && options.showGroupProducts }" />
-          <span>Show group internal products</span>
-          <tooltip-info
-            :is-caption="false"
-            text="Parts a group makes and uses up entirely within itself. Off by default: the row is meant to say what the group delivers, and an intermediate that never leaves it crowds that out."
-            @click.stop
-          />
-        </div>
+        <v-row no-gutters>
+          <!-- What the settings do, rather than a paragraph saying it. Not the real component: it
+               would need a plan, and this has to show a group that has every row turned on. -->
+          <v-col class="pr-md-6 mb-4 mb-md-0" cols="12" md="5">
+            <div class="group-preview">
+              <div class="preview-header">
+                <div class="d-flex align-center ga-2 px-2 py-1">
+                  <i class="fas fa-chevron-down text-medium-emphasis" />
+                  <span class="preview-swatch" />
+                  <span class="font-weight-medium">Copper</span>
+                  <v-spacer />
+                  <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
+                    <i class="fas fa-industry" /><span class="ml-1">3</span>
+                  </v-chip>
+                </div>
+                <div v-if="options.showGroupPower" class="d-flex align-center ga-1 px-2 pb-1">
+                  <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
+                    <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" /><span class="ml-1">0 GW</span>
+                  </v-chip>
+                  <v-chip class="sf-chip x-small no-margin consumption" variant="tonal">
+                    <i class="fas fa-bolt mr-1" /><i class="fas fa-minus" /><span class="ml-1">0.25 GW</span>
+                  </v-chip>
+                  <v-chip class="sf-chip x-small no-margin error" variant="tonal">
+                    <i class="fas fa-balance-scale" /><span class="ml-1">-0.25 GW</span>
+                  </v-chip>
+                </div>
+                <div v-if="options.showGroupProducts" class="d-flex align-start ga-1 px-2 pb-1">
+                  <span
+                    v-for="product in previewProducts"
+                    :key="product.id"
+                    class="preview-tile"
+                  >
+                    <game-asset height="30" :subject="product.id" type="item" width="30" />
+                    <!-- Exactly balanced is grey in the real row, being neither good nor bad. -->
+                    <span class="preview-net" :class="previewNetClass(product.net)">
+                      {{ product.net }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div class="preview-body">
+                <div v-for="name in ['Copper Mine', 'Copper Ingots']" :key="name" class="preview-row">
+                  <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
+                  <span>{{ name }}</span>
+                </div>
+              </div>
+            </div>
+          </v-col>
 
-        <div
-          :aria-checked="options.showGroupPower"
-          class="option-toggle d-flex align-center ga-3"
-          role="checkbox"
-          tabindex="0"
-          @click="options.showGroupPower = !options.showGroupPower"
-          @keydown.enter.prevent="options.showGroupPower = !options.showGroupPower"
-          @keydown.space.prevent="options.showGroupPower = !options.showGroupPower"
-        >
-          <span class="tick" :class="{ on: options.showGroupPower }" />
-          <span>Show group power</span>
-          <tooltip-info
-            :is-caption="false"
-            text="What each group generates, what it consumes and whether it pays for itself — the same figures the Statistics link above them wears."
-            @click.stop
-          />
-        </div>
+          <v-col cols="12" md="7">
+            <!-- The explanations are tooltips rather than paragraphs: three settings each carrying a
+                 three-line blurb read as an essay with checkboxes in it, and the list of what you can
+                 turn on was the part that got lost. Box and tick drawn in CSS, as in the multi-group
+                 editor: Vuetify's FA aliases use `far fa-square` for the unchecked state and this app
+                 ships no Font Awesome regular family, so a v-checkbox has nothing to draw until it is
+                 ticked and reads as a stray filled square. -->
+            <div
+              :aria-checked="options.showGroupProducts"
+              class="option-toggle d-flex align-center ga-3"
+              role="checkbox"
+              tabindex="0"
+              @click="options.showGroupProducts = !options.showGroupProducts"
+              @keydown.enter.prevent="options.showGroupProducts = !options.showGroupProducts"
+              @keydown.space.prevent="options.showGroupProducts = !options.showGroupProducts"
+            >
+              <span class="tick" :class="{ on: options.showGroupProducts }" />
+              <span>Show group products</span>
+              <tooltip-info
+                :is-caption="false"
+                text="A group's product row lists what the group delivers to other factories, with its surplus or shortfall."
+                @click.stop
+              />
+            </div>
+
+            <!-- Indented because it only qualifies the row above, and disabled with it: internal
+                 products of a row that isn't drawn is not a state worth being able to set. -->
+            <div
+              :aria-checked="options.showInternalGroupProducts"
+              :aria-disabled="!options.showGroupProducts"
+              class="option-toggle option-child d-flex align-center ga-3"
+              :class="{ disabled: !options.showGroupProducts }"
+              role="checkbox"
+              :tabindex="options.showGroupProducts ? 0 : -1"
+              @click="toggleInternalProducts"
+              @keydown.enter.prevent="toggleInternalProducts"
+              @keydown.space.prevent="toggleInternalProducts"
+            >
+              <span class="tick" :class="{ on: options.showInternalGroupProducts && options.showGroupProducts }" />
+              <span>Show group internal products</span>
+              <tooltip-info
+                :is-caption="false"
+                text="Parts a group makes and uses up entirely within itself. Off by default: the row is meant to say what the group delivers, and an intermediate that never leaves it crowds that out."
+                @click.stop
+              />
+            </div>
+
+            <div
+              :aria-checked="options.showGroupPower"
+              class="option-toggle d-flex align-center ga-3"
+              role="checkbox"
+              tabindex="0"
+              @click="options.showGroupPower = !options.showGroupPower"
+              @keydown.enter.prevent="options.showGroupPower = !options.showGroupPower"
+              @keydown.space.prevent="options.showGroupPower = !options.showGroupPower"
+            >
+              <span class="tick" :class="{ on: options.showGroupPower }" />
+              <span>Show group power</span>
+              <tooltip-info
+                :is-caption="false"
+                text="What each group generates, what it consumes and whether it pays for itself — the same figures the Statistics link above them wears."
+                @click.stop
+              />
+            </div>
+          </v-col>
+        </v-row>
       </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="flat" @click="showOptions = false">Close</v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 
@@ -118,6 +178,23 @@
   const showOptions = ref(false)
   const showWizard = ref(false)
   const options = usePlannerOptions()
+
+  // The preview's product row. Copper Ingot is the internal one — made and consumed inside the
+  // group — so ticking "internal products" makes a tile appear rather than only changing a number.
+  const previewProducts = computed(() => {
+    const delivered = [
+      { id: 'CopperSheet', net: 40 },
+      { id: 'Wire', net: -20 },
+    ]
+    return options.value.showInternalGroupProducts
+      ? [{ id: 'CopperIngot', net: 0 }, ...delivered]
+      : delivered
+  })
+
+  const previewNetClass = (net: number) => {
+    if (net > 0) return 'text-success'
+    return net < 0 ? 'text-error' : 'text-medium-emphasis'
+  }
 
   // A child toggle of an off parent is not a state worth being able to set.
   const toggleInternalProducts = () => {
@@ -144,6 +221,53 @@
 </script>
 
 <style lang="scss" scoped>
+// A stand-in for a sidebar group, at the sidebar's own scale, so each setting can be seen rather
+// than described. Colours come from the group tokens the real thing uses.
+.group-preview {
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.preview-header {
+  background-color: rgba(184, 115, 51, 0.18);
+  border-left: 3px solid #b87333;
+}
+
+.preview-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #b87333;
+  flex: 0 0 auto;
+}
+
+.preview-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview-net {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.preview-body {
+  padding: 4px 0 4px 16px;
+}
+
+.preview-row {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  margin: 0 4px 4px 0;
+  padding: 6px 8px;
+}
+
 .option-toggle {
   cursor: pointer;
   user-select: none;

@@ -6,6 +6,7 @@ import { mockPowerProducer, mockProduct } from '@/utils/factory-management/statu
 import {
   factoryStatusClass,
   factoryStatusDefinitions,
+  factoryStatusTallyChips,
   getChipStatuses,
   getFactoryStatuses,
   getSectionStatuses,
@@ -382,10 +383,10 @@ describe('status', () => {
   describe('tallyFactoryStatuses', () => {
     const tallyOf = (factories: Factory[]) =>
       tallyFactoryStatuses(factories.map(each => getFactoryStatuses(each)))
+    const chipsOf = (factories: Factory[]) => factoryStatusTallyChips(tallyOf(factories))
 
     test('counts nothing for a healthy plan', () => {
-      expect(tallyOf([healthyFactory(), healthyFactory()]))
-        .toEqual({ problems: 0, shortages: 0, outOfSync: 0 })
+      expect(chipsOf([healthyFactory(), healthyFactory()])).toEqual([])
     })
 
     test('counts factories, not the states inside one', () => {
@@ -395,22 +396,8 @@ describe('status', () => {
       short.parts.IronOre.isRaw = true
       short.parts.IronOre.satisfied = false
 
-      // Two shortage statuses on one factory is still one factory short.
-      expect(tallyOf([short])).toEqual({ problems: 1, shortages: 1, outOfSync: 0 })
-    })
-
-    test('counts a shortage as a problem as well', () => {
-      const short = healthyFactory()
-      short.parts.IronIngot.satisfied = false
-
-      expect(tallyOf([short])).toEqual({ problems: 1, shortages: 1, outOfSync: 0 })
-    })
-
-    test('keeps out of sync out of the problem count — it is the warning tier', () => {
-      const stale = healthyFactory()
-      stale.inSync = false
-
-      expect(tallyOf([stale])).toEqual({ problems: 0, shortages: 0, outOfSync: 1 })
+      // A part shortage and a raw shortage in one factory is still one factory short.
+      expect(tallyOf([short]).shortages).toBe(1)
     })
 
     test('adds up across a plan', () => {
@@ -422,8 +409,48 @@ describe('status', () => {
       both.parts.IronIngot.satisfied = false
       both.inSync = false
 
-      expect(tallyOf([healthyFactory(), short, stale, both]))
-        .toEqual({ problems: 2, shortages: 2, outOfSync: 2 })
+      const tally = tallyOf([healthyFactory(), short, stale, both])
+      expect(tally.shortages).toBe(2)
+      expect(tally.outOfSync).toBe(2)
+    })
+
+    test('counts building group problems, which the old rollup buried', () => {
+      const wonky = healthyFactory()
+      wonky.products[0].buildingGroupsHaveProblem = true
+
+      expect(chipsOf([wonky])).toEqual([
+        expect.objectContaining({ key: 'buildingGroups', count: 1, icon: 'fas fa-layer-group' }),
+      ])
+    })
+
+    test('names each kind rather than rolling them into "problems"', () => {
+      const short = healthyFactory()
+      short.parts.IronIngot.satisfied = false
+      const stale = healthyFactory()
+      stale.inSync = false
+
+      expect(chipsOf([short, stale])).toEqual([
+        expect.objectContaining({ key: 'shortages', count: 1, label: 'shortage' }),
+        expect.objectContaining({ key: 'outOfSync', count: 1, label: 'out of sync' }),
+      ])
+    })
+
+    test('pluralises the label and the tooltip together', () => {
+      const factories = [healthyFactory(), healthyFactory()]
+      for (const factory of factories) factory.parts.IronIngot.satisfied = false
+
+      expect(chipsOf(factories)[0]).toMatchObject({
+        label: 'shortages',
+        tooltip: '2 factories are short of parts',
+      })
+    })
+
+    test('lists problems before warnings, so no display site has to sort', () => {
+      const factory = healthyFactory()
+      factory.parts.IronIngot.satisfied = false
+      factory.inSync = false
+
+      expect(chipsOf([factory]).map(chip => chip.key)).toEqual(['shortages', 'outOfSync'])
     })
   })
 

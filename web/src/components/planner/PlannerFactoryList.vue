@@ -49,24 +49,10 @@
         @click="navigateToSection('factory-summary')"
       >
         <v-row class="d-flex flex-nowrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
             <i class="fas fa-list mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
-          <!-- The state of the plan in three numbers. Only what applies is shown: a row of zeroes
-               is noise on a healthy plan, and the point is that a number appearing means something. -->
-          <v-col class="d-flex align-center ga-1 pa-0 mr-1" cols="auto">
-            <tooltip
-              v-for="chip in statusTally"
-              :key="chip.key"
-              :text="chip.tooltip"
-            >
-              <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
-                <i :class="chip.icon" />
-                <span class="ml-1">{{ chip.count }}</span>
-              </v-chip>
-            </tooltip>
-          </v-col>
           <v-tooltip right>
             <template #activator="{ props }">
               <v-col
@@ -96,6 +82,22 @@
             <span>Open fullscreen summary</span>
           </v-tooltip>
         </v-row>
+        <!-- The state of the plan in three numbers, on their own line the way a group's power and
+             product rows are: the sidebar is narrow and drags narrower still, and beside the title
+             they wrapped "Factories Summary" onto two lines instead. Only what applies is shown —
+             a row of zeroes is noise on a healthy plan, and a number appearing is the whole point. -->
+        <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip
+            v-for="chip in statusTally"
+            :key="chip.key"
+            :text="chip.tooltip"
+          >
+            <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+              <i :class="chip.icon" />
+              <span class="ml-1">{{ chip.count }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
       </v-card>
     </div>
   </div>

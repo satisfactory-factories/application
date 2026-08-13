@@ -25,10 +25,10 @@ describe('usePlannerOptions', () => {
     expect(options.value.showGroupProducts).toBe(true)
   })
 
-  it('should show group power by default', async () => {
+  it('should leave group power off until asked for', async () => {
     const options = await load()
 
-    expect(options.value.showGroupPower).toBe(true)
+    expect(options.value.showGroupPower).toBe(false)
   })
 
   it('should restore what was stored', async () => {
@@ -46,7 +46,7 @@ describe('usePlannerOptions', () => {
     expect(JSON.parse(localStorage.getItem('plannerOptions')!)).toEqual({
       showGroupProducts: true,
       showInternalGroupProducts: true,
-      showGroupPower: true,
+      showGroupPower: false,
     })
   })
 
@@ -81,6 +81,7 @@ describe('usePlannerOptions', () => {
     localStorage.setItem('plannerOptions', JSON.stringify({ showInternalGroupProducts: true }))
     const options = await load()
 
-    expect(options.value.showGroupPower).toBe(true)
+    expect(options.value.showGroupProducts).toBe(true)
+    expect(options.value.showGroupPower).toBe(false)
   })
 })

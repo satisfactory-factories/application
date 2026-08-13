@@ -61,6 +61,22 @@
         />
       </div>
 
+      <!-- What is wrong inside this group, in the same chips and the same order the Factories
+           Summary uses for the whole plan. Under the title and above everything descriptive: a
+           group in trouble should say so before it says what it makes. Absent when nothing is. -->
+      <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-1">
+        <tooltip
+          v-for="chip in statusTally"
+          :key="chip.key"
+          :text="chip.tooltip"
+        >
+          <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+            <i :class="chip.icon" />
+            <span class="ml-1">{{ chip.count }}</span>
+          </v-chip>
+        </tooltip>
+      </div>
+
       <!-- Whether this group pays for itself: the same three chips the Statistics jump-link
            wears, at the same size, minus the target — a target belongs to the plan and a group
            cannot have one of its own. On its own line because the sidebar is narrow: beside the
@@ -170,7 +186,11 @@
   import { computed, ref, watch } from 'vue'
   import draggable from 'vuedraggable'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { FactoryStatus } from '@/utils/factory-management/status'
+  import {
+    FactoryStatus,
+    factoryStatusTallyChips,
+    tallyFactoryStatuses,
+  } from '@/utils/factory-management/status'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
@@ -254,6 +274,12 @@
   const NET_EPSILON = 0.001
 
   const options = usePlannerOptions()
+
+  // Reuses the parent's memo rather than re-deriving: the sidebar already holds a status list per
+  // factory for the rows below.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(
+    props.section.factories.map(factory => props.statuses.get(factory.id) ?? [])
+  )))
 
   // The same figures the group's band in the planner carries, so the two cannot disagree.
   const power = computed(() => {

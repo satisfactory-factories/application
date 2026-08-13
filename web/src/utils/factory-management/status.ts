@@ -148,7 +148,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
   {
     type: 'buildingGroupMismatch',
     severity: 'problem',
-    icon: 'fas fa-industry',
+    icon: 'fas fa-layer-group',
     chip: true,
     section: 'products',
     detail: 'The building groups on these items do not add up to the buildings the item needs.',
@@ -245,75 +245,105 @@ export const factoryStatusClass = (statuses: FactoryStatus[] = []) => {
   }
 }
 
-export interface FactoryStatusTally {
-  problems: number
-  shortages: number
-  outOfSync: number
-}
-
-const shortageTypes: FactoryStatusType[] = ['partShortage', 'rawShortage']
+export type FactoryStatusTally = Record<string, number>
 
 /**
- * Plan-wide counts for the summary headers: how many *factories* are in each state, not how many
- * times each state occurs. Shortages deliberately overlap with problems — a factory short of a
- * part is counted in both, because "how much of my plan is broken" and "how much of it is short"
- * are different questions.
+ * Plan-wide counts for the summary headers and the group headers: how many *factories* are in each
+ * state, not how many times each state occurs. One entry per chip definition below, so a factory
+ * short of two different parts counts once, and a factory that is both short and out of sync counts
+ * in both.
  *
- * Takes the status lists rather than the factories: every caller already holds a memo of them,
- * and re-deriving would run the warning-tier predicates a second time over the whole plan.
+ * Takes the status lists rather than the factories: every caller already holds a memo of them, and
+ * re-deriving would run the warning-tier predicates a second time over the whole plan.
  */
 export const tallyFactoryStatuses = (perFactory: Iterable<FactoryStatus[]>): FactoryStatusTally => {
-  const tally: FactoryStatusTally = { problems: 0, shortages: 0, outOfSync: 0 }
+  const tally: FactoryStatusTally = {}
+  for (const definition of tallyChipDefinitions) tally[definition.key] = 0
 
   for (const statuses of perFactory) {
-    if (statuses.some(status => status.severity === 'problem')) tally.problems++
-    if (statuses.some(status => shortageTypes.includes(status.type))) tally.shortages++
-    if (statuses.some(status => status.type === 'outOfSync')) tally.outOfSync++
+    for (const definition of tallyChipDefinitions) {
+      if (statuses.some(status => definition.types.includes(status.type))) tally[definition.key]++
+    }
   }
 
   return tally
 }
 
 export interface FactoryStatusTallyChip {
-  key: keyof FactoryStatusTally
+  key: string
   count: number
   icon: string
   class: string
-  // Follows the count where there is room for it ("3 with problems"); the sidebar shows the
-  // number alone and puts this in the tooltip.
+  // Follows the count where there is room for it ("6 shortages"); the sidebar and the band show
+  // the number alone and put the tooltip's fuller wording behind a hover.
   label: string
   tooltip: string
 }
 
 interface TallyChipDefinition {
-  key: keyof FactoryStatusTally
+  key: string
+  // The statuses that count towards this chip. Part and raw shortages share one: a factory short
+  // of ore and short of a plate is one factory that cannot make what it says it makes.
+  types: FactoryStatusType[]
   icon: string
   class: string
-  label: string
-  noun: [string, string]
+  label: [string, string]
+  sentence: [string, string]
 }
 
+// One chip per kind of trouble rather than a "problems" rollup: a count of factories with
+// *something* wrong says nothing you can act on, and it double-counted every factory that was
+// also listed as short. Declared problems-first, matching the registry above.
 const tallyChipDefinitions: TallyChipDefinition[] = [
   {
-    key: 'problems',
-    icon: 'fas fa-exclamation-triangle',
+    key: 'shortages',
+    types: ['partShortage', 'rawShortage'],
+    // A box, not a warning glyph: the count is about parts.
+    icon: 'fas fa-box',
     class: 'status-problem',
-    label: 'with problems',
-    noun: ['factory has a problem', 'factories have problems'],
+    label: ['shortage', 'shortages'],
+    sentence: ['factory is short of parts', 'factories are short of parts'],
   },
   {
-    key: 'shortages',
-    icon: 'fas fa-exclamation-circle',
+    key: 'exportShortage',
+    types: ['exportShortage'],
+    icon: 'fas fa-truck-container',
     class: 'status-problem',
-    label: 'short',
-    noun: ['factory is short of a part', 'factories are short of parts'],
+    label: ['export unmet', 'exports unmet'],
+    sentence: ['factory cannot meet an export another factory asked for', 'factories cannot meet exports other factories asked for'],
+  },
+  {
+    key: 'buildingGroups',
+    types: ['buildingGroupMismatch'],
+    // The same layers the Building Groups tray wears, so the chip points at what to open.
+    icon: 'fas fa-layer-group',
+    class: 'status-problem',
+    label: ['building groups', 'building groups'],
+    sentence: ['factory has building groups that do not add up', 'factories have building groups that do not add up'],
   },
   {
     key: 'outOfSync',
+    types: ['outOfSync'],
     icon: 'fas fa-times-square',
     class: 'status-warning',
-    label: 'out of sync',
-    noun: ['factory is out of sync with the game', 'factories are out of sync with the game'],
+    label: ['out of sync', 'out of sync'],
+    sentence: ['factory is out of sync with the game', 'factories are out of sync with the game'],
+  },
+  {
+    key: 'redundantImport',
+    types: ['redundantImport'],
+    icon: 'fas fa-arrow-to-right',
+    class: 'status-warning',
+    label: ['redundant import', 'redundant imports'],
+    sentence: ['factory imports something it does not need', 'factories import something they do not need'],
+  },
+  {
+    key: 'duplicateImport',
+    types: ['duplicateImport'],
+    icon: 'fas fa-clone',
+    class: 'status-warning',
+    label: ['duplicate import', 'duplicate imports'],
+    sentence: ['factory imports the same part twice', 'factories import the same part twice'],
   },
 ]
 
@@ -321,15 +351,19 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
 // of a number that is supposed to mean something.
 export const factoryStatusTallyChips = (tally: FactoryStatusTally): FactoryStatusTallyChip[] =>
   tallyChipDefinitions
-    .filter(definition => tally[definition.key] > 0)
-    .map(definition => ({
-      key: definition.key,
-      count: tally[definition.key],
-      icon: definition.icon,
-      class: definition.class,
-      label: definition.label,
-      tooltip: `${tally[definition.key]} ${definition.noun[tally[definition.key] === 1 ? 0 : 1]}`,
-    }))
+    .filter(definition => (tally[definition.key] ?? 0) > 0)
+    .map(definition => {
+      const count = tally[definition.key]
+      const plural = count === 1 ? 0 : 1
+      return {
+        key: definition.key,
+        count,
+        icon: definition.icon,
+        class: definition.class,
+        label: definition.label[plural],
+        tooltip: `${count} ${definition.sentence[plural]}`,
+      }
+    })
 
 export const getSectionStatuses = (statuses: FactoryStatus[], section: FactoryStatusSection): FactoryStatus[] =>
   statuses.filter(status => status.section === section)

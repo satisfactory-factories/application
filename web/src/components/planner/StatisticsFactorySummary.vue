@@ -6,15 +6,15 @@
   <v-dialog v-model="expanded" eager fullscreen transition="dialog-bottom-transition">
     <v-card class="factory-card rounded-0">
       <v-row class="header flex-grow-0">
-        <v-col class="text-h4 d-flex align-center flex-wrap" cols="12" lg="9" md="8">
-          <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
+        <v-col class="text-h4 d-flex align-center flex-wrap ga-3" cols="12" lg="9" md="8">
+          <span class="d-flex align-center"><i class="fas fa-list" /><span class="ml-3">Factories Summary</span></span>
           <!-- The count belongs with the title. The state of the plan is its own group, so a
                narrow planner drops all three status chips to a second line together rather than
                peeling them off one at a time. Gaps come from the containers: `no-margin` is an
                !important rule, so an ml-* utility on a chip does nothing. -->
           <v-chip
             v-if="factories.length > 0"
-            class="sf-chip sf-chip-info factory small no-margin ml-3"
+            class="sf-chip sf-chip-info factory small no-margin"
             variant="tonal"
           >
             <i class="fas fa-industry" />
@@ -22,7 +22,7 @@
           </v-chip>
           <!-- In the header rather than the body, so a collapsed summary still says how the plan
                is doing. Only what applies is shown. -->
-          <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2 ml-3">
+          <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2">
             <v-chip
               v-for="chip in statusTally"
               :key="chip.key"
@@ -55,18 +55,18 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 d-flex align-center flex-wrap" cols="12" lg="9" md="8">
-            <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
+          <v-col class="text-h4 d-flex align-center flex-wrap ga-3" cols="12" lg="9" md="8">
+            <span class="d-flex align-center"><i class="fas fa-list" /><span class="ml-3">Factories Summary</span></span>
             <v-chip
               v-if="factories.length > 0"
               id="factory-summary-count"
-              class="sf-chip sf-chip-info factory small no-margin ml-3"
+              class="sf-chip sf-chip-info factory small no-margin"
               variant="tonal"
             >
               <i class="fas fa-industry" />
               <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
             </v-chip>
-            <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2 ml-3">
+            <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2">
               <v-chip
                 v-for="chip in statusTally"
                 :key="chip.key"

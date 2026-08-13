@@ -32,10 +32,16 @@
         <i class="fas fa-industry" />
         <span class="ml-2">{{ count }}</span>
       </v-chip>
-      <tooltip v-if="problems" :text="`${problems} ${problems === 1 ? 'factory' : 'factories'} in this group needs attention`">
-        <v-chip class="sf-chip small error no-margin" variant="tonal">
-          <i class="fas fa-exclamation-triangle" />
-          <span class="ml-2">{{ problems }}</span>
+      <!-- The same chips, icons and colours the Factories Summary and the sidebar use, so one
+           tier of trouble looks the same wherever it is counted. -->
+      <tooltip
+        v-for="chip in statusTally"
+        :key="chip.key"
+        :text="chip.tooltip"
+      >
+        <v-chip class="sf-chip small no-margin" :class="chip.class" variant="tonal">
+          <i :class="chip.icon" />
+          <span class="ml-2">{{ chip.count }}</span>
         </v-chip>
       </tooltip>
 
@@ -87,7 +93,11 @@
   import { groupColorVars } from '@/utils/colors'
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatMw } from '@/utils/numberFormatter'
-  import { hasFactoryProblem } from '@/utils/factory-management/status'
+  import {
+    factoryStatusTallyChips,
+    getFactoryStatuses,
+    tallyFactoryStatuses,
+  } from '@/utils/factory-management/status'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
 
   const props = defineProps<{
@@ -109,7 +119,10 @@
     }
   })
 
-  const problems = computed(() => props.factories.filter(hasFactoryProblem).length)
+  // Counted the same way the Factories Summary counts the plan, from the same helper.
+  const statusTally = computed(() => factoryStatusTallyChips(
+    tallyFactoryStatuses(props.factories.map(factory => getFactoryStatuses(factory)))
+  ))
 
   const { setGroupColor } = useFactoryGroups()
 

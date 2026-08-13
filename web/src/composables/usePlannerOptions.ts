@@ -19,15 +19,16 @@ interface PlannerOptions {
   // leaves it crowds that out. Has no effect with showGroupProducts off — see the Options dialog,
   // which disables it. See collectGroupProducts.
   showInternalGroupProducts: boolean
-  // Show each sidebar group's power generated, consumed and balance. On by default: whether a
-  // group pays for itself is the question people ask of a group most often.
+  // Show each sidebar group's power generated, consumed and balance. Off by default: it is three
+  // more chips on every group, and power is a question people ask of the plan far more often than
+  // of a folder within it.
   showGroupPower: boolean
 }
 
 const DEFAULTS: PlannerOptions = {
   showGroupProducts: true,
   showInternalGroupProducts: false,
-  showGroupPower: true,
+  showGroupPower: false,
 }
 
 const restore = (): PlannerOptions => {
