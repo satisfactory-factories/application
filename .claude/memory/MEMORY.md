@@ -35,3 +35,4 @@
 - [Factory groups invariant](factory-groups-invariant.md) — groups ride on the factory (the save payload is a bare Factory[]) and are a sort of the one flat array; both break silently
 - [Client version gate](client-version-gate.md) — the rules the API's version gate must keep, and why build-time constants travel as `VITE_*` rather than a Vite `define`
 - [Game asset tooltips](game-asset-tooltips.md) — why every game image went tooltip-less: VImg eats a `title`, and a three-root component drops it with no warning
+- [Changelog: no word salad](changelog-no-word-salad.md) — release copy states the change and stops; reasons belong in commits, not the changelog

@@ -74,24 +74,6 @@
             class="mb-4"
             :video-id="launchVideoId"
           />
-          <v-img
-            :alt="activeExample.alt"
-            class="mb-2 mx-auto rounded"
-            max-width="1200"
-            :src="activeExample.image"
-          />
-          <div class="d-flex justify-center flex-wrap ga-2 mb-4">
-            <v-btn
-              v-for="example in examples"
-              :key="example.key"
-              :color="example.key === activeExampleKey ? 'primary' : undefined"
-              size="small"
-              :variant="example.key === activeExampleKey ? 'flat' : 'outlined'"
-              @click="activeExampleKey = example.key"
-            >
-              {{ example.label }}
-            </v-btn>
-          </div>
           <p class="hero-blurb mb-4">
             <b>Raw resources are now first class citizens in the planner.</b> If nothing in your plan digs up the ore,
             you're short of it, the same as you would be with any other part. Create mining factories and export the resources to dependants,
@@ -139,48 +121,31 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-hard-hat" /><span class="ml-2">Mining</span>
           </h2>
+          <p class="mb-4">
+            Raw resources are extracted like anything else is produced. Build a dedicated mine and
+            export the ore, or mine on site in the factory that needs it.
+          </p>
+          <!-- One at a time. All three stacked was more text than a slide gets read for. -->
+          <div class="d-flex justify-center flex-wrap ga-2 mb-4">
+            <v-btn
+              v-for="example in examples"
+              :key="example.key"
+              :color="example.key === activeExampleKey ? 'primary' : undefined"
+              :variant="example.key === activeExampleKey ? 'flat' : 'outlined'"
+              @click="activeExampleKey = example.key"
+            >
+              {{ example.label }}
+            </v-btn>
+          </div>
           <v-img
-            alt="A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one"
-            class="mb-4 mx-auto rounded"
+            :alt="activeExample.alt"
+            class="mb-3 mx-auto rounded"
             max-width="1200"
-            :src="shots.miners"
+            :src="activeExample.image"
           />
-          <p class="mb-4">
-            Pick <b>Iron Ore, Raw Quartz, Water, Crude Oil</b> or any other node resource as a
-            product and the planner offers its extractor as the recipe. Build a dedicated mine
-            factory and export the ore across your plan, or mine on site and smelt it in the same
-            factory — both work.
-          </p>
-          <h3 class="text-h6 mb-2">Miner mark and node purity, per building group</h3>
-          <p class="mb-4">
-            One ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one, so
-            each building group picks its own extractor and purity — and the two multiply with the
-            group's clock exactly as the game does. Purity changes the yield, never the power.
-            When a mine falls short it tells you how many of each mark, at each purity, would
-            close the gap.
-          </p>
-          <h3 class="text-h6 mb-2 d-flex align-center">
-            <game-asset height="24px" subject="resource-well-extractor" type="item_id" width="24px" /><span class="ml-2">Resource wells</span>
-          </h3>
-          <v-img
-            alt="A resource well pressurizer with its satellite nodes by purity"
-            class="mb-2 mx-auto rounded"
-            max-width="1200"
-            :src="shots.well"
-          />
-          <p class="mb-4">
-            A well is one building group: the pressurizer, and how many satellite extractors stand
-            on impure, normal and pure micro-nodes. The pressurizer's clock scales every satellite
-            at once, and the satellites are buildings to place but draw no power — the pressurizer
-            pays for all of them. <b>Nitrogen Gas becomes plannable for the first time</b>, wells
-            being its only source.
-          </p>
-          <h3 class="text-h6 mb-2">Water &amp; oil</h3>
-          <p class="mb-2">
-            Water sources have no purity, so the Water Extractor is simply a building producing a
-            raw resource at a flat 120 m³/min — and it overclocks like everything else. Oil
-            Extractors work off node purity in the usual way.
-          </p>
+          <ul class="ml-6 mb-2">
+            <li v-for="point in activeExample.points" :key="point">{{ point }}</li>
+          </ul>
         </div>
 
         <!-- Slide 3: The wizard -->
@@ -196,31 +161,46 @@
             :src="shots.wizard"
           />
           <p class="mb-4">
-            It lists <b>every factory short of a raw resource</b> and offers, per row: create a
-            shared mine factory, mine it right there, import it from a factory that already mines
-            it, or leave it alone.
+            It lists every factory short of a raw resource. Per row: build a shared mine, mine it
+            on site, import it from a factory that already mines it, or leave it.
           </p>
           <ul class="ml-6 mb-4">
-            <li><b>One mine per resource for the whole plan</b> where you ask it to build one — a plan short of iron in eight places gets one Iron Ore Mine, not eight, sized to everything that asked for it.</li>
-            <li>New mines are built on <b>Miner Mk.2s at normal purity</b>. Only the building count and the power depend on that guess, never the amount of ore, so adjust each group to the nodes you actually have.</li>
-            <li><b>Water defaults to being extracted on site</b>, and a resource already mined somewhere in your plan defaults to importing from there rather than building a second mine beside the first.</li>
-            <li>You choose whether new mines land at the <b>top or the bottom</b> of the plan, and you can rename any of them before they're built.</li>
-            <li><b>Resource wells are the one thing it won't build</b> — a well's rate comes from its satellite nodes, so sizing one automatically would land an order of magnitude out while looking solved. Nitrogen rows offer an import or nothing, and say why.</li>
+            <li><b>One mine per resource</b>, sized to everything that asked for it — a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
+            <li><b>Water defaults to on-site extraction.</b> A resource already mined somewhere defaults to importing from there.</li>
+            <li>New mines land at the <b>top or bottom</b> of the plan, your choice, and can be renamed before they are built.</li>
+            <li><b>Resource wells are the one thing it won't build.</b> Satellite nodes have their own purities, and the game now varies those settings too, so what you are trying to build is your call. Nitrogen rows offer an import or nothing.</li>
           </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="text-h6 mb-2">Applying</h3>
           <p class="mb-4">
-            It shows you exactly what it's about to do — every factory it touches, everything they
-            will produce, every export with its destination and rate — and <b>writes nothing until
-              you confirm</b>. There's no undo in the planner, so the whole change is built and
-            checked to one side first: if any part of it can't be applied, nothing is written at
-            all. <b>Download a backup</b> from the confirmation screen and there's a way back from
-            a run you didn't want.
+            Once you have made your choices it shows you a summary. You can download a backup from
+            there, then apply.
           </p>
-          <p class="mb-2">
-            It isn't only for migrating — it lives in <b>Options</b>, the wrench beside the share
-            button, for any time a new factory comes up short.
+
+          <v-divider class="my-4" />
+
+          <h3 class="text-h6 mb-2">Where to find it</h3>
+          <v-img
+            v-if="hasOptionsShot"
+            alt="The Options button, at the top right of the planner"
+            class="mb-3 mx-auto rounded"
+            max-width="620"
+            :src="shots.options"
+          />
+          <p class="mb-4">
+            It isn't only for migrating. It lives in <b>Options</b>, for any time a new factory
+            comes up short.
           </p>
           <p class="text-center">
-            <v-btn color="green" prepend-icon="fas fa-shovel" variant="flat" @click="runWizard">
+            <v-btn
+              color="green"
+              prepend-icon="fas fa-shovel"
+              size="x-large"
+              variant="flat"
+              @click="runWizard"
+            >
               Run the Raw Resources Wizard
             </v-btn>
           </p>
@@ -239,19 +219,39 @@
             :src="shots.groups"
           />
           <p class="mb-4">
-            A plan of thirty factories was a flat list, and the only ways to organise it were the
-            name and the drag order. Factories now belong to a <b>group</b>: a named, coloured
-            folder that collapses like a toggle, reorders, and can be dragged in and out of.
-            Anything in no group falls into <b>Ungrouped</b>, pinned to the top.
+            Factories can belong to a <b>group</b>: a named, coloured folder that collapses,
+            reorders, and can be dragged in and out of. Anything in no group falls into
+            <b>Ungrouped</b>, pinned to the top.
           </p>
           <ul class="ml-6 mb-4">
-            <li><b>In the sidebar</b>, a group is a header with its colour, an editable name, a factory count, and a line showing what the group makes — as many item icons as the sidebar is wide enough for, then a <b>+N</b> tile listing the rest. Drag factories between groups, reorder them inside one, or drag the groups themselves.</li>
-            <li><b>In the planner</b>, cards sit under a collapsible band per group. Bands only appear once there's more than one section, so a plan that has never used groups looks exactly as it did.</li>
-            <li><b>Colour</b> is a palette or anything you like through the picker — red and amber excepted, since a group wearing the problem colour would read as a broken factory. A group gives its cards a muted header and a bright left spine, and <b>a status still wins the border</b>, so a factory short of copper stays red while its spine says where it lives.</li>
-            <li><b>Multi-group edit</b> organises a whole plan in one visit instead of one card at a time, with <i>Select these</i> for the case it's nearly always going to be.</li>
+            <li>
+              <b>In the sidebar</b>, a group is a header with its colour, an editable name, a
+              factory count and a line showing what it produces.
+              <ul class="ml-4 mt-1">
+                <li>It shows as many products as the sidebar's width allows, then folds the rest into a <b>+N</b>.</li>
+                <li>Each carries the group's surplus or shortfall of it — green over, red short.</li>
+              </ul>
+            </li>
+            <li>Drag factories between groups, reorder them inside one, or drag the groups themselves.</li>
+            <li><b>In the planner</b>, a group's factories sit under a collapsible band, with a line down the left linking them to it.</li>
+            <li><b>Colour</b> is whatever you wish through the picker. We recommend avoiding red and amber — a status still wins the border, and a group wearing those reads as a broken factory.</li>
             <li><b>Deleting a group never deletes a factory</b> — one still holding factories asks where they should go first.</li>
-            <li>Groups travel with the plan through save, share links, templates and cloud sync. Plans made before this load untouched, entirely ungrouped.</li>
           </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="text-h6 mb-2">Organising a plan in one go</h3>
+          <v-img
+            v-if="hasGroupButtonsShot"
+            alt="The Group and Multi-group edit buttons at the foot of the sidebar"
+            class="mb-3 mx-auto rounded"
+            max-width="420"
+            :src="shots.groupButtons"
+          />
+          <p class="mb-2">
+            <b>Multi-group edit</b> assigns a whole selection at once, with <i>Select these</i> for
+            the case it is nearly always going to be. Both buttons are at the bottom of the sidebar.
+          </p>
         </div>
 
         <!-- Slide 5: Factory icons -->
@@ -259,6 +259,9 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-icons" /><span class="ml-2">Factory Icons</span>
           </h2>
+          <p class="mb-3">
+            Factories can now have icons. Search the picker for the one you want.
+          </p>
           <v-img
             v-if="hasIconsShot"
             alt="The factory icon picker"
@@ -266,29 +269,19 @@
             max-width="1200"
             :src="shots.icons"
           />
-          <p class="mb-4">
-            Every factory drew the same generic glyph, so a plan of twenty showed twenty identical
-            icons and the only thing telling a sidebar row apart was a truncated name. Factories
-            now carry <b>an icon you choose</b>, and it follows them everywhere: the card header,
-            the sidebar, the Factories Summary, the graph, the import rows and the import/export
-            chips.
-          </p>
           <ul class="ml-6 mb-4">
-            <li><b>352 icons.</b> Real game art for every machine, extractor and generator, every belt, lift, splitter, pipe and pump, the power infrastructure, stations, storage, vehicles, equipment, and every raw resource, fluid and component the planner knows — plus emoji: coloured squares, circles, diamonds and triangles, digits and symbols.</li>
-            <li><b>The picker opens on everything</b>, laid out under category headings so you can scroll it like a sheet. The category buttons stay on screen, so they double as a map of what's in there.</li>
-            <li><b>Search covers the whole set</b> regardless of the category you're in, and matches names with the punctuation stripped — the game writes "Mk.5" and nobody types the dot, so "mk5" finds it too.</li>
-            <li>Click the icon in the card header or the sidebar to pick; "Use default" puts the generic glyph back.</li>
+            <li>They show on the factory itself, in the sidebar, and in the import and export sections.</li>
+            <li><b>352 to pick from</b>: game art for every machine, belt, pipe, generator, vehicle, resource and component the planner knows, plus emoji shapes, digits and symbols.</li>
+            <li><b>Search covers the whole set</b> whichever category you are in, and ignores punctuation — the game writes "Mk.5", so "mk5" finds it.</li>
+            <li>Click the icon in the card header or the sidebar to pick one. <i>Use default</i> puts the generic glyph back.</li>
+            <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work — they just won't appear as the icon elsewhere in the plan.</li>
           </ul>
-          <p class="mb-2">
-            <b>The Demo plan wears them</b>, with its copper chain folded into a copper-coloured
-            group — load it from Templates to see both features in one plan.
-          </p>
         </div>
 
         <!-- Slide 6: The rest of the planner work -->
         <div v-if="currentSlide === 5">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-sparkles" /><span class="ml-2">More in the Planner</span>
+            <i class="fas fa-sparkles" /><span class="ml-2">More quality of life features</span>
           </h2>
           <h3 class="text-h6 mb-2">Factory status indicators</h3>
           <v-img
@@ -299,16 +292,16 @@
             :src="shots.status"
           />
           <p class="mb-2">
-            A factory used to tell you exactly one thing: it was red, or it wasn't. Three unrelated
-            failures collapsed into one red blob, and anything short of outright broken had nowhere
-            to appear. Factories now carry <b>named status chips</b> in two tiers — red for a
-            problem, amber for "this is coherent, but probably not what you meant".
+            A factory now says what is wrong with it via a chip, shown on the factory and in the
+            sidebar. Red for a problem, amber for "probably not what you meant".
           </p>
           <ul class="ml-6 mb-4">
-            <li>Six statuses to start with: part shortage, unmet export request and building groups that don't add up in red; out of sync with the game, redundant import and duplicate import in amber.</li>
-            <li><b>The chips say which items</b> — three shortages are three item icons and "3 shortages", not a generic warning glyph — and clicking one scrolls to the section it points at.</li>
-            <li>A power-only factory whose generator groups didn't add up never turned red. It does now.</li>
+            <li>Six to start with: part shortage, unmet export request and building groups that don't add up in red; out of sync with the game, redundant import and duplicate import in amber.</li>
+            <li>Clicking one scrolls to the section it points at.</li>
+            <li><b>Bug fix:</b> a power-only factory never showed red when it had problems. It does now.</li>
           </ul>
+          <v-divider class="my-4" />
+
           <h3 class="text-h6 mb-2">Statistics say where a number came from</h3>
           <v-img
             v-if="hasStatsShots"
@@ -318,9 +311,7 @@
             :src="shots.statsRaw"
           />
           <p class="mb-2">
-            <b>Raw Resources</b> counts what your plan digs up — every product whose part is a raw
-            resource, whatever produced it — where it used to report the supply the planner was
-            assuming on your behalf, and so showed nothing at all once that assumption was gone.
+            <b>Raw Resources</b> counts what your plan digs up, per resource and per factory.
           </p>
           <v-img
             v-if="hasStatsShots"
@@ -330,11 +321,8 @@
             :src="shots.statsSurplus"
           />
           <p class="mb-4">
-            Both it and <b>Product Surplus &amp; Deficit</b> are tables now, and both break the
-            figure down <b>by factory</b> — click a chip to jump straight there. A plan-wide total
-            is the number you notice and the one you can do least with: above, Sulfuric Acid reads
-            +30/min overall, which is Uranium Power 40 over and Plutonium Processing 10 short. Two
-            places to go, where the total said one thing and pointed nowhere.
+            <b>Product Surplus &amp; Deficit</b> is a table now too, and both break the figure down
+            by factory. Click a chip to jump there.
           </p>
           <v-img
             v-if="hasStatsShots"
@@ -344,11 +332,12 @@
             :src="shots.statsPower"
           />
           <p class="mb-4">
-            <b>Power Consumption and Generation</b> gets the same treatment, with a
-            <b>By factory</b> breakdown under the plan totals — heaviest net drain first, so the
-            factory worth looking at is at the top rather than wherever you happened to put it.
-            Collapsed by default, since the plan figures above it are what most people came for.
+            <b>Power Consumption and Generation</b> gains a <b>By factory</b> breakdown, heaviest
+            net drain first. Collapsed by default.
           </p>
+
+          <v-divider class="my-4" />
+
           <h3 class="text-h6 mb-2">Tasks</h3>
           <v-img
             v-if="hasTasksShot"
@@ -358,10 +347,12 @@
             :src="shots.tasks"
           />
           <p class="mb-4">
-            <b>Tasks drag into any order</b> by the grip handle, completed ones included — a task's
-            position used to be fixed the moment you added it, so reprioritising meant deleting and
-            retyping. Done is now a <b>checkbox</b> on the left rather than a pair of buttons.
+            <b>Tasks drag into any order</b> by the grip handle, completed ones included. Done is
+            now a checkbox rather than a pair of buttons.
           </p>
+
+          <v-divider class="my-4" />
+
           <h3 class="text-h6 mb-2">Export Calculator — belts and pipes</h3>
           <p class="mb-4">
             Belts are back, per destination: how many conveyors of a chosen mark it takes to carry
@@ -371,6 +362,8 @@
             is redundant. Fluid exports get the same in <b>pipes</b>, and <b>Fluid Trucks</b>
             (3,200 m³) are now supported rather than being told to package the fluid.
           </p>
+          <v-divider class="my-4" />
+
           <h3 class="text-h6 mb-2">Finding your way around</h3>
           <ul class="ml-6 mb-2">
             <li><b>The sidebar shows which factory you're looking at</b>, following you as you scroll — no more losing your place in a 30-factory plan.</li>
@@ -494,6 +487,8 @@
     statsRaw: '/assets/changelog/beta6/statistics-raw-resources.png',
     statsSurplus: '/assets/changelog/beta6/statistics-surplus.png',
     statsPower: '/assets/changelog/beta6/statistics-power-by-factory.png',
+    options: '/assets/changelog/beta6/options-button.png',
+    groupButtons: '/assets/changelog/beta6/group-buttons.png',
   }
 
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
@@ -504,6 +499,8 @@
   const hasStatusShot = true
   const hasTasksShot = true
   const hasStatsShots = true
+  const hasOptionsShot = true
+  const hasGroupButtonsShot = true
 
   const key = 'seenV6Splash'
 
@@ -606,33 +603,50 @@
   const slides = [
     { title: 'The "Groundwork" Update is here!', nav: 'Intro' },
     { title: 'Mining', nav: 'Mining' },
-    { title: 'The Raw Resources Wizard', nav: 'The Wizard' },
+    { title: 'The Raw Resources Wizard', nav: 'Raw Resources Wizard' },
     { title: 'Factory Groups', nav: 'Factory Groups' },
     { title: 'Factory Icons', nav: 'Factory Icons' },
-    { title: 'More in the Planner', nav: 'More in the Planner' },
+    { title: 'More quality of life features', nav: 'Quality of Life' },
     { title: 'Fixes', nav: 'Fixes' },
   ]
 
   // The three shapes extraction takes, shown on the first slide the same way the breaking-change
   // notice shows them.
+  // Each carries its own copy: the slide shows one at a time rather than all three stacked,
+  // which was more text than anyone reads on a slide.
   const examples = [
     {
       key: 'miners',
       label: 'Miners',
       image: '/assets/changelog/beta6/miners.png',
       alt: 'A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one',
+      points: [
+        'Pick any node resource as a product and the planner offers its extractor as the recipe.',
+        'Each building group sets its own miner mark and node purity, and both multiply with the group\'s clock exactly as in game.',
+        'Purity changes the yield, never the power.',
+        'A mine that falls short says how many of each mark, at each purity, would close the gap.',
+      ],
     },
     {
       key: 'well',
       label: 'Resource wells',
       image: '/assets/changelog/beta6/resource-well.png',
       alt: 'A resource well pressurizer with its satellite nodes by purity',
+      points: [
+        'A well is one building group: the pressurizer, plus its satellites on impure, normal and pure micro-nodes.',
+        'The pressurizer\'s clock scales every satellite at once. Satellites draw no power — the pressurizer pays for all of them.',
+        'Nitrogen Gas is plannable for the first time. Wells are its only source.',
+      ],
     },
     {
       key: 'water',
-      label: 'Water',
+      label: 'Water & oil',
       image: '/assets/changelog/beta6/water-extractor.png',
       alt: 'Water Extractors, which have no node purity',
+      points: [
+        'Water sources have no purity, so the Water Extractor is a plain building at 120 m³/min. It overclocks like any other.',
+        'Oil Extractors use node purity as normal.',
+      ],
     },
   ] as const
 

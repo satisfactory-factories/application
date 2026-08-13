@@ -47,6 +47,7 @@
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { createSimple } from '@/utils/factory-setups/simple-plan'
+  import { create503PreMiningPlan } from '@/utils/factory-setups/503-pre-mining-plan'
   import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
   import { useAppStore } from '@/stores/app-store'
@@ -127,8 +128,8 @@
     },
     {
       name: '#503: Pre-mining plan (migration modal)',
-      description: 'A plan built the way plans were before mining existed: it smelts ore that nothing digs up, so it now shows raw shortages. Loading it re-opens the one-time breaking-change notice, which is otherwise unreachable once dismissed. Related to issue #503.',
-      data: scenarioData(createSimple().getFactories()),
+      description: 'A plan built the way plans were before mining existed: seven factories short of seven raw resources, with iron short in two places so the wizard has a shared mine to build. Loading it re-opens the one-time breaking-change notice, which is otherwise unreachable once dismissed. Related to issue #503.',
+      data: scenarioData(create503PreMiningPlan().getFactories()),
       show: isDebugMode,
       isDebug: true,
       rearmNotice: true,
