@@ -735,6 +735,10 @@ export const useAppStore = defineStore('app', () => {
 
     const tab = getCurrentTab()
     if (tab) {
+      // The name travels with the plan; the id does not. Restoring into a tab created on this
+      // machine, its id is what local state is keyed by, while the name is what the user called
+      // the plan when they saved it — so keeping the local one silently renamed their plan.
+      if (data.name) tab.name = data.name
       tab.powerTarget = data.powerTarget
       tab.groups = data.groups
       tab.plannerVersion = data.plannerVersion

@@ -285,6 +285,85 @@ describe('SyncActions', () => {
       await expect(syncActions.syncData(false, true)).rejects.toMatchObject({ minimumVersion: '0.7.0' })
     })
 
+    // An emptied plan has to reach the account, or the next restore hands back work the user
+    // deleted. The catch is that a session which has not loaded yet looks identical from here.
+    describe('an empty plan', () => {
+      const emptyTab = (groups?: any[]) => ({ ...mockTab([]), groups })
+
+      const okResponse = () => mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ message: 'All is good' }),
+      })
+
+      it('should not be saved before the account copy has been seen', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).not.toHaveBeenCalled()
+      })
+
+      it('should be saved once the account copy has been loaded', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(mockServerData)
+        vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(false)
+        await syncActions.loadServerData()
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        expect(await syncActions.syncData(false, true)).toBe(true)
+        expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, expect.objectContaining({
+          method: 'POST',
+        }))
+      })
+
+      it('should be saved when the account holds nothing to lose', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(false)
+        await syncActions.loadServerData()
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        expect(await syncActions.syncData(false, true)).toBe(true)
+      })
+
+      it('should be saved after this session has already written to the account', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(mockTab())
+        okResponse()
+        await syncActions.syncData(false, true)
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        expect(await syncActions.syncData(false, true)).toBe(true)
+      })
+
+      // Memberless groups are the one piece of plan state no factory carries, so a plan of
+      // nothing but empty folders is real state and still has to travel.
+      it('should be saved with its memberless groups', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(mockServerData)
+        vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(false)
+        await syncActions.loadServerData()
+
+        const tab = emptyTab([{ id: 'group-1', name: 'Steel', factories: [] }])
+        mockAppStore.getCurrentTab.mockReturnValue(tab)
+        okResponse()
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, expect.objectContaining({
+          body: JSON.stringify(tab),
+        }))
+      })
+
+      it('should do nothing at all when there is no tab', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(undefined)
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).not.toHaveBeenCalled()
+      })
+    })
+
     it('should handle server errors during sync', async () => {
       mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
 

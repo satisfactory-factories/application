@@ -658,6 +658,31 @@ describe('app-store', () => {
       expect(appStore.getFactories()).toHaveLength(1)
     })
 
+    // The name is part of the plan and travels with it; the id is local state this machine keys
+    // its tabs by, so it stays put.
+    it('restores the name the plan was saved under, keeping the local tab id', () => {
+      const before = appStore.getCurrentTab()?.id
+
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [newFactory('Foo')],
+      })
+
+      const tab = appStore.getCurrentTab()
+      expect(tab?.name).toBe('My Plan')
+      expect(tab?.id).toBe(before)
+    })
+
+    it('keeps the local name when the saved plan has none', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) tab.name = 'Local name'
+
+      appStore.loadServerPlan({ id: 'x', name: '', factories: [] })
+
+      expect(appStore.getCurrentTab()?.name).toBe('Local name')
+    })
+
     // A client that has not reloaded yet still saves the old shape, and every account saved
     // before v0.6 holds one. Read as what it is: a plan from before the change.
     it('reads a bare factory array as a plan that predates the change', () => {

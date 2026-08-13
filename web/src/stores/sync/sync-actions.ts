@@ -11,6 +11,9 @@ export class SyncActions {
   private readonly authStore: any
   private readonly appStore: any
   private readonly apiUrl: string
+  // Whether this session has seen what the account holds. An empty plan is only allowed to
+  // overwrite it once we have — see the guard in syncData.
+  private reconciledWithServer = false
 
   constructor (authStore: any, appStore: any) {
     this.authStore = authStore
@@ -32,6 +35,8 @@ export class SyncActions {
 
       if (!dataObject) {
         console.warn('loadServerData: No data found on server. Aborting data load.')
+        // Nothing on the account means nothing an empty plan could destroy.
+        this.reconciledWithServer = true
         return
       }
     } catch (error) {
@@ -41,6 +46,10 @@ export class SyncActions {
       }
       return
     }
+
+    // Either branch below means this session has now seen the account's copy, whether it took
+    // it or decided the local plan was ahead of it.
+    this.reconciledWithServer = true
 
     // Don't care about sync state if we're forcing a load
     if (forceLoad) {
@@ -91,8 +100,20 @@ export class SyncActions {
     // memberless groups are plan state, and uploading only the array quietly dropped them on
     // every restore. The API accepts both shapes — see the note on /save.
     const data = this.appStore.getCurrentTab()
-    if (!data?.factories?.length) {
-      console.warn('syncData: No data to save!')
+    if (!data) {
+      console.warn('syncData: No tab to save!')
+      return
+    }
+
+    // An emptied plan is a plan. Deleting your last factory, or keeping folders you have not
+    // filled yet, has to reach the account or the next restore hands the deleted work back.
+    //
+    // But an empty plan is also what this session looks like before it has loaded the account's
+    // copy, and those two are indistinguishable from here. So an empty plan may only be written
+    // once we have seen what is up there — otherwise a tick landing in the gap between logging
+    // in and the load completing would upload nothing over everything.
+    if (!data.factories?.length && !this.reconciledWithServer) {
+      console.warn('syncData: Plan is empty and the account copy has not been loaded yet, not saving.')
       return
     }
 
@@ -118,6 +139,9 @@ export class SyncActions {
 
     if (response.ok) {
       console.log('syncData: Data saved:', object)
+      // What is up there is now what we just sent, so a later emptying of this plan is safe to
+      // write without loading it back first.
+      this.reconciledWithServer = true
       return true
     } else if (isClientTooOldResponse(response, object)) {
       // Refused, not failed: this build is too old to write and must not keep retrying.
