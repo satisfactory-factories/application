@@ -61,22 +61,32 @@
         />
       </div>
 
-      <!-- Second line: what this group actually makes. Kept to one line, with as many icons on it
-           as the sidebar's current width allows — see `fits`. -->
-      <div v-if="products.length" ref="productRow" class="product-row d-flex align-center ga-1 px-2 pb-1">
-        <game-asset
-          v-for="part in visibleProducts"
-          :key="part"
-          height="36"
-          :subject="part"
-          type="item"
-          width="36"
-        />
+      <!-- Second line: what this group actually makes, and whether it is keeping up. Kept to one
+           line, with as many tiles on it as the sidebar's current width allows — see `fits`. -->
+      <div v-if="products.length" ref="productRow" class="product-row d-flex align-start ga-1 px-2 pb-1">
+        <!-- One tooltip for the whole tile, carrying the name and the figure together. The icon
+             marks itself for HoverTooltip, so wrapping it in a v-tooltip would give the hover two
+             answers; the same text goes on the tile so the number below the icon answers too. -->
+        <span
+          v-for="product in visibleProducts"
+          :key="product.partId"
+          class="product-tile"
+          :data-hover-tooltip="netTooltip(product)"
+        >
+          <game-asset
+            height="36"
+            :subject="product.partId"
+            :tooltip="netTooltip(product)"
+            type="item"
+            width="36"
+          />
+          <span class="product-net" :class="netClass(product.net)">{{ netLabel(product.net) }}</span>
+        </span>
         <v-tooltip v-if="hiddenProducts.length" location="bottom">
           <template #activator="{ props: activatorProps }">
             <span class="overflow-count" v-bind="activatorProps">+{{ hiddenProducts.length }}</span>
           </template>
-          <span>{{ hiddenProducts.map(getPartDisplayName).join(', ') }}</span>
+          <span>{{ hiddenProducts.map(product => netTooltip(product)).join(', ') }}</span>
         </v-tooltip>
       </div>
     </div>
@@ -123,7 +133,10 @@
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { useElementWidth } from '@/composables/useElementWidth'
+  import { usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { collectGroupProducts, GroupProduct } from '@/utils/factory-management/group-products'
   import { groupColorVars } from '@/utils/colors'
+  import { formatCompact, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import FactoryGroupColorMenu from '@/components/planner/groups/FactoryGroupColorMenu.vue'
   import PlannerSidebarFactoryRow from '@/components/planner/groups/PlannerSidebarFactoryRow.vue'
@@ -192,18 +205,41 @@
   const GAP = 4
   // Only until the observer's first callback, which lands in the same frame as the first paint.
   const UNMEASURED_LIMIT = 8
+  // Below this, a figure is float noise from a reverse-solve rather than a real imbalance — a
+  // group reading "+0.0001" in red would be a lie told to three decimal places.
+  const NET_EPSILON = 0.001
 
-  // What the group makes, deduped across its factories and in the order the factories declare
-  // them, so the icons stay put as the plan changes rather than reshuffling on every recalc.
+  const options = usePlannerOptions()
+
+  // What the group makes, with its surplus or shortfall. Parts it produces and consumes entirely
+  // within itself are left off unless asked for — the row says what the folder delivers, and an
+  // intermediate that never leaves it crowds that out.
   const products = computed(() => {
-    const seen = new Set<string>()
-    for (const factory of props.section.factories) {
-      for (const product of factory.products) {
-        seen.add(product.id)
-      }
-    }
-    return [...seen]
+    const all = collectGroupProducts(props.section.factories)
+    return options.value.showInternalGroupProducts ? all : all.filter(product => !product.internal)
   })
+
+  // Zero is neither, and drawing it green would claim a group that exactly balances has headroom.
+  const netClass = (net: number) => {
+    if (net > NET_EPSILON) return 'surplus'
+    return net < -NET_EPSILON ? 'deficit' : 'balanced'
+  }
+
+  // Magnitude only: the colour already says which side of zero it is, and the two characters a
+  // sign costs are better spent on legibility at this size. The tooltip spells it out in words.
+  const netLabel = (net: number) => {
+    if (Math.abs(net) <= NET_EPSILON) return '0'
+    return formatCompact(Math.abs(net))
+  }
+
+  // The tile is four characters wide, so the exact figure and what it means live here.
+  const netTooltip = (product: GroupProduct) => {
+    const name = getPartDisplayName(product.partId)
+    if (Math.abs(product.net) <= NET_EPSILON) return `${name}: balanced`
+    return product.net > 0
+      ? `${name}: ${formatNumber(product.net)}/min surplus`
+      : `${name}: ${formatNumber(Math.abs(product.net))}/min short`
+  }
 
   const productRow = ref<HTMLElement>()
   const { width: rowWidth } = useElementWidth(productRow)
@@ -407,6 +443,39 @@ $strip-border: 1px;
 
   > * {
     flex: 0 0 auto;
+  }
+}
+
+/* Fixed to the icon's width so the fit arithmetic keeps holding — the figure is centred under it
+   and allowed to be the wider of the two rather than widening the tile. */
+.product-tile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 36px;
+  cursor: default;
+}
+
+.product-net {
+  margin-top: 1px;
+  /* As large as four characters fit into the icon's 36px, now the sign is gone. */
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+
+  &.surplus {
+    color: var(--sf-success);
+  }
+
+  &.deficit {
+    color: var(--sf-problem);
+  }
+
+  /* Exactly balanced is neither good nor bad, and colouring it either way would say something
+     the number does not. */
+  &.balanced {
+    color: #9e9e9e;
   }
 }
 

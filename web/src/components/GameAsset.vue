@@ -9,7 +9,7 @@
     <game-asset-content
       :height="height"
       :subject="subject"
-      :title="wikiName ?? displayName"
+      :title="tooltip ?? wikiName ?? displayName"
       :type="type"
       :width="width"
       wiki
@@ -19,7 +19,7 @@
     v-else
     :height="height"
     :subject="subject"
-    :title="displayName"
+    :title="tooltip ?? displayName"
     :type="type"
     :width="width"
   />
@@ -41,6 +41,10 @@
     // Wiki page name override for UI icons (e.g. the overclock glyph) whose subject
     // isn't a real part, so the display-name lookup can't produce a valid URL.
     wikiName?: string
+    // Replaces the tooltip text, for a caller that has more to say about this icon than its
+    // name. Wrapping the icon in a second tooltip instead gives the hover two answers, since
+    // HoverTooltip resolves the innermost marked ancestor.
+    tooltip?: string
   }>()
 
   const displayName = computed(() => {
