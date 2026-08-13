@@ -37,28 +37,63 @@
       either need to be produced more (in red), or items that can be
       stored or sunk (in green)!
     </p>
-    <div v-if="factoryProductDifferences.length > 0">
-      <v-chip
-        v-for="(product) in factoryProductDifferences"
-        :key="product.id"
-        class="sf-chip"
-        :class="{
-          'green': product.amountRemaining > 0,
-          'red': product.amountRemaining < 0,
-        }"
-      >
-        <game-asset clickable :subject="product.id" type="item" />
-        <span class="ml-2">
-          <b>{{ getPartDisplayName(product.id) }}</b>: {{ formatNumber(product.amountRemaining) }}/min
-        </span>
-      </v-chip>
-    </div>
+    <v-table
+      v-if="factoryProductDifferences.length > 0"
+      id="stats-surplus-deficit"
+      class="stats-table"
+      density="compact"
+    >
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th class="text-right">Net</th>
+          <th>Where</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="product in factoryProductDifferences" :key="product.id">
+          <td>
+            <v-chip
+              class="sf-chip no-margin"
+              :class="product.amountRemaining > 0 ? 'green' : 'red'"
+              variant="tonal"
+            >
+              <game-asset clickable :subject="product.id" type="item" />
+              <b class="ml-2">{{ getPartDisplayName(product.id) }}</b>
+            </v-chip>
+          </td>
+          <td class="text-right">
+            <b :class="amountClass(product.amountRemaining)">{{ formatNumber(product.amountRemaining) }}</b>/min
+          </td>
+          <td>
+            <!-- Which factories the figure came from. A plan-wide zero routinely hides one
+                 factory 200 over and another 200 short, and the total alone says neither. The
+                 item is named in the first column, so the chip carries only the factory and the
+                 number it contributes. -->
+            <div class="d-flex flex-wrap ga-2">
+              <div
+                v-for="source in product.sources"
+                :key="source.id"
+                class="factory-group-chip clickable"
+                @click="navigateToFactory(source.id)"
+              >
+                <factory-icon-display class="ml-1" :icon="source.icon" size="20" />
+                <span class="mx-2"><b>{{ source.name }}</b></span>
+                <v-chip class="sf-chip small" :class="source.amount > 0 ? 'green' : 'red'">
+                  {{ formatNumber(source.amount) }}/min
+                </v-chip>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </v-table>
     <p v-else class="text-body-1">No Product Surplus or Deficit</p>
   </template>
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue'
+  import { computed, inject, ref, watch } from 'vue'
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
@@ -80,9 +115,36 @@
   const surplusCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining > 0).length)
   const deficitCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining < 0).length)
 
+  const amountClass = (amount: number) => (amount > 0 ? 'text-success' : 'text-error')
+
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
+
   // Section visibility, persisted. Compare against the string — Boolean('false') is true.
   const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') === 'true')
   watch(hidden, value => {
     localStorage.setItem('statisticsSurplusHidden', value.toString())
   })
 </script>
+
+<style lang="scss" scoped>
+.stats-table {
+  background-color: transparent;
+
+  // The factory column carries the width; the other two only need enough not to wrap their own
+  // contents, or one long factory name folds the product name onto two lines.
+  th:nth-child(1),
+  td:nth-child(1),
+  th:nth-child(2),
+  td:nth-child(2) {
+    white-space: nowrap;
+    width: 1%;
+  }
+
+  // v-table sizes cells for one line; these rows hold chips and wrap.
+  td {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    height: auto !important;
+  }
+}
+</style>

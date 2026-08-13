@@ -519,31 +519,4 @@
     }
   }
 }
-
-// Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
-// imported from / exported to that factory. Shares the factory token + card header
-// background (see src/utils/colors.ts).
-.factory-group-chip {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  border: 2px solid var(--sf-factory-border);
-  border-radius: 28px;
-  background-color: var(--sf-factory-bg);
-  color: var(--sf-factory);
-  padding: 4px 6px 4px 10px;
-  row-gap: 4px;
-
-  // The global .sf-chip.no-margin rule out-specifies utility classes like ml-1,
-  // so the 4px rhythm between part chips has to live here, where the scope
-  // attribute wins the specificity contest.
-  .sf-chip {
-    margin: 0 0 0 4px !important;
-  }
-
-  &.clickable:hover {
-    cursor: pointer;
-    background-color: #323232;
-  }
-}
 </style>

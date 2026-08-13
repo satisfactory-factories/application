@@ -46,8 +46,31 @@ export const calculateTotalBuildingsByType = (factories: Factory[]) => {
  * do the right thing. A raw resource reaching a plan now is a product like any other; it is the
  * part being raw, not the way it arrived, that makes it belong here.
  */
-export const calculateTotalRawResources = (factories: Factory[]) => {
-  const rawResources: Record<string, { id: string; totalAmount: number; }> = {}
+/**
+ * One factory's share of a plan-wide figure, so a statistics row can say where a number came
+ * from and be clicked through to it. A total on its own reports a problem without saying where
+ * to go and fix it.
+ */
+export interface FactoryContribution {
+  id: number
+  name: string
+  icon?: string
+  amount: number
+}
+
+// Below this a figure is float noise from a reverse-solve rather than a real contribution.
+const CONTRIBUTION_EPSILON = 0.001
+
+export interface RawResourceTotal {
+  id: string
+  totalAmount: number
+  // Who digs it up, in plan order. One resource routinely comes from several places — the demo
+  // plan's water is pumped in one factory and its copper mined in another.
+  sources: FactoryContribution[]
+}
+
+export const calculateTotalRawResources = (factories: Factory[]): RawResourceTotal[] => {
+  const rawResources: Record<string, RawResourceTotal> = {}
 
   factories.forEach(factory => {
     factory.products.forEach(product => {
@@ -57,8 +80,17 @@ export const calculateTotalRawResources = (factories: Factory[]) => {
         return
       }
 
-      rawResources[product.id] ??= { id: product.id, totalAmount: 0 }
-      rawResources[product.id].totalAmount += product.amount
+      const entry = rawResources[product.id] ??= { id: product.id, totalAmount: 0, sources: [] }
+      entry.totalAmount += product.amount
+
+      // A factory can hold more than one product of the same resource — two node purities split
+      // across separate products, say — and it is still one place to go.
+      const source = entry.sources.find(candidate => candidate.id === factory.id)
+      if (source) {
+        source.amount += product.amount
+      } else {
+        entry.sources.push({ id: factory.id, name: factory.name, icon: factory.icon, amount: product.amount })
+      }
     })
   })
 
@@ -68,18 +100,21 @@ export const calculateTotalRawResources = (factories: Factory[]) => {
   )
 }
 
-export const calculateTotalParts = (factories: Factory[]) => {
-  const parts: Record<
-    string,
-    {
-      id: string;
-      amountRequired: number;
-      amountSupplied: number;
-      amountRemaining: number;
-      satisfied: boolean;
-      isRaw: boolean;
-    }
-  > = {}
+export interface PartTotal {
+  id: string
+  amountRequired: number
+  amountSupplied: number
+  amountRemaining: number
+  satisfied: boolean
+  isRaw: boolean
+  // Each factory's own surplus (+) or shortfall (-) of this part, in plan order. A plan-wide
+  // figure of zero routinely hides a factory 200 over and another 200 short, which is two places
+  // to go rather than nothing to do.
+  sources: FactoryContribution[]
+}
+
+export const calculateTotalParts = (factories: Factory[]): PartTotal[] => {
+  const parts: Record<string, PartTotal> = {}
 
   factories.forEach(factory => {
     Object.entries(factory.parts).forEach(([partId, partData]) => {
@@ -91,6 +126,7 @@ export const calculateTotalParts = (factories: Factory[]) => {
           amountRemaining: 0,
           satisfied: true,
           isRaw: partData.isRaw,
+          sources: [],
         }
       }
 
@@ -99,6 +135,17 @@ export const calculateTotalParts = (factories: Factory[]) => {
       parts[partId].amountSupplied += partData.amountSuppliedViaProduction
       parts[partId].amountRemaining += partData.amountRemaining
       parts[partId].satisfied &&= partData.satisfied // Combine satisfaction status
+
+      // A factory that balances this part exactly has nothing to say about it, and listing every
+      // factory that merely touches it would bury the two that do not add up.
+      if (Math.abs(partData.amountRemaining) > CONTRIBUTION_EPSILON) {
+        parts[partId].sources.push({
+          id: factory.id,
+          name: factory.name,
+          icon: factory.icon,
+          amount: partData.amountRemaining,
+        })
+      }
     })
   })
 

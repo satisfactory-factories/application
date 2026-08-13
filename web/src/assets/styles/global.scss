@@ -731,3 +731,32 @@
   @extend %selection-mark;
   border-radius: 3px;
 }
+
+// A factory-coloured "chip" wrapping the part chips that belong to one factory — the collapsed
+// card's imports and exports, and the Raw Resources statistics table. Global rather than scoped
+// because two components now draw it; it shares the factory token and the card header background
+// (see src/utils/colors.ts).
+.factory-group-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 2px solid var(--sf-factory-border);
+  border-radius: 28px;
+  background-color: var(--sf-factory-bg);
+  color: var(--sf-factory);
+  padding: 4px 6px 4px 10px;
+  row-gap: 4px;
+
+  // Three classes deep on purpose. `.sf-chip.no-margin` is itself an !important two-class rule,
+  // so matching it would leave source order to decide the 4px rhythm between part chips — which
+  // is exactly the kind of thing that breaks when the file is reordered.
+  .sf-chip,
+  .sf-chip.no-margin {
+    margin: 0 0 0 4px !important;
+  }
+
+  &.clickable:hover {
+    cursor: pointer;
+    background-color: #323232;
+  }
+}

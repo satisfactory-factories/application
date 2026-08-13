@@ -38,7 +38,10 @@ describe('calculateTotalRawResources', () => {
 
     const totals = calculateTotalRawResources(build([mineA, mineB]))
 
-    expect(totals).toEqual([{ id: 'OreIron', totalAmount: 360 }])
+    expect(totals).toHaveLength(1)
+    expect(totals[0]).toMatchObject({ id: 'OreIron', totalAmount: 360 })
+    expect(totals[0].sources.map(source => [source.name, source.amount]))
+      .toEqual([['Mine A', 240], ['Mine B', 120]])
   })
 
   // The panel is about what comes out of the ground, not about everything a plan touches.
@@ -59,7 +62,8 @@ describe('calculateTotalRawResources', () => {
 
     const totals = calculateTotalRawResources(build([mine, smelter]))
 
-    expect(totals).toEqual([{ id: 'OreIron', totalAmount: 240 }])
+    expect(totals).toHaveLength(1)
+    expect(totals[0].sources.map(source => source.name)).toEqual(['Mine'])
   })
 
   it('should sort alphabetically by display name', () => {
@@ -74,5 +78,25 @@ describe('calculateTotalRawResources', () => {
 
   it('should report nothing for a plan with no factories', () => {
     expect(calculateTotalRawResources(factories)).toEqual([])
+  })
+
+  // Two node purities are routinely split across separate products in one factory, and that is
+  // still one place to go and change it.
+  it('should fold a factory extracting the same resource twice into one source', () => {
+    const mine = newFactory('Mine', 0, 1)
+    addProductToFactory(mine, { id: 'OreIron', amount: 240, recipe: 'Extract_OreIron' })
+    addProductToFactory(mine, { id: 'OreIron', amount: 60, recipe: 'Extract_OreIron' })
+
+    const [ore] = calculateTotalRawResources(build([mine]))
+
+    expect(ore.totalAmount).toBe(300)
+    expect(ore.sources).toEqual([{ id: 1, name: 'Mine', icon: undefined, amount: 300 }])
+  })
+
+  it('should carry each source factory id so the table can jump to it', () => {
+    const mine = newFactory('Mine', 0, 7)
+    addProductToFactory(mine, { id: 'Coal', amount: 120, recipe: 'Extract_Coal' })
+
+    expect(calculateTotalRawResources(build([mine]))[0].sources[0].id).toBe(7)
   })
 })
