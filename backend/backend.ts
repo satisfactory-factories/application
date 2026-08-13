@@ -15,6 +15,13 @@ import {FactoryData} from "./models/FactoyDataSchema";
 import {User} from "./models/UsersSchema";
 import {Share, ShareDataSchema} from "./models/ShareSchema";
 import {Factory} from "./interfaces/FactoryInterface";
+import {
+  CLIENT_OUTDATED_HEADER,
+  CLIENT_TOO_OLD_CODE,
+  CLIENT_VERSION_HEADER,
+  isClientTooOld,
+  minimumClientVersion
+} from "./utils/client-version";
 
 dotenv.config();
 
@@ -69,8 +76,46 @@ app.use(apiRateLimit);
 app.use(cors({
   origin: ['http://localhost:3000', 'https://api.satisfactory-factories.app'], // Replace with your allowed origins, e.g., 'http://localhost:3000' or specific domains
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  // X-Planner-Version has to be allowed or the browser's preflight blocks every request from
+  // the planner, and the outdated marker has to be exposed or scripts cannot read it.
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Planner-Version'],
+  exposedHeaders: [CLIENT_OUTDATED_HEADER]
 }));
+
+// Mark every response to a client below the minimum, so a read tells an idle tab it has gone
+// stale without having to refuse it anything. Only when a version was actually sent: a request
+// with no header at all is not necessarily the planner.
+app.use((req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  const received = req.header(CLIENT_VERSION_HEADER);
+  if (received !== undefined) {
+    const minimum = minimumClientVersion();
+    if (isClientTooOld(received, minimum)) {
+      res.setHeader(CLIENT_OUTDATED_HEADER, minimum);
+    }
+  }
+  next();
+});
+
+// Writes are refused outright. Issue #166: a tab left open across a release would otherwise
+// autosave the old payload shape over the richer stored document, destroying plan-level state
+// with no undo. Older only — a client newer than this server expects must pass, or whichever
+// side deploys first locks the other out.
+const requireCurrentClient = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  const minimum = minimumClientVersion();
+  const received = req.header(CLIENT_VERSION_HEADER) ?? null;
+
+  if (isClientTooOld(received, minimum)) {
+    console.warn(`Refused a write from client version ${received ?? 'none'} (minimum ${minimum})`);
+    return res.status(426).json({
+      code: CLIENT_TOO_OLD_CODE,
+      message: 'This version of the planner is too old to save. Please reload the page.',
+      minimumVersion: minimum,
+      receivedVersion: received
+    });
+  }
+
+  next();
+};
 
 // *************************************************
 // MongoDB Configuration
@@ -139,8 +184,13 @@ const optionalAuthenticate = (req: AuthenticatedRequest, res: Express.Response, 
 
 // Hello Endpoint. Liveness only — it proves the process is up and nothing else.
 // Monitoring belongs on /health.
+// Reports the client minimum unauthenticated, so a tab can poll for a release without needing
+// an account (issue #166).
 app.get('/hello', function (_req: Express.Request, res: Express.Response) {
-  res.status(200).json({ message: 'Hello, the server is running!' });
+  res.status(200).json({
+    message: 'Hello, the server is running!',
+    minimumClientVersion: minimumClientVersion()
+  });
 });
 
 // Health Endpoint. 200 only if Mongo answers, 503 otherwise, so uptime
@@ -172,6 +222,7 @@ app.get('/health', healthRateLimit, async (_req: Express.Request, res: Express.R
   res.status(error ? 503 : 200).json({
     status: error ? 'fail' : 'ok',
     uptime: Math.round(process.uptime()),
+    minimumClientVersion: minimumClientVersion(),
     database: {
       status: error ? 'fail' : 'ok',
       state: mongoose.STATES[mongoose.connection.readyState],
@@ -260,7 +311,7 @@ app.post('/validate-token', (req: TypedRequestBody<{ token: string }>, res: Expr
 });
 
 // Save Data Endpoint
-app.post('/save', authenticate, async (req: AuthenticatedRequest & TypedRequestBody<{ data: any }>, res: Express.Response) => {
+app.post('/save', requireCurrentClient, authenticate, async (req: AuthenticatedRequest & TypedRequestBody<{ data: any }>, res: Express.Response) => {
   try {
     const { username } = req.user as jwt.JwtPayload & { username: string };
     const payload = req.body;
@@ -335,7 +386,7 @@ app.get('/load', authenticate, async (req: AuthenticatedRequest & TypedRequestBo
 });
 
 // Share link create endpoint
-app.post('/share', optionalAuthenticate, shareRateLimit, async (req: AuthenticatedRequest & TypedRequestBody<{ data: any }>, res: Express.Response) => {
+app.post('/share', requireCurrentClient, optionalAuthenticate, shareRateLimit, async (req: AuthenticatedRequest & TypedRequestBody<{ data: any }>, res: Express.Response) => {
   try {
     const { username } = req.user as jwt.JwtPayload & { username: string };
     const factoryData = req.body;
@@ -404,6 +455,16 @@ app.use(function (_req: Express.Request, res: Express.Response) {
 // *************************************************
 // Start server
 // *************************************************
+
+// Refuse to start on a MIN_CLIENT_VERSION that isn't a version. The container's healthcheck
+// gates `up --wait`, so this surfaces as a failed deploy rather than as a gate silently sitting
+// at the default minimum while everything looks green.
+try {
+  console.log(`Minimum client version: ${minimumClientVersion()}`);
+} catch (error) {
+  console.error(`Refusing to start: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
 
 http.createServer(app).listen(PORT, () => console.log(`Webserver running at http://localhost:${PORT}/`));
 

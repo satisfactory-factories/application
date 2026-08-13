@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSyncStore } from '@/stores/sync-store'
 import eventBus from '@/utils/eventBus'
+import { ClientTooOldError } from '@/errors/ClientTooOldError'
 
 vi.mock('@/utils/eventBus', () => ({
   default: {
@@ -143,6 +144,50 @@ describe('useSyncStore', () => {
       expect(alertSpy).toHaveBeenCalledWith(
         expect.stringContaining('An error occurred while saving your data.')
       )
+    })
+
+    describe('when the API refuses this client as too old', () => {
+      beforeEach(() => {
+        syncStore.stopSyncing.value = false
+        syncStore.dataSavePending.value = true
+        syncStore.syncActions.syncData = vi.fn().mockRejectedValue(new ClientTooOldError('0.7.0'))
+      })
+
+      it('should stop syncing so it does not retry in a loop', async () => {
+        await syncStore.tickSync()
+        expect(syncStore.stopSyncing.value).toBe(true)
+      })
+
+      // The outage alert tells people to report to Discord. A required reload is not an outage.
+      it('should not alert about a server outage', async () => {
+        await syncStore.tickSync()
+        expect(alertSpy).not.toHaveBeenCalled()
+      })
+
+      it('should announce the outdated client with the minimum version', async () => {
+        await syncStore.tickSync()
+        expect(eventBus.emit).toHaveBeenCalledWith('clientOutdated', { minimumVersion: '0.7.0' })
+      })
+
+      // The user's plan is the only copy there is. A refused save must leave it alone.
+      it('should leave local data untouched', async () => {
+        localStorage.setItem('factoryTabs', '{"tab":"local work"}')
+
+        await syncStore.tickSync()
+
+        expect(localStorage.getItem('factoryTabs')).toBe('{"tab":"local work"}')
+        expect(mockAppStore.setFactories).not.toHaveBeenCalled()
+      })
+
+      it('should still keep the save pending, so nothing looks saved that is not', async () => {
+        await syncStore.tickSync()
+        expect(syncStore.dataSavePending.value).toBe(true)
+      })
+
+      it('should catch it on a forced sync too', async () => {
+        expect(await syncStore.handleSync(true)).toBe(false)
+        expect(syncStore.stopSyncing.value).toBe(true)
+      })
     })
   })
 

@@ -96,6 +96,7 @@ declare module 'vue' {
     TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
     TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
+    UpdateRequiredDialog: typeof import('./components/UpdateRequiredDialog.vue')['default']
     WorldData: typeof import('./components/planner/WorldData.vue')['default']
     WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
     YoutubeEmbed: typeof import('./components/YoutubeEmbed.vue')['default']

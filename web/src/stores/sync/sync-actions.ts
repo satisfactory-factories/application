@@ -1,5 +1,11 @@
 import { BackendFactoryDataResponse } from '@/interfaces/BackendFactoryDataResponse'
 import { config } from '@/config/config'
+import {
+  apiHeaders,
+  checkResponseForOutdatedClient,
+  clientTooOldError,
+  isClientTooOldResponse,
+} from '@/utils/api'
 
 export class SyncActions {
   private readonly authStore: any
@@ -94,10 +100,7 @@ export class SyncActions {
     try {
       response = await fetch(`${this.apiUrl}/save`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: apiHeaders(token),
         body: JSON.stringify(data),
       })
     } catch (error) {
@@ -116,6 +119,9 @@ export class SyncActions {
     if (response.ok) {
       console.log('syncData: Data saved:', object)
       return true
+    } else if (isClientTooOldResponse(response, object)) {
+      // Refused, not failed: this build is too old to write and must not keep retrying.
+      throw clientTooOldError(response, object)
     } else if (response.status === 500 || response.status === 502) {
       throw new Error('syncData: Server 5xx error')
     }
@@ -125,11 +131,10 @@ export class SyncActions {
     const token = await this.authStore.getToken()
     const response = await fetch(`${this.apiUrl}/load`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: apiHeaders(token),
     })
+    // Reads are never blocked, so this is how an idle tab learns it has gone stale.
+    checkResponseForOutdatedClient(response)
     const object = await response.json()
     const data = object?.data
 

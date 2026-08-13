@@ -186,6 +186,7 @@
           <li>An unknown URL lands on a proper "page not found" with links back to the planner and the parts browser, rather than the bare CDN 404.</li>
           <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window — flinging it onto another monitor used to trip the peek zone on the way out.</li>
           <li>The API gained a health check that actually fails: it pings the database rather than only proving the process is alive, so an outage raises an alert instead of showing green.</li>
+          <li>A tab left open across a release can no longer save over your account. v0.6 saves your whole plan where v0.5 saved only its factories, so an old tab autosaving would have quietly wiped the rest of it. The API now refuses saves from a version too old to send them, and the page tells you to reload — your work stays exactly where it is, and reloading does not lose it.</li>
         </ul>
 
         <v-divider class="subsection" />

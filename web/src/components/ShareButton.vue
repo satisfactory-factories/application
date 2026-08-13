@@ -28,6 +28,7 @@
   import { FactoryTab } from '@/interfaces/planner/FactoryInterface'
   import { ShareDataCreationResponse } from '@/interfaces/ShareDataInterface'
   import eventBus from '@/utils/eventBus'
+  import { announceClientOutdated, apiHeaders, clientTooOldError, isClientTooOldResponse } from '@/utils/api'
 
   // Get user auth stuff from the app store
   const { currentFactoryTab } = useAppStore()
@@ -78,15 +79,17 @@
     try {
       const response = await fetch(`${apiUrl}/share`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: apiHeaders(token),
         body: JSON.stringify(factoryTabData),
       })
       if (response.ok) {
         const data: ShareDataCreationResponse = await response.json()
         return `${window.location.origin}/share/${data.shareId}`
+      } else if (isClientTooOldResponse(response)) {
+        // Sharing is a write, so the gate refuses it too. A reload fixes it; Discord can't.
+        console.error('Share Error: This client is too old to write to the API')
+        announceClientOutdated(clientTooOldError(response).minimumVersion)
+        eventBus.emit('toast', { message: 'An update has been released and this page is out of date. Please reload to create a share link.', type: 'error' })
       } else if (response.status === 429) {
         console.error('Share Error: Rate limited')
         eventBus.emit('toast', { message: 'You are being rate limited. Stop spamming that button! Please wait some time before trying again.', type: 'error' })
