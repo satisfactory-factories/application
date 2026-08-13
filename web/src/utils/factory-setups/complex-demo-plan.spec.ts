@@ -40,7 +40,7 @@ describe('Complex Demo Plan', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(11)
+    expect(factories.length).toBe(12)
   })
   describe('Presentation', () => {
     it('should give every factory an icon the registry knows', () => {
@@ -56,15 +56,16 @@ describe('Complex Demo Plan', () => {
         ['Copper', 'Copper Mine'],
         ['Copper', 'Copper Ingots'],
         ['Copper', 'Copper Basics'],
+        ['Power', 'Uranium Mine'],
         ['Power', 'Uranium Power'],
         ['Power', 'Alien Power'],
         ['Power', 'Geothermal Power'],
-        ['Nuclear', 'Plutonium Processing'],
+        ['Power', 'Plutonium Processing'],
       ])
       // The invariant repairFactoryGroups enforces on load; authored the same way so the
       // template does not shuffle the moment it is opened.
       expect(factories.slice(-grouped.length)).toEqual(grouped)
-      expect(grouped.map(factory => factory.group!.order)).toEqual([0, 0, 0, 1, 1, 1, 2])
+      expect(grouped.map(factory => factory.group!.order)).toEqual([0, 0, 0, 1, 1, 1, 1, 1])
     })
 
     // Nuclear Waste is a byproduct of Uranium Power, and a byproduct only exists once its
@@ -376,17 +377,21 @@ describe('Complex Demo Plan', () => {
 
   describe('Uranium Power', () => {
     it('should have Uranium Power factory configured correctly', () => {
-      expect(uraniumFac.products.length).toBe(6)
-      expect(uraniumFac.products[0].id).toBe('Cement')
-      expect(uraniumFac.products[0].amount).toBe(60)
-      expect(uraniumFac.products[1].id).toBe('SulfuricAcid')
-      expect(uraniumFac.products[1].amount).toBe(160)
-      expect(uraniumFac.products[2].id).toBe('ElectromagneticControlRod')
-      expect(uraniumFac.products[2].amount).toBe(10)
-      expect(uraniumFac.products[3].id).toBe('NuclearFuelRod')
-      expect(uraniumFac.products[3].amount).toBe(2)
-      expect(uraniumFac.products[4].id).toBe('UraniumCell')
-      expect(uraniumFac.products[4].amount).toBe(100)
+      expect(uraniumFac.products.length).toBe(7)
+      // The ore it digs for itself comes first, so the factory reads in the order it flows.
+      expect(uraniumFac.products[0].id).toBe('OreUranium')
+      expect(uraniumFac.products[0].amount).toBe(120)
+      expect(uraniumFac.products[0].recipe).toBe('Extract_OreUranium')
+      expect(uraniumFac.products[1].id).toBe('Cement')
+      expect(uraniumFac.products[1].amount).toBe(60)
+      expect(uraniumFac.products[2].id).toBe('SulfuricAcid')
+      expect(uraniumFac.products[2].amount).toBe(160)
+      expect(uraniumFac.products[3].id).toBe('ElectromagneticControlRod')
+      expect(uraniumFac.products[3].amount).toBe(10)
+      expect(uraniumFac.products[4].id).toBe('NuclearFuelRod')
+      expect(uraniumFac.products[4].amount).toBe(2)
+      expect(uraniumFac.products[5].id).toBe('UraniumCell')
+      expect(uraniumFac.products[5].amount).toBe(100)
 
       expect(uraniumFac.powerProducers.length).toBe(1)
       // toMatchObject: the producer also carries building group state not asserted here
@@ -580,14 +585,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 200,
         amountRequiredPower: 0,
-        amountSupplied: 200,
-        amountSuppliedViaInput: 200,
-        amountSuppliedViaProduction: 0,
+        amountSupplied: 240,
+        amountSuppliedViaInput: 120,
+        amountSuppliedViaProduction: 120,
         amountSuppliedViaRaw: 0,
-        amountRemaining: 0,
+        amountRemaining: 40,
         satisfied: true,
         isRaw: true,
-        exportable: false,
+        exportable: true,
       })
       expect(uraniumFac.parts.NuclearWaste).toEqual({
         amountRequired: 100,

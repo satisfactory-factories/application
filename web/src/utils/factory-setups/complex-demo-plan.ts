@@ -14,6 +14,7 @@ let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
 let computersFac: Factory
 let uraniumFac: Factory
+let uraniumMineFac: Factory
 let plutoniumFac: Factory
 let alienPowerFac: Factory
 let geothermalFac: Factory
@@ -39,31 +40,33 @@ export const complexDemoPlan = (): TemplatePlan => {
   // first pass finds nothing producing it, so flushInvalidRequests prunes the export before the
   // second pass can see it — the waste chain simply vanishes. Ordinary products are declared up
   // front and have no such constraint, which is why Circuit Boards can precede Copper Basics.
-  uraniumFac = newFactory('Uranium Power', 7, 6)
-  alienPowerFac = newFactory('Alien Power', 8, 8)
-  geothermalFac = newFactory('Geothermal Power', 9, 9)
-  plutoniumFac = newFactory('Plutonium Processing', 10, 7)
+  uraniumMineFac = newFactory('Uranium Mine', 7, 12)
+  uraniumFac = newFactory('Uranium Power', 8, 6)
+  alienPowerFac = newFactory('Alien Power', 9, 8)
+  geothermalFac = newFactory('Geothermal Power', 10, 9)
+  plutoniumFac = newFactory('Plutonium Processing', 11, 7)
 
-  // Three groups, so a new plan shows what folders are for and that a plan can have more than
-  // one. Copper is a custom colour rather than a palette entry — nothing offered reads as
-  // copper — while the other two take palette entries. Deliberately not yellow for Power: the
-  // palette leaves red and amber out because a group wearing the problem colour reads as a
-  // broken factory, and the demo should not be the one plan that breaks its own advice.
+  // Two groups, so a new plan shows what folders are for and that a plan can have more than one.
+  // Copper is a custom colour rather than a palette entry — nothing offered reads as copper —
+  // while Power takes one. Deliberately not yellow: the palette leaves red and amber out because
+  // a group wearing the problem colour reads as a broken factory, and the demo should not be the
+  // one plan that breaks its own advice. Power holds the whole nuclear chain, mine to waste.
   const copperGroup: FactoryGroup = { id: 'g-copper', name: 'Copper', color: '#b87333', order: 0 }
   const powerGroup: FactoryGroup = { id: 'g-power', name: 'Power', color: palette.lime, order: 1 }
-  const nuclearGroup: FactoryGroup = { id: 'g-nuclear', name: 'Nuclear', color: palette.green, order: 2 }
   copperMineFac.group = { ...copperGroup }
   copperIngotsFac.group = { ...copperGroup }
   copperBasicsFac.group = { ...copperGroup }
-  plutoniumFac.group = { ...nuclearGroup }
+  uraniumMineFac.group = { ...powerGroup }
   uraniumFac.group = { ...powerGroup }
   alienPowerFac.group = { ...powerGroup }
   geothermalFac.group = { ...powerGroup }
+  plutoniumFac.group = { ...powerGroup }
 
   // Bare IDs from src/data/factory-icons.json.
   oilFac.icon = 'packaged-oil'
   circuitBoardsFac.icon = 'circuit-board'
   computersFac.icon = 'computer'
+  uraniumMineFac.icon = 'uranium-ore'
   uraniumFac.icon = 'nuclear-power-plant'
   plutoniumFac.icon = 'plutonium-fuel-rod'
   alienPowerFac.icon = 'alien-power-augmenter'
@@ -78,8 +81,7 @@ export const complexDemoPlan = (): TemplatePlan => {
   const factories = [
     oilFac, circuitBoardsFac, computersFac, rawMineFac,
     copperMineFac, copperIngotsFac, copperBasicsFac,
-    uraniumFac, alienPowerFac, geothermalFac,
-    plutoniumFac,
+    uraniumMineFac, uraniumFac, alienPowerFac, geothermalFac, plutoniumFac,
   ]
 
   // Private methods to configure the factories
@@ -240,12 +242,7 @@ export const complexDemoPlan = (): TemplatePlan => {
       extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 2,
     })
 
-    addProductToFactory(rawMineFac, { id: 'OreUranium', amount: 240, recipe: 'Extract_OreUranium' })
-    Object.assign(rawMineFac.products[2].buildingGroups[0], {
-      extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 2,
-    })
-
-    rawMineFac.notes = 'Limestone, Sulfur and Uranium for the nuclear chain. A mine factory can host several resources — the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur and Uranium groups over-produce: miner rates are all multiples of 30, so the 160 and 200 those factories want cannot be hit exactly without underclocking a miner.'
+    rawMineFac.notes = 'Limestone and Sulfur for the nuclear chain. A mine factory can host several resources — the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur group over-produces: miner rates are all multiples of 30, so the 160 that factory wants cannot be hit exactly without underclocking a miner.'
     // =================
 
     // === COPPER BASICS FAC ===
@@ -335,7 +332,27 @@ export const complexDemoPlan = (): TemplatePlan => {
     computersFac.notes = 'This factory is the end product of the chain / plan. While not yet supported, it will eventually show that the computers will be sunk or for space elevator parts used in the construction of Project Assembly.'
     // =================
 
+    // === URANIUM MINE FAC ===
+    // Half the plan's uranium, shipped to Uranium Power. The other half is dug on site there, so
+    // the plan shows one resource arriving both ways at once.
+    addProductToFactory(uraniumMineFac, { id: 'OreUranium', amount: 120, recipe: 'Extract_OreUranium' })
+    Object.assign(uraniumMineFac.products[0].buildingGroups[0], {
+      extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 1,
+    })
+    uraniumMineFac.products[0].buildingGroupsTrayOpen = true
+    uraniumMineFac.notes = 'A dedicated mine for half the plan\'s Uranium. The other half is extracted on site in Uranium Power — the same resource reaching one factory both ways, which is the choice the planner now leaves to you.'
+    // =================
+
     // === URANIUM FAC ===
+    // Mined where it is used, next to the half that is shipped in from the Uranium Mine.
+    addProductToFactory(uraniumFac, {
+      id: 'OreUranium',
+      amount: 120,
+      recipe: 'Extract_OreUranium',
+    })
+    Object.assign(uraniumFac.products[0].buildingGroups[0], {
+      extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 1,
+    })
     addProductToFactory(uraniumFac, {
       id: 'Cement',
       amount: 60,
@@ -376,8 +393,8 @@ export const complexDemoPlan = (): TemplatePlan => {
     })
     addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Stone', amount: 180 })
     addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Sulfur', amount: 160 })
-    addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'OreUranium', amount: 200 })
-    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts ore comes from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams — those are the missing pieces the plan is meant to show you.'
+    addInputToFactory(uraniumFac, { factoryId: uraniumMineFac.id, outputPart: 'OreUranium', amount: 120 })
+    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts Uranium comes from two places on purpose: half is dug on site, half is shipped in from the Uranium Mine. Its Limestone and Sulfur come from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams — those are the missing pieces the plan is meant to show you.'
     uraniumFac.tasks.push(
       { title: 'Add Stators factory to supply this one', completed: false },
       { title: 'Make a place for the waste to go', completed: false },
