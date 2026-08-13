@@ -23,8 +23,8 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount of raw resources
-      consumed by all your factories.
+      <i class="fas fa-info-circle" /> Shows how much of each raw resource your plan takes out of
+      the world — everything your factories mine, pump or extract.
     </p>
     <div v-if="allFactoryRawResources.length > 0">
       <span v-for="(resource, id) in allFactoryRawResources" :key="id">
@@ -36,7 +36,7 @@
         </v-chip>
       </span>
     </div>
-    <p v-else class="text-body-1">Awaiting Resource Consumption</p>
+    <p v-else class="text-body-1">Nothing in this plan extracts a raw resource yet.</p>
   </template>
 </template>
 

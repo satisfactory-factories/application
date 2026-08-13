@@ -37,30 +37,30 @@ export const calculateTotalBuildingsByType = (factories: Factory[]) => {
   )
 }
 
+/**
+ * What the plan takes out of the world, summed per resource.
+ *
+ * Read off the products a factory makes, not off `factory.rawResources`. That map is what the
+ * planner filled in while it still ASSUMED raw supply — v0.6 removed the assumption, so it is
+ * empty in any plan that mines properly, and this panel went blank for exactly the plans that
+ * do the right thing. A raw resource reaching a plan now is a product like any other; it is the
+ * part being raw, not the way it arrived, that makes it belong here.
+ */
 export const calculateTotalRawResources = (factories: Factory[]) => {
   const rawResources: Record<string, { id: string; totalAmount: number; }> = {}
 
   factories.forEach(factory => {
-    Object.values(factory.rawResources).forEach(resource => {
-      if (!rawResources[resource.id]) {
-        // Initialize the raw resource entry
-        rawResources[resource.id] = {
-          id: resource.id,
-          totalAmount: 0,
-        }
+    factory.products.forEach(product => {
+      // isRaw is decided by the game data during the parts pass, so an extractor, a resource
+      // well and anything else that outputs a node resource all count without listing recipes.
+      if (!factory.parts[product.id]?.isRaw) {
+        return
       }
-      // Accumulate the resource amount
-      rawResources[resource.id].totalAmount += resource.amount
+
+      rawResources[product.id] ??= { id: product.id, totalAmount: 0 }
+      rawResources[product.id].totalAmount += product.amount
     })
   })
-  // // Calculate percentage consumed
-  // worldResources.forEach(worldResource => {
-  //   if (rawResources[worldResource.id]) {
-  //     const totalAmount = rawResources[worldResource.id].totalAmount
-  //     rawResources[worldResource.id].percentageConsumed =
-  //       totalAmount > 0 ? Math.min((totalAmount / worldResource.amount) * 100, 100) : 0
-  //   }
-  // })
 
   // Convert the object to an array and sort it alphabetically by display name
   return Object.values(rawResources).sort((a, b) =>
