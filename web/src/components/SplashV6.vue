@@ -302,7 +302,7 @@
             <li>Click the icon in the card header or the sidebar to pick one. <i>Use default</i> puts the generic glyph back.</li>
             <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work — they just won't appear as the icon elsewhere in the plan.</li>
           </ul>
-          <p class="mb-2">Once a plan is wearing them, its imports and exports read at a glance:</p>
+          <p class="mb-2">Once a plan is using them, its imports and exports read at a glance:</p>
           <v-img
             v-if="hasIconsExportsShot"
             alt="A factory's imports and exports, each chip carrying the icon of the factory it names"
@@ -356,8 +356,8 @@
           <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Item Production</h4>
           <p class="mb-2">
             Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
-            and <b>Produced Items</b> were two lists of the same items. Filter by surplus, deficit
-            or balanced. Each row names the factories producing the item in green and any factory
+            and <b>Produced Items</b> were two lists of the same items. Search it, or filter by surplus,
+            deficit or balanced. Each row names the factories producing the item in green and any factory
             short of it in red; click a chip to jump there.
           </p>
           <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Building Summary</h4>

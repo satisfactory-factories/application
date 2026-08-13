@@ -44,10 +44,11 @@
       <i class="fas fa-info-circle" /> Every item your plan makes or consumes, and whether it has
       any spare. Red needs producing more of, green can be stored or sunk.
     </p>
-    <div class="d-flex flex-wrap ga-2 mb-3">
+    <div class="d-flex flex-wrap align-center ga-2 mt-3 mb-3">
       <!-- Each filter wears the colour it selects, so the buttons read as the same language as
            the rows. Unselected is the same colour outlined rather than a neutral grey, which
-           would make an unselected Deficit look like a disabled one. -->
+           would make an unselected Deficit look like a disabled one. The counts follow the
+           search, so they say how many match both rather than promising rows the search hides. -->
       <v-btn
         v-for="option in filters"
         :key="option.value"
@@ -58,6 +59,17 @@
       >
         {{ option.label }} ({{ option.count }})
       </v-btn>
+      <v-text-field
+        id="stats-items-search"
+        v-model="search"
+        class="item-search ml-auto"
+        clearable
+        density="compact"
+        hide-details
+        placeholder="Search items"
+        prepend-inner-icon="fas fa-search"
+        variant="outlined"
+      />
     </div>
     <v-table
       v-if="factoryProductDifferences.length > 0"
@@ -109,7 +121,7 @@
         </tr>
       </tbody>
     </v-table>
-    <p v-else class="text-body-1">Nothing to show for this filter.</p>
+    <p v-else class="text-body-1">{{ search ? `No items match "${search}".` : 'Nothing to show for this filter.' }}</p>
   </template>
 </template>
 
@@ -140,19 +152,32 @@
 
   type ItemFilter = 'all' | 'surplus' | 'deficit' | 'balanced'
   const filter = ref<ItemFilter>('all')
+  const search = ref('')
+
+  // Punctuation-insensitive, the way the icon picker's search is: the game writes "Mk.5" and
+  // nobody types the dot.
+  const normalise = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  const matchesSearch = computed(() => {
+    const term = normalise(search.value ?? '')
+    if (!term) return () => true
+    return (item: { id: string }) => normalise(getPartDisplayName(item.id)).includes(term)
+  })
+
+  const searched = computed(() => allItems.value.filter(matchesSearch.value))
 
   const filters = computed(() => [
-    { value: 'all' as const, label: 'All', count: allItems.value.length, color: 'primary' },
-    { value: 'surplus' as const, label: 'Surplus', count: surplusCount.value, color: 'success' },
-    { value: 'deficit' as const, label: 'Deficit', count: deficitCount.value, color: 'error' },
-    { value: 'balanced' as const, label: 'Balanced', count: balancedCount.value, color: 'grey' },
+    { value: 'all' as const, label: 'All', count: searched.value.length, color: 'primary' },
+    { value: 'surplus' as const, label: 'Surplus', count: searched.value.filter(item => item.amountRemaining > 0).length, color: 'success' },
+    { value: 'deficit' as const, label: 'Deficit', count: searched.value.filter(item => item.amountRemaining < 0).length, color: 'error' },
+    { value: 'balanced' as const, label: 'Balanced', count: searched.value.filter(item => item.amountRemaining === 0).length, color: 'grey' },
   ])
 
   const factoryProductDifferences = computed(() => {
-    if (filter.value === 'surplus') return allItems.value.filter(item => item.amountRemaining > 0)
-    if (filter.value === 'deficit') return allItems.value.filter(item => item.amountRemaining < 0)
-    if (filter.value === 'balanced') return allItems.value.filter(item => item.amountRemaining === 0)
-    return allItems.value
+    if (filter.value === 'surplus') return searched.value.filter(item => item.amountRemaining > 0)
+    if (filter.value === 'deficit') return searched.value.filter(item => item.amountRemaining < 0)
+    if (filter.value === 'balanced') return searched.value.filter(item => item.amountRemaining === 0)
+    return searched.value
   })
 
   const amountClass = (amount: number) => {
@@ -175,6 +200,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Wide enough for an item name, and no wider — it shares the row with four filter buttons.
+.item-search {
+  max-width: 260px;
+}
+
 .stats-table {
   background-color: transparent;
 

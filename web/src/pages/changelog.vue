@@ -128,7 +128,7 @@
 
         <h2>👍 <i class="fas fa-chart-line ml-1" /><span class="ml-2">Statistics enhancements</span></h2>
         <h3>Item Production</h3>
-        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> They listed the same items twice — one showing the balance, the other the supply. Item Production lists every item, with filters for surplus, deficit and balanced and a count of each in the header. The "Show all Products" toggle has gone with the section it controlled.</p>
+        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> They listed the same items twice — one showing the balance, the other the supply. Item Production lists every item, with a search box and filters for surplus, deficit and balanced. The filter counts follow the search, so they say how many match both. The "Show all Products" toggle has gone with the section it controlled.</p>
         <v-img
           alt="The Item Production table, with each item broken down by factory"
           max-width="1200"
