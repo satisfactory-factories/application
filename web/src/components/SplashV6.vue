@@ -296,12 +296,20 @@
             :src="shots.icons"
           />
           <ul class="ml-6 mb-4">
-            <li>They show on the factory itself, in the sidebar, and in the import and export sections.</li>
+            <li>They show on the factory itself, in the sidebar, and on every import and export chip that names it.</li>
             <li><b>352 to pick from</b>: game art for every machine, belt, pipe, generator, vehicle, resource and component the planner knows, plus emoji shapes, digits and symbols.</li>
             <li><b>Search covers the whole set</b> whichever category you are in, and ignores punctuation — the game writes "Mk.5", so "mk5" finds it.</li>
             <li>Click the icon in the card header or the sidebar to pick one. <i>Use default</i> puts the generic glyph back.</li>
             <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work — they just won't appear as the icon elsewhere in the plan.</li>
           </ul>
+          <p class="mb-2">Once a plan is wearing them, its imports and exports read at a glance:</p>
+          <v-img
+            v-if="hasIconsExportsShot"
+            alt="A factory's imports and exports, each chip carrying the icon of the factory it names"
+            class="mb-2 mx-auto rounded"
+            max-width="1100"
+            :src="shots.iconsExports"
+          />
         </div>
 
         <!-- Slide 6: The rest of the planner work -->
@@ -511,6 +519,7 @@
     groupAssign: '/assets/changelog/beta6/group-assign-menu.png',
     groupColour: '/assets/changelog/beta6/group-colour-menu.png',
     repair: '/assets/changelog/beta6/plan-repair.png',
+    iconsExports: '/assets/changelog/beta6/factory-icons-exports.png',
   }
 
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
@@ -526,6 +535,7 @@
   const hasGroupMenuShot = true
   const hasGroupColourShot = true
   const hasRepairShot = true
+  const hasIconsExportsShot = true
 
   const key = 'seenV6Splash'
 

@@ -119,7 +119,8 @@
         "name": "Raw",
         "color": "#e8d5a3",
         "order": 0
-      }
+      },
+      "icon": "coal"
     },
     {
       "id": 6299,
@@ -246,7 +247,8 @@
         "name": "Raw",
         "color": "#e8d5a3",
         "order": 0
-      }
+      },
+      "icon": "crude-oil"
     },
     {
       "id": 483,
@@ -366,7 +368,8 @@
         "name": "Raw",
         "color": "#e8d5a3",
         "order": 0
-      }
+      },
+      "icon": "sam"
     },
     {
       "id": 9124,
@@ -486,7 +489,8 @@
         "name": "Raw",
         "color": "#e8d5a3",
         "order": 0
-      }
+      },
+      "icon": "bauxite"
     },
     {
       "id": 4042,
@@ -837,7 +841,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "sam-fluctuator"
     },
     {
       "id": 3685,
@@ -1495,7 +1500,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "aluminum-ingot"
     },
     {
       "id": 8489,
@@ -1776,7 +1782,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "iron-ingot"
     },
     {
       "id": 8464,
@@ -2067,7 +2074,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "concrete"
     },
     {
       "id": 7869,
@@ -2361,7 +2369,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "copper-ingot"
     },
     {
       "id": 7110,
@@ -2980,7 +2989,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "copper-sheet"
     },
     {
       "id": 5445,
@@ -3355,7 +3365,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "raw-quartz"
     },
     {
       "id": 5233,
@@ -3687,7 +3698,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "black-powder"
     },
     {
       "id": 422,
@@ -3963,7 +3975,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "iron-plate"
     },
     {
       "id": 2533,
@@ -4280,7 +4293,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "caterium-ingot"
     },
     {
       "id": 1023,
@@ -4814,7 +4828,8 @@
         "name": "Basics",
         "color": "#959595",
         "order": 1
-      }
+      },
+      "icon": "plastic"
     },
     {
       "id": 2657,
@@ -5034,7 +5049,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "screws"
     },
     {
       "id": 6471,
@@ -5436,7 +5452,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "steel-beam"
     },
     {
       "id": 6620,
@@ -5773,7 +5790,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "motor"
     },
     {
       "id": 2959,
@@ -5961,7 +5979,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "encased-industrial-beam"
     },
     {
       "id": 5750,
@@ -6427,7 +6446,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "heavy-modular-frame"
     },
     {
       "id": 4341,
@@ -6802,7 +6822,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "smokeless-powder"
     },
     {
       "id": 216,
@@ -7018,7 +7039,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "diamonds"
     },
     {
       "id": 3816,
@@ -7353,7 +7375,8 @@
         "name": "Intermediates",
         "color": "#2196f3",
         "order": 2
-      }
+      },
+      "icon": "nitric-acid"
     },
     {
       "id": 7331,
@@ -7439,7 +7462,8 @@
         "name": "Global Power",
         "color": "#c0ca33",
         "order": 3
-      }
+      },
+      "icon": "alien-power-augmenter"
     },
     {
       "id": 7440,
@@ -7589,7 +7613,8 @@
         "name": "Global Power",
         "color": "#c0ca33",
         "order": 3
-      }
+      },
+      "icon": "geothermal-generator"
     },
     {
       "id": 4295,
@@ -8259,7 +8284,8 @@
         "name": "Advanced",
         "color": "#5c6bc0",
         "order": 4
-      }
+      },
+      "icon": "adaptive-control-unit"
     },
     {
       "id": 5623,
@@ -8848,7 +8874,8 @@
         "name": "Advanced",
         "color": "#5c6bc0",
         "order": 4
-      }
+      },
+      "icon": "cooling-system"
     },
     {
       "id": 3911,
@@ -9437,7 +9464,8 @@
         "name": "Advanced",
         "color": "#5c6bc0",
         "order": 4
-      }
+      },
+      "icon": "nuclear-pasta"
     },
     {
       "id": 184,
@@ -9902,7 +9930,8 @@
         "name": "Advanced",
         "color": "#5c6bc0",
         "order": 4
-      }
+      },
+      "icon": "rocket-fuel"
     },
     {
       "id": 440,
@@ -10141,7 +10170,8 @@
         "name": "End Game",
         "color": "#ec407a",
         "order": 5
-      }
+      },
+      "icon": "ficsite-ingot"
     },
     {
       "id": 9960,
@@ -11015,7 +11045,8 @@
         "name": "End Game",
         "color": "#ec407a",
         "order": 5
-      }
+      },
+      "icon": "singularity-cell"
     },
     {
       "id": 1404,
@@ -11564,7 +11595,8 @@
         "name": "End Game",
         "color": "#ec407a",
         "order": 5
-      }
+      },
+      "icon": "biochemical-sculptor"
     },
     {
       "id": 6309,
@@ -11684,7 +11716,8 @@
         "name": "Nuclear",
         "color": "#4caf50",
         "order": 6
-      }
+      },
+      "icon": "uranium-ore"
     },
     {
       "id": 2929,
@@ -12257,7 +12290,8 @@
         "name": "Nuclear",
         "color": "#4caf50",
         "order": 6
-      }
+      },
+      "icon": "nuclear-power-plant"
     },
     {
       "id": 4555,
@@ -12916,7 +12950,8 @@
         "name": "Nuclear",
         "color": "#4caf50",
         "order": 6
-      }
+      },
+      "icon": "plutonium-fuel-rod"
     },
     {
       "id": 5706,
@@ -13444,7 +13479,8 @@
         "name": "Nuclear",
         "color": "#4caf50",
         "order": 6
-      }
+      },
+      "icon": "circuit-board"
     }
   ],
   "powerTarget": 0,
