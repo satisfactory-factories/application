@@ -2,6 +2,7 @@ import { Factory, FactoryGroup, FactoryPowerChangeType, ItemType } from '@/inter
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { newFactory } from '@/utils/factory-management/factory'
+import { palette } from '@/utils/colors'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 
@@ -26,23 +27,38 @@ export const complexDemoPlan = (): TemplatePlan => {
   oilFac = newFactory('Oil Processing', 0, 1)
   circuitBoardsFac = newFactory('Circuit Boards', 1, 4)
   computersFac = newFactory('Computers (end product)', 2, 5)
-  uraniumFac = newFactory('Uranium Power', 3, 6)
-  plutoniumFac = newFactory('Plutonium Processing', 4, 7)
-  alienPowerFac = newFactory('Alien Power', 5, 8)
-  geothermalFac = newFactory('Geothermal Power', 6, 9)
-  rawMineFac = newFactory('Raw Materials Mine', 7, 11)
-  // Grouped factories sort below the ungrouped ones, so the copper chain is authored last to
-  // match the order the plan actually loads in. See factory-groups.ts.
-  copperMineFac = newFactory('Copper Mine', 8, 10)
-  copperIngotsFac = newFactory('Copper Ingots', 9, 2)
-  copperBasicsFac = newFactory('Copper Basics', 10, 3)
+  rawMineFac = newFactory('Raw Materials Mine', 3, 11)
+  // Grouped factories sort below the ungrouped ones and are contiguous in group order, so the
+  // groups are authored last and in their own order, matching how the plan actually loads.
+  // See factory-groups.ts — that invariant is load-bearing for the sidebar and the scroll-spy.
+  copperMineFac = newFactory('Copper Mine', 4, 10)
+  copperIngotsFac = newFactory('Copper Ingots', 5, 2)
+  copperBasicsFac = newFactory('Copper Basics', 6, 3)
+  // Power sits ahead of Nuclear because Uranium Power's Nuclear Waste is a BYPRODUCT, and a
+  // byproduct only exists once its factory has been calculated. Put the consumer first and the
+  // first pass finds nothing producing it, so flushInvalidRequests prunes the export before the
+  // second pass can see it — the waste chain simply vanishes. Ordinary products are declared up
+  // front and have no such constraint, which is why Circuit Boards can precede Copper Basics.
+  uraniumFac = newFactory('Uranium Power', 7, 6)
+  alienPowerFac = newFactory('Alien Power', 8, 8)
+  geothermalFac = newFactory('Geothermal Power', 9, 9)
+  plutoniumFac = newFactory('Plutonium Processing', 10, 7)
 
-  // The demo's one group, so a new plan shows what folders are for. The copper is a custom
-  // colour rather than a palette entry — nothing offered reads as copper.
+  // Three groups, so a new plan shows what folders are for and that a plan can have more than
+  // one. Copper is a custom colour rather than a palette entry — nothing offered reads as
+  // copper — while the other two take palette entries. Deliberately not yellow for Power: the
+  // palette leaves red and amber out because a group wearing the problem colour reads as a
+  // broken factory, and the demo should not be the one plan that breaks its own advice.
   const copperGroup: FactoryGroup = { id: 'g-copper', name: 'Copper', color: '#b87333', order: 0 }
+  const powerGroup: FactoryGroup = { id: 'g-power', name: 'Power', color: palette.lime, order: 1 }
+  const nuclearGroup: FactoryGroup = { id: 'g-nuclear', name: 'Nuclear', color: palette.green, order: 2 }
   copperMineFac.group = { ...copperGroup }
   copperIngotsFac.group = { ...copperGroup }
   copperBasicsFac.group = { ...copperGroup }
+  plutoniumFac.group = { ...nuclearGroup }
+  uraniumFac.group = { ...powerGroup }
+  alienPowerFac.group = { ...powerGroup }
+  geothermalFac.group = { ...powerGroup }
 
   // Bare IDs from src/data/factory-icons.json.
   oilFac.icon = 'packaged-oil'
@@ -57,7 +73,14 @@ export const complexDemoPlan = (): TemplatePlan => {
   copperIngotsFac.icon = 'copper-ingot'
   copperBasicsFac.icon = 'wire'
 
-  const factories = [oilFac, circuitBoardsFac, computersFac, uraniumFac, plutoniumFac, alienPowerFac, geothermalFac, rawMineFac, copperMineFac, copperIngotsFac, copperBasicsFac]
+  // Ungrouped first, then each group contiguous and in group order — the same order as the
+  // displayOrder above, because that is what the invariant means.
+  const factories = [
+    oilFac, circuitBoardsFac, computersFac, rawMineFac,
+    copperMineFac, copperIngotsFac, copperBasicsFac,
+    uraniumFac, alienPowerFac, geothermalFac,
+    plutoniumFac,
+  ]
 
   // Private methods to configure the factories
   const setupFactories = () => {

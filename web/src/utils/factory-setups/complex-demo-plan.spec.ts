@@ -49,13 +49,33 @@ describe('Complex Demo Plan', () => {
         expect(resolveFactoryIcon(factory.icon).kind, `${factory.name}: ${factory.icon}`).not.toBe('default')
       })
     })
-    it('should put the copper chain in one group, sorted below the ungrouped factories', () => {
+    it('should sort its groups below the ungrouped factories, each one contiguous', () => {
       const grouped = factories.filter(factory => factory.group)
-      expect(grouped.map(factory => factory.name)).toEqual(['Copper Mine', 'Copper Ingots', 'Copper Basics'])
-      expect(new Set(grouped.map(factory => factory.group?.id)).size).toBe(1)
+
+      expect(grouped.map(factory => [factory.group?.name, factory.name])).toEqual([
+        ['Copper', 'Copper Mine'],
+        ['Copper', 'Copper Ingots'],
+        ['Copper', 'Copper Basics'],
+        ['Power', 'Uranium Power'],
+        ['Power', 'Alien Power'],
+        ['Power', 'Geothermal Power'],
+        ['Nuclear', 'Plutonium Processing'],
+      ])
       // The invariant repairFactoryGroups enforces on load; authored the same way so the
       // template does not shuffle the moment it is opened.
       expect(factories.slice(-grouped.length)).toEqual(grouped)
+      expect(grouped.map(factory => factory.group!.order)).toEqual([0, 0, 0, 1, 1, 1, 2])
+    })
+
+    // Nuclear Waste is a byproduct of Uranium Power, and a byproduct only exists once its
+    // factory has been calculated — so a group order that put Plutonium Processing first had
+    // its export pruned on the first pass and the waste chain silently disappeared.
+    it('should keep the waste chain intact with the producer ahead of the consumer', () => {
+      const order = factories.map(factory => factory.name)
+
+      expect(plutoniumFac.inputs.some(input => input.outputPart === 'NuclearWaste')).toBe(true)
+      expect(getPartExportRequests(uraniumFac, 'NuclearWaste')).toHaveLength(1)
+      expect(order.indexOf('Uranium Power')).toBeLessThan(order.indexOf('Plutonium Processing'))
     })
     it('should number displayOrder as the index into the array', () => {
       factories.forEach((factory, index) => {
@@ -260,7 +280,7 @@ describe('Complex Demo Plan', () => {
 
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
-      expect(copperMineFac.displayOrder).toBe(8) // Head of the Copper group, where the chain starts
+      expect(copperMineFac.displayOrder).toBe(4) // Head of the Copper group, where the chain starts
       expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
 
       const ore = copperMineFac.products[0]
