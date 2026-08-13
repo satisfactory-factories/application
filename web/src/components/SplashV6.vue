@@ -74,10 +74,14 @@
             class="mb-4"
             :video-id="launchVideoId"
           />
-          <p class="hero-blurb mb-4">
-            <b>Raw resources are now first class citizens in the planner.</b> If nothing in your plan digs up the ore,
-            you're short of it, the same as you would be with any other part. Create mining factories and export the resources to dependants,
-            or produce the raw resource locally (e.g. water), the choice is now yours, with full logistics demand tracking baked in.
+          <p class="hero-blurb mb-3">
+            <b>Raw resources are now first class citizens in the planner.</b> If nothing in your
+            plan digs up the ore, you're short of it, the same as you would be with any other part.
+          </p>
+          <p class="hero-lead mb-4">
+            Create mining factories and export the resources to dependants, or produce the raw
+            resource locally (e.g. water). The choice is now yours, with full logistics demand
+            tracking baked in.
           </p>
           <p class="text-body-medium mb-4">Miners, Resource Wells and Water Extractors are now full class citizens in the planner. Per each one, there are different mechanics which is handled in the building groups, where you have multiple types of the same building (e.g. multiple raw extractors) on the map and manage them in one place. This also has a side benefit of the power statistics being more accurate as there's more buildings accounted for.</p>
           <v-alert
@@ -111,7 +115,17 @@
           <p class="mb-2">There's a lot in this one — jump to what interests you, or take the full tour!</p>
           <ul class="contents-list ml-6">
             <li v-for="(slide, index) in slides.slice(1)" :key="slide.nav">
-              <a href="#" @click.prevent="goToSlide(index + 1)">{{ slide.title }}</a>
+              <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSlide(index + 1)">
+                <game-asset
+                  v-if="slide.asset"
+                  height="20"
+                  :subject="slide.asset ?? ''"
+                  type="item_id"
+                  width="20"
+                />
+                <i v-else :class="slide.icon" />
+                <span>{{ slide.title }}</span>
+              </a>
             </li>
           </ul>
         </div>
@@ -134,7 +148,8 @@
               :variant="example.key === activeExampleKey ? 'flat' : 'outlined'"
               @click="activeExampleKey = example.key"
             >
-              {{ example.label }}
+              <game-asset height="22" :subject="example.icon" :type="example.iconType" width="22" />
+              <span class="ml-2">{{ example.label }}</span>
             </v-btn>
           </div>
           <v-img
@@ -234,13 +249,31 @@
             </li>
             <li>Drag factories between groups, reorder them inside one, or drag the groups themselves.</li>
             <li><b>In the planner</b>, a group's factories sit under a collapsible band, with a line down the left linking them to it.</li>
-            <li><b>Colour</b> is whatever you wish through the picker. We recommend avoiding red and amber — a status still wins the border, and a group wearing those reads as a broken factory.</li>
+            <li>
+              <b>Colour</b> is whatever you wish through the picker. We recommend avoiding red and
+              amber — a status still wins the border, and a group wearing those reads as a broken factory.
+              <v-img
+                v-if="hasGroupColourShot"
+                alt="The group colour picker, open"
+                class="my-2 rounded"
+                max-width="280"
+                :src="shots.groupColour"
+              />
+            </li>
             <li><b>Deleting a group never deletes a factory</b> — one still holding factories asks where they should go first.</li>
           </ul>
 
           <v-divider class="my-4" />
 
-          <h3 class="text-h6 mb-2">Organising a plan in one go</h3>
+          <h3 class="text-h6 mb-2">How to edit groups</h3>
+          <p class="mb-2">Click the group chip on any factory to move it, or to make a new group.</p>
+          <v-img
+            v-if="hasGroupMenuShot"
+            alt="The group chip on a factory header, with its menu open"
+            class="mb-4 mx-auto rounded"
+            max-width="880"
+            :src="shots.groupAssign"
+          />
           <v-img
             v-if="hasGroupButtonsShot"
             alt="The Group and Multi-group edit buttons at the foot of the sidebar"
@@ -283,7 +316,7 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-sparkles" /><span class="ml-2">More quality of life features</span>
           </h2>
-          <h3 class="text-h6 mb-2">Factory status indicators</h3>
+          <h3 class="section-heading mb-2">Factory status indicators</h3>
           <v-img
             v-if="hasStatusShot"
             alt="A factory carrying status chips under its name"
@@ -302,7 +335,7 @@
           </ul>
           <v-divider class="my-4" />
 
-          <h3 class="text-h6 mb-2">Statistics say where a number came from</h3>
+          <h3 class="section-heading mb-2">Statistics enhancements</h3>
           <v-img
             v-if="hasStatsShots"
             alt="The Raw Resources table, listing each resource against the factories extracting it"
@@ -310,9 +343,8 @@
             max-width="1200"
             :src="shots.statsRaw"
           />
-          <p class="mb-2">
-            <b>Raw Resources</b> counts what your plan digs up, per resource and per factory.
-          </p>
+          <h4 class="text-subtitle-1 font-weight-bold mb-2">Raw Resources</h4>
+          <p class="mb-2">Counts what your plan digs up, per resource and per factory.</p>
           <v-img
             v-if="hasStatsShots"
             alt="The Product Surplus and Deficit table, with each product broken down by factory"
@@ -320,10 +352,9 @@
             max-width="1200"
             :src="shots.statsSurplus"
           />
-          <p class="mb-4">
-            <b>Product Surplus &amp; Deficit</b> is a table now too, and both break the figure down
-            by factory. Click a chip to jump there.
-          </p>
+          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Product Surplus &amp; Deficit</h4>
+          <p class="mb-2">A table now too. Both break the figure down by factory — click a chip to jump there.</p>
+          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Power Consumption and Generation</h4>
           <v-img
             v-if="hasStatsShots"
             alt="The By factory power table, each factory's generation, consumption and balance"
@@ -331,14 +362,11 @@
             max-width="1200"
             :src="shots.statsPower"
           />
-          <p class="mb-4">
-            <b>Power Consumption and Generation</b> gains a <b>By factory</b> breakdown, heaviest
-            net drain first. Collapsed by default.
-          </p>
+          <p class="mb-4">A <b>By factory</b> breakdown, heaviest net drain first. Collapsed by default.</p>
 
           <v-divider class="my-4" />
 
-          <h3 class="text-h6 mb-2">Tasks</h3>
+          <h3 class="section-heading mb-2">Tasks</h3>
           <v-img
             v-if="hasTasksShot"
             alt="The factory tasks card with drag handles and checkboxes"
@@ -353,7 +381,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="text-h6 mb-2">Export Calculator — belts and pipes</h3>
+          <h3 class="section-heading mb-2">Export Calculator — belts and pipes</h3>
           <p class="mb-4">
             Belts are back, per destination: how many conveyors of a chosen mark it takes to carry
             an export, across all six marks, with the smallest single belt that can do it picked
@@ -364,7 +392,7 @@
           </p>
           <v-divider class="my-4" />
 
-          <h3 class="text-h6 mb-2">Finding your way around</h3>
+          <h3 class="section-heading mb-2">Finding your way around</h3>
           <ul class="ml-6 mb-2">
             <li><b>The sidebar shows which factory you're looking at</b>, following you as you scroll — no more losing your place in a 30-factory plan.</li>
             <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, and an <b>Exported</b> chip now sits beside Product and Imported on anything another factory has asked for.</li>
@@ -377,38 +405,35 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-wrench" /><span class="ml-2">Fixes</span>
           </h2>
-          <h3 class="text-h6 mb-2">Ghost exports are gone</h3>
-          <p class="mb-4">
-            A factory could sit there claiming to export a part to a factory with no matching
-            import — or quietly export the wrong amount. There wasn't one cause, there were five,
-            and each is fixed. The worst: <b>two factories could end up sharing an ID</b>. IDs were
-            drawn at random from 0–9,999 with nothing checking, so a 60-factory plan had roughly a
-            one-in-six chance of a collision — which merged two factories into one as far as the
-            dependency system was concerned. IDs are now issued against the plan, and a plan loaded
-            with a collision in it has the clash broken and its exports rebuilt.
+          <h3 class="section-heading mb-2">Exports that pointed nowhere</h3>
+          <ul class="ml-6 mb-4">
+            <li>A factory could show an export to a factory that wasn't importing it, or export the wrong amount. Five separate causes, all fixed.</li>
+            <li>The worst of them: <b>two factories could end up with the same ID</b>, which merged them as far as imports and exports were concerned. IDs are now checked against the plan, and a plan loaded with a clash in it is repaired.</li>
+          </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">Plans repair themselves on load</h3>
+          <p class="mb-2">
+            Loading a plan now checks the whole import and export chain, fixes what it finds, and
+            tells you what it changed in one dialog. The old browser alert is gone.
           </p>
-          <h3 class="text-h6 mb-2">Plans repair themselves on load</h3>
-          <p class="mb-4">
-            A plan whose figures look current is deliberately not recalculated when it loads —
-            that's what makes switching tabs fast — but it meant anything already wrong stayed
-            wrong through every reload. Loading now checks the whole import/export chain, fixes
-            what it finds, and <b>tells you exactly what it changed</b>, grouped by factory, in one
-            dialog. The browser alert that used to fire for this is gone.
-          </p>
-          <h3 class="text-h6 mb-2">Numbers that were a hair off</h3>
-          <p class="mb-4">
-            Fuel Generators burning Rocket Fuel asked for 2400.002/min instead of 2400, forcing you
-            to hand-override the producing factory. The game data was at fault — a rate rounded
-            before it was divided — and it's fixed at the parser, along with Compacted Coal,
-            Super-State Computers and both Uranium Fuel Rod recipes. <b>Plans already carrying
-              those numbers repair themselves on load</b>, and tell you what changed. Somersloop
-            entries are also clamped to the building's slots as you type, so the field can't show a
-            number the plan isn't built from.
-          </p>
-          <p class="mb-4">
-            Refreshing or sharing a link to the Parts browser no longer 404s, and an unknown URL
-            now lands on a proper "page not found" rather than the bare CDN error.
-          </p>
+          <v-img
+            v-if="hasRepairShot"
+            alt="The dialog listing what was repaired when a plan loaded"
+            class="mb-4 mx-auto rounded"
+            max-width="900"
+            :src="shots.repair"
+          />
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">Fixed some more number maths</h3>
+          <ul class="ml-6 mb-4">
+            <li>Fuel Generators burning Rocket Fuel asked for 2400.002/min instead of 2400, which forced you to override the factory producing it. Fixed, along with Compacted Coal, Super-State Computers and both Uranium Fuel Rod recipes.</li>
+            <li>Plans already carrying those numbers repair themselves on load and tell you what changed.</li>
+            <li>Somersloop entries are clamped to the building's slots as you type, so the field can't show a number the plan isn't built from.</li>
+          </ul>
           <p class="text-center mb-2">
             Full details on the
             <v-btn class="mx-1" color="primary" href="/changelog">Change Log</v-btn>
@@ -457,6 +482,15 @@
             <i class="fas fa-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
+            <game-asset
+              v-if="slides[currentSlide + 1].asset"
+              class="mr-2"
+              height="20"
+              :subject="slides[currentSlide + 1].asset ?? ''"
+              :type="slides[currentSlide + 1].assetType ?? 'item_id'"
+              width="20"
+            />
+            <i v-else class="mr-2" :class="slides[currentSlide + 1].icon" />
             <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="fas fa-arrow-right" />
           </template>
         </v-btn>
@@ -470,9 +504,9 @@
   import eventBus from '@/utils/eventBus'
   import { useAppStore } from '@/stores/app-store'
 
-  // Launch video. Deliberately empty until the video is published — the embed renders only when
-  // this is set, so an unfinished release never shows a broken player.
-  const launchVideoId = ''
+  // PLACEHOLDER — this is the v0.5 launch video, standing in so the slot is visible while the
+  // v0.6 one is cut. Swap the id; do not ship the release with this still here.
+  const launchVideoId = 'YsWDeOU3e8o'
 
   // Bound rather than literal paths: these live in public/, and a static src makes vite try to
   // resolve them at transform time — which fails the whole module while a capture is missing.
@@ -489,6 +523,9 @@
     statsPower: '/assets/changelog/beta6/statistics-power-by-factory.png',
     options: '/assets/changelog/beta6/options-button.png',
     groupButtons: '/assets/changelog/beta6/group-buttons.png',
+    groupAssign: '/assets/changelog/beta6/group-assign-menu.png',
+    groupColour: '/assets/changelog/beta6/group-colour-menu.png',
+    repair: '/assets/changelog/beta6/plan-repair.png',
   }
 
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
@@ -501,6 +538,9 @@
   const hasStatsShots = true
   const hasOptionsShot = true
   const hasGroupButtonsShot = true
+  const hasGroupMenuShot = true
+  const hasGroupColourShot = true
+  const hasRepairShot = true
 
   const key = 'seenV6Splash'
 
@@ -600,14 +640,16 @@
 
   const router = useRouter()
 
+  // `asset` is a game image, `icon` a Font Awesome class — mining wants the Mk.3 miner, the rest
+  // are glyphs. Both appear in the contents list on slide 1 and on the Next button.
   const slides = [
-    { title: 'The "Groundwork" Update is here!', nav: 'Intro' },
-    { title: 'Mining', nav: 'Mining' },
-    { title: 'The Raw Resources Wizard', nav: 'Raw Resources Wizard' },
-    { title: 'Factory Groups', nav: 'Factory Groups' },
-    { title: 'Factory Icons', nav: 'Factory Icons' },
-    { title: 'More quality of life features', nav: 'Quality of Life' },
-    { title: 'Fixes', nav: 'Fixes' },
+    { title: 'The "Groundwork" Update is here!', nav: 'Intro', icon: 'fas fa-flag' },
+    { title: 'Mining', nav: 'Mining', asset: 'minermk3', assetType: 'building' as const },
+    { title: 'The Raw Resources Wizard', nav: 'Raw Resources Wizard', icon: 'fas fa-shovel' },
+    { title: 'Factory Groups', nav: 'Factory Groups', icon: 'fas fa-folder-tree' },
+    { title: 'Factory Icons', nav: 'Factory Icons', icon: 'fas fa-icons' },
+    { title: 'More quality of life features', nav: 'Quality of Life', icon: 'fas fa-sparkles' },
+    { title: 'Fixes', nav: 'Fixes', icon: 'fas fa-wrench' },
   ]
 
   // The three shapes extraction takes, shown on the first slide the same way the breaking-change
@@ -617,6 +659,8 @@
   const examples = [
     {
       key: 'miners',
+      icon: 'minermk3',
+      iconType: 'building' as const,
       label: 'Miners',
       image: '/assets/changelog/beta6/miners.png',
       alt: 'A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one',
@@ -629,6 +673,8 @@
     },
     {
       key: 'well',
+      icon: 'resource-well-extractor',
+      iconType: 'item_id' as const,
       label: 'Resource wells',
       image: '/assets/changelog/beta6/resource-well.png',
       alt: 'A resource well pressurizer with its satellite nodes by purity',
@@ -640,6 +686,8 @@
     },
     {
       key: 'water',
+      icon: 'water-extractor',
+      iconType: 'item_id' as const,
       label: 'Water & oil',
       image: '/assets/changelog/beta6/water-extractor.png',
       alt: 'Water Extractors, which have no node purity',
@@ -751,6 +799,19 @@
 </script>
 
 <style lang="scss" scoped>
+// The call to action under the headline: the sentence that says what to do about it.
+.hero-lead {
+  font-size: 1.05rem;
+}
+
+// Section headings on the later slides, which carry several unrelated changes each. text-h6 was
+// not pulling far enough clear of the body text for them to read as divisions.
+.section-heading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .header-accent {
   font-size: 0.9rem;
   font-weight: 700;
