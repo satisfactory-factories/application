@@ -78,6 +78,16 @@
             <span class="ml-1">{{ formatGw(power.consumed) }}</span>
           </v-chip>
         </tooltip>
+        <!-- Augmenters here boost the whole plan's generation, not this group's — see the band. -->
+        <tooltip
+          v-if="power.boost > 0"
+          :text="`Alien Power Augmenters in this group add ${formatMw(power.boost)} to the grid, counted in the plan's power rather than this group's`"
+        >
+          <v-chip class="sf-chip x-small no-margin circuit-boost" variant="tonal">
+            <i class="fas fa-bolt mr-1" /><i class="fas fa-arrow-up" />
+            <span class="ml-1">{{ formatGw(power.boost) }}</span>
+          </v-chip>
+        </tooltip>
         <tooltip :text="`This group ${power.difference < 0 ? 'draws' : 'has a surplus of'} ${formatMw(Math.abs(power.difference))}`">
           <v-chip
             class="sf-chip x-small no-margin"
@@ -248,6 +258,7 @@
       produced: totals.totalPowerProduced,
       consumed: totals.totalPowerConsumed,
       difference: totals.totalPowerDifference,
+      boost: totals.totalPowerBoost,
     }
   })
 
@@ -349,6 +360,17 @@ $strip-border: 1px;
     width: $tree-line;
     background-color: var(--sf-group, #616161);
   }
+
+  // Shut, the header is the whole group: the trunk has nothing to run down to, so it would hang
+  // 4px into the gap below, and the wrapper's radius only clips corners a child actually reaches.
+  &.collapsed {
+    border-radius: 4px;
+
+    &::before {
+      bottom: 0;
+      border-bottom-left-radius: 4px;
+    }
+  }
 }
 
 .group-drag-handle {
@@ -389,6 +411,8 @@ $strip-border: 1px;
 // Collapsed hides the rows rather than dropping them — see `rows` above. The strip stays.
 .group-body.collapsed {
   min-height: 0;
+  // Nothing under the header to keep clear of, so the gutter would be dead space below the group.
+  padding-top: 0;
 
   .tree-item {
     display: none;

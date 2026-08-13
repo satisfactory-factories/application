@@ -98,6 +98,19 @@
                   <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
+              <!-- circuit boost chip. Its own chip because it is not this factory's power: an
+                   augmenter adds a percentage of the WHOLE plan's generation, so a factory
+                   generating nothing can still be why the plan's total is far above the sum of
+                   the generators you can see. -->
+              <tooltip
+                v-if="factoryBoost > 0"
+                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid — ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
+              >
+                <v-chip class="sf-chip sf-chip-info small circuit-boost no-margin">
+                  <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />
+                  <span class="ml-2">{{ formatMw(factoryBoost) }}</span>
+                </v-chip>
+              </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
                 <v-chip class="sf-chip sf-chip-info small yellow no-margin">
@@ -406,6 +419,13 @@
 
   // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
   const powerDiffDisplay = computed(() => formatMw(Math.abs(factoryPowerDifference.value)))
+
+  // What this factory's augmenters add to the grid, and the share of the plan's generation that
+  // represents — the number that makes a 61 GW group read as 251 GW on the plan.
+  const factoryBoost = computed(() => props.factory.power?.boostMw ?? 0)
+  const boostPercentDisplay = computed(() =>
+    `${formatNumber((props.factory.power?.boostPercent ?? 0) * 100)}%`,
+  )
 
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))

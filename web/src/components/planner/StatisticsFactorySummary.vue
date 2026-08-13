@@ -6,30 +6,34 @@
   <v-dialog v-model="expanded" eager fullscreen transition="dialog-bottom-transition">
     <v-card class="factory-card rounded-0">
       <v-row class="header flex-grow-0">
-        <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
+        <v-col class="text-h4 flex-grow-1 d-flex align-center flex-wrap" cols="auto">
           <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
-          <v-chip
-            v-if="factories.length > 0"
-            class="sf-chip sf-chip-info factory small no-margin ml-3"
-            variant="tonal"
-          >
-            <i class="fas fa-industry" />
-            <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
-          </v-chip>
-          <!-- In the header rather than the body, so a collapsed summary still says how the plan
-               is doing. Only what applies is shown. -->
-          <v-chip
-            v-for="chip in statusTally"
-            :key="chip.key"
-            class="sf-chip small no-margin ml-1"
-            :class="chip.class"
-            variant="tonal"
-          >
-            <i :class="chip.icon" />
-            <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
-          </v-chip>
+          <!-- Gapped by the row rather than by each chip's own margin: `no-margin` is an
+               !important rule, so an ml-* utility on the chip does nothing. -->
+          <div class="d-flex align-center flex-wrap ga-2 ml-3">
+            <v-chip
+              v-if="factories.length > 0"
+              class="sf-chip sf-chip-info factory small no-margin"
+              variant="tonal"
+            >
+              <i class="fas fa-industry" />
+              <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+            </v-chip>
+            <!-- In the header rather than the body, so a collapsed summary still says how the plan
+                 is doing. Only what applies is shown. -->
+            <v-chip
+              v-for="chip in statusTally"
+              :key="chip.key"
+              class="sf-chip small no-margin"
+              :class="chip.class"
+              variant="tonal"
+            >
+              <i :class="chip.icon" />
+              <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
+            </v-chip>
+          </div>
         </v-col>
-        <v-col class="text-right" cols="4">
+        <v-col class="text-right" cols="auto">
           <v-btn
             color="primary"
             prepend-icon="fas fa-compress-alt"
@@ -49,29 +53,31 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
+          <v-col class="text-h4 flex-grow-1 d-flex align-center flex-wrap" cols="auto">
             <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
-            <v-chip
-              v-if="factories.length > 0"
-              id="factory-summary-count"
-              class="sf-chip sf-chip-info factory small no-margin ml-3"
-              variant="tonal"
-            >
-              <i class="fas fa-industry" />
-              <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
-            </v-chip>
-            <v-chip
-              v-for="chip in statusTally"
-              :key="chip.key"
-              class="sf-chip small no-margin ml-1"
-              :class="chip.class"
-              variant="tonal"
-            >
-              <i :class="chip.icon" />
-              <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
-            </v-chip>
+            <div class="d-flex align-center flex-wrap ga-2 ml-3">
+              <v-chip
+                v-if="factories.length > 0"
+                id="factory-summary-count"
+                class="sf-chip sf-chip-info factory small no-margin"
+                variant="tonal"
+              >
+                <i class="fas fa-industry" />
+                <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+              </v-chip>
+              <v-chip
+                v-for="chip in statusTally"
+                :key="chip.key"
+                class="sf-chip small no-margin"
+                :class="chip.class"
+                variant="tonal"
+              >
+                <i :class="chip.icon" />
+                <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
+              </v-chip>
+            </div>
           </v-col>
-          <v-col class="text-right" cols="4">
+          <v-col class="text-right" cols="auto">
             <v-btn
               v-show="!hidden"
               class="mr-2"
