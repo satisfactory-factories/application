@@ -32,14 +32,19 @@ type Events = {
 
   // Intro
   introToggle: boolean;
-  // Fired when the introduction closes, so the splash can stop waiting for it. `introToggle` is
-  // the inbound request to open or close it, which is not the same thing.
+  // Fired when the introduction closes. `introToggle` is the inbound request to open or close
+  // it, which is not the same thing. Nothing acts on this today — the release splash used to,
+  // and deliberately stopped, so that a first-time visitor is not handed it the moment they
+  // finish reading the introduction.
   introDismissed: undefined;
   splashShow: undefined;
   // The previous release's splash, kept for anyone who missed it. Only ever opened by hand.
   splashShowV5: undefined;
   // The Raw Resources Wizard is mounted by OptionsDialog; this is how anything else asks for it.
   openRawWizard: undefined;
+  // ...and how whatever opened it learns it is finished, applied or cancelled alike, so a deck
+  // that stepped aside for the wizard can put itself back.
+  rawWizardClosed: undefined;
 
   navigationReady: undefined;
 

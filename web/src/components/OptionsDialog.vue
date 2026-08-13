@@ -54,6 +54,12 @@
     showWizard.value = true
   }
 
+  // Announced on the way out, applied or cancelled alike: whatever sent the user here may have
+  // closed itself to get out of the way and needs to know when it can come back.
+  watch(showWizard, (open, wasOpen) => {
+    if (wasOpen && !open) eventBus.emit('rawWizardClosed')
+  })
+
   // The wizard is mounted here and nowhere else, so anything that wants to offer it — the v0.6
   // splash and the migration prompt, for two — asks through the bus rather than mounting a
   // second copy.

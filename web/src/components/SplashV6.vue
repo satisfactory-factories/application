@@ -2,16 +2,16 @@
   <v-dialog
     v-model="showSplash"
     :max-width="currentSlide === 0 ? 1200 : 1000"
-    :persistent="noEscape"
+    :persistent="locked"
     scrollable
   >
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
-        <!-- Never on slide 1: the warning is not something to flick away from the corner of the
-             eye. On the automatic showing it stays off for the whole tour. -->
+        <!-- Off for the whole of an automatic showing that carries the warning: it is not
+             something to flick away from the corner of the eye. -->
         <v-btn
-          v-if="!noEscape"
+          v-if="!locked"
           density="comfortable"
           icon="fas fa-times"
           size="small"
@@ -25,10 +25,11 @@
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-2">The "Groundwork" Update</h2>
           <p class="text-center text-medium-emphasis mb-4">Everything your plan needs now comes from the ground somewhere.</p>
-          <!-- Shown to everyone, not only to someone with a plan open right now: a plan arrives
-               by share link and paste as often as it does from local storage, and the one thing
-               nobody must miss is that the old ones now read differently. -->
+          <!-- Only when this plan is one the change has actually broken. Holding a new user on a
+               red banner about plans they have never made teaches them the warning is noise, and
+               a tab created from nothing is stamped as answered the moment it exists. -->
           <v-alert
+            v-if="actionRequired"
             class="mb-4 action-banner"
             density="comfortable"
             prominent
@@ -43,10 +44,31 @@
               a bunch of new factories.
             </p>
             <p v-if="awaitingAnswer" class="mb-0">
-              Answer this slide before going on. This window doesn't close until you have been
-              through what changed.
+              Choose one of the two below to carry on.
             </p>
           </v-alert>
+          <!-- Directly under the banner, because this is the one decision the deck will not open
+               without and nobody reads a footer. The same pair sits in the card actions as well,
+               for anyone who has scrolled this far down slide 1 and lost sight of these. -->
+          <div v-if="awaitingAnswer" class="action-choice d-flex justify-center flex-wrap ga-3 mb-4">
+            <v-btn
+              color="green"
+              prepend-icon="fas fa-shovel"
+              size="large"
+              variant="flat"
+              @click="runWizard"
+            >
+              Fix my plans with the Raw Resources Wizard
+            </v-btn>
+            <v-btn
+              prepend-icon="fas fa-check"
+              size="large"
+              variant="outlined"
+              @click="acknowledge"
+            >
+              I understand — I'll fix my plans myself
+            </v-btn>
+          </div>
           <youtube-embed
             v-if="launchVideoId"
             class="mb-4"
@@ -372,7 +394,10 @@
         <v-btn v-if="currentSlide > 0" variant="tonal" @click="prevSlide">
           <i class="fas fa-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
         </v-btn>
-        <template v-if="awaitingAnswer && actionRequired">
+        <!-- The same choice as under the banner. Kept here as well because slide 1 is long: once
+             it has been scrolled past, this is the only copy still on screen, and the deck does
+             not close until one of them is pressed. -->
+        <template v-if="awaitingAnswer">
           <v-btn
             class="ml-2"
             color="green"
@@ -386,17 +411,6 @@
             I'll sort it myself
           </v-btn>
         </template>
-        <!-- Nothing of theirs is broken yet, so there is no job to accept — only the warning to
-             take in, which is the one thing this whole lock exists to make them do. -->
-        <v-btn
-          v-else-if="awaitingAnswer"
-          class="ml-2"
-          color="primary"
-          variant="outlined"
-          @click="acknowledge"
-        >
-          I understand
-        </v-btn>
         <v-spacer />
         <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
         <v-spacer />
@@ -462,23 +476,24 @@
   const actionRequired = ref(false)
   const acknowledged = ref(false)
 
-  // The lock belongs to the automatic showing, not to the plan. This deck is the only warning
-  // most people will get, and a dialog that can be waved away in the corner of the eye is not a
-  // warning — so on first sight there is no X, no click-outside and no escape: answer slide 1,
-  // then leave by the far end of the tour. Reopening it later from "Show changes" is unlocked,
-  // because by then it is reference material rather than news.
+  // The lock belongs to the automatic showing of a warning that applies. A dialog that can be
+  // waved away in the corner of the eye is not a warning, so someone whose plan the change has
+  // broken gets no X, no click-outside and no escape: answer slide 1, then leave by the far end
+  // of the tour. Everyone else gets an ordinary deck they can close — holding someone on a red
+  // banner about plans they do not have teaches them the warning is noise. Reopening later from
+  // "Show changes" is unlocked too, since by then it is reference material rather than news.
   const autoShown = ref(false)
-  const locked = computed(() => autoShown.value && showSplash.value)
+  const locked = computed(() => autoShown.value && showSplash.value && actionRequired.value)
 
   // Slide 1 cannot be skipped past until it is answered.
   const awaitingAnswer = computed(() => locked.value && !acknowledged.value)
 
-  // Slide 1 is never escapable, however the deck was opened — no cross, no click-outside, no
-  // escape key. Someone who came looking for it through "Show changes" can leave the moment they
-  // step past the warning; someone being shown it for the first time cannot leave until the end.
-  const noEscape = computed(() => locked.value || currentSlide.value === 0)
-
-  const introDismissed = () => localStorage.getItem('dismissed-introduction') === 'true'
+  // Whether the introduction was already out of the way when this page loaded, read once rather
+  // than per call. A brand new visitor dismisses the intro seconds before their first plan
+  // finishes loading, and reacting to that would land this deck on top of their first ever look
+  // at the planner. v0.5 gated it the same way and for the same reason; they get it on their
+  // next visit instead, and nothing is marked seen in the meantime.
+  const introWasDismissed = localStorage.getItem('dismissed-introduction') === 'true'
   const seen = () => localStorage.getItem(key) === 'true'
 
   // Present the splash only once the planner has finished loading — showing it during the load
@@ -488,15 +503,12 @@
   let loadSettled = false
   let showTimer: ReturnType<typeof setTimeout> | undefined
 
-  // Two things must be true before this deck opens, and either can become true last: the load has
-  // settled, and the introduction is out of the way.
-  //
   // The raw-resources breaking notice is the third party here, and this deck takes it over rather
   // than queuing behind it. Both ship in the same release, so otherwise every returning user is
   // handed two dialogs saying the same thing — and slide 1 says it better, with the tour attached.
   // Taking it over is what makes the lock honest: the notice demanded a decision, so this must too.
   const tryShow = () => {
-    if (!loadSettled || seen() || !introDismissed()) {
+    if (!loadSettled || seen()) {
       return
     }
     actionRequired.value = showRawBreakingNotice.value
@@ -525,15 +537,15 @@
     eventBus.off('loadingCompleted', onLoadingCompleted)
     eventBus.off('prepareForLoad', onLoadStarted)
     eventBus.off('loaderInit', onLoadStarted)
-    eventBus.off('introDismissed', tryShow)
   }
 
   onMounted(() => {
-    if (!seen()) {
+    // Deliberately not listening for the introduction being dismissed: someone dismissing it
+    // now is someone seeing the planner for the first time, and this deck is not their welcome.
+    if (!seen() && introWasDismissed) {
       eventBus.on('loadingCompleted', onLoadingCompleted)
       eventBus.on('prepareForLoad', onLoadStarted)
       eventBus.on('loaderInit', onLoadStarted)
-      eventBus.on('introDismissed', tryShow)
     }
     // Manual re-show via the header's "Show changes" button — works even after dismissal
     eventBus.on('splashShow', show)
@@ -542,6 +554,7 @@
   onUnmounted(() => {
     teardownLoadListeners()
     eventBus.off('splashShow', show)
+    eventBus.off('rawWizardClosed', resumeAfterWizard)
   })
 
   const router = useRouter()
@@ -631,10 +644,29 @@
     currentSlide.value = index
   }
 
+  // Where to come back to. Running the wizard from slide 1 is an exit part way through the tour,
+  // and the rest of the release is what the deck is for — so stepping aside for the wizard is a
+  // pause, not a close.
+  let resumeSlide: number | null = null
+
+  const resumeAfterWizard = () => {
+    eventBus.off('rawWizardClosed', resumeAfterWizard)
+    if (resumeSlide === null) {
+      return
+    }
+    currentSlide.value = resumeSlide
+    resumeSlide = null
+    // Unlocked on the way back: they answered slide 1 by running the wizard, so from here it is
+    // an ordinary deck they can close whenever they like.
+    showSplash.value = true
+  }
+
   // The wizard is mounted by the planner's options dialog, which does not exist on the other
   // pages — so get back to the planner first and give it a moment to listen.
   const runWizard = async () => {
     acknowledge()
+    resumeSlide = currentSlide.value
+    eventBus.on('rawWizardClosed', resumeAfterWizard)
     closeSplash()
     if (router.currentRoute.value.path !== '/') {
       await router.push('/')
