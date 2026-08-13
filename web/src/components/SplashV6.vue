@@ -360,6 +360,16 @@
             or balanced. Each row names the factories producing the item in green and any factory
             short of it in red; click a chip to jump there.
           </p>
+          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Building Summary</h4>
+          <p class="mb-2">Every factory holding each building type, and how many stand in it.</p>
+          <v-img
+            v-if="hasStatsShots"
+            alt="The Building Summary table, listing every factory that holds each building"
+            class="mb-2 mx-auto rounded"
+            max-width="1200"
+            :src="shots.statsBuildings"
+          />
+
           <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Power Consumption and Generation</h4>
           <v-img
             v-if="hasStatsShots"
@@ -517,8 +527,9 @@
     status: '/assets/changelog/beta6/status-chips.png',
     tasks: '/assets/changelog/beta6/tasks.png',
     statsRaw: '/assets/changelog/beta6/statistics-raw-resources.png',
-    statsSurplus: '/assets/changelog/beta6/statistics-surplus.png',
+    statsSurplus: '/assets/changelog/beta6/statistics-items.png',
     statsPower: '/assets/changelog/beta6/statistics-power-by-factory.png',
+    statsBuildings: '/assets/changelog/beta6/statistics-buildings.png',
     options: '/assets/changelog/beta6/options-button.png',
     groupButtons: '/assets/changelog/beta6/group-buttons.png',
     groupAssign: '/assets/changelog/beta6/group-assign-menu.png',
