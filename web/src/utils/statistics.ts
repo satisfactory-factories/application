@@ -5,29 +5,39 @@ import {
 } from '@/utils/helpers'
 import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
+export interface BuildingTotal {
+  name: string
+  totalAmount: number
+  // Where they are, in plan order. A plan-wide count says how many to build without saying
+  // where any of them go.
+  sources: FactoryContribution[]
+}
+
 // This function calculates the total number of buildings for each type
-export const calculateTotalBuildingsByType = (factories: Factory[]) => {
-  const buildings: Record<
-    string,
-    {
-      name: string;
-      totalAmount: number;
-    }
-  > = {} // Explicitly define the type
+export const calculateTotalBuildingsByType = (factories: Factory[]): BuildingTotal[] => {
+  const buildings: Record<string, BuildingTotal> = {}
 
   factories.forEach(factory => {
     Object.entries(factory.buildingRequirements).forEach(
       ([key, requirement]) => {
-        if (!buildings[key]) {
-          // Initialize the building entry
-          buildings[key] = {
-            name: requirement.name,
-            totalAmount: 0,
-          }
+        // A requirement can sit at zero once its products are removed; it is not a building.
+        if (requirement.amount <= 0) {
+          return
         }
 
-        // Accumulate the total amount and total power
-        buildings[key].totalAmount += requirement.amount
+        const entry = buildings[key] ??= {
+          name: requirement.name,
+          totalAmount: 0,
+          sources: [],
+        }
+
+        entry.totalAmount += requirement.amount
+        entry.sources.push({
+          id: factory.id,
+          name: factory.name,
+          icon: factory.icon,
+          amount: requirement.amount,
+        })
       }
     )
   })

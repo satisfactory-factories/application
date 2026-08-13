@@ -81,7 +81,6 @@ declare module 'vue' {
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
     StatisticsBuildings: typeof import('./components/planner/StatisticsBuildings.vue')['default']
     StatisticsFactorySummary: typeof import('./components/planner/StatisticsFactorySummary.vue')['default']
-    StatisticsItems: typeof import('./components/planner/StatisticsItems.vue')['default']
     StatisticsItemsDifference: typeof import('./components/planner/StatisticsItemsDifference.vue')['default']
     StatisticsPower: typeof import('./components/planner/StatisticsPower.vue')['default']
     StatisticsResources: typeof import('./components/planner/StatisticsResources.vue')['default']

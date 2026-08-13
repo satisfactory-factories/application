@@ -348,13 +348,17 @@
           <p class="mb-2">Counts what your plan digs up, per resource and per factory.</p>
           <v-img
             v-if="hasStatsShots"
-            alt="The Product Surplus and Deficit table, with each product broken down by factory"
+            alt="The Item Production table, with each item broken down by factory"
             class="mb-2 mx-auto rounded"
             max-width="1200"
             :src="shots.statsSurplus"
           />
-          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Product Surplus &amp; Deficit</h4>
-          <p class="mb-2">A table now too. Both break the figure down by factory — click a chip to jump there.</p>
+          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Item Production</h4>
+          <p class="mb-2">
+            Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
+            and <b>Produced Items</b> were two lists of the same items. Filter by surplus, deficit
+            or balanced. Both tables break the figure down by factory; click a chip to jump there.
+          </p>
           <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Power Consumption and Generation</h4>
           <v-img
             v-if="hasStatsShots"

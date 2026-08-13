@@ -2,7 +2,7 @@
   <div class="d-flex align-center">
     <h4 class="text-h4">
       <i class="fas fa-warehouse" />
-      <span class="ml-3">Product Surplus & Deficit</span>
+      <span class="ml-3">Item Production</span>
     </h4>
     <v-chip
       v-if="surplusCount > 0"
@@ -21,6 +21,15 @@
     >
       {{ deficitCount }} in deficit
     </v-chip>
+    <v-chip
+      v-if="balancedCount > 0"
+      id="stats-balanced-summary"
+      class="sf-chip grey"
+      :class="{ 'ml-3': surplusCount === 0 && deficitCount === 0 }"
+      variant="tonal"
+    >
+      {{ balancedCount }} balanced
+    </v-chip>
     <v-btn
       class="ml-auto"
       color="primary"
@@ -32,11 +41,21 @@
   </div>
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount of surplus or
-      deficit of items you have in your factory. These are items that
-      either need to be produced more (in red), or items that can be
-      stored or sunk (in green)!
+      <i class="fas fa-info-circle" /> Every item your plan makes or consumes, and whether it has
+      any spare. Red needs producing more of, green can be stored or sunk.
     </p>
+    <div class="d-flex flex-wrap ga-2 mb-3">
+      <v-btn
+        v-for="option in filters"
+        :key="option.value"
+        :color="filter === option.value ? 'primary' : undefined"
+        size="small"
+        :variant="filter === option.value ? 'flat' : 'outlined'"
+        @click="filter = option.value"
+      >
+        {{ option.label }} ({{ option.count }})
+      </v-btn>
+    </div>
     <v-table
       v-if="factoryProductDifferences.length > 0"
       id="stats-surplus-deficit"
@@ -53,11 +72,7 @@
       <tbody>
         <tr v-for="product in factoryProductDifferences" :key="product.id">
           <td>
-            <v-chip
-              class="sf-chip no-margin"
-              :class="product.amountRemaining > 0 ? 'green' : 'red'"
-              variant="tonal"
-            >
+            <v-chip class="sf-chip no-margin" :class="chipClass(product.amountRemaining)" variant="tonal">
               <game-asset clickable :subject="product.id" type="item" />
               <b class="ml-2">{{ getPartDisplayName(product.id) }}</b>
             </v-chip>
@@ -88,7 +103,7 @@
         </tr>
       </tbody>
     </v-table>
-    <p v-else class="text-body-1">No Product Surplus or Deficit</p>
+    <p v-else class="text-body-1">Nothing to show for this filter.</p>
   </template>
 </template>
 
@@ -108,14 +123,41 @@
     helpText: boolean;
   }>()
 
-  // This function calculates total number of products produced and gets the difference between demand and supply (to see if we have a surplus of products or not)
-  const factoryProductDifferences = computed(() => calculateTotalParts(props.factories).filter(product => product.amountRemaining !== 0))
+  // Every item the plan touches, balanced ones included — this section absorbed the old
+  // "Produced Items" list, which showed the same items again with only their supply figure.
+  const allItems = computed(() => calculateTotalParts(props.factories))
 
   // Header at-a-glance counts, shown whether the section is open or collapsed.
-  const surplusCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining > 0).length)
-  const deficitCount = computed(() => factoryProductDifferences.value.filter(product => product.amountRemaining < 0).length)
+  const surplusCount = computed(() => allItems.value.filter(item => item.amountRemaining > 0).length)
+  const deficitCount = computed(() => allItems.value.filter(item => item.amountRemaining < 0).length)
+  const balancedCount = computed(() => allItems.value.filter(item => item.amountRemaining === 0).length)
 
-  const amountClass = (amount: number) => (amount > 0 ? 'text-success' : 'text-error')
+  type ItemFilter = 'all' | 'surplus' | 'deficit' | 'balanced'
+  const filter = ref<ItemFilter>('all')
+
+  const filters = computed(() => [
+    { value: 'all' as const, label: 'All', count: allItems.value.length },
+    { value: 'surplus' as const, label: 'Surplus', count: surplusCount.value },
+    { value: 'deficit' as const, label: 'Deficit', count: deficitCount.value },
+    { value: 'balanced' as const, label: 'Balanced', count: balancedCount.value },
+  ])
+
+  const factoryProductDifferences = computed(() => {
+    if (filter.value === 'surplus') return allItems.value.filter(item => item.amountRemaining > 0)
+    if (filter.value === 'deficit') return allItems.value.filter(item => item.amountRemaining < 0)
+    if (filter.value === 'balanced') return allItems.value.filter(item => item.amountRemaining === 0)
+    return allItems.value
+  })
+
+  const amountClass = (amount: number) => {
+    if (amount > 0) return 'text-success'
+    return amount < 0 ? 'text-error' : 'text-medium-emphasis'
+  }
+
+  const chipClass = (amount: number) => {
+    if (amount > 0) return 'green'
+    return amount < 0 ? 'red' : 'grey'
+  }
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 

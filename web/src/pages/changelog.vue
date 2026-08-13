@@ -126,6 +126,29 @@
 
         <v-divider class="subsection" />
 
+        <h2>👍 <i class="fas fa-chart-line ml-1" /><span class="ml-2">Statistics enhancements</span></h2>
+        <h3>Item Production</h3>
+        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> They listed the same items twice — one showing the balance, the other the supply. Item Production lists every item, with filters for surplus, deficit and balanced and a count of each in the header. The "Show all Products" toggle has gone with the section it controlled.</p>
+        <v-img
+          alt="The Item Production table, with each item broken down by factory"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-items.png"
+        />
+        <h3 class="mt-4">Where the numbers come from</h3>
+        <p><b>Item Production, Raw Resources and Building Summary are tables</b>, and each breaks its figure down by factory. The chips carry that factory's own share and click through to it. On the Demo plan, Sulfuric Acid reads +30/min overall — that is Uranium Power 40 over and Plutonium Processing 10 short.</p>
+        <v-img
+          alt="The Building Summary table, listing every factory that holds each building"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-buildings.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li><b>Raw Resources</b> counts what the plan digs up. It used to read the raw supply the planner assumed on your behalf, so it sat empty once that assumption was removed.</li>
+          <li><b>Power Consumption and Generation</b> gains a By factory breakdown, heaviest net drain first, collapsed by default.</li>
+          <li><b>Building Summary</b> no longer counts a building requirement that has dropped to zero.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>👍 <i class="fas fa-tasks ml-1" /><span class="ml-2">Tasks</span></h2>
         <p><b>Tasks drag into any order</b> now, by the grip handle on the left — the same handle the sidebar's factory list uses. A task's position was fixed the moment it was added, so the only way to reprioritise was to delete it and retype it at the bottom. Completed tasks drag too.</p>
         <v-img
