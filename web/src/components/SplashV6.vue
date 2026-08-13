@@ -358,8 +358,27 @@
             <i class="fas fa-icons" /><span class="ml-2">Factory Icons</span>
           </h2>
           <p class="mb-3">
-            Factories can now have icons. Search the picker for the one you want.
+            Factories can now have icons. A factory that hasn't been given one wears the old
+            generic glyph, and there are two ways to change it — both open the picker.
           </p>
+
+          <p class="mb-2"><b>1.</b> Click the icon on the factory itself.</p>
+          <v-img
+            v-if="hasIconAddCardShot"
+            alt="The generic icon on a factory header, hovered"
+            class="mb-4 mx-auto rounded"
+            max-width="1100"
+            :src="shots.iconAddCard"
+          />
+          <p class="mb-2"><b>2.</b> Or the same icon on its row in the sidebar.</p>
+          <v-img
+            v-if="hasIconAddSidebarShot"
+            alt="The generic icon on a factory's sidebar row, hovered"
+            class="mb-4 mx-auto rounded"
+            max-width="420"
+            :src="shots.iconAddSidebar"
+          />
+
           <v-img
             v-if="hasIconsShot"
             alt="The factory icon picker"
@@ -371,7 +390,7 @@
             <li>They show on the factory itself, in the sidebar, and on every import and export chip that names it.</li>
             <li><b>352 to pick from</b>: game art for every machine, belt, pipe, generator, vehicle, resource and component the planner knows, plus emoji shapes, digits and symbols.</li>
             <li><b>Search covers the whole set</b> whichever category you are in, and ignores punctuation — the game writes "Mk.5", so "mk5" finds it.</li>
-            <li>Click the icon in the card header or the sidebar to pick one. <i>Use default</i> puts the generic glyph back.</li>
+            <li><i>Use default</i> puts the generic glyph back.</li>
             <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work — they just won't appear as the icon elsewhere in the plan.</li>
           </ul>
           <p class="mb-2">Once a plan is using them, its imports and exports read at a glance:</p>
@@ -630,6 +649,8 @@
     wizardApply: '/assets/changelog/beta6/wizard-apply.png',
     groups: '/assets/changelog/beta6/factory-groups.png',
     icons: '/assets/changelog/beta6/factory-icons.png',
+    iconAddCard: '/assets/changelog/beta6/factory-icon-add-card.png',
+    iconAddSidebar: '/assets/changelog/beta6/factory-icon-add-sidebar.png',
     status: '/assets/changelog/beta6/status-chips.png',
     tasks: '/assets/changelog/beta6/tasks.png',
     statsRaw: '/assets/changelog/beta6/statistics-raw-resources.png',
@@ -655,6 +676,8 @@
   const hasWizardApplyShot = true
   const hasGroupsShot = true
   const hasIconsShot = true
+  const hasIconAddCardShot = true
+  const hasIconAddSidebarShot = true
   const hasStatusShot = true
   const hasTasksShot = true
   const hasStatsShots = true

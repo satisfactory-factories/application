@@ -118,6 +118,7 @@
         />
         <ul class="ml-6 mt-2">
           <li><b>352 icons to pick from.</b> Real game art for every machine, extractor and generator, every belt, lift, splitter, pipe and pump, all the power infrastructure, the stations and storage, the vehicles, the equipment, and every raw resource, fluid and component the planner knows about — plus emoji: coloured squares, circles, diamonds and triangles, the digits 0–10, and a row of symbols.</li>
+          <li><b>Two ways in:</b> click the icon on the factory itself, or the same icon on its row in the sidebar. Either opens the picker; <i>Use default</i> puts the generic glyph back.</li>
           <li><b>The picker opens on everything</b>, laid out under category headings so you can scroll it like a sheet rather than hunting through tabs. The category buttons stay on screen, so they double as a map of what is in there.</li>
           <li><b>Search covers the whole set</b> whichever category is selected, and matches names with their punctuation stripped — the game writes "Mk.5" and nobody types the dot, so "mk5" finds it.</li>
           <li>A factory stores only an icon ID, so nothing about how it is drawn is baked into your saved plan. Plans saved before this show the default glyph until an icon is picked.</li>
