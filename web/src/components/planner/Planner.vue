@@ -87,7 +87,7 @@
               v-for="(factory, index) in section.factories"
               v-show="!sectionCollapsed(section)"
               :key="factory.id"
-              :class="section.group ? ['group-tree-item', { last: index === section.factories.length - 1 }] : undefined"
+              :class="section.group ? ['group-tree-item', { first: index === 0, last: index === section.factories.length - 1 }] : undefined"
               :style="section.group ? groupColorVars(section.group.color) : undefined"
             >
               <planner-factory
@@ -689,6 +689,9 @@ $tree-line: 3px;
 // whatever the card holds. The min() is for a collapsed card shorter than that, so the elbow and
 // the corner stay inside it rather than hanging off the bottom.
 $tree-elbow-top: 56px;
+// The breathing room between a band and its first card. Carried as that card's padding rather
+// than the band's margin, so it falls inside the trunk and the line arrives unbroken.
+$band-gap: 8px;
 
 .group-tree-item {
   position: relative;
@@ -723,6 +726,25 @@ $tree-elbow-top: 56px;
     top: min(#{$tree-elbow-top}, calc(100% - #{$tree-line}));
     width: $tree-indent;
     height: $tree-line;
+  }
+
+  // Padding shifts the card but not the pseudo-elements, which resolve against the padding box,
+  // so the first card's elbow has to come down by the same amount to stay on its title line.
+  &.first {
+    padding-top: $band-gap;
+
+    &::after {
+      top: $tree-elbow-top + $band-gap;
+    }
+  }
+
+  // The rule each card ends with divides cards inside a group; at the end of one it divides
+  // nothing, since the corner of the tree and the next band already say the group has finished,
+  // and left in it draws straight across that corner. Hidden rather than removed — the rule
+  // carries the my-6 that spaces the next band off the last card, and display: none takes the
+  // gap with it.
+  &.last :deep(.factory-divider) {
+    border-color: transparent;
   }
 }
 

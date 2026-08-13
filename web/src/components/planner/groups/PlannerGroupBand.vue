@@ -98,29 +98,35 @@
 </script>
 
 <style lang="scss" scoped>
+// Must match Planner.vue's $tree-line: the band's left edge is the top of the same line the cards
+// hang off, and a 2px band over a 3px trunk steps visibly where the two meet.
+$tree-line: 3px;
+
 .group-band {
   position: relative;
   border-radius: 4px;
   margin-bottom: 8px;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.05));
-  // Same 2px the group's cards wear, all the way round: the band reads as the lid of the block
-  // below it rather than as a differently-drawn thing that happens to sit above it.
   border: 2px solid var(--sf-group, #6c6c6c);
+}
+
+// The band is the head of the tree, so its left edge is drawn as the trunk rather than as a
+// border that happens to be the same colour: full trunk width, and squared off at the bottom so
+// the line carries straight on into the cards instead of curving away from them.
+.group-band:not(.ungrouped) {
+  border-left-width: $tree-line;
+  border-bottom-left-radius: 0;
+  // The gap to the first card is that card's padding, not this band's margin. A margin sits
+  // outside both boxes, so nothing draws in it and the trunk arrives with a hole above it —
+  // and bridging it from this side lands short, because `bottom` on an absolutely positioned
+  // child resolves against the padding box and the bottom border swallows the last of it. As the
+  // card's padding it is simply inside the trunk. See Planner.vue's $band-gap.
+  margin-bottom: 0;
 }
 
 // The top of the trunk the cards hang off, bridging the band's own 8px bottom margin so the line
 // runs unbroken from the band's edge into the first card. Ungrouped draws no tree and so no stub —
 // see Planner.vue for the rest of the geometry.
-.group-band:not(.ungrouped)::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -8px;
-  height: 8px;
-  width: 3px;
-  background-color: var(--sf-group, #6c6c6c);
-}
-
 .chevron {
   font-size: 1.1rem;
 }
