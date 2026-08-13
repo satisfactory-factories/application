@@ -104,13 +104,17 @@ export const isClientTooOld = (received: string | null | undefined, minimum: str
 
 // Read per request rather than at boot, so the API's minimum can be raised by restarting the
 // container with a new value instead of rebuilding the image.
+//
+// Throws on a value that isn't a version rather than falling back to the default. Falling back
+// fails open in the one situation the variable exists for: raising the floor mid-rollout, where
+// a typo would leave the gate quietly sitting at the old minimum. backend.ts checks this at boot
+// so the deploy fails instead.
 export const minimumClientVersion = (): string => {
   const configured = process.env.MIN_CLIENT_VERSION?.trim();
   if (!configured) return DEFAULT_MINIMUM_CLIENT_VERSION;
 
   if (!parseVersion(configured)) {
-    console.warn(`MIN_CLIENT_VERSION is not a version (${configured}); falling back to ${DEFAULT_MINIMUM_CLIENT_VERSION}.`);
-    return DEFAULT_MINIMUM_CLIENT_VERSION;
+    throw new Error(`MIN_CLIENT_VERSION is not a version: ${configured}`);
   }
 
   return configured;

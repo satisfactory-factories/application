@@ -38,7 +38,7 @@ To tear the container back down, `pnpm db:down` from either the root or here.
 | `MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` | Credentials the Mongo container initialises with |
 | `JWT_SECRET` | Signing secret for auth tokens |
 | `ENVIRONMENT` | `dev` locally |
-| `MIN_CLIENT_VERSION` | Oldest planner build allowed to write. Optional — defaults to the version that first shipped the gate. Read per request, so raising it only needs a restart |
+| `MIN_CLIENT_VERSION` | Oldest planner build allowed to write. Optional — defaults to the version that first shipped the gate. Read per request, so raising it only needs a restart. A value that isn't a version stops the API starting, rather than quietly leaving the gate at the default |
 
 `docker-compose.yml` is the local Mongo container. `docker-compose-server.yml` and `docker-compose-packaged.yml` are the deployed variants — see the deployment docs before touching those.
 

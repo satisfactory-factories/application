@@ -127,9 +127,10 @@ describe('minimumClientVersion', () => {
     expect(minimumClientVersion()).toBe('0.7.0');
   });
 
-  // A typo here would otherwise take out every client's ability to save.
-  it('falls back when the configured value is not a version', () => {
+  // Falling back to the default here would fail open in the one situation the variable exists
+  // for — raising the floor mid-rollout — so a typo has to stop the API starting instead.
+  it('throws when the configured value is not a version', () => {
     process.env.MIN_CLIENT_VERSION = 'latest';
-    expect(minimumClientVersion()).toBe(DEFAULT_MINIMUM_CLIENT_VERSION);
+    expect(() => minimumClientVersion()).toThrow('MIN_CLIENT_VERSION is not a version: latest');
   });
 });

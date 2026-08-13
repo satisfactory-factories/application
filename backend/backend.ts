@@ -456,6 +456,16 @@ app.use(function (_req: Express.Request, res: Express.Response) {
 // Start server
 // *************************************************
 
+// Refuse to start on a MIN_CLIENT_VERSION that isn't a version. The container's healthcheck
+// gates `up --wait`, so this surfaces as a failed deploy rather than as a gate silently sitting
+// at the default minimum while everything looks green.
+try {
+  console.log(`Minimum client version: ${minimumClientVersion()}`);
+} catch (error) {
+  console.error(`Refusing to start: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
+
 http.createServer(app).listen(PORT, () => console.log(`Webserver running at http://localhost:${PORT}/`));
 
 const generateShareWords = async (count: number): Promise<string> => {
