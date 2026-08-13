@@ -12,9 +12,12 @@ import { ref, watch } from 'vue'
 const STORAGE_KEY = 'plannerOptions'
 
 interface PlannerOptions {
-  // Show parts a group produces and consumes entirely within itself. Off by default: the group's
-  // product row is meant to say what the folder delivers, and an intermediate that never leaves it
-  // crowds that out. See collectGroupProducts.
+  // Show the row of item tiles under each sidebar group saying what it delivers. On by default.
+  showGroupProducts: boolean
+  // Within that row, show parts a group produces and consumes entirely within itself. Off by
+  // default: the row is meant to say what the folder delivers, and an intermediate that never
+  // leaves it crowds that out. Has no effect with showGroupProducts off — see the Options dialog,
+  // which disables it. See collectGroupProducts.
   showInternalGroupProducts: boolean
   // Show each sidebar group's power generated, consumed and balance. On by default: whether a
   // group pays for itself is the question people ask of a group most often.
@@ -22,6 +25,7 @@ interface PlannerOptions {
 }
 
 const DEFAULTS: PlannerOptions = {
+  showGroupProducts: true,
   showInternalGroupProducts: false,
   showGroupPower: true,
 }

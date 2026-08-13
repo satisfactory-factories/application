@@ -102,7 +102,11 @@
 
       <!-- Second line: what this group actually makes, and whether it is keeping up. Kept to one
            line, with as many tiles on it as the sidebar's current width allows — see `fits`. -->
-      <div v-if="products.length" ref="productRow" class="product-row d-flex align-start ga-1 px-2 pb-1">
+      <div
+        v-if="options.showGroupProducts && products.length"
+        ref="productRow"
+        class="product-row d-flex align-start ga-1 px-2 pb-1"
+      >
         <!-- One tooltip for the whole tile, carrying the name and the figure together. The icon
              marks itself for HoverTooltip, so wrapping it in a v-tooltip would give the hover two
              answers; the same text goes on the tile so the number below the icon answers too. -->

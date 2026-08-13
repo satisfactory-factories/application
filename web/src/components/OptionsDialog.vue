@@ -10,7 +10,7 @@
   >
     Options
   </v-btn>
-  <v-dialog v-model="showOptions" max-width="640">
+  <v-dialog v-model="showOptions" max-width="820">
     <v-card>
       <v-card-title>
         <i class="fas fa-wrench" /><span class="ml-2">Options</span>
@@ -34,33 +34,54 @@
 
         <v-divider class="my-4" />
 
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">Factory groups</h3>
-        <p class="mb-3 text-medium-emphasis">
-          A group's product row lists what the group delivers to other factories, with its surplus
-          or shortfall. Internal products within a factory are not shown by default. If you wish to
-          show them, check this option.
-        </p>
-        <!-- Box and tick drawn in CSS, as in the multi-group editor: Vuetify's FA aliases use
-             `far fa-square` for the unchecked state and this app ships no Font Awesome regular
-             family, so a v-checkbox has nothing to draw until it is ticked and reads as a stray
-             filled square. -->
+        <h3 class="text-subtitle-1 font-weight-bold mb-1">Sidebar</h3>
+        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-2">Factory groups</h4>
+        <!-- The explanations are tooltips rather than paragraphs: three settings each carrying a
+             three-line blurb read as an essay with checkboxes in it, and the list of what you can
+             turn on was the part that got lost. Box and tick drawn in CSS, as in the multi-group
+             editor: Vuetify's FA aliases use `far fa-square` for the unchecked state and this app
+             ships no Font Awesome regular family, so a v-checkbox has nothing to draw until it is
+             ticked and reads as a stray filled square. -->
         <div
-          :aria-checked="options.showInternalGroupProducts"
+          :aria-checked="options.showGroupProducts"
           class="option-toggle d-flex align-center ga-3"
           role="checkbox"
           tabindex="0"
-          @click="options.showInternalGroupProducts = !options.showInternalGroupProducts"
-          @keydown.enter.prevent="options.showInternalGroupProducts = !options.showInternalGroupProducts"
-          @keydown.space.prevent="options.showInternalGroupProducts = !options.showInternalGroupProducts"
+          @click="options.showGroupProducts = !options.showGroupProducts"
+          @keydown.enter.prevent="options.showGroupProducts = !options.showGroupProducts"
+          @keydown.space.prevent="options.showGroupProducts = !options.showGroupProducts"
         >
-          <span class="tick" :class="{ on: options.showInternalGroupProducts }" />
-          <span>Show group internal products</span>
+          <span class="tick" :class="{ on: options.showGroupProducts }" />
+          <span>Show group products</span>
+          <tooltip-info
+            :is-caption="false"
+            text="A group's product row lists what the group delivers to other factories, with its surplus or shortfall."
+            @click.stop
+          />
         </div>
 
-        <p class="mt-4 mb-3 text-medium-emphasis">
-          Each group in the sidebar can also show what it generates, what it consumes and whether
-          it pays for itself, the same way the Statistics link above them does.
-        </p>
+        <!-- Indented because it only qualifies the row above, and disabled with it: internal
+             products of a row that isn't drawn is not a state worth being able to set. -->
+        <div
+          :aria-checked="options.showInternalGroupProducts"
+          :aria-disabled="!options.showGroupProducts"
+          class="option-toggle option-child d-flex align-center ga-3"
+          :class="{ disabled: !options.showGroupProducts }"
+          role="checkbox"
+          :tabindex="options.showGroupProducts ? 0 : -1"
+          @click="toggleInternalProducts"
+          @keydown.enter.prevent="toggleInternalProducts"
+          @keydown.space.prevent="toggleInternalProducts"
+        >
+          <span class="tick" :class="{ on: options.showInternalGroupProducts && options.showGroupProducts }" />
+          <span>Show group internal products</span>
+          <tooltip-info
+            :is-caption="false"
+            text="Parts a group makes and uses up entirely within itself. Off by default: the row is meant to say what the group delivers, and an intermediate that never leaves it crowds that out."
+            @click.stop
+          />
+        </div>
+
         <div
           :aria-checked="options.showGroupPower"
           class="option-toggle d-flex align-center ga-3"
@@ -72,6 +93,11 @@
         >
           <span class="tick" :class="{ on: options.showGroupPower }" />
           <span>Show group power</span>
+          <tooltip-info
+            :is-caption="false"
+            text="What each group generates, what it consumes and whether it pays for itself — the same figures the Statistics link above them wears."
+            @click.stop
+          />
         </div>
       </v-card-text>
       <v-card-actions>
@@ -92,6 +118,12 @@
   const showOptions = ref(false)
   const showWizard = ref(false)
   const options = usePlannerOptions()
+
+  // A child toggle of an off parent is not a state worth being able to set.
+  const toggleInternalProducts = () => {
+    if (!options.value.showGroupProducts) return
+    options.value.showInternalGroupProducts = !options.value.showInternalGroupProducts
+  }
 
   const openWizard = () => {
     showOptions.value = false
@@ -116,6 +148,16 @@
   cursor: pointer;
   user-select: none;
   width: fit-content;
+  padding: 4px 0;
+}
+
+.option-child {
+  margin-left: 30px;
+}
+
+.option-toggle.disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .tick {

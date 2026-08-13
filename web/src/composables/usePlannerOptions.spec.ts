@@ -19,6 +19,12 @@ describe('usePlannerOptions', () => {
     expect(options.value.showInternalGroupProducts).toBe(false)
   })
 
+  it('should show the group product row by default', async () => {
+    const options = await load()
+
+    expect(options.value.showGroupProducts).toBe(true)
+  })
+
   it('should show group power by default', async () => {
     const options = await load()
 
@@ -38,6 +44,7 @@ describe('usePlannerOptions', () => {
     await nextTick()
 
     expect(JSON.parse(localStorage.getItem('plannerOptions')!)).toEqual({
+      showGroupProducts: true,
       showInternalGroupProducts: true,
       showGroupPower: true,
     })
