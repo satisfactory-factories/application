@@ -336,6 +336,19 @@
             +30/min overall, which is Uranium Power 40 over and Plutonium Processing 10 short. Two
             places to go, where the total said one thing and pointed nowhere.
           </p>
+          <v-img
+            v-if="hasStatsShots"
+            alt="The By factory power table, each factory's generation, consumption and balance"
+            class="mb-2 mx-auto rounded"
+            max-width="1200"
+            :src="shots.statsPower"
+          />
+          <p class="mb-4">
+            <b>Power Consumption and Generation</b> gets the same treatment, with a
+            <b>By factory</b> breakdown under the plan totals — heaviest net drain first, so the
+            factory worth looking at is at the top rather than wherever you happened to put it.
+            Collapsed by default, since the plan figures above it are what most people came for.
+          </p>
           <h3 class="text-h6 mb-2">Tasks</h3>
           <v-img
             v-if="hasTasksShot"
@@ -480,6 +493,7 @@
     tasks: '/assets/changelog/beta6/tasks.png',
     statsRaw: '/assets/changelog/beta6/statistics-raw-resources.png',
     statsSurplus: '/assets/changelog/beta6/statistics-surplus.png',
+    statsPower: '/assets/changelog/beta6/statistics-power-by-factory.png',
   }
 
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
