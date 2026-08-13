@@ -252,8 +252,31 @@
             <li><b>Deleting a group never deletes a factory</b> — one still holding factories asks where they should go first.</li>
           </ul>
 
-          <!-- Colour reads better as a picture than a sentence, so the pictures get their own
-               column rather than interrupting the text mid-bullet. -->
+          <!-- Both of these read better as a picture than a sentence, so the pictures get their
+               own column rather than interrupting the text mid-bullet. -->
+          <v-row class="mb-4" no-gutters>
+            <v-col class="pr-md-6" cols="12" md="7">
+              <h3 class="section-heading mb-2">Group statuses</h3>
+              <p class="mb-2">
+                Anything wrong inside a group rolls up to its header: how many of its factories are
+                short of parts, have building groups that don't add up, or are out of sync.
+              </p>
+              <ul class="ml-6">
+                <li>Shown whether the group is open or collapsed, so a shut folder still says it needs opening.</li>
+                <li>On the group's band in the planner as well as in the sidebar.</li>
+                <li>The same counts the Factories Summary keeps for the whole plan. Nothing wrong, nothing shown.</li>
+              </ul>
+            </v-col>
+            <v-col class="d-flex flex-column ga-3" cols="12" md="5">
+              <v-img
+                v-if="hasSidebarStatusShot"
+                alt="A group in the sidebar carrying the count of its factories that are short"
+                class="rounded"
+                :src="shots.sidebarStatus"
+              />
+            </v-col>
+          </v-row>
+
           <v-row class="mb-4" no-gutters>
             <v-col class="pr-md-6" cols="12" md="7">
               <h3 class="section-heading mb-2">Colour</h3>
@@ -272,12 +295,6 @@
                 alt="The colour palette, open from a group's dot in the sidebar"
                 class="rounded"
                 :src="shots.groupColourSidebar"
-              />
-              <v-img
-                v-if="hasSidebarStatusShot"
-                alt="A group in the sidebar with one of its factories flagged as short"
-                class="rounded"
-                :src="shots.sidebarStatus"
               />
             </v-col>
           </v-row>
