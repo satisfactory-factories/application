@@ -79,10 +79,16 @@
                follows it, and v-show on a two-root component is silently dropped, so collapsing
                hid nothing at all. -->
           <template v-if="sectionMounted(section)">
+            <!-- The tree the sidebar draws, brought over to the cards: without it a group's
+                 members are only distinguishable by the band above them and the group chip on each
+                 header, which is not enough to see where a group starts and stops while scrolling.
+                 Ungrouped is deliberately left flat — indenting everything distinguishes nothing. -->
             <div
-              v-for="factory in section.factories"
+              v-for="(factory, index) in section.factories"
               v-show="!sectionCollapsed(section)"
               :key="factory.id"
+              :class="section.group ? ['group-tree-item', { last: index === section.factories.length - 1 }] : undefined"
+              :style="section.group ? groupColorVars(section.group.color) : undefined"
             >
               <planner-factory
                 :factory="factory"
@@ -132,6 +138,7 @@
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
+  import { groupColorVars } from '@/utils/colors'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -671,6 +678,53 @@
 $header-height: 65px;
 $tab-bar-height: 52px;
 $chrome-height: $header-height + $tab-bar-height; // 117px
+
+// The group tree over the cards. Same shape and the same geometry names as the sidebar's, so the
+// two read as one idea seen at two sizes — see PlannerSidebarGroup.
+$tree-indent: 20px;
+$tree-line: 3px;
+// Where the elbow meets the card. The sidebar aims at the middle of a row; a factory card is
+// hundreds or thousands of pixels tall, so a midpoint elbow would point at nothing. This aims at
+// the card's title line, measured in the browser at a constant 56px from the top of the wrapper
+// whatever the card holds. The min() is for a collapsed card shorter than that, so the elbow and
+// the corner stay inside it rather than hanging off the bottom.
+$tree-elbow-top: 56px;
+
+.group-tree-item {
+  position: relative;
+  padding-left: $tree-indent;
+  // Contains the card's own margins — the divider that ends each one carries my-6, whose bottom
+  // margin otherwise escapes the wrapper and leaves a 12px hole in the trunk between cards. Same
+  // reason the sidebar's .tree-item does it.
+  display: flow-root;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    background-color: var(--sf-group, #6c6c6c);
+  }
+
+  // Trunk, one segment per card, meeting the segment above and below so the group reads as one
+  // line down its edge. The last card stops it at its own elbow, which draws the corner.
+  &::before {
+    top: 0;
+    bottom: 0;
+    width: $tree-line;
+  }
+
+  &.last::before {
+    bottom: auto;
+    height: min(#{$tree-elbow-top + $tree-line}, 100%);
+  }
+
+  &::after {
+    top: min(#{$tree-elbow-top}, calc(100% - #{$tree-line}));
+    width: $tree-indent;
+    height: $tree-line;
+  }
+}
 
 .planner-container {
   width: 100%;

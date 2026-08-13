@@ -99,12 +99,26 @@
 
 <style lang="scss" scoped>
 .group-band {
+  position: relative;
   border-radius: 4px;
   margin-bottom: 8px;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.05));
   // Same 2px the group's cards wear, all the way round: the band reads as the lid of the block
   // below it rather than as a differently-drawn thing that happens to sit above it.
   border: 2px solid var(--sf-group, #6c6c6c);
+}
+
+// The top of the trunk the cards hang off, bridging the band's own 8px bottom margin so the line
+// runs unbroken from the band's edge into the first card. Ungrouped draws no tree and so no stub —
+// see Planner.vue for the rest of the geometry.
+.group-band:not(.ungrouped)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  height: 8px;
+  width: 3px;
+  background-color: var(--sf-group, #6c6c6c);
 }
 
 .chevron {

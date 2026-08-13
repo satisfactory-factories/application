@@ -474,17 +474,15 @@
     }
   }
 
-  // A card in a group. This MUST come before .problem/.warning below: the three rules have equal
-  // specificity, so source order decides, and a status has to keep the header. A broken factory
-  // reading as "green group" would hide the one thing that needs attention. The spine is
-  // unaffected either way, so the group stays legible on a factory that is in trouble.
+  // A card in a group. Deliberately no border of its own: the planner draws a tree down the left
+  // of a group now, so the membership was being said twice — and saying it in the border meant
+  // taking the border away from status, which is the thing that actually needs it. The header
+  // keeps its muted tint, which tells the two apart without competing for the same channel.
   &.grouped {
     position: relative;
-    border: 2px solid var(--sf-group) !important;
 
     .header {
       background-color: var(--sf-group-muted);
-      border-bottom-color: var(--sf-group) !important;
     }
   }
 
@@ -494,16 +492,6 @@
     .header {
       background-color: var(--sf-problem-bg);
     }
-  }
-
-  // A status takes the border back off the group, so the header's rule has to follow it — left on
-  // the group colour it reads as a green line drawn inside a red card.
-  &.grouped.problem .header {
-    border-bottom-color: var(--sf-problem-border) !important;
-  }
-
-  &.grouped.warning .header {
-    border-bottom-color: var(--sf-status-warning-border) !important;
   }
 
   // Was `.needsSync`, which now names only one of several amber statuses (#506).
