@@ -186,6 +186,13 @@
             Once you have made your choices it shows you a summary. You can download a backup from
             there, then apply.
           </p>
+          <v-img
+            v-if="hasWizardApplyShot"
+            alt="The wizard's summary of the mines, products and imports it is about to create"
+            class="mb-4 mx-auto rounded"
+            max-width="1200"
+            :src="shots.wizardApply"
+          />
 
           <v-divider class="my-4" />
 
@@ -522,6 +529,7 @@
     miners: '/assets/changelog/beta6/miners.png',
     well: '/assets/changelog/beta6/resource-well.png',
     wizard: '/assets/changelog/beta6/wizard.png',
+    wizardApply: '/assets/changelog/beta6/wizard-apply.png',
     groups: '/assets/changelog/beta6/factory-groups.png',
     icons: '/assets/changelog/beta6/factory-icons.png',
     status: '/assets/changelog/beta6/status-chips.png',
@@ -541,6 +549,7 @@
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
   // may not have landed yet sits behind its own flag. Flip one off and its slide reads as text.
   const hasWizardShot = true
+  const hasWizardApplyShot = true
   const hasGroupsShot = true
   const hasIconsShot = true
   const hasStatusShot = true
