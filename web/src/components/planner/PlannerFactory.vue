@@ -46,7 +46,7 @@
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip sf-chip-clickable small green no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -62,7 +62,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip sf-chip-clickable small orange no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -488,6 +488,12 @@
 .factory-divider {
   color: var(--sf-header);
   opacity: 1;
+}
+
+// The reset button ends the chip, so the chip's own right padding only reads as a
+// gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
+.sf-chip.small.sync-chip {
+  padding-right: 0 !important;
 }
 
 .factory-name {
