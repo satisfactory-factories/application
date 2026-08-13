@@ -5,7 +5,7 @@
     </h4>
     <v-chip
       id="stats-power-summary-generation"
-      class="sf-chip generation x-small no-margin"
+      class="sf-chip generation small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -14,7 +14,7 @@
     </v-chip>
     <v-chip
       id="stats-power-summary-consumption"
-      class="sf-chip consumption x-small no-margin"
+      class="sf-chip consumption small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -24,7 +24,7 @@
     <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
       <v-chip
         id="stats-power-summary-difference"
-        class="sf-chip x-small no-margin"
+        class="sf-chip small no-margin"
         :class="balanceDifference >= 0 ? 'green' : 'red'"
         variant="tonal"
       >

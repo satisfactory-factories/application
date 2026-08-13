@@ -26,9 +26,11 @@
             <v-chip
               v-for="chip in statusTally"
               :key="chip.key"
-              class="sf-chip small no-margin"
-              :class="chip.class"
-              variant="tonal"
+              class="sf-chip small no-margin sf-chip-clickable"
+              :class="[chip.class, { 'filter-on': statusFilter === chip.key }]"
+              :title="statusFilter === chip.key ? 'Showing only these — click to clear' : `Show only the ${chip.label}`"
+              :variant="statusFilter === chip.key ? 'flat' : 'tonal'"
+              @click.stop="toggleStatusFilter(chip.key)"
             >
               <i :class="chip.icon" />
               <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
@@ -70,9 +72,11 @@
               <v-chip
                 v-for="chip in statusTally"
                 :key="chip.key"
-                class="sf-chip small no-margin"
-                :class="chip.class"
-                variant="tonal"
+                class="sf-chip small no-margin sf-chip-clickable"
+                :class="[chip.class, { 'filter-on': statusFilter === chip.key }]"
+                :title="statusFilter === chip.key ? 'Showing only these — click to clear' : `Show only the ${chip.label}`"
+                :variant="statusFilter === chip.key ? 'flat' : 'tonal'"
+                @click.stop="toggleStatusFilter(chip.key)"
               >
                 <i :class="chip.icon" />
                 <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
@@ -111,6 +115,29 @@
           <p v-show="helpText" class="mb-4">
             <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
             Hover over a chip for the full details.
+          </p>
+
+          <!-- The counts in the header double as filters. Said out loud because a chip that is
+               also a button looks exactly like a chip that is not. -->
+          <p v-if="statusTally.length" class="filter-hint mb-4">
+            <template v-if="statusFilter">
+              <i class="fas fa-filter" />
+              Showing the <b>{{ visibleFactories.length }}</b>
+              {{ visibleFactories.length === 1 ? 'factory' : 'factories' }} behind
+              <b>{{ activeFilterLabel }}</b>.
+              <v-btn
+                class="ml-2"
+                density="comfortable"
+                prepend-icon="fas fa-times"
+                size="small"
+                variant="outlined"
+                @click="statusFilter = null"
+              >Clear</v-btn>
+            </template>
+            <template v-else>
+              <i class="fas fa-filter" /> Click a status count above to list only the factories
+              behind it.
+            </template>
           </p>
 
           <!-- The table itself is teleported into the fullscreen dialog while
@@ -185,7 +212,7 @@
               </tbody>
               <tbody v-else ref="contentRef">
                 <tr
-                  v-for="factory in factories"
+                  v-for="factory in visibleFactories"
                   :key="factory.id"
                   class="hover"
                   :class="factoryClass(factory)"
@@ -271,7 +298,11 @@
                               class="flow-factory"
                               @click.stop="goToFactory(source.factoryId)"
                             >
-                              <i class="fas fa-arrow-to-right" /> {{ getFactoryName(source.factoryId) }}
+                              <!-- The factory's own icon rather than a generic arrow: the row
+                                   already says which direction the column is, and the icon is how
+                                   a factory is recognised everywhere else in the plan. -->
+                              <factory-icon-display :icon="getFactoryIcon(source.factoryId)" size="18" />
+                              <span class="ml-1">{{ getFactoryName(source.factoryId) }}</span>
                             </div>
                           </div>
                         </v-chip>
@@ -303,7 +334,8 @@
                               class="flow-factory"
                               @click.stop="goToFactory(destination.factoryId)"
                             >
-                              <i class="fas fa-truck-container" /> {{ getFactoryName(destination.factoryId) }}
+                              <factory-icon-display :icon="getFactoryIcon(destination.factoryId)" size="18" />
+                              <span class="ml-1">{{ getFactoryName(destination.factoryId) }}</span>
                             </div>
                           </div>
                         </v-chip>
@@ -337,6 +369,7 @@
     factoryStatusClass,
     factoryStatusTallyChips,
     getFactoryStatuses,
+    matchesTallyChip,
     tallyFactoryStatuses,
   } from '@/utils/factory-management/status'
   import eventBus from '@/utils/eventBus'
@@ -457,6 +490,28 @@
   // Header counts, off the same memo the rows use.
   const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
 
+  // Clicking a count lists the factories behind it. Cleared when the chip it names stops applying,
+  // so a filter cannot survive the thing it filtered on being fixed.
+  const statusFilter = ref<string | null>(null)
+  watch(statusTally, chips => {
+    if (statusFilter.value && !chips.some(chip => chip.key === statusFilter.value)) statusFilter.value = null
+  })
+
+  const toggleStatusFilter = (key: string) => {
+    statusFilter.value = statusFilter.value === key ? null : key
+  }
+
+  const activeFilterLabel = computed(() =>
+    statusTally.value.find(chip => chip.key === statusFilter.value)?.label ?? ''
+  )
+
+  const visibleFactories = computed(() => {
+    if (!statusFilter.value) return props.factories
+    return props.factories.filter(factory =>
+      matchesTallyChip(statuses.value.get(factory.id) ?? [], statusFilter.value as string)
+    )
+  })
+
   // This row never painted the amber state at all; factoryStatusClass fixes that for free.
   const factoryClass = (factory: Factory) => factoryStatusClass(statuses.value.get(factory.id))
 
@@ -471,6 +526,9 @@
   const getFactoryName = (factoryId: number): string => {
     return props.factories.find(factory => factory.id === factoryId)?.name ?? 'UNKNOWN'
   }
+
+  const getFactoryIcon = (factoryId: number): string | undefined =>
+    props.factories.find(factory => factory.id === factoryId)?.icon
 
   const unsatisfiedParts = (factory: Factory): [string, PartMetrics][] => {
     return Object.entries(factory.parts).filter(([, part]) => !part.satisfied)
@@ -509,6 +567,17 @@
 </script>
 
 <style lang="scss" scoped>
+.filter-hint {
+  color: #bdbdbd;
+  font-size: 0.95rem;
+}
+
+// The selected count reads as pressed: filled rather than tonal, with a ring so it still stands
+// out against the header's own background.
+.filter-on {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.65);
+}
+
   // Columns size themselves to their content — a column full of "Satisfied"
   // chips stays narrow. The inner wrapper caps how wide the chips can spread
   // before wrapping onto new lines, which also caps the column (auto table
@@ -651,7 +720,11 @@
     padding: 2px 0;
 
     .flow-factory {
-      font-size: 13px;
+      display: flex;
+      align-items: center;
+      // A notch up from 13px: the icon beside it sets the row's height, and the old size read as
+      // a caption next to it. Not the chip's own size — this is still the smaller line.
+      font-size: 14px;
       line-height: 1.4;
       color: var(--sf-factory); // Factory references share the factory token colour
 

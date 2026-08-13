@@ -138,7 +138,8 @@
           <li><b>Six statuses to start with.</b> Red: part shortage, unmet export request, building groups that don't add up. Amber: out of sync with the game, redundant import, duplicate import.</li>
           <li><b>The chips say which items</b> — three shortages are three item icons and "3 shortages", not a generic warning glyph — with the full list in the tooltip. Clicking a chip scrolls to the section it points at.</li>
           <li>The same treatment now applies everywhere factory state was already painted: the sidebar, the card border and header, the section headers, and the Factories Summary — which never painted the amber state at all.</li>
-          <li><b>The Factories Summary counts them</b>, in its header and in its sidebar row: how many factories have problems, how many are short, how many are out of sync. Only the states that apply are shown, and the header keeps them when the summary is collapsed.</li>
+          <li><b>The Factories Summary counts them</b>, in its header and in its sidebar row: how many factories are short of parts, have building groups that don't add up, are out of sync, and so on. Only the states that apply are shown, and the header keeps them when the summary is collapsed.</li>
+          <li><b>Those counts filter the table.</b> Click one and the summary lists only the factories behind it, ready to jump into; click it again to clear.</li>
           <li><b>Fixed:</b> a factory whose <i>power generator</i> building groups didn't add up never turned red. The check ran, but the rollup only ever looked at products.</li>
         </ul>
 

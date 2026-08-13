@@ -345,16 +345,27 @@
             </div>
           </td>
           <td class="text-right" :class="satisfactionShading(part)" style="width: 40px">
-            <v-btn
+            <v-tooltip
               v-if="openedCalculator !== partId && getPartExportRequests(factory, partId.toString()).length > 0"
-              class="rounded"
-              color="primary"
-              icon="fas fa-calculator"
-              size="small"
-              title="Export Calculator"
-              variant="outlined"
-              @click="initCalculator(factory, partId.toString(), factory.exportCalculator[partId]?.selected)"
-            />
+              location="top"
+            >
+              <template #activator="{ props: activatorProps }">
+                <!-- Span carries the activator: a disabled button gets no pointer events, so the tooltip never fires. -->
+                <span v-bind="activatorProps">
+                  <v-btn
+                    class="rounded"
+                    color="primary"
+                    :disabled="!factory.exportCalculator[partId]?.selected"
+                    icon="fas fa-calculator"
+                    size="small"
+                    variant="outlined"
+                    @click="initCalculator(factory, partId.toString(), factory.exportCalculator[partId]?.selected)"
+                  />
+                </span>
+              </template>
+              <span v-if="factory.exportCalculator[partId]?.selected">Export Calculator</span>
+              <span v-else>Please select a factory from the left</span>
+            </v-tooltip>
             <v-btn
               v-if="openedCalculator === partId"
               class="rounded"
@@ -585,11 +596,17 @@
   }
 
   const closeCalculator = async () => {
+    const part = openedCalculator.value
     calculatorShow.value = false
 
     await new Promise(resolve => setTimeout(resolve, 300))
 
     openedCalculator.value = ''
+
+    // The selection lights up the export chip, so a closed tray must not leave one selected.
+    if (part && props.factory.exportCalculator[part]) {
+      props.factory.exportCalculator[part].selected = null
+    }
   }
 
   const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | string | null | undefined, part: string) => {
@@ -618,6 +635,8 @@
   }
 
   const isRequestSelected = (factory: Factory, factoryId: string, part: string) => {
+    // Plans saved before the selection was cleared on close can still carry one; only honour it while the tray is open.
+    if (openedCalculator.value !== part) return false
     if (!factory.exportCalculator[part]) {
       // console.error(`Could not find export calculator settings for part ${part}`)
       return false

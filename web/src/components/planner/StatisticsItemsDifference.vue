@@ -7,7 +7,7 @@
     <v-chip
       v-if="surplusCount > 0"
       id="stats-surplus-summary"
-      class="sf-chip green x-small ml-3"
+      class="sf-chip green small ml-3"
       variant="tonal"
     >
       {{ surplusCount }} in surplus
@@ -15,7 +15,7 @@
     <v-chip
       v-if="deficitCount > 0"
       id="stats-deficit-summary"
-      class="sf-chip red x-small"
+      class="sf-chip red small"
       :class="{ 'ml-3': surplusCount === 0 }"
       variant="tonal"
     >
@@ -24,7 +24,7 @@
     <v-chip
       v-if="balancedCount > 0"
       id="stats-balanced-summary"
-      class="sf-chip grey x-small"
+      class="sf-chip grey small"
       :class="{ 'ml-3': surplusCount === 0 && deficitCount === 0 }"
       variant="tonal"
     >

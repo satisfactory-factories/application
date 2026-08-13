@@ -347,6 +347,13 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
   },
 ]
 
+// Whether one factory counts towards a given tally chip — the same membership test the counting
+// above does, exposed so a display site can filter by a chip it has just rendered.
+export const matchesTallyChip = (statuses: FactoryStatus[], key: string): boolean => {
+  const definition = tallyChipDefinitions.find(each => each.key === key)
+  return !!definition && statuses.some(status => definition.types.includes(status.type))
+}
+
 // Only the states that apply. A row of zeroes on a healthy plan is noise, and it is the presence
 // of a number that is supposed to mean something.
 export const factoryStatusTallyChips = (tally: FactoryStatusTally): FactoryStatusTallyChip[] =>
