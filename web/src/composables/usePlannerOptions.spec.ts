@@ -19,6 +19,12 @@ describe('usePlannerOptions', () => {
     expect(options.value.showInternalGroupProducts).toBe(false)
   })
 
+  it('should show group power by default', async () => {
+    const options = await load()
+
+    expect(options.value.showGroupPower).toBe(true)
+  })
+
   it('should restore what was stored', async () => {
     localStorage.setItem('plannerOptions', JSON.stringify({ showInternalGroupProducts: true }))
     const options = await load()
@@ -33,6 +39,7 @@ describe('usePlannerOptions', () => {
 
     expect(JSON.parse(localStorage.getItem('plannerOptions')!)).toEqual({
       showInternalGroupProducts: true,
+      showGroupPower: true,
     })
   })
 
@@ -59,5 +66,14 @@ describe('usePlannerOptions', () => {
 
     expect(options.value.showInternalGroupProducts).toBe(true)
     expect('somethingARetiredVersionWrote' in options.value).toBe(false)
+  })
+
+  // A setting added after someone last used the app has no entry in their stored object, and
+  // must take its default rather than arriving undefined.
+  it('should default a key the stored object predates', async () => {
+    localStorage.setItem('plannerOptions', JSON.stringify({ showInternalGroupProducts: true }))
+    const options = await load()
+
+    expect(options.value.showGroupPower).toBe(true)
   })
 })

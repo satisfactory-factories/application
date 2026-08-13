@@ -309,6 +309,33 @@
             <li><b>The chips say which items</b> — three shortages are three item icons and "3 shortages", not a generic warning glyph — and clicking one scrolls to the section it points at.</li>
             <li>A power-only factory whose generator groups didn't add up never turned red. It does now.</li>
           </ul>
+          <h3 class="text-h6 mb-2">Statistics say where a number came from</h3>
+          <v-img
+            v-if="hasStatsShots"
+            alt="The Raw Resources table, listing each resource against the factories extracting it"
+            class="mb-2 mx-auto rounded"
+            max-width="1200"
+            :src="shots.statsRaw"
+          />
+          <p class="mb-2">
+            <b>Raw Resources</b> counts what your plan digs up — every product whose part is a raw
+            resource, whatever produced it — where it used to report the supply the planner was
+            assuming on your behalf, and so showed nothing at all once that assumption was gone.
+          </p>
+          <v-img
+            v-if="hasStatsShots"
+            alt="The Product Surplus and Deficit table, with each product broken down by factory"
+            class="mb-2 mx-auto rounded"
+            max-width="1200"
+            :src="shots.statsSurplus"
+          />
+          <p class="mb-4">
+            Both it and <b>Product Surplus &amp; Deficit</b> are tables now, and both break the
+            figure down <b>by factory</b> — click a chip to jump straight there. A plan-wide total
+            is the number you notice and the one you can do least with: above, Sulfuric Acid reads
+            +30/min overall, which is Uranium Power 40 over and Plutonium Processing 10 short. Two
+            places to go, where the total said one thing and pointed nowhere.
+          </p>
           <h3 class="text-h6 mb-2">Tasks</h3>
           <v-img
             v-if="hasTasksShot"
@@ -451,6 +478,8 @@
     icons: '/assets/changelog/beta6/factory-icons.png',
     status: '/assets/changelog/beta6/status-chips.png',
     tasks: '/assets/changelog/beta6/tasks.png',
+    statsRaw: '/assets/changelog/beta6/statistics-raw-resources.png',
+    statsSurplus: '/assets/changelog/beta6/statistics-surplus.png',
   }
 
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture that
@@ -460,6 +489,7 @@
   const hasIconsShot = true
   const hasStatusShot = true
   const hasTasksShot = true
+  const hasStatsShots = true
 
   const key = 'seenV6Splash'
 

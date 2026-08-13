@@ -251,6 +251,32 @@ export const calculateFactoriesUsing = (
 // account for overclocking and somersloops). Peak differs from consumed only when
 // variable-power buildings (Particle Accelerator etc.) are present. The circuit boost
 // (Alien Power Augmenters) is part of total generation, matching the in-game power graph.
+export interface FactoryPower {
+  factory: Factory
+  produced: number
+  consumed: number
+  difference: number
+}
+
+/**
+ * Power per factory, heaviest net drain first.
+ *
+ * Deliberately ordered by cost rather than by the plan's own display order: the factory worth
+ * looking at is the one costing the most, and display order buries it wherever it happens to sit.
+ */
+export const calculateFactoryPower = (factories: Factory[]): FactoryPower[] =>
+  factories
+    .map(factory => {
+      const totals = calculateTotalPower([factory])
+      return {
+        factory,
+        produced: totals.totalPowerProduced,
+        consumed: totals.totalPowerConsumed,
+        difference: totals.totalPowerDifference,
+      }
+    })
+    .sort((a, b) => a.difference - b.difference || a.factory.name.localeCompare(b.factory.name))
+
 export const calculateTotalPower = (factories: Factory[]) => {
   let totalPowerConsumed = 0
   let totalPowerConsumedMin = 0

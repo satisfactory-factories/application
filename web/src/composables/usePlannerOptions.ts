@@ -16,10 +16,14 @@ interface PlannerOptions {
   // product row is meant to say what the folder delivers, and an intermediate that never leaves it
   // crowds that out. See collectGroupProducts.
   showInternalGroupProducts: boolean
+  // Show each sidebar group's power generated, consumed and balance. On by default: whether a
+  // group pays for itself is the question people ask of a group most often.
+  showGroupPower: boolean
 }
 
 const DEFAULTS: PlannerOptions = {
   showInternalGroupProducts: false,
+  showGroupPower: true,
 }
 
 const restore = (): PlannerOptions => {

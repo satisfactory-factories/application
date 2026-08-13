@@ -56,6 +56,23 @@
           <span class="tick" :class="{ on: options.showInternalGroupProducts }" />
           <span>Show group internal products</span>
         </div>
+
+        <p class="mt-4 mb-3 text-medium-emphasis">
+          Each group in the sidebar can also show what it generates, what it consumes and whether
+          it pays for itself, the same way the Statistics link above them does.
+        </p>
+        <div
+          :aria-checked="options.showGroupPower"
+          class="option-toggle d-flex align-center ga-3"
+          role="checkbox"
+          tabindex="0"
+          @click="options.showGroupPower = !options.showGroupPower"
+          @keydown.enter.prevent="options.showGroupPower = !options.showGroupPower"
+          @keydown.space.prevent="options.showGroupPower = !options.showGroupPower"
+        >
+          <span class="tick" :class="{ on: options.showGroupPower }" />
+          <span>Show group power</span>
+        </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
