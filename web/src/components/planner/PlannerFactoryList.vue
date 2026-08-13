@@ -53,10 +53,24 @@
             <i class="fas fa-list mr-2" />
             <span>Factories Summary</span>
           </v-spacer>
+          <!-- The state of the plan in three numbers. Only what applies is shown: a row of zeroes
+               is noise on a healthy plan, and the point is that a number appearing means something. -->
+          <v-col class="d-flex align-center ga-1 pa-0 mr-1" cols="auto">
+            <tooltip
+              v-for="chip in statusTally"
+              :key="chip.key"
+              :text="chip.tooltip"
+            >
+              <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+                <i :class="chip.icon" />
+                <span class="ml-1">{{ chip.count }}</span>
+              </v-chip>
+            </tooltip>
+          </v-col>
           <v-tooltip right>
             <template #activator="{ props }">
               <v-col
-                class="context-icon align-content-center text-center py-0 px-2"
+                class="factory-count align-content-center text-center py-0 px-2"
                 cols="auto"
                 v-bind="props"
               >
@@ -163,7 +177,7 @@
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
-  import { getFactoryStatuses } from '@/utils/factory-management/status'
+  import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
   import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
@@ -241,6 +255,9 @@
   const statuses = computed(() => new Map(
     compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
   ))
+
+  // Reuses the memo above rather than walking the plan a second time.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
 
   const createFactory = () => {
     emit('createFactory')
@@ -345,6 +362,12 @@
   &:hover {
     color: white;
   }
+}
+
+// The plan's factory count, which is a fact rather than an affordance — the muted grey the
+// context icons wear read as disabled next to the status chips beside it.
+.factory-count {
+  color: #e0e0e0;
 }
 
 .pt-n1 {

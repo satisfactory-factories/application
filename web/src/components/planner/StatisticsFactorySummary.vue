@@ -10,11 +10,23 @@
           <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
           <v-chip
             v-if="factories.length > 0"
-            class="sf-chip sf-chip-info factory ml-3"
+            class="sf-chip sf-chip-info factory small no-margin ml-3"
             variant="tonal"
           >
             <i class="fas fa-industry" />
             <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+          </v-chip>
+          <!-- In the header rather than the body, so a collapsed summary still says how the plan
+               is doing. Only what applies is shown. -->
+          <v-chip
+            v-for="chip in statusTally"
+            :key="chip.key"
+            class="sf-chip small no-margin ml-1"
+            :class="chip.class"
+            variant="tonal"
+          >
+            <i :class="chip.icon" />
+            <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
           </v-chip>
         </v-col>
         <v-col class="text-right" cols="4">
@@ -42,11 +54,21 @@
             <v-chip
               v-if="factories.length > 0"
               id="factory-summary-count"
-              class="sf-chip sf-chip-info factory ml-3"
+              class="sf-chip sf-chip-info factory small no-margin ml-3"
               variant="tonal"
             >
               <i class="fas fa-industry" />
               <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+            </v-chip>
+            <v-chip
+              v-for="chip in statusTally"
+              :key="chip.key"
+              class="sf-chip small no-margin ml-1"
+              :class="chip.class"
+              variant="tonal"
+            >
+              <i :class="chip.icon" />
+              <span class="ml-2">{{ chip.count }} {{ chip.label }}</span>
             </v-chip>
           </v-col>
           <v-col class="text-right" cols="4">
@@ -89,12 +111,38 @@
           <Teleport :disabled="!tableInDialog" to="#factory-summary-fullscreen-target">
             <!-- Rendering the real table for a large plan blocks the main thread long
                  enough to feel like a hang, so a reveal paints this stand-in first. -->
-            <v-skeleton-loader
+            <!-- Same table markup as below minus the chips, so the stand-in has the
+                 real columns, borders and row heights rather than a generic bone. -->
+            <v-table
               v-if="!tableReady"
               id="factory-summary-skeleton"
-              class="rounded border-md sub-card"
-              type="table-thead, table-row-divider@8"
-            />
+              class="rounded border-md sub-card summary-table"
+            >
+              <thead>
+                <tr>
+                  <th
+                    v-for="col in 5"
+                    :key="`ghost-head-${col}`"
+                    class="text-left text-h6"
+                    :class="{ 'border-e-md': col < 5 }"
+                    scope="row"
+                  >
+                    <div class="ghost ghost-heading" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in 8" :key="`ghost-row-${row}`">
+                  <td
+                    v-for="col in 5"
+                    :key="`ghost-cell-${row}-${col}`"
+                    :class="{ 'border-e-md': col < 5 }"
+                  >
+                    <div class="ghost ghost-chip" />
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
             <v-table
               v-if="tableReady"
               class="rounded border-md sub-card summary-table"
@@ -269,7 +317,12 @@
   } from '@/utils/helpers'
   import { calculateExports, calculateImports, PartFlowSummary } from '@/utils/summary'
   import { formatNumber } from '@/utils/numberFormatter'
-  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import {
+    factoryStatusClass,
+    factoryStatusTallyChips,
+    getFactoryStatuses,
+    tallyFactoryStatuses,
+  } from '@/utils/factory-management/status'
   import eventBus from '@/utils/eventBus'
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
@@ -371,6 +424,9 @@
     props.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
   ))
 
+  // Header counts, off the same memo the rows use.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
+
   // This row never painted the amber state at all; factoryStatusClass fixes that for free.
   const factoryClass = (factory: Factory) => factoryStatusClass(statuses.value.get(factory.id))
 
@@ -433,6 +489,45 @@
     flex-wrap: wrap;
     align-items: flex-start;
     max-width: 450px;
+  }
+
+  // Placeholder blobs for the ghost table: one per cell, left-aligned at 75% of
+  // the column, chip-shaped in the body so the rows stand as tall as real ones.
+  .ghost {
+    position: relative;
+    overflow: hidden;
+    width: 75%;
+    background: rgba(var(--v-theme-on-surface), var(--v-border-opacity));
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--v-theme-surface), 0),
+        rgba(var(--v-theme-surface), 0.3),
+        rgba(var(--v-theme-surface), 0)
+      );
+      transform: translateX(-100%);
+      animation: ghost-sweep 1.5s linear infinite;
+    }
+  }
+
+  .ghost-heading {
+    height: 24px;
+    border-radius: 12px;
+  }
+
+  .ghost-chip {
+    height: 32px;
+    border-radius: 16px;
+  }
+
+  @keyframes ghost-sweep {
+    100% {
+      transform: translateX(100%);
+    }
   }
 
   .summary-table {

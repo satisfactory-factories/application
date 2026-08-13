@@ -223,7 +223,7 @@
             class="text-body-1 py-2 px-4 collapsed-section"
             :class="factory.products.length > 0 ? 'border-b-md' : ''"
           >
-            <p class="section-label">Imports:</p>
+            <p class="section-label">Importing:</p>
             <div class="section-chips">
               <div
                 v-for="[inputFactoryId, inputs] in groupedInputs"
@@ -318,7 +318,7 @@
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
           >
-            <p class="section-label">Exports:</p>
+            <p class="section-label">Exporting:</p>
             <div class="section-chips">
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"

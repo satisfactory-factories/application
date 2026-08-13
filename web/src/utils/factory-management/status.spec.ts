@@ -11,6 +11,7 @@ import {
   getSectionStatuses,
   hasFactoryProblem,
   highestSeverity,
+  tallyFactoryStatuses,
 } from '@/utils/factory-management/status'
 
 const typesOf = (factory: Factory) => getFactoryStatuses(factory).map(status => status.type)
@@ -375,6 +376,54 @@ describe('status', () => {
       for (const section of ['satisfaction', 'imports', 'products'] as const) {
         expect(getSectionStatuses(statuses, section)).toEqual([])
       }
+    })
+  })
+
+  describe('tallyFactoryStatuses', () => {
+    const tallyOf = (factories: Factory[]) =>
+      tallyFactoryStatuses(factories.map(each => getFactoryStatuses(each)))
+
+    test('counts nothing for a healthy plan', () => {
+      expect(tallyOf([healthyFactory(), healthyFactory()]))
+        .toEqual({ problems: 0, shortages: 0, outOfSync: 0 })
+    })
+
+    test('counts factories, not the states inside one', () => {
+      const short = healthyFactory()
+      short.parts.IronIngot.satisfied = false
+      createNewPart(short, 'IronOre')
+      short.parts.IronOre.isRaw = true
+      short.parts.IronOre.satisfied = false
+
+      // Two shortage statuses on one factory is still one factory short.
+      expect(tallyOf([short])).toEqual({ problems: 1, shortages: 1, outOfSync: 0 })
+    })
+
+    test('counts a shortage as a problem as well', () => {
+      const short = healthyFactory()
+      short.parts.IronIngot.satisfied = false
+
+      expect(tallyOf([short])).toEqual({ problems: 1, shortages: 1, outOfSync: 0 })
+    })
+
+    test('keeps out of sync out of the problem count — it is the warning tier', () => {
+      const stale = healthyFactory()
+      stale.inSync = false
+
+      expect(tallyOf([stale])).toEqual({ problems: 0, shortages: 0, outOfSync: 1 })
+    })
+
+    test('adds up across a plan', () => {
+      const short = healthyFactory()
+      short.parts.IronIngot.satisfied = false
+      const stale = healthyFactory()
+      stale.inSync = false
+      const both = healthyFactory()
+      both.parts.IronIngot.satisfied = false
+      both.inSync = false
+
+      expect(tallyOf([healthyFactory(), short, stale, both]))
+        .toEqual({ problems: 2, shortages: 2, outOfSync: 2 })
     })
   })
 

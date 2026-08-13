@@ -372,6 +372,7 @@
           <ul class="ml-6 mb-4">
             <li><b class="status-red">Red</b> — part shortage, unmet export request, building groups that don't add up.</li>
             <li><b class="status-amber">Amber</b> — out of sync with the game, redundant import, duplicate import.</li>
+            <li><b>The Factories Summary counts them</b> — how many factories have problems, are short, or are out of sync — in its header and in the sidebar. It keeps them when collapsed.</li>
           </ul>
           <v-divider class="my-4" />
 

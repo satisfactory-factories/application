@@ -245,6 +245,92 @@ export const factoryStatusClass = (statuses: FactoryStatus[] = []) => {
   }
 }
 
+export interface FactoryStatusTally {
+  problems: number
+  shortages: number
+  outOfSync: number
+}
+
+const shortageTypes: FactoryStatusType[] = ['partShortage', 'rawShortage']
+
+/**
+ * Plan-wide counts for the summary headers: how many *factories* are in each state, not how many
+ * times each state occurs. Shortages deliberately overlap with problems — a factory short of a
+ * part is counted in both, because "how much of my plan is broken" and "how much of it is short"
+ * are different questions.
+ *
+ * Takes the status lists rather than the factories: every caller already holds a memo of them,
+ * and re-deriving would run the warning-tier predicates a second time over the whole plan.
+ */
+export const tallyFactoryStatuses = (perFactory: Iterable<FactoryStatus[]>): FactoryStatusTally => {
+  const tally: FactoryStatusTally = { problems: 0, shortages: 0, outOfSync: 0 }
+
+  for (const statuses of perFactory) {
+    if (statuses.some(status => status.severity === 'problem')) tally.problems++
+    if (statuses.some(status => shortageTypes.includes(status.type))) tally.shortages++
+    if (statuses.some(status => status.type === 'outOfSync')) tally.outOfSync++
+  }
+
+  return tally
+}
+
+export interface FactoryStatusTallyChip {
+  key: keyof FactoryStatusTally
+  count: number
+  icon: string
+  class: string
+  // Follows the count where there is room for it ("3 with problems"); the sidebar shows the
+  // number alone and puts this in the tooltip.
+  label: string
+  tooltip: string
+}
+
+interface TallyChipDefinition {
+  key: keyof FactoryStatusTally
+  icon: string
+  class: string
+  label: string
+  noun: [string, string]
+}
+
+const tallyChipDefinitions: TallyChipDefinition[] = [
+  {
+    key: 'problems',
+    icon: 'fas fa-exclamation-triangle',
+    class: 'status-problem',
+    label: 'with problems',
+    noun: ['factory has a problem', 'factories have problems'],
+  },
+  {
+    key: 'shortages',
+    icon: 'fas fa-exclamation-circle',
+    class: 'status-problem',
+    label: 'short',
+    noun: ['factory is short of a part', 'factories are short of parts'],
+  },
+  {
+    key: 'outOfSync',
+    icon: 'fas fa-times-square',
+    class: 'status-warning',
+    label: 'out of sync',
+    noun: ['factory is out of sync with the game', 'factories are out of sync with the game'],
+  },
+]
+
+// Only the states that apply. A row of zeroes on a healthy plan is noise, and it is the presence
+// of a number that is supposed to mean something.
+export const factoryStatusTallyChips = (tally: FactoryStatusTally): FactoryStatusTallyChip[] =>
+  tallyChipDefinitions
+    .filter(definition => tally[definition.key] > 0)
+    .map(definition => ({
+      key: definition.key,
+      count: tally[definition.key],
+      icon: definition.icon,
+      class: definition.class,
+      label: definition.label,
+      tooltip: `${tally[definition.key]} ${definition.noun[tally[definition.key] === 1 ? 0 : 1]}`,
+    }))
+
 export const getSectionStatuses = (statuses: FactoryStatus[], section: FactoryStatusSection): FactoryStatus[] =>
   statuses.filter(status => status.section === section)
 
