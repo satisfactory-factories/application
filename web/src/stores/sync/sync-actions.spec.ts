@@ -1,6 +1,8 @@
 import { SyncActions } from '@/stores/sync/sync-actions'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { newFactory } from '@/utils/factory-management/factory'
+import { ClientTooOldError } from '@/errors/ClientTooOldError'
+import eventBus from '@/utils/eventBus'
 
 const apiUrl = 'http://mock.com'
 const mockData = { data: 'mock-data' }
@@ -10,9 +12,17 @@ const mockFetch = vi.fn()
 vi.mock('@/config/config', () => ({
   config: {
     apiUrl: 'http://mock.com',
+    appVersion: '0.6.0',
     dataVersion: '1.0.0',
   },
 }))
+
+// What every request to the API is expected to carry.
+const expectedHeaders = {
+  'Content-Type': 'application/json',
+  'X-Planner-Version': '0.6.0',
+  Authorization: 'Bearer mock-token',
+}
 
 // Mock stores
 const mockAuthStore = {
@@ -72,11 +82,35 @@ describe('SyncActions', () => {
       expect(result).toStrictEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/load`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer mock-token',
-        },
+        headers: expectedHeaders,
       })
+    })
+
+    // A read is never refused, so this is the only way an idle tab finds out it is stale.
+    it('should announce an outdated client from the response header on a read', async () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+      mockFetch.mockResolvedValue({
+        ok: true,
+        headers: { get: (header: string) => header === 'X-Planner-Client-Outdated' ? '0.7.0' : null },
+        json: vi.fn().mockResolvedValue(mockData),
+      })
+
+      await syncActions.getServerData()
+
+      expect(emit).toHaveBeenCalledWith('clientOutdated', { minimumVersion: '0.7.0' })
+    })
+
+    it('should not announce anything when the server does not send the header', async () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+      mockFetch.mockResolvedValue({
+        ok: true,
+        headers: { get: () => null },
+        json: vi.fn().mockResolvedValue(mockData),
+      })
+
+      await syncActions.getServerData()
+
+      expect(emit).not.toHaveBeenCalledWith('clientOutdated', expect.anything())
     })
 
     it('should handle request errors properly', async () => {
@@ -100,10 +134,7 @@ describe('SyncActions', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/load`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer mock-token',
-        },
+        headers: expectedHeaders,
       })
     })
   })
@@ -205,14 +236,53 @@ describe('SyncActions', () => {
       expect(result).toBe(true)
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer mock-token`,
-        },
+        headers: expectedHeaders,
         // The tab, not the bare factory array: the planner version, the power target and any
         // memberless groups are plan state and were being dropped on every restore.
         body: JSON.stringify(tab),
       })
+    })
+
+    it('should refuse to keep syncing when the API says this client is too old', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 426,
+        json: vi.fn().mockResolvedValue({
+          code: 'CLIENT_TOO_OLD',
+          minimumVersion: '0.7.0',
+          receivedVersion: '0.6.0',
+        }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toThrow(ClientTooOldError)
+    })
+
+    // A proxy that rewrites the status must not turn a required reload into an unexplained
+    // failure, so the body code is authoritative too.
+    it('should recognise the too-old code even without the 426 status', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ code: 'CLIENT_TOO_OLD', minimumVersion: '0.7.0' }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toThrow(ClientTooOldError)
+    })
+
+    it('should carry the minimum version on the error', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 426,
+        json: vi.fn().mockResolvedValue({ code: 'CLIENT_TOO_OLD', minimumVersion: '0.7.0' }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toMatchObject({ minimumVersion: '0.7.0' })
     })
 
     it('should handle server errors during sync', async () => {

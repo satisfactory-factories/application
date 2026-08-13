@@ -11,6 +11,9 @@ type Events = {
   sessionExpired: undefined;
   dataSynced: undefined;
   dataOutOfSync: undefined;
+  // The API has refused this build. Syncing stops and the user is asked to reload; local data
+  // is never touched.
+  clientOutdated: { minimumVersion: string };
   toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
   // Initial factory loading dialog
   loadingCompleted: undefined;

@@ -18,6 +18,9 @@
       <toast />
       <hover-tooltip />
       <plan-repair-dialog v-if="!hasError" />
+      <!-- Mounted unconditionally: a client the API has refused needs telling even on a page
+           that has errored. -->
+      <update-required-dialog />
     </v-main>
   </v-app>
 </template>
