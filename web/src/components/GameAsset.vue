@@ -47,9 +47,15 @@
     tooltip?: string
   }>()
 
+  // Two icons are drawn from an asset name rather than an item id, so the lookup below missed them
+  // and the hover read "UNKNOWN PART power-shard!". The Power Shard's item is CrystalShard; the
+  // Somersloop is not a part in the game data at all, so it is the one name written out here.
+  const itemIdAliases: Record<string, string> = { 'power-shard': 'CrystalShard' }
+  const nameOverrides: Record<string, string> = { somersloop: 'Somersloop' }
+
   const displayName = computed(() => {
     if (props.type === 'item' || props.type === 'item_id') {
-      return getPartDisplayName(props.subject)
+      return nameOverrides[props.subject] ?? getPartDisplayName(itemIdAliases[props.subject] ?? props.subject)
     } else if (props.type === 'building') {
       return getBuildingDisplayName(props.subject)
     }
