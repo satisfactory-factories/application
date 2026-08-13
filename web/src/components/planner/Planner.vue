@@ -736,6 +736,13 @@ $band-gap: 8px;
     &::after {
       top: $tree-elbow-top + $band-gap;
     }
+
+    // A group of one is both ends of the tree at once, so its trunk has to end at the elbow the
+    // rule above just moved. Left at the shared height it stopped short of it and the corner came
+    // away from the line.
+    &.last::before {
+      height: min(#{$tree-elbow-top + $band-gap + $tree-line}, 100%);
+    }
   }
 
   // The rule each card ends with divides cards inside a group; at the end of one it divides
