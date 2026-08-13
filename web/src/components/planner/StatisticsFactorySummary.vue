@@ -6,21 +6,23 @@
   <v-dialog v-model="expanded" eager fullscreen transition="dialog-bottom-transition">
     <v-card class="factory-card rounded-0">
       <v-row class="header flex-grow-0">
-        <v-col class="text-h4 flex-grow-1 d-flex align-center flex-wrap" cols="auto">
+        <v-col class="text-h4 d-flex align-center flex-wrap" cols="12" lg="9" md="8">
           <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
-          <!-- Gapped by the row rather than by each chip's own margin: `no-margin` is an
-               !important rule, so an ml-* utility on the chip does nothing. -->
-          <div class="d-flex align-center flex-wrap ga-2 ml-3">
-            <v-chip
-              v-if="factories.length > 0"
-              class="sf-chip sf-chip-info factory small no-margin"
-              variant="tonal"
-            >
-              <i class="fas fa-industry" />
-              <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
-            </v-chip>
-            <!-- In the header rather than the body, so a collapsed summary still says how the plan
-                 is doing. Only what applies is shown. -->
+          <!-- The count belongs with the title. The state of the plan is its own group, so a
+               narrow planner drops all three status chips to a second line together rather than
+               peeling them off one at a time. Gaps come from the containers: `no-margin` is an
+               !important rule, so an ml-* utility on a chip does nothing. -->
+          <v-chip
+            v-if="factories.length > 0"
+            class="sf-chip sf-chip-info factory small no-margin ml-3"
+            variant="tonal"
+          >
+            <i class="fas fa-industry" />
+            <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+          </v-chip>
+          <!-- In the header rather than the body, so a collapsed summary still says how the plan
+               is doing. Only what applies is shown. -->
+          <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2 ml-3">
             <v-chip
               v-for="chip in statusTally"
               :key="chip.key"
@@ -33,7 +35,7 @@
             </v-chip>
           </div>
         </v-col>
-        <v-col class="text-right" cols="auto">
+        <v-col class="text-right" cols="12" lg="3" md="4">
           <v-btn
             color="primary"
             prepend-icon="fas fa-compress-alt"
@@ -53,18 +55,18 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1 d-flex align-center flex-wrap" cols="auto">
+          <v-col class="text-h4 d-flex align-center flex-wrap" cols="12" lg="9" md="8">
             <i class="fas fa-list" /><span class="ml-3">Factories Summary</span>
-            <div class="d-flex align-center flex-wrap ga-2 ml-3">
-              <v-chip
-                v-if="factories.length > 0"
-                id="factory-summary-count"
-                class="sf-chip sf-chip-info factory small no-margin"
-                variant="tonal"
-              >
-                <i class="fas fa-industry" />
-                <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
-              </v-chip>
+            <v-chip
+              v-if="factories.length > 0"
+              id="factory-summary-count"
+              class="sf-chip sf-chip-info factory small no-margin ml-3"
+              variant="tonal"
+            >
+              <i class="fas fa-industry" />
+              <span class="ml-2">{{ factories.length }} {{ factories.length === 1 ? 'factory' : 'factories' }}</span>
+            </v-chip>
+            <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-2 ml-3">
               <v-chip
                 v-for="chip in statusTally"
                 :key="chip.key"
@@ -77,7 +79,7 @@
               </v-chip>
             </div>
           </v-col>
-          <v-col class="text-right" cols="auto">
+          <v-col class="text-right" cols="12" lg="3" md="4">
             <v-btn
               v-show="!hidden"
               class="mr-2"
@@ -115,42 +117,7 @@
                it's open (and back here when dismissed) — one table, two homes,
                so no duplicated markup or lost state. -->
           <Teleport :disabled="!tableInDialog" to="#factory-summary-fullscreen-target">
-            <!-- Rendering the real table for a large plan blocks the main thread long
-                 enough to feel like a hang, so a reveal paints this stand-in first. -->
-            <!-- Same table markup as below minus the chips, so the stand-in has the
-                 real columns, borders and row heights rather than a generic bone. -->
             <v-table
-              v-if="!tableReady"
-              id="factory-summary-skeleton"
-              class="rounded border-md sub-card summary-table"
-            >
-              <thead>
-                <tr>
-                  <th
-                    v-for="col in 5"
-                    :key="`ghost-head-${col}`"
-                    class="text-left text-h6"
-                    :class="{ 'border-e-md': col < 5 }"
-                    scope="row"
-                  >
-                    <div class="ghost ghost-heading" />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in 8" :key="`ghost-row-${row}`">
-                  <td
-                    v-for="col in 5"
-                    :key="`ghost-cell-${row}-${col}`"
-                    :class="{ 'border-e-md': col < 5 }"
-                  >
-                    <div class="ghost ghost-chip" />
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-            <v-table
-              v-if="tableReady"
               class="rounded border-md sub-card summary-table"
               fixed-header
               :height="expanded ? 'calc(100vh - 140px)' : tableHeight"
@@ -160,11 +127,11 @@
                   <th class="text-left text-h6 border-e-md factory-column" scope="row">
                     <i class="fas fa-industry" /><span class="ml-2">Factory</span>
                   </th>
-                  <th class="text-left text-h6 border-e-md" scope="row">
-                    <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
+                  <th class="text-left text-h6 border-e-md satisfaction-column" scope="row">
+                    <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
                   </th>
                   <th class="text-left text-h6 border-e-md" scope="row">
-                    <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
+                    <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
                   </th>
                   <th class="text-left text-h6 border-e-md" scope="row">
                     <i class="fas fa-arrow-to-right" /><span class="ml-2">Imports</span>
@@ -174,7 +141,49 @@
                   </th>
                 </tr>
               </thead>
-              <tbody ref="contentRef">
+              <!-- Rendering the real rows for a large plan blocks the main thread long
+                   enough to feel like a hang, so a reveal paints stand-in rows first.
+                   The headings are cheap, so they are the real ones throughout. -->
+              <tbody v-if="!tableReady" id="factory-summary-skeleton">
+                <tr v-for="(row, index) in ghostRows" :key="`ghost-row-${index}`">
+                  <td class="border-e-md factory-column">
+                    <div class="ghost ghost-factory" />
+                  </td>
+                  <td class="border-e-md satisfaction-column">
+                    <div class="cell-chips justify-center">
+                      <div class="ghost ghost-satisfaction" />
+                    </div>
+                  </td>
+                  <td class="border-e-md">
+                    <div class="cell-chips">
+                      <div
+                        v-for="chip in row.products"
+                        :key="`ghost-product-${index}-${chip}`"
+                        class="ghost ghost-product"
+                      />
+                    </div>
+                  </td>
+                  <td class="border-e-md">
+                    <div class="cell-chips">
+                      <div
+                        v-for="chip in row.imports"
+                        :key="`ghost-import-${index}-${chip}`"
+                        class="ghost ghost-flow"
+                      />
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cell-chips">
+                      <div
+                        v-for="chip in row.exports"
+                        :key="`ghost-export-${index}-${chip}`"
+                        class="ghost ghost-flow"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody v-else ref="contentRef">
                 <tr
                   v-for="factory in factories"
                   :key="factory.id"
@@ -189,6 +198,30 @@
                         <b class="ml-2">{{ factory.name }}</b>
                       </v-chip>
                     </tooltip>
+                  </td>
+                  <td class="border-e-md satisfaction-column">
+                    <div class="cell-chips justify-center">
+                      <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
+                        <i class="fas fa-check" />
+                        <b class="ml-2">Satisfied</b>
+                      </v-chip>
+                      <tooltip
+                        v-for="[partId, part] in unsatisfiedParts(factory)"
+                        :key="`${factory.id}-shortage-${partId}`"
+                        :text="`<b>${getPartDisplayName(partId)}</b>: ${formatNumber(Math.abs(part.amountRemaining))}/min shortage`"
+                      >
+                        <v-chip class="sf-chip summary-chip red">
+                          <game-asset
+                            clickable
+                            height="32"
+                            :subject="partId"
+                            type="item"
+                            width="32"
+                          />
+                          <b class="ml-2">-{{ formatNumber(Math.abs(part.amountRemaining)) }}/min</b>
+                        </v-chip>
+                      </tooltip>
+                    </div>
                   </td>
                   <td class="border-e-md">
                     <div class="cell-chips">
@@ -209,29 +242,6 @@
                             width="32"
                           />
                           <b class="ml-2">{{ formatNumber(part.amount) }}/min</b>
-                        </v-chip>
-                      </tooltip>
-                    </div></td>
-                  <td class="border-e-md">
-                    <div class="cell-chips justify-center">
-                      <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
-                        <i class="fas fa-check" />
-                        <b class="ml-2">Satisfied</b>
-                      </v-chip>
-                      <tooltip
-                        v-for="[partId, part] in unsatisfiedParts(factory)"
-                        :key="`${factory.id}-shortage-${partId}`"
-                        :text="`<b>${getPartDisplayName(partId)}</b>: ${formatNumber(Math.abs(part.amountRemaining))}/min shortage`"
-                      >
-                        <v-chip class="sf-chip summary-chip red">
-                          <game-asset
-                            clickable
-                            height="32"
-                            :subject="partId"
-                            type="item"
-                            width="32"
-                          />
-                          <b class="ml-2">-{{ formatNumber(Math.abs(part.amountRemaining)) }}/min</b>
                         </v-chip>
                       </tooltip>
                     </div>
@@ -370,6 +380,20 @@
     localStorage.setItem('summaryHidden', newValue.toString())
   })
 
+  // Chips per cell for each stand-in row, taken off a real plan so the ghost has the
+  // same ragged shape as the table it precedes. Factory and satisfaction are always
+  // one chip; the rest vary.
+  const ghostRows = [
+    { products: 3, imports: 0, exports: 1 },
+    { products: 1, imports: 2, exports: 1 },
+    { products: 1, imports: 2, exports: 0 },
+    { products: 2, imports: 0, exports: 2 },
+    { products: 1, imports: 0, exports: 1 },
+    { products: 1, imports: 1, exports: 1 },
+    { products: 2, imports: 1, exports: 0 },
+    { products: 1, imports: 1, exports: 1 },
+  ]
+
   // Deferred reveal: mounting the full table synchronously with the unhide would freeze
   // the page on large plans before anything visibly changes. Instead the reveal renders
   // the skeleton, the browser gets a frame to paint it, and only then does the heavy
@@ -497,12 +521,13 @@
     max-width: 450px;
   }
 
-  // Placeholder blobs for the ghost table: one per cell, left-aligned at 75% of
-  // the column, chip-shaped in the body so the rows stand as tall as real ones.
+  // Stand-in chips: same footprint and margins as the real ones they replace, so
+  // the ghost rows sit at roughly the height the loaded rows will.
   .ghost {
     position: relative;
     overflow: hidden;
-    width: 75%;
+    border-radius: 16px;
+    margin: 4px 8px 4px 0;
     background: rgba(var(--v-theme-on-surface), var(--v-border-opacity));
 
     &::after {
@@ -520,14 +545,25 @@
     }
   }
 
-  .ghost-heading {
-    height: 24px;
-    border-radius: 12px;
+  .ghost-factory {
+    width: 160px;
+    height: 40px;
   }
 
-  .ghost-chip {
-    height: 32px;
-    border-radius: 16px;
+  .ghost-satisfaction {
+    width: 110px;
+    height: 38px;
+    margin-inline: 0;
+  }
+
+  .ghost-product {
+    width: 120px;
+    height: 48px;
+  }
+
+  .ghost-flow {
+    width: 150px;
+    height: 70px;
   }
 
   @keyframes ghost-sweep {
@@ -543,6 +579,12 @@
     :deep(.factory-column) {
       width: 1%;
       white-space: nowrap;
+    }
+
+    // Same trick for satisfaction: its chips are never much wider than the
+    // heading, so the column has no business taking a fifth of the table.
+    :deep(.satisfaction-column) {
+      width: 1%;
     }
 
     :deep(thead th) {
