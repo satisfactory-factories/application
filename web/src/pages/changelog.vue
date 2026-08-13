@@ -2,7 +2,7 @@
   <introduction source="changelog" />
   <v-container max-width="1200">
     <v-row>
-      <v-col cols="12">
+      <v-col ref="content" cols="12">
         <h1>Change Log</h1>
         <p>
           This is a list of changes made to the site. It is not exhaustive, but it should give you a good idea of what has been added or changed.
@@ -13,9 +13,26 @@
           <li>👍: Improvement</li>
           <li>🔧: Fixes</li>
         </ul>
+        <nav v-if="releases.length" class="toc">
+          <p class="mb-1"><b>Jump to an update:</b></p>
+          <ul class="toc-list">
+            <li v-for="release in releases" :key="release.id">
+              <a :href="`#${release.id}`" @click.prevent="jumpTo(release.id)">{{ release.title }}</a>
+              <span v-if="release.date" class="text-medium-emphasis ml-2">{{ release.date }}</span>
+            </li>
+          </ul>
+        </nav>
         <v-divider />
-        <h1>Beta v0.6 - The "Groundwork" Update</h1>
+        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">14/Aug/2026</span></h1>
         <p>Everything your plan needs now comes from somewhere. Raw resources are no longer an assumption — ore, water, oil and gas are dug up by buildings you place, planned and exported like anything else — and the plan they feed got the folders, icons and status chips to keep track of it all.</p>
+        <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.6')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
 
         <h2>🆕 <i class="fas fa-hard-hat ml-1" /><span class="ml-2">Mines</span></h2>
         <p>Pick a raw resource as a product and the planner offers its extractor as the recipe. Because one ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one, the <b>miner mark and node purity are set per building group</b> — and both stack with the group's clock exactly as they do in game. Build a dedicated mine and export the ore anywhere in your plan, or mine on site and smelt it in the same factory.</p>
@@ -171,7 +188,7 @@
 
         <v-divider class="subsection" />
 
-        <h2>👍 <i class="fas fa-compass ml-1" /><span class="ml-2">Finding your way around</span></h2>
+        <h2>👍 <i class="fas fa-compass ml-1" /><span class="ml-2">Navigation improvements</span></h2>
         <ul class="ml-6">
           <li><b>The sidebar shows which factory you're looking at</b>, with an orange bar on that entry that follows you as you scroll or jump — no more losing your place in a 30-factory plan. The Statistics and Factories Summary links get the same treatment.</li>
           <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, via a small eye button on its edge. Clicking the chip itself still selects that destination in the Export Calculator.</li>
@@ -223,8 +240,16 @@
         </ul>
 
         <v-divider />
-        <h1>Beta v0.5 - The "Overclocked" Update</h1>
+        <h1>Beta v0.5 - The "Overclocked" Update <span class="release-date">21/Jul/2026</span></h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
+        <nav v-if="sectionsOf('Beta v0.5').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.5')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
         <p>Check out what's new in the video below!</p>
         <youtube-embed
           class="pb-4"
@@ -384,7 +409,7 @@
         </ul>
 
         <v-divider />
-        <h1>Alpha v0.4</h1>
+        <h1>Alpha v0.4 <span class="release-date">25/Jan/2025</span></h1>
 
         <p>Check out what's new in the video below!</p>
         <youtube-embed
@@ -507,7 +532,65 @@
   </v-container>
 </template>
 <script setup lang="ts">
+  interface Entry { id: string; title: string }
+  interface Release extends Entry { date: string; sections: Entry[] }
 
+  // The contents are read back off the rendered headings rather than kept as a second list beside
+  // them: a hand-written one silently goes stale the next time a section is added here.
+  const content = ref<{ $el: HTMLElement } | null>(null)
+  const releases = ref<Release[]>([])
+
+  const slug = (title: string) =>
+    title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+  const sectionsOf = (prefix: string) =>
+    releases.value.find(release => release.title.startsWith(prefix))?.sections ?? []
+
+  const jumpTo = (id: string) => {
+    const target = document.getElementById(id)
+    if (!target) return
+    // Deliberately not smooth: the page is 16,000px of unsized screenshots, so images finishing
+    // during the animation move the target and the scroll lands thousands of pixels short.
+    target.scrollIntoView({ block: 'start' })
+    history.replaceState(null, '', `#${id}`)
+
+    // Screenshots above the target finish loading and push it down after the jump. Land it a
+    // second time, unless the reader has scrolled themselves in the meantime.
+    const landed = document.scrollingElement?.scrollTop ?? 0
+    setTimeout(() => {
+      if ((document.scrollingElement?.scrollTop ?? 0) !== landed) return
+      target.scrollIntoView({ block: 'start' })
+    }, 400)
+  }
+
+  onMounted(() => {
+    const root = content.value?.$el
+    if (!root) return
+
+    const found: Release[] = []
+    for (const heading of root.querySelectorAll('h1, h2')) {
+      // The date is rendered inside the heading so it has one home; it is not part of the title.
+      const date = heading.querySelector('.release-date')?.textContent?.trim() ?? ''
+      const title = (heading.textContent ?? '').replace(date, '').trim()
+      if (!title || title === 'Change Log') continue
+
+      if (heading.tagName === 'H1') {
+        if (!heading.id) heading.id = slug(title)
+        found.push({ id: heading.id, title, date, sections: [] })
+      } else {
+        // Scoped to the release: "Fixes & minor adjustments" is a heading in most of them, and a
+        // shared id sends every one of those links to the first.
+        const release = found.at(-1)
+        if (!heading.id) heading.id = `${release?.id ?? 'section'}-${slug(title)}`
+        release?.sections.push({ id: heading.id, title })
+      }
+    }
+    releases.value = found
+
+    // A link shared into the page can only resolve once the ids above exist.
+    const hash = window.location.hash.slice(1)
+    if (hash) nextTick(() => jumpTo(hash))
+  })
 </script>
 
 <style lang="scss" scoped>
@@ -533,6 +616,41 @@
 h1,h2,h3,h4,h5,h6 {
   margin-top: 1rem;
   margin-bottom: 1rem;
+  // Clears the app bar when a contents link lands on a heading.
+  scroll-margin-top: 90px;
+}
+
+.release-date {
+  color: #bdbdbd;
+  font-size: 1rem;
+  font-weight: 400;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.toc {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+
+  .toc-list {
+    columns: 2;
+    margin-bottom: 0;
+
+    li {
+      break-inside: avoid;
+      margin-bottom: 0.15rem;
+    }
+  }
+
+  a {
+    color: rgb(var(--v-theme-primary));
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 div,p,ul,video {

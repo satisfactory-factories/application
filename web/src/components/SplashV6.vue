@@ -249,19 +249,38 @@
             </li>
             <li>Drag factories between groups, reorder them inside one, or drag the groups themselves.</li>
             <li><b>In the planner</b>, a group's factories sit under a collapsible band, with a line down the left linking them to it.</li>
-            <li>
-              <b>Colour</b> is whatever you wish through the picker. We recommend avoiding red and
-              amber — a status still wins the border, and a group wearing those reads as a broken factory.
-              <v-img
-                v-if="hasGroupColourShot"
-                alt="The group colour picker, open"
-                class="my-2 rounded"
-                max-width="280"
-                :src="shots.groupColour"
-              />
-            </li>
             <li><b>Deleting a group never deletes a factory</b> — one still holding factories asks where they should go first.</li>
           </ul>
+
+          <!-- Colour reads better as a picture than a sentence, so the pictures get their own
+               column rather than interrupting the text mid-bullet. -->
+          <v-row class="mb-4" no-gutters>
+            <v-col class="pr-md-6" cols="12" md="7">
+              <h3 class="section-heading mb-2">Colour</h3>
+              <ul class="ml-6">
+                <li>Any colour you like, from the shortlist or the custom picker.</li>
+                <li><b>Click the group's dot in the sidebar</b> to change it later.</li>
+                <li>
+                  We recommend avoiding red and amber. A status still wins the factory's border, and
+                  a group wearing those reads as a plan full of broken factories.
+                </li>
+              </ul>
+            </v-col>
+            <v-col class="d-flex flex-column ga-3" cols="12" md="5">
+              <v-img
+                v-if="hasGroupColourSidebarShot"
+                alt="The colour palette, open from a group's dot in the sidebar"
+                class="rounded"
+                :src="shots.groupColourSidebar"
+              />
+              <v-img
+                v-if="hasSidebarStatusShot"
+                alt="A group in the sidebar with one of its factories flagged as short"
+                class="rounded"
+                :src="shots.sidebarStatus"
+              />
+            </v-col>
+          </v-row>
 
           <v-divider class="my-4" />
 
@@ -275,6 +294,13 @@
             :src="shots.groupAssign"
           />
           <v-img
+            v-if="hasGroupColourShot"
+            alt="The new group dialog, naming a group and picking its colour"
+            class="mb-4 mx-auto rounded"
+            max-width="320"
+            :src="shots.groupColour"
+          />
+          <v-img
             v-if="hasGroupButtonsShot"
             alt="The Group and Multi-group edit buttons at the foot of the sidebar"
             class="mb-3 mx-auto rounded"
@@ -285,6 +311,13 @@
             <b>Multi-group edit</b> assigns a whole selection at once, with <i>Select these</i> for
             the case it is nearly always going to be. Both buttons are at the bottom of the sidebar.
           </p>
+          <v-img
+            v-if="hasMultiGroupShot"
+            alt="The multi-group edit dialog, with a whole section selected and ready to move"
+            class="mb-2 mx-auto rounded"
+            max-width="720"
+            :src="shots.multiGroup"
+          />
         </div>
 
         <!-- Slide 5: Factory icons -->
@@ -337,13 +370,17 @@
             sidebar. Red for a problem, amber for "probably not what you meant".
           </p>
           <ul class="ml-6 mb-4">
-            <li>Six to start with: part shortage, unmet export request and building groups that don't add up in red; out of sync with the game, redundant import and duplicate import in amber.</li>
-            <li>Clicking one scrolls to the section it points at.</li>
-            <li><b>Bug fix:</b> a power-only factory never showed red when it had problems. It does now.</li>
+            <li><b class="status-red">Red</b> — part shortage, unmet export request, building groups that don't add up.</li>
+            <li><b class="status-amber">Amber</b> — out of sync with the game, redundant import, duplicate import.</li>
           </ul>
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Statistics enhancements</h3>
+          <h3 class="section-heading mb-3">Statistics enhancements</h3>
+
+          <!-- Four unrelated tables. Each takes a heading, its own text, then its picture, with a
+               rule between them — stacked without the rules they read as one long section. -->
+          <h4 class="sub-heading mb-2">Raw Resources</h4>
+          <p class="mb-2">Counts what your plan digs up, per resource and per factory.</p>
           <v-img
             v-if="hasStatsShots"
             alt="The Raw Resources table, listing each resource against the factories extracting it"
@@ -351,8 +388,16 @@
             max-width="1200"
             :src="shots.statsRaw"
           />
-          <h4 class="text-subtitle-1 font-weight-bold mb-2">Raw Resources</h4>
-          <p class="mb-2">Counts what your plan digs up, per resource and per factory.</p>
+
+          <v-divider class="my-4" />
+
+          <h4 class="sub-heading mb-2">Item Production</h4>
+          <p class="mb-2">
+            Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
+            and <b>Produced Items</b> were two lists of the same items. Search it, or filter by surplus,
+            deficit or balanced. Each row names the factories producing the item in green and any factory
+            short of it in red; click a chip to jump there.
+          </p>
           <v-img
             v-if="hasStatsShots"
             alt="The Item Production table, with each item broken down by factory"
@@ -360,14 +405,10 @@
             max-width="1200"
             :src="shots.statsSurplus"
           />
-          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Item Production</h4>
-          <p class="mb-2">
-            Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
-            and <b>Produced Items</b> were two lists of the same items. Search it, or filter by surplus,
-            deficit or balanced. Each row names the factories producing the item in green and any factory
-            short of it in red; click a chip to jump there.
-          </p>
-          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Building Summary</h4>
+
+          <v-divider class="my-4" />
+
+          <h4 class="sub-heading mb-2">Building Summary</h4>
           <p class="mb-2">Every factory holding each building type, and how many stand in it.</p>
           <v-img
             v-if="hasStatsShots"
@@ -377,15 +418,17 @@
             :src="shots.statsBuildings"
           />
 
-          <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Power Consumption and Generation</h4>
+          <v-divider class="my-4" />
+
+          <h4 class="sub-heading mb-2">Power Consumption and Generation</h4>
+          <p class="mb-2">A <b>By factory</b> breakdown, heaviest net drain first. Collapsed by default.</p>
           <v-img
             v-if="hasStatsShots"
             alt="The By factory power table, each factory's generation, consumption and balance"
-            class="mb-2 mx-auto rounded"
+            class="mb-4 mx-auto rounded"
             max-width="1200"
             :src="shots.statsPower"
           />
-          <p class="mb-4">A <b>By factory</b> breakdown, heaviest net drain first. Collapsed by default.</p>
 
           <v-divider class="my-4" />
 
@@ -413,9 +456,23 @@
             is redundant. Fluid exports get the same in <b>pipes</b>, and <b>Fluid Trucks</b>
             (3,200 m³) are now supported rather than being told to package the fluid.
           </p>
+          <v-img
+            v-if="hasCalculatorShot"
+            alt="The export calculator, a 320/min export split across a Mk.2 and a Mk.3 belt group"
+            class="mb-4 mx-auto rounded"
+            max-width="1200"
+            :src="shots.calculator"
+          />
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Finding your way around</h3>
+          <h3 class="section-heading mb-2">Navigation improvements</h3>
+          <v-img
+            v-if="hasSidebarActiveShot"
+            alt="The sidebar, marking the factory currently on screen"
+            class="mb-3 mx-auto rounded"
+            max-width="360"
+            :src="shots.sidebarActive"
+          />
           <ul class="ml-6 mb-2">
             <li><b>The sidebar shows which factory you're looking at</b>, following you as you scroll — no more losing your place in a 30-factory plan.</li>
             <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, and an <b>Exported</b> chip now sits beside Product and Imported on anything another factory has asked for.</li>
@@ -456,11 +513,8 @@
             <li>Fuel Generators burning Rocket Fuel asked for 2400.002/min instead of 2400, which forced you to override the factory producing it. Fixed, along with Compacted Coal, Super-State Computers and both Uranium Fuel Rod recipes.</li>
             <li>Plans already carrying those numbers repair themselves on load and tell you what changed.</li>
             <li>Somersloop entries are clamped to the building's slots as you type, so the field can't show a number the plan isn't built from.</li>
+            <li>A <b>power-only factory</b> never showed red when it had problems. It does now.</li>
           </ul>
-          <p class="text-center mb-2">
-            Full details on the
-            <v-btn class="mx-1" color="primary" href="/changelog">Change Log</v-btn>
-          </p>
           <p class="text-center text-medium-emphasis">
             Missed the last one?
             <v-btn class="mx-1" variant="tonal" @click="showV5Splash">
@@ -495,6 +549,17 @@
         <v-spacer />
         <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
         <v-spacer />
+        <!-- The deck is the summary; the changelog is the detail. Reachable from every slide
+             rather than only from the last one, which is the slide fewest people reach. -->
+        <v-btn
+          class="mr-2"
+          color="green"
+          href="/changelog"
+          prepend-icon="fas fa-list"
+          variant="outlined"
+        >
+          Full details on the Change Log
+        </v-btn>
         <v-btn
           color="primary"
           :disabled="awaitingAnswer"
@@ -542,6 +607,11 @@
     groupButtons: '/assets/changelog/beta6/group-buttons.png',
     groupAssign: '/assets/changelog/beta6/group-assign-menu.png',
     groupColour: '/assets/changelog/beta6/group-colour-menu.png',
+    groupColourSidebar: '/assets/changelog/beta6/group-colour-sidebar.png',
+    sidebarStatus: '/assets/changelog/beta6/group-sidebar-status.png',
+    multiGroup: '/assets/changelog/beta6/multi-group-edit.png',
+    calculator: '/assets/changelog/beta6/export-calculator.png',
+    sidebarActive: '/assets/changelog/beta6/sidebar-active-factory.png',
     repair: '/assets/changelog/beta6/plan-repair.png',
     iconsExports: '/assets/changelog/beta6/factory-icons-exports.png',
   }
@@ -559,6 +629,11 @@
   const hasGroupButtonsShot = true
   const hasGroupMenuShot = true
   const hasGroupColourShot = true
+  const hasGroupColourSidebarShot = true
+  const hasSidebarStatusShot = true
+  const hasMultiGroupShot = true
+  const hasCalculatorShot = true
+  const hasSidebarActiveShot = true
   const hasRepairShot = true
   const hasIconsExportsShot = true
 
@@ -829,6 +904,22 @@
   font-size: 1.35rem;
   font-weight: 700;
   line-height: 1.3;
+}
+
+// One level under .section-heading: a subject inside a section, not a section of its own.
+.sub-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+// The tiers the status chips wear, so the bullet naming a tier is the colour of it.
+.status-red {
+  color: var(--sf-problem);
+}
+
+.status-amber {
+  color: var(--sf-status-warning);
 }
 
 .header-accent {
