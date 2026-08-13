@@ -205,7 +205,18 @@ const validateRows = (rows: WizardRow[], factories: Factory[]) => {
       throw new WizardValidationError(`The shortfall for ${row.partName} in "${row.factoryName}" is not a usable amount.`)
     }
 
-    if (Math.abs(Math.abs(part.amountRemaining) - row.shortfall) > 0.001) {
+    // Re-asserted rather than taken from the row: rows are only built for an unsatisfied raw
+    // part, and this is what checks it still is one.
+    if (!part.isRaw || part.satisfied) {
+      throw new WizardValidationError(
+        `"${row.factoryName}" is no longer short of ${row.partName}. Close and re-open the wizard.`
+      )
+    }
+
+    // Signed, because amountRemaining is supply minus demand: -50 is short by 50, +50 is 50
+    // spare. Comparing magnitudes let a surplus of exactly the captured shortfall read as the
+    // shortage it used to be, and the run would then mine for a part the factory had going spare.
+    if (Math.abs(-part.amountRemaining - row.shortfall) > 0.001) {
       throw new WizardValidationError(
         `"${row.factoryName}" has changed since this was opened — ${row.partName} is no longer short by ${row.shortfall}/min. Close and re-open the wizard.`
       )

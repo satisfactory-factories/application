@@ -356,6 +356,31 @@ describe('raw wizard', async () => {
         expect(() => applyRawWizard(factories, rows, gameData)).toThrow(/no longer short by/)
       })
 
+      // amountRemaining is supply minus demand, so a shortage and a surplus of the same size are
+      // the same number once the sign is dropped — and the check used to drop it. A row that
+      // passed this way would mine for a part the factory had going spare.
+      it('refuses a row whose shortage has become a surplus of the same size', () => {
+        const mine = newFactory('Iron Mine', 2, 3)
+        addProductToFactory(mine, { id: 'OreIron', amount: 200, recipe: 'Extract_OreIron' })
+        addInputToFactory(factories[0], { factoryId: 3, outputPart: 'OreIron', amount: 200 })
+        const plan = build([...factories, mine])
+
+        // Smelter A is now 100 over, where the row still says it is 100 short.
+        expect(plan[0].parts.OreIron.amountRemaining).toBe(100)
+        expect(rows[0].shortfall).toBe(100)
+
+        expect(() => applyRawWizard(plan, rows, gameData)).toThrow(/no longer short of/)
+      })
+
+      it('refuses a row whose shortage has been met exactly', () => {
+        const mine = newFactory('Iron Mine', 2, 3)
+        addProductToFactory(mine, { id: 'OreIron', amount: 100, recipe: 'Extract_OreIron' })
+        addInputToFactory(factories[0], { factoryId: 3, outputPart: 'OreIron', amount: 100 })
+        const plan = build([...factories, mine])
+
+        expect(() => applyRawWizard(plan, rows, gameData)).toThrow(/no longer short of/)
+      })
+
       it('refuses a shortfall that is not a usable amount', () => {
         rows[0].shortfall = Number.NaN
 
