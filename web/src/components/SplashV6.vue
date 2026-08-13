@@ -95,7 +95,7 @@
               The planner used to quietly assume you were supplying raw resources yourself. It
               doesn't any more — anything a factory doesn't mine or import is now a real shortage,
               so <b>plans built before this will show factories in red.</b> Nothing in your plan
-              has been changed or lost; it is only being honest about what was already missing.
+              has been changed or lost.
             </p>
             <p class="mb-0">
               The <b>Raw Resources Wizard</b> can fix a plan in one pass — see it two slides on,
@@ -116,14 +116,7 @@
           <ul class="contents-list ml-6">
             <li v-for="(slide, index) in slides.slice(1)" :key="slide.nav">
               <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSlide(index + 1)">
-                <game-asset
-                  v-if="slide.asset"
-                  height="20"
-                  :subject="slide.asset ?? ''"
-                  type="item_id"
-                  width="20"
-                />
-                <i v-else :class="slide.icon" />
+                <i :class="slide.icon" />
                 <span>{{ slide.title }}</span>
               </a>
             </li>
@@ -482,15 +475,7 @@
             <i class="fas fa-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
-            <game-asset
-              v-if="slides[currentSlide + 1].asset"
-              class="mr-2"
-              height="20"
-              :subject="slides[currentSlide + 1].asset ?? ''"
-              :type="slides[currentSlide + 1].assetType ?? 'item_id'"
-              width="20"
-            />
-            <i v-else class="mr-2" :class="slides[currentSlide + 1].icon" />
+            <i class="mr-2" :class="slides[currentSlide + 1].icon" />
             <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="fas fa-arrow-right" />
           </template>
         </v-btn>
@@ -640,11 +625,10 @@
 
   const router = useRouter()
 
-  // `asset` is a game image, `icon` a Font Awesome class — mining wants the Mk.3 miner, the rest
-  // are glyphs. Both appear in the contents list on slide 1 and on the Next button.
+  // The icon appears in the contents list on slide 1 and on the Next button.
   const slides = [
     { title: 'The "Groundwork" Update is here!', nav: 'Intro', icon: 'fas fa-flag' },
-    { title: 'Mining', nav: 'Mining', asset: 'minermk3', assetType: 'building' as const },
+    { title: 'Mining', nav: 'Mining', icon: 'fas fa-hard-hat' },
     { title: 'The Raw Resources Wizard', nav: 'Raw Resources Wizard', icon: 'fas fa-shovel' },
     { title: 'Factory Groups', nav: 'Factory Groups', icon: 'fas fa-folder-tree' },
     { title: 'Factory Icons', nav: 'Factory Icons', icon: 'fas fa-icons' },
