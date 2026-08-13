@@ -117,9 +117,12 @@ export interface PartTotal {
   amountRemaining: number
   satisfied: boolean
   isRaw: boolean
-  // Each factory's own surplus (+) or shortfall (-) of this part, in plan order. A plan-wide
-  // figure of zero routinely hides a factory 200 over and another 200 short, which is two places
-  // to go rather than nothing to do.
+  // Where this part comes from, and who is short of it, in plan order.
+  //
+  // A factory appears if it PRODUCES the part — carrying what it makes — or if it is short of it,
+  // carrying the shortfall. Keyed off production rather than off the balance alone, because a
+  // factory making exactly what it ships has a balance of zero: listing only imbalances left
+  // every item that adds up with nothing at all against it, which is most of a finished plan.
   sources: FactoryContribution[]
 }
 
@@ -146,14 +149,20 @@ export const calculateTotalParts = (factories: Factory[]): PartTotal[] => {
       parts[partId].amountRemaining += partData.amountRemaining
       parts[partId].satisfied &&= partData.satisfied // Combine satisfaction status
 
-      // A factory that balances this part exactly has nothing to say about it, and listing every
-      // factory that merely touches it would bury the two that do not add up.
-      if (Math.abs(partData.amountRemaining) > CONTRIBUTION_EPSILON) {
+      // What this factory has to say about the part: what it makes of it, or what it is short of.
+      // A factory that only imports it and consumes the lot says neither, and listing those would
+      // bury the ones that do.
+      const produced = partData.amountSuppliedViaProduction
+      const amount = produced > CONTRIBUTION_EPSILON
+        ? produced
+        : (partData.amountRemaining < -CONTRIBUTION_EPSILON ? partData.amountRemaining : 0)
+
+      if (amount !== 0) {
         parts[partId].sources.push({
           id: factory.id,
           name: factory.name,
           icon: factory.icon,
-          amount: partData.amountRemaining,
+          amount,
         })
       }
     })

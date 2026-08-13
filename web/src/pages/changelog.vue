@@ -135,7 +135,7 @@
           src="/assets/changelog/beta6/statistics-items.png"
         />
         <h3 class="mt-4">Where the numbers come from</h3>
-        <p><b>Item Production, Raw Resources and Building Summary are tables</b>, and each breaks its figure down by factory. The chips carry that factory's own share and click through to it. On the Demo plan, Sulfuric Acid reads +30/min overall — that is Uranium Power 40 over and Plutonium Processing 10 short.</p>
+        <p><b>Item Production, Raw Resources and Building Summary are tables</b>, and each says which factories are behind the figure. Item Production lists every factory producing an item with what it makes, in green, alongside any factory short of it, in red. The chips click through to the factory.</p>
         <v-img
           alt="The Building Summary table, listing every factory that holds each building"
           max-width="1200"

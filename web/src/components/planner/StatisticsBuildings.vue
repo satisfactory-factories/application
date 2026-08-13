@@ -7,7 +7,7 @@
     <v-chip
       v-if="totalBuildingCount > 0"
       id="stats-buildings-summary"
-      class="sf-chip building ml-3"
+      class="sf-chip building x-small ml-3"
       variant="tonal"
     >
       {{ formatNumber(totalBuildingCount) }} {{ totalBuildingCount === 1 ? 'building' : 'buildings' }}

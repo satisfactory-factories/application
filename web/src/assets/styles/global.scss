@@ -514,8 +514,10 @@
   padding-block: revert-layer;
 }
 
+// 20px against ~13px chip text made the bolt the loudest thing in every power readout, and
+// there is one in most of them. Sized to sit with its own label rather than over it.
 .fa-bolt {
-  font-size: 20px;
+  font-size: 15px;
   margin-right: 2px
 }
 

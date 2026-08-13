@@ -39,9 +39,9 @@ describe('calculateTotalParts sources', () => {
       .toEqual([['Mine', 340], ['Smelter', -100]])
   })
 
-  // A factory that balances a part exactly has nothing to say about it, and listing every
-  // factory that merely touches it would bury the ones that do not add up.
-  it('should leave out a factory that balances the part', () => {
+  // The reported bug: an item that balances exactly showed nothing at all against it, so a
+  // finished plan listed most of its items with no idea where any of them were made.
+  it('should still name the producer when the part balances exactly', () => {
     const mine = newFactory('Mine', 0, 1)
     addProductToFactory(mine, { id: 'OreIron', amount: 100, recipe: 'Extract_OreIron' })
     const smelter = newFactory('Smelter', 1, 2)
@@ -50,7 +50,35 @@ describe('calculateTotalParts sources', () => {
 
     const ore = find(build([mine, smelter]), 'OreIron')
 
-    expect(ore.sources.map(source => source.name)).toEqual([])
+    expect(ore.amountRemaining).toBe(0)
+    expect(ore.sources.map(source => [source.name, source.amount])).toEqual([['Mine', 100]])
+  })
+
+  // A factory that only imports a part and consumes the lot has nothing to say about it.
+  it('should leave out a factory that neither makes it nor is short of it', () => {
+    const mine = newFactory('Mine', 0, 1)
+    addProductToFactory(mine, { id: 'OreIron', amount: 100, recipe: 'Extract_OreIron' })
+    const smelter = newFactory('Smelter', 1, 2)
+    addProductToFactory(smelter, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+    addInputToFactory(smelter, { factoryId: 1, outputPart: 'OreIron', amount: 100 })
+
+    const ore = find(build([mine, smelter]), 'OreIron')
+
+    expect(ore.sources.map(source => source.name)).not.toContain('Smelter')
+  })
+
+  // Production wins over the balance: a factory making a part and shipping it all out is where
+  // that part comes from, whatever its own balance ends up being.
+  it('should report what a producer makes rather than its balance', () => {
+    const mine = newFactory('Mine', 0, 1)
+    addProductToFactory(mine, { id: 'OreIron', amount: 340, recipe: 'Extract_OreIron' })
+    const smelter = newFactory('Smelter', 1, 2)
+    addProductToFactory(smelter, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+    addInputToFactory(smelter, { factoryId: 1, outputPart: 'OreIron', amount: 100 })
+
+    const ore = find(build([mine, smelter]), 'OreIron')
+
+    expect(ore.sources.find(source => source.name === 'Mine')?.amount).toBe(340)
   })
 
   it('should carry the factory id so the table can jump to it', () => {

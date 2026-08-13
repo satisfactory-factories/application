@@ -357,7 +357,8 @@
           <p class="mb-2">
             Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
             and <b>Produced Items</b> were two lists of the same items. Filter by surplus, deficit
-            or balanced. Both tables break the figure down by factory; click a chip to jump there.
+            or balanced. Each row names the factories producing the item in green and any factory
+            short of it in red; click a chip to jump there.
           </p>
           <h4 class="text-subtitle-1 font-weight-bold mt-4 mb-2">Power Consumption and Generation</h4>
           <v-img

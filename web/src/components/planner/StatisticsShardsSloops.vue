@@ -9,7 +9,7 @@
       v-for="(section, index) in summarySections"
       :id="`stats-${section.key}-summary`"
       :key="`${section.key}-summary`"
-      class="sf-chip"
+      class="sf-chip x-small"
       :class="[section.chipClass, { 'ml-3': index === 0 }]"
       variant="tonal"
     >

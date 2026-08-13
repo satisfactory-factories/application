@@ -7,7 +7,7 @@
     <v-chip
       v-if="surplusCount > 0"
       id="stats-surplus-summary"
-      class="sf-chip green ml-3"
+      class="sf-chip green x-small ml-3"
       variant="tonal"
     >
       {{ surplusCount }} in surplus
@@ -15,7 +15,7 @@
     <v-chip
       v-if="deficitCount > 0"
       id="stats-deficit-summary"
-      class="sf-chip red"
+      class="sf-chip red x-small"
       :class="{ 'ml-3': surplusCount === 0 }"
       variant="tonal"
     >
@@ -24,7 +24,7 @@
     <v-chip
       v-if="balancedCount > 0"
       id="stats-balanced-summary"
-      class="sf-chip grey"
+      class="sf-chip grey x-small"
       :class="{ 'ml-3': surplusCount === 0 && deficitCount === 0 }"
       variant="tonal"
     >
@@ -45,10 +45,13 @@
       any spare. Red needs producing more of, green can be stored or sunk.
     </p>
     <div class="d-flex flex-wrap ga-2 mb-3">
+      <!-- Each filter wears the colour it selects, so the buttons read as the same language as
+           the rows. Unselected is the same colour outlined rather than a neutral grey, which
+           would make an unselected Deficit look like a disabled one. -->
       <v-btn
         v-for="option in filters"
         :key="option.value"
-        :color="filter === option.value ? 'primary' : undefined"
+        :color="option.color"
         size="small"
         :variant="filter === option.value ? 'flat' : 'outlined'"
         @click="filter = option.value"
@@ -66,7 +69,10 @@
         <tr>
           <th>Product</th>
           <th class="text-right">Net</th>
-          <th>Where</th>
+          <th>
+            Breakdown
+            <v-chip class="sf-chip grey x-small no-margin ml-2" variant="tonal">surplus</v-chip>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -136,10 +142,10 @@
   const filter = ref<ItemFilter>('all')
 
   const filters = computed(() => [
-    { value: 'all' as const, label: 'All', count: allItems.value.length },
-    { value: 'surplus' as const, label: 'Surplus', count: surplusCount.value },
-    { value: 'deficit' as const, label: 'Deficit', count: deficitCount.value },
-    { value: 'balanced' as const, label: 'Balanced', count: balancedCount.value },
+    { value: 'all' as const, label: 'All', count: allItems.value.length, color: 'primary' },
+    { value: 'surplus' as const, label: 'Surplus', count: surplusCount.value, color: 'success' },
+    { value: 'deficit' as const, label: 'Deficit', count: deficitCount.value, color: 'error' },
+    { value: 'balanced' as const, label: 'Balanced', count: balancedCount.value, color: 'grey' },
   ])
 
   const factoryProductDifferences = computed(() => {

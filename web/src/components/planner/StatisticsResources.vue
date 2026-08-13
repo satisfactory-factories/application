@@ -7,7 +7,7 @@
     <v-chip
       v-if="allFactoryRawResources.length > 0"
       id="stats-raw-resources-summary"
-      class="sf-chip raw-resource ml-3"
+      class="sf-chip raw-resource x-small ml-3"
       variant="tonal"
     >
       {{ allFactoryRawResources.length }} {{ allFactoryRawResources.length === 1 ? 'resource' : 'resources' }}
