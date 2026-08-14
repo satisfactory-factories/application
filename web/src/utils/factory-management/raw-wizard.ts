@@ -11,7 +11,7 @@
  * no undo. Everything that can fail happens before the caller commits anything.
  */
 import { DataInterface } from '@/interfaces/DataInterface'
-import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
 import { NodePurity } from '@/interfaces/Recipes'
 import { calculateFactories, generateFactoryId, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory, getProduct } from '@/utils/factory-management/products'
@@ -23,6 +23,8 @@ import {
   isPlainExtraction,
 } from '@/utils/factory-management/building-groups/extraction'
 import { getPartDisplayName } from '@/utils/helpers'
+import { addProductBuildingGroup, buildingsNeededForPartsProducts } from '@/utils/factory-management/building-groups/product'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 export type WizardChoice = 'mine' | 'onsite' | 'import' | 'ignore'
 
@@ -262,6 +264,38 @@ const addSizedExtraction = (
   return product
 }
 
+// Whole buildings underclocked to hit the figure exactly, which is what syncBuildingGroups does
+// for a synced product and therefore what addSizedExtraction inherits.
+const sizeGroupFor = (product: FactoryItem, partId: string, amount: number, group: BuildingGroup) => {
+  group.overclockPercent = 100
+  group.buildingCount = 1
+  const needed = buildingsNeededForPartsProducts(partId, amount, product, group)
+  const whole = Math.max(1, Math.ceil(needed))
+  group.buildingCount = whole
+  group.overclockPercent = formatNumberFully((needed / whole) * 100)
+}
+
+// Raising an extraction product's quantity does not, on its own, build the miners — mines are
+// deliberately left unsynced, because a real one is split across nodes of differing purity and
+// sync would flatten that mix. So the added output becomes a group of its own, copying the mark
+// and purity the mine already uses, and the groups the user set are left untouched.
+const growExtraction = (factory: Factory, product: FactoryItem, partId: string, extra: number) => {
+  const reference = product.buildingGroups[product.buildingGroups.length - 1]
+  addProductBuildingGroup(product, factory)
+  const group = product.buildingGroups[product.buildingGroups.length - 1]
+  if (!group) {
+    return
+  }
+  if (reference) {
+    group.extractorBuilding = reference.extractorBuilding
+    group.purity = reference.purity
+    if (reference.satellites) {
+      group.satellites = { ...reference.satellites }
+    }
+  }
+  sizeGroupFor(product, partId, extra, group)
+}
+
 export interface WizardApplyResult {
   factories: Factory[]
   summary: WizardSummary
@@ -406,6 +440,7 @@ export const applyRawWizard = (
       const existing = getProduct(factory, row.partId, true) as FactoryItem | undefined
       if (existing && isExtractionRecipe(existing.recipe)) {
         existing.amount += row.shortfall
+        growExtraction(factory, existing, row.partId, row.shortfall)
         noteProduct(existing, 'increased')
       } else {
         const added = addSizedExtraction(factory, row.partId, recipe, row.shortfall, extractor)
@@ -441,6 +476,16 @@ export const applyRawWizard = (
       addShortageToFactory(factory, target, row.partId, recipe ?? '', row.shortfall)
 
       const product = existingProduct ?? target.products[target.products.length - 1]
+      // addShortageToFactory only moves the quantity. Whether it raised a mine that was already
+      // there or placed a new product on the reference extractor, the buildings behind it have to
+      // be made to match, or the mine reports ore it does not dig and every importer reads green.
+      if (product && isExtractionRecipe(product.recipe)) {
+        if (existingProduct) {
+          growExtraction(target, product, row.partId, row.shortfall)
+        } else if (product.buildingGroups[0]) {
+          sizeGroupFor(product, row.partId, product.amount, product.buildingGroups[0])
+        }
+      }
       noteProduct(product, existingProduct ? 'increased' : 'new')
       importChanges.set(importKey(factory.id, row.partId, target.id), hadInput ? 'increased' : 'new')
     }

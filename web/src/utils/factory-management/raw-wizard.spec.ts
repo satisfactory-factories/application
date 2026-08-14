@@ -5,6 +5,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { fetchGameData } from '@/utils/gameDataService'
+import { createMaelsBigBoiPlan } from '@/utils/factory-setups/maels-big-boi-plan'
 import {
   applyRawWizard,
   choicesForRow,
@@ -232,6 +233,83 @@ describe('raw wizard', async () => {
       expect(oilProducts).toHaveLength(2)
       expect(oilProducts.map(product => product.recipe)).toContain('UnpackageOil')
       expect(oilProducts.map(product => product.recipe)).toContain('Extract_LiquidOil')
+    })
+
+    // A mine's quantity is only a claim; the building groups are what actually digs. Raising one
+    // without the other reports ore that does not exist, and every importer downstream reads green.
+    describe('mines actually mine what they claim', () => {
+      const buildMine = () => {
+        const mine = newFactory('Iron Mine')
+        addProductToFactory(mine, { id: 'OreIron', amount: 120, recipe: 'Extract_OreIron' })
+        Object.assign(mine.products[0].buildingGroups[0], {
+          extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1,
+        })
+        const smelter = newFactory('Smelter')
+        addProductToFactory(smelter, { id: 'IronIngot', amount: 300, recipe: 'IngotIron' })
+        const plan = [mine, smelter]
+        calculateFactories(plan, gameData)
+        return plan
+      }
+
+      const mined = (product: { buildingGroups: { parts: Record<string, number> }[] }, partId: string) =>
+        product.buildingGroups.reduce((total, group) => total + (group.parts[partId] ?? 0), 0)
+
+      it('builds the extra miners when importing from a mine that already exists', () => {
+        const plan = buildMine()
+        const rows = collectRawWizardRows(plan)
+        expect(rows[0].choice).toBe('import')
+
+        const { factories: result } = applyRawWizard(plan, rows, gameData)
+        const product = result.find(f => f.name === 'Iron Mine')!.products.find(p => p.id === 'OreIron')!
+
+        expect(product.amount).toBe(420)
+        expect(mined(product, 'OreIron')).toBeCloseTo(420, 1)
+        // The group that was already there is the user's, and stays exactly as they left it.
+        expect(product.buildingGroups[0].buildingCount).toBe(1)
+        expect(product.buildingGroups[0].overclockPercent).toBe(100)
+        expect(product.buildingGroups.length).toBe(2)
+        expect(result.find(f => f.name === 'Iron Mine')!.hasProblem).toBe(false)
+      })
+
+      // The shipped template is the widest real case: several existing mines, several
+      // consumers, all defaulting to 'import'. It caught four inflated mines before the fix.
+      it('leaves no mine in the shipped MegaPlan claiming more than it digs', () => {
+        const plan = JSON.parse(JSON.stringify(createMaelsBigBoiPlan().getFactories()))
+        calculateFactories(plan, gameData)
+        const megaRows = collectRawWizardRows(plan)
+        expect(megaRows.length).toBeGreaterThan(0)
+        expect(megaRows.filter(row => row.choice === 'import').length).toBeGreaterThan(0)
+
+        const { factories: result } = applyRawWizard(plan, megaRows, gameData)
+
+        const drift: string[] = []
+        for (const factory of result) {
+          for (const product of factory.products) {
+            if (!product.buildingGroups?.length) continue
+            const digs = mined(product, product.id)
+            if (Math.abs(digs - product.amount) > 0.5) {
+              drift.push(`${factory.name}/${product.id}: claims ${product.amount}, groups make ${digs}`)
+            }
+          }
+        }
+        expect(drift).toEqual([])
+      })
+
+      it('builds the extra miners when producing on site', () => {
+        const plan = buildMine()
+        const rows = collectRawWizardRows(plan)
+        rows[0].choice = 'onsite'
+        rows[0].factoryId = plan[1].id
+
+        const { factories: result } = applyRawWizard(plan, rows, gameData)
+        const smelter = result.find(f => f.name === 'Smelter')!
+        const product = smelter.products.find(p => p.id === 'OreIron')
+
+        if (product) {
+          expect(mined(product, 'OreIron')).toBeCloseTo(product.amount, 1)
+        }
+        expect(smelter.hasProblem).toBe(false)
+      })
     })
 
     describe('placement of new mines', () => {
