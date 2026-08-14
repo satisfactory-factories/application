@@ -516,7 +516,17 @@ export const syncBuildingGroups = (
     const targetPerGroup = targetBuildings / groups.length
 
     groups.forEach(group => {
-      const physicalTarget = targetPerGroup / getGroupOutputMultiplier(group, building, item.recipe)
+      const outputMultiplier = getGroupOutputMultiplier(group, building, item.recipe)
+
+      // A resource well with every satellite set to zero produces nothing, so no number of
+      // buildings meets the target. Dividing by it wrote Infinity into buildingCount, which
+      // JSON.stringify stores as null — so the corruption survived a reload. Leave the group
+      // as the user left it; the building group mismatch chip is what says it makes nothing.
+      if (!outputMultiplier || !Number.isFinite(outputMultiplier)) {
+        return
+      }
+
+      const physicalTarget = targetPerGroup / outputMultiplier
 
       // Whole scenario: the group gets exactly the physical target at 100%.
       // Fractional scenario: round the buildings up and underclock so that

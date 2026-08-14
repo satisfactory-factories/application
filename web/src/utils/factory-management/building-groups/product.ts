@@ -64,6 +64,9 @@ export const buildingsNeededForPartsProducts = (
   if (isIngredient && !isProduct) {
     // This is an ingredient
     const perMinOverclocked = isIngredient.perMin * buildingGroup.overclockPercent / 100
+    if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
+      return 0
+    }
     return formatNumberFully(amount / perMinOverclocked)
   }
 
@@ -76,6 +79,11 @@ export const buildingsNeededForPartsProducts = (
       product.recipe
     )
     const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * outputMultiplier
+    // A well with no satellites has a zero multiplier, so no building count reaches the amount.
+    // Dividing produced Infinity, which formatNumberFully passes straight through into the plan.
+    if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
+      return 0
+    }
     return formatNumberFully(amount / perMinOverclocked)
   }
 

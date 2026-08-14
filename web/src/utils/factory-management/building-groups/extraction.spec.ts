@@ -421,4 +421,31 @@ describe('extraction', async () => {
       expect(mockFactory.buildingRequirements.minermk2.amount).toBe(1)
     })
   })
+  // A well makes nothing without satellites, so no building count meets a target. Dividing by the
+  // zero multiplier wrote Infinity into buildingCount, and JSON.stringify stores Infinity as null,
+  // so the corrupted count survived a save and a reload.
+  describe('a well with every satellite set to zero', () => {
+    it('never writes a non-finite building count into the plan', () => {
+      const factory = newFactory('Nitrogen')
+      addProductToFactory(factory, { id: 'NitrogenGas', amount: 240, recipe: 'Extract_NitrogenGas_Well' })
+      const product = factory.products[0]
+      product.buildingGroupItemSync = true
+      product.buildingGroups.forEach(group => {
+        group.satellites = { impure: 0, normal: 0, pure: 0 }
+      })
+
+      const plan = [factory]
+      expect(() => calculateFactories(plan, gameData)).not.toThrow()
+
+      product.buildingGroups.forEach(group => {
+        expect(Number.isFinite(group.buildingCount)).toBe(true)
+        expect(Number.isFinite(group.overclockPercent)).toBe(true)
+      })
+      // Infinity is what JSON turns into null, so prove the round trip is clean too.
+      expect(JSON.stringify(factory)).not.toContain('null,"overclockPercent"')
+      expect(JSON.parse(JSON.stringify(product)).buildingGroups.every(
+        (group: { buildingCount: number }) => typeof group.buildingCount === 'number'
+      )).toBe(true)
+    })
+  })
 })
