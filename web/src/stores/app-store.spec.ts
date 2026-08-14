@@ -147,6 +147,49 @@ describe('app-store', () => {
       expect(oilFactory.rawResources.LiquidOil).toBeUndefined()
     })
 
+    it('#503: should recalculate a plan saved before raw resources became real shortages', () => {
+      const smelter = newFactory('Smelter')
+      addProductToFactory(smelter, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      const plan = [smelter]
+      calculateFactory(smelter, plan, gameData)
+
+      // v0.6 leaves an unmined ore short. Recreate what v0.5 stored instead: the planner
+      // supplied the shortfall itself, so the ledger reads fully satisfied.
+      const ore = smelter.parts.OreIron
+      expect(ore.satisfied).toBe(false) // guards the premise: v0.6 really does leave it short
+      ore.amountSuppliedViaRaw = ore.amountRequired
+      ore.amountSupplied = ore.amountRequired
+      ore.amountRemaining = 0
+      ore.satisfied = true
+      smelter.requirementsSatisfied = true
+      smelter.hasProblem = false
+
+      appStore.initFactories(plan)
+
+      // Without the recalculation the stale ledger survives, the factory stays green, and the
+      // breaking-change notice and wizard both find nothing to do.
+      expect(smelter.parts.OreIron.amountSuppliedViaRaw).toBe(0)
+      expect(smelter.parts.OreIron.amountRemaining).toBe(-100)
+      expect(smelter.parts.OreIron.satisfied).toBe(false)
+      expect(smelter.requirementsSatisfied).toBe(false)
+    })
+
+    it('#503: should leave a hand-gathered resource alone', () => {
+      const factory = newFactory('Biomass')
+      addProductToFactory(factory, { id: 'Biomass', amount: 100, recipe: 'Biomass_Leaves' })
+      const plan = [factory]
+      calculateFactory(factory, plan, gameData)
+
+      // Leaves have no extractor, so v0.6 still supplies them. Nothing to migrate.
+      expect(factory.parts.Leaves.amountSuppliedViaRaw).toBeGreaterThan(0)
+      expect(factory.parts.Leaves.satisfied).toBe(true)
+
+      appStore.initFactories(plan)
+
+      expect(factory.parts.Leaves.satisfied).toBe(true)
+      expect(factory.parts.Leaves.amountSuppliedViaRaw).toBeGreaterThan(0)
+    })
+
     it('#180: should initialize factories with missing power data', () => {
       // @ts-ignore
       delete factory.powerProducers

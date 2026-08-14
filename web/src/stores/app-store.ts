@@ -12,6 +12,7 @@ import { addPowerProducerBuildingGroup } from '@/utils/factory-management/buildi
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
+import { getHandGatheredParts } from '@/utils/factory-management/parts'
 import { config } from '@/config/config'
 
 export const useAppStore = defineStore('app', () => {
@@ -399,6 +400,8 @@ export const useAppStore = defineStore('app', () => {
   const initFactories = (newFactories: Factory[]): Factory[] => {
     console.log('appStore: initFactories', newFactories)
     let needsCalculation = false
+    // The same set calculatePartRaw uses, so the pre-v0.6 detector below cannot drift from it.
+    const handGathered = getHandGatheredParts(gameData)
 
     // Everything the loader put right, from any source, reported together in one dialog.
     // Reset first: the dialog describes the plan being loaded now, so repairs the previous
@@ -466,6 +469,15 @@ export const useAppStore = defineStore('app', () => {
           if (partData.amountSuppliedViaRaw > rawShortfall) {
             needsCalculation = true
           }
+        }
+
+        // Patch for #503. Before v0.6 the planner supplied any raw shortfall itself, so a plan
+        // saved then still reads satisfied — and every gate downstream believes it: no red
+        // factories, no breaking-change notice, and a wizard that reports nothing to fix. Only
+        // hand-gathered parts keep raw supply now, so anything else still carrying it predates
+        // the change. Recalculating is what turns the stored ledger into the truth.
+        if (partData.isRaw && partData.amountSuppliedViaRaw > 0 && !handGathered.has(part)) {
+          needsCalculation = true
         }
       })
 
