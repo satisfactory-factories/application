@@ -4,6 +4,18 @@ import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
 
+// A building group solved against a target has to express its clock in the four decimal places
+// the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
+// 0.009 short, which reads as a red factory nothing the user does can fix. Four decimal places of
+// a percentage is a relative precision of 1e-6, so that is the size of shortfall the clock itself
+// could not have corrected. The floor covers small amounts, where quantities are stored to three
+// decimal places. calculateBuildingGroupProblems already allows 0.1 of a building for this.
+const CLOCK_PRECISION_RELATIVE = 1e-6
+const MIN_SATISFACTION_TOLERANCE = 0.001
+
+export const isAmountSatisfied = (remaining: number, required: number): boolean =>
+  remaining >= -Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE)
+
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
 
@@ -54,7 +66,7 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
     partData.amountRemaining = partData.amountSupplied - partData.amountRequired
 
     // Now calculate if satisfied
-    partData.satisfied = partData.amountRemaining >= 0
+    partData.satisfied = isAmountSatisfied(partData.amountRemaining, partData.amountRequired)
   }
 }
 

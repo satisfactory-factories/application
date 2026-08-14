@@ -4,7 +4,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
-import { getHandGatheredParts } from '@/utils/factory-management/parts'
+import { getHandGatheredParts, isAmountSatisfied } from '@/utils/factory-management/parts'
 
 describe('parts', () => {
   // The one place the assumption still lives, and it is decided by the game data rather than by
@@ -313,5 +313,51 @@ describe('parts', () => {
     calculateFactories([mockFactory], gameData)
 
     expect(mockFactory.parts['']).toBeUndefined()
+  })
+})
+
+// A group solved against a target expresses its clock in the four decimal places the game allows,
+// so on a large line it lands a hair under and stays there. Before this, a sweep of 10,000/min
+// on-site mines came out falsely red 33 times in 101 with nothing the user could do about it.
+describe('satisfaction tolerance', () => {
+  it('ignores a shortfall the clock could not have corrected', () => {
+    expect(isAmountSatisfied(-0.009, 10000)).toBe(true)
+    expect(isAmountSatisfied(-0.0009, 100)).toBe(true)
+  })
+
+  it('still reports a shortage worth acting on', () => {
+    expect(isAmountSatisfied(-1, 10000)).toBe(false)
+    expect(isAmountSatisfied(-0.5, 100)).toBe(false)
+    expect(isAmountSatisfied(-100, 100)).toBe(false)
+    // Just outside the tolerance at each scale.
+    expect(isAmountSatisfied(-0.02, 10000)).toBe(false)
+    expect(isAmountSatisfied(-0.002, 100)).toBe(false)
+  })
+
+  it('leaves a surplus and an exact match satisfied', () => {
+    expect(isAmountSatisfied(0, 100)).toBe(true)
+    expect(isAmountSatisfied(50, 100)).toBe(true)
+  })
+
+  it('does not mask a shortage when nothing is required', () => {
+    expect(isAmountSatisfied(-5, 0)).toBe(false)
+  })
+
+  // The end-to-end case: a factory mining exactly what it smelts, at a scale where the drift bites.
+  it('does not turn a self-sufficient mine red at scale', () => {
+    const factory = newFactory('Mine and Smelt')
+    addProductToFactory(factory, { id: 'IronIngot', amount: 10062.5, recipe: 'IngotIron' })
+    addProductToFactory(factory, { id: 'OreIron', amount: 10062.5, recipe: 'Extract_OreIron' })
+    Object.assign(factory.products[1].buildingGroups[0], { extractorBuilding: 'minermk3', purity: 'pure' })
+    factory.products[1].buildingGroupItemSync = true
+
+    const plan = [factory]
+    calculateFactories(plan, gameData)
+    factory.products[1].amount = factory.parts.OreIron.amountRequired
+    calculateFactories(plan, gameData)
+    calculateFactories(plan, gameData, { origin: 'buildingGroup' })
+
+    expect(factory.parts.OreIron.satisfied).toBe(true)
+    expect(factory.hasProblem).toBe(false)
   })
 })

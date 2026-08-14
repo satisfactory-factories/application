@@ -1,6 +1,6 @@
 import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
-import { calculateParts } from '@/utils/factory-management/parts'
+import { calculateParts, isAmountSatisfied } from '@/utils/factory-management/parts'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { rawArray } from '@/utils/factory-management/common'
 
@@ -314,7 +314,7 @@ export const calculateDependencyMetricsSupply = (factory: Factory) => {
     const metrics = factory.dependencies.metrics[part]
     metrics.supply = factory.parts[part].amountSupplied
     metrics.difference = metrics.supply - metrics.request
-    metrics.isRequestSatisfied = metrics.difference >= 0
+    metrics.isRequestSatisfied = isAmountSatisfied(metrics.difference, metrics.request)
   })
 }
 
