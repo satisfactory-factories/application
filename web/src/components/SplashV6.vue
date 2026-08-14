@@ -515,6 +515,14 @@
             max-width="1200"
             :src="shots.calculator"
           />
+          <p class="mb-2">Export a fluid and the same tray answers in pipes and Fluid Trucks:</p>
+          <v-img
+            v-if="hasCalculatorFluidsShot"
+            alt="The export calculator on a fluid export: Fluid Trucks, and 600 m³/min split across two Mk.1 pipe groups"
+            class="mb-4 mx-auto rounded"
+            max-width="1200"
+            :src="shots.calculatorFluids"
+          />
           <v-divider class="my-4" />
 
           <h3 class="section-heading mb-2">Navigation improvements</h3>
@@ -665,6 +673,7 @@
     sidebarStatus: '/assets/changelog/beta6/group-sidebar-status.png',
     multiGroup: '/assets/changelog/beta6/multi-group-edit.png',
     calculator: '/assets/changelog/beta6/export-calculator.png',
+    calculatorFluids: '/assets/changelog/beta6/export-calculator-fluids.png',
     sidebarActive: '/assets/changelog/beta6/sidebar-active-factory.png',
     repair: '/assets/changelog/beta6/plan-repair.png',
     iconsExports: '/assets/changelog/beta6/factory-icons-exports.png',
@@ -689,6 +698,7 @@
   const hasSidebarStatusShot = true
   const hasMultiGroupShot = true
   const hasCalculatorShot = true
+  const hasCalculatorFluidsShot = true
   const hasSidebarActiveShot = true
   const hasRepairShot = true
   const hasIconsExportsShot = true

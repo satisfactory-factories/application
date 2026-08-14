@@ -188,6 +188,12 @@
           <li><b>Fluid Trucks</b> (3,200 m³, added in patch 1.2) are supported, so the Truck column calculates fluid exports instead of telling you to package them. Drones and Tractors genuinely can't carry raw fluids, so those columns say so.</li>
           <li>The tray reads as an actual recessed tray now, grows with its content instead of clipping at a fixed height, and its mixed thick/thin column borders were unified.</li>
         </ul>
+        <v-img
+          alt="The export calculator on a fluid export: Fluid Freight Cars and Fluid Trucks, with 600 m³/min split across two Mk.1 pipe groups"
+          class="mt-2"
+          max-width="1200"
+          src="/assets/changelog/beta6/export-calculator-fluids.png"
+        />
 
         <v-divider class="subsection" />
 
