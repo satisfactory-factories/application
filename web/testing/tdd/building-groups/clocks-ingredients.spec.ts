@@ -129,8 +129,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
 
-    // Before the 250ms debounce fires, the group power should NOT have recalculated yet
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // The write is debounced, so it must not be synchronous with the input. Asserted with no
+    // sleep at all: waiting part of the debounce out and asserting it has NOT fired yet is a race
+    // that a scheduling hiccup loses, and no timeout can fix that.
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce, it updates: 2 smelters @ 200% = 20 MW

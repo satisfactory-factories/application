@@ -113,6 +113,13 @@ export default defineConfig(() => ({
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
     css: true,
+    // The suite waits out roughly 135 seconds of real debounce timers across its component specs,
+    // and a jsdom + Vuetify mount on top of that does not fit in Vitest's 5s default once the
+    // files are running in parallel. Tests were failing on the timeout rather than on an
+    // assertion, on a different handful each run — worst seen was a 384ms test taking 15.6s.
+    // CI runs on 4 vCPUs, so it is permanently in the contended state this only reaches under load.
+    testTimeout: 20000,
+    hookTimeout: 30000,
     server: {
       deps: {
         inline: ['vuetify'],
