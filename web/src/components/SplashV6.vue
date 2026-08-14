@@ -644,9 +644,10 @@
   import eventBus from '@/utils/eventBus'
   import { useAppStore } from '@/stores/app-store'
 
-  // PLACEHOLDER — this is the v0.5 launch video, standing in so the slot is visible while the
-  // v0.6 one is cut. Swap the id; do not ship the release with this still here.
-  const launchVideoId = 'YsWDeOU3e8o'
+  // Set this to the v0.6 launch video id and the slot appears on slide 1; empty, it is skipped.
+  // It held the v0.5 id as a placeholder so the slot was visible while the video was cut, which
+  // would have shipped last release's video as this one's. An empty slot is the safer default.
+  const launchVideoId = ''
 
   // Bound rather than literal paths: these live in public/, and a static src makes vite try to
   // resolve them at transform time — which fails the whole module while a capture is missing.
