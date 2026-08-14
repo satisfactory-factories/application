@@ -836,14 +836,25 @@ export const recalculateGroupMetrics = (
 }
 
 // Updates the item if the building group has been updated under certain conditions
-export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, factory: Factory) => {
+// groupType comes from the caller, which knows what it is iterating, rather than from the group
+// itself. A group's stored type can be wrong — plans exported from older builds carry power groups
+// labelled Product — and trusting it sent a power producer down the product branch, where writing
+// buildingRequirements.amount threw and took the whole recalculation with it.
+export const checkForItemUpdate = (
+  item: FactoryItem | FactoryPowerProducer,
+  factory: Factory,
+  groupType: ItemType
+) => {
   if (item.buildingGroupItemSync) {
     const group = item.buildingGroups[0]
+    if (!group) {
+      return
+    }
 
-    const newBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, group.type), item.recipe)
+    const newBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, groupType), item.recipe)
 
     // Since we have edited the buildings in the group, we now need to edit the product's building requirements.
-    if (group.type === ItemType.Product) {
+    if (groupType === ItemType.Product) {
       const subject = item as FactoryItem
 
       // We need to update the product via effective building count, not whole buildings.
@@ -870,7 +881,7 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
         )
         subject.amount = formatNumberFully(recipe.products[0].perMin * preciseEffective)
       }
-    } else if (group.type === ItemType.Power) {
+    } else if (groupType === ItemType.Power) {
       const subject = item as FactoryPowerProducer
 
       subject.buildingAmount = newBuildingCount
@@ -883,7 +894,7 @@ export const checkForItemUpdate = (item: FactoryItem | FactoryPowerProducer, fac
     // The problem flag was computed during the group sync, BEFORE this writeback —
     // against the item's stale building count. The item now matches the groups again
     // (e.g. after adding a somersloop with sync on), so refresh it or it sticks red.
-    calculateBuildingGroupProblems(item, group.type)
+    calculateBuildingGroupProblems(item, groupType)
   }
 }
 

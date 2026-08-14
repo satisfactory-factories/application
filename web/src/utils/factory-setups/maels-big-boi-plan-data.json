@@ -4788,7 +4788,7 @@
           "buildingGroups": [
             {
               "id": 347,
-              "type": "Product",
+              "type": "Power",
               "buildingCount": 40,
               "overclockPercent": 100,
               "parts": {
@@ -9884,7 +9884,7 @@
           "buildingGroups": [
             {
               "id": 5442,
-              "type": "Product",
+              "type": "Power",
               "buildingCount": 120,
               "overclockPercent": 100,
               "parts": {
@@ -12210,7 +12210,7 @@
           "buildingGroups": [
             {
               "id": 7181,
-              "type": "Product",
+              "type": "Power",
               "buildingCount": 40,
               "overclockPercent": 100,
               "parts": {
@@ -12860,7 +12860,7 @@
           "buildingGroups": [
             {
               "id": 3796,
-              "type": "Product",
+              "type": "Power",
               "buildingCount": 20,
               "overclockPercent": 100,
               "parts": {

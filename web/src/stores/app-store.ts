@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPower, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -532,9 +532,24 @@ export const useAppStore = defineStore('app', () => {
         if (product.amount !== formatNumberFully(product.amount)) {
           needsCalculation = true
         }
+
+        // A group's type must match the item it hangs off. Plans exported from older builds
+        // carry it wrong, and it is read all over the building group UI to decide which
+        // controls to draw, so a mislabelled group renders the wrong editor.
+        product.buildingGroups.forEach(group => {
+          if (group.type !== ItemType.Product) {
+            group.type = ItemType.Product
+          }
+        })
       })
 
       factory.powerProducers.forEach(producer => {
+        producer.buildingGroups?.forEach(group => {
+          if (group.type !== ItemType.Power) {
+            group.type = ItemType.Power
+          }
+        })
+
         // Patch for #11
         if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
           producer.buildingGroups = []

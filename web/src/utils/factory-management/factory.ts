@@ -191,13 +191,13 @@ const calculateFactoryEngine = (
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
     if (shouldSyncItemToGroups(product, ItemType.Product)) {
-      checkForItemUpdate(product, factory)
+      checkForItemUpdate(product, factory, ItemType.Product)
     }
   })
   factory.powerProducers.forEach(producer => {
     syncBuildingGroups(producer, ItemType.Power, factory, modes)
     if (shouldSyncItemToGroups(producer, ItemType.Power)) {
-      checkForItemUpdate(producer, factory)
+      checkForItemUpdate(producer, factory, ItemType.Power)
     }
   })
 

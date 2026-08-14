@@ -778,7 +778,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the product\'s quantity if it is a singular building group', () => {
         productBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(10)
         expect(product.amount).toBe(300)
@@ -799,7 +799,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].buildingCount = 1337
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -809,7 +809,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 50
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.amount).toBe(15)
       })
@@ -819,7 +819,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(2)
         expect(product.amount).toBe(60)
@@ -829,7 +829,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -838,7 +838,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the power producer\'s building amount if it is a singular building group', () => {
         powerBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(powerProducer, mockFactory)
+        checkForItemUpdate(powerProducer, mockFactory, ItemType.Power)
 
         expect(powerProducer.buildingAmount).toBe(10)
         expect(powerProducer.buildingCount).toBe(10)
@@ -1332,6 +1332,32 @@ describe('powerProducer simplified cases', async () => {
         // Also check the power
         expect(group.powerProduced).toBe(25000)
       })
+    })
+  })
+
+  // A group's stored type is data, and a plan exported from an older build can carry it wrong —
+  // the shipped MegaPlan did, on four power producers. Trusting it sent a power producer down the
+  // product branch of checkForItemUpdate, where writing buildingRequirements.amount threw and took
+  // the whole recalculation with it: the user's edit silently did nothing and the plan was left
+  // uncalculated. The type now comes from the caller, which knows what it is iterating.
+  describe('a building group whose stored type is wrong', () => {
+    it('does not throw when a power producer group is labelled Product', () => {
+      const factory = newFactory('Coal Power')
+      addPowerProducerToFactory(factory, {
+        building: 'generatorcoal',
+        powerAmount: 750,
+        recipe: 'GeneratorCoal_Coal',
+        updated: FactoryPowerChangeType.Power,
+      })
+      const plan = [factory]
+      calculateFactories(plan, gameData)
+
+      const producer = factory.powerProducers[0]
+      expect(producer.buildingGroups.length).toBeGreaterThan(0)
+      producer.buildingGroups[0].type = ItemType.Product
+      producer.buildingGroupItemSync = true
+
+      expect(() => calculateFactories(plan, gameData, { origin: 'buildingGroup' })).not.toThrow()
     })
   })
 })
