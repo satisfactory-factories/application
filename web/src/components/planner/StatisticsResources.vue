@@ -24,7 +24,7 @@
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
       <i class="fas fa-info-circle" /> Shows how much of each raw resource your plan takes out of
-      the world — everything your factories mine, pump or extract.
+      the world: everything your factories mine, pump or extract.
     </p>
     <v-table v-if="allFactoryRawResources.length > 0" id="stats-raw-resources" class="stats-table" density="compact">
       <thead>

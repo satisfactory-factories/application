@@ -14,7 +14,7 @@
             account</strong> until you reload.
         </p>
         <p class="mb-0 text-body-2 text-medium-emphasis">
-          Your plan is safe — it is stored in this browser and reloading will not lose it. This
+          Your plan is safe: it is stored in this browser and reloading will not lose it. This
           is not an outage, and there is nothing to report.
         </p>
       </v-card-text>

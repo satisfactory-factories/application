@@ -28,7 +28,7 @@
               :key="chip.key"
               class="sf-chip small no-margin sf-chip-clickable"
               :class="[chip.class, { 'filter-on': statusFilter === chip.key }]"
-              :title="statusFilter === chip.key ? 'Showing only these — click to clear' : `Show only the ${chip.label}`"
+              :title="statusFilter === chip.key ? 'Showing only these. Click to clear' : `Show only the ${chip.label}`"
               :variant="statusFilter === chip.key ? 'flat' : 'tonal'"
               @click.stop="toggleStatusFilter(chip.key)"
             >
@@ -74,7 +74,7 @@
                 :key="chip.key"
                 class="sf-chip small no-margin sf-chip-clickable"
                 :class="[chip.class, { 'filter-on': statusFilter === chip.key }]"
-                :title="statusFilter === chip.key ? 'Showing only these — click to clear' : `Show only the ${chip.label}`"
+                :title="statusFilter === chip.key ? 'Showing only these. Click to clear' : `Show only the ${chip.label}`"
                 :variant="statusFilter === chip.key ? 'flat' : 'tonal'"
                 @click.stop="toggleStatusFilter(chip.key)"
               >

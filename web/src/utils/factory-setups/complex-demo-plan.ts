@@ -154,7 +154,7 @@ export const complexDemoPlan = (): TemplatePlan => {
       recipe: 'GeneratorFuel_LiquidFuel',
       updated: FactoryPowerChangeType.Power,
     })
-    oilFac.notes = 'This factory extracts its own Crude Oil on site — 3 Oil Extractors on pure nodes and 2 on normal, for the 960/min the Plastic line drinks — rather than importing it from a dedicated mine like the Copper chain does.\n\nIt is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
+    oilFac.notes = 'This factory extracts its own Crude Oil on site (3 Oil Extractors on pure nodes and 2 on normal, for the 960/min the Plastic line drinks) rather than importing it from a dedicated mine like the Copper chain does.\n\nIt is producing fuel which is burned off internally, also demonstrating how power generators work.\n\nIt also purposefully has a surplus of Heavy Oil Residue which unless handled would cause a blockage in the system.'
     oilFac.syncState = {
       LiquidOil: {
         amount: 960,
@@ -216,7 +216,7 @@ export const complexDemoPlan = (): TemplatePlan => {
     })
     // Open on load, so the mixed marks and purities are the first thing you see.
     copperOre.buildingGroupsTrayOpen = true
-    copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one — 360/min against the 320 the smelters need, because you take the nodes you are given.'
+    copperMineFac.notes = 'Mk.3 on a normal node plus a Mk.1 on a pure one: 360/min against the 320 the smelters need, because you take the nodes you are given.'
     // =================
 
     // === RAW MATERIALS MINE FAC ===
@@ -242,7 +242,7 @@ export const complexDemoPlan = (): TemplatePlan => {
       extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 2,
     })
 
-    rawMineFac.notes = 'Limestone and Sulfur for the nuclear chain. A mine factory can host several resources — the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur group over-produces: miner rates are all multiples of 30, so the 160 that factory wants cannot be hit exactly without underclocking a miner.'
+    rawMineFac.notes = 'Limestone and Sulfur for the nuclear chain. A mine factory can host several resources: the Copper Mine shows the single-resource version, and Oil Processing the mine-on-site one.\n\nThe Sulfur group over-produces: miner rates are all multiples of 30, so the 160 that factory wants cannot be hit exactly without underclocking a miner.'
     // =================
 
     // === COPPER BASICS FAC ===
@@ -340,7 +340,7 @@ export const complexDemoPlan = (): TemplatePlan => {
       extractorBuilding: 'minermk3', purity: 'impure', buildingCount: 1,
     })
     uraniumMineFac.products[0].buildingGroupsTrayOpen = true
-    uraniumMineFac.notes = 'A dedicated mine for half the plan\'s Uranium. The other half is extracted on site in Uranium Power — the same resource reaching one factory both ways, which is the choice the planner now leaves to you.'
+    uraniumMineFac.notes = 'A dedicated mine for half the plan\'s Uranium. The other half is extracted on site in Uranium Power, the same resource reaching one factory both ways, which is the choice the planner now leaves to you.'
     // =================
 
     // === URANIUM FAC ===
@@ -394,7 +394,7 @@ export const complexDemoPlan = (): TemplatePlan => {
     addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Stone', amount: 180 })
     addInputToFactory(uraniumFac, { factoryId: rawMineFac.id, outputPart: 'Sulfur', amount: 160 })
     addInputToFactory(uraniumFac, { factoryId: uraniumMineFac.id, outputPart: 'OreUranium', amount: 120 })
-    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts Uranium comes from two places on purpose: half is dug on site, half is shipped in from the Uranium Mine. Its Limestone and Sulfur come from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams — those are the missing pieces the plan is meant to show you.'
+    uraniumFac.notes = 'This factory is producing nuclear fuel rods and using them via a nuclear power station. This demonstrates how power generators also can generate waste products which need to be handled.\n\nIts Uranium comes from two places on purpose: half is dug on site, half is shipped in from the Uranium Mine. Its Limestone and Sulfur come from the Raw Materials Mine and its water from Water Extractors on site. It is still short of Stators, High-Speed Connectors and Encased Beams: those are the missing pieces the plan is meant to show you.'
     uraniumFac.tasks.push(
       { title: 'Add Stators factory to supply this one', completed: false },
       { title: 'Make a place for the waste to go', completed: false },

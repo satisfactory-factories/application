@@ -47,7 +47,7 @@
         <p class="mb-2">
           You can produce raw materials as a product inside the factory that needs them, or build a
           dedicated mine factory and export to whatever needs feeding. Pick a raw resource as a
-          product e.g. "Iron Ore" and set each building group's miner mark and node purity —
+          product e.g. "Iron Ore" and set each building group's miner mark and node purity,
           or describe a resource well by its satellite nodes.
         </p>
 

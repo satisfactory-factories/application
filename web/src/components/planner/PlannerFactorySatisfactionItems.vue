@@ -250,7 +250,7 @@
                       <i class="fas fa-hands mr-2" /><span class="mr-2">{{ formatNumber(part.amountSuppliedViaRaw) }}/min gathered</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>There is no extractor in the game for this resource — Leaves, Wood, Mycelia, alien remains, power slugs and FICSMAS gifts are all picked up by hand.<br>The planner takes them as supplied, because there is nothing it could ask you to build.</span>
+                  <span>There is no extractor in the game for this resource: Leaves, Wood, Mycelia, alien remains, power slugs and FICSMAS gifts are all picked up by hand.<br>The planner takes them as supplied, because there is nothing it could ask you to build.</span>
                 </v-tooltip>
               </template>
               <template v-if="showRawShortageChip(factory, partId.toString())">

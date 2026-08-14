@@ -157,7 +157,7 @@
               <span>Show group power</span>
               <tooltip-info
                 :is-caption="false"
-                text="What each group generates, what it consumes and whether it pays for itself — the same figures the Statistics link above them wears."
+                text="What each group generates, what it consumes and whether it pays for itself. The same figures the Statistics link above them wears."
                 @click.stop
               />
             </div>

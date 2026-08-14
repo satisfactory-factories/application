@@ -66,7 +66,7 @@
               variant="outlined"
               @click="acknowledge"
             >
-              I understand — I'll fix my plans myself
+              I understand, I'll fix my plans myself
             </v-btn>
           </div>
           <youtube-embed
@@ -93,12 +93,12 @@
             <h3 class="text-h6 mb-2">What this means for your existing plans</h3>
             <p class="mb-2">
               The planner used to quietly assume you were supplying raw resources yourself. It
-              doesn't any more — anything a factory doesn't mine or import is now a real shortage,
+              doesn't any more: anything a factory doesn't mine or import is now a real shortage,
               so <b>plans built before this will show factories in red.</b> Nothing in your plan
               has been changed or lost.
             </p>
             <p class="mb-0">
-              The <b>Raw Resources Wizard</b> can fix a plan in one pass — see it two slides on,
+              The <b>Raw Resources Wizard</b> can fix a plan in one pass. See it two slides on,
               or run it now.
             </p>
           </v-alert>
@@ -110,9 +110,9 @@
             </v-btn>
           </p>
           <p v-if="acknowledged" class="text-center text-success mb-4">
-            <i class="fas fa-check" /><span class="ml-2">Noted — the wizard is in <b>Options</b> whenever you want it.</span>
+            <i class="fas fa-check" /><span class="ml-2">Noted, the wizard is in <b>Options</b> whenever you want it.</span>
           </p>
-          <p class="mb-2">There's a lot in this one — jump to what interests you, or take the full tour!</p>
+          <p class="mb-2">There's a lot in this one, so jump to what interests you, or take the full tour!</p>
           <ul class="contents-list ml-6">
             <li v-for="(slide, index) in slides.slice(1)" :key="slide.nav">
               <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSlide(index + 1)">
@@ -173,7 +173,7 @@
             on site, import it from a factory that already mines it, or leave it.
           </p>
           <ul class="ml-6 mb-4">
-            <li><b>One mine per resource</b>, sized to everything that asked for it — a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
+            <li><b>One mine per resource</b>, sized to everything that asked for it: a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
             <li><b>Water defaults to on-site extraction.</b> A resource already mined somewhere defaults to importing from there.</li>
             <li>New mines land at the <b>top or bottom</b> of the plan, your choice, and can be renamed before they are built.</li>
             <li><b>Resource wells are the one thing it won't build.</b> Satellite nodes have their own purities, and the game now varies those settings too, so what you are trying to build is your call. Nitrogen rows offer an import or nothing.</li>
@@ -244,12 +244,12 @@
               factory count and a line showing what it produces.
               <ul class="ml-4 mt-1">
                 <li>It shows as many products as the sidebar's width allows, then folds the rest into a <b>+N</b>.</li>
-                <li>Each carries the group's surplus or shortfall of it — green over, red short.</li>
+                <li>Each carries the group's surplus or shortfall of it: green over, red short.</li>
               </ul>
             </li>
             <li>Drag factories between groups, reorder them inside one, or drag the groups themselves.</li>
             <li><b>In the planner</b>, a group's factories sit under a collapsible band, with a line down the left linking them to it.</li>
-            <li><b>Deleting a group never deletes a factory</b> — one still holding factories asks where they should go first.</li>
+            <li><b>Deleting a group never deletes a factory</b>: one still holding factories asks where they should go first.</li>
           </ul>
 
           <!-- Both of these read better as a picture than a sentence, so the pictures get their
@@ -283,7 +283,7 @@
               <ul class="ml-6">
                 <li>Any colour you like, from the shortlist or the custom picker.</li>
                 <li><b>Click the group's dot in the sidebar</b> to change it later.</li>
-                <li>Red and amber are best avoided — a status still wins the factory's border.</li>
+                <li>Red and amber are best avoided: a status still wins the factory's border.</li>
               </ul>
             </v-col>
             <v-col class="d-flex flex-column ga-3" cols="12" md="5">
@@ -333,7 +333,7 @@
             <v-col cols="12" md="7">
               <p>
                 Either way you get this: a name, and any colour you like from the shortlist or the
-                picker. <b>Resist red and amber</b> — they are the problem and warning tiers, and a
+                picker. <b>Resist red and amber</b>: they are the problem and warning tiers, and a
                 group wearing one reads as a plan full of broken factories.
               </p>
             </v-col>
@@ -359,7 +359,7 @@
           </h2>
           <p class="mb-3">
             Factories can now have icons. A factory that hasn't been given one wears the old
-            generic glyph, and there are two ways to change it — both open the picker.
+            generic glyph, and there are two ways to change it, and both open the picker.
           </p>
 
           <p class="mb-2"><b>1.</b> Click the icon on the factory itself.</p>
@@ -389,9 +389,9 @@
           <ul class="ml-6 mb-4">
             <li>They show on the factory itself, in the sidebar, and on every import and export chip that names it.</li>
             <li><b>352 to pick from</b>: game art for every machine, belt, pipe, generator, vehicle, resource and component the planner knows, plus emoji shapes, digits and symbols.</li>
-            <li><b>Search covers the whole set</b> whichever category you are in, and ignores punctuation — the game writes "Mk.5", so "mk5" finds it.</li>
+            <li><b>Search covers the whole set</b> whichever category you are in, and ignores punctuation: the game writes "Mk.5", so "mk5" finds it.</li>
             <li><i>Use default</i> puts the generic glyph back.</li>
-            <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work — they just won't appear as the icon elsewhere in the plan.</li>
+            <li>If we don't have the icon you want, emoji in the factory's <b>name</b> still work, they just won't appear as the icon elsewhere in the plan.</li>
           </ul>
           <p class="mb-2">Once a plan is using them, its imports and exports read at a glance:</p>
           <v-img
@@ -421,9 +421,9 @@
             sidebar. Red for a problem, amber for "probably not what you meant".
           </p>
           <ul class="ml-6 mb-4">
-            <li><b class="status-red">Red</b> — part shortage, unmet export request, building groups that don't add up.</li>
-            <li><b class="status-amber">Amber</b> — out of sync with the game, redundant import, duplicate import.</li>
-            <li><b>The Factories Summary counts them</b> — how many factories have problems, are short, or are out of sync — in its header and in the sidebar. It keeps them when collapsed.</li>
+            <li><b class="status-red">Red</b>: part shortage, unmet export request, building groups that don't add up.</li>
+            <li><b class="status-amber">Amber</b>: out of sync with the game, redundant import, duplicate import.</li>
+            <li><b>The Factories Summary counts them</b> (how many factories have problems, are short, or are out of sync) in its header and in the sidebar. It keeps them when collapsed.</li>
           </ul>
           <v-divider class="my-4" />
 
@@ -445,7 +445,7 @@
 
           <h4 class="sub-heading mb-2">Item Production</h4>
           <p class="mb-2">
-            Every item the plan makes or uses, in one table — <b>Product Surplus &amp; Deficit</b>
+            Every item the plan makes or uses, in one table. <b>Product Surplus &amp; Deficit</b>
             and <b>Produced Items</b> were two lists of the same items. Search it, or filter by surplus,
             deficit or balanced. Each row names the factories producing the item in green and any factory
             short of it in red; click a chip to jump there.
@@ -499,12 +499,12 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Export Calculator — belts and pipes</h3>
+          <h3 class="section-heading mb-2">Export Calculator: belts and pipes</h3>
           <p class="mb-4">
             Belts are back, per destination: how many conveyors of a chosen mark it takes to carry
             an export, across all six marks, with the smallest single belt that can do it picked
             for you. Split an export across <b>belt groups</b>, each with its own mark, entering
-            either an items/min amount or a whole number of belts — and it'll tell you when a group
+            either an items/min amount or a whole number of belts, and it'll tell you when a group
             is redundant. Fluid exports get the same in <b>pipes</b>, and <b>Fluid Trucks</b>
             (3,200 m³) are now supported rather than being told to package the fluid.
           </p>
@@ -526,7 +526,7 @@
             :src="shots.sidebarActive"
           />
           <ul class="ml-6 mb-2">
-            <li><b>The sidebar shows which factory you're looking at</b>, following you as you scroll — no more losing your place in a 30-factory plan.</li>
+            <li><b>The sidebar shows which factory you're looking at</b>, following you as you scroll. No more losing your place in a 30-factory plan.</li>
             <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, and an <b>Exported</b> chip now sits beside Product and Imported on anything another factory has asked for.</li>
             <li><b>Every game image has a tooltip.</b> Hovering an icon that wasn't a wiki link used to tell you nothing, so a row of eight icons was eight guesses.</li>
           </ul>
@@ -830,7 +830,7 @@
       alt: 'A resource well pressurizer with its satellite nodes by purity',
       points: [
         'A well is one building group: the pressurizer, plus its satellites on impure, normal and pure micro-nodes.',
-        'The pressurizer\'s clock scales every satellite at once. Satellites draw no power — the pressurizer pays for all of them.',
+        'The pressurizer\'s clock scales every satellite at once. Satellites draw no power: the pressurizer pays for all of them.',
         'Nitrogen Gas is plannable for the first time. Wells are its only source.',
       ],
     },

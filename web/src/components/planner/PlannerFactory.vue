@@ -104,7 +104,7 @@
                    the generators you can see. -->
               <tooltip
                 v-if="factoryBoost > 0"
-                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid — ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
+                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid, ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
               >
                 <v-chip class="sf-chip sf-chip-info small circuit-boost no-margin">
                   <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />

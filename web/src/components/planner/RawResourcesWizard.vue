@@ -10,13 +10,13 @@
       <v-card-text>
         <!-- Nothing to do -->
         <v-alert v-if="!rows.length" type="success" variant="tonal">
-          Nothing to fix — every raw resource in this plan is either mined, imported, or one of the
+          Nothing to fix: every raw resource in this plan is either mined, imported, or one of the
           resources you gather by hand.
         </v-alert>
 
         <template v-else-if="!pending">
           <p class="mb-4 text-body-2">
-            The below factories are lacking raw resources. Choose how to cover each one — produce them on site, or import them in from
+            The below factories are lacking raw resources. Choose how to cover each one: produce them on site, or import them in from
             a dedicated mine factory.
             <template v-if="columns.includes('import')">
               <b>Import</b> is offered where a factory in this plan already mines the resource, so
@@ -26,7 +26,7 @@
 
           <p v-if="hasWellRows" class="mb-4 text-body-2 text-medium-emphasis">
             <i class="fas fa-exclamation-triangle mr-1" />
-            Resource wells can't be set up for you due to their complexity with Satellites — those rows are listed, but left alone.
+            Resource wells can't be set up for you due to their complexity with Satellites. Those rows are listed, but left alone.
           </p>
 
           <v-alert
@@ -87,7 +87,7 @@
                       {{ row.partName }} only comes out of a Resource Well, and the wizard can't
                       move it to one automatically.<br><br>
                       A well's output is decided by how many satellite nodes it covers and how pure
-                      they are — something only you can know from your own map.<br><br>
+                      they are, something only you can know from your own map.<br><br>
                       Add a Resource Well Pressurizer as a product yourself, describe its
                       satellites, then export it to whatever needs feeding.
                     </span>
@@ -131,7 +131,7 @@
 
           <p class="mt-4 text-caption text-medium-emphasis">
             New mines are built with {{ extractorLabel }}. Only the building count and power depend
-            on that — the amount of ore is the same either way, so change the miners per group
+            on that. The amount of ore is the same either way, so change the miners per group
             afterwards to match the nodes you actually have.
           </p>
         </template>
@@ -144,7 +144,7 @@
           <ul class="ml-6 mb-4">
             <li v-if="pending.summary.minesCreated.length">
               Create <b>{{ pending.summary.minesCreated.length }}</b>
-              {{ pending.summary.minesCreated.length === 1 ? 'mine factory' : 'mine factories' }} —
+              {{ pending.summary.minesCreated.length === 1 ? 'mine factory' : 'mine factories' }}:
               {{ pending.summary.minesCreated.join(', ') }}
             </li>
             <li v-if="pending.summary.productsAdded">
@@ -291,7 +291,7 @@
             <div class="d-flex align-center flex-wrap ga-3">
               <span class="flex-grow-1">
                 There is no undo. Download your plan as it stands first if you want a way to
-                restore this — copy the contents of the file to your clipboard, then press
+                restore this: copy the contents of the file to your clipboard, then press
                 <b>Paste plan</b> on the planner.
               </span>
               <v-btn

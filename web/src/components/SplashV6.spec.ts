@@ -137,7 +137,7 @@ describe('SplashV6', () => {
 
         expect(banner.nextElementSibling).toBe(prompt)
         expect(prompt.textContent).toContain('Fix my plans with the Raw Resources Wizard')
-        expect(prompt.textContent).toContain("I understand — I'll fix my plans myself")
+        expect(prompt.textContent).toContain("I understand, I'll fix my plans myself")
       })
 
       it('should keep the exit shut until the tour has been walked', async () => {

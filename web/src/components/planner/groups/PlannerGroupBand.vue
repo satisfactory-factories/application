@@ -63,7 +63,7 @@
            figure is called out rather than folded into the group's own total. -->
       <tooltip
         v-if="power.boost > 0"
-        :text="`Alien Power Augmenters in this group add ${formatMw(power.boost)} to the grid — a percentage of the plan's total generation, counted in the plan's power rather than this group's.`"
+        :text="`Alien Power Augmenters in this group add ${formatMw(power.boost)} to the grid, a percentage of the plan's total generation, counted in the plan's power rather than this group's.`"
       >
         <v-chip class="sf-chip small no-margin circuit-boost" variant="tonal">
           <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />
