@@ -19,7 +19,7 @@
           @click="closeSplash"
         />
       </v-card-title>
-      <v-card-text>
+      <v-card-text ref="slideBody">
         <!-- Slide 1: The breaking change. It leads because it changes what every existing plan
              reports, and the wizard below is the way out of it. -->
         <div v-if="currentSlide === 0">
@@ -700,6 +700,14 @@
 
   const showSplash = ref<boolean>(false)
   const currentSlide = ref(0)
+
+  // Every slide shares one scroll container, so without this a slide read to the bottom leaves
+  // the next one opening half way down.
+  const slideBody = ref<{ $el: HTMLElement } | null>(null)
+  watch(currentSlide, async () => {
+    await nextTick()
+    slideBody.value?.$el?.scrollTo({ top: 0 })
+  })
 
   // Whether this user has a plan the breaking change can have broken. Decided once, from the
   // notice the store raised on load — it only asks when a plan actually has factories in it. It

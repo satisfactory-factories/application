@@ -11,7 +11,7 @@
           @click="closeSplash"
         />
       </v-card-title>
-      <v-card-text>
+      <v-card-text ref="slideBody">
         <!-- Slide 1: Announcement hero -->
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-4">The "Overclocked" Update is here!</h2>
@@ -256,6 +256,14 @@
   // show; this one is history, reachable from that deck's last slide for anyone who missed it.
   const showSplash = ref<boolean>(false)
   const currentSlide = ref(0)
+
+  // Every slide shares one scroll container, so without this a slide read to the bottom leaves
+  // the next one opening half way down.
+  const slideBody = ref<{ $el: HTMLElement } | null>(null)
+  watch(currentSlide, async () => {
+    await nextTick()
+    slideBody.value?.$el?.scrollTo({ top: 0 })
+  })
 
   onMounted(() => {
     eventBus.on('splashShowV5', show)
