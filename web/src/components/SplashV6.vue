@@ -176,7 +176,7 @@
             <li><b>One mine per resource</b>, sized to everything that asked for it: a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
             <li><b>Water defaults to on-site extraction.</b> A resource already mined somewhere defaults to importing from there.</li>
             <li>New mines land at the <b>top or bottom</b> of the plan, your choice, and can be renamed before they are built.</li>
-            <li><b>Resource wells are the one thing it won't build.</b> Satellite nodes have their own purities, and the game now varies those settings too, so what you are trying to build is your call. Nitrogen rows offer an import or nothing.</li>
+            <li><b>Resource wells are the one thing it won't build.</b> Satellite nodes have their own purities, and the game now varies those settings too, so what you are trying to build is your call. Nitrogen rows offer nothing at all.</li>
           </ul>
 
           <v-divider class="my-4" />

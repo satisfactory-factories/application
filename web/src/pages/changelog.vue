@@ -83,7 +83,7 @@
           <li><b>One mine per resource for the whole plan</b> where you ask it to build one, sized to everything that asked for it: a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
           <li>New mines are built on <b>Miner Mk.2s at normal purity</b>. Only the building count and the power depend on that guess, never the amount of ore, so adjust each group to the nodes you actually have.</li>
           <li><b>Water defaults to being extracted on site</b>, since that is how it is nearly always built, and a resource already mined somewhere in your plan defaults to importing from there.</li>
-          <li><b>Resource wells are the one thing it won't build.</b> A well's rate comes from its satellite nodes, so sizing one automatically would multiply the pressurizer instead and land an order of magnitude out while reading as solved. Nitrogen rows offer an import or nothing, and say why.</li>
+          <li><b>Resource wells are the one thing it won't build.</b> A well's rate comes from its satellite nodes, so sizing one automatically would multiply the pressurizer instead and land an order of magnitude out while reading as solved. Nitrogen rows offer nothing at all, and say why. Wiring an import from a well you already have is one click in Imports.</li>
           <li>It shows you every factory it will touch, everything they will produce and every export they gain, and <b>writes nothing until you confirm</b>. There is no undo in the planner, so the whole change is built to one side first: if any part of it can't be applied, nothing is written at all. <b>Download a backup</b> from the confirmation screen for a way back.</li>
           <li>You choose whether new mines land at the top or the bottom of the plan, and can rename any of them before they are built.</li>
         </ul>
@@ -136,7 +136,7 @@
         />
         <ul class="ml-6 mt-2">
           <li><b>Two tiers.</b> Red for a problem: the factory can't do what the plan says it does. Amber for a warning: the plan is coherent, but something is probably not what you meant, or your world is behind your plan. The highest tier present paints the border, and chips aren't collapsed, so a factory both short of copper <i>and</i> out of sync shows both.</li>
-          <li><b>Six statuses to start with.</b> Red: part shortage, unmet export request, building groups that don't add up. Amber: out of sync with the game, redundant import, duplicate import.</li>
+          <li><b>Seven statuses to start with.</b> Red: part shortage, raw shortage, unmet export request, building groups that don't add up. Amber: out of sync with the game, redundant import, duplicate import.</li>
           <li><b>The chips say which items</b>: three shortages are three item icons and "3 shortages", not a generic warning glyph. The full list is in the tooltip. Clicking a chip scrolls to the section it points at.</li>
           <li>The same treatment now applies everywhere factory state was already painted: the sidebar, the card border and header, the section headers, and the Factories Summary, which never painted the amber state at all.</li>
           <li><b>The Factories Summary counts them</b>, in its header and in its sidebar row: how many factories are short of parts, have building groups that don't add up, are out of sync, and so on. Only the states that apply are shown, and the header keeps them when the summary is collapsed.</li>
