@@ -262,7 +262,9 @@
   const slideBody = ref<{ $el: HTMLElement } | null>(null)
   watch(currentSlide, async () => {
     await nextTick()
-    slideBody.value?.$el?.scrollTo({ top: 0 })
+    // scrollTop rather than scrollTo: jsdom implements the property but not the method.
+    const body = slideBody.value?.$el
+    if (body) body.scrollTop = 0
   })
 
   onMounted(() => {
