@@ -735,6 +735,40 @@ describe('app-store', () => {
       appStore.loadServerPlan([newFactory('Foo')])
 
       expect(appStore.getFactories()).toHaveLength(1)
+      // The point of the test: the tab was answered for contents it no longer has, and a bare
+      // array predates the change, so the answer has to be cleared or the notice never fires.
+      expect(appStore.getCurrentTab()?.plannerVersion).toBeUndefined()
+    })
+
+    it('keeps the answer when a tab-shaped plan carries one', () => {
+      appStore.loadServerPlan({
+        id: 'x', name: 'Cloud', factories: [newFactory('Foo')], plannerVersion: '0.6',
+      } as never)
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
+    })
+  })
+
+  // JSON.stringify drops an undefined key, so a plan from before the change arrives through a
+  // share link or the clipboard with no plannerVersion at all — indistinguishable from a new tab
+  // unless its factories are taken into account.
+  describe('addTab and the raw-resources answer', () => {
+    it('leaves an imported plan carrying no version unanswered', () => {
+      appStore.addTab({ name: 'Shared', factories: [newFactory('Foo')] })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBeUndefined()
+    })
+
+    it('marks a tab conjured out of nothing as answered', () => {
+      appStore.addTab({ name: 'Empty' })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe(config.plannerVersion)
+    })
+
+    it('preserves a version the imported plan carries', () => {
+      appStore.addTab({ name: 'Modern', factories: [newFactory('Foo')], plannerVersion: '0.6' })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
     })
   })
 

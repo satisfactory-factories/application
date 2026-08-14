@@ -756,6 +756,13 @@ export const useAppStore = defineStore('app', () => {
   // change, which is exactly what it is.
   const loadServerPlan = (data: Factory[] | FactoryTab) => {
     if (Array.isArray(data)) {
+      // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
+      // has to be asked about — including on a fresh machine, whose tab was born answered for
+      // contents it no longer has.
+      const legacyTab = getCurrentTab()
+      if (legacyTab) {
+        legacyTab.plannerVersion = undefined
+      }
       setFactories(data)
       return
     }
@@ -799,10 +806,13 @@ export const useAppStore = defineStore('app', () => {
       // And its memberless groups, which are the only ones no factory carries — a share link
       // that dropped them would arrive missing folders the sender could see.
       groups,
-      // Same for the answer to the raw-resources change. Checked with `in` rather than a
-      // default, because an imported plan that carries no version is a plan from before the
-      // change — defaulting it would mark it answered and swallow the warning it needs.
-      plannerVersion: 'plannerVersion' in tab ? tab.plannerVersion : config.plannerVersion,
+      // Same for the answer to the raw-resources change. `in` was meant to spot an imported plan
+      // carrying no version, but it cannot: JSON.stringify drops an undefined key, so a genuine
+      // pre-v0.6 plan arrives through a share link or the clipboard with the key simply absent
+      // and looked identical to a brand-new tab — which stamped it answered and swallowed the
+      // warning it needs. Its factories are what tell the two apart, the same rule the default
+      // tab uses: a tab conjured out of nothing has never assumed a raw resource in its life.
+      plannerVersion: tab.plannerVersion ?? (factories.length > 0 ? undefined : config.plannerVersion),
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
