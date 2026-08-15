@@ -228,7 +228,13 @@
                   </td>
                   <td class="border-e-md satisfaction-column">
                     <div class="cell-chips justify-center">
-                      <v-chip v-if="factory.requirementsSatisfied" class="sf-chip summary-chip green">
+                      <!-- requirementsSatisfied is forced true for a factory with no products, so a
+                           power-only factory short of its fuel showed the green tick and the red
+                           shortage beside it. The parts are the honest half. -->
+                      <v-chip
+                        v-if="factory.requirementsSatisfied && unsatisfiedParts(factory).length === 0"
+                        class="sf-chip summary-chip green"
+                      >
                         <i class="fas fa-check" />
                         <b class="ml-2">Satisfied</b>
                       </v-chip>

@@ -81,9 +81,12 @@
         <tr>
           <th>Product</th>
           <th class="text-right">Net</th>
-          <th>
+          <!-- Not "surplus": a chip carries what its factory PRODUCES of the item, or what it is
+               short of, so the chips need not sum to Net. `no-margin` is an !important rule that
+               beats ml-2, so the gap comes from the container. -->
+          <th class="d-flex align-center ga-2">
             Breakdown
-            <v-chip class="sf-chip grey x-small no-margin ml-2" variant="tonal">surplus</v-chip>
+            <v-chip class="sf-chip grey x-small no-margin" variant="tonal">produced, or short by</v-chip>
           </th>
         </tr>
       </thead>
@@ -121,7 +124,13 @@
         </tr>
       </tbody>
     </v-table>
-    <p v-else class="text-body-1">{{ search ? `No items match "${search}".` : 'Nothing to show for this filter.' }}</p>
+    <!-- Both can be narrowing at once, and blaming the search for a filter's empty result sent
+         people back to retype a query that was matching fine. -->
+    <p v-else class="text-body-1">
+      {{ search && filter !== 'all'
+        ? `Nothing matching "${search}" is ${filter}.`
+        : (search ? `No items match "${search}".` : 'Nothing to show for this filter.') }}
+    </p>
   </template>
 </template>
 

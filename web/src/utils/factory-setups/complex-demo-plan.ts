@@ -415,6 +415,9 @@ export const complexDemoPlan = (): TemplatePlan => {
     })
     // =================
 
+    plutoniumFac.notes = 'Nuclear Waste from Uranium Power is converted here into Non-Fissible Uranium, the first step of the plutonium chain.\n\nIt is deliberately left short of Silica, Nitric Acid and Sulfuric Acid: the chain is only started, not finished, so you can see what a half-built branch of a plan looks like. Nitric Acid also needs a Resource Well for its Nitrogen Gas, which is the one thing the Raw Resources Wizard will not build for you.'
+    // =================
+
     // === ALIEN POWER FAC ===
     addPowerProducerToFactory(alienPowerFac, {
       building: 'alienpoweraugmenter',
