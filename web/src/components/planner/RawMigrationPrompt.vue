@@ -3,8 +3,8 @@
        this plan rather than the release. Not persistent — dismissing it has to leave a usable
        plan. -->
   <v-dialog max-width="1000" :model-value="showRawBreakingNotice" scrollable @update:model-value="dismiss">
-    <v-card>
-      <v-card-title class="d-flex align-center pb-0">
+    <v-card class="action-card">
+      <v-card-title class="d-flex align-center pt-6 pb-0">
         <span class="action-headline flex-grow-1 text-center">Action needed</span>
       </v-card-title>
       <v-card-text>
@@ -132,6 +132,12 @@
 </script>
 
 <style lang="scss" scoped>
+  // The plan is reporting shortages until this is answered, so the dialog is edged in the same
+  // error colour its headline wears rather than sitting in the ordinary card border.
+  .action-card {
+    border: 2px solid var(--sf-error);
+  }
+
   // The headline, not a kicker: the plan is reporting shortages until this is answered, so it
   // leads in the error colour rather than sitting above the real title in grey.
   .action-headline {
