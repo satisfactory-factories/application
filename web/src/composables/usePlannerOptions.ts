@@ -23,12 +23,28 @@ interface PlannerOptions {
   // more chips on every group, and power is a question people ask of the plan far more often than
   // of a folder within it.
   showGroupPower: boolean
+  // How far an item's building groups may sit from what it asks for before they count as
+  // imbalanced, as a percentage of that requirement. See balanceTolerance.
+  balanceTolerancePercent: number
 }
 
 const DEFAULTS: PlannerOptions = {
   showGroupProducts: true,
   showInternalGroupProducts: false,
   showGroupPower: false,
+  balanceTolerancePercent: 1,
+}
+
+// A tolerance of zero would paint every plan red and a negative one is meaningless, so a stored
+// number is range-checked as well as type-checked — typeof alone lets NaN and Infinity through.
+export const TOLERANCE_RANGE = { min: 0.01, max: 25 }
+
+const isValid = (key: keyof PlannerOptions, value: unknown): boolean => {
+  if (typeof value !== typeof DEFAULTS[key]) return false
+  if (key !== 'balanceTolerancePercent') return true
+
+  const percent = value as number
+  return Number.isFinite(percent) && percent >= TOLERANCE_RANGE.min && percent <= TOLERANCE_RANGE.max
 }
 
 const restore = (): PlannerOptions => {
@@ -40,7 +56,7 @@ const restore = (): PlannerOptions => {
     // taking the whole object down with it.
     return Object.fromEntries(
       Object.entries(DEFAULTS).map(([key, fallback]) =>
-        [key, typeof stored[key] === typeof fallback ? stored[key] : fallback]
+        [key, isValid(key as keyof PlannerOptions, stored[key]) ? stored[key] : fallback]
       )
     ) as PlannerOptions
   } catch {

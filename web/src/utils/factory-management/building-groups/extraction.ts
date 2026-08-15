@@ -2,6 +2,7 @@ import { BuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { NodePurity, RecipeExtraction, RecipeWell } from '@/interfaces/Recipes'
 import { getRecipe } from '@/utils/factory-management/common'
 import { fetchGameData } from '@/utils/gameDataService'
+import { formatNumberFully } from '@/utils/numberFormatter'
 
 const gameData = await fetchGameData()
 
@@ -188,6 +189,57 @@ export const getExtractionOutputMultiplier = (group: BuildingGroup, recipeId?: s
   }
 
   return getGroupExtractionRate(group, recipeId) / referenceRate
+}
+
+// Purity to add satellites on when a well has to grow: whichever it already has most of, so a
+// well built on pure nodes stays on pure nodes. A fresh group carries one normal satellite.
+const primarySatellitePurity = (satellites: { [purity in NodePurity]: number }): NodePurity =>
+  (['normal', 'pure', 'impure'] as NodePurity[])
+    .reduce((best, purity) => satellites[purity] > satellites[best] ? purity : best, 'normal')
+
+/**
+ * Solves a well group to a target, in reference-extractor units, by changing how many satellites
+ * it has rather than how many pressurizers.
+ *
+ * One pressurizer serves every satellite on the node, so a bigger target means more satellites.
+ * Solved like an ordinary building it multiplied the pressurizer instead: switching 360/min of
+ * Water onto a well gave six 150 MW pressurizers with a satellite each, where one pressurizer
+ * with six satellites does it — the same output for a sixth of the power.
+ *
+ * Returns false for anything that is not a well, so callers can fall through to the normal path.
+ */
+export const solveWellGroup = (group: BuildingGroup, targetBuildings: number, recipeId?: string): boolean => {
+  const well = getWell(recipeId)
+  const referenceRate = getExtractionReferenceRate(recipeId)
+  if (!well || !referenceRate) {
+    return false
+  }
+
+  const satellites = getGroupSatellites(group)
+  const purity = primarySatellitePurity(satellites)
+  const ratePerSatellite = well.satelliteRates[purity]
+  if (!ratePerSatellite) {
+    return false
+  }
+
+  // Satellites of the other purities are already on the node and stay there; the primary one
+  // makes up the difference.
+  const otherRate = (['impure', 'normal', 'pure'] as NodePurity[])
+    .reduce((sum, other) => other === purity ? sum : sum + satellites[other] * well.satelliteRates[other], 0)
+
+  const targetRate = Math.max(0, targetBuildings) * referenceRate
+
+  // Round the satellites up and underclock the pressurizer to land exactly, the same bargain the
+  // ordinary solver strikes with buildings — and the one that costs no power shards.
+  satellites[purity] = Math.max(1, Math.ceil((targetRate - otherRate) / ratePerSatellite))
+  const achievedRate = otherRate + satellites[purity] * ratePerSatellite
+
+  group.satellites = satellites
+  group.buildingCount = 1
+  group.overclockPercent = achievedRate > 0 ? formatNumberFully((targetRate / achievedRate) * 100, 4) : 0
+  group.clockSetByUser = false
+
+  return true
 }
 
 // Power draw per building for a group, taken from its own extractor rather than the item's

@@ -67,7 +67,9 @@
       class="d-flex align-center ga-2"
       :class="{ 'text-green': correct, 'text-red': !correct }"
     >
-      <i :class="isExtraction ? 'fas fa-cog' : 'fas fa-building'" />
+      <!-- Wrapper toggles, not the icon — see the shortfall row below. -->
+      <span v-if="isExtraction"><i class="fas fa-cog" /></span>
+      <span v-else><i class="fas fa-building" /></span>
       <!-- Mines are measured in what they dig up, not in Miner Mk.1 equivalents. -->
       <span v-if="isExtraction">
         Effective Output: <b><span :id="`${factory.id}-${item.id}-effective-output`">
@@ -131,23 +133,27 @@
       />
     </span>
   </div>
-  <!-- What closing the gap would take, per node purity, so the arithmetic across three marks
-       and three purities isn't left to the user. Its own row — three pills alongside the
-       status line made it far too wide. Extraction only; empty otherwise. -->
+  <!-- What closing the gap would take, in buildings, so the arithmetic isn't left to the user.
+       For a mine that means every mark at every purity, which is why it gets its own row: three
+       pills alongside the status line made it far too wide. Orange throughout, the colour the
+       building count already wears — in cyan a bare 0.293 read as a quantity of the ore. -->
   <div
     v-if="shortfallHints.length > 0"
     :id="`${factory.id}-${item.id}-shortfall-hints`"
     class="mb-2 d-flex align-center flex-wrap ga-2 group-status"
   >
     <i class="fas fa-arrow-right text-medium-emphasis" />
-    <span class="text-medium-emphasis">To cover the shortfall:</span>
+    <span class="text-medium-emphasis">To cover the shortfall, add the equivalent of:</span>
     <v-chip
       v-for="hint in shortfallHints"
       :key="hint.purity"
-      class="sf-chip cyan x-small no-margin"
+      class="sf-chip building x-small no-margin"
       variant="tonal"
     >
-      <i class="fas fa-gem mr-2" />
+      <!-- The wrapper is what toggles, not the icon: FontAwesome swaps the <i> for an <svg> and
+           detaches it, so Vue removing its own <i> leaves the old glyph behind. -->
+      <span v-if="isExtraction" class="mr-2"><i class="fas fa-gem" /></span>
+      <span v-else class="mr-2"><i class="fas fa-building" /></span>
       <b v-if="hint.showPurity" class="mr-1">{{ hint.label }}:</b>
       <template v-for="(mark, index) in hint.marks" :key="mark.building">
         <span v-if="index > 0" class="mx-1 text-medium-emphasis">|</span>
@@ -166,6 +172,7 @@
       :factory="factory"
       :group="group"
       :item="item"
+      :type="type"
     />
   </div>
   <div class="d-flex justify-center mb-2">
@@ -203,10 +210,12 @@
     addBuildingGroup,
     calculateEffectiveBuildingCount,
     calculateRemainingBuildingCount,
+    getBuildingCount,
     remainderToLast,
     remainderToNewGroup,
     syncBuildingGroups,
   } from '@/utils/factory-management/building-groups/common'
+  import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
 
   const props = defineProps<{
@@ -218,6 +227,7 @@
 
   const buildingsRemaining = ref(0)
   const effectiveBuildings = ref(0)
+  const requiredBuildings = ref(0)
 
   const calculateEffectiveBuildings = () => {
     effectiveBuildings.value = formatNumberFully(
@@ -246,13 +256,33 @@
   const effectiveOutput = computed(() => formatNumberFully(effectiveBuildings.value * referenceRate.value, 3))
   const outputRemaining = computed(() => formatNumberFully(buildingsRemaining.value * referenceRate.value, 3))
 
-  // How many of each extractor would close the shortfall, for every purity the resource can
-  // sit on. Showing all three sidesteps guessing which nodes the user has. Counts are the
-  // same building unit the rest of the row uses — one building at 100% — so a gap half a
-  // miner wide reads 0.5 rather than being rounded up to a miner that would overshoot it.
+  // How many buildings would close the shortfall. Counts are the same building unit the rest of
+  // the row uses — one building at 100% — so a gap half a miner wide reads 0.5 rather than being
+  // rounded up to a miner that would overshoot it.
+  //
+  // A mine gets one entry per node purity, and each entry every extractor mark: showing all of
+  // them sidesteps guessing which nodes the user has. Everything else makes its item in exactly
+  // one building, so it gets a single count against that building's name.
   const shortfallHints = computed(() => {
+    if (!under.value) {
+      return []
+    }
+
     const extraction = getExtraction(props.item.recipe)
-    if (!extraction || !isExtraction.value || outputRemaining.value <= 0) {
+    if (!extraction || !isExtraction.value) {
+      return [{
+        purity: 'buildings',
+        label: '',
+        showPurity: false,
+        marks: [{
+          building: props.building,
+          label: getBuildingDisplayName(props.building),
+          count: formatNumber(buildingsRemaining.value),
+        }],
+      }]
+    }
+
+    if (outputRemaining.value <= 0) {
       return []
     }
 
@@ -276,6 +306,7 @@
   const calculateBuildingsRemaining = () => {
     console.log('BuildingGroups: calculateBuildingsRemaining', props.item.id, props.item)
     buildingsRemaining.value = calculateRemainingBuildingCount(props.item, props.type)
+    requiredBuildings.value = getBuildingCount(props.item, props.type)
   }
 
   const recalculateMetrics = (factory: Factory) => {
@@ -291,17 +322,16 @@
     recalculateMetrics(props.factory)
   }, { deep: true, immediate: true })
 
-  const correct = computed(() => {
-    return buildingsRemaining.value <= 0.1 && buildingsRemaining.value >= -0.1
-  })
+  // The same tolerance the engine's problem flag uses, so the status line and the red bar can
+  // never disagree.
+  const balanced = computed(() =>
+    isWithinBalanceTolerance(buildingsRemaining.value, requiredBuildings.value))
 
-  const over = computed(() => {
-    return buildingsRemaining.value < -0.1
-  })
+  const correct = computed(() => balanced.value)
 
-  const under = computed(() => {
-    return buildingsRemaining.value > 0.1
-  })
+  const over = computed(() => !balanced.value && buildingsRemaining.value < 0)
+
+  const under = computed(() => !balanced.value && buildingsRemaining.value > 0)
 
   const rebalance = () => {
     syncBuildingGroups(

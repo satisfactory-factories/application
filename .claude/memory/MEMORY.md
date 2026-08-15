@@ -36,3 +36,4 @@
 - [Client version gate](client-version-gate.md) — the rules the API's version gate must keep, and why build-time constants travel as `VITE_*` rather than a Vite `define`
 - [Game asset tooltips](game-asset-tooltips.md) — why every game image went tooltip-less: VImg eats a `title`, and a three-root component drops it with no warning
 - [Changelog: no word salad](changelog-no-word-salad.md) — release copy states the change and stops; reasons belong in commits, not the changelog
+- [Building group balance tolerance](building-group-balance-tolerance.md) — balanced is a percentage of the item's demand with a ceiling, and changing it has to force a recalc

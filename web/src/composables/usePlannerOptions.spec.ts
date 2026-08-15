@@ -47,6 +47,7 @@ describe('usePlannerOptions', () => {
       showGroupProducts: true,
       showInternalGroupProducts: true,
       showGroupPower: false,
+      balanceTolerancePercent: 1,
     })
   })
 
@@ -83,5 +84,33 @@ describe('usePlannerOptions', () => {
 
     expect(options.value.showGroupProducts).toBe(true)
     expect(options.value.showGroupPower).toBe(false)
+  })
+
+  it('should default the balance tolerance to 1%', async () => {
+    const options = await load()
+
+    expect(options.value.balanceTolerancePercent).toBe(1)
+  })
+
+  it('should keep a stored tolerance that is in range', async () => {
+    localStorage.setItem('plannerOptions', JSON.stringify({ balanceTolerancePercent: 5 }))
+    const options = await load()
+
+    expect(options.value.balanceTolerancePercent).toBe(5)
+  })
+
+  // typeof alone passes all of these, and a zero or negative tolerance would paint every plan
+  // red with nothing on screen to say why.
+  it.each([
+    ['zero', 0],
+    ['negative', -1],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['absurdly large', 5000],
+  ])('should reject a %s tolerance', async (_label, stored) => {
+    localStorage.setItem('plannerOptions', JSON.stringify({ balanceTolerancePercent: stored }))
+    const options = await load()
+
+    expect(options.value.balanceTolerancePercent).toBe(1)
   })
 })

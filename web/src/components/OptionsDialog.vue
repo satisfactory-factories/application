@@ -163,6 +163,166 @@
             </div>
           </v-col>
         </v-row>
+
+        <v-divider class="my-4" />
+
+        <h3 class="text-subtitle-1 font-weight-bold mb-1">Building groups</h3>
+        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Effective output tolerance</h4>
+        <p class="mb-3 text-medium-emphasis">
+          How far an item's building groups may sit from what it asks for before the planner calls
+          them imbalanced. Some recipes cannot be balanced exactly, so zero is not offered.
+        </p>
+
+        <div class="d-flex align-center flex-wrap ga-3 mb-4">
+          <v-btn-toggle
+            id="balance-tolerance"
+            v-model="options.balanceTolerancePercent"
+            color="primary"
+            density="comfortable"
+            variant="outlined"
+            @update:model-value="appStore.forceCalculation()"
+          >
+            <v-btn
+              v-for="percent in TOLERANCE_CHOICES"
+              :id="`balance-tolerance-${percent}`"
+              :key="percent"
+              :value="percent"
+            >
+              {{ percent }}%
+            </v-btn>
+          </v-btn-toggle>
+          <v-number-input
+            id="balance-tolerance-custom"
+            v-model="options.balanceTolerancePercent"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            label="Custom"
+            :max="TOLERANCE_RANGE.max"
+            :min="TOLERANCE_RANGE.min"
+            :step="0.1"
+            suffix="%"
+            variant="outlined"
+            width="130px"
+            @update:model-value="appStore.forceCalculation()"
+          />
+        </div>
+
+        <!-- Same idea as the group preview above: show what the setting does rather than describe
+             it. This one is a real Factory underneath and every figure goes through the engine, so
+             a Mk.1 mine can be dialled in here and the verdict is the one the planner would give. -->
+        <div v-if="previewProduct" class="group-preview pa-3">
+          <div class="d-flex align-center flex-wrap ga-2 mb-2">
+            <game-asset height="24" subject="Stone" type="item" width="24" />
+            <span class="font-weight-medium">Limestone</span>
+            <!-- Vuetify inputs are flex: 1 1 auto, so once the sentence beside it wraps to a
+                 second line this one grows into the space left on the first. -->
+            <v-number-input
+              id="balance-preview-amount"
+              v-model="previewAmount"
+              class="flex-grow-0 flex-shrink-0"
+              control-variant="stacked"
+              density="compact"
+              hide-details
+              hide-spin-buttons
+              :min="1"
+              suffix="/min"
+              variant="outlined"
+              width="130px"
+              @update:model-value="rebuildPreview"
+            />
+          </div>
+          <!-- Its own line: beside the input it wrapped at most amounts anyway. -->
+          <div class="text-medium-emphasis">
+            Requires <b>{{ formatNumber(previewRequiredBuildings) }}</b> Miner Mk.1s at 100%.
+          </div>
+
+          <!-- Above the inputs, as in the planner: the verdict is the thing being demonstrated. -->
+          <div class="d-flex align-center flex-wrap ga-2 mb-2">
+            <span :class="previewBalanced ? 'text-green' : 'text-red'">
+              <i class="fas fa-cog" />
+              Effective Output: <b>{{ formatNumber(previewOutput) }}/min</b> |
+              {{ formatNumber(Math.abs(previewRemainingRate)) }}/min
+              {{ previewRemainingRate >= 0 ? 'short' : 'over' }}
+            </span>
+            <v-chip
+              id="balance-tolerance-preview-status"
+              class="sf-chip x-small no-margin"
+              :class="previewBalanced ? 'green' : 'red'"
+            >
+              <!-- Wrapped rather than :class-flipped: FontAwesome replaces the <i> with an <svg>
+                   and detaches it, so a flip never reaches the DOM and the tick sticks. -->
+              <span v-if="previewBalanced"><i class="fas fa-check" /></span>
+              <span v-else><i class="fas fa-exclamation-triangle" /></span>
+              <span class="ml-2">{{ previewStatus }}</span>
+            </v-chip>
+          </div>
+
+          <div class="d-flex align-center flex-wrap ga-1">
+            <v-chip class="sf-chip building input no-margin" variant="tonal">
+              <game-asset subject="minermk1" type="building" />
+              <v-number-input
+                id="balance-preview-buildings"
+                v-model="previewGroup.buildingCount"
+                class="inline-inputs ml-0"
+                control-variant="stacked"
+                density="compact"
+                hide-details
+                hide-spin-buttons
+                :min="0"
+                width="80px"
+                @update:model-value="refreshPreview"
+              />
+            </v-chip>
+            <span class="text-medium-emphasis mx-1">@</span>
+            <v-chip class="sf-chip yellow input unit no-margin" variant="tonal">
+              <game-asset subject="overclock-production" type="item_id" />
+              <v-number-input
+                id="balance-preview-clock"
+                v-model="previewGroup.overclockPercent"
+                class="inline-inputs ml-0"
+                control-variant="stacked"
+                density="compact"
+                hide-details
+                hide-spin-buttons
+                :max="250"
+                :min="0"
+                width="110px"
+                @update:model-value="refreshPreview"
+              />
+              <span class="clock-unit mx-2">%</span>
+            </v-chip>
+            <span class="text-medium-emphasis mx-1">=</span>
+            <v-chip class="sf-chip raw-resource input no-margin" variant="tonal">
+              <game-asset subject="Stone" type="item" />
+              <v-number-input
+                id="balance-preview-output"
+                v-model="previewOutputField"
+                class="inline-inputs ml-0"
+                control-variant="stacked"
+                density="compact"
+                hide-details
+                hide-spin-buttons
+                :min="0"
+                width="110px"
+                @update:model-value="solvePreviewFromOutput"
+              />
+              <span class="ml-1">/min</span>
+            </v-chip>
+          </div>
+
+          <div class="text-medium-emphasis mt-2">
+            At {{ options.balanceTolerancePercent }}%, anything outside that
+            <b>{{ formatNumber(previewToleranceRate) }}/min</b> either way goes red.
+          </div>
+          <!-- The tolerance as the two numbers it comes to, rather than a percentage the reader
+               has to apply themselves. -->
+          <div class="text-medium-emphasis">
+            Min: <b>{{ formatNumber(previewMinRate) }}/min</b>
+            <span class="mx-2">|</span>
+            Max: <b>{{ formatNumber(previewMaxRate) }}/min</b>
+          </div>
+        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -173,11 +333,130 @@
 <script setup lang="ts">
   import RawResourcesWizard from '@/components/planner/RawResourcesWizard.vue'
   import eventBus from '@/utils/eventBus'
-  import { usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { TOLERANCE_RANGE, usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { useAppStore } from '@/stores/app-store'
+  import { useGameDataStore } from '@/stores/game-data-store'
+  import { balanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
+  import { formatNumber } from '@/utils/numberFormatter'
+  import { BuildingGroup, Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
+  import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+  import { addProductToFactory } from '@/utils/factory-management/products'
+  import {
+    calculateEffectiveBuildingCount,
+    recalculateGroupMetrics,
+    updateBuildingGroupViaPart,
+  } from '@/utils/factory-management/building-groups/common'
 
   const showOptions = ref(false)
   const showWizard = ref(false)
   const options = usePlannerOptions()
+  const appStore = useAppStore()
+  const gameDataStore = useGameDataStore()
+
+  // Coarse on purpose: this is a judgement about how fussy the planner should be, not a figure
+  // anyone needs four decimals of. The custom field is there for anyone who disagrees.
+  const TOLERANCE_CHOICES = [0.1, 0.5, 1, 2, 5]
+
+  // ==== Tolerance preview
+  // A real Factory rather than a mock-up, driven by the same engine functions the planner's own
+  // building group row calls. It cannot then demonstrate behaviour the planner does not have.
+  // Deliberately starts a little short — 300/min is exactly 5 Mk.1s, and 99.2% leaves it 2.4/min
+  // down, inside the default 1% (3/min) and outside 0.5% — so the verdict changes as the setting
+  // moves without anyone having to type anything.
+  const PREVIEW_RATE = 60 // A Miner Mk.1 on a normal node
+  const PREVIEW_START = { amount: 300, buildings: 5, clock: 99.2 }
+
+  const previewFactory = ref<Factory | null>(null)
+  const previewAmount = ref(PREVIEW_START.amount)
+  const previewProduct = computed(() => previewFactory.value?.products[0])
+  const previewGroup = computed(() => previewProduct.value?.buildingGroups[0] as BuildingGroup)
+
+  // Bumped after every edit: the group is a plain object inside a ref, so the figures read off it
+  // need something to depend on.
+  const previewVersion = ref(0)
+
+  const buildPreview = () => {
+    const gameData = gameDataStore.getGameData()
+    if (!gameData) return
+
+    const factory = newFactory('Tolerance preview')
+    addProductToFactory(factory, { id: 'Stone', amount: previewAmount.value, recipe: 'Extract_Stone' })
+    const product = factory.products[0]
+    // Sync would drag the item back onto the groups, and being able to sit short is the point.
+    product.buildingGroupItemSync = false
+    calculateFactories([factory], gameData, { origin: 'recalculate' })
+
+    const group = product.buildingGroups[0]
+    group.buildingCount = PREVIEW_START.buildings
+    group.overclockPercent = PREVIEW_START.clock
+    previewFactory.value = factory
+    refreshPreview()
+  }
+
+  const refreshPreview = () => {
+    if (!previewFactory.value || !previewProduct.value) return
+    recalculateGroupMetrics(previewProduct.value, ItemType.Product, previewFactory.value)
+    previewVersion.value++
+  }
+
+  // Editing the amount changes what the item asks for, which only a recalculation works out.
+  const rebuildPreview = () => {
+    const gameData = gameDataStore.getGameData()
+    if (!previewFactory.value || !previewProduct.value || !gameData) return
+    previewProduct.value.amount = previewAmount.value
+    calculateFactories([previewFactory.value], gameData, { origin: 'recalculate' })
+    refreshPreview()
+  }
+
+  // The same call the planner makes when a group's output is typed into, so the clock it solves
+  // here is the clock it would solve there.
+  const solvePreviewFromOutput = (value: number) => {
+    if (!previewFactory.value || !previewProduct.value || !value) return
+    updateBuildingGroupViaPart(
+      previewGroup.value, previewProduct.value, ItemType.Product, previewFactory.value, 'Stone', value
+    )
+    previewVersion.value++
+  }
+
+  const previewRequiredBuildings = computed(() => previewAmount.value / PREVIEW_RATE)
+
+  const previewOutput = computed(() => {
+    void previewVersion.value // The group is a plain object, so the edits need declaring
+    if (!previewProduct.value) return 0
+    return calculateEffectiveBuildingCount(
+      previewProduct.value.buildingGroups, 'minermk1', 'Extract_Stone'
+    ) * PREVIEW_RATE
+  })
+
+  // Two-way: reads the group's output, writes it back through the solver.
+  const previewOutputField = computed({
+    get: () => Number(formatNumber(previewOutput.value)),
+    set: solvePreviewFromOutput,
+  })
+
+  const previewRemainingRate = computed(() => previewAmount.value - previewOutput.value)
+
+  const previewMaxRate = computed(() => previewAmount.value + previewToleranceRate.value)
+  const previewMinRate = computed(() => previewAmount.value - previewToleranceRate.value)
+
+  // Through the real helper, so the example can never promise something the planner then judges
+  // differently.
+  const previewToleranceRate = computed(() =>
+    balanceTolerance(previewRequiredBuildings.value) * PREVIEW_RATE)
+
+  const previewBalanced = computed(() =>
+    Math.abs(previewRemainingRate.value) <= previewToleranceRate.value)
+
+  const previewStatus = computed(() => {
+    if (previewBalanced.value) return 'Balanced'
+    return previewRemainingRate.value > 0 ? 'Under producing!' : 'Over producing!'
+  })
+
+  // Built when the dialog first opens rather than on mount: it needs game data, and this component
+  // is alive from the moment the app is.
+  watch(showOptions, open => {
+    if (open && !previewFactory.value) buildPreview()
+  })
 
   // The preview's product row. Copper Ingot is the internal one — made and consumed inside the
   // group — so ticking "internal products" makes a tile appear rather than only changing a number.
@@ -255,17 +534,51 @@
   line-height: 1;
 }
 
+// Tree geometry copied from PlannerSidebarGroup, so the preview hangs its rows off a trunk and
+// elbow the way the thing it is previewing does.
+$tree-indent: 18px;
+$tree-line: 3px;
+$tree-gutter: 4px;
+
 .preview-body {
-  padding: 4px 0 4px 16px;
+  padding: 4px 0 4px calc(16px + #{$tree-indent});
 }
 
 .preview-row {
+  position: relative;
   display: flex;
   align-items: center;
   background-color: rgba(255, 255, 255, 0.04);
   border-radius: 4px;
   margin: 0 4px 4px 0;
   padding: 6px 8px;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -$tree-indent;
+    background-color: #b87333;
+  }
+
+  // Trunk, one segment per row; the last row ends it at its own elbow to give the corner.
+  &::before {
+    top: -$tree-gutter;
+    bottom: 0;
+    width: $tree-line;
+  }
+
+  &:last-child::before {
+    bottom: auto;
+    height: calc(50% + #{$tree-gutter} + #{$tree-line * 0.5});
+  }
+
+  // Elbow, reaching from the trunk to the row's left edge.
+  &::after {
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent;
+    height: $tree-line;
+  }
 }
 
 .option-toggle {

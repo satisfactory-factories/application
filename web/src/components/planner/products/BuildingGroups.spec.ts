@@ -818,7 +818,7 @@ describe('Component: BuildingGroups', () => {
 
       expect(hints).not.toContain('Oil Extractor')
       // 60/min short against 60 / 120 / 240 per minute by purity
-      expect(hints).toBe('To cover the shortfall:Impure:1Normal:0.5Pure:0.25')
+      expect(hints).toBe('To cover the shortfall, add the equivalent of:Impure:1Normal:0.5Pure:0.25')
     })
 
     it('drops the hint once the mine is no longer short', () => {

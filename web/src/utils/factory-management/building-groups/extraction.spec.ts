@@ -19,7 +19,7 @@ import {
   PURITY_MULTIPLIERS,
   sanitizeGroupExtraction,
 } from '@/utils/factory-management/building-groups/extraction'
-import { calculateProductBuildingGroupPower } from '@/utils/factory-management/building-groups/common'
+import { calculateProductBuildingGroupPower, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
 import { fetchGameData } from '@/utils/gameDataService'
 
 describe('extraction', async () => {
@@ -378,6 +378,60 @@ describe('extraction', async () => {
       expect(factory.products[0].buildingGroups[0].satellites).toEqual({ impure: 0, normal: 1, pure: 0 })
     })
 
+    // One pressurizer serves every satellite on the node, so a bigger target is more satellites.
+    // Solved like an ordinary building it multiplied the pressurizer instead: switching a 360/min
+    // Water product onto the well recipe gave six 150 MW pressurizers with one satellite each,
+    // where one pressurizer with six satellites makes the same water for a sixth of the power.
+    describe('solving a well to a target', () => {
+      const switchToWell = (amount: number) => {
+        const factory = newFactory('Water')
+        addProductToFactory(factory, { id: 'Water', amount, recipe: 'Extract_Water' })
+        calculateFactories([factory], gameData)
+
+        // What Product.vue does when the recipe changes: drop the groups and recalculate.
+        const product = factory.products[0]
+        product.recipe = 'Extract_Water_Well'
+        product.buildingGroups = []
+        calculateFactories([factory], gameData)
+
+        return { factory, product, group: product.buildingGroups[0] }
+      }
+
+      it('adds satellites rather than pressurizers', () => {
+        const { factory, product, group } = switchToWell(360)
+
+        expect(group.buildingCount).toBe(1)
+        expect(group.satellites).toEqual({ impure: 0, normal: 6, pure: 0 })
+        expect(group.overclockPercent).toBe(100)
+        expect(product.amount).toBe(360)
+        // Six pressurizers would have been 900 MW for the same water.
+        expect(factory.power.consumed).toBe(150)
+      })
+
+      it('rounds the satellites up and underclocks to land on an awkward amount', () => {
+        const { product, group } = switchToWell(100)
+
+        // 100/min is 1.667 normal satellites, so two of them at 83.3333%.
+        expect(group.buildingCount).toBe(1)
+        expect(group.satellites).toEqual({ impure: 0, normal: 2, pure: 0 })
+        expect(group.overclockPercent).toBe(83.3333)
+        expect(product.amount).toBe(100)
+      })
+
+      it('keeps a well on the purity it was built on', () => {
+        const factory = newFactory('Nitrogen')
+        addProductToFactory(factory, { id: 'NitrogenGas', amount: 300, recipe: 'Extract_NitrogenGas_Well' })
+        const product = factory.products[0]
+        product.buildingGroups[0].satellites = { impure: 0, normal: 0, pure: 2 }
+        calculateFactories([factory], gameData, { forceRebalance: true })
+
+        const group = product.buildingGroups[0]
+        expect(group.buildingCount).toBe(1)
+        expect(group.satellites?.normal).toBe(0)
+        expect(group.satellites?.pure).toBeGreaterThan(0)
+      })
+    })
+
     it('does not leave satellite data on a non-well group', () => {
       const factory = newFactory('Quartz Mine')
       addProductToFactory(factory, { id: 'RawQuartz', recipe: 'Extract_RawQuartz' })
@@ -421,6 +475,27 @@ describe('extraction', async () => {
       expect(mockFactory.buildingRequirements.minermk2.amount).toBe(1)
     })
   })
+  describe('editing a mine group\'s output', () => {
+    it('solves a fractional clock so the typed rate is the rate produced', () => {
+      // 3 x Mk.1 on a normal node: 60/min each, so 150 is 83.3333% rather than the 84%
+      // (151.2/min) a whole-percent clock produced. Every rate that did not land on a
+      // whole percent was unsettable — typing 154 left the group on 154.8.
+      const mockFactory = newFactory('Stone Mine')
+      addProductToFactory(mockFactory, { id: 'Stone', recipe: 'Extract_Stone', amount: 154.8 })
+      const product = mockFactory.products[0]
+      product.buildingGroups = [
+        group({ id: 1, extractorBuilding: 'minermk1', purity: 'normal', buildingCount: 3, overclockPercent: 86 }),
+      ]
+      calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
+
+      updateBuildingGroupViaPart(product.buildingGroups[0], product, ItemType.Product, mockFactory, 'Stone', 150)
+
+      expect(product.buildingGroups[0].buildingCount).toBe(3)
+      expect(product.buildingGroups[0].overclockPercent).toBe(83.3333)
+      expect(product.buildingGroups[0].parts.Stone).toBe(150)
+    })
+  })
+
   // A well makes nothing without satellites, so no building count meets a target. Dividing by the
   // zero multiplier wrote Infinity into buildingCount, and JSON.stringify stores Infinity as null,
   // so the corrupted count survived a save and a reload.

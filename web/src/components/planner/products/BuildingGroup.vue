@@ -143,7 +143,28 @@
             width="125px"
             @update:model-value="updateGroupOverclockDebounce(group)"
           />
-          <span>%</span>
+          <!-- The unit carries the spacing on both sides, so the shard cost beside it can sit
+               tight to its own icon. -->
+          <span class="clock-unit mx-2">%</span>
+          <!-- Inside the clock chip, because the shards are a cost of that clock. Only an
+               overclock costs any, so it appears with one rather than sitting at zero.
+               One container carries the spacing; the icon and its count sit flush inside it. -->
+          <span
+            v-if="groupPowerShards > 0"
+            :id="`${factory.id}-${group.id}-power-shards`"
+            class="d-inline-flex align-center icon-count me-2"
+          >
+            <!-- The text goes on the asset rather than a wrapping tooltip: wrapped, the hover
+                 gives two answers, the inner one being the icon's own name. -->
+            <game-asset
+              height="18px"
+              subject="power-shard"
+              :tooltip="`${shardsPerBuilding} Power Shard${shardsPerBuilding > 1 ? 's' : ''} per building at ${formatNumberFully(group.overclockPercent, 4)}%`"
+              type="item_id"
+              width="18px"
+            />
+            <span class="count">{{ groupPowerShards }}</span>
+          </span>
           <span v-if="updatingOverclock">
             <v-icon>fas fa-sync fa-spin</v-icon>
           </span>
@@ -230,6 +251,7 @@
             :id="`${factory.id}-${group.id}-somersloops`"
             :key="somersloopFieldKey"
             class="inline-inputs ml-0"
+            :class="{ 'mr-3': groupSomersloops > 0 }"
             control-variant="stacked"
             density="compact"
             :disabled="somersloopSlots === 0"
@@ -253,6 +275,22 @@
               />
             </template>
           </v-number-input>
+          <!-- The input is per building; this is what the group costs in total, the same way the
+               clock shows the shards it costs. -->
+          <span
+            v-if="groupSomersloops > 0"
+            :id="`${factory.id}-${group.id}-somersloops-total`"
+            class="d-inline-flex align-center icon-count me-2"
+          >
+            <game-asset
+              height="18px"
+              subject="somersloop"
+              :tooltip="`${group.somersloops} Somersloop${(group.somersloops ?? 0) > 1 ? 's' : ''} in each of ${group.buildingCount} building${group.buildingCount === 1 ? '' : 's'}`"
+              type="item_id"
+              width="18px"
+            />
+            <span class="count">{{ groupSomersloops }}</span>
+          </span>
           <debounce-spinner :active="pendingRecalc === `group-${group.id}-somersloops`" />
         </v-chip>
         <div class="underchip text-purple-lighten-1">
@@ -371,6 +409,41 @@
         <div class="underchip">&nbsp;</div>
       </div>
     </template>
+    <!-- Puts the whole gap on this group, where the remainder buttons above pick the group for
+         you. Absent when the item is balanced, and disabled when this group cannot hold the
+         change — a trim deeper than the group goes would need a clock below the game's 1%. -->
+    <div v-if="!isBalanced" class="ml-auto">
+      <!-- Same colours and arrows as the product's own Satisfy/Trim, which does the same job one
+           level up. Two buttons rather than one with bound icon and colour: FontAwesome replaces
+           the icon element and detaches it from Vue, so a swapped `prepend-icon` never lands. -->
+      <v-btn
+        v-if="isOverProducing"
+        :id="`${factory.id}-${group.id}-balance`"
+        class="rounded"
+        color="yellow"
+        :disabled="!balanceSolution"
+        prepend-icon="fas fa-arrow-down"
+        size="small"
+        @click="balanceGroup"
+      >
+        Trim
+        <tooltip-info :is-caption="false" :text="balanceTooltip" />
+      </v-btn>
+      <v-btn
+        v-else
+        :id="`${factory.id}-${group.id}-balance`"
+        class="rounded"
+        color="green"
+        :disabled="!balanceSolution"
+        prepend-icon="fas fa-arrow-up"
+        size="small"
+        @click="balanceGroup"
+      >
+        Satisfy
+        <tooltip-info :is-caption="false" :text="balanceTooltip" />
+      </v-btn>
+      <div class="underchip">&nbsp;</div>
+    </div>
   </div>
 </template>
 
@@ -388,7 +461,17 @@
   import { useDisplay } from 'vuetify'
   import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { canBuildingOverclock, getBuildingDisplayName } from '@/utils/factory-management/common'
-  import { deleteBuildingGroup, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
+  import {
+    applyRemainderToGroup,
+    calculateRemainingBuildingCount,
+    deleteBuildingGroup,
+    getBuildingCount,
+    getGroupPowerShards,
+    getShardsPerBuilding,
+    solveGroupForRemainder,
+    updateBuildingGroupViaPart,
+  } from '@/utils/factory-management/building-groups/common'
+  import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
   import {
     getSomersloopBuildCost,
     getSomersloopOutputMultiplier,
@@ -429,6 +512,9 @@
     group: BuildingGroup
     item: FactoryItem | FactoryPowerProducer
     building: string // Building name
+    // From the caller, which knows what it is iterating. A group's own stored type is data and
+    // plans exported from older builds carry power groups labelled Product.
+    type: ItemType
   }>()
 
   // Each input gets its own debounce key so only the field being edited spins.
@@ -444,6 +530,41 @@
         origin: 'buildingGroup',
       })
     })
+  }
+
+  const groupPowerShards = computed(() => getGroupPowerShards(props.group))
+  const shardsPerBuilding = computed(() => getShardsPerBuilding(props.group))
+  const groupSomersloops = computed(() => (props.group.somersloops ?? 0) * props.group.buildingCount)
+
+  // ==== Satisfying or trimming this group against the item
+  const buildingsRemaining = computed(() => calculateRemainingBuildingCount(props.item, props.type))
+
+  const isBalanced = computed(() =>
+    isWithinBalanceTolerance(buildingsRemaining.value, getBuildingCount(props.item, props.type)))
+
+  const isOverProducing = computed(() => buildingsRemaining.value < 0)
+
+  // Null when there is no setting this group could take, which is what disables the button.
+  const balanceSolution = computed(() =>
+    solveGroupForRemainder(props.item, props.group, props.type))
+
+  const balanceTooltip = computed(() => {
+    if (!balanceSolution.value) {
+      return 'This group cannot absorb the whole surplus — it would have to run below the game\'s minimum 1% clock. Trim another group, or delete this one.'
+    }
+    return isOverProducing.value
+      ? 'Takes the entire surplus off this group, leaving the rest of the groups alone.'
+      : 'Puts the entire shortfall on this group, leaving the rest of the groups alone.'
+  })
+
+  const balanceGroup = () => {
+    applyRemainderToGroup(props.item, props.group, props.type, props.factory)
+    updateFactory(props.factory, {
+      useBuildingGroupBuildings: true,
+      forceRebalance: false,
+      origin: 'buildingGroup',
+    })
+    eventBus.emit('buildingGroupUpdated', props.factory)
   }
 
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
@@ -677,6 +798,23 @@
 // Extractor mark, node purity and satellite counts: settings, not raw resources.
 .text-node-setting {
   color: var(--sf-node-setting);
+}
+
+// The clock's unit sits between an input and, when overclocked, the shard cost. At the chip's
+// own size it reads as a stray character, so it gets a little more weight than its neighbours.
+.clock-unit {
+  font-size: 1.15em;
+}
+
+// An icon and the number labelling it, as one thing. `.sf-chip` gives every image an 8px gutter
+// and every unclassed span another 8px — right for a chip's row of separate controls, and 16px of
+// daylight between a power shard and how many of them there are.
+.icon-count {
+  gap: 2px;
+
+  :deep(.v-img) {
+    margin: 0 !important;
+  }
 }
 
 // A building group chip is a row of discrete controls — an icon, a value, a chevron — with no

@@ -24,8 +24,12 @@ import {
 import {
   getExtractionOutputMultiplier,
   getGroupExtractorPower,
+  getGroupSatellites,
+  isWellRecipe,
   sanitizeGroupExtraction,
+  solveWellGroup,
 } from '@/utils/factory-management/building-groups/extraction'
+import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
 
 const gameData = await fetchGameData()
 
@@ -112,6 +116,10 @@ export const createBuildingGroup = (
   // Extraction groups start on the recipe's reference extractor and a normal node.
   sanitizeGroupExtraction(group, item.recipe)
 
+  // A well counts in satellites, not pressurizers — see solveWellGroup. Without this a group
+  // created to match an existing item took its whole requirement in 150 MW pressurizers.
+  solveWellGroup(group, buildingCount, item.recipe)
+
   item.buildingGroups.push(group)
 }
 
@@ -144,8 +152,16 @@ export const calculateEffectiveBuildingCount = (
   return formatNumberFully(effectiveBuildingCount, 4)
 }
 
-// Total power shards needed by the groups. Each shard raises a building's max clock
-// by 50%, so clocks >100% need 1 shard per building, >150% need 2, >200% need 3 (game cap 250%).
+// Shards one building in this group needs. Each raises a building's max clock by 50%, so a clock
+// over 100% needs 1, over 150% needs 2, over 200% needs 3 (the game caps clocks at 250%).
+export const getShardsPerBuilding = (group: BuildingGroup): number =>
+  group.overclockPercent > 100 ? Math.min(Math.ceil((group.overclockPercent - 100) / 50), 3) : 0
+
+// Shards this group needs in total. Underclocked and 100% groups cost nothing.
+export const getGroupPowerShards = (group: BuildingGroup): number =>
+  getShardsPerBuilding(group) * group.buildingCount
+
+// Total power shards needed by the groups.
 export const getTotalPowerShards = (buildingGroups: BuildingGroup[] | undefined): number => {
   if (!buildingGroups?.length) {
     return 0
@@ -157,8 +173,7 @@ export const getTotalPowerShards = (buildingGroups: BuildingGroup[] | undefined)
       continue
     }
 
-    const shardsPerBuilding = Math.min(Math.ceil((group.overclockPercent - 100) / 50), 3)
-    const perGroup = shardsPerBuilding * group.buildingCount
+    const perGroup = getGroupPowerShards(group)
     if (Number.isFinite(perGroup)) {
       total += perGroup
     }
@@ -451,11 +466,10 @@ export const calculateBuildingGroupProblems = (
   // Get the effective building count
   const effectiveBuildingCount = calculateEffectiveBuildingCount(item.buildingGroups, getItemBuilding(item, groupType), item.recipe)
 
-  // If the effective building count is out of whack between -0.1 and 0.1, we mark it as having a problem.
+  // Out by more than the balance tolerance and the groups no longer fulfil the item.
   const buildingCount = getBuildingCount(item, groupType)
-  const absDiff = Math.abs(buildingCount - effectiveBuildingCount)
 
-  item.buildingGroupsHaveProblem = absDiff > 0.1
+  item.buildingGroupsHaveProblem = !isWithinBalanceTolerance(buildingCount - effectiveBuildingCount, buildingCount)
 }
 
 // Takes the building groups and rebalances them based on the building count
@@ -516,6 +530,11 @@ export const syncBuildingGroups = (
     const targetPerGroup = targetBuildings / groups.length
 
     groups.forEach(group => {
+      // A well grows by satellites rather than by pressurizers, so it solves its own way.
+      if (solveWellGroup(group, targetPerGroup, item.recipe)) {
+        return
+      }
+
       const outputMultiplier = getGroupOutputMultiplier(group, building, item.recipe)
 
       // A resource well with every satellite set to zero produces nothing, so no number of
@@ -593,6 +612,12 @@ export const bestEffortUpdateBuildingCount = (
   } else if (type === ItemType.Power) {
     const powerRecipe = recipe as PowerRecipe
     perMin = powerRecipe?.ingredients[0].perMin
+  }
+
+  // A well grows by satellites rather than by pressurizers — see solveWellGroup. Its target is
+  // in reference-extractor units, which is what the recipe's own rate converts this into.
+  if (perMin && solveWellGroup(group, targetAmountForGroup / perMin, item.recipe)) {
+    return
   }
 
   // Go through each group, and allocate the best building count and clock speeds, across the groups.
@@ -701,6 +726,83 @@ export const remainderToNewGroup = (
   recalculateGroupMetrics(item, groupType, factory)
 }
 
+// The range the game's clock slider offers. Trimming a group below the minimum is not something
+// the user could build, so the action is withheld rather than writing a clock nobody can set.
+export const MIN_CLOCK_PERCENT = 1
+export const MAX_CLOCK_PERCENT = 250
+
+// What one group would have to become for the item's entire shortfall (or surplus) to land on it.
+// Returns null when there is no such setting: a group that produces nothing per building (a well
+// with no satellites), or a trim that would take the group below the game's minimum clock.
+export const solveGroupForRemainder = (
+  item: FactoryItem | FactoryPowerProducer,
+  group: BuildingGroup,
+  groupType: ItemType,
+): { buildingCount: number, overclockPercent: number, satellites?: BuildingGroup['satellites'] } | null => {
+  const outputMultiplier = getGroupOutputMultiplier(group, getItemBuilding(item, groupType), item.recipe)
+  if (!outputMultiplier || !Number.isFinite(outputMultiplier)) {
+    return null
+  }
+
+  const remaining = calculateRemainingBuildingCount(item, groupType)
+  const current = group.buildingCount * (group.overclockPercent / 100) * outputMultiplier
+  const target = current + remaining
+  if (target <= 0) {
+    return null
+  }
+
+  // A well takes the gap in satellites, not pressurizers. Solved on a copy so this stays a
+  // question — the button asks it to decide whether to offer itself at all.
+  if (isWellRecipe(item.recipe)) {
+    const probe = { ...group, satellites: { ...getGroupSatellites(group) } }
+    return solveWellGroup(probe, target, item.recipe)
+      ? { buildingCount: probe.buildingCount, overclockPercent: probe.overclockPercent, satellites: probe.satellites }
+      : null
+  }
+
+  // A group's own units: a slooped or high-mark group needs fewer physical buildings for the
+  // same effective output.
+  const physical = target / outputMultiplier
+
+  // Keep the count the user chose and move the clock — the smaller surprise, and the reason
+  // this is not simply bestEffortUpdateBuildingCount, which prefers re-solving the count.
+  if (group.buildingCount > 0) {
+    const clock = formatNumberFully((physical / group.buildingCount) * 100, 4)
+    if (clock >= MIN_CLOCK_PERCENT && clock <= MAX_CLOCK_PERCENT) {
+      return { buildingCount: group.buildingCount, overclockPercent: clock }
+    }
+  }
+
+  // Out of clock range, so spread it over whole buildings at a sub-100% clock instead.
+  const buildingCount = Math.ceil(physical)
+  const overclockPercent = formatNumberFully((physical / buildingCount) * 100, 4)
+
+  return overclockPercent >= MIN_CLOCK_PERCENT ? { buildingCount, overclockPercent } : null
+}
+
+// Puts the item's whole remainder onto this one group. The counterpart to the remainder buttons,
+// which choose the group for you.
+export const applyRemainderToGroup = (
+  item: FactoryItem | FactoryPowerProducer,
+  group: BuildingGroup,
+  groupType: ItemType,
+  factory: Factory,
+) => {
+  const solution = solveGroupForRemainder(item, group, groupType)
+  if (!solution) {
+    return
+  }
+
+  group.buildingCount = solution.buildingCount
+  group.overclockPercent = solution.overclockPercent
+  group.clockSetByUser = false
+  if (solution.satellites) {
+    group.satellites = solution.satellites
+  }
+
+  recalculateGroupMetrics(item, groupType, factory)
+}
+
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
   const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
 
@@ -805,8 +907,10 @@ export const updateBuildingGroupViaPart = (
     let bestOverCandidate: Candidate | null = null
 
     for (let n = 1; n <= maxCandidateCount; n++) {
-      const rawClock = (targetEffective / n) * 100
-      const candidateClock = Math.ceil(rawClock)
+      // Clocks support 4 decimal places in-game, so match that precision. Rounding up to a
+      // whole percent overshot the amount asked for and never landed on it — 150 across 3
+      // miners solved to 84% (151.2) instead of 83.3333% (150).
+      const candidateClock = formatNumberFully((targetEffective / n) * 100, 4)
       if (candidateClock > 250) continue // skip candidates exceeding the game cap
       const diff = Math.abs(candidateClock - 100)
       if (candidateClock <= 100) {
@@ -828,7 +932,7 @@ export const updateBuildingGroupViaPart = (
     }
 
     group.buildingCount = chosenCandidate.buildingCount
-    group.overclockPercent = formatNumberFully(chosenCandidate.clock)
+    group.overclockPercent = formatNumberFully(chosenCandidate.clock, 4)
     group.clockSetByUser = false // Solver-derived clock, not user precision
   }
 
