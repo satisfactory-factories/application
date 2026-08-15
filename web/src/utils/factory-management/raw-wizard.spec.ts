@@ -271,6 +271,35 @@ describe('raw wizard', async () => {
         expect(result.find(f => f.name === 'Iron Mine')!.hasProblem).toBe(false)
       })
 
+      // An awkward quantity is the case that catches compounded rounding: 100/min from a 120/min
+      // extractor is 0.8333.. buildings, and taking that at 3dp and rounding the clock to 3dp as
+      // well produced 99.96, which is outside the satisfaction tolerance. Asserted against the
+      // tolerance rather than toBeCloseTo, which was loose enough to pass either way.
+      it('sizes an awkward quantity closely enough to actually satisfy it', () => {
+        const mine = newFactory('Iron Mine')
+        addProductToFactory(mine, { id: 'OreIron', amount: 120, recipe: 'Extract_OreIron' })
+        // Mk.2 on a normal node is 120/min, and the shortfall below is 100: 100/120 is 0.8333..,
+        // which rounds DOWN at three places. A quantity that rounds up over-produces and hides it.
+        Object.assign(mine.products[0].buildingGroups[0], {
+          extractorBuilding: 'minermk2', purity: 'normal', buildingCount: 1,
+        })
+        const consumer = newFactory('Smelter')
+        addProductToFactory(consumer, { id: 'IronIngot', amount: 220, recipe: 'IngotIron' })
+        const plan = [mine, consumer]
+        calculateFactories(plan, gameData)
+
+        const rows = collectRawWizardRows(plan)
+        expect(rows[0].choice).toBe('import')
+        const { factories: result } = applyRawWizard(plan, rows, gameData)
+
+        const product = result.find(f => f.name === 'Iron Mine')!.products.find(p => p.id === 'OreIron')!
+        const digs = mined(product, 'OreIron')
+        // Within the tolerance the parts ledger actually uses, not a loose approximation.
+        expect(product.amount - digs).toBeLessThanOrEqual(Math.max(0.001, product.amount * 1e-6))
+        expect(result.find(f => f.name === 'Smelter')!.parts.OreIron.satisfied).toBe(true)
+        expect(result.find(f => f.name === 'Iron Mine')!.hasProblem).toBe(false)
+      })
+
       // The shipped template is the widest real case: several existing mines, several
       // consumers, all defaulting to 'import'. It caught four inflated mines before the fix.
       it('leaves no mine in the shipped MegaPlan claiming more than it digs', () => {

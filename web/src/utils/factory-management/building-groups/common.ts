@@ -599,7 +599,17 @@ export const bestEffortUpdateBuildingCount = (
   // Firstly though we need to understand what the calculation of the clock speed is, when spread across the groups.
   // A slooped group produces more per building, so it needs proportionally fewer physical buildings.
   const outputMultiplier = getGroupOutputMultiplier(group, getItemBuilding(item, type), item.recipe)
-  const buildingsNeeded = targetAmountForGroup / (perMin * outputMultiplier)
+  const ratePerBuilding = perMin * outputMultiplier
+
+  // A resource well with every satellite set to zero produces nothing, so no building count
+  // reaches the target. Without this buildingsNeeded is Infinity, maxN is Math.ceil(Infinity),
+  // and the search below never finds a clock at or under 100% — it spins forever and hangs the
+  // tab rather than producing a wrong number. Reachable from the Remainder buttons.
+  if (!ratePerBuilding || !Number.isFinite(ratePerBuilding)) {
+    return
+  }
+
+  const buildingsNeeded = targetAmountForGroup / ratePerBuilding
 
   /*
     For a positive gap, instead of defaulting to a single building and overclocking it, we try to find a better solution using less buildings.

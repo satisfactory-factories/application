@@ -1382,6 +1382,26 @@ describe('bestEffortUpdateBuildingCount', () => {
       buildingGroup = product.buildingGroups[0]
     })
 
+    // A satellite-less well has a zero output multiplier, so buildingsNeeded is Infinity, maxN is
+    // Math.ceil(Infinity), and the search for a clock at or under 100% never finds one. That spun
+    // forever and hung the tab, rather than producing a wrong number. Reachable from the
+    // Remainder to last / Remainder to new group buttons.
+    it('returns instead of spinning forever when the group can produce nothing', () => {
+      const well = newFactory('Nitrogen')
+      addProductToFactory(well, { id: 'NitrogenGas', amount: 240, recipe: 'Extract_NitrogenGas_Well' })
+      const wellProduct = well.products[0]
+      const wellGroup = wellProduct.buildingGroups[0]
+      wellGroup.satellites = { impure: 0, normal: 0, pure: 0 }
+      const before = { count: wellGroup.buildingCount, clock: wellGroup.overclockPercent }
+
+      bestEffortUpdateBuildingCount(wellProduct, wellGroup, 240, ItemType.Product)
+
+      expect(Number.isFinite(wellGroup.buildingCount)).toBe(true)
+      expect(Number.isFinite(wellGroup.overclockPercent)).toBe(true)
+      expect(wellGroup.buildingCount).toBe(before.count)
+      expect(wellGroup.overclockPercent).toBe(before.clock)
+    })
+
     it('should calculate normal ratios', () => {
       bestEffortUpdateBuildingCount(product, buildingGroup, 60, ItemType.Product)
 

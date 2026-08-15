@@ -43,11 +43,15 @@ export const addProductBuildingGroup = (
   calculateBuildingGroupParts([product], ItemType.Product, factory)
 }
 
+// precision defaults to the 3 decimal places quantities are stored at. A caller solving a clock
+// from this needs it unrounded: rounding here and again on the clock compounds, and the group then
+// under-produces by more than the satisfaction tolerance allows.
 export const buildingsNeededForPartsProducts = (
   part: string,
   amount: number,
   product: FactoryItem,
-  buildingGroup: BuildingGroup
+  buildingGroup: BuildingGroup,
+  precision = 3
 ) => {
   // Get the recipe for the product in order to get the new quantity
   const recipe = getRecipe(product.recipe, gameData)
@@ -67,7 +71,7 @@ export const buildingsNeededForPartsProducts = (
     if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
       return 0
     }
-    return formatNumberFully(amount / perMinOverclocked)
+    return formatNumberFully(amount / perMinOverclocked, precision)
   }
 
   if (isProduct && !isIngredient) {
@@ -84,7 +88,7 @@ export const buildingsNeededForPartsProducts = (
     if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
       return 0
     }
-    return formatNumberFully(amount / perMinOverclocked)
+    return formatNumberFully(amount / perMinOverclocked, precision)
   }
 
   return 0

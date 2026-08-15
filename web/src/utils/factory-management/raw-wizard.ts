@@ -269,10 +269,14 @@ const addSizedExtraction = (
 const sizeGroupFor = (product: FactoryItem, partId: string, amount: number, group: BuildingGroup) => {
   group.overclockPercent = 100
   group.buildingCount = 1
-  const needed = buildingsNeededForPartsProducts(partId, amount, product, group)
+  // Unrounded, then the clock to the four decimal places the game allows, which is what
+  // bestEffortUpdateBuildingCount does. Taking the buildings at the stored 3dp and rounding the
+  // clock to 3dp as well compounds: 100/min from a 120/min extractor became 0.833 buildings at
+  // 83.3%, producing 99.96 and leaving the factory the wizard just fixed still short.
+  const needed = buildingsNeededForPartsProducts(partId, amount, product, group, 10)
   const whole = Math.max(1, Math.ceil(needed))
   group.buildingCount = whole
-  group.overclockPercent = formatNumberFully((needed / whole) * 100)
+  group.overclockPercent = formatNumberFully((needed / whole) * 100, 4)
 }
 
 // Raising an extraction product's quantity does not, on its own, build the miners — mines are
