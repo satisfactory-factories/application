@@ -113,4 +113,37 @@ describe('usePlannerOptions', () => {
 
     expect(options.value.balanceTolerancePercent).toBe(1)
   })
+
+  // Validating on restore was no help against the controls themselves: a button toggle emits
+  // undefined when its own selection is clicked again and a cleared number field emits null,
+  // and both reached the arithmetic as NaN — which is neither greater nor less than anything, so
+  // every group in the plan read imbalanced and the recalculation wrote that verdict into them.
+  describe('setBalanceTolerance', () => {
+    const loadSetter = async () => {
+      vi.resetModules()
+      return await import('@/composables/usePlannerOptions')
+    }
+
+    it.each([
+      ['undefined, as a deselected toggle emits', undefined],
+      ['null, as a cleared field emits', null],
+      ['NaN', Number.NaN],
+      ['zero', 0],
+      ['negative', -1],
+      ['beyond the maximum', 5000],
+      ['a string', '2'],
+    ])('should refuse %s and leave the setting alone', async (_label, value) => {
+      const { setBalanceTolerance, usePlannerOptions: use } = await loadSetter()
+
+      expect(setBalanceTolerance(value)).toBe(false)
+      expect(use().value.balanceTolerancePercent).toBe(1)
+    })
+
+    it('should accept a value inside the range', async () => {
+      const { setBalanceTolerance, usePlannerOptions: use } = await loadSetter()
+
+      expect(setBalanceTolerance(2.5)).toBe(true)
+      expect(use().value.balanceTolerancePercent).toBe(2.5)
+    })
+  })
 })

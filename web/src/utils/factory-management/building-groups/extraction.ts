@@ -197,14 +197,33 @@ const primarySatellitePurity = (satellites: { [purity in NodePurity]: number }):
   (['normal', 'pure', 'impure'] as NodePurity[])
     .reduce((best, purity) => satellites[purity] > satellites[best] ? purity : best, 'normal')
 
+// The game's clock cap. Held here rather than imported from building-groups/common, which imports
+// this file.
+const MAX_WELL_CLOCK = 250
+
+// A well whose satellites say something about the map. A fresh group carries exactly one normal
+// satellite, so anything else is a layout somebody described — either the user, from the nodes
+// they actually have, or the solver on their behalf.
+export const isWellDescribed = (group: BuildingGroup): boolean => {
+  const satellites = getGroupSatellites(group)
+
+  return satellites.impure !== DEFAULT_SATELLITES.impure ||
+    satellites.normal !== DEFAULT_SATELLITES.normal ||
+    satellites.pure !== DEFAULT_SATELLITES.pure
+}
+
 /**
- * Solves a well group to a target, in reference-extractor units, by changing how many satellites
- * it has rather than how many pressurizers.
+ * Solves a well group to a target, in reference-extractor units.
  *
- * One pressurizer serves every satellite on the node, so a bigger target means more satellites.
- * Solved like an ordinary building it multiplied the pressurizer instead: switching 360/min of
- * Water onto a well gave six 150 MW pressurizers with a satellite each, where one pressurizer
- * with six satellites does it — the same output for a sixth of the power.
+ * One pressurizer serves every satellite on the node, so on a well the knob is satellites rather
+ * than buildings. Solved like an ordinary building it multiplied the pressurizer instead:
+ * switching 360/min of Water onto a well gave six 150 MW pressurizers with a satellite each,
+ * where one pressurizer with six satellites does it — the same water for a sixth of the power.
+ *
+ * But satellite nodes are fixed map features, and demand does not create them. So the satellites
+ * are only solved for a well that has none described yet; once a layout exists the pressurizer's
+ * clock is the only thing that moves over it, and a target it cannot reach is left short for the
+ * mismatch chip to report rather than met by inventing nodes that are not on the map.
  *
  * Returns false for anything that is not a well, so callers can fall through to the normal path.
  */
@@ -213,6 +232,25 @@ export const solveWellGroup = (group: BuildingGroup, targetBuildings: number, re
   const referenceRate = getExtractionReferenceRate(recipeId)
   if (!well || !referenceRate) {
     return false
+  }
+
+  const targetRateForLayout = Math.max(0, targetBuildings) * referenceRate
+
+  if (isWellDescribed(group)) {
+    const buildingCount = Math.max(1, group.buildingCount || 1)
+    const layoutRate = getGroupExtractionRate(group, recipeId)
+    if (!layoutRate) {
+      return false
+    }
+
+    group.buildingCount = buildingCount
+    group.overclockPercent = Math.min(
+      MAX_WELL_CLOCK,
+      formatNumberFully((targetRateForLayout / (buildingCount * layoutRate)) * 100, 4)
+    )
+    group.clockSetByUser = false
+
+    return true
   }
 
   const satellites = getGroupSatellites(group)
@@ -227,7 +265,7 @@ export const solveWellGroup = (group: BuildingGroup, targetBuildings: number, re
   const otherRate = (['impure', 'normal', 'pure'] as NodePurity[])
     .reduce((sum, other) => other === purity ? sum : sum + satellites[other] * well.satelliteRates[other], 0)
 
-  const targetRate = Math.max(0, targetBuildings) * referenceRate
+  const targetRate = targetRateForLayout
 
   // Round the satellites up and underclock the pressurizer to land exactly, the same bargain the
   // ordinary solver strikes with buildings — and the one that costs no power shards.

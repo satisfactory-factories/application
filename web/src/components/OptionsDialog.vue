@@ -174,13 +174,16 @@
         </p>
 
         <div class="d-flex align-center flex-wrap ga-3 mb-4">
+          <!-- Deliberately not `mandatory`: a custom value belongs to neither preset, and
+               mandatory would drag the selection onto one. Deselecting emits undefined, which
+               applyTolerance rejects. -->
           <v-btn-toggle
             id="balance-tolerance"
-            v-model="options.balanceTolerancePercent"
             color="primary"
             density="comfortable"
+            :model-value="options.balanceTolerancePercent"
             variant="outlined"
-            @update:model-value="appStore.forceCalculation()"
+            @update:model-value="applyTolerance"
           >
             <v-btn
               v-for="percent in TOLERANCE_CHOICES"
@@ -193,18 +196,18 @@
           </v-btn-toggle>
           <v-number-input
             id="balance-tolerance-custom"
-            v-model="options.balanceTolerancePercent"
             control-variant="stacked"
             density="compact"
             hide-details
             label="Custom"
             :max="TOLERANCE_RANGE.max"
             :min="TOLERANCE_RANGE.min"
+            :model-value="options.balanceTolerancePercent"
             :step="0.1"
             suffix="%"
             variant="outlined"
             width="130px"
-            @update:model-value="appStore.forceCalculation()"
+            @update:model-value="applyTolerance"
           />
         </div>
 
@@ -333,7 +336,7 @@
 <script setup lang="ts">
   import RawResourcesWizard from '@/components/planner/RawResourcesWizard.vue'
   import eventBus from '@/utils/eventBus'
-  import { TOLERANCE_RANGE, usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { setBalanceTolerance, TOLERANCE_RANGE, usePlannerOptions } from '@/composables/usePlannerOptions'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { balanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
@@ -356,6 +359,15 @@
   // Coarse on purpose: this is a judgement about how fussy the planner should be, not a figure
   // anyone needs four decimals of. The custom field is there for anyone who disagrees.
   const TOLERANCE_CHOICES = [0.1, 0.5, 1, 2, 5]
+
+  // Both controls emit an empty value of their own accord — the toggle when its selection is
+  // clicked again, the field while it is being cleared — so neither writes to the setting
+  // directly. A rejected value leaves the setting and the plan exactly as they were.
+  const applyTolerance = (percent: unknown) => {
+    if (setBalanceTolerance(percent)) {
+      appStore.forceCalculation()
+    }
+  }
 
   // ==== Tolerance preview
   // A real Factory rather than a mock-up, driven by the same engine functions the planner's own

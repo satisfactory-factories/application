@@ -70,4 +70,22 @@ watch(options, value => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
 }, { deep: true })
 
+/**
+ * The only way the tolerance should be written. Returns whether the value was usable.
+ *
+ * Every control that sets it can produce something that is not a number: a button toggle emits
+ * undefined when its selected value is clicked again, and a cleared number field emits null. Both
+ * reached the arithmetic as NaN, which is not greater or less than anything — so every group in
+ * the plan read imbalanced, and the recalculation that followed wrote that verdict into all of
+ * them. Validating only on restore was no help: the damage is done in the session that typed it.
+ */
+export const setBalanceTolerance = (percent: unknown): boolean => {
+  if (!isValid('balanceTolerancePercent', percent)) {
+    return false
+  }
+
+  options.value.balanceTolerancePercent = percent as number
+  return true
+}
+
 export const usePlannerOptions = () => options

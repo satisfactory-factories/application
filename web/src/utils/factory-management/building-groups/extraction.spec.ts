@@ -418,6 +418,41 @@ describe('extraction', async () => {
         expect(product.amount).toBe(100)
       })
 
+      // Satellite nodes are fixed map features: demand does not create them, and a plan that
+      // says otherwise cannot be built. Once a layout is described the clock is all that moves.
+      it('never rewrites a described layout, even when that leaves it short', () => {
+        const factory = newFactory('Nitrogen')
+        addProductToFactory(factory, { id: 'NitrogenGas', amount: 300, recipe: 'Extract_NitrogenGas_Well' })
+        const product = factory.products[0]
+        product.buildingGroups[0].satellites = { impure: 0, normal: 1, pure: 6 }
+        calculateFactories([factory], gameData, { forceRebalance: true })
+
+        const described = { ...product.buildingGroups[0].satellites }
+
+        // Ask for far more than those nodes can yield, even at the game's clock cap.
+        product.amount = 100_000
+        calculateFactories([factory], gameData, { forceRebalance: true })
+
+        expect(product.buildingGroups[0].satellites).toEqual(described)
+        expect(product.buildingGroups[0].overclockPercent).toBe(250)
+        // Left short on purpose, for the mismatch chip to report.
+        expect(product.buildingGroupsHaveProblem).toBe(true)
+      })
+
+      it('does not drop satellites when demand falls', () => {
+        const factory = newFactory('Nitrogen')
+        addProductToFactory(factory, { id: 'NitrogenGas', amount: 780, recipe: 'Extract_NitrogenGas_Well' })
+        const product = factory.products[0]
+        product.buildingGroups[0].satellites = { impure: 0, normal: 1, pure: 6 }
+        calculateFactories([factory], gameData, { forceRebalance: true })
+
+        product.amount = 60
+        calculateFactories([factory], gameData, { forceRebalance: true })
+
+        expect(product.buildingGroups[0].satellites).toEqual({ impure: 0, normal: 1, pure: 6 })
+        expect(product.buildingGroups[0].buildingCount).toBe(1)
+      })
+
       it('keeps a well on the purity it was built on', () => {
         const factory = newFactory('Nitrogen')
         addProductToFactory(factory, { id: 'NitrogenGas', amount: 300, recipe: 'Extract_NitrogenGas_Well' })

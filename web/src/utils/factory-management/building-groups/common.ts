@@ -940,6 +940,23 @@ export const updateBuildingGroupViaPart = (
   recalculateGroupMetrics(item, groupType, factory)
 }
 
+/**
+ * Re-judges every item's building groups against this browser's balance tolerance.
+ *
+ * The verdict is stored in the plan but the tolerance is not — it belongs to the browser — so a
+ * plan that arrives from somewhere else (a share link, a cloud restore, a pasted plan, or simply
+ * one saved before the setting was changed) carries the author's verdict. Loading deliberately
+ * skips a full recalculation, and this is nothing like one: it reads each group's count and clock
+ * and writes a boolean, so the two can never disagree about the same plan.
+ */
+export const refreshBuildingGroupProblems = (factories: Factory[]) => {
+  factories.forEach(factory => {
+    factory.products?.forEach(product => calculateBuildingGroupProblems(product, ItemType.Product))
+    factory.powerProducers?.forEach(producer => calculateBuildingGroupProblems(producer, ItemType.Power))
+    calculateHasProblem(factory)
+  })
+}
+
 export const recalculateGroupMetrics = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,

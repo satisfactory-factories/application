@@ -9,6 +9,7 @@ import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import { refreshBuildingGroupProblems } from '@/utils/factory-management/building-groups/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
@@ -632,6 +633,11 @@ export const useAppStore = defineStore('app', () => {
     if (needsCalculation) {
       console.log('appStore: initFactories: Data migrations were applied, recalculating')
       calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
+    } else {
+      // Whether a group set counts as balanced is the one stored verdict that depends on a
+      // setting rather than on the plan, so a plan from another browser has to be re-judged
+      // against this one's tolerance. Cheap enough to run on every load, unlike the recalc above.
+      refreshBuildingGroupProblems(newFactories)
     }
 
     console.log('appStore: initFactories - completed')
