@@ -28,7 +28,7 @@
                 navigable
                 size="small"
                 :statuses="cardStatuses"
-                @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
+                @navigate="target => navigateToStatus(target)"
               />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
@@ -388,7 +388,18 @@
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+
+  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // row of its own.
+  const navigateToStatus = (target: { section: string, subject?: string }) => {
+    const section = `${props.factory.id}-${target.section}`
+    navigateToFactory(
+      props.factory.id,
+      target.subject ? `${section}-item-${target.subject}` : section,
+      section
+    )
+  }
 
   const props = defineProps<{
     factory: Factory

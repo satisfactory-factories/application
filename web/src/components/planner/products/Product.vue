@@ -1,9 +1,18 @@
 <template>
   <div
     v-for="(product, productIndex) in factory.products"
+    :id="`${factory.id}-products-item-${product.id}`"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
+    :class="{ warning: hasUnhandledByproduct(product) }"
   >
+    <!-- A status chip names the part, so a byproduct needs an anchor of its own or the jump has
+         nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
+    <div
+      v-for="byProduct in product.byProducts ?? []"
+      :id="`${factory.id}-products-item-${byProduct.id}`"
+      :key="`anchor-${byProduct.id}`"
+    />
     <div class="factory-item-controls">
       <v-btn
         :color="product.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
@@ -102,9 +111,24 @@
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
         <i class="fas fa-industry mr-1" />Internal
       </v-chip>
-      <v-chip v-if="shouldShowNotInDemand(product, factory)" class="align-self-center sf-chip small orange">
-        No demand!
-      </v-chip>
+      <tooltip
+        v-if="isEndProduct(factory, product.id)"
+        classes="align-self-center"
+        text="Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it."
+      >
+        <v-chip class="sf-chip small blue">
+          <i class="fas fa-flag-checkered mr-1" />End product
+        </v-chip>
+      </tooltip>
+      <tooltip
+        v-if="shouldShowNotInDemand(product, factory)"
+        classes="align-self-center"
+        text="Nothing asks for this product: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking and dimensional depots, so if you are sinking this, ignore it for now."
+      >
+        <v-chip class="sf-chip small status-note">
+          <i class="fas fa-question-circle mr-1" />No demand
+        </v-chip>
+      </tooltip>
     </div>
     <div
       v-if="product.recipe"
@@ -142,6 +166,22 @@
           <v-chip v-if="shouldShowInternal(byProduct, factory)" class="sf-chip small green">
             <i class="fas fa-industry mr-1" />Internal
           </v-chip>
+          <tooltip
+            v-if="hasNoDemand(factory, byProduct.id)"
+            text="Nothing asks for this byproduct: no recipe in this factory needs it and no other factory imports it."
+          >
+            <v-chip class="sf-chip small status-note">
+              <i class="fas fa-question-circle mr-1" />No demand
+            </v-chip>
+          </tooltip>
+          <tooltip
+            v-if="isUnhandledByproduct(factory, byProduct.id)"
+            text="With nowhere to send it, this byproduct fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, export it, or sink it. Fluids are the hard case: there is no sink for them."
+          >
+            <v-chip class="sf-chip small status-warning">
+              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+            </v-chip>
+          </tooltip>
         </template>
       </div>
       <div
@@ -252,6 +292,7 @@
     updateProductAmountViaByproduct,
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
+  import { hasNoDemand, isEndProduct, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
@@ -286,6 +327,11 @@
     factory: Factory;
     helpText: boolean;
   }>()
+
+  // Takes the whole row amber, so a warning chip halfway down a long product list is attached to
+  // something rather than floating.
+  const hasUnhandledByproduct = (product: FactoryItem) =>
+    (product.byProducts ?? []).some(byProduct => isUnhandledByproduct(props.factory, byProduct.id))
 
   const productSelectionWidth = computed(() => {
     let width = '300px'

@@ -187,11 +187,6 @@ export const showExtractedChip = (factory: Factory, partId: string) => {
 }
 
 // A raw part this factory neither extracts nor imports enough of.
-export const showRawShortageChip = (factory: Factory, partId: string) => {
-  const part = factory.parts[partId]
-  return part.isRaw && !part.satisfied
-}
-
 export const showUnpackagedChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]
   if (!part.isRaw) {

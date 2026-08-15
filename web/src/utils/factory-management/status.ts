@@ -15,6 +15,10 @@
  * numbers the engine produced, it is a `problem`. If deciding it needs a guess about what the user
  * meant — or it is about the world rather than the plan — it is a `warning`.
  *
+ * The third tier, `note`, is for a state that is worth counting but is very often deliberate. It
+ * gets a chip like any other status and is left out of the colour rollup entirely, so the factory
+ * stays green. Same reasoning as the `hand-gathered` chip: an observation, not a fault.
+ *
  * This module must stay a LEAF. `problems.ts` imports it and is itself imported by `factory.ts`, so
  * importing anything that reaches `factory.ts` closes a cycle. That is why the import predicates
  * live in `inputs-analysis.ts`.
@@ -22,19 +26,20 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
 
-export type FactoryStatusSeverity = 'problem' | 'warning'
+export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
 // Element-id suffix of the card section a status points at, for navigateToFactory().
 export type FactoryStatusSection = 'satisfaction' | 'imports' | 'products'
 
 export type FactoryStatusType =
   | 'partShortage' |
-  'rawShortage' |
   'exportShortage' |
   'buildingGroupMismatch' |
   'outOfSync' |
+  'unhandledByproduct' |
   'redundantImport' |
-  'duplicateImport'
+  'duplicateImport' |
+  'noDemand'
 
 // `type` maps straight onto <game-asset>'s prop. A power producer's `id` is a random instance
 // number, NOT an item id, so building-group statuses carry its building instead.
@@ -85,6 +90,44 @@ const subjects = (ids: (string | null | undefined)[], type: 'item' | 'building' 
   return result
 }
 
+const defined = (ids: (string | undefined)[]): string[] => ids.filter((id): id is string => !!id)
+
+// What the factory chose to make.
+export const factoryProducts = (factory: Factory): string[] =>
+  defined(factory.products.map(product => product.id))
+
+// What it gets whether it wants it or not: recipe byproducts and a generator's waste. Kept apart
+// from products because the two fail differently — an unwanted product is a waste of buildings,
+// an unwanted byproduct backs up and stops the machine making it.
+export const factoryByproducts = (factory: Factory): string[] =>
+  defined([
+    ...factory.byProducts.map(byProduct => byProduct.id),
+    ...factory.powerProducers.map(producer => producer.byproduct?.part),
+  ])
+
+// Everything the factory puts out, whichever pass made it.
+export const factoryOutputs = (factory: Factory): string[] =>
+  [...factoryProducts(factory), ...factoryByproducts(factory)]
+
+// An output the game itself never consumes: a Space Elevator part, ammunition, equipment. Having
+// no consumer is what these are for, so they get their own chip rather than the noDemand note.
+export const isEndProduct = (factory: Factory, partId: string): boolean =>
+  !!partId &&
+  factory.parts[partId]?.isEndProduct === true &&
+  factoryOutputs(factory).includes(partId)
+
+// A byproduct nothing takes. Unlike a product you chose to make, you cannot decline it: it fills
+// the machine's output slot and stops the line.
+export const isUnhandledByproduct = (factory: Factory, partId: string): boolean =>
+  factoryByproducts(factory).includes(partId) && hasNoDemand(factory, partId)
+
+// Zero demand only. Partial demand is a surplus, which the product row already offers to trim.
+export const hasNoDemand = (factory: Factory, partId: string): boolean =>
+  !!partId &&
+  factory.parts[partId]?.amountRequired === 0 &&
+  factory.parts[partId]?.isEndProduct !== true &&
+  factoryOutputs(factory).includes(partId)
+
 const count = (list: FactoryStatusSubject[], one: string, many: string) =>
   list.length > 1 ? `${list.length} ${many}` : one
 
@@ -102,34 +145,27 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     chip: true,
     section: 'satisfaction',
     detail: 'This factory needs more of these parts than it can supply.',
-    detect: factory => {
-      if (hasNoProducts(factory)) return null
-      return nonEmpty(subjects(
-        Object.keys(factory.parts).filter(part => !factory.parts[part].satisfied && !factory.parts[part].isRaw)
-      ))
-    },
-    label: list => count(list, 'Shortage', 'shortages'),
-  },
-  {
-    type: 'rawShortage',
-    severity: 'problem',
-    icon: 'fas fa-shovel',
-    chip: true,
-    section: 'satisfaction',
-    detail: 'This factory needs raw resources it neither extracts nor imports.',
-    // Deliberately no hasNoProducts guard: a generator burning Coal it doesn't import is a real
-    // shortage, and unlike partShortage there is no saved-plan colour to preserve — raw demand
-    // counted as satisfied until extraction could be modelled.
+    // Raw and manufactured in one status: a factory short of ore and short of a plate is short,
+    // and being told which kind twice never told anyone anything they could act on.
     //
-    // Hand-gathered resources need no guard here: the engine leaves them satisfied, so the
+    // The two halves guard differently, which is why this isn't one filter. The products-less
+    // guard belongs to manufactured parts only, mirroring calculateParts; raw parts must bypass
+    // it, or a generator burning Coal it doesn't import stops reading as short. There is no
+    // saved-plan colour to preserve on the raw side either: raw demand counted as satisfied until
+    // extraction could be modelled.
+    //
+    // Hand-gathered resources need no guard: the engine leaves them satisfied, so the
     // !satisfied filter already excludes them.
     detect: factory => {
-      return nonEmpty(subjects(
-        Object.keys(factory.parts).filter(part => factory.parts[part].isRaw && !factory.parts[part].satisfied)
-      ))
+      const short = (raw: boolean) => Object.keys(factory.parts)
+        .filter(part => !factory.parts[part].satisfied && factory.parts[part].isRaw === raw)
+
+      return nonEmpty(subjects([
+        ...(hasNoProducts(factory) ? [] : short(false)),
+        ...short(true),
+      ]))
     },
-    label: list => count(list, 'Raw shortage', 'raw shortages'),
-    detailLabel: list => count(list, 'Raw shortage', 'raw resources short'),
+    label: list => count(list, 'Shortage', 'shortages'),
   },
   {
     type: 'exportShortage',
@@ -161,6 +197,23 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     ]),
     label: list => count(list, 'Building groups', 'building groups'),
     detailLabel: list => count(list, 'Building groups do not add up', 'items with building group problems'),
+  },
+  {
+    type: 'unhandledByproduct',
+    severity: 'warning',
+    icon: 'fas fa-exclamation-triangle',
+    chip: true,
+    section: 'products',
+    detail: 'These byproducts have nowhere to go, so they back up and stall the buildings making them.',
+    // Amber rather than the noDemand note: a product nobody wants is wasted buildings, but a
+    // byproduct nobody takes stops the line. Plutonium Waste off a Plutonium Fuel Rod line is the
+    // case to keep in mind — you cannot choose not to make it. Fluids are the worst of it, having
+    // no sink of their own, but a blocked pipe and a blocked belt both stop production.
+    detect: factory => nonEmpty(subjects(
+      factoryByproducts(factory).filter(id => hasNoDemand(factory, id))
+    )),
+    label: list => count(list, 'Unhandled byproduct', 'unhandled byproducts'),
+    detailLabel: list => count(list, 'Unhandled byproduct', 'byproducts with nowhere to go'),
   },
   {
     type: 'outOfSync',
@@ -198,6 +251,24 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     )),
     label: list => count(list, 'Duplicate import', 'duplicate imports'),
   },
+  {
+    type: 'noDemand',
+    severity: 'note',
+    icon: 'fas fa-question-circle',
+    chip: true,
+    section: 'products',
+    detail: 'Nothing asks for these products: no recipe here needs them and no factory imports them.',
+    // Products only. A byproduct in the same state is unhandledByproduct, which is amber and says
+    // something worse; naming the item in both chips would be saying it twice.
+    detect: factory => {
+      const byproducts = factoryByproducts(factory)
+      return nonEmpty(subjects(
+        factoryProducts(factory).filter(id => !byproducts.includes(id) && hasNoDemand(factory, id))
+      ))
+    },
+    label: list => count(list, 'No demand', 'no demand'),
+    detailLabel: list => count(list, 'No demand', 'outputs with no demand'),
+  },
 ]
 
 // Every status that applies, highest severity first.
@@ -233,10 +304,12 @@ export const hasFactoryProblem = (factory: Factory): boolean =>
 
 export const highestSeverity = (statuses: FactoryStatus[]): FactoryStatusSeverity | null => {
   if (statuses.some(status => status.severity === 'problem')) return 'problem'
-  return statuses.length ? 'warning' : null
+  if (statuses.some(status => status.severity === 'warning')) return 'warning'
+  return statuses.length ? 'note' : null
 }
 
 // The class object every display site binds. Exclusive by construction: at most one is true.
+// The note tier is absent on purpose: it colours its chip and nothing else.
 export const factoryStatusClass = (statuses: FactoryStatus[] = []) => {
   const severity = highestSeverity(statuses)
   return {
@@ -282,8 +355,8 @@ export interface FactoryStatusTallyChip {
 
 interface TallyChipDefinition {
   key: string
-  // The statuses that count towards this chip. Part and raw shortages share one: a factory short
-  // of ore and short of a plate is one factory that cannot make what it says it makes.
+  // The statuses that count towards this chip. More than one where several statuses are one
+  // thing to the reader.
   types: FactoryStatusType[]
   icon: string
   class: string
@@ -297,7 +370,7 @@ interface TallyChipDefinition {
 const tallyChipDefinitions: TallyChipDefinition[] = [
   {
     key: 'shortages',
-    types: ['partShortage', 'rawShortage'],
+    types: ['partShortage'],
     // A box, not a warning glyph: the count is about parts.
     icon: 'fas fa-box',
     class: 'status-problem',
@@ -322,6 +395,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     sentence: ['factory has building groups that do not add up', 'factories have building groups that do not add up'],
   },
   {
+    key: 'unhandledByproduct',
+    types: ['unhandledByproduct'],
+    icon: 'fas fa-exclamation-triangle',
+    class: 'status-warning',
+    label: ['unhandled byproduct', 'unhandled byproducts'],
+    sentence: ['factory makes a byproduct with nowhere to go', 'factories make byproducts with nowhere to go'],
+  },
+  {
     key: 'outOfSync',
     types: ['outOfSync'],
     icon: 'fas fa-times-square',
@@ -344,6 +425,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-warning',
     label: ['duplicate import', 'duplicate imports'],
     sentence: ['factory imports the same part twice', 'factories import the same part twice'],
+  },
+  {
+    key: 'noDemand',
+    types: ['noDemand'],
+    icon: 'fas fa-question-circle',
+    class: 'status-note',
+    label: ['no demand', 'no demand'],
+    sentence: ['factory produces something nothing asks for', 'factories produce something nothing asks for'],
   },
 ]
 

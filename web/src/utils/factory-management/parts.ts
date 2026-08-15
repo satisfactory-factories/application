@@ -3,6 +3,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
+import { getEndProducts } from '@/utils/factory-management/end-products'
 
 // A building group solved against a target has to express its clock in the four decimal places
 // the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
@@ -51,6 +52,8 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
   calculatePartRaw(factory, gameData)
   calculateExportable(factory)
 
+  const endProducts = getEndProducts(gameData)
+
   // Now we calculate the remaining amount of parts required after all inputs and internal products are accounted for.
   for (const part in factory.parts) {
     // If for some reason the part key is an empty string, remove it.
@@ -61,6 +64,10 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
     }
 
     const partData = factory.parts[part]
+
+    // A fact about the game rather than about this plan, but it belongs on the part for the same
+    // reason isRaw does: every display site already has the part and none of them have game data.
+    partData.isEndProduct = endProducts.has(part)
 
     // Sum up remaining amount
     partData.amountRemaining = partData.amountSupplied - partData.amountRequired

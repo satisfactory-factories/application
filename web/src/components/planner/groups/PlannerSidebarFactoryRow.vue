@@ -31,7 +31,7 @@
             animated
             navigable
             :statuses="statuses"
-            @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
+            @navigate="target => navigateToStatus(target)"
           />
         </v-spacer>
         <v-tooltip right>
@@ -113,7 +113,18 @@
     statuses?: FactoryStatus[]
   }>()
 
-  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string, fallback?: string) => void
+
+  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // row of its own (or whose card has not rendered yet).
+  const navigateToStatus = (target: { section: string, subject?: string }) => {
+    const section = `${props.factory.id}-${target.section}`
+    navigateToFactory(
+      props.factory.id,
+      target.subject ? `${section}-item-${target.subject}` : section,
+      section
+    )
+  }
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const iconDialogOpen = ref(false)

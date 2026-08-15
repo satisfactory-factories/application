@@ -18,6 +18,7 @@ import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { getSomersloopIngredientFactor } from '@/utils/factory-management/building-groups/somersloops'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { hasNoDemand } from '@/utils/factory-management/status'
 
 const gameData = await fetchGameData()
 
@@ -235,16 +236,10 @@ export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory
   return factory.parts[product.id].amountRequiredProduction > 0 || factory.parts[product.id].amountRequiredPower > 0
 }
 
-export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) => {
-  // Calculate whether the product is in demand at all
-  if (!product.id) {
-    return false
-  }
-
-  const partRequired = factory.parts[product.id]?.amountRequired
-
-  return partRequired <= 0
-}
+// Delegates so the product row and the noDemand status can never disagree about what "no demand"
+// means. status.ts is a leaf, so importing it here closes no cycle.
+export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) =>
+  hasNoDemand(factory, product.id)
 
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {
   // If the product is not found, throw

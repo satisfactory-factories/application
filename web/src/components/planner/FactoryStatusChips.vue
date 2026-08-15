@@ -71,7 +71,11 @@
     navigable: false,
   })
 
-  const emit = defineEmits<{ (event: 'navigate', section: FactoryStatusSection): void }>()
+  // The subject rides along so the jump can land on the row that owns the problem rather than on
+  // the section heading above it. The parent composes the element id: only it knows the factory.
+  const emit = defineEmits<{
+    (event: 'navigate', target: { section: FactoryStatusSection, subject?: string }): void
+  }>()
 
   const isNavigable = (status: FactoryStatus) => props.navigable && !!status.section
 
@@ -82,7 +86,7 @@
     ? {
       onClick: (event: MouseEvent | KeyboardEvent) => {
         event.stopPropagation()
-        emit('navigate', status.section!)
+        emit('navigate', { section: status.section!, subject: status.subjects[0]?.id })
       },
     }
     : {}

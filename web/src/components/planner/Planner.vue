@@ -584,7 +584,10 @@
     helpText.value = !helpText.value
   }
 
-  const navigateToFactory = (factoryId: number | string, subsection?: string) => {
+  // `subsection` may name a row that isn't on screen (a status chip jumping to the product that
+  // owns the problem), so callers pass the section as a fallback rather than the jump silently
+  // doing nothing.
+  const navigateToFactory = (factoryId: number | string, subsection?: string, fallback?: string) => {
     const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
@@ -600,14 +603,20 @@
     setCollapsed(factory.group?.id ?? null, false)
 
     // Wait a bit for the factory to unhide fully. Hack but works well.
-    setTimeout(() => scrollToElement(subsection ?? `${factoryId}`), 50)
+    setTimeout(() => scrollToElement([subsection ?? `${factoryId}`, fallback ?? `${factoryId}`]), 50)
   }
 
   // Scrolls to the element, then corrects for layout shifts: factory cards materialize as they
   // scroll past the viewport, growing the content above the target and leaving the scroll short.
-  const scrollToElement = (elementId: string, attempt = 0) => {
-    const element = document.getElementById(elementId)
-    if (!element) return
+  //
+  // Takes candidates in preference order and re-resolves them on every attempt: a row inside a
+  // card that has not materialized yet is not in the DOM at click time, and the correction pass
+  // is where it appears.
+  const scrollToElement = (candidates: string | string[], attempt = 0) => {
+    const ids = Array.isArray(candidates) ? candidates : [candidates]
+    const elementId = ids.find(id => document.getElementById(id))
+    const element = elementId ? document.getElementById(elementId) : null
+    if (!element || !elementId) return
 
     // Corrections snap instantly - re-running the smooth animation would chase a moving target.
     element.scrollIntoView({ behavior: attempt === 0 ? 'smooth' : 'auto', block: 'start' })
@@ -620,7 +629,7 @@
       const current = document.getElementById(elementId)
       // ~114px is where the top of a scrolled-to element sits (page header + tab bar)
       if (current && Math.abs(current.getBoundingClientRect().top) > 150) {
-        scrollToElement(elementId, attempt + 1)
+        scrollToElement(ids, attempt + 1)
       }
     }, 600)
   }

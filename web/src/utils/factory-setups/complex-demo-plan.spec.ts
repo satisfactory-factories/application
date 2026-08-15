@@ -154,6 +154,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: true,
       })
       expect(oilFac.parts.LiquidFuel).toEqual({
@@ -168,6 +169,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(oilFac.parts.HeavyOilResidue).toEqual({
@@ -182,6 +184,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 260,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
     })
@@ -198,6 +201,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
     })
@@ -435,6 +439,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       // Imported from the Raw Materials Mine rather than assumed out of thin air.
@@ -450,6 +455,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: false,
       })
       expect(uraniumFac.parts.SulfuricAcid).toEqual({
@@ -464,6 +470,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 40,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.Sulfur).toEqual({
@@ -478,6 +485,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: false,
       })
       // Pumped on site: 22 Water Extractors, over-producing 80/min because 2560 isn't a multiple
@@ -494,6 +502,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 80,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.ElectromagneticControlRod).toEqual({
@@ -508,6 +517,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.Stator).toEqual({
@@ -522,6 +532,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -15,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(uraniumFac.parts.CircuitBoardHighSpeed).toEqual({
@@ -536,6 +547,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -10,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(uraniumFac.parts.NuclearFuelRod).toEqual({
@@ -550,6 +562,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.UraniumCell).toEqual({
@@ -564,6 +577,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.SteelPlateReinforced).toEqual({
@@ -578,6 +592,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -6,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(uraniumFac.parts.OreUranium).toEqual({
@@ -592,6 +607,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 40,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: true,
       })
       expect(uraniumFac.parts.NuclearWaste).toEqual({
@@ -606,6 +622,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
     })
@@ -644,6 +661,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 33.333,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: true,
       })
       expect(plutoniumFac.parts.NuclearWaste).toEqual({
@@ -658,6 +676,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 75,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.Silica).toEqual({
@@ -672,6 +691,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -16.667,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.NitricAcid).toEqual({
@@ -686,6 +706,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -10,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.SulfuricAcid).toEqual({
@@ -700,6 +721,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: -10,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.Water).toEqual({
@@ -714,6 +736,7 @@ describe('Complex Demo Plan', () => {
         amountRemaining: 10,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
         exportable: true,
       })
     })

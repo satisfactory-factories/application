@@ -13,6 +13,10 @@ export interface PartMetrics {
   amountSuppliedViaProduction: number; // This is the amount supplied by internal products
   amountRemaining: number; // This is the amount remaining after all inputs and internal products are accounted for. Can be a minus number, which is used for surplus calculations.
   isRaw: boolean; // Whether the part is a raw resource or not, if so it will always be marked as satisfied.
+  // Nothing in the game consumes this part: it is the end of its chain. Derived from the game
+  // data every calculation, like isRaw. Optional so a part built before the metrics are stamped
+  // (or by an old test fixture) reads as false rather than undefined-y.
+  isEndProduct?: boolean;
   satisfied: boolean; // Use of use flag for templating.
   exportable: boolean // Whether the product should be a candidate for imports.
 }

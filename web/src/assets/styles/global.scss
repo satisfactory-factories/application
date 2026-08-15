@@ -216,6 +216,10 @@
     background-color: var(--sf-status-warning-bg);
   }
 
+  // The note tier (`status-note`) is outlined amber instead, and shares its rule with
+  // `hand-gathered` below — same reason: it never colours the factory, so it must not look
+  // like the two fills above, which do.
+
   &.green, &.success {
     color: var(--sf-success) !important;
     border-color: var(--sf-success-border) !important;
@@ -245,11 +249,11 @@
     border-color: var(--sf-raw-resource-border) !important;
   }
 
-  // The warning tier as an outlined chip rather than the fill `.status-warning` carries.
-  // `hand-gathered` is a raw resource with no extractor in the game — amber because it is an
-  // assumption the planner is making on your behalf, not a state of the plan, so the factory
-  // itself stays green.
-  &.hand-gathered, &.status-warning-outlined {
+  // Amber as an outlined chip rather than the fill `.status-warning` carries. `hand-gathered` is a
+  // raw resource with no extractor in the game — amber because it is an assumption the planner is
+  // making on your behalf, not a state of the plan, so the factory itself stays green. The note
+  // tier (`status-note`, e.g. an output nothing asks for) is amber for exactly that reason too.
+  &.hand-gathered, &.status-warning-outlined, &.status-note {
     color: var(--sf-status-warning) !important;
     border-color: var(--sf-status-warning-border) !important;
   }
@@ -410,6 +414,13 @@
   &.problem {
     border-color: var(--sf-problem-border) !important;
     background-color: var(--sf-problem-bg) !important;
+  }
+
+  // Same idea one tier down: a product or generator carrying a warning (a byproduct with nowhere
+  // to go) takes the whole row, so it is obvious which of a dozen rows the chip belongs to.
+  &.warning {
+    border-color: var(--sf-status-warning-border) !important;
+    background-color: var(--sf-status-warning-bg) !important;
   }
 
   // This `border-bottom` has never actually applied: Vuetify 3 emitted

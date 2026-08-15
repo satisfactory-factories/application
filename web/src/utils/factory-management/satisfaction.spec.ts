@@ -11,7 +11,6 @@ import {
   showInternalChip,
   showManuallyGatheredChip,
   showProductChip,
-  showRawShortageChip,
   showRecycledChip,
   showSatisfactionItemButton,
   showUnpackagedChip,
@@ -22,6 +21,7 @@ import { addInputToFactory, getAllInputs, getInput } from '@/utils/factory-manag
 import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
 import { create243Scenario } from '@/utils/factory-setups/243-water-recycling'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { getFactoryStatuses } from '@/utils/factory-management/status'
 
 describe('satisfaction', () => {
   let factories: Factory[]
@@ -566,11 +566,19 @@ describe('satisfaction', () => {
       })
     })
 
-    describe('showRawShortageChip', () => {
-      it('should show for a raw part the factory neither extracts nor imports', () => {
-        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(true)
+    // A raw shortage is an ordinary shortage: no chip of its own any more, so these assert the
+    // satisfied flag the shortage status reads, and one case pins the status itself.
+    describe('raw shortages', () => {
+      const isShort = (factory: Factory, partId: string) => !factory.parts[partId].satisfied
+
+      it('should be short of a raw part the factory neither extracts nor imports', () => {
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(true)
+        expect(getFactoryStatuses(mockFactory)).toContainEqual(expect.objectContaining({
+          type: 'partShortage',
+          subjects: expect.arrayContaining([{ id: 'LiquidOil', type: 'item' }]),
+        }))
       })
-      it('should NOT show once the factory extracts it', () => {
+      it('should NOT be short once the factory extracts it', () => {
         const mine = newFactory('Copper Mine', 9, 9)
         addProductToFactory(mine, {
           id: 'OreCopper',
@@ -579,19 +587,19 @@ describe('satisfaction', () => {
         })
         calculateFactories([mine], gameData)
 
-        expect(showRawShortageChip(mine, 'OreCopper')).toBe(false)
+        expect(isShort(mine, 'OreCopper')).toBe(false)
       })
       // #431: unpackaging covers the demand, so there is nothing short.
-      it('should NOT show for a raw part fully supplied by unpackaging', () => {
+      it('should NOT be short of a raw part fully supplied by unpackaging', () => {
         addUnpackagedOilToCoverDemand(mockFactory)
         calculateFactories(factories, gameData)
 
-        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(false)
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(false)
       })
       // The bug this whole change exists to kill: mining or unpackaging SOME of a raw part
       // used to read as fully satisfied, because the chip that would have said otherwise was
       // suppressed by the one saying "extracted".
-      it('should show for a raw part only partially supplied', () => {
+      it('should be short of a raw part only partially supplied', () => {
         addProductToFactory(mockFactory, {
           id: 'LiquidOil',
           amount: 30,
@@ -599,8 +607,7 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(mockFactory.parts.LiquidOil.satisfied).toBe(false)
-        expect(showRawShortageChip(mockFactory, 'LiquidOil')).toBe(true)
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(true)
       })
     })
 
