@@ -50,6 +50,7 @@ describe('Simple factory plan', () => {
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       // Nothing in this plan digs the ore up, and it is no longer assumed, so the smelter is
@@ -67,6 +68,7 @@ describe('Simple factory plan', () => {
         satisfied: false,
         isRaw: true,
         isEndProduct: false,
+        isSinkable: true,
         exportable: false, // It's raw, so it's not exportable
       })
     })
@@ -148,6 +150,7 @@ describe('Simple factory plan', () => {
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(ironPlateFac.parts.IronIngot).toEqual({
@@ -163,6 +166,7 @@ describe('Simple factory plan', () => {
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })
@@ -211,6 +215,7 @@ describe('Simple factory plan', () => {
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })
@@ -242,6 +247,7 @@ describe('Simple factory plan', () => {
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })

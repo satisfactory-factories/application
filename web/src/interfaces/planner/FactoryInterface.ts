@@ -17,6 +17,9 @@ export interface PartMetrics {
   // data every calculation, like isRaw. Optional so a part built before the metrics are stamped
   // (or by an old test fixture) reads as false rather than undefined-y.
   isEndProduct?: boolean;
+  // Whether the AWESOME Sink would take this part. Decides how serious an unwanted byproduct is:
+  // a sinkable one has a way out, a fluid or radioactive one does not. Derived like isEndProduct.
+  isSinkable?: boolean;
   satisfied: boolean; // Use of use flag for templating.
   exportable: boolean // Whether the product should be a candidate for imports.
 }

@@ -250,19 +250,32 @@
                   <span>Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it.</span>
                 </v-tooltip>
               </template>
+              <!-- The byproduct pair, exclusive by construction. Sinkable is the soft one: a way
+                   out exists, so the chip says so and the factory stays green. -->
+              <template v-if="isPotentialBlockage(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
+                      <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
+                    </v-chip>
+                  </template>
+                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update.</span>
+                </v-tooltip>
+              </template>
               <template v-if="isUnhandledByproduct(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
-                      <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
+                      <i class="fas fa-exclamation-triangle mr-2" /><span>Unhandled byproduct</span>
                     </v-chip>
                   </template>
-                  <span>With nowhere to send it, this byproduct fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, export it, or sink it. Fluids are the hard case: there is no sink for them.</span>
+                  <span>Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will.</span>
                 </v-tooltip>
               </template>
               <!-- Amber rather than red, and it leaves the factory green: making something
-                   nothing asks for is often the whole point of the factory. -->
-              <template v-if="hasNoDemand(factory, partId.toString())">
+                   nothing asks for is often the whole point of the factory. The two chips above
+                   cover the byproduct case, which says the same thing with more consequence. -->
+              <template v-if="hasNoDemand(factory, partId.toString()) && !isPotentialBlockage(factory, partId.toString()) && !isUnhandledByproduct(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <!-- No trailing info icon: the question mark already says the chip is
@@ -435,7 +448,7 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
-  import { hasNoDemand, isEndProduct, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {

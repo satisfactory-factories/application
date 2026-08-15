@@ -4,6 +4,7 @@ import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
 import { getEndProducts } from '@/utils/factory-management/end-products'
+import { isSinkablePart } from '@/utils/factory-management/sinkable'
 
 // A building group solved against a target has to express its clock in the four decimal places
 // the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
@@ -68,6 +69,7 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
     // A fact about the game rather than about this plan, but it belongs on the part for the same
     // reason isRaw does: every display site already has the part and none of them have game data.
     partData.isEndProduct = endProducts.has(part)
+    partData.isSinkable = isSinkablePart(part, gameData)
 
     // Sum up remaining amount
     partData.amountRemaining = partData.amountSupplied - partData.amountRequired

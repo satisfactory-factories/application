@@ -651,6 +651,14 @@
   }
 }
 
+// Anything a status chip can jump to keeps a gap above it. Landing flush under the app chrome
+// puts the row directly beneath the "too many factories" banner, which sits over the top of it.
+.factory-item,
+.status-anchor,
+tr[id*="-satisfaction-item-"] {
+  scroll-margin-top: 50px;
+}
+
 .factory-item {
   border-left: 5px solid var(--sf-blue) !important;
   position: relative;

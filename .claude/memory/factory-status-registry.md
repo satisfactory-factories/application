@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 0567359e-18f1-4a58-9d25-7163e4a0cbc1
-  modified: 2026-08-15T18:03:15.601Z
+  modified: 2026-08-15T18:21:07.643Z
   volatility: durable
   lastVerified: 2026-08-15
 ---
@@ -47,9 +47,15 @@ Three rules settled the same day, all about *what* a zero-demand output means:
 
 - **A product nobody wants and a byproduct nobody takes are different failures.** You can decline to
   build the first (`noDemand`, note tier); the second arrives whether you want it or not, fills the
-  machine's output slot and stops the line (`unhandledByproduct`, warning tier, colours the factory).
-  `factoryProducts` / `factoryByproducts` split them, and `noDemand` skips anything that is also a
-  byproduct so no item is named in two chips.
+  machine's output slot and stops the line. `factoryProducts` / `factoryByproducts` split them, and
+  `noDemand` skips anything that is also a byproduct so no item is named in two chips.
+- **The byproduct case splits again on whether the sink would take it**, which is the difference
+  between a loose end and a wall: `potentialBlockage` (note, factory stays green) for a sinkable
+  solid, `unhandledByproduct` (warning, colours the factory) for a fluid or a radioactive item.
+  `sinkable.ts` owns the rule and stamps `PartMetrics.isSinkable`; the AWESOME Sink feature will
+  want the same module, and its plan doc is where the rule comes from — including the hardcoded
+  radioactive list that a parser `sinkPoints` field is meant to replace. See
+  [[project-awesome-sink-plan]].
 - **An end product is not a surplus.** `end-products.ts` derives, from the game data, the parts no
   recipe consumes; they get a blue *End product* chip instead. Consumption must count power
   generation recipes and the Alien Power Augmenter's `boost.fuelPart`, or every nuclear fuel rod and

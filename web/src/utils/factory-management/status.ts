@@ -39,7 +39,8 @@ export type FactoryStatusType =
   'unhandledByproduct' |
   'redundantImport' |
   'duplicateImport' |
-  'noDemand'
+  'noDemand' |
+  'potentialBlockage'
 
 // `type` maps straight onto <game-asset>'s prop. A power producer's `id` is a random instance
 // number, NOT an item id, so building-group statuses carry its building instead.
@@ -118,8 +119,18 @@ export const isEndProduct = (factory: Factory, partId: string): boolean =>
 
 // A byproduct nothing takes. Unlike a product you chose to make, you cannot decline it: it fills
 // the machine's output slot and stops the line.
-export const isUnhandledByproduct = (factory: Factory, partId: string): boolean =>
+//
+// How bad that is depends on whether the sink would take it, which is why this splits in two. A
+// sinkable solid has a way out you have not drawn yet; a fluid or a radioactive item has none, so
+// the line really does stop. Only the second colours the factory.
+const undemandedByproduct = (factory: Factory, partId: string): boolean =>
   factoryByproducts(factory).includes(partId) && hasNoDemand(factory, partId)
+
+export const isUnhandledByproduct = (factory: Factory, partId: string): boolean =>
+  undemandedByproduct(factory, partId) && factory.parts[partId]?.isSinkable === false
+
+export const isPotentialBlockage = (factory: Factory, partId: string): boolean =>
+  undemandedByproduct(factory, partId) && factory.parts[partId]?.isSinkable !== false
 
 // Zero demand only. Partial demand is a surplus, which the product row already offers to trim.
 export const hasNoDemand = (factory: Factory, partId: string): boolean =>
@@ -204,16 +215,16 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     icon: 'fas fa-exclamation-triangle',
     chip: true,
     section: 'products',
-    detail: 'These byproducts have nowhere to go, so they back up and stall the buildings making them.',
-    // Amber rather than the noDemand note: a product nobody wants is wasted buildings, but a
-    // byproduct nobody takes stops the line. Plutonium Waste off a Plutonium Fuel Rod line is the
-    // case to keep in mind — you cannot choose not to make it. Fluids are the worst of it, having
-    // no sink of their own, but a blocked pipe and a blocked belt both stop production.
+    detail: 'These byproducts cannot be sunk and nothing consumes them, so they back up and stall the buildings making them.',
+    // Amber rather than the noDemand note, and the only byproduct case that colours the factory:
+    // nothing you can draw in the planner disposes of a fluid or a radioactive item, so this is a
+    // wall rather than a loose end. Plutonium Waste off a Plutonium Fuel Rod line is the case to
+    // keep in mind — you cannot choose not to make it, and you cannot sink it either.
     detect: factory => nonEmpty(subjects(
-      factoryByproducts(factory).filter(id => hasNoDemand(factory, id))
+      factoryByproducts(factory).filter(id => isUnhandledByproduct(factory, id))
     )),
     label: list => count(list, 'Unhandled byproduct', 'unhandled byproducts'),
-    detailLabel: list => count(list, 'Unhandled byproduct', 'byproducts with nowhere to go'),
+    detailLabel: list => count(list, 'Unhandled byproduct', 'byproducts that cannot be sunk'),
   },
   {
     type: 'outOfSync',
@@ -267,7 +278,22 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
       ))
     },
     label: list => count(list, 'No demand', 'no demand'),
-    detailLabel: list => count(list, 'No demand', 'outputs with no demand'),
+    detailLabel: list => count(list, 'No demand', 'products with no demand'),
+  },
+  {
+    type: 'potentialBlockage',
+    severity: 'note',
+    icon: 'fas fa-exclamation-triangle',
+    chip: true,
+    section: 'products',
+    detail: 'Nothing consumes these byproducts, so they will back up unless you sink them.',
+    // The soft half of the byproduct case: sinking it is one control away, so this is a loose end
+    // rather than a wall, and the factory stays green.
+    detect: factory => nonEmpty(subjects(
+      factoryByproducts(factory).filter(id => isPotentialBlockage(factory, id))
+    )),
+    label: list => count(list, 'Potential blockage', 'potential blockages'),
+    detailLabel: list => count(list, 'Potential blockage', 'byproducts that need sinking'),
   },
 ]
 
@@ -400,7 +426,7 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     icon: 'fas fa-exclamation-triangle',
     class: 'status-warning',
     label: ['unhandled byproduct', 'unhandled byproducts'],
-    sentence: ['factory makes a byproduct with nowhere to go', 'factories make byproducts with nowhere to go'],
+    sentence: ['factory makes a byproduct that cannot be sunk', 'factories make byproducts that cannot be sunk'],
   },
   {
     key: 'outOfSync',
@@ -433,6 +459,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-note',
     label: ['no demand', 'no demand'],
     sentence: ['factory produces something nothing asks for', 'factories produce something nothing asks for'],
+  },
+  {
+    key: 'potentialBlockage',
+    types: ['potentialBlockage'],
+    icon: 'fas fa-exclamation-triangle',
+    class: 'status-note',
+    label: ['potential blockage', 'potential blockages'],
+    sentence: ['factory makes a byproduct that needs sinking', 'factories make byproducts that need sinking'],
   },
 ]
 

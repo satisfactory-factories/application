@@ -627,8 +627,10 @@
       // above can replace the node, and a detached node's rect reads 0,
       // which silently skips the correction.
       const current = document.getElementById(elementId)
-      // ~114px is where the top of a scrolled-to element sits (page header + tab bar)
-      if (current && Math.abs(current.getBoundingClientRect().top) > 150) {
+      // ~114px is where the top of a scrolled-to element sits (page header + tab bar), and a row
+      // jumped to from a status chip adds its 50px scroll-margin on top of that — so the tolerance
+      // has to clear both, or the correction pass fights the margin it just applied.
+      if (current && Math.abs(current.getBoundingClientRect().top) > 200) {
         scrollToElement(ids, attempt + 1)
       }
     }, 600)

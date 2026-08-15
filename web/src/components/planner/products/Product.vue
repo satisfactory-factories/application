@@ -12,6 +12,7 @@
       v-for="byProduct in product.byProducts ?? []"
       :id="`${factory.id}-products-item-${byProduct.id}`"
       :key="`anchor-${byProduct.id}`"
+      class="status-anchor"
     />
     <div class="factory-item-controls">
       <v-btn
@@ -167,19 +168,19 @@
             <i class="fas fa-industry mr-1" />Internal
           </v-chip>
           <tooltip
-            v-if="hasNoDemand(factory, byProduct.id)"
-            text="Nothing asks for this byproduct: no recipe in this factory needs it and no other factory imports it."
+            v-if="isPotentialBlockage(factory, byProduct.id)"
+            text="Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
           >
             <v-chip class="sf-chip small status-note">
-              <i class="fas fa-question-circle mr-1" />No demand
+              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
             </v-chip>
           </tooltip>
           <tooltip
             v-if="isUnhandledByproduct(factory, byProduct.id)"
-            text="With nowhere to send it, this byproduct fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, export it, or sink it. Fluids are the hard case: there is no sink for them."
+            text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
           >
             <v-chip class="sf-chip small status-warning">
-              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+              <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
             </v-chip>
           </tooltip>
         </template>
@@ -292,7 +293,7 @@
     updateProductAmountViaByproduct,
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
-  import { hasNoDemand, isEndProduct, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'

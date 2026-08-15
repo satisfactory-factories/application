@@ -235,6 +235,7 @@ describe('power', () => {
         amountRemaining: 441.6,
         isRaw: false,
         isEndProduct: false,
+        isSinkable: false,
         satisfied: true,
         exportable: true, // Because it's produced in the factory in question
       })
@@ -288,6 +289,7 @@ describe('power', () => {
           amountRemaining: -0.2,
           isRaw: false,
           isEndProduct: false,
+          isSinkable: true,
           satisfied: false,
           exportable: false,
         })
@@ -307,6 +309,7 @@ describe('power', () => {
           amountRemaining: 10,
           isRaw: false,
           isEndProduct: false,
+          isSinkable: false,
           satisfied: true,
           exportable: true,
         })
@@ -332,6 +335,7 @@ describe('power', () => {
           amountRemaining: -240,
           isRaw: true,
           isEndProduct: false,
+          isSinkable: false,
           satisfied: false,
           exportable: false,
         })

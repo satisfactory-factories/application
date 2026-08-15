@@ -11,6 +11,7 @@
     <div
       v-if="producer.byproduct"
       :id="`${factory.id}-products-item-${producer.byproduct.part}`"
+      class="status-anchor"
     />
     <div class="factory-item-controls">
       <v-btn
@@ -168,19 +169,19 @@
           <span>/min</span>
         </v-chip>
         <tooltip
-          v-if="hasNoDemand(factory, producer.byproduct.part)"
-          text="Nothing asks for this byproduct: no recipe in this factory needs it and no other factory imports it."
+          v-if="isPotentialBlockage(factory, producer.byproduct.part)"
+          text="Nothing consumes this byproduct, so it will back up and stall the generator unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
         >
           <v-chip class="sf-chip small status-note ml-2">
-            <i class="fas fa-question-circle mr-1" />No demand
+            <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
           </v-chip>
         </tooltip>
         <tooltip
           v-if="isUnhandledByproduct(factory, producer.byproduct.part)"
-          text="With nowhere to send it, this byproduct fills the generator's output and stalls it.<br>Blend it into a recipe that consumes it, export it, or sink it."
+          text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the generator's output and stalls it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
         >
           <v-chip class="sf-chip small status-warning ml-2">
-            <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+            <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
           </v-chip>
         </tooltip>
       </div>
@@ -269,7 +270,7 @@
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
-  import { hasNoDemand, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
