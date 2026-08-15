@@ -105,8 +105,8 @@ check('it has no close button while unanswered', state.hasClose === false)
 // The migration prompt must not be stacked behind it.
 const promptToo = await page.evaluate(() =>
   [...document.querySelectorAll('.v-overlay__content .v-card')].filter(d =>
-    d.textContent.includes('no longer assumed')).length)
-check('only one dialog says it (the notice deferred to the deck)', promptToo <= 1, `${promptToo} dialogs`)
+    d.textContent.includes('Raw resource migration required')).length)
+check('the notice is not stacked behind the deck', promptToo === 0, `${promptToo} notices`)
 
 // --- 4. Run the wizard from the deck.
 const ranWizard = await clickByText('.v-btn', 'Run the wizard')
@@ -192,7 +192,7 @@ await page.reload({ waitUntil: 'networkidle2' })
 await sleep(3500)
 check('the deck stays shut on the next load', (await splashState()).open === false)
 const noticeBack = await page.evaluate(() =>
-  [...document.querySelectorAll('.v-overlay__content .v-card')].some(d => d.textContent.includes('no longer assumed')))
+  [...document.querySelectorAll('.v-overlay__content .v-card')].some(d => d.textContent.includes('Raw resource migration required')))
 check('the notice does not come back', noticeBack === false)
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
@@ -309,8 +309,7 @@ const seedLegacyPlan = async (p, startPath = '/') => {
   await click(page, '.v-btn', "I'll sort it myself")
   await sleep(1000)
   const state = await splashStateOf(page)
-  check('[decline] the deck stays open with the tour still to walk', state.open, JSON.stringify(state))
-  console.log('      closable after declining:', state.hasClose)
+  check('[decline] the deck stays open, and unlocks', state.open && state.hasClose === true, JSON.stringify(state))
   for (let i = 0; i < 8 && (await splashStateOf(page)).open; i++) {
     await page.evaluate(() => {
       const card = [...document.querySelectorAll('.v-overlay__content .v-card')]
@@ -326,7 +325,7 @@ const seedLegacyPlan = async (p, startPath = '/') => {
   const back = await splashStateOf(page)
   const noticeBack = await page.evaluate(() =>
     [...document.querySelectorAll('.v-overlay__content .v-card')].some(d =>
-      d.textContent.includes('no longer assumed') && d.offsetParent !== null))
+      d.textContent.includes('Raw resource migration required') && d.offsetParent !== null))
   check('[decline] neither the deck nor the notice nags again', back.open === false && !noticeBack,
     `deck ${back.open}, notice ${noticeBack}`)
   await page.close()
@@ -358,7 +357,7 @@ const seedLegacyPlan = async (p, startPath = '/') => {
   await sleep(4500)
   const noticeShown = await page.evaluate(() =>
     [...document.querySelectorAll('.v-overlay__content .v-card')].some(d =>
-      d.textContent.includes('no longer assumed') && d.offsetParent !== null))
+      d.textContent.includes('Raw resource migration required') && d.offsetParent !== null))
   const tabInfo = await page.evaluate(() => {
     const tabs = JSON.parse(localStorage.getItem('factoryTabs') || '[]')
     const i = Number(localStorage.getItem('currentFactoryTabIndex') ?? 0)

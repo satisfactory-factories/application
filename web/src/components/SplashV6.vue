@@ -2,16 +2,16 @@
   <v-dialog
     v-model="showSplash"
     :max-width="currentSlide === 0 ? 1200 : 1000"
-    :persistent="locked"
+    :persistent="awaitingAnswer"
     scrollable
   >
     <v-card>
       <v-card-title class="d-flex align-center pb-0">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
-        <!-- Off for the whole of an automatic showing that carries the warning: it is not
-             something to flick away from the corner of the eye. -->
+        <!-- Off until the warning has been answered: it is not something to flick away from the
+             corner of the eye. -->
         <v-btn
-          v-if="!locked"
+          v-if="!awaitingAnswer"
           density="comfortable"
           icon="fas fa-times"
           size="small"
@@ -729,17 +729,15 @@
   const actionRequired = ref(false)
   const acknowledged = ref(false)
 
-  // The lock belongs to the automatic showing of a warning that applies. A dialog that can be
-  // waved away in the corner of the eye is not a warning, so someone whose plan the change has
-  // broken gets no X, no click-outside and no escape: answer slide 1, then leave by the far end
-  // of the tour. Everyone else gets an ordinary deck they can close — holding someone on a red
-  // banner about plans they do not have teaches them the warning is noise. Reopening later from
-  // "Show changes" is unlocked too, since by then it is reference material rather than news.
+  // The lock belongs to the question, not to the whole showing. A dialog that can be waved away
+  // in the corner of the eye is not a warning, so someone whose plan the change has broken gets
+  // no X, no click-outside and no escape until slide 1 is answered — and once it is, either way,
+  // this is an ordinary deck they can close. Everyone else is never held at all: keeping someone
+  // on a red banner about plans they do not have teaches them the warning is noise. Reopening
+  // later from "Show changes" is unlocked too, since by then it is reference rather than news.
   const autoShown = ref(false)
-  const locked = computed(() => autoShown.value && showSplash.value && actionRequired.value)
-
-  // Slide 1 cannot be skipped past until it is answered.
-  const awaitingAnswer = computed(() => locked.value && !acknowledged.value)
+  const awaitingAnswer = computed(() =>
+    autoShown.value && showSplash.value && actionRequired.value && !acknowledged.value)
 
   // Whether the introduction was already out of the way when this page loaded, read once rather
   // than per call. A brand new visitor dismisses the intro seconds before their first plan
@@ -881,9 +879,8 @@
   })
 
   const closeSplash = () => {
-    // Nothing closes this deck while slide 1 is unanswered. Answering it does not open the exit
-    // either — the X and the escape stay off for the whole automatic showing, so the way out is
-    // the "Got it!" at the end of the tour.
+    // Nothing closes this deck while slide 1 is unanswered: an escape or a click outside puts it
+    // straight back, on the slide carrying the question.
     if (awaitingAnswer.value) {
       showSplash.value = true
       currentSlide.value = 0
@@ -933,8 +930,6 @@
     }
     currentSlide.value = resumeSlide
     resumeSlide = null
-    // Unlocked on the way back: they answered slide 1 by running the wizard, so from here it is
-    // an ordinary deck they can close whenever they like.
     showSplash.value = true
   }
 

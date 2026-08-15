@@ -140,13 +140,29 @@ describe('SplashV6', () => {
         expect(prompt.textContent).toContain("I understand, I'll fix my plans myself")
       })
 
-      it('should keep the exit shut until the tour has been walked', async () => {
+      // The lock is on the question, not on the tour. Answering it either way — the wizard or
+      // "I'll sort it myself" — leaves an ordinary deck, so declining does not cost seven slides.
+      it('should open the exit as soon as the question is answered', async () => {
         await openWithNoticePending()
+
+        expect(closeButton()).toBeNull()
+
         buttonWith("I'll sort it myself")?.click()
         await nextTick()
 
-        // Answering is not the exit: there is still no cross, only the end of the deck.
-        expect(closeButton()).toBeNull()
+        expect(closeButton()).not.toBeNull()
+
+        closeButton()!.click()
+        await nextTick()
+
+        expect(isOpen()).toBe(false)
+        expect(localStorage.getItem('seenV6Splash')).toBe('true')
+      })
+
+      it('should still let them walk the tour to the end instead', async () => {
+        await openWithNoticePending()
+        buttonWith("I'll sort it myself")?.click()
+        await nextTick()
 
         await goToLastSlide()
         nextButton().click()
