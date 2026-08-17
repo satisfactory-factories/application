@@ -52,15 +52,16 @@
           <!-- What the settings do, rather than a paragraph saying it. Not the real component: it
                would need a plan, and this has to show a group that has every row turned on. -->
           <v-col class="pr-md-6 mb-4 mb-md-0" cols="12" md="5">
-            <div class="group-preview">
+            <div class="group-preview" :style="PREVIEW_COLOR_VARS">
               <div class="preview-header">
-                <div class="d-flex align-center ga-2 px-2 py-1">
-                  <i class="fas fa-chevron-down text-medium-emphasis" />
+                <div class="d-flex align-center ga-2 px-2 py-2">
+                  <i class="fas fa-grip-lines text-grey-darken-1" />
+                  <span class="preview-chevron"><i class="fas fa-chevron-down" /></span>
                   <span class="preview-swatch" />
-                  <span class="font-weight-medium">Copper</span>
+                  <span class="preview-name">Copper</span>
                   <v-spacer />
-                  <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
-                    <i class="fas fa-industry" /><span class="ml-1">3</span>
+                  <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
+                    <i class="fas fa-industry" /><span class="ml-2">3</span>
                   </v-chip>
                 </div>
                 <div v-if="options.showGroupPower" class="d-flex align-center ga-1 px-2 pb-1">
@@ -80,7 +81,11 @@
                     :key="product.id"
                     class="preview-tile"
                   >
-                    <game-asset height="30" :subject="product.id" type="item" width="30" />
+                    <group-product-icon
+                      :kind="options.showGroupProductKinds ? product.kind : undefined"
+                      :part-id="product.id"
+                      :tooltip="getPartDisplayName(product.id)"
+                    />
                     <!-- Exactly balanced is grey in the real row, being neither good nor bad. -->
                     <span class="preview-net" :class="previewNetClass(product.net)">
                       {{ product.net }}
@@ -89,7 +94,7 @@
                 </div>
               </div>
               <div class="preview-body">
-                <div v-for="name in ['Copper Mine', 'Copper Ingots']" :key="name" class="preview-row">
+                <div v-for="name in PREVIEW_FACTORIES" :key="name" class="preview-row">
                   <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
                   <span>{{ name }}</span>
                 </div>
@@ -144,6 +149,27 @@
               />
             </div>
 
+            <!-- Also a child of the product row, and disabled with it for the same reason. -->
+            <div
+              :aria-checked="options.showGroupProductKinds"
+              :aria-disabled="!options.showGroupProducts"
+              class="option-toggle option-child d-flex align-center ga-3"
+              :class="{ disabled: !options.showGroupProducts }"
+              role="checkbox"
+              :tabindex="options.showGroupProducts ? 0 : -1"
+              @click="toggleProductKinds"
+              @keydown.enter.prevent="toggleProductKinds"
+              @keydown.space.prevent="toggleProductKinds"
+            >
+              <span class="tick" :class="{ on: options.showGroupProductKinds && options.showGroupProducts }" />
+              <span>Badge products with their role</span>
+              <tooltip-info
+                :is-caption="false"
+                text="A mark in the corner of each tile saying what the group does with the part: ships it to a factory outside the group, uses it up inside, or just makes it."
+                @click.stop
+              />
+            </div>
+
             <div
               :aria-checked="options.showGroupPower"
               class="option-toggle d-flex align-center ga-3"
@@ -194,8 +220,11 @@
               {{ percent }}%
             </v-btn>
           </v-btn-toggle>
+          <!-- Vuetify inputs are flex: 1 1 auto, so `width` alone loses to the row it sits in and
+               the field eats every pixel the preset buttons leave. -->
           <v-number-input
             id="balance-tolerance-custom"
+            class="flex-grow-0 flex-shrink-0"
             control-variant="stacked"
             density="compact"
             hide-details
@@ -214,7 +243,7 @@
         <!-- Same idea as the group preview above: show what the setting does rather than describe
              it. This one is a real Factory underneath and every figure goes through the engine, so
              a Mk.1 mine can be dialled in here and the verdict is the one the planner would give. -->
-        <div v-if="previewProduct" class="group-preview pa-3">
+        <div v-if="previewProduct" class="tolerance-preview pa-3">
           <div class="d-flex align-center flex-wrap ga-2 mb-2">
             <game-asset height="24" subject="Stone" type="item" width="24" />
             <span class="font-weight-medium">Limestone</span>
@@ -335,6 +364,10 @@
 
 <script setup lang="ts">
   import RawResourcesWizard from '@/components/planner/RawResourcesWizard.vue'
+  import GroupProductIcon from '@/components/planner/groups/GroupProductIcon.vue'
+  import { GroupProductKind } from '@/utils/factory-management/group-products'
+  import { getPartDisplayName } from '@/utils/helpers'
+  import { groupColorVars, palette } from '@/utils/colors'
   import eventBus from '@/utils/eventBus'
   import { setBalanceTolerance, TOLERANCE_RANGE, usePlannerOptions } from '@/composables/usePlannerOptions'
   import { useAppStore } from '@/stores/app-store'
@@ -470,21 +503,44 @@
     if (open && !previewFactory.value) buildPreview()
   })
 
-  // The preview's product row. Copper Ingot is the internal one — made and consumed inside the
-  // group — so ticking "internal products" makes a tile appear rather than only changing a number.
-  const previewProducts = computed(() => {
-    const delivered = [
-      { id: 'CopperSheet', net: 40 },
-      { id: 'Wire', net: -20 },
+  // Three factories, matching the count on the header chip: the mine feeds the smelter, which feeds
+  // the products factory. Naming the third is what makes the internal parts below make sense.
+  const PREVIEW_FACTORIES = ['Copper Mine', 'Copper Ingots', 'Copper Products']
+
+  // The same tokens a real group publishes, so the preview's header tint and tree lines are the
+  // ones the sidebar would give this colour rather than a hex picked to look close.
+  const PREVIEW_COLOR_VARS = groupColorVars(palette.beige)
+
+  /**
+   * The preview's product row.
+   *
+   * Copper Ore and Copper Ingot are the internal ones, each made by one factory in the group and
+   * used up by the next, so ticking "internal products" makes tiles appear rather than only
+   * changing a number. The kinds are set out by hand rather than derived: this is not a real plan,
+   * and the point is that one tile of each kind is on screen while the badges are on.
+   */
+  const previewProducts = computed<{ id: string, net: number, kind: GroupProductKind }[]>(() => {
+    const delivered: { id: string, net: number, kind: GroupProductKind }[] = [
+      { id: 'CopperSheet', net: 40, kind: 'export' },
+      { id: 'Wire', net: -20, kind: 'product' },
     ]
     return options.value.showInternalGroupProducts
-      ? [{ id: 'CopperIngot', net: 0 }, ...delivered]
+      ? [
+        { id: 'OreCopper', net: 0, kind: 'internal' },
+        { id: 'CopperIngot', net: 0, kind: 'internal' },
+        ...delivered,
+      ]
       : delivered
   })
 
   const previewNetClass = (net: number) => {
     if (net > 0) return 'text-success'
     return net < 0 ? 'text-error' : 'text-medium-emphasis'
+  }
+
+  const toggleProductKinds = () => {
+    if (!options.value.showGroupProducts) return
+    options.value.showGroupProductKinds = !options.value.showGroupProductKinds
   }
 
   // A child toggle of an off parent is not a state worth being able to set.
@@ -512,48 +568,89 @@
 </script>
 
 <style lang="scss" scoped>
+// Tree geometry lifted from PlannerSidebarGroup verbatim, so the preview's trunk and elbows land
+// on the same pixels the real group's do. The two are read side by side; any drift shows.
+$tree-indent: 18px;
+$tree-line: 3px;
+$tree-gutter: 4px;
+
 // A stand-in for a sidebar group, at the sidebar's own scale, so each setting can be seen rather
 // than described. Colours come from the group tokens the real thing uses.
 .group-preview {
   border-radius: 4px;
   overflow: hidden;
   font-size: 0.9rem;
+}
+
+// The tolerance demo is a panel in the dialog's own flow rather than a copy of something on
+// screen elsewhere, so it keeps the outline the group preview dropped.
+.tolerance-preview {
+  border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .preview-header {
-  background-color: rgba(184, 115, 51, 0.18);
-  border-left: 3px solid #b87333;
+  position: relative;
+  background-color: var(--sf-group-muted);
+  // The trunk, drawn as the real header draws it. A `border-left` instead pushed the whole header
+  // 3px right of the rows below and left the elbows pointing at nothing.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: -$tree-gutter;
+    width: $tree-line;
+    background-color: var(--sf-group);
+  }
+}
+
+// The real chevron is a compact icon button; here it only has to occupy the same space.
+.preview-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+  flex: 0 0 auto;
 }
 
 .preview-swatch {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background-color: #b87333;
+  background-color: var(--sf-group);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   flex: 0 0 auto;
+}
+
+.preview-name {
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.factory-count {
+  padding-right: 16px !important;
 }
 
 .preview-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 36px;
 }
 
 .preview-net {
+  margin-top: 1px;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
 }
 
-// Tree geometry copied from PlannerSidebarGroup, so the preview hangs its rows off a trunk and
-// elbow the way the thing it is previewing does.
-$tree-indent: 18px;
-$tree-line: 3px;
-$tree-gutter: 4px;
-
 .preview-body {
-  padding: 4px 0 4px calc(16px + #{$tree-indent});
+  padding: $tree-gutter 0 0 $tree-indent;
 }
 
 .preview-row {
@@ -562,7 +659,7 @@ $tree-gutter: 4px;
   align-items: center;
   background-color: rgba(255, 255, 255, 0.04);
   border-radius: 4px;
-  margin: 0 4px 4px 0;
+  margin-bottom: $tree-gutter;
   padding: 6px 8px;
 
   &::before,
@@ -570,10 +667,12 @@ $tree-gutter: 4px;
     content: '';
     position: absolute;
     left: -$tree-indent;
-    background-color: #b87333;
+    background-color: var(--sf-group);
   }
 
-  // Trunk, one segment per row; the last row ends it at its own elbow to give the corner.
+  // Trunk, one segment per row; the last row ends it at its own elbow to give the corner. The
+  // real one measures a wrapper that contains the row's bottom margin, so it discounts half the
+  // gutter; here the row is its own wrapper and the margin is outside the box being measured.
   &::before {
     top: -$tree-gutter;
     bottom: 0;
