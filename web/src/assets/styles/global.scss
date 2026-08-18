@@ -220,8 +220,8 @@
   // must not read as either of the two fills above, which do.
 
   &.status-note {
-    color: var(--sf-yellow) !important;
-    border-color: var(--sf-yellow-border) !important;
+    color: var(--sf-status-note) !important;
+    border-color: var(--sf-status-note-border) !important;
   }
 
   &.green, &.success {

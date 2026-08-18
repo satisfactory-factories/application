@@ -598,6 +598,15 @@
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.65);
 }
 
+// The note tier carries no fill of its own, deliberately: a filled note chip would read like the
+// two tiers that actually colour a factory. But `flat` here means "this filter is on", and
+// Vuetify fills a chip with no colour prop in grey - so a pressed No demand or Potential blockage
+// lost its tier entirely and looked like neither. Only the pressed state gets the fill.
+.filter-on.status-note {
+  color: var(--sf-status-note) !important;
+  background-color: var(--sf-status-note-bg) !important;
+}
+
 .group-rollup {
   .rollup-section + .rollup-section {
     margin-top: 16px;

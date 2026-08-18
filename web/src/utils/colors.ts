@@ -107,6 +107,12 @@ export const sfColors = {
   // against whatever sat behind it — a card header's own translucent grey, the summary table's
   // surface — and the result was a washed-out beige that read as a grey panel rather than amber.
   statusWarning: { color: palette.orange, border: palette.orangeBorder, background: '#4f2b0b' },
+  // The lowest tier: shown on a factory but never colouring it, so it is yellow rather than the
+  // amber above and its chip is outlined rather than filled. The background exists for the one
+  // place a note chip has to look PRESSED - the Factories Summary status filter, where a flat
+  // chip means "this filter is on" and Vuetify fills a colourless chip with grey. Opaque for the
+  // same reason as the two above.
+  statusNote: { color: palette.yellow, border: palette.yellowBorder, background: '#4b3a0e' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors
