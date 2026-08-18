@@ -3,6 +3,7 @@ import { config } from '@/config/config'
 import { InvalidTokenError } from '@/errors/InvalidTokenError'
 import { BackendOutageError } from '@/errors/BackendOutageError'
 import eventBus from '@/utils/eventBus'
+import { apiHeaders } from '@/utils/api'
 
 export const useAuthStore = (fetchOverride?: typeof fetch) => {
   const fetchInstance = fetchOverride || fetch // Allow dependency injection for fetch
@@ -37,10 +38,7 @@ export const useAuthStore = (fetchOverride?: typeof fetch) => {
     try {
       response = await fetchInstance(`${apiUrl}/validate-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: apiHeaders(token),
         body: JSON.stringify({ token }),
       })
     } catch (error) {
@@ -72,9 +70,7 @@ export const useAuthStore = (fetchOverride?: typeof fetch) => {
     try {
       const response = await fetchInstance(`${apiUrl}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: apiHeaders(),
         body: JSON.stringify({ username, password }),
       })
       const data = await response.json()
@@ -112,9 +108,7 @@ export const useAuthStore = (fetchOverride?: typeof fetch) => {
     try {
       const response = await fetchInstance(`${apiUrl}/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: apiHeaders(),
         body: JSON.stringify({ username, password }),
       })
       if (!response) {

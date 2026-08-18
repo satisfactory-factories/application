@@ -1,10 +1,12 @@
 <template>
   <v-snackbar v-model="showToast" :color="toastType" :timeout="timeout" top>
-    <span v-html="toastMessage" />
+    <!-- Escaped: toasts interpolate factory and part names. See safeHtml. -->
+    <span v-html="safeHtml(toastMessage)" />
   </v-snackbar>
 </template>
 
 <script setup lang="ts">
+  import { safeHtml } from '@/utils/safeHtml'
   import eventBus from '@/utils/eventBus'
 
   export interface ToastData {

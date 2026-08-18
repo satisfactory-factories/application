@@ -1,10 +1,19 @@
 import { BackendFactoryDataResponse } from '@/interfaces/BackendFactoryDataResponse'
 import { config } from '@/config/config'
+import {
+  apiHeaders,
+  checkResponseForOutdatedClient,
+  clientTooOldError,
+  isClientTooOldResponse,
+} from '@/utils/api'
 
 export class SyncActions {
   private readonly authStore: any
   private readonly appStore: any
   private readonly apiUrl: string
+  // Whether this session has seen what the account holds. An empty plan is only allowed to
+  // overwrite it once we have — see the guard in syncData.
+  private reconciledWithServer = false
 
   constructor (authStore: any, appStore: any) {
     this.authStore = authStore
@@ -26,6 +35,8 @@ export class SyncActions {
 
       if (!dataObject) {
         console.warn('loadServerData: No data found on server. Aborting data load.')
+        // Nothing on the account means nothing an empty plan could destroy.
+        this.reconciledWithServer = true
         return
       }
     } catch (error) {
@@ -36,10 +47,14 @@ export class SyncActions {
       return
     }
 
+    // Either branch below means this session has now seen the account's copy, whether it took
+    // it or decided the local plan was ahead of it.
+    this.reconciledWithServer = true
+
     // Don't care about sync state if we're forcing a load
     if (forceLoad) {
       console.log('loadServerData: Forcing data load.')
-      this.appStore.setFactories(dataObject.data)
+      this.appStore.loadServerPlan(dataObject.data)
       return true
     }
 
@@ -81,9 +96,24 @@ export class SyncActions {
       }
     }
 
-    const data = this.appStore.getFactories()
-    if (!data || !Object.keys(data).length) {
-      console.warn('syncData: No data to save!')
+    // The whole tab, not just its factories: the planner version, the power target and any
+    // memberless groups are plan state, and uploading only the array quietly dropped them on
+    // every restore. The API accepts both shapes — see the note on /save.
+    const data = this.appStore.getCurrentTab()
+    if (!data) {
+      console.warn('syncData: No tab to save!')
+      return
+    }
+
+    // An emptied plan is a plan. Deleting your last factory, or keeping folders you have not
+    // filled yet, has to reach the account or the next restore hands the deleted work back.
+    //
+    // But an empty plan is also what this session looks like before it has loaded the account's
+    // copy, and those two are indistinguishable from here. So an empty plan may only be written
+    // once we have seen what is up there — otherwise a tick landing in the gap between logging
+    // in and the load completing would upload nothing over everything.
+    if (!data.factories?.length && !this.reconciledWithServer) {
+      console.warn('syncData: Plan is empty and the account copy has not been loaded yet, not saving.')
       return
     }
 
@@ -91,10 +121,7 @@ export class SyncActions {
     try {
       response = await fetch(`${this.apiUrl}/save`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: apiHeaders(token),
         body: JSON.stringify(data),
       })
     } catch (error) {
@@ -112,7 +139,13 @@ export class SyncActions {
 
     if (response.ok) {
       console.log('syncData: Data saved:', object)
+      // What is up there is now what we just sent, so a later emptying of this plan is safe to
+      // write without loading it back first.
+      this.reconciledWithServer = true
       return true
+    } else if (isClientTooOldResponse(response, object)) {
+      // Refused, not failed: this build is too old to write and must not keep retrying.
+      throw clientTooOldError(response, object)
     } else if (response.status === 500 || response.status === 502) {
       throw new Error('syncData: Server 5xx error')
     }
@@ -122,11 +155,10 @@ export class SyncActions {
     const token = await this.authStore.getToken()
     const response = await fetch(`${this.apiUrl}/load`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: apiHeaders(token),
     })
+    // Reads are never blocked, so this is how an idle tab learns it has gone stale.
+    checkResponseForOutdatedClient(response)
     const object = await response.json()
     const data = object?.data
 

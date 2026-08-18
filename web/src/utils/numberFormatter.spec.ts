@@ -1,6 +1,6 @@
 /* eslint-disable no-loss-of-precision */
 import { describe, expect, it } from 'vitest'
-import { formatMw, formatNumber, formatNumberFully, snapDriftedInteger, snapNearInteger } from '@/utils/numberFormatter'
+import { formatCompact, formatMw, formatNumber, formatNumberFully, snapDriftedInteger, snapNearInteger } from '@/utils/numberFormatter'
 
 describe('numberFormatter', () => {
   describe('formatNumber', () => {
@@ -107,6 +107,41 @@ describe('numberFormatter', () => {
     it('should format negative values in MW', () => {
       expect(formatMw(-100)).toBe('-100\u00A0MW')
       expect(formatMw(-1000)).toBe('-1,000\u00A0MW')
+    })
+  })
+
+  // Four characters under a 36px icon, so precision gives way to fitting.
+  describe('formatCompact', () => {
+    it('should leave anything under a thousand alone', () => {
+      expect(formatCompact(0)).toBe('0')
+      expect(formatCompact(45)).toBe('45')
+      expect(formatCompact(320)).toBe('320')
+      expect(formatCompact(999)).toBe('999')
+    })
+
+    it('should keep a decimal only where it says something', () => {
+      expect(formatCompact(0.5)).toBe('0.5')
+      expect(formatCompact(12.04)).toBe('12')
+    })
+
+    it('should abbreviate thousands', () => {
+      expect(formatCompact(1000)).toBe('1k')
+      expect(formatCompact(1234)).toBe('1.2k')
+      expect(formatCompact(10000)).toBe('10k')
+      expect(formatCompact(12345)).toBe('12k')
+      expect(formatCompact(999999)).toBe('1M')
+    })
+
+    it('should abbreviate millions', () => {
+      expect(formatCompact(1000000)).toBe('1M')
+      expect(formatCompact(2400000)).toBe('2.4M')
+      expect(formatCompact(15000000)).toBe('15M')
+    })
+
+    // The sign is drawn by the caller, so the magnitude is what has to survive.
+    it('should carry a negative through', () => {
+      expect(formatCompact(-320)).toBe('-320')
+      expect(formatCompact(-1234)).toBe('-1.2k')
     })
   })
 })

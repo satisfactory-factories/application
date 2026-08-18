@@ -19,6 +19,7 @@ describe('auth-store', () => {
     vi.mock('@/config/config', () => ({
       config: {
         apiUrl: 'http://mock.com',
+        appVersion: '0.6.0',
         dataVersion: '1.0.0',
       },
     }))

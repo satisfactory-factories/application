@@ -69,6 +69,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // A setting on a building group rather than something that flows through it: the node
+  // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
+  // these were reading as `rawResource` beige, which is the colour of the ore itself.
+  nodeSetting: { color: palette.offWhite, border: palette.offWhiteBorder },
 
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
@@ -87,6 +91,8 @@ export const sfColors = {
   // Status
   success: { color: palette.green, border: palette.green },
   error: { color: palette.red, border: palette.red },
+  // Amber rather than red: something the user should read before acting, but not a failure.
+  warning: { color: palette.yellow, border: palette.yellowBorder },
   // A factory/card in a problem state. Historically this red drifted into four
   // different literals (#a00, #b50000, rgba(140,9,21,.4), rgba(128,0,0,.5)); the
   // background is deliberately OPAQUE — the old 0.4-alpha value composited to a
@@ -96,7 +102,17 @@ export const sfColors = {
   // world is behind your plan. Deliberately the burnt orange the out-of-sync state already wore,
   // carried over verbatim — naming it stops `building` (an item colour) doubling as a status
   // colour. Not called `warning`: that name is taken by caution *text*, which is a yellow.
-  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: 'rgba(255, 136, 0, 0.16)' },
+  //
+  // The background is OPAQUE for the same reason `problem` above is. At 16% alpha it composited
+  // against whatever sat behind it — a card header's own translucent grey, the summary table's
+  // surface — and the result was a washed-out beige that read as a grey panel rather than amber.
+  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: '#4f2b0b' },
+  // The lowest tier: shown on a factory but never colouring it, so it is yellow rather than the
+  // amber above and its chip is outlined rather than filled. The background exists for the one
+  // place a note chip has to look PRESSED - the Factories Summary status filter, where a flat
+  // chip means "this filter is on" and Vuetify fills a colourless chip with grey. Opaque for the
+  // same reason as the two above.
+  statusNote: { color: palette.yellow, border: palette.yellowBorder, background: '#4b3a0e' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors

@@ -40,12 +40,12 @@ const legacyHasProblem = (factory: Factory): boolean => {
   return hasProblem
 }
 
-// `expectsProblems` keeps each case honest about what it proves. The big plan is healthy, so it
-// guards against newly-introduced FALSE POSITIVES across 30-odd factories; the demo plan carries a
-// deliberate shortage, so it guards against losing a detection. Two empty lists agreeing is not
-// evidence of either.
+// `expectsProblems` keeps each case honest: two empty lists agreeing is not evidence of anything.
+// Both plans now carry raw shortages — they draw ore they do not mine, and that stopped being
+// assumed — so the work is done by comparing WHICH factories each rollup flags, name for name,
+// rather than by one plan being clean.
 const plans: [string, () => Factory[], boolean][] = [
-  ['Mael\'s big boi plan', () => createMaelsBigBoiPlan().getFactories(), false],
+  ['Mael\'s big boi plan', () => createMaelsBigBoiPlan().getFactories(), true],
   ['complex demo plan', () => complexDemoPlan().getFactories(), true],
 ]
 
@@ -61,10 +61,24 @@ describe('status regression vs the pre-#506 rollup', () => {
     const legacy = factories.filter(legacyHasProblem).map(factory => factory.name).sort()
     const current = factories.filter(hasFactoryProblem).map(factory => factory.name).sort()
 
+    // The second intended divergence, and the same class as the first: the old rollup could not
+    // see a generator with no fuel either. It read requirementsSatisfied, which a product-less
+    // factory reports true whatever its parts say, so a power-only factory short of a MANUFACTURED
+    // fuel was invisible - while the same factory short of a raw one went red. Named explicitly
+    // rather than folded into the expectation, so the guarantee still says what may differ.
+    const powerOnlyFuelShort = factories
+      .filter(factory => factory.products.length === 0 && factory.powerProducers.some(
+        producer => (producer.ingredients ?? []).some(
+          ingredient => factory.parts[ingredient.part] && !factory.parts[ingredient.part].satisfied
+        )
+      ))
+      .map(factory => factory.name)
+    const expected = [...new Set([...legacy, ...powerOnlyFuelShort])].sort()
+
     expect(legacy.length > 0).toBe(expectsProblems)
-    expect(current).toEqual(legacy)
+    expect(current).toEqual(expected)
     // And the persisted flag the engine wrote agrees with both.
-    expect(factories.filter(factory => factory.hasProblem).map(factory => factory.name).sort()).toEqual(legacy)
+    expect(factories.filter(factory => factory.hasProblem).map(factory => factory.name).sort()).toEqual(expected)
   })
 
   it('diverges only where the old rollup ignored power producers', () => {

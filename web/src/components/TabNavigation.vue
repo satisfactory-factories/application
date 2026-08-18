@@ -51,6 +51,7 @@
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <OptionsDialog />
       <ShareButton />
       <v-btn
         v-if="appStore.factoryTabs.length > 1"
@@ -61,6 +62,10 @@
         @click="confirmDelete() && appStore.removeCurrentTab()"
       />
     </div>
+
+    <!-- Mounted here rather than in the layout so it shares a lifetime with OptionsDialog, which
+         owns the wizard it hands off to. -->
+    <raw-migration-prompt />
   </div>
 </template>
 

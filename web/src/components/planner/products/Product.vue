@@ -1,9 +1,19 @@
 <template>
   <div
     v-for="(product, productIndex) in factory.products"
+    :id="`${factory.id}-products-item-${product.id}`"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
+    :class="{ warning: hasUnhandledByproduct(product) }"
   >
+    <!-- A status chip names the part, so a byproduct needs an anchor of its own or the jump has
+         nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
+    <div
+      v-for="byProduct in product.byProducts ?? []"
+      :id="`${factory.id}-products-item-${byProduct.id}`"
+      :key="`anchor-${byProduct.id}`"
+      class="status-anchor"
+    />
     <div class="factory-item-controls">
       <v-btn
         :color="product.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
@@ -100,11 +110,26 @@
         @click="doFixProduct(product, factory)"
       >Trim</v-btn>
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
-        Internal
+        <i class="fas fa-industry mr-1" />Internal
       </v-chip>
-      <v-chip v-if="shouldShowNotInDemand(product, factory)" class="align-self-center sf-chip small orange">
-        No demand!
-      </v-chip>
+      <tooltip
+        v-if="isEndProduct(factory, product.id)"
+        classes="align-self-center"
+        text="Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it."
+      >
+        <v-chip class="sf-chip small blue">
+          <i class="fas fa-flag-checkered mr-1" />End product
+        </v-chip>
+      </tooltip>
+      <tooltip
+        v-if="shouldShowNotInDemand(product, factory)"
+        classes="align-self-center"
+        text="Nothing asks for this product: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking and dimensional depots, so if you are sinking this, ignore it for now."
+      >
+        <v-chip class="sf-chip small status-note">
+          <i class="fas fa-question-circle mr-1" />No demand
+        </v-chip>
+      </tooltip>
     </div>
     <div
       v-if="product.recipe"
@@ -140,8 +165,24 @@
             <debounce-spinner :active="pendingRecalc === `${product.id}-bp-${byProduct.id}`" />
           </v-chip>
           <v-chip v-if="shouldShowInternal(byProduct, factory)" class="sf-chip small green">
-            Internal
+            <i class="fas fa-industry mr-1" />Internal
           </v-chip>
+          <tooltip
+            v-if="isPotentialBlockage(factory, byProduct.id)"
+            text="Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
+          >
+            <v-chip class="sf-chip small status-note">
+              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+            </v-chip>
+          </tooltip>
+          <tooltip
+            v-if="isUnhandledByproduct(factory, byProduct.id)"
+            text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
+          >
+            <v-chip class="sf-chip small status-warning">
+              <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
+            </v-chip>
+          </tooltip>
         </template>
       </div>
       <div
@@ -149,7 +190,24 @@
         class="d-flex flex-wrap align-center mb-1"
       >
         <p class="mr-2">Requires:</p>
+        <!-- Extraction products span several marks of extractor across their groups, so a
+             single building with an editable count would be a lie. Show what the groups
+             actually add up to instead; the counts are edited per group. -->
+        <template v-if="extractorCounts(product).length > 0">
+          <v-chip
+            v-for="extractor in extractorCounts(product)"
+            :key="`${product.id}-${extractor.building}`"
+            class="sf-chip orange"
+            variant="tonal"
+          >
+            <game-asset clickable :subject="extractor.building" type="building" />
+            <span class="ml-2">
+              <b>{{ getBuildingDisplayName(extractor.building) }}</b>: {{ extractor.amount }}
+            </span>
+          </v-chip>
+        </template>
         <v-chip
+          v-else
           class="sf-chip orange input"
           variant="tonal"
         >
@@ -235,12 +293,14 @@
     updateProductAmountViaByproduct,
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
+  import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
+  import { getGroupExtractor, isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
   import { inject } from 'vue'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -269,6 +329,11 @@
     helpText: boolean;
   }>()
 
+  // Takes the whole row amber, so a warning chip halfway down a long product list is attached to
+  // something rather than floating.
+  const hasUnhandledByproduct = (product: FactoryItem) =>
+    (product.byProducts ?? []).some(byProduct => isUnhandledByproduct(props.factory, byProduct.id))
+
   const productSelectionWidth = computed(() => {
     let width = '300px'
     if (mdAndDown.value) {
@@ -296,6 +361,24 @@
   const deleteProduct = (index: number, factory: Factory) => {
     deleteItem(index, ItemType.Product, factory)
     updateFactory(factory)
+  }
+
+  // Mines only: how many of each extractor the product's groups add up to, because a mine spans
+  // several marks and one editable count would be a lie. Empty for everything else — including
+  // plain extraction like water, which is a single building at a flat rate and takes the ordinary
+  // editable row.
+  const extractorCounts = (product: FactoryItem) => {
+    if (!isExtractionRecipe(product.recipe) || isPlainExtraction(product.recipe)) {
+      return []
+    }
+
+    const counts = new Map<string, number>()
+    product.buildingGroups.forEach(group => {
+      const building = getGroupExtractor(group, product.recipe)
+      counts.set(building, (counts.get(building) ?? 0) + group.buildingCount)
+    })
+
+    return [...counts].map(([building, amount]) => ({ building, amount }))
   }
 
   const getRecipesForPartSelector = (part: string) => {

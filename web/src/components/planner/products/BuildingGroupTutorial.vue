@@ -21,7 +21,7 @@
           When you add a product it starts with one group, with <b>Sync enabled</b>: editing the <b>item</b> rebalances its groups evenly, and editing a <b>group</b> updates the item's totals — so you can e.g. clock the entire line in one go.
         </p>
         <p>
-          <b>Adding a second group turns Sync off</b> so your manual adjustments aren't overwritten (it stays off after deleting groups). You then have full manual control, and it's up to you to ensure the groups cover the item's demand — keep an eye on the "Effective Buildings" readout and use the helper buttons to rebalance. It will be very obvious when the math doesn't add up: the Building Groups bar goes red. <b>There is a 0.1 effective building margin of error</b> before the tool yells at you to correct it, as with some recipes it is simply not possible to be 100% balanced. You can re-enable Sync at any time to restore automatic syncing.
+          <b>Adding a second group turns Sync off</b> so your manual adjustments aren't overwritten (it stays off after deleting groups). You then have full manual control, and it's up to you to ensure the groups cover the item's demand — keep an eye on the "Effective Buildings" readout and use the helper buttons to rebalance. It will be very obvious when the math doesn't add up: the Building Groups bar goes red. <b>There is a 1% margin of error</b> before the tool yells at you to correct it, as with some recipes it is simply not possible to be 100% balanced. You can change that figure in Options, under Building groups. You can re-enable Sync at any time to restore automatic syncing.
         </p>
 
         <v-divider />

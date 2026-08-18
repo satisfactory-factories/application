@@ -173,4 +173,6 @@ export interface FactoryTab {
   name: string;
   factories: Factory[];
   groups?: FactoryGroup[]; // Registry for groups with no member factory to carry them
+  // Marks the plan as answered for the raw-resources change; absent means built before v0.6
+  plannerVersion?: string;
 }
