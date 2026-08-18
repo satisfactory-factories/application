@@ -342,7 +342,7 @@
                 width="110px"
                 @update:model-value="debouncePreviewOutput"
               />
-              <span class="ml-1">/min</span>
+              <span class="mx-1">/min</span>
               <debounce-spinner :active="pendingRecalc === 'preview-output'" />
             </v-chip>
           </div>
