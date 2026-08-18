@@ -115,7 +115,14 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
     }
   }
 
+  // Only a user's own edit dirties the account copy. A plan still loading is emitting the
+  // migration recalculation, not a change anyone asked for — and uploading that would replace
+  // the stored plan with a migrated one before the user has seen the notice, run the wizard or
+  // taken a backup. `isLoaded` flips in loadingCompleted, after the migration has settled.
   const detectedChange = () => {
+    if (!appStore.isLoaded) {
+      return
+    }
     dataSavePending.value = true
   }
 

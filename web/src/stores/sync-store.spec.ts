@@ -29,6 +29,7 @@ describe('useSyncStore', () => {
       setFactories: vi.fn(),
       getFactories: vi.fn().mockReturnValue({ mock: 'data' }),
       getLastEdit: vi.fn().mockReturnValue(new Date(Date.now() - 1000 * 60)), // 1 minute ago
+      isLoaded: true,
     }
     mockSyncActions = {
       loadServerData: vi.fn().mockResolvedValue(true),
@@ -224,6 +225,15 @@ describe('useSyncStore', () => {
     it('should set dataSavePending to true', () => {
       syncStore.detectedChange()
       expect(syncStore.dataSavePending.value).toBe(true)
+    })
+
+    // The v0.6 migration recalculates on load and emits factoryUpdated for every factory it
+    // touches. Treating that as an edit uploaded the migrated plan over the account copy before
+    // the user had seen the notice or taken a backup.
+    it('should ignore changes while the plan is still loading', () => {
+      mockAppStore.isLoaded = false
+      syncStore.detectedChange()
+      expect(syncStore.dataSavePending.value).toBe(false)
     })
   })
 

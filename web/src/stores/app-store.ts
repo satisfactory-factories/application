@@ -199,7 +199,12 @@ export const useAppStore = defineStore('app', () => {
     if (json === lastPersistedPlan) return
     lastPersistedPlan = json
     localStorage.setItem('factoryTabs', json)
-    setLastEdit() // Update last edit time whenever the data changes, from any source.
+    // Not while the plan is still loading. The v0.6 migration recalculation runs then, and
+    // stamping it would make a stale browser copy look newer than the account's — which is
+    // exactly what checkForOOS reads to decide whether to warn before overwriting.
+    if (isLoaded.value) {
+      setLastEdit() // Update last edit time whenever the data changes, from any source.
+    }
   }
 
   const schedulePersist = () => {
@@ -411,7 +416,7 @@ export const useAppStore = defineStore('app', () => {
     planRepairs.value = []
 
     try {
-      repairs.push(...validateFactories(newFactories, gameData))
+      repairs.push(...validateFactories(newFactories, gameData, getCurrentTab()))
     } catch (err) {
       // If err is type of Error
       if (err instanceof Error) {
