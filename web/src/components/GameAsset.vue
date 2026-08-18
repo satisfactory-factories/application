@@ -31,6 +31,7 @@
   import { computed } from 'vue'
   import { getWikiUrl } from '@/utils/wiki-links'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { findFactoryIconNameByAsset } from '@/utils/factory-icons'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import GameAssetContent from '@/components/GameAssetContent.vue'
 
@@ -52,15 +53,26 @@
     note?: string
   }>()
 
-  // Two icons are drawn from an asset name rather than an item id, so the lookup below missed them
-  // and the hover read "UNKNOWN PART power-shard!". The Power Shard's item is CrystalShard; the
-  // Somersloop is not a part in the game data at all, so it is the one name written out here.
+  // `item_id` icons are named by their asset file, not by a game data key, so the lookup below
+  // missed them and the hover read "UNKNOWN PART power-shard!". The Power Shard's item is
+  // CrystalShard; these two have no game data entry and no icon registry entry either.
   const itemIdAliases: Record<string, string> = { 'power-shard': 'CrystalShard' }
-  const nameOverrides: Record<string, string> = { somersloop: 'Somersloop' }
+  const nameOverrides: Record<string, string> = {
+    'overclock-production': 'Clock speed',
+    'somersloop-trinket': 'Somersloop',
+  }
 
   const displayName = computed(() => {
     if (props.type === 'item' || props.type === 'item_id') {
-      return nameOverrides[props.subject] ?? getPartDisplayName(itemIdAliases[props.subject] ?? props.subject)
+      const override = nameOverrides[props.subject]
+      if (override) return override
+
+      // Buildings shown as items (the extractors) are in the icon registry but not in game data,
+      // so ask the registry before giving up on the name.
+      const name = getPartDisplayName(itemIdAliases[props.subject] ?? props.subject)
+      return name.startsWith('UNKNOWN PART')
+        ? findFactoryIconNameByAsset(`item/${props.subject}`) ?? name
+        : name
     } else if (props.type === 'building') {
       return getBuildingDisplayName(props.subject)
     }
