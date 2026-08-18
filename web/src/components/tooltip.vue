@@ -9,12 +9,15 @@
           <slot />
         </span>
       </template>
-      <span v-html="text" />
+      <!-- Escaped: `text` is built from plan data (part ids, factory names), which a share
+           link controls. See safeHtml. -->
+      <span v-html="safeHtml(text)" />
     </v-tooltip>
   </span>
 </template>
 
 <script setup lang="ts">
+  import { safeHtml } from '@/utils/safeHtml'
 
   defineProps<{
     text: string
