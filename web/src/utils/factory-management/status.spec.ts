@@ -308,6 +308,8 @@ describe('status', () => {
       factory.byProducts = [{ id: 'Water', amount: 100, byProductOf: 'IronIngot' }]
       createNewPart(factory, 'Water')
       factory.parts.Water.isSinkable = false
+      factory.parts.Water.amountSupplied = 100
+      factory.parts.Water.amountRemaining = 100
 
       expect(typesOf(factory)).not.toContain('noDemand')
       expect(typesOf(factory)).toContain('unhandledByproduct')
@@ -315,6 +317,7 @@ describe('status', () => {
 
     test('an item that is both a product and a byproduct counts as the byproduct', () => {
       factory.parts.IronIngot.amountRequired = 0
+      factory.parts.IronIngot.amountRemaining = 10
       factory.parts.IronIngot.isSinkable = false
       factory.byProducts = [{ id: 'IronIngot', amount: 10, byProductOf: 'IronIngot' }]
 
@@ -362,10 +365,17 @@ describe('status', () => {
   // The byproduct pair. Which one fires turns on whether the sink would take it: a sinkable solid
   // has a way out, a fluid or a radioactive item does not.
   describe('unhandledByproduct and potentialBlockage', () => {
-    const withByproduct = (id: string, sinkable: boolean) => {
+    // The ledger matters now: the statuses measure what is LEFT of a byproduct rather than
+    // whether anything asked for it at all, so a fixture that leaves the part at all-zeros is
+    // describing a byproduct that was never produced.
+    const withByproduct = (id: string, sinkable: boolean, required = 0) => {
       factory.byProducts = [{ id, amount: 100, byProductOf: 'IronIngot' }]
       createNewPart(factory, id)
       factory.parts[id].isSinkable = sinkable
+      factory.parts[id].amountSupplied = 100
+      factory.parts[id].amountSuppliedViaProduction = 100
+      factory.parts[id].amountRequired = required
+      factory.parts[id].amountRemaining = 100 - required
     }
 
     test('an unsinkable byproduct is a warning, and colours the factory amber', () => {
@@ -399,9 +409,28 @@ describe('status', () => {
     test('treats an unstamped part as sinkable', () => {
       factory.byProducts = [{ id: 'Plastic', amount: 100, byProductOf: 'IronIngot' }]
       createNewPart(factory, 'Plastic')
+      factory.parts.Plastic.amountSupplied = 100
+      factory.parts.Plastic.amountRemaining = 100
 
       expect(typesOf(factory)).toContain('potentialBlockage')
       expect(typesOf(factory)).not.toContain('unhandledByproduct')
+    })
+
+    // One drop of demand used to switch the warning off completely, because the test was for no
+    // demand at all rather than for what was left. A byproduct cannot be trimmed to match its
+    // demand the way a product can, so the remainder is still filling the machine's output slot.
+    test('still warns when a trickle of demand leaves the rest stranded', () => {
+      withByproduct('HeavyOilResidue', false, 0.001)
+
+      expect(typesOf(factory)).toContain('unhandledByproduct')
+      expect(factoryStatusClass(getFactoryStatuses(factory))).toEqual({ problem: false, warning: true })
+    })
+
+    test('goes quiet once the byproduct is genuinely all consumed', () => {
+      withByproduct('HeavyOilResidue', false, 100)
+
+      expect(typesOf(factory)).not.toContain('unhandledByproduct')
+      expect(typesOf(factory)).not.toContain('potentialBlockage')
     })
 
     // Plutonium Waste off a Plutonium Fuel Rod line: the generator makes it whether you have
@@ -412,6 +441,8 @@ describe('status', () => {
       })]
       createNewPart(factory, 'PlutoniumWaste')
       factory.parts.PlutoniumWaste.isSinkable = false
+      factory.parts.PlutoniumWaste.amountSupplied = 10
+      factory.parts.PlutoniumWaste.amountRemaining = 10
 
       expect(statusOf(factory, 'unhandledByproduct')?.subjects).toEqual([
         { id: 'PlutoniumWaste', type: 'item' },
@@ -419,17 +450,15 @@ describe('status', () => {
     })
 
     test('stays silent once something consumes it', () => {
-      withByproduct('HeavyOilResidue', false)
-      factory.parts.HeavyOilResidue.amountRequired = 100
+      withByproduct('HeavyOilResidue', false, 100)
 
       expect(typesOf(factory)).not.toContain('unhandledByproduct')
     })
 
     // Exporting it is handling it: the request is demand like any other.
     test('stays silent once another factory takes it', () => {
-      withByproduct('HeavyOilResidue', false)
+      withByproduct('HeavyOilResidue', false, 100)
       factory.parts.HeavyOilResidue.amountRequiredExports = 100
-      factory.parts.HeavyOilResidue.amountRequired = 100
 
       expect(typesOf(factory)).not.toContain('unhandledByproduct')
     })

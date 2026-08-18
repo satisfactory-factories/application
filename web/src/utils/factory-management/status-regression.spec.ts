@@ -61,10 +61,24 @@ describe('status regression vs the pre-#506 rollup', () => {
     const legacy = factories.filter(legacyHasProblem).map(factory => factory.name).sort()
     const current = factories.filter(hasFactoryProblem).map(factory => factory.name).sort()
 
+    // The second intended divergence, and the same class as the first: the old rollup could not
+    // see a generator with no fuel either. It read requirementsSatisfied, which a product-less
+    // factory reports true whatever its parts say, so a power-only factory short of a MANUFACTURED
+    // fuel was invisible - while the same factory short of a raw one went red. Named explicitly
+    // rather than folded into the expectation, so the guarantee still says what may differ.
+    const powerOnlyFuelShort = factories
+      .filter(factory => factory.products.length === 0 && factory.powerProducers.some(
+        producer => (producer.ingredients ?? []).some(
+          ingredient => factory.parts[ingredient.part] && !factory.parts[ingredient.part].satisfied
+        )
+      ))
+      .map(factory => factory.name)
+    const expected = [...new Set([...legacy, ...powerOnlyFuelShort])].sort()
+
     expect(legacy.length > 0).toBe(expectsProblems)
-    expect(current).toEqual(legacy)
+    expect(current).toEqual(expected)
     // And the persisted flag the engine wrote agrees with both.
-    expect(factories.filter(factory => factory.hasProblem).map(factory => factory.name).sort()).toEqual(legacy)
+    expect(factories.filter(factory => factory.hasProblem).map(factory => factory.name).sort()).toEqual(expected)
   })
 
   it('diverges only where the old rollup ignored power producers', () => {

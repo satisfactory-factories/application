@@ -117,14 +117,27 @@ export const isEndProduct = (factory: Factory, partId: string): boolean =>
   factory.parts[partId]?.isEndProduct === true &&
   factoryOutputs(factory).includes(partId)
 
-// A byproduct nothing takes. Unlike a product you chose to make, you cannot decline it: it fills
-// the machine's output slot and stops the line.
+// The smallest surplus worth reporting. Matches the satisfaction tolerance in parts.ts: below
+// this is arithmetic noise rather than an item piling up.
+const SURPLUS_TOLERANCE = 0.001
+
+// A byproduct with nowhere to go. Unlike a product you chose to make, you cannot decline it: it
+// fills the machine's output slot and stops the line.
+//
+// Measured on what is LEFT, not on there being no demand at all. Sharing hasNoDemand's
+// `amountRequired === 0` test meant one drop of demand switched the warning off completely: an
+// import row asking for 0.001/min of a 50/min Heavy Oil Residue byproduct took the factory from
+// amber to green while 49.999/min still backed up and stalled the refineries. Exporting 1/min of
+// a 10/min byproduct did the same. A product can be trimmed to match its demand; a byproduct
+// cannot, so partial demand is still a blockage for the remainder.
 //
 // How bad that is depends on whether the sink would take it, which is why this splits in two. A
 // sinkable solid has a way out you have not drawn yet; a fluid or a radioactive item has none, so
 // the line really does stop. Only the second colours the factory.
 const undemandedByproduct = (factory: Factory, partId: string): boolean =>
-  factoryByproducts(factory).includes(partId) && hasNoDemand(factory, partId)
+  factoryByproducts(factory).includes(partId) &&
+  factory.parts[partId]?.isEndProduct !== true &&
+  (factory.parts[partId]?.amountRemaining ?? 0) > SURPLUS_TOLERANCE
 
 export const isUnhandledByproduct = (factory: Factory, partId: string): boolean =>
   undemandedByproduct(factory, partId) && factory.parts[partId]?.isSinkable === false
@@ -171,8 +184,17 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
       const short = (raw: boolean) => Object.keys(factory.parts)
         .filter(part => !factory.parts[part].satisfied && factory.parts[part].isRaw === raw)
 
+      // What the generators burn. The product-less guard skips non-raw shortages, so a power-only
+      // factory got opposite answers for the same situation: a Coal Generator with no coal went
+      // red because coal is raw, while a Fuel Generator with no fuel stayed green - and a nuclear
+      // plant short of rods or water said nothing at all. A generator with no fuel is as broken as
+      // a factory with no ore, whichever list the part happens to be on.
+      const fuels = new Set(factory.powerProducers.flatMap(
+        producer => (producer.ingredients ?? []).map(ingredient => ingredient.part)
+      ))
+
       return nonEmpty(subjects([
-        ...(hasNoProducts(factory) ? [] : short(false)),
+        ...(hasNoProducts(factory) ? short(false).filter(part => fuels.has(part)) : short(false)),
         ...short(true),
       ]))
     },
