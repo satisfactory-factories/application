@@ -216,9 +216,13 @@
     background-color: var(--sf-status-warning-bg);
   }
 
-  // The note tier (`status-note`) is outlined amber instead, and shares its rule with
-  // `hand-gathered` below — same reason: it never colours the factory, so it must not look
-  // like the two fills above, which do.
+  // The note tier (`status-note`) is outlined yellow, below: it never colours the factory, so it
+  // must not read as either of the two fills above, which do.
+
+  &.status-note {
+    color: var(--sf-yellow) !important;
+    border-color: var(--sf-yellow-border) !important;
+  }
 
   &.green, &.success {
     color: var(--sf-success) !important;
@@ -251,9 +255,8 @@
 
   // Amber as an outlined chip rather than the fill `.status-warning` carries. `hand-gathered` is a
   // raw resource with no extractor in the game — amber because it is an assumption the planner is
-  // making on your behalf, not a state of the plan, so the factory itself stays green. The note
-  // tier (`status-note`, e.g. an output nothing asks for) is amber for exactly that reason too.
-  &.hand-gathered, &.status-warning-outlined, &.status-note {
+  // making on your behalf, not a state of the plan, so the factory itself stays green.
+  &.hand-gathered, &.status-warning-outlined {
     color: var(--sf-status-warning) !important;
     border-color: var(--sf-status-warning-border) !important;
   }

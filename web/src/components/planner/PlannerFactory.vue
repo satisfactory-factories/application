@@ -32,14 +32,14 @@
               />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
-                <v-chip class="sf-chip sf-chip-clickable small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
-                <v-chip class="sf-chip sf-chip-clickable small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
