@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Beta v0.5 (the 0.1.x–0.2.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
-## [Unreleased]
+## Beta v0.6 - The "Groundwork" Update
+
+Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.
 
 ### Mining: extraction is now part of the plan
 
