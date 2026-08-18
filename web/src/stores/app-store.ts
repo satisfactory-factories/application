@@ -192,22 +192,31 @@ export const useAppStore = defineStore('app', () => {
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let lastPersistedPlan = ''
 
+  // Whether the pending persist was asked for by a load rather than by the user. Recorded when the
+  // persist is SCHEDULED, not read when it fires: persistence is debounced by 500ms, and a load
+  // finishes well inside that, so reading isLoaded at fire time saw a loaded app and stamped the
+  // plan anyway. The most recent scheduler wins, so a real edit arriving mid-debounce still counts.
+  let persistScheduledDuringLoad = false
+
   const persistPlan = () => {
     clearTimeout(persistTimer)
+    const fromLoad = persistScheduledDuringLoad
+    persistScheduledDuringLoad = false
     // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
     const json = JSON.stringify(toRaw(factoryTabs.value))
     if (json === lastPersistedPlan) return
     lastPersistedPlan = json
     localStorage.setItem('factoryTabs', json)
-    // Not while the plan is still loading. The v0.6 migration recalculation runs then, and
-    // stamping it would make a stale browser copy look newer than the account's — which is
-    // exactly what checkForOOS reads to decide whether to warn before overwriting.
-    if (isLoaded.value) {
+    // Not for a load. The v0.6 migration recalculates as it loads, and stamping that would make a
+    // stale browser copy look newer than the account's — which is exactly what checkForOOS reads
+    // to decide whether to warn before overwriting.
+    if (!fromLoad) {
       setLastEdit() // Update last edit time whenever the data changes, from any source.
     }
   }
 
   const schedulePersist = () => {
+    persistScheduledDuringLoad = !isLoaded.value
     clearTimeout(persistTimer)
     persistTimer = setTimeout(persistPlan, 500)
   }
@@ -766,36 +775,52 @@ export const useAppStore = defineStore('app', () => {
   // not reloaded yet — so both shapes load, and an array is read as a plan from before the
   // change, which is exactly what it is.
   const loadServerPlan = (data: Factory[] | FactoryTab) => {
-    if (Array.isArray(data)) {
-      // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
-      // has to be asked about — including on a fresh machine, whose tab was born answered for
-      // contents it no longer has.
-      const legacyTab = getCurrentTab()
-      if (legacyTab) {
-        legacyTab.plannerVersion = undefined
-      }
-      // Recalculated, not trusted. This array was written by a client that meant something
-      // different by it - raw resources were assumed supplied - so its stored ledger is the one
-      // thing here that cannot be believed, and it is exactly what the notice below reads.
-      setFactories(data, true)
-      // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
-      // nothing else calls this - the plan simply turned red with nothing on screen saying why.
-      askRawBreakingNotice()
-      return
-    }
+    // A restore is a load, and it bypasses the loader, so nothing else marks it as one. Without
+    // this the work below announces every factory it touches while the app is still flagged
+    // "loaded": cloud sync marks the account copy dirty and the next tick uploads the restored
+    // plan straight back over the copy it just came from, before the user has answered anything.
+    // Restored in a finally, because leaving it false switches syncing off for the session.
+    const wasLoaded = isLoaded.value
+    isLoaded.value = false
 
-    const tab = getCurrentTab()
-    if (tab) {
-      // The name travels with the plan; the id does not. Restoring into a tab created on this
-      // machine, its id is what local state is keyed by, while the name is what the user called
-      // the plan when they saved it — so keeping the local one silently renamed their plan.
-      if (data.name) tab.name = data.name
-      tab.powerTarget = data.powerTarget
-      tab.groups = data.groups
-      tab.plannerVersion = data.plannerVersion
+    try {
+      if (Array.isArray(data)) {
+        // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
+        // has to be asked about — including on a fresh machine, whose tab was born answered for
+        // contents it no longer has.
+        const legacyTab = getCurrentTab()
+        if (legacyTab) {
+          legacyTab.plannerVersion = undefined
+        }
+        // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
+        // something different by it - raw resources were assumed supplied - so its stored ledger
+        // is the one thing that cannot be believed, and it is exactly what the notice below reads.
+        setFactories(data, true)
+        // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
+        // nothing else calls this - the plan simply turned red with nothing on screen saying why.
+        askRawBreakingNotice()
+        return
+      }
+
+      const tab = getCurrentTab()
+      if (tab) {
+        // The name travels with the plan; the id does not. Restoring into a tab created on this
+        // machine, its id is what local state is keyed by, while the name is what the user called
+        // the plan when they saved it — so keeping the local one silently renamed their plan.
+        if (data.name) tab.name = data.name
+        tab.powerTarget = data.powerTarget
+        tab.groups = data.groups
+        tab.plannerVersion = data.plannerVersion
+      }
+      // Deliberately NOT forced here. This tab was written by a current client, so its quantities
+      // are the user's own and its ledger means what it says. A forced recalculation treats
+      // building groups as authoritative and writes them back over any item deliberately left out
+      // of sync with its groups, which would quietly rewrite a restored plan.
+      setFactories(data.factories ?? [])
+      askRawBreakingNotice()
+    } finally {
+      isLoaded.value = wasLoaded
     }
-    setFactories(data.factories ?? [], true)
-    askRawBreakingNotice()
   }
 
   const getCurrentTab = () => {

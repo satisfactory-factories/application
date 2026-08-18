@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryPowerChangeType, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
-import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
 import { useAppStore } from '@/stores/app-store'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -616,13 +616,34 @@ describe('app-store', () => {
       expect(appStore.showRawBreakingNotice).toBe(true)
     })
 
+    // Calculated first, because that is what a tab written by a current client actually carries.
+    // The bare-array branch above recalculates on arrival (its ledger means something different);
+    // this branch deliberately does not, since a current client's quantities are the user's own.
     it('raises the notice for a whole tab restored from the account', () => {
       const tab = appStore.getCurrentTab()!
-      appStore.loadServerPlan({
-        ...tab, plannerVersion: undefined, factories: unmigratedPlan(),
-      })
+      const factories = unmigratedPlan()
+      calculateFactories(factories, gameData)
+
+      appStore.loadServerPlan({ ...tab, plannerVersion: undefined, factories })
 
       expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // The reason that branch must not force a recalculation: a restore is not the moment to
+    // overwrite what the user set. An item deliberately left out of step with its building groups
+    // keeps its own quantity rather than being rewritten from them.
+    it('does not rewrite a restored tab\'s quantities from its building groups', () => {
+      const tab = appStore.getCurrentTab()!
+      const factories = unmigratedPlan()
+      calculateFactories(factories, gameData)
+      const product = factories[0].products[0]
+      product.buildingGroupItemSync = false
+      product.buildingGroups[0].buildingCount = 99
+      const authored = product.amount
+
+      appStore.loadServerPlan({ ...tab, plannerVersion: undefined, factories })
+
+      expect(appStore.getFactories()[0].products[0].amount).toBe(authored)
     })
 
     it('stays silent for an already answered tab restored from the account', () => {

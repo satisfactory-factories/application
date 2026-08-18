@@ -1763,9 +1763,12 @@ describe('sanitizeGroupNumbers', async () => {
     addProductToFactory(built, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
     calculateFactories([built], gameData)
 
-    // Round-trip through JSON the way a pasted plan does, with the bad value injected.
+    // Injected BEFORE the round trip, not after. That is the whole point: JSON.stringify writes
+    // Infinity as null, so a plan that overflowed on the way out arrives as null on the way back
+    // in, and null coerces to a perfectly finite 0. Injecting into the already-parsed object tests
+    // an input the wire cannot actually deliver.
+    Object.assign(built.products[0].buildingGroups[0], raw)
     const onDisk = JSON.parse(JSON.stringify(built)) as Factory
-    Object.assign(onDisk.products[0].buildingGroups[0], raw)
 
     calculateFactories([onDisk], gameData, { origin: 'recalculate' })
     return { factory: onDisk, group: onDisk.products[0].buildingGroups[0] }
@@ -1773,13 +1776,17 @@ describe('sanitizeGroupNumbers', async () => {
 
   it.each([
     ['a negative clock', { overclockPercent: -50 }],
-    ['a clock that overflowed on parse', { overclockPercent: Number.POSITIVE_INFINITY }],
+    ['a clock that overflowed, arriving as null', { overclockPercent: Number.POSITIVE_INFINITY }],
+    ['a clock explicitly set to null', { overclockPercent: null }],
     ['a non-numeric clock', { overclockPercent: 'abc' }],
+    ['an empty-string clock', { overclockPercent: '' }],
+    ['a boolean clock', { overclockPercent: true }],
     ['a missing clock', { overclockPercent: undefined }],
     ['a negative building count', { buildingCount: -3 }],
     ['a numeric string building count', { buildingCount: '4' }],
     ['a non-numeric building count', { buildingCount: 'abc' }],
-    ['a building count that overflowed on parse', { buildingCount: Number.POSITIVE_INFINITY }],
+    ['a building count that overflowed, arriving as null', { buildingCount: Number.POSITIVE_INFINITY }],
+    ['a building count explicitly set to null', { buildingCount: null }],
   ])('leaves nothing non-finite or negative behind for %s', (_label, raw) => {
     const { factory, group } = loadPlanHolding(raw)
 
@@ -1802,6 +1809,14 @@ describe('sanitizeGroupNumbers', async () => {
     const { group } = loadPlanHolding({})
 
     expect(group.buildingCount).toBe(8)
+    expect(group.overclockPercent).toBe(100)
+  })
+
+  // The specific case Number() got wrong: a group whose clock overflowed is worth 100%, not 0%.
+  // At 0% the group produces nothing and, with item sync on, drags the product to nothing with it.
+  it('falls back to full speed for a clock that arrived as null, not to a stopped group', () => {
+    const { group } = loadPlanHolding({ overclockPercent: Number.POSITIVE_INFINITY })
+
     expect(group.overclockPercent).toBe(100)
   })
 })

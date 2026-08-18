@@ -749,9 +749,22 @@ export const MAX_CLOCK_PERCENT = 250
  * of those would change plans that are merely unusual rather than broken.
  */
 export const sanitizeGroupNumbers = (group: BuildingGroup): void => {
+  // Number() is far too permissive to use as a validator: Number(null) is 0, Number(true) is 1,
+  // Number('') is 0 and Number([]) is 0 — every one of them finite, every one of them wrong.
+  //
+  // null is the case that matters. JSON.stringify writes Infinity as null, so the overflow this
+  // function exists to catch arrives over the wire as null, and coercing it gave a 0% clock: the
+  // group silently produces nothing, rather than falling back to 100%.
   const finite = (value: unknown, fallback: number) => {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : fallback
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : fallback
+    }
+    // A numeric string is a real value someone's editor or an older export wrote as text.
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : fallback
+    }
+    return fallback
   }
 
   const count = Math.max(0, finite(group.buildingCount, 0))
