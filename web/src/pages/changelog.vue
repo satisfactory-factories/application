@@ -34,6 +34,12 @@
           </ul>
         </nav>
 
+        <p>Check out what's new in the video below!</p>
+        <youtube-embed
+          class="pb-4"
+          video-id="AGrYctFtbgY"
+        />
+
         <h2 class="breaking">🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
         <p>The planner used to top up any raw resource you were short of. Every raw resource must now be mined or imported, and an unmet one is a real shortage, with the usual buttons to mine it on the spot or import it.</p>
         <p><b>Plans built before this will show factories in red.</b> Nothing has been changed or lost. The shortages were always there.</p>
