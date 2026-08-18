@@ -56,6 +56,38 @@ const pruneEmptyRequests = (factory: Factory): void => {
 }
 
 // Scans for invalid dependency requests and removes the request and the input from the erroneous factory.
+/**
+ * Factories whose own calculation pass has run to completion in this session.
+ *
+ * Deliberately a WeakSet rather than a field on Factory: it is transient bookkeeping about a
+ * calculation, not part of a saved plan, and it must never reach localStorage or the API. Clones
+ * made for a calculation run start unmarked, which is correct — a fresh run has to re-establish
+ * it. Marked by the engine at the end of every pass; see calculateFactoryEngine.
+ */
+const completedPass = new WeakSet<Factory>()
+
+export const markPassCompleted = (factory: Factory): void => {
+  completedPass.add(factory)
+}
+
+export const hasCompletedPass = (factory: Factory): boolean => completedPass.has(factory)
+
+/**
+ * A clone is the same factory, so it inherits whether that factory has been calculated.
+ *
+ * Without this a single-factory recalculation could never judge anything: it clones the plan and
+ * flushInvalidRequests runs at the very START of the pass, so every clone would still be unmarked
+ * and a genuinely dead export would survive forever.
+ */
+export const carryPassMarks = (sources: Factory[], clones: Factory[]): Factory[] => {
+  sources.forEach((source, index) => {
+    if (clones[index] && completedPass.has(source)) {
+      completedPass.add(clones[index])
+    }
+  })
+  return clones
+}
+
 export const flushInvalidRequests = (factories: Factory[], gameData: DataInterface): void => {
   // console.log('dependencies: flushInvalidRequests')
   factories.forEach(factory => {
@@ -86,11 +118,21 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         return // Nothing to do as the factory doesn't exist.
       }
 
-      // A factory with no part ledger at all has not been calculated yet (a template, or a
-      // plan built in code), so "it doesn't make this" cannot be concluded from it — the
-      // ledger is built moments later. Judging it here deletes perfectly good export/import
-      // pairs on the plan's very first calculation.
-      const isCalculated = Object.keys(factory.parts).length > 0
+      // A factory that has not completed a pass yet (a template, or a plan built in code) cannot
+      // be asked "do you make this?" — the answer is built moments later, and judging it here
+      // deletes perfectly good export/import pairs on the plan's very first calculation.
+      //
+      // This used to be inferred from the part ledger being non-empty, which is NOT the same
+      // question and produced an order-dependent bug. The productCheck below reads `byProducts`
+      // and the power producers' byproducts, both written by the provider's OWN pass; but
+      // calculateFactoryDependencies fills a provider's `parts` as a side effect while
+      // processing a CONSUMER. So a provider sitting after its consumer in the array arrived
+      // here half-done: parts full, byproducts still empty. It looked calculated, failed the
+      // productCheck, and had the import and its matching export silently deleted.
+      //
+      // Whether that happened depended purely on array order. `[refinery, consumer]` kept the
+      // import and `[consumer, refinery]` lost it, on identical data.
+      const isCalculated = hasCompletedPass(factory)
 
       requests.forEach(request => {
         // A previous iteration (or the recalculation it triggered) may already have removed it.

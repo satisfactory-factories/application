@@ -517,4 +517,40 @@ describe('load-time repairs', () => {
     expect(() => validateFactories([factory], gameData)).not.toThrow()
     expect(factory.inputs).toHaveLength(1)
   })
+  // flushInvalidRequests decides whether it may judge a provider's outputs at all. It used to
+  // infer that from the part ledger being non-empty, which is a different question:
+  // calculateFactoryDependencies fills a provider's `parts` as a side effect while processing a
+  // CONSUMER, but `byProducts` is only written by the provider's own pass. So a provider sitting
+  // after its consumer in the array arrived half-done and had its export silently deleted.
+  describe('order independence of the byproduct check', () => {
+    const buildOilChain = () => {
+      const oil = newFactory('Oil', 0, 11)
+      const consumer = newFactory('Rubber', 1, 12)
+      // Plastic emits Heavy Oil Residue as a byproduct - the array the check reads.
+      addProductToFactory(oil, { id: 'Plastic', amount: 300, recipe: 'Plastic' })
+      addProductToFactory(consumer, { id: 'Rubber', amount: 100, recipe: 'ResidualRubber' })
+      addInputToFactory(consumer, { factoryId: oil.id, outputPart: 'HeavyOilResidue', amount: 100 })
+      return { oil, consumer }
+    }
+
+    it('keeps a byproduct import with the provider first', () => {
+      const { oil, consumer } = buildOilChain()
+      const plan = [oil, consumer]
+      calculateFactories(plan, gameData)
+
+      expect(consumer.inputs).toHaveLength(1)
+      expect(oil.dependencies.requests[consumer.id]).toHaveLength(1)
+      expectIntegrity(plan)
+    })
+
+    it('keeps the same byproduct import with the provider last', () => {
+      const { oil, consumer } = buildOilChain()
+      const plan = [consumer, oil]
+      calculateFactories(plan, gameData)
+
+      expect(consumer.inputs).toHaveLength(1)
+      expect(oil.dependencies.requests[consumer.id]).toHaveLength(1)
+      expectIntegrity(plan)
+    })
+  })
 })

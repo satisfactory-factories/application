@@ -15,7 +15,9 @@ import {
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
   calculateFactoryDependencies,
+  carryPassMarks,
   flushInvalidRequests,
+  markPassCompleted,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
@@ -228,6 +230,10 @@ const calculateFactoryEngine = (
     calculateHasProblem(fac)
   })
 
+  // Everything this factory's own pass writes now exists, byproducts included. flushInvalidRequests
+  // reads this to decide whether it may judge the factory's outputs at all.
+  markPassCompleted(factory)
+
   // Emit an event that the data has been updated so it can be synced.
   // During a clone run the wrapper emits after committing, with the real objects.
   if (!inCloneRun()) {
@@ -308,14 +314,14 @@ const cloneForCalculation = (factories: Factory[]): Factory[] => {
   const raws = toRaw(factories).map(factory => toRaw(factory))
 
   try {
-    return structuredClone(raws)
+    return carryPassMarks(raws, structuredClone(raws))
   } catch (err) {
     // structuredClone refuses a Proxy, and assigning the result of a reactive array's
     // filter() stores the proxies it read out as elements — see rawArray in common.ts,
     // which every such site now uses. A miss would otherwise break every subsequent
     // calculation, so unwrap the hard way rather than leaving the plan uncalculated.
     console.error('factory: cloneForCalculation: the plan holds a reactive proxy, falling back to a deep unwrap. This is a bug — the assignment that stored it should use rawArray().', err)
-    return deepRaw(raws) as Factory[]
+    return carryPassMarks(raws, deepRaw(raws) as Factory[])
   }
 }
 
@@ -362,6 +368,10 @@ export const calculateFactory = (
     cloneRunDepth--
   }
 
+  // The pass ran on the clones, so the marks landed there. Carry them back onto the live plan
+  // or the next calculation starts believing nothing has ever been calculated.
+  carryPassMarks(results, allFactories)
+
   const changed = commitResults(allFactories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
   // The edited factory's user-made change (e.g. a new product amount) happened before
@@ -389,6 +399,8 @@ export const calculateFactories = (
   } finally {
     cloneRunDepth--
   }
+
+  carryPassMarks(results, factories)
 
   const changed = commitResults(factories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
