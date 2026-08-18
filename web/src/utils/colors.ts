@@ -36,6 +36,12 @@ export const palette = {
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
   greyBorder: '#7f7f7f',
+  teal: '#26a69a',
+  pink: '#ec407a',
+  indigo: '#5c6bc0',
+  lime: '#c0ca33',
+  offWhite: '#eceff1',
+  offWhiteBorder: '#8d9499',
 } as const
 
 export interface SfColor {
@@ -63,6 +69,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // A setting on a building group rather than something that flows through it: the node
+  // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
+  // these were reading as `rawResource` beige, which is the colour of the ore itself.
+  nodeSetting: { color: palette.offWhite, border: palette.offWhiteBorder },
 
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
@@ -81,14 +91,89 @@ export const sfColors = {
   // Status
   success: { color: palette.green, border: palette.green },
   error: { color: palette.red, border: palette.red },
+  // Amber rather than red: something the user should read before acting, but not a failure.
+  warning: { color: palette.yellow, border: palette.yellowBorder },
   // A factory/card in a problem state. Historically this red drifted into four
   // different literals (#a00, #b50000, rgba(140,9,21,.4), rgba(128,0,0,.5)); the
   // background is deliberately OPAQUE — the old 0.4-alpha value composited to a
   // different shade depending on what surface sat behind it (sidebar vs card header).
   problem: { color: palette.red, border: '#a00000', background: '#4b171c' },
+  // The middle tier of a factory's status: coherent, but probably not what you meant, or your
+  // world is behind your plan. Deliberately the burnt orange the out-of-sync state already wore,
+  // carried over verbatim — naming it stops `building` (an item colour) doubling as a status
+  // colour. Not called `warning`: that name is taken by caution *text*, which is a yellow.
+  //
+  // The background is OPAQUE for the same reason `problem` above is. At 16% alpha it composited
+  // against whatever sat behind it — a card header's own translucent grey, the summary table's
+  // surface — and the result was a washed-out beige that read as a grey panel rather than amber.
+  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: '#4f2b0b' },
+  // The lowest tier: shown on a factory but never colouring it, so it is yellow rather than the
+  // amber above and its chip is outlined rather than filled. The background exists for the one
+  // place a note chip has to look PRESSED - the Factories Summary status filter, where a flat
+  // chip means "this filter is on" and Vuetify fills a colourless chip with grey. Opaque for the
+  // same reason as the two above.
+  statusNote: { color: palette.yellow, border: palette.yellowBorder, background: '#4b3a0e' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors
+
+/**
+ * Colours a factory group may be given.
+ *
+ * Red, orange and yellow are deliberately absent: `problem` and `statusWarning` own them, and a
+ * group wearing a status colour would read as a broken factory at a glance. Everything else in
+ * the palette is fair game, and the user can pick anything at all through the custom picker —
+ * this list is the offered grid, not a restriction.
+ */
+export const groupPalette: { name: string, value: string }[] = [
+  { name: 'Green', value: palette.green },
+  { name: 'Teal', value: palette.teal },
+  { name: 'Cyan', value: palette.cyan },
+  { name: 'Light blue', value: palette.lightBlue },
+  { name: 'Blue', value: palette.blue },
+  { name: 'Indigo', value: palette.indigo },
+  { name: 'Purple', value: palette.purple },
+  { name: 'Pink', value: palette.pink },
+  { name: 'Lime', value: palette.lime },
+  { name: 'Beige', value: palette.beige },
+  { name: 'Grey', value: palette.grey },
+]
+
+// The card surface a group's muted header is blended into. Matches --sf-factory-bg's opaque
+// equivalent — see sfColors.factory, whose background is the same grey at 40%.
+const cardSurface = '#2b2b2b'
+
+const parseHex = (hex: string): [number, number, number] => {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean
+  return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) || 0) as [number, number, number]
+}
+
+/**
+ * Blend `hex` into `base` by `amount` (0 = all base, 1 = all hex), returning an opaque colour.
+ *
+ * Opaque on purpose. The `problem` background above had to stop being an alpha value because it
+ * composited to a different shade over the sidebar than over a card; a group's muted header has
+ * exactly the same problem, and is used on both surfaces.
+ */
+export const mixHex = (hex: string, amount: number, base: string = cardSurface): string => {
+  const [r1, g1, b1] = parseHex(hex)
+  const [r2, g2, b2] = parseHex(base)
+  const mix = (a: number, b: number) => Math.round(b + (a - b) * amount)
+  return `#${[mix(r1, r2), mix(g1, g2), mix(b1, b2)]
+    .map(channel => channel.toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+// The two values every group-coloured surface binds. `muted` fills a card or sidebar header;
+// the raw colour draws the spine and the swatch.
+export const groupColorVars = (color: string): Record<string, string> => ({
+  '--sf-group': color,
+  // Kept faint deliberately. The border and the tree already say which group a thing is in, so the
+  // fill only has to hint at it — at any real strength a sidebar of six groups reads as six
+  // differently-coloured panels rather than one list.
+  '--sf-group-muted': mixHex(color, 0.12),
+})
 
 const toKebab = (name: string) => name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
 

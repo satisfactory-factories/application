@@ -60,13 +60,44 @@
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
-        <planner-factory
-          v-for="(factory) in getFactories()"
-          :key="factory.id"
-          :factory="factory"
-          :help-text="helpText"
-          :total-factories="getFactories().length"
-        />
+        <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
+          <!-- A plan that has never used groups is one Ungrouped section, and a band over the
+               whole plan says nothing — so it only appears once there is something to divide. -->
+          <planner-group-band
+            v-if="groupSections.length > 1"
+            :collapsed="sectionCollapsed(section)"
+            :count="section.factories.length"
+            :factories="section.factories"
+            :group="section.group"
+            @toggle="toggleSection(section)"
+          />
+          <!-- Hidden rather than removed once the group has been open: rebuilding forty cards on
+               every collapse is what made the toggle take seconds. A group already shut when the
+               plan loads never mounts them at all.
+
+               The wrapper is load-bearing: PlannerFactory renders a row AND the divider that
+               follows it, and v-show on a two-root component is silently dropped, so collapsing
+               hid nothing at all. -->
+          <template v-if="sectionMounted(section)">
+            <!-- The tree the sidebar draws, brought over to the cards: without it a group's
+                 members are only distinguishable by the band above them and the group chip on each
+                 header, which is not enough to see where a group starts and stops while scrolling.
+                 Ungrouped is deliberately left flat — indenting everything distinguishes nothing. -->
+            <div
+              v-for="(factory, index) in section.factories"
+              v-show="!sectionCollapsed(section)"
+              :key="factory.id"
+              :class="section.group ? ['group-tree-item', { first: index === 0, last: index === section.factories.length - 1 }] : undefined"
+              :style="section.group ? groupColorVars(section.group.color) : undefined"
+            >
+              <planner-factory
+                :factory="factory"
+                :help-text="helpText"
+                :total-factories="getFactories().length"
+              />
+            </div>
+          </template>
+        </template>
         <div class="mt-4 text-center">
           <v-btn
             color="primary"
@@ -101,13 +132,36 @@
     regenerateSortOrders, reorderFactory,
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { useGroupCollapse } from '@/composables/useGroupCollapse'
+  import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
+  import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
+  import { groupColorVars } from '@/utils/colors'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
 
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
+
+  const { sections: groupSections } = useFactoryGroups()
+  const { isCollapsed, isMounted, setCollapsed, toggleCollapsed, usePlan } = useGroupCollapse()
+
+  // Which plan's collapse state is in play. Group ids survive a copied plan, and Ungrouped has no
+  // id at all, so without this two tabs would drive each other's sections.
+  const appStore = useAppStore()
+  watch(
+    () => appStore.getCurrentTab()?.id,
+    id => {
+      if (id) usePlan(id)
+    },
+    { immediate: true },
+  )
+
+  const sectionCollapsed = (section: FactoryGroupSection) => isCollapsed(section.group?.id ?? null)
+  const sectionMounted = (section: FactoryGroupSection) => isMounted(section.group?.id ?? null)
+  const toggleSection = (section: FactoryGroupSection) => toggleCollapsed(section.group?.id ?? null)
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
@@ -210,8 +264,15 @@
   }
 
   const defaultSidebarWidth = 375
-  const minSidebarWidth = 150
-  const sidebarWidth = ref<number>(Number.parseInt(localStorage.getItem('sidebarWidth') ?? '', 10) || defaultSidebarWidth)
+  // The floor the status chips need: several item icons plus a label like "3 shortages" in one
+  // unbreakable chip, inside a column that hides its overflow. Narrower silently cut the label off.
+  const minSidebarWidth = 300
+  // Clamped on read as well as on drag — a width stored before this floor existed would otherwise
+  // stick until the next resize.
+  const storedSidebarWidth = Number.parseInt(localStorage.getItem('sidebarWidth') ?? '', 10)
+  const sidebarWidth = ref<number>(
+    storedSidebarWidth ? Math.max(storedSidebarWidth, minSidebarWidth) : defaultSidebarWidth
+  )
   const isResizingSidebar = ref<boolean>(false)
 
   const startSidebarResize = (event: MouseEvent) => {
@@ -323,7 +384,16 @@
     const activationLine = getActivationLine()
     // Sections then factories, matching document order — so once an entry starts
     // below the line, no later one can span it.
-    const entries: (number | string)[] = ['statistics', 'factory-summary', ...getFactories().map(factory => factory.id)]
+    // Group bands are in the list too: a collapsed group contributes no cards, so without its
+    // band there is a stretch of the page nothing claims and the highlight sticks behind.
+    const entries: (number | string)[] = [
+      'statistics',
+      'factory-summary',
+      ...groupSections.value.flatMap(section => [
+        `group-${section.group?.id ?? 'ungrouped'}`,
+        ...(sectionCollapsed(section) ? [] : section.factories.map(factory => factory.id)),
+      ]),
+    ]
     for (const entry of entries) {
       const rect = document.getElementById(`${entry}`)?.getBoundingClientRect()
       if (!rect) continue
@@ -458,17 +528,17 @@
     // tears them (and a recalculation of every affected factory) back down.
     newFactory.dependencies = { requests: {}, metrics: {} }
 
-    getFactories().push(newFactory)
-
-    // Update the display order of the other factory
-    if (newFactory.displayOrder > originalFactory.displayOrder && newFactory.id !== newId) {
-      newFactory.displayOrder += 1
-    }
+    // The clone inherits the original's group (structuredClone carried it), so seat it directly
+    // after the original. Appending and re-sorting would drop it at the end of that group.
+    const originalIndex = getFactories().indexOf(originalFactory)
+    getFactories().splice(originalIndex + 1, 0, newFactory)
+    getFactories().forEach((entry, index) => {
+      entry.displayOrder = index
+    })
 
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
-    regenerateSortOrders(getFactories())
     navigateToFactory(newId)
   }
 
@@ -514,7 +584,10 @@
     helpText.value = !helpText.value
   }
 
-  const navigateToFactory = (factoryId: number | string, subsection?: string) => {
+  // `subsection` may name a row that isn't on screen (a status chip jumping to the product that
+  // owns the problem), so callers pass the section as a fallback rather than the jump silently
+  // doing nothing.
+  const navigateToFactory = (factoryId: number | string, subsection?: string, fallback?: string) => {
     const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
@@ -524,15 +597,26 @@
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
     factory.hidden = false
 
+    // Same reasoning one step out: a card inside a collapsed group is hidden and has nothing to
+    // scroll to, so every jump into one — a status chip, a pending session navigation, a link from
+    // another page — would silently do nothing. Open the group first.
+    setCollapsed(factory.group?.id ?? null, false)
+
     // Wait a bit for the factory to unhide fully. Hack but works well.
-    setTimeout(() => scrollToElement(subsection ?? `${factoryId}`), 50)
+    setTimeout(() => scrollToElement([subsection ?? `${factoryId}`, fallback ?? `${factoryId}`]), 50)
   }
 
   // Scrolls to the element, then corrects for layout shifts: factory cards materialize as they
   // scroll past the viewport, growing the content above the target and leaving the scroll short.
-  const scrollToElement = (elementId: string, attempt = 0) => {
-    const element = document.getElementById(elementId)
-    if (!element) return
+  //
+  // Takes candidates in preference order and re-resolves them on every attempt: a row inside a
+  // card that has not materialized yet is not in the DOM at click time, and the correction pass
+  // is where it appears.
+  const scrollToElement = (candidates: string | string[], attempt = 0) => {
+    const ids = Array.isArray(candidates) ? candidates : [candidates]
+    const elementId = ids.find(id => document.getElementById(id))
+    const element = elementId ? document.getElementById(elementId) : null
+    if (!element || !elementId) return
 
     // Corrections snap instantly - re-running the smooth animation would chase a moving target.
     element.scrollIntoView({ behavior: attempt === 0 ? 'smooth' : 'auto', block: 'start' })
@@ -543,9 +627,11 @@
       // above can replace the node, and a detached node's rect reads 0,
       // which silently skips the correction.
       const current = document.getElementById(elementId)
-      // ~114px is where the top of a scrolled-to element sits (page header + tab bar)
-      if (current && Math.abs(current.getBoundingClientRect().top) > 150) {
-        scrollToElement(elementId, attempt + 1)
+      // ~114px is where the top of a scrolled-to element sits (page header + tab bar), and a row
+      // jumped to from a status chip adds its 50px scroll-margin on top of that — so the tolerance
+      // has to clear both, or the correction pass fights the margin it just applied.
+      if (current && Math.abs(current.getBoundingClientRect().top) > 200) {
+        scrollToElement(ids, attempt + 1)
       }
     }, 600)
   }
@@ -603,6 +689,82 @@
 $header-height: 65px;
 $tab-bar-height: 52px;
 $chrome-height: $header-height + $tab-bar-height; // 117px
+
+// The group tree over the cards. Same shape and the same geometry names as the sidebar's, so the
+// two read as one idea seen at two sizes — see PlannerSidebarGroup.
+$tree-indent: 20px;
+$tree-line: 3px;
+// Where the elbow meets the card. The sidebar aims at the middle of a row; a factory card is
+// hundreds or thousands of pixels tall, so a midpoint elbow would point at nothing. This aims at
+// the card's title line, measured in the browser at a constant 56px from the top of the wrapper
+// whatever the card holds. The min() is for a collapsed card shorter than that, so the elbow and
+// the corner stay inside it rather than hanging off the bottom.
+$tree-elbow-top: 56px;
+// The breathing room between a band and its first card. Carried as that card's padding rather
+// than the band's margin, so it falls inside the trunk and the line arrives unbroken.
+$band-gap: 8px;
+
+.group-tree-item {
+  position: relative;
+  padding-left: $tree-indent;
+  // Contains the card's own margins — the divider that ends each one carries my-6, whose bottom
+  // margin otherwise escapes the wrapper and leaves a 12px hole in the trunk between cards. Same
+  // reason the sidebar's .tree-item does it.
+  display: flow-root;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    background-color: var(--sf-group, #6c6c6c);
+  }
+
+  // Trunk, one segment per card, meeting the segment above and below so the group reads as one
+  // line down its edge. The last card stops it at its own elbow, which draws the corner.
+  &::before {
+    top: 0;
+    bottom: 0;
+    width: $tree-line;
+  }
+
+  &.last::before {
+    bottom: auto;
+    height: min(#{$tree-elbow-top + $tree-line}, 100%);
+  }
+
+  &::after {
+    top: min(#{$tree-elbow-top}, calc(100% - #{$tree-line}));
+    width: $tree-indent;
+    height: $tree-line;
+  }
+
+  // Padding shifts the card but not the pseudo-elements, which resolve against the padding box,
+  // so the first card's elbow has to come down by the same amount to stay on its title line.
+  &.first {
+    padding-top: $band-gap;
+
+    &::after {
+      top: $tree-elbow-top + $band-gap;
+    }
+
+    // A group of one is both ends of the tree at once, so its trunk has to end at the elbow the
+    // rule above just moved. Left at the shared height it stopped short of it and the corner came
+    // away from the line.
+    &.last::before {
+      height: min(#{$tree-elbow-top + $band-gap + $tree-line}, 100%);
+    }
+  }
+
+  // The rule each card ends with divides cards inside a group; at the end of one it divides
+  // nothing, since the corner of the tree and the next band already say the group has finished,
+  // and left in it draws straight across that corner. Hidden rather than removed — the rule
+  // carries the my-6 that spaces the next band off the last card, and display: none takes the
+  // gap with it.
+  &.last :deep(.factory-divider) {
+    border-color: transparent;
+  }
+}
 
 .planner-container {
   width: 100%;

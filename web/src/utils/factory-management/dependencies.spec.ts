@@ -445,6 +445,8 @@ describe('dependencies', () => {
         amountRemaining: -90,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(factoryA.parts.CompactedCoal).toEqual({
@@ -459,6 +461,8 @@ describe('dependencies', () => {
         amountRemaining: 540,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
     })

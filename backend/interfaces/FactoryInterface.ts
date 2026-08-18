@@ -131,6 +131,14 @@ export interface FactoryPower {
   difference: number;
 }
 
+// Denormalised onto every member factory, because the save payload is a bare Factory[]
+export interface FactoryGroup {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -155,6 +163,8 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  icon?: string // ID from the frontend's factory-icons registry
+  group?: FactoryGroup // Absent means ungrouped
   dataVersion: string
 }
 
@@ -162,4 +172,7 @@ export interface FactoryTab {
   id: string;
   name: string;
   factories: Factory[];
+  groups?: FactoryGroup[]; // Registry for groups with no member factory to carry them
+  // Marks the plan as answered for the raw-resources change; absent means built before v0.6
+  plannerVersion?: string;
 }

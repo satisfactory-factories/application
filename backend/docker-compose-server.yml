@@ -24,11 +24,15 @@ services:
       - "3001:3001"
     command: pnpm start
     healthcheck:
-      # /hello is the API's own liveness route. node 24 ships global fetch, so
-      # this needs nothing extra installed in the image (there is no curl in
+      # /health is the API's own readiness route: it pings Mongo and 503s if the
+      # database is unreachable, so `r.ok` turns this container unhealthy when
+      # Mongo dies rather than only when the process does. node 24 ships global
+      # fetch, so this needs nothing extra in the image (there is no curl in
       # node:24-slim). update.sh's `up --wait` blocks on this, which is what
-      # turns "container started" into "container actually serving".
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/hello').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      # turns "container started" into "container actually serving" — and now
+      # means a deploy attempted while Mongo is down fails rather than going
+      # green.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3

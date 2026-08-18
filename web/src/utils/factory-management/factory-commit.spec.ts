@@ -40,7 +40,7 @@ describe('calculateFactories clone-run-commit', () => {
       calculateFactories(factories, gameData)
 
       const copperIngots = findFacByName('Copper Ingots', factories)
-      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(320)
+      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(520)
       expect(copperIngots.hasProblem).toBe(false)
     })
   })
@@ -71,7 +71,7 @@ describe('calculateFactories clone-run-commit', () => {
       // is orders of magnitude below full-churn (~2,400 fires for this plan pre-commit).
       expect(counter.fires).toBeGreaterThan(0)
       expect(counter.fires).toBeLessThan(100)
-      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(330)
+      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(530)
     })
 
     it('should preserve object identity of parts across recalculations', () => {
@@ -93,7 +93,7 @@ describe('calculateFactories clone-run-commit', () => {
       copperIngots.products[0].amount += 10
       calculateFactory(copperIngots, state.factories, gameData)
 
-      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(330)
+      expect(copperIngots.parts.CopperIngot.amountSuppliedViaProduction).toBe(530)
       expect(counter.fires).toBeGreaterThan(0)
       expect(counter.fires).toBeLessThan(100)
     })
@@ -123,6 +123,12 @@ describe('calculateFactories clone-run-commit', () => {
 
     it('should emit factoryUpdated with the live objects, not clones', () => {
       const factories = complexDemoPlan().getFactories()
+      calculateFactories(factories, gameData)
+
+      // The demo plan is a snapshot of a calculated plan, so the first pass over it changes
+      // nothing and correctly emits nothing. An actual edit is what this test needs.
+      findFacByName('Copper Ingots', factories).products[0].amount += 10
+
       const received: Factory[] = []
       const capture = (factory: Factory) => {
         received.push(factory)

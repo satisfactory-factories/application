@@ -1,13 +1,17 @@
 import { useGameDataStore } from '@/stores/game-data-store'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
-const gameDataStore = useGameDataStore()
-const gameData = gameDataStore.getGameData()
+// Resolved per call, not once at import. Reaching for the store at module scope makes this file
+// unimportable before `app.use(pinia)` runs — and since importing is transitive, one util quietly
+// pulling this in is enough to take the whole app down at boot with an error that names Pinia and
+// nothing else. The store is a memoised singleton, so asking it each time costs nothing.
+const currentGameData = () => useGameDataStore().getGameData()
 
 export const getPartDisplayName = (part: string | number | null): string => {
   if (!part) {
     return 'NO PART!!!'
   }
+  const gameData = currentGameData()
   if (!gameData) {
     console.error('getPartDisplayName: No game data!!')
     return 'NO DATA!!!'

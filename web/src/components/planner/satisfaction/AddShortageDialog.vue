@@ -117,7 +117,13 @@
     await new Promise(resolve => setTimeout(resolve, 50))
 
     try {
-      addShortageToFactory(props.factory, targetFactory, props.partId, getDefaultRecipeForPart(props.partId))
+      addShortageToFactory(
+        props.factory,
+        targetFactory,
+        props.partId,
+        getDefaultRecipeForPart(props.partId),
+        Math.abs(props.factory.parts[props.partId]?.amountRemaining ?? 0),
+      )
       calculateFactories(appStore.getFactories(), gameDataStore.getGameData())
       eventBus.emit('toast', { message: `Added "${getPartDisplayName(props.partId)}" production to ${targetFactory.name}!` })
     } finally {

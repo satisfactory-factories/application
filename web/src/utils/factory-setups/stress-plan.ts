@@ -3,8 +3,10 @@ import { createMaelsBigBoiPlan } from '@/utils/factory-setups/maels-big-boi-plan
 
 // Builds a very large stress-test plan by replicating Mael's real-world MegaPlan
 // `copies` times with remapped factory ids, so every copy keeps valid cross-factory
-// imports/dependencies. 4 copies ≈ 124 factories with hundreds of products, imports
-// and power producers — used by perf specs and the browser stress harness.
+// imports/dependencies. 4 copies is 144 factories at the MegaPlan's current size, with
+// hundreds of products, imports and power producers — used by perf specs and the browser
+// stress harness. The count moves with the MegaPlan, which is the point: it is whatever
+// four of the largest real plan we have comes to.
 export const createStressPlan = (copies = 4): Factory[] => {
   const plan: Factory[] = []
 

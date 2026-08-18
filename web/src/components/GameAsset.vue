@@ -5,19 +5,23 @@
     :href="getWikiUrl(wikiName ?? displayName)"
     rel="noopener noreferrer"
     target="_blank"
-    :title="`Open ${wikiName ?? displayName} on Satisfactory Wiki`"
   >
     <game-asset-content
       :height="height"
+      :note="note"
       :subject="subject"
+      :title="tooltip ?? wikiName ?? displayName"
       :type="type"
       :width="width"
+      wiki
     />
   </a>
   <game-asset-content
     v-else
     :height="height"
+    :note="note"
     :subject="subject"
+    :title="tooltip ?? displayName"
     :type="type"
     :width="width"
   />
@@ -27,6 +31,7 @@
   import { computed } from 'vue'
   import { getWikiUrl } from '@/utils/wiki-links'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { findFactoryIconNameByAsset } from '@/utils/factory-icons'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import GameAssetContent from '@/components/GameAssetContent.vue'
 
@@ -39,11 +44,35 @@
     // Wiki page name override for UI icons (e.g. the overclock glyph) whose subject
     // isn't a real part, so the display-name lookup can't produce a valid URL.
     wikiName?: string
+    // Replaces the tooltip text, for a caller that has more to say about this icon than its
+    // name. Wrapping the icon in a second tooltip instead gives the hover two answers, since
+    // HoverTooltip resolves the innermost marked ancestor.
+    tooltip?: string
+    // An extra tooltip line under that text, for something the icon carries but cannot say — a
+    // badge drawn in its corner. Kept separate because the tooltip escapes markup on purpose.
+    note?: string
   }>()
+
+  // `item_id` icons are named by their asset file, not by a game data key, so the lookup below
+  // missed them and the hover read "UNKNOWN PART power-shard!". The Power Shard's item is
+  // CrystalShard; these two have no game data entry and no icon registry entry either.
+  const itemIdAliases: Record<string, string> = { 'power-shard': 'CrystalShard' }
+  const nameOverrides: Record<string, string> = {
+    'overclock-production': 'Clock speed',
+    'somersloop-trinket': 'Somersloop',
+  }
 
   const displayName = computed(() => {
     if (props.type === 'item' || props.type === 'item_id') {
-      return getPartDisplayName(props.subject)
+      const override = nameOverrides[props.subject]
+      if (override) return override
+
+      // Buildings shown as items (the extractors) are in the icon registry but not in game data,
+      // so ask the registry before giving up on the name.
+      const name = getPartDisplayName(itemIdAliases[props.subject] ?? props.subject)
+      return name.startsWith('UNKNOWN PART')
+        ? findFactoryIconNameByAsset(`item/${props.subject}`) ?? name
+        : name
     } else if (props.type === 'building') {
       return getBuildingDisplayName(props.subject)
     }

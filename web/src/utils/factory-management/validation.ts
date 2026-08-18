@@ -1,9 +1,10 @@
 // Check for invalid factory data e.g. inputs without factories etc
 import { calculateFactory, findFac, generateFactoryId } from '@/utils/factory-management/factory'
-import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryInput, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
 import { StructuralRepair } from '@/utils/factory-management/repair'
+import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
 
 const repair = (factory: Factory, summary: string): StructuralRepair => {
   // Kept alongside the dialog: the console line carries the IDs, which are noise to the
@@ -164,7 +165,13 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
 
 // Repairs everything wrong with a loaded plan that can be put right automatically, and
 // returns what it corrected so the user can be told. An empty list means the plan was clean.
-export const validateFactories = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
+export const validateFactories = (
+  factories: Factory[],
+  gameData: DataInterface,
+  // Carries the groups no factory is a member of. Without it the group repair renumbers only
+  // the populated groups, and every empty one moves position on load.
+  tab?: FactoryTab,
+): StructuralRepair[] => {
   const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
 
   // Both run before anything reads a factory by ID or pairs an input with a request.
@@ -239,6 +246,11 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
   // Last, once every factory has a unique ID and its inputs are sane, so the chain is being
   // reconciled against data that can be trusted.
   repairs.push(...repairDependencyChain(factories, gameData))
+
+  // Converges disagreeing copies of a group record and re-establishes the group ordering
+  // invariant. Silent by design: a group that has drifted is cosmetic, and nothing here can
+  // lose a factory, so it does not deserve a line in the plan-repair dialog.
+  repairFactoryGroups(factories, tab)
 
   return repairs
 }

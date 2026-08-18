@@ -13,7 +13,7 @@
       />
       <div class="mb-4">
         <v-chip
-          class="mr-2"
+          class="sf-chip-clickable mr-2"
           color="primary"
           prepend-icon="fas fa-industry"
           :variant="showProducedOnly ? 'flat' : 'outlined'"
@@ -21,7 +21,7 @@
         >
           Produced in Plan
         </v-chip>
-        <v-chip color="primary" :variant="showFicsmas ? 'flat' : 'outlined'" @click="showFicsmas = !showFicsmas">
+        <v-chip class="sf-chip-clickable" color="primary" :variant="showFicsmas ? 'flat' : 'outlined'" @click="showFicsmas = !showFicsmas">
           Show FICSMAS
         </v-chip>
       </div>
