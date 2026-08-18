@@ -19,6 +19,10 @@ interface PlannerOptions {
   // leaves it crowds that out. Has no effect with showGroupProducts off — see the Options dialog,
   // which disables it. See collectGroupProducts.
   showInternalGroupProducts: boolean
+  // Within that row, badge each tile with what the group does with the part: ships it out, uses it
+  // up on site, or just makes it. On by default, and only meaningful with showGroupProducts on.
+  // See groupProductKinds.
+  showGroupProductKinds: boolean
   // Show each sidebar group's power generated, consumed and balance. Off by default: it is three
   // more chips on every group, and power is a question people ask of the plan far more often than
   // of a folder within it.
@@ -31,6 +35,7 @@ interface PlannerOptions {
 const DEFAULTS: PlannerOptions = {
   showGroupProducts: true,
   showInternalGroupProducts: false,
+  showGroupProductKinds: true,
   showGroupPower: false,
   balanceTolerancePercent: 1,
 }

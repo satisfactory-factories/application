@@ -120,6 +120,16 @@ export const getBuildingDisplayName = (building: string) => {
     ['quantumencoder', 'Quantum Encoder'],
     ['smeltermk1', 'Smelter'],
     ['waterpump', 'Water Extractor'],
+    // Logistics. Keyed by icon slug rather than by the game's internal name like the entries
+    // above: these only ever reach here from the export calculator, which names them by icon.
+    ['conveyor-belt-mk-1', 'Conveyor Belt Mk.1'],
+    ['conveyor-belt-mk-2', 'Conveyor Belt Mk.2'],
+    ['conveyor-belt-mk-3', 'Conveyor Belt Mk.3'],
+    ['conveyor-belt-mk-4', 'Conveyor Belt Mk.4'],
+    ['conveyor-belt-mk-5', 'Conveyor Belt Mk.5'],
+    ['conveyor-belt-mk-6', 'Conveyor Belt Mk.6'],
+    ['pipeline-mk-1', 'Pipeline Mk.1'],
+    ['pipeline-mk-2', 'Pipeline Mk.2'],
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`

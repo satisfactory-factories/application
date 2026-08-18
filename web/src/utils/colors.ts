@@ -102,7 +102,11 @@ export const sfColors = {
   // world is behind your plan. Deliberately the burnt orange the out-of-sync state already wore,
   // carried over verbatim — naming it stops `building` (an item colour) doubling as a status
   // colour. Not called `warning`: that name is taken by caution *text*, which is a yellow.
-  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: 'rgba(255, 136, 0, 0.16)' },
+  //
+  // The background is OPAQUE for the same reason `problem` above is. At 16% alpha it composited
+  // against whatever sat behind it — a card header's own translucent grey, the summary table's
+  // surface — and the result was a washed-out beige that read as a grey panel rather than amber.
+  statusWarning: { color: palette.orange, border: palette.orangeBorder, background: '#4f2b0b' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors

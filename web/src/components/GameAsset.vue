@@ -8,6 +8,7 @@
   >
     <game-asset-content
       :height="height"
+      :note="note"
       :subject="subject"
       :title="tooltip ?? wikiName ?? displayName"
       :type="type"
@@ -18,6 +19,7 @@
   <game-asset-content
     v-else
     :height="height"
+    :note="note"
     :subject="subject"
     :title="tooltip ?? displayName"
     :type="type"
@@ -45,6 +47,9 @@
     // name. Wrapping the icon in a second tooltip instead gives the hover two answers, since
     // HoverTooltip resolves the innermost marked ancestor.
     tooltip?: string
+    // An extra tooltip line under that text, for something the icon carries but cannot say — a
+    // badge drawn in its corner. Kept separate because the tooltip escapes markup on purpose.
+    note?: string
   }>()
 
   // Two icons are drawn from an asset name rather than an item id, so the lookup below missed them

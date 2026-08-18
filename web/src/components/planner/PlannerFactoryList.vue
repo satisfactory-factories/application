@@ -51,7 +51,7 @@
         <v-row class="d-flex flex-nowrap ma-0 align-center">
           <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
             <i class="fas fa-list mr-2" />
-            <span>Factories Summary</span>
+            <span>Global Factories Summary</span>
           </v-spacer>
           <v-tooltip right>
             <template #activator="{ props }">
@@ -215,7 +215,7 @@
   // Groups. Every mutation goes through the composable, which is the single writer — this
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
-  const { countIn, deleteGroup, sections, setGroupOrder } = useFactoryGroups()
+  const { sections, setGroupOrder } = useFactoryGroups()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
@@ -225,12 +225,9 @@
   const deleteGroupOpen = ref(false)
   const groupPendingDelete = ref<FactoryGroup | null>(null)
 
+  // Always asks, empty group or not. An empty one has nothing to reassign, but deleting it was
+  // still a single click on a small red button sitting next to the group's own controls.
   const requestGroupDelete = (group: FactoryGroup) => {
-    // Nothing to reassign, so nothing to ask about — an empty group just goes.
-    if (countIn(group.id) === 0) {
-      deleteGroup(group.id)
-      return
-    }
     groupPendingDelete.value = group
     deleteGroupOpen.value = true
   }

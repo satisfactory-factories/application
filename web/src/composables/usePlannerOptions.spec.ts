@@ -25,6 +25,12 @@ describe('usePlannerOptions', () => {
     expect(options.value.showGroupProducts).toBe(true)
   })
 
+  it('should badge group products by default', async () => {
+    const options = await load()
+
+    expect(options.value.showGroupProductKinds).toBe(true)
+  })
+
   it('should leave group power off until asked for', async () => {
     const options = await load()
 
@@ -46,6 +52,7 @@ describe('usePlannerOptions', () => {
     expect(JSON.parse(localStorage.getItem('plannerOptions')!)).toEqual({
       showGroupProducts: true,
       showInternalGroupProducts: true,
+      showGroupProductKinds: true,
       showGroupPower: false,
       balanceTolerancePercent: 1,
     })

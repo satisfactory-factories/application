@@ -3,7 +3,9 @@
     <!-- Header. Present whether open or collapsed; the product line under the title is what
          makes a collapsed group still say what is inside it. -->
     <div class="group-header" :class="{ collapsed }">
-      <div class="d-flex align-center ga-1 px-2 py-1">
+      <!-- Deliberately the biggest thing in the sidebar after the plan itself: a group is the unit
+           people navigate by, and at the old size its title sat below the factory names under it. -->
+      <div class="group-title-row d-flex align-center ga-2 px-2 py-2">
         <i
           v-if="group"
           class="fas fa-grip-lines group-drag-handle text-grey-darken-1"
@@ -43,22 +45,38 @@
 
         <v-spacer />
 
-        <v-chip class="sf-chip x-small no-margin factory" variant="tonal">
+        <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
           <i class="fas fa-industry" />
-          <span class="ml-1">{{ section.factories.length }}</span>
+          <span class="mx-2">{{ section.factories.length }}</span>
         </v-chip>
 
-        <v-btn
-          v-if="group"
-          class="delete-group"
-          color="red"
-          density="compact"
-          icon="fas fa-trash"
-          size="x-small"
-          title="Delete group"
-          variant="text"
-          @click.stop="requestDelete"
-        />
+        <!-- Set apart from the readouts beside them: these two act, and a delete button flush
+             against a count is a delete button someone reaches by accident. -->
+        <div class="header-actions d-flex align-center ga-1">
+          <!-- HoverTooltip rather than `title`: a native tooltip alongside it would answer the
+               same hover twice. `aria-label` keeps the icon-only button named without one. -->
+          <v-btn
+            :aria-label="`Show the ${groupName} factories in the summary`"
+            class="expand-group"
+            data-hover-tooltip="Expand this view to see more details about this group"
+            density="comfortable"
+            icon="fas fa-expand-alt"
+            size="small"
+            variant="text"
+            @click.stop="openBreakdown"
+          />
+          <v-btn
+            v-if="group"
+            class="delete-group"
+            color="red"
+            density="comfortable"
+            icon="fas fa-trash"
+            size="small"
+            title="Delete group"
+            variant="text"
+            @click.stop="requestDelete"
+          />
+        </div>
       </div>
 
       <!-- What is wrong inside this group, in the same chips and the same order the Factories
@@ -131,13 +149,12 @@
           :key="product.partId"
           class="product-tile"
           :data-hover-tooltip="netTooltip(product)"
+          :data-hover-tooltip-note="kindLabel(product)"
         >
-          <game-asset
-            height="36"
-            :subject="product.partId"
+          <group-product-icon
+            :kind="tileKind(product)"
+            :part-id="product.partId"
             :tooltip="netTooltip(product)"
-            type="item"
-            width="36"
           />
           <span class="product-net" :class="netClass(product.net)">{{ netLabel(product.net) }}</span>
         </span>
@@ -145,7 +162,9 @@
           <template #activator="{ props: activatorProps }">
             <span class="overflow-count" v-bind="activatorProps">+{{ hiddenProducts.length }}</span>
           </template>
-          <span>{{ hiddenProducts.map(product => netTooltip(product)).join(', ') }}</span>
+          <!-- One per line. Joined with commas this was a single wrapped paragraph of figures, and
+               at 20-odd parts it filled the screen without any of it being findable. -->
+          <div v-for="line in overflowTooltipLines" :key="line">{{ line }}</div>
         </v-tooltip>
       </div>
     </div>
@@ -191,13 +210,20 @@
     factoryStatusTallyChips,
     tallyFactoryStatuses,
   } from '@/utils/factory-management/status'
-  import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
+  import { FactoryGroupSection, UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { useElementWidth } from '@/composables/useElementWidth'
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
-  import { collectGroupProducts, GroupProduct } from '@/utils/factory-management/group-products'
+  import {
+    collectGroupProducts,
+    GroupProduct,
+    groupProductKinds,
+    overflowLines,
+  } from '@/utils/factory-management/group-products'
+  import eventBus from '@/utils/eventBus'
+  import GroupProductIcon from '@/components/planner/groups/GroupProductIcon.vue'
   import { groupColorVars } from '@/utils/colors'
   import { formatCompact, formatGw, formatMw, formatNumber } from '@/utils/numberFormatter'
   import { calculateTotalPower } from '@/utils/statistics'
@@ -313,6 +339,23 @@
     return formatCompact(Math.abs(net))
   }
 
+  // Undefined rather than a falsy string when the badges are off: the icon component draws the
+  // badge only when it has a kind, and Vue drops an undefined attribute entirely.
+  const tileKind = (product: GroupProduct) =>
+    options.value.showGroupProductKinds ? product.kind : undefined
+
+  const kindLabel = (product: GroupProduct) => {
+    const kind = tileKind(product)
+    return kind ? groupProductKinds[kind].label : undefined
+  }
+
+  const groupName = computed(() => group.value?.name ?? 'Ungrouped')
+
+  // The whole table, narrowed to this section. Ungrouped sends the sentinel the grouping code
+  // already uses for it rather than nothing at all: an expand button on a section of 4 that opened
+  // all 12 factories was saying it would filter and then not doing it.
+  const openBreakdown = () => eventBus.emit('openSummaryFullscreen', group.value?.id ?? UNGROUPED_ID)
+
   // The tile is four characters wide, so the exact figure and what it means live here.
   const netTooltip = (product: GroupProduct) => {
     const name = getPartDisplayName(product.partId)
@@ -338,6 +381,8 @@
 
   const visibleProducts = computed(() => products.value.slice(0, shownCount.value))
   const hiddenProducts = computed(() => products.value.slice(shownCount.value))
+
+  const overflowTooltipLines = computed(() => overflowLines(hiddenProducts.value.map(netTooltip)))
 
   // The single write. Only the destination list acts: Sortable fires `removed` on the source
   // and `added` on the target for one move, and handling both would apply it twice.
@@ -418,13 +463,30 @@ $strip-border: 1px;
   border: none;
   outline: none;
   color: #fff;
-  font-weight: 500;
+  font-size: 1.05rem;
+  font-weight: 600;
   min-width: 0;
   flex: 1 1 auto;
 
   &:focus {
     border-bottom: 1px solid rgba(255, 255, 255, 0.5);
   }
+}
+
+// The icon and the count are set apart by an ml-2, which left the number looking wedged against
+// the right edge while the icon had room. `.sf-chip.small` sets its padding with !important.
+.factory-count {
+  padding-right: 16px !important;
+}
+
+// The count sits close to the buttons; the separation that matters is between the two buttons, so
+// that delete is not the thing a thumb aimed at expand lands on.
+.header-actions {
+  margin-left: 2px;
+}
+
+.expand-group {
+  margin-right: 6px;
 }
 
 .ungrouped-label {

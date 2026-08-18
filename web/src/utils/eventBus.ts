@@ -53,7 +53,9 @@ type Events = {
   buildingGroupUpdated: Factory;
   toggleSidebar: undefined;
   sidebarChanged: boolean;
-  openSummaryFullscreen: undefined;
+  // Opens the Factories Summary fullscreen. The payload is a group id to narrow it to, so a
+  // sidebar group can reuse the whole table as its own breakdown; omitted means the whole plan.
+  openSummaryFullscreen: string | undefined;
   // Sidebar jump-links: unhide the target section (by element id) before scrolling to it.
   openSection: string;
 }
