@@ -1750,3 +1750,58 @@ describe('bestEffortUpdateBuildingCount', () => {
     })
   })
 })
+
+// A plan reaches the engine straight from JSON: clipboard paste, share link, account restore.
+// Nothing between the wire and the maths checked a group's buildingCount or overclockPercent, so
+// a hand-edited or corrupted plan could put a negative count, an overflowed clock or a numeric
+// string into a group, have the engine calculate with it, and write it back out again.
+describe('sanitizeGroupNumbers', async () => {
+  const gameData = await fetchGameData()
+
+  const loadPlanHolding = (raw: Record<string, unknown>) => {
+    const built = newFactory('Iron Mine')
+    addProductToFactory(built, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+    calculateFactories([built], gameData)
+
+    // Round-trip through JSON the way a pasted plan does, with the bad value injected.
+    const onDisk = JSON.parse(JSON.stringify(built)) as Factory
+    Object.assign(onDisk.products[0].buildingGroups[0], raw)
+
+    calculateFactories([onDisk], gameData, { origin: 'recalculate' })
+    return { factory: onDisk, group: onDisk.products[0].buildingGroups[0] }
+  }
+
+  it.each([
+    ['a negative clock', { overclockPercent: -50 }],
+    ['a clock that overflowed on parse', { overclockPercent: Number.POSITIVE_INFINITY }],
+    ['a non-numeric clock', { overclockPercent: 'abc' }],
+    ['a missing clock', { overclockPercent: undefined }],
+    ['a negative building count', { buildingCount: -3 }],
+    ['a numeric string building count', { buildingCount: '4' }],
+    ['a non-numeric building count', { buildingCount: 'abc' }],
+    ['a building count that overflowed on parse', { buildingCount: Number.POSITIVE_INFINITY }],
+  ])('leaves nothing non-finite or negative behind for %s', (_label, raw) => {
+    const { factory, group } = loadPlanHolding(raw)
+
+    expect(Number.isFinite(group.buildingCount)).toBe(true)
+    expect(Number.isFinite(group.overclockPercent)).toBe(true)
+    expect(group.buildingCount).toBeGreaterThanOrEqual(0)
+    expect(group.overclockPercent).toBeGreaterThanOrEqual(0)
+    expect(group.overclockPercent).toBeLessThanOrEqual(250)
+    expect(Number.isFinite(factory.power.consumed)).toBe(true)
+    expect(factory.power.consumed).toBeGreaterThanOrEqual(0)
+  })
+
+  it('keeps a numeric string out of the building requirement, which used to concatenate', () => {
+    const { factory } = loadPlanHolding({ buildingCount: '4' })
+
+    expect(factory.buildingRequirements.minermk1.amount).toBe(4)
+  })
+
+  it('leaves an ordinary group untouched', () => {
+    const { group } = loadPlanHolding({})
+
+    expect(group.buildingCount).toBe(8)
+    expect(group.overclockPercent).toBe(100)
+  })
+})

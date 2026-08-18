@@ -335,7 +335,10 @@ export const calculateBuildingGroupParts = (
 
     // Heal extraction groups whose extractor or purity is missing or no longer offered by the
     // recipe — e.g. a saved group whose product was switched to a different extraction recipe.
-    item.buildingGroups.forEach(group => sanitizeGroupExtraction(group, item.recipe))
+    item.buildingGroups.forEach(group => {
+      sanitizeGroupNumbers(group)
+      sanitizeGroupExtraction(group, item.recipe)
+    })
 
     // Get the total building count
     const totalBuildingCount = getBuildingCount(item, type)
@@ -730,6 +733,37 @@ export const remainderToNewGroup = (
 // the user could build, so the action is withheld rather than writing a clock nobody can set.
 export const MIN_CLOCK_PERCENT = 1
 export const MAX_CLOCK_PERCENT = 250
+
+/**
+ * Make a group's two free-form numbers usable before anything calculates with them.
+ *
+ * Nothing between the wire and the maths checked these. A plan pasted from the clipboard, restored
+ * from an account or opened from a share link is parsed and loaded as-is, so a group could arrive
+ * holding a negative count (negative output, negative MW, a negative building requirement), a
+ * clock that overflowed to Infinity on parse (which JSON.stringify then wrote back as null), or a
+ * numeric string, which turned `0 + count` into string concatenation and made the Building Summary
+ * read "04" miners.
+ *
+ * Deliberately narrow: it makes the values finite and non-negative and caps the clock at what the
+ * game allows. It does not round a fractional count or lift a clock to the 1% floor, because both
+ * of those would change plans that are merely unusual rather than broken.
+ */
+export const sanitizeGroupNumbers = (group: BuildingGroup): void => {
+  const finite = (value: unknown, fallback: number) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+
+  const count = Math.max(0, finite(group.buildingCount, 0))
+  if (group.buildingCount !== count) {
+    group.buildingCount = count
+  }
+
+  const clock = Math.min(MAX_CLOCK_PERCENT, Math.max(0, finite(group.overclockPercent, 100)))
+  if (group.overclockPercent !== clock) {
+    group.overclockPercent = clock
+  }
+}
 
 // What one group would have to become for the item's entire shortfall (or surplus) to land on it.
 // Returns null when there is no such setting: a group that produces nothing per building (a well
