@@ -17,7 +17,9 @@
   >
     <div>{{ text }}</div>
     <!-- Two elements rather than one string with a <br>: v-tooltip's `text` escapes markup, and
-         v-html here would be interpolating a display name straight into the DOM. -->
+         v-html here would be interpolating a display name straight into the DOM. `note` is the
+         same idea for a caller with something to add — what a badge on the icon means. -->
+    <div v-if="note" class="hint">{{ note }}</div>
     <div v-if="link" class="hint">Click to open on wiki</div>
   </v-tooltip>
 </template>
@@ -27,6 +29,7 @@
 
   const target = ref<HTMLElement | null>(null)
   const text = ref('')
+  const note = ref('')
   const link = ref(false)
   // Remounts the overlay per target: reusing it makes the tooltip slide across the screen from
   // the previous image rather than appearing over the new one.
@@ -44,6 +47,7 @@
     if (!el) return clear()
 
     text.value = el.dataset.hoverTooltip ?? ''
+    note.value = el.dataset.hoverTooltipNote ?? ''
     link.value = 'hoverLink' in el.dataset
     target.value = el
     nonce.value++

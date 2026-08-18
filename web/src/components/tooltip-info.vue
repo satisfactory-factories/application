@@ -8,12 +8,14 @@
           />
         </span>
       </template>
-      <span v-html="text" />
+      <!-- Escaped: see safeHtml. Plan-supplied names reach these strings. -->
+      <span v-html="safeHtml(text)" />
     </v-tooltip>
   </span>
 </template>
 
 <script setup lang="ts">
+  import { safeHtml } from '@/utils/safeHtml'
 
   const propsComp = withDefaults(defineProps<{
     text: string

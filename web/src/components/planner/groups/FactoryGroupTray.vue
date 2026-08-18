@@ -4,7 +4,7 @@
       <!-- Sits on the title line beside the factory icon rather than in the status bar below: where
            a factory lives is not a thing that has gone wrong with it. -->
       <v-chip
-        class="sf-chip small group-chip"
+        class="sf-chip sf-chip-clickable small group-chip"
         :class="{ ungrouped: !factory.group }"
         :data-hover-tooltip="factory.group ? `In group: ${factory.group.name} — click to change` : 'Not in a group — click to assign one'"
         :style="factory.group ? groupChipStyle : undefined"

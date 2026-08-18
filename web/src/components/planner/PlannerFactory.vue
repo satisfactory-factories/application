@@ -25,27 +25,28 @@
                    excluded because the sync chip further down this same bar already says it,
                    with help text and a reset button the status chip cannot offer. -->
               <factory-status-chips
+                navigable
                 size="small"
                 :statuses="cardStatuses"
-                @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
+                @navigate="target => navigateToStatus(target)"
               />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -61,7 +62,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -77,7 +78,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
+                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -89,7 +90,7 @@
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small no-margin"
+                  class="sf-chip sf-chip-info small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
@@ -97,16 +98,29 @@
                   <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
+              <!-- circuit boost chip. Its own chip because it is not this factory's power: an
+                   augmenter adds a percentage of the WHOLE plan's generation, so a factory
+                   generating nothing can still be why the plan's total is far above the sum of
+                   the generators you can see. -->
+              <tooltip
+                v-if="factoryBoost > 0"
+                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid, ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
+              >
+                <v-chip class="sf-chip sf-chip-info small circuit-boost no-margin">
+                  <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />
+                  <span class="ml-2">{{ formatMw(factoryBoost) }}</span>
+                </v-chip>
+              </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow no-margin">
+                <v-chip class="sf-chip sf-chip-info small yellow no-margin">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
                 </v-chip>
               </tooltip>
               <!-- somersloops chip -->
               <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop no-margin">
+                <v-chip class="sf-chip sf-chip-info small sloop no-margin">
                   <game-asset height="18" subject="somersloop" type="item_id" width="18" />
                   <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
@@ -222,7 +236,7 @@
             class="text-body-1 py-2 px-4 collapsed-section"
             :class="factory.products.length > 0 ? 'border-b-md' : ''"
           >
-            <p class="section-label">Imports:</p>
+            <p class="section-label">Importing:</p>
             <div class="section-chips">
               <div
                 v-for="[inputFactoryId, inputs] in groupedInputs"
@@ -317,7 +331,7 @@
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
           >
-            <p class="section-label">Exports:</p>
+            <p class="section-label">Exporting:</p>
             <div class="section-chips">
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"
@@ -374,7 +388,18 @@
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+
+  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // row of its own.
+  const navigateToStatus = (target: { section: string, subject?: string }) => {
+    const section = `${props.factory.id}-${target.section}`
+    navigateToFactory(
+      props.factory.id,
+      target.subject ? `${section}-item-${target.subject}` : section,
+      section
+    )
+  }
 
   const props = defineProps<{
     factory: Factory
@@ -405,6 +430,13 @@
 
   // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
   const powerDiffDisplay = computed(() => formatMw(Math.abs(factoryPowerDifference.value)))
+
+  // What this factory's augmenters add to the grid, and the share of the plan's generation that
+  // represents — the number that makes a 61 GW group read as 251 GW on the plan.
+  const factoryBoost = computed(() => props.factory.power?.boostMw ?? 0)
+  const boostPercentDisplay = computed(() =>
+    `${formatNumber((props.factory.power?.boostPercent ?? 0) * 100)}%`,
+  )
 
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
@@ -469,6 +501,12 @@
   opacity: 1;
 }
 
+// The reset button ends the chip, so the chip's own right padding only reads as a
+// gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
+.sf-chip.small.sync-chip {
+  padding-right: 0 !important;
+}
+
 .factory-name {
   width: 85%;
   padding: 6px;
@@ -516,33 +554,6 @@
     > .sf-chip {
       margin: 0 !important;
     }
-  }
-}
-
-// Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
-// imported from / exported to that factory. Shares the factory token + card header
-// background (see src/utils/colors.ts).
-.factory-group-chip {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  border: 2px solid var(--sf-factory-border);
-  border-radius: 28px;
-  background-color: var(--sf-factory-bg);
-  color: var(--sf-factory);
-  padding: 4px 6px 4px 10px;
-  row-gap: 4px;
-
-  // The global .sf-chip.no-margin rule out-specifies utility classes like ml-1,
-  // so the 4px rhythm between part chips has to live here, where the scope
-  // attribute wins the specificity contest.
-  .sf-chip {
-    margin: 0 0 0 4px !important;
-  }
-
-  &.clickable:hover {
-    cursor: pointer;
-    background-color: #323232;
   }
 }
 </style>

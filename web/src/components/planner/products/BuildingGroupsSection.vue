@@ -1,11 +1,13 @@
 <template>
   <div class="mb-2">
+    <!-- Default size rather than small: the bar carries the shard and somersloop chips, which
+         need the height to seat properly, and it reads as the divider it is. -->
     <v-btn
       :id="`${idPrefix}-building-groups-toggle`"
       block
       :color="item.buildingGroupsHaveProblem ? 'red' : 'green'"
       :disabled="disabled"
-      size="small"
+      size="default"
       variant="tonal"
       @click="toggleBuildingGroupTray(item)"
     >
@@ -21,18 +23,22 @@
         {{ item.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ item.buildingGroups.length }})
         <tooltip-info :is-caption="false" :text="introTooltip" />
       </span>
-      <span class="ml-3 d-inline-flex align-center">
+      <v-chip class="sf-chip yellow x-small ml-3" variant="tonal">
         <tooltip :text="`Total Power Shards needed by this ${itemNoun}'s Building Groups (1 per building per 50% clock above 100%)`">
           <game-asset height="18px" subject="power-shard" type="item_id" width="18px" />
         </tooltip>
         <span :id="`${idPrefix}-power-shards-total`" class="ml-1">{{ getTotalPowerShards(item.buildingGroups) }}</span>
-      </span>
-      <span v-if="type === ItemType.Product || somersloopBuildCost > 0" class="ml-3 d-inline-flex align-center">
+      </v-chip>
+      <v-chip
+        v-if="type === ItemType.Product || somersloopBuildCost > 0"
+        class="sf-chip sloop x-small ml-2"
+        variant="tonal"
+      >
         <tooltip :text="somersloopTooltip">
           <game-asset height="18px" subject="somersloop" type="item_id" width="18px" />
         </tooltip>
         <span :id="`${idPrefix}-somersloops-total`" class="ml-1">{{ getTotalSomersloops(item.buildingGroups, building) }}</span>
-      </span>
+      </v-chip>
     </v-btn>
     <div v-if="item.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="item.buildingGroupsHaveProblem ? 'problem' : ''">
       <building-groups

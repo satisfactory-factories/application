@@ -63,7 +63,13 @@ export const collectGroups = (factories: Factory[], tab?: FactoryTab): FactoryGr
     }
   }
 
-  return [...byId.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+  // Sorted on `order` alone. There used to be a name tiebreak, which sounded harmless and was
+  // not: repairFactoryGroups renumbered only the groups that had members, so an empty group kept
+  // a number that now collided, and the "tiebreak" silently reordered the sidebar alphabetically
+  // on every load. Orders are dense and unique after reconcileGroups, so a tie means something
+  // upstream is wrong — Array#sort is stable, so a tie now keeps insertion order rather than
+  // rearranging the plan behind a bug.
+  return [...byId.values()].sort((a, b) => a.order - b.order)
 }
 
 /**
@@ -353,29 +359,11 @@ export const deleteGroup = (
 /**
  * Load-time repair, wired into validateFactories.
  *
- * Only has to converge disagreeing copies of one id, because a group id on a factory is real by
- * definition under this model — there is no dangling reference to clear. Takes factories alone,
- * so it drops into validateFactories' existing (factories, gameData) signature untouched.
+ * Delegates to reconcileGroups rather than repeating it. It used to have its own copy of that
+ * logic which took factories alone, so it renumbered only the groups that had members and left
+ * every empty group holding a number that now collided — which then moved on every load. The tab
+ * is what carries the empty groups, so it has to be passed in.
  */
-export const repairFactoryGroups = (factories: Factory[]): void => {
-  const canonical = new Map<string, FactoryGroup>()
-
-  for (const factory of factories) {
-    if (!factory.group) continue
-    if (!canonical.has(factory.group.id)) {
-      canonical.set(factory.group.id, cloneGroup(factory.group))
-    }
-  }
-
-  const ordered = [...canonical.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
-  ordered.forEach((group, index) => {
-    group.order = index
-  })
-
-  for (const factory of factories) {
-    if (!factory.group) continue
-    factory.group = cloneGroup(canonical.get(factory.group.id)!)
-  }
-
-  sortFactoriesByGroup(factories, ordered)
+export const repairFactoryGroups = (factories: Factory[], tab?: FactoryTab): void => {
+  sortFactoriesByGroup(factories, reconcileGroups(factories, tab))
 }

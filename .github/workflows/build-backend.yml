@@ -1,7 +1,7 @@
 name: Backend Checks
 
-# Lint and typecheck. Runs on PRs, and is called by "Backend: Deploy" as the gate
-# in front of the image build.
+# Lint, typecheck and test. Runs on PRs, and is called by "Backend: Deploy" as the
+# gate in front of the image build.
 #
 # There is no `push: main` trigger any more: on main this is called by
 # Backend Deploy instead, so keeping one would run the same checks twice on the
@@ -51,3 +51,6 @@ jobs:
 
       - name: Build Backend
         run: pnpm build
+
+      - name: Test Backend
+        run: pnpm test

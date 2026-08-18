@@ -1,15 +1,18 @@
 <template>
   <div class="d-flex align-center">
+    <!-- Each icon next to the words it belongs to, rather than both stacked in front of the title
+         where neither says which is which. -->
     <h4 class="text-h4 d-flex align-center ga-1">
       <game-asset height="32" subject="power-shard" type="item_id" width="32" />
+      <span class="ml-2 mr-2">Power Shards &amp;</span>
       <game-asset height="32" subject="somersloop" type="item_id" width="32" />
-      <span class="ml-2">Power Shards &amp; Somersloops</span>
+      <span class="ml-2">Somersloops</span>
     </h4>
     <v-chip
       v-for="(section, index) in summarySections"
       :id="`stats-${section.key}-summary`"
       :key="`${section.key}-summary`"
-      class="sf-chip"
+      class="sf-chip small"
       :class="[section.chipClass, { 'ml-3': index === 0 }]"
       variant="tonal"
     >

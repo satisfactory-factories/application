@@ -153,6 +153,11 @@ describe('syncState', () => {
     })
 
     describe('power producers sync', () => {
+      // The state is keyed by the producer's id, so the test has to ask the producer for its key
+      // rather than assuming the building name.
+      const syncedProducer = () =>
+        mockFactory.syncStatePower[mockFactory.powerProducers[0].id]
+
       it('should remain in sync when nothing has changed', () => {
       // Adjust the power building
         calculateSyncState(mockFactory)
@@ -185,7 +190,9 @@ describe('syncState', () => {
 
       it('should OOS when recipe is adjusted', () => {
         // Check the before state
-        expect(mockFactory.syncStatePower.generatorfuel.recipe).toBe('GeneratorFuel_LiquidFuel')
+        // Keyed by the producer's id, not its building: a factory may hold several of the same
+        // building. See setSyncState.
+        expect(syncedProducer().recipe).toBe('GeneratorFuel_LiquidFuel')
 
         // Adjust the power building
         mockFactory.powerProducers[0].recipe = 'GeneratorFuel_IonizedFuel'
@@ -196,7 +203,7 @@ describe('syncState', () => {
 
       it('should OOS when the building is changed in place', () => {
         // Check the before state
-        expect(mockFactory.syncStatePower.generatorfuel.buildingAmount).toBe(1)
+        expect(syncedProducer().buildingAmount).toBe(1)
 
         // Change the building
         mockFactory.powerProducers[0].building = 'generatornuclear'
@@ -213,6 +220,43 @@ describe('syncState', () => {
           recipe: 'GeneratorFuel_LiquidFuel',
           updated: FactoryPowerChangeType.Power,
         })
+
+        calculateSyncState(mockFactory)
+        expect(mockFactory.inSync).toBe(false)
+      })
+
+      /**
+       * Two producers of the same building. Keyed by building, both collapsed into one entry, and
+       * the count check then compared two producers against one key — so a factory like this could
+       * never be marked in sync at all, whatever the user did. Geothermal Power in the MegaPlan
+       * template was three geothermal generators on an impure, a normal and a pure node.
+       */
+      it('should stay in sync with two producers of the same building', () => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 4,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Building,
+        })
+        setSyncState(mockFactory)
+
+        expect(Object.keys(mockFactory.syncStatePower)).toHaveLength(2)
+
+        calculateSyncState(mockFactory)
+        expect(mockFactory.inSync).toBe(true)
+      })
+
+      // And it must still notice one of the two changing, rather than staying in sync forever.
+      it('should drop out of sync when one of two same-building producers changes', () => {
+        addPowerProducerToFactory(mockFactory, {
+          building: 'generatorfuel',
+          buildingAmount: 4,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Building,
+        })
+        setSyncState(mockFactory)
+
+        mockFactory.powerProducers[1].buildingAmount = 9
 
         calculateSyncState(mockFactory)
         expect(mockFactory.inSync).toBe(false)

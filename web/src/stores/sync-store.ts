@@ -1,5 +1,7 @@
 import eventBus from '@/utils/eventBus'
 import { ref } from 'vue'
+import { ClientTooOldError } from '@/errors/ClientTooOldError'
+import { announceClientOutdated } from '@/utils/api'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
 import { SyncActions } from '@/stores/sync/sync-actions'
@@ -48,8 +50,11 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
     try {
       result = await syncActions.syncData(stopSyncing.value, dataSavePending.value)
     } catch (error) {
+      if (error instanceof ClientTooOldError) {
+        return handleClientTooOld(error)
+      }
       if (error instanceof Error) {
-        handleSyncError(error)
+        return handleSyncError(error)
       }
 
       return handleSyncError(new Error('Unknown error occurred while saving data.'))
@@ -64,6 +69,15 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
       console.error('syncStore: No result for syncData!')
       handleSyncError(new Error('No result for syncData!'))
     }
+  }
+
+  // A refused write, not a failed one. No alert: the outage message tells people to report to
+  // Discord, and a required reload is not something anyone needs to report. Local data is left
+  // exactly as it is — it lives in localStorage and is the only copy of the user's work here.
+  const handleClientTooOld = (error: ClientTooOldError) => {
+    console.warn('syncStore: This client is too old to save. Syncing stopped until reload.', error.minimumVersion)
+    stopSync()
+    announceClientOutdated(error.minimumVersion)
   }
 
   const handleSyncError = (error: Error) => {
@@ -85,14 +99,30 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
   const handleSync = async (force = false) => {
     console.log('syncStore - handleSync: Syncing...')
 
-    if (force) {
-      console.log('syncStore - handleSync: Forcing sync...')
-      return syncActions.syncData(false, true)
+    try {
+      if (force) {
+        console.log('syncStore - handleSync: Forcing sync...')
+        return await syncActions.syncData(false, true)
+      }
+      return await syncActions.syncData(stopSyncing.value, dataSavePending.value)
+    } catch (error) {
+      // Forcing a sync must not bypass the gate either, and the caller has no handling for it.
+      if (error instanceof ClientTooOldError) {
+        handleClientTooOld(error)
+        return false
+      }
+      throw error
     }
-    return syncActions.syncData(stopSyncing.value, dataSavePending.value)
   }
 
+  // Only a user's own edit dirties the account copy. A plan still loading is emitting the
+  // migration recalculation, not a change anyone asked for — and uploading that would replace
+  // the stored plan with a migrated one before the user has seen the notice, run the wizard or
+  // taken a backup. `isLoaded` flips in loadingCompleted, after the migration has settled.
   const detectedChange = () => {
+    if (!appStore.isLoaded) {
+      return
+    }
     dataSavePending.value = true
   }
 
@@ -113,7 +143,19 @@ export const useSyncStore = (overrides?: SyncStoreOverrides) => {
     await handleDataLoad()
   }
 
+  // Reads report a stale client too, so this can arrive without a write ever being attempted.
+  const handleClientOutdatedEvent = () => {
+    if (!stopSyncing.value) {
+      console.warn('syncStore: Client reported as outdated by the API, stopping sync.')
+      stopSync()
+    }
+  }
+
+  eventBus.on('clientOutdated', handleClientOutdatedEvent)
   eventBus.on('factoryUpdated', detectedChange)
+  // Plan-level edits change what gets uploaded now that the whole tab is sent, so they have to
+  // mark the account copy dirty as well.
+  eventBus.on('planUpdated', detectedChange)
   eventBus.on('loggedIn', handleLoggedInEvent)
   console.log('syncStore: Listening for changes...')
 
