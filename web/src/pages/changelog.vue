@@ -37,7 +37,7 @@
         <p>Check out what's new in the video below!</p>
         <youtube-embed
           class="pb-4"
-          video-id="AGrYctFtbgY"
+          video-id="vHCUNU37rZ4"
         />
 
         <h2 class="breaking">🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
