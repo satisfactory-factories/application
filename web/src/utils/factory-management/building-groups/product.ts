@@ -3,10 +3,11 @@ import { formatNumberFully } from '@/utils/numberFormatter'
 import {
   calculateBuildingGroupParts,
   createBuildingGroup,
+  getGroupOutputMultiplier,
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
-import { getSomersloopOutputMultiplier } from '@/utils/factory-management/building-groups/somersloops'
+import { isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -26,15 +27,31 @@ export const addProductBuildingGroup = (
       ItemType.Product,
       factory,
     )
+
+    // Mines and wells start unsynced. Almost nobody actually builds Mk.1 miners, so the first
+    // thing done to a new mine is swapping the default for a Mk.3 — and with sync on that writes
+    // the group's new output back over the quantity the user just typed. A well is worse: its
+    // output comes from satellites, so nothing about the group count describes it. Both are
+    // routinely split into groups of differing purity, which sync would flatten.
+    //
+    // Plain extraction is the exception. A Water Extractor has one mark and no purity, so its
+    // groups never need to differ and sync is as useful as it is on any other building.
+    if (isExtractionRecipe(product.recipe) && !isPlainExtraction(product.recipe)) {
+      product.buildingGroupItemSync = false
+    }
   }
   calculateBuildingGroupParts([product], ItemType.Product, factory)
 }
 
+// precision defaults to the 3 decimal places quantities are stored at. A caller solving a clock
+// from this needs it unrounded: rounding here and again on the clock compounds, and the group then
+// under-produces by more than the satisfaction tolerance allows.
 export const buildingsNeededForPartsProducts = (
   part: string,
   amount: number,
   product: FactoryItem,
-  buildingGroup: BuildingGroup
+  buildingGroup: BuildingGroup,
+  precision = 3
 ) => {
   // Get the recipe for the product in order to get the new quantity
   const recipe = getRecipe(product.recipe, gameData)
@@ -51,14 +68,27 @@ export const buildingsNeededForPartsProducts = (
   if (isIngredient && !isProduct) {
     // This is an ingredient
     const perMinOverclocked = isIngredient.perMin * buildingGroup.overclockPercent / 100
-    return formatNumberFully(amount / perMinOverclocked)
+    if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
+      return 0
+    }
+    return formatNumberFully(amount / perMinOverclocked, precision)
   }
 
   if (isProduct && !isIngredient) {
-    // This is a product — somersloops amplify output, so fewer buildings are needed.
-    const sloopMultiplier = getSomersloopOutputMultiplier(buildingGroup, product.buildingRequirements?.name ?? '')
-    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * sloopMultiplier
-    return formatNumberFully(amount / perMinOverclocked)
+    // This is a product — somersloops amplify output (and for extraction, the group's miner
+    // mark and node purity do too), so fewer buildings are needed.
+    const outputMultiplier = getGroupOutputMultiplier(
+      buildingGroup,
+      product.buildingRequirements?.name ?? '',
+      product.recipe
+    )
+    const perMinOverclocked = isProduct.perMin * (buildingGroup.overclockPercent / 100) * outputMultiplier
+    // A well with no satellites has a zero multiplier, so no building count reaches the amount.
+    // Dividing produced Infinity, which formatNumberFully passes straight through into the plan.
+    if (!perMinOverclocked || !Number.isFinite(perMinOverclocked)) {
+      return 0
+    }
+    return formatNumberFully(amount / perMinOverclocked, precision)
   }
 
   return 0

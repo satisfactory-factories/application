@@ -58,6 +58,7 @@ export default createVuetify({
   },
   icons: {
     defaultSet: 'fa',
+    // Selection-control marks are drawn in CSS, not by these aliases — see global.scss.
     aliases,
     sets: {
       fa,

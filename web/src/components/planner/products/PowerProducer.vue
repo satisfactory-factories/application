@@ -1,9 +1,18 @@
 <template>
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
+    :id="`${factory.id}-products-item-${producer.building}`"
     :key="`${factory.id}-${producerIndex}`"
     class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
+    :class="{ warning: producer.byproduct && isUnhandledByproduct(factory, producer.byproduct.part) }"
   >
+    <!-- Status chips name the part, so the waste needs an anchor of its own. Zero-height and at
+         the top of the row, so it scrolls to the row. -->
+    <div
+      v-if="producer.byproduct"
+      :id="`${factory.id}-products-item-${producer.byproduct.part}`"
+      class="status-anchor"
+    />
     <div class="factory-item-controls">
       <v-btn
         :color="producer.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
@@ -159,6 +168,22 @@
           />
           <span>/min</span>
         </v-chip>
+        <tooltip
+          v-if="isPotentialBlockage(factory, producer.byproduct.part)"
+          text="Nothing consumes this byproduct, so it will back up and stall the generator unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
+        >
+          <v-chip class="sf-chip small status-note ml-2">
+            <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+          </v-chip>
+        </tooltip>
+        <tooltip
+          v-if="isUnhandledByproduct(factory, producer.byproduct.part)"
+          text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the generator's output and stalls it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
+        >
+          <v-chip class="sf-chip small status-warning ml-2">
+            <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
+          </v-chip>
+        </tooltip>
       </div>
       <div class="d-flex align-center">
         <p class="mr-2">Requires:</p>
@@ -245,6 +270,7 @@
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 

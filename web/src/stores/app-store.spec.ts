@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import * as FactoryManager from '@/utils/factory-management/factory'
-import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
 import { useAppStore } from '@/stores/app-store'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -9,6 +9,7 @@ import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
+import { config } from '@/config/config'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 
@@ -144,6 +145,49 @@ describe('app-store', () => {
       expect(oilFactory.parts.LiquidOil.amountSupplied).toBe(300)
       expect(oilFactory.parts.LiquidOil.amountRemaining).toBe(0)
       expect(oilFactory.rawResources.LiquidOil).toBeUndefined()
+    })
+
+    it('#503: should recalculate a plan saved before raw resources became real shortages', () => {
+      const smelter = newFactory('Smelter')
+      addProductToFactory(smelter, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      const plan = [smelter]
+      calculateFactory(smelter, plan, gameData)
+
+      // v0.6 leaves an unmined ore short. Recreate what v0.5 stored instead: the planner
+      // supplied the shortfall itself, so the ledger reads fully satisfied.
+      const ore = smelter.parts.OreIron
+      expect(ore.satisfied).toBe(false) // guards the premise: v0.6 really does leave it short
+      ore.amountSuppliedViaRaw = ore.amountRequired
+      ore.amountSupplied = ore.amountRequired
+      ore.amountRemaining = 0
+      ore.satisfied = true
+      smelter.requirementsSatisfied = true
+      smelter.hasProblem = false
+
+      appStore.initFactories(plan)
+
+      // Without the recalculation the stale ledger survives, the factory stays green, and the
+      // breaking-change notice and wizard both find nothing to do.
+      expect(smelter.parts.OreIron.amountSuppliedViaRaw).toBe(0)
+      expect(smelter.parts.OreIron.amountRemaining).toBe(-100)
+      expect(smelter.parts.OreIron.satisfied).toBe(false)
+      expect(smelter.requirementsSatisfied).toBe(false)
+    })
+
+    it('#503: should leave a hand-gathered resource alone', () => {
+      const factory = newFactory('Biomass')
+      addProductToFactory(factory, { id: 'Biomass', amount: 100, recipe: 'Biomass_Leaves' })
+      const plan = [factory]
+      calculateFactory(factory, plan, gameData)
+
+      // Leaves have no extractor, so v0.6 still supplies them. Nothing to migrate.
+      expect(factory.parts.Leaves.amountSuppliedViaRaw).toBeGreaterThan(0)
+      expect(factory.parts.Leaves.satisfied).toBe(true)
+
+      appStore.initFactories(plan)
+
+      expect(factory.parts.Leaves.satisfied).toBe(true)
+      expect(factory.parts.Leaves.amountSuppliedViaRaw).toBeGreaterThan(0)
     })
 
     it('#180: should initialize factories with missing power data', () => {
@@ -537,6 +581,262 @@ describe('app-store', () => {
     })
   })
 
+  describe('raw resources breaking-change notice', () => {
+    beforeEach(() => {
+      resetAppStore()
+    })
+
+    // A plan short of a raw resource nothing digs up: exactly what a plan built before
+    // extraction existed looks like once it is loaded.
+    const unmigratedPlan = () => {
+      const factory = newFactory('Old Plan')
+      addProductToFactory(factory, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      return [factory]
+    }
+
+    const loadAsLegacyPlan = async (factories: Factory[]) => {
+      const tab = appStore.getCurrentTab()
+      if (tab) delete tab.plannerVersion
+      appStore.setFactories(factories, true)
+      await appStore.beginLoading(factories)
+    }
+
+    it('raises the notice for a plan that predates the change', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // loadingCompleted schedules a debounced write 500ms out and then flips isLoaded true. A direct
+    // flush landing inside that window - the 5s interval, a tab switch, closing the tab - would see
+    // a loaded app, cancel the pending load-origin write, and stamp the migration as a user edit.
+    // checkForOOS reads that timestamp to decide whether the account copy is stale.
+    it('does not stamp lastEdit when a direct flush lands just after a load finishes', async () => {
+      const before = new Date('2020-01-01T00:00:00Z')
+      localStorage.setItem('lastEdit', before.toISOString())
+      resetAppStore(true)
+
+      await appStore.beginLoading(unmigratedPlan())
+
+      // What the interval, visibilitychange and pagehide handlers all do.
+      appStore.persistPlan()
+
+      expect(appStore.getLastEdit().toISOString()).toBe(before.toISOString())
+    })
+
+    // A restore from the account bypasses the loader, so loadingCompleted never fires. It used to
+    // be the one arrival path that clears plannerVersion (deliberately, so the question WOULD be
+    // asked) and then had nothing ask it - the plan just turned red with no explanation.
+    it('raises the notice for a bare array restored from the account', () => {
+      appStore.loadServerPlan(unmigratedPlan())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // Calculated first, because that is what a tab written by a current client actually carries.
+    // The bare-array branch above recalculates on arrival (its ledger means something different);
+    // this branch deliberately does not, since a current client's quantities are the user's own.
+    it('raises the notice for a whole tab restored from the account', () => {
+      const tab = appStore.getCurrentTab()!
+      const factories = unmigratedPlan()
+      calculateFactories(factories, gameData)
+
+      appStore.loadServerPlan({ ...tab, plannerVersion: undefined, factories })
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // The reason that branch must not force a recalculation: a restore is not the moment to
+    // overwrite what the user set. An item deliberately left out of step with its building groups
+    // keeps its own quantity rather than being rewritten from them.
+    it('does not rewrite a restored tab\'s quantities from its building groups', () => {
+      const tab = appStore.getCurrentTab()!
+      const factories = unmigratedPlan()
+      calculateFactories(factories, gameData)
+      const product = factories[0].products[0]
+      product.buildingGroupItemSync = false
+      product.buildingGroups[0].buildingCount = 99
+      const authored = product.amount
+
+      appStore.loadServerPlan({ ...tab, plannerVersion: undefined, factories })
+
+      expect(appStore.getFactories()[0].products[0].amount).toBe(authored)
+    })
+
+    it('stays silent for an already answered tab restored from the account', () => {
+      const tab = appStore.getCurrentTab()!
+      appStore.loadServerPlan({
+        ...tab, plannerVersion: config.plannerVersion, factories: unmigratedPlan(),
+      })
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // Someone starting from nothing has no plan to have been broken, so there is no news.
+    it('stays silent for an empty plan', async () => {
+      await appStore.beginLoading([])
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // A plan from before the change that happens to need nothing is not worth interrupting for.
+    it('stays silent when there is nothing to migrate', async () => {
+      const factory = newFactory('Fine As It Is')
+      const tab = appStore.getCurrentTab()
+      if (tab) delete tab.plannerVersion
+      appStore.setFactories([factory], true)
+
+      await appStore.beginLoading([factory])
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    // The answer belongs to the plan. Dismissing it once must not silence the next pre-v0.6
+    // plan the user pastes, opens from a share link or restores from their account.
+    it('stamps the plan when dismissed, and never asks that plan again', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+      expect(appStore.showRawBreakingNotice).toBe(true)
+
+      appStore.dismissRawBreakingNotice()
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe(config.plannerVersion)
+
+      await appStore.beginLoading(appStore.getFactories())
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
+    it('asks again for a different plan that has not been answered for', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+
+      // What a share link, a paste or a cloud restore of an older plan amounts to.
+      await loadAsLegacyPlan(unmigratedPlan())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    it('comes back after the debug scenario re-arms it', async () => {
+      await loadAsLegacyPlan(unmigratedPlan())
+      appStore.dismissRawBreakingNotice()
+      expect(appStore.showRawBreakingNotice).toBe(false)
+
+      appStore.rearmRawBreakingNotice()
+      await appStore.beginLoading(appStore.getFactories())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    // Saved plans still carry the field the assumption used to live on. It means nothing now,
+    // so it must not ride along through every share, paste and sync from here on.
+    it('strips the dead assumption field from a loaded plan', async () => {
+      const factory = newFactory('Old Plan')
+      ;(factory as Factory & LegacyRawAssumptionFields).assumeRawInputs = true
+      const tab = appStore.getCurrentTab()
+      if (tab) (tab as FactoryTab & LegacyRawAssumptionFields).assumeRawInputs = true
+
+      await appStore.beginLoading([factory])
+
+      expect('assumeRawInputs' in factory).toBe(false)
+      expect('assumeRawInputs' in (appStore.getCurrentTab() ?? {})).toBe(false)
+    })
+  })
+
+  // The reason the marker sits on the tab and the whole tab is uploaded: /save used to take a
+  // bare Factory[], so everything plan-level was dropped the moment a plan came back from an
+  // account — and the plan would then ask about raw resources it had already been answered for.
+  describe('loadServerPlan', () => {
+    beforeEach(() => {
+      resetAppStore()
+    })
+
+    it('restores plan-level state from a whole-tab payload', () => {
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [newFactory('Foo')],
+        powerTarget: 40000,
+        plannerVersion: '0.6',
+      })
+
+      const tab = appStore.getCurrentTab()
+      expect(tab?.plannerVersion).toBe('0.6')
+      expect(tab?.powerTarget).toBe(40000)
+      expect(appStore.getFactories()).toHaveLength(1)
+    })
+
+    // The name is part of the plan and travels with it; the id is local state this machine keys
+    // its tabs by, so it stays put.
+    it('restores the name the plan was saved under, keeping the local tab id', () => {
+      const before = appStore.getCurrentTab()?.id
+
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [newFactory('Foo')],
+      })
+
+      const tab = appStore.getCurrentTab()
+      expect(tab?.name).toBe('My Plan')
+      expect(tab?.id).toBe(before)
+    })
+
+    it('keeps the local name when the saved plan has none', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) tab.name = 'Local name'
+
+      appStore.loadServerPlan({ id: 'x', name: '', factories: [] })
+
+      expect(appStore.getCurrentTab()?.name).toBe('Local name')
+    })
+
+    // A client that has not reloaded yet still saves the old shape, and every account saved
+    // before v0.6 holds one. Read as what it is: a plan from before the change.
+    it('reads a bare factory array as a plan that predates the change', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) tab.plannerVersion = '0.6'
+
+      appStore.loadServerPlan([newFactory('Foo')])
+
+      expect(appStore.getFactories()).toHaveLength(1)
+      // The point of the test: the tab was answered for contents it no longer has, and a bare
+      // array predates the change, so the answer has to be cleared or the notice never fires.
+      expect(appStore.getCurrentTab()?.plannerVersion).toBeUndefined()
+    })
+
+    it('keeps the answer when a tab-shaped plan carries one', () => {
+      appStore.loadServerPlan({
+        id: 'x', name: 'Cloud', factories: [newFactory('Foo')], plannerVersion: '0.6',
+      } as never)
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
+    })
+  })
+
+  // JSON.stringify drops an undefined key, so a plan from before the change arrives through a
+  // share link or the clipboard with no plannerVersion at all — indistinguishable from a new tab
+  // unless its factories are taken into account.
+  describe('addTab and the raw-resources answer', () => {
+    it('leaves an imported plan carrying no version unanswered', () => {
+      appStore.addTab({ name: 'Shared', factories: [newFactory('Foo')] })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBeUndefined()
+    })
+
+    it('marks a tab conjured out of nothing as answered', () => {
+      appStore.addTab({ name: 'Empty' })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe(config.plannerVersion)
+    })
+
+    it('preserves a version the imported plan carries', () => {
+      appStore.addTab({ name: 'Modern', factories: [newFactory('Foo')], plannerVersion: '0.6' })
+
+      expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
+    })
+  })
+
   describe('factory management', () => {
     describe('getFactories', () => {
       beforeEach(async () => {
@@ -702,6 +1002,16 @@ describe('app-store', () => {
 
         expect(appStore.getFactories()).toEqual([])
       })
+
+      // No factory carries a memberless group, so nothing else would take it with the plan.
+      it('should take the memberless groups with it', () => {
+        appStore.addFactory(newFactory('Foobarbaz'))
+        appStore.getCurrentTab().groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
+
+        appStore.clearFactories()
+
+        expect(appStore.getCurrentTab().groups).toBeUndefined()
+      })
     })
   })
 
@@ -733,6 +1043,21 @@ describe('app-store', () => {
         appStore.addTab(newTab)
 
         expect(appStore.getCurrentTab().powerTarget).toBe(5000)
+      })
+
+      // Share links and templates arrive through here, and a memberless group is the only kind
+      // no factory carries in for us.
+      it('should preserve memberless groups when importing a tab', () => {
+        appStore.addTab({
+          id: '13579',
+          name: 'Shared Tab',
+          factories: [],
+          groups: [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }],
+        })
+
+        expect(appStore.getCurrentTab().groups).toEqual([
+          { id: 'g1', name: 'Empty', color: '#4caf50', order: 0 },
+        ])
       })
     })
     describe('removeCurrentTab', () => {

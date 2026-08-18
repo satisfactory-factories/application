@@ -13,13 +13,22 @@ export const setSyncState = (factory: Factory) => {
     }
   })
 
-  // Get the current power producers of the factory and set them
+  /**
+   * Keyed by the producer's own id, NOT by its building.
+   *
+   * A factory can hold several producers of the same building: three geothermal generators on an
+   * impure, a normal and a pure node, or a bank of coal generators at different clocks. Keying by
+   * building collapsed all of them into one entry, and the count check below then compared three
+   * producers against one key — so such a factory could never be marked in sync at all, whatever
+   * the user did. Geothermal Power in the MegaPlan template was exactly that.
+   */
   factory.powerProducers.forEach(powerProducer => {
-    factory.syncStatePower[powerProducer.building] = {
+    factory.syncStatePower[powerProducer.id] = {
       powerAmount: powerProducer.powerAmount,
       buildingAmount: powerProducer.buildingAmount,
       recipe: powerProducer.recipe,
       ingredientAmount: powerProducer.fuelAmount,
+      building: powerProducer.building,
     }
   })
 
@@ -98,10 +107,22 @@ export const checkFactorySyncState = (factory: Factory) => {
 
   // Check individual power producer sync state
   for (const powerProducer of factory.powerProducers) {
-    const syncState = factory.syncStatePower[powerProducer.building]
+    // Plans marked in sync before producers were keyed by id carry building-keyed state, so fall
+    // back to that rather than dropping every one of them out of sync on first open. Those plans
+    // can only have one producer per building — a plan with two never held a usable state anyway.
+    const syncState = factory.syncStatePower[powerProducer.id] ??
+      factory.syncStatePower[powerProducer.building]
 
     // If no sync state, mark it OOS because the user may have swapped the power producer.
     if (!syncState) {
+      factory.inSync = false
+      return
+    }
+
+    // If the building itself was swapped for another. Only when the state records one: a plan
+    // marked in sync before that was stored has nothing to compare, and an absent value must not
+    // read as a change.
+    if (syncState.building && syncState.building !== powerProducer.building) {
       factory.inSync = false
       return
     }

@@ -12,6 +12,7 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory, increaseProductQtyViaBuilding } from '@/utils/factory-management/products'
 import {
   addBuildingGroup,
+  applyRemainderToGroup,
   bestEffortUpdateBuildingCount,
   calculateBuildingGroupParts,
   calculateBuildingGroupProblems,
@@ -22,6 +23,7 @@ import {
   checkForItemUpdate,
   deleteBuildingGroup,
   getTotalPowerShards,
+  solveGroupForRemainder,
   syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -778,7 +780,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the product\'s quantity if it is a singular building group', () => {
         productBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(10)
         expect(product.amount).toBe(300)
@@ -799,7 +801,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].buildingCount = 1337
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -809,7 +811,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 50
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.amount).toBe(15)
       })
@@ -819,7 +821,7 @@ describe('buildingGroupsCommon', async () => {
         productBuildingGroups[0].buildingCount = 1
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(2)
         expect(product.amount).toBe(60)
@@ -829,7 +831,7 @@ describe('buildingGroupsCommon', async () => {
         addBuildingGroup(product, ItemType.Product, mockFactory)
         productBuildingGroups[0].overclockPercent = 200
 
-        checkForItemUpdate(product, mockFactory)
+        checkForItemUpdate(product, mockFactory, ItemType.Product)
 
         expect(product.buildingRequirements.amount).toBe(5)
         expect(product.amount).toBe(150)
@@ -838,7 +840,7 @@ describe('buildingGroupsCommon', async () => {
       it('should increase the power producer\'s building amount if it is a singular building group', () => {
         powerBuildingGroups[0].buildingCount = 10
 
-        checkForItemUpdate(powerProducer, mockFactory)
+        checkForItemUpdate(powerProducer, mockFactory, ItemType.Power)
 
         expect(powerProducer.buildingAmount).toBe(10)
         expect(powerProducer.buildingCount).toBe(10)
@@ -1167,6 +1169,115 @@ describe('powerProducer simplified cases', async () => {
     })
   })
 
+  // The reported plan: a 360/min Stone mine split across an overclocked impure group and a
+  // second group on normal nodes, which between them come up short.
+  describe('satisfying or trimming one group', () => {
+    let stoneFactory: Factory
+    let stone: FactoryItem
+
+    beforeEach(() => {
+      stoneFactory = newFactory('Stone Mine')
+      addProductToFactory(stoneFactory, { id: 'Stone', amount: 360, recipe: 'Extract_Stone' })
+      stone = stoneFactory.products[0]
+      stone.buildingGroupItemSync = false
+      stone.buildingGroups = [
+        {
+          id: 1,
+          type: ItemType.Product,
+          buildingCount: 5,
+          overclockPercent: 133.3333,
+          somersloops: 0,
+          parts: {},
+          powerUsage: 0,
+          powerProduced: 0,
+          extractorBuilding: 'minermk1',
+          purity: 'impure',
+        },
+        {
+          id: 2,
+          type: ItemType.Product,
+          buildingCount: 3,
+          overclockPercent: 84,
+          somersloops: 0,
+          parts: {},
+          powerUsage: 0,
+          powerProduced: 0,
+          extractorBuilding: 'minermk1',
+          purity: 'normal',
+        },
+      ]
+      calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+    })
+
+    it('puts the whole shortfall on the group asked, keeping its building count', () => {
+      // 5 impure Mk.1s at 133.3333% = 200/min, 3 normal at 84% = 151.2/min, so 8.8/min short.
+      // The second group has to reach 160/min: 160 / 60 / 3 = 88.8889%, landing on 88.89 because
+      // the remainder is measured against an effective building count rounded to 4dp.
+      applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[1].buildingCount).toBe(3)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+      expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
+    })
+
+    it('takes a surplus off the group asked', () => {
+      stone.buildingGroups[1].overclockPercent = 120 // 216/min, so 56/min over
+      calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+      applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[1].buildingCount).toBe(3)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+    })
+
+    it('leaves the other groups exactly as they were', () => {
+      applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[0].buildingCount).toBe(5)
+      expect(stone.buildingGroups[0].overclockPercent).toBe(133.3333)
+    })
+
+    it('adds buildings when the clock alone cannot reach the target', () => {
+      // One building would need well over the game's 250% cap to cover the whole plan.
+      stone.buildingGroups[0].buildingCount = 0
+      stone.buildingGroups[1].buildingCount = 1
+      calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+      applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[1].buildingCount).toBeGreaterThan(1)
+      expect(stone.buildingGroups[1].overclockPercent).toBeLessThanOrEqual(250)
+      expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
+    })
+
+    it('refuses a trim the group cannot hold rather than writing an unbuildable clock', () => {
+      // The first group alone overshoots by more than the second group produces, so there is no
+      // setting of the second that balances the item — the button is disabled off the back of this.
+      stone.buildingGroups[0].buildingCount = 40 // 1,600/min against 360 asked for
+      stone.buildingGroups[1].buildingCount = 1
+      calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+      expect(solveGroupForRemainder(stone, stone.buildingGroups[1], ItemType.Product)).toBeNull()
+
+      applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[1].buildingCount).toBe(1)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(84)
+    })
+
+    it('refuses a group that produces nothing per building', () => {
+      const wellFactory = newFactory('Nitrogen')
+      addProductToFactory(wellFactory, { id: 'NitrogenGas', amount: 240, recipe: 'Extract_NitrogenGas_Well' })
+      const gas = wellFactory.products[0]
+      gas.buildingGroups.forEach(group => {
+        group.satellites = { impure: 0, normal: 0, pure: 0 }
+      })
+      calculateFactories([wellFactory], gameData, { origin: 'buildingGroup' })
+
+      expect(solveGroupForRemainder(gas, gas.buildingGroups[0], ItemType.Product)).toBeNull()
+    })
+  })
+
   describe('updateBuildingGroupViaPart', () => {
     beforeEach(async () => {
       mockFactory = newFactory('Test Update Group')
@@ -1190,13 +1301,26 @@ describe('powerProducer simplified cases', async () => {
         // For "IronRod", assume its recipe (from gameData) defines:
         //   ingredient "IronIngot" with perMin = 15.
         // If we update "IronIngot" to 20, then:
-        //   targetEffective = 20 / 15 ≈ 1.33.
-        // For n = 1: candidate clock = ceil(1.33 * 100) = 134 (>100%).
-        // For n = 2: candidate clock = ceil((1.33/2) * 100) = ceil(66.5) = 67 (≤100%).
-        // We expect the function to choose buildings = 2 and clock = 67.
+        //   targetEffective = 20 / 15 ≈ 1.3333.
+        // For n = 1: candidate clock = 133.3333 (>100%).
+        // For n = 2: candidate clock = 66.6667 (≤100%).
+        // We expect the function to choose buildings = 2 and clock = 66.6667, which
+        // consumes the 20 asked for rather than the 20.1 a whole-percent clock would.
           updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 20)
           expect(group.buildingCount).toBe(2)
-          expect(group.overclockPercent).toBe(67)
+          expect(group.overclockPercent).toBe(66.6667)
+          // 2 buildings at 66.6667% consume 15/min x 1.33333 = the 20 asked for.
+          expect(group.buildingCount * group.overclockPercent / 100 * 15).toBeCloseTo(20, 3)
+        })
+
+        it('should hit the requested amount exactly rather than rounding the clock up to a whole percent', () => {
+          // 15/min per building: 22 spreads over 2 buildings at 73.3333%, which is 22.
+          // Rounding the clock up to 74% gave 22.2 — the amount the user typed silently
+          // changed, and every value that did not land on a whole percent was unsettable.
+          updateBuildingGroupViaPart(group, product, ItemType.Product, mockFactory, 'IronIngot', 22)
+          expect(group.buildingCount).toBe(2)
+          expect(group.overclockPercent).toBe(73.3333)
+          expect(group.buildingCount * group.overclockPercent / 100 * 15).toBeCloseTo(22, 3)
         })
 
         it('should update a product group with an underclock when targetEffective < 1', () => {
@@ -1334,6 +1458,32 @@ describe('powerProducer simplified cases', async () => {
       })
     })
   })
+
+  // A group's stored type is data, and a plan exported from an older build can carry it wrong —
+  // the shipped MegaPlan did, on four power producers. Trusting it sent a power producer down the
+  // product branch of checkForItemUpdate, where writing buildingRequirements.amount threw and took
+  // the whole recalculation with it: the user's edit silently did nothing and the plan was left
+  // uncalculated. The type now comes from the caller, which knows what it is iterating.
+  describe('a building group whose stored type is wrong', () => {
+    it('does not throw when a power producer group is labelled Product', () => {
+      const factory = newFactory('Coal Power')
+      addPowerProducerToFactory(factory, {
+        building: 'generatorcoal',
+        powerAmount: 750,
+        recipe: 'GeneratorCoal_Coal',
+        updated: FactoryPowerChangeType.Power,
+      })
+      const plan = [factory]
+      calculateFactories(plan, gameData)
+
+      const producer = factory.powerProducers[0]
+      expect(producer.buildingGroups.length).toBeGreaterThan(0)
+      producer.buildingGroups[0].type = ItemType.Product
+      producer.buildingGroupItemSync = true
+
+      expect(() => calculateFactories(plan, gameData, { origin: 'buildingGroup' })).not.toThrow()
+    })
+  })
 })
 
 describe('bestEffortUpdateBuildingCount', () => {
@@ -1354,6 +1504,26 @@ describe('bestEffortUpdateBuildingCount', () => {
       })
       product = mockFactory.products[0]
       buildingGroup = product.buildingGroups[0]
+    })
+
+    // A satellite-less well has a zero output multiplier, so buildingsNeeded is Infinity, maxN is
+    // Math.ceil(Infinity), and the search for a clock at or under 100% never finds one. That spun
+    // forever and hung the tab, rather than producing a wrong number. Reachable from the
+    // Remainder to last / Remainder to new group buttons.
+    it('returns instead of spinning forever when the group can produce nothing', () => {
+      const well = newFactory('Nitrogen')
+      addProductToFactory(well, { id: 'NitrogenGas', amount: 240, recipe: 'Extract_NitrogenGas_Well' })
+      const wellProduct = well.products[0]
+      const wellGroup = wellProduct.buildingGroups[0]
+      wellGroup.satellites = { impure: 0, normal: 0, pure: 0 }
+      const before = { count: wellGroup.buildingCount, clock: wellGroup.overclockPercent }
+
+      bestEffortUpdateBuildingCount(wellProduct, wellGroup, 240, ItemType.Product)
+
+      expect(Number.isFinite(wellGroup.buildingCount)).toBe(true)
+      expect(Number.isFinite(wellGroup.overclockPercent)).toBe(true)
+      expect(wellGroup.buildingCount).toBe(before.count)
+      expect(wellGroup.overclockPercent).toBe(before.clock)
     })
 
     it('should calculate normal ratios', () => {
@@ -1578,5 +1748,75 @@ describe('bestEffortUpdateBuildingCount', () => {
       groups[2].id = 3
       expect(getTotalPowerShards(groups)).toBe(5)
     })
+  })
+})
+
+// A plan reaches the engine straight from JSON: clipboard paste, share link, account restore.
+// Nothing between the wire and the maths checked a group's buildingCount or overclockPercent, so
+// a hand-edited or corrupted plan could put a negative count, an overflowed clock or a numeric
+// string into a group, have the engine calculate with it, and write it back out again.
+describe('sanitizeGroupNumbers', async () => {
+  const gameData = await fetchGameData()
+
+  const loadPlanHolding = (raw: Record<string, unknown>) => {
+    const built = newFactory('Iron Mine')
+    addProductToFactory(built, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+    calculateFactories([built], gameData)
+
+    // Injected BEFORE the round trip, not after. That is the whole point: JSON.stringify writes
+    // Infinity as null, so a plan that overflowed on the way out arrives as null on the way back
+    // in, and null coerces to a perfectly finite 0. Injecting into the already-parsed object tests
+    // an input the wire cannot actually deliver.
+    Object.assign(built.products[0].buildingGroups[0], raw)
+    const onDisk = JSON.parse(JSON.stringify(built)) as Factory
+
+    calculateFactories([onDisk], gameData, { origin: 'recalculate' })
+    return { factory: onDisk, group: onDisk.products[0].buildingGroups[0] }
+  }
+
+  it.each([
+    ['a negative clock', { overclockPercent: -50 }],
+    ['a clock that overflowed, arriving as null', { overclockPercent: Number.POSITIVE_INFINITY }],
+    ['a clock explicitly set to null', { overclockPercent: null }],
+    ['a non-numeric clock', { overclockPercent: 'abc' }],
+    ['an empty-string clock', { overclockPercent: '' }],
+    ['a boolean clock', { overclockPercent: true }],
+    ['a missing clock', { overclockPercent: undefined }],
+    ['a negative building count', { buildingCount: -3 }],
+    ['a numeric string building count', { buildingCount: '4' }],
+    ['a non-numeric building count', { buildingCount: 'abc' }],
+    ['a building count that overflowed, arriving as null', { buildingCount: Number.POSITIVE_INFINITY }],
+    ['a building count explicitly set to null', { buildingCount: null }],
+  ])('leaves nothing non-finite or negative behind for %s', (_label, raw) => {
+    const { factory, group } = loadPlanHolding(raw)
+
+    expect(Number.isFinite(group.buildingCount)).toBe(true)
+    expect(Number.isFinite(group.overclockPercent)).toBe(true)
+    expect(group.buildingCount).toBeGreaterThanOrEqual(0)
+    expect(group.overclockPercent).toBeGreaterThanOrEqual(0)
+    expect(group.overclockPercent).toBeLessThanOrEqual(250)
+    expect(Number.isFinite(factory.power.consumed)).toBe(true)
+    expect(factory.power.consumed).toBeGreaterThanOrEqual(0)
+  })
+
+  it('keeps a numeric string out of the building requirement, which used to concatenate', () => {
+    const { factory } = loadPlanHolding({ buildingCount: '4' })
+
+    expect(factory.buildingRequirements.minermk1.amount).toBe(4)
+  })
+
+  it('leaves an ordinary group untouched', () => {
+    const { group } = loadPlanHolding({})
+
+    expect(group.buildingCount).toBe(8)
+    expect(group.overclockPercent).toBe(100)
+  })
+
+  // The specific case Number() got wrong: a group whose clock overflowed is worth 100%, not 0%.
+  // At 0% the group produces nothing and, with item sync on, drags the product to nothing with it.
+  it('falls back to full speed for a clock that arrived as null, not to a stopped group', () => {
+    const { group } = loadPlanHolding({ overclockPercent: Number.POSITIVE_INFINITY })
+
+    expect(group.overclockPercent).toBe(100)
   })
 })

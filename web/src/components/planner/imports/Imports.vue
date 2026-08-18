@@ -1,6 +1,11 @@
 <template>
   <template v-if="!validToDisplay">
-    <p class="text-body-2">There are no factories available to import the current product selection.</p>
+    <!-- A mine reaches here too, and "no factories available" blames the rest of the plan for
+         something that is simply not applicable to it. -->
+    <p v-if="ableToImport(factory) === 'producesRawOnly'" class="text-body-2">
+      Imports don't apply here: this factory only produces raw resources, and extracting them takes no ingredients.
+    </p>
+    <p v-else class="text-body-2">There are no factories available to import the current product selection.</p>
   </template>
   <template v-else>
     <v-card class="rounded sub-card border-md mb-2">
@@ -128,7 +133,7 @@
         @click="addEmptyInput(factory)"
       >Add Import
       </v-btn>
-      <span v-if="ableToImport(factory) === 'rawOnly'" class="ml-2">(This factory is only using raw resources and requires no imports.)</span>
+      <span v-if="ableToImport(factory) === 'producesRawOnly'" class="ml-2">(Imports don't apply here: this factory only produces raw resources, and extracting them takes no ingredients.)</span>
       <span v-if="ableToImport(factory) === 'noImportFacs'" class="ml-2">(There are no factories that have exports available to supply this factory.)</span>
     </div>
   </template>
