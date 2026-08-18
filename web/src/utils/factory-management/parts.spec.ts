@@ -334,6 +334,24 @@ describe('satisfaction tolerance', () => {
     expect(isAmountSatisfied(-0.002, 100)).toBe(false)
   })
 
+  // Quantities are stored to three decimal places, so a shortfall of EXACTLY the 0.001 floor is
+  // ordinary. Whether `supplied - required` lands a hair above or below it is decided by the
+  // magnitudes involved rather than by anything the user did: 100 - 99.999 comes out as
+  // -0.0010000000000047748 while 10 - 9.999 comes out as -0.0009999999999994458. Without slack on
+  // the comparison, three of these nine went red for a gap the tolerance exists to forgive, and
+  // the user could not close it - three decimal places is the finest quantity the planner stores.
+  it.each([10, 50, 100, 123, 200, 600, 1000, 5000, 10000])(
+    'forgives a shortfall of exactly one thousandth at %i/min', required => {
+      expect(isAmountSatisfied((required - 0.001) - required, required)).toBe(true)
+    }
+  )
+
+  // The same figure on the export side, which reads through the same function.
+  it('does not let float noise decide the boundary either way', () => {
+    expect(isAmountSatisfied(-0.001, 100)).toBe(true)
+    expect(isAmountSatisfied(-0.0011, 100)).toBe(false)
+  })
+
   it('leaves a surplus and an exact match satisfied', () => {
     expect(isAmountSatisfied(0, 100)).toBe(true)
     expect(isAmountSatisfied(50, 100)).toBe(true)

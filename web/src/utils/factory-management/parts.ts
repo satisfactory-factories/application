@@ -15,8 +15,17 @@ import { isSinkablePart } from '@/utils/factory-management/sinkable'
 const CLOCK_PRECISION_RELATIVE = 1e-6
 const MIN_SATISFACTION_TOLERANCE = 0.001
 
+// Nudged outward by a relative epsilon, so the comparison is not decided by float rounding at the
+// very point the tolerance exists to cover. Quantities are stored to three decimal places, so a
+// shortfall of EXACTLY MIN_SATISFACTION_TOLERANCE is ordinary rather than exotic — and whether
+// `supplied - required` lands a hair above or below it depends on the magnitudes involved, not on
+// anything the user did. A 0.001 shortfall was forgiven at 10, 50, 600, 1000 and 5000/min and NOT
+// at 100, 123 or 200, where the subtraction happens to produce -0.0010000000000047748. The user
+// cannot clear those: three decimal places is the finest quantity the planner stores.
+const TOLERANCE_SLACK = 1 + 1e-9
+
 export const isAmountSatisfied = (remaining: number, required: number): boolean =>
-  remaining >= -Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE)
+  remaining >= -Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE) * TOLERANCE_SLACK
 
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
