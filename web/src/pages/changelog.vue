@@ -172,6 +172,28 @@
 
         <v-divider class="subsection" />
 
+        <h2>👍 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups: Satisfy and Trim</span></h2>
+        <p>Every group row now carries its own <b>Satisfy</b> and <b>Trim</b>, which puts the whole gap on that one group and leaves the others alone. Until now the only options were to spread it across every group, or to push it onto the last one.</p>
+        <v-img
+          alt="Building groups over-producing, each row offering a Trim button"
+          max-width="1200"
+          src="/assets/changelog/beta6/building-group-trim.png"
+        />
+        <v-img
+          alt="Building groups under-producing, each row offering a Satisfy button"
+          class="mt-2"
+          max-width="1200"
+          src="/assets/changelog/beta6/building-group-satisfy.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>The group keeps its building count and the clock is rescaled to hit the new output. The count is only re-solved when the clock would land outside the game's 1-250%.</li>
+          <li>Where a group cannot hold the change at all, the button is there but disabled, and says why.</li>
+          <li>The <b>Satisfy</b> and <b>Trim</b> beside the Qty are the pair you already know, one level up: they match the <i>product</i> to what the factory and its exports ask for. The group buttons match the <i>groups</i> to the product.</li>
+          <li>How far the groups may sit from the product before they count as imbalanced is now a percentage of what the product asks for, 1% by default, under <b>Options → Building groups</b>. It was a flat 0.1 buildings, which meant one effective building of Limestone and one of Iron Rods were allowed the same drift, and a 360/min mine read as balanced while 6/min short.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
         <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
         <v-img
@@ -284,6 +306,7 @@
         <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul class="ml-6">
           <li><b>Various rounding errors have been fixed</b>, in the game data and in plans already carrying the drifted numbers, which repair themselves on load. Please report any more on Discord.</li>
+          <li>Tooltips and toasts now escape the text they are given, so nothing carried inside a plan can put markup onto the page.</li>
           <li>A building group no longer appears to accept more Somersloops than the building has slots for. Entries clamp as you type and the up arrow greys out once the slots are full. The calculation was always correct; only the number on screen disagreed.</li>
           <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window.</li>
         </ul>
