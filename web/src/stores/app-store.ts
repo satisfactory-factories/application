@@ -209,20 +209,34 @@ export const useAppStore = defineStore('app', () => {
    */
   const persistPlan = (fromLoad = !isLoaded.value) => {
     clearTimeout(persistTimer)
+    // A user edit that is still waiting to be written stamps the plan even if the write itself was
+    // ordered by a load. Renaming a factory and switching tab inside the 500ms window used to lose
+    // the timestamp: the load's schedulePersist cancelled the user's timer and inherited the write,
+    // so the rename reached localStorage while lastEdit still described the plan before it.
+    const userEditPending = pendingUserEdit
+    pendingUserEdit = false
     // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
     const json = JSON.stringify(toRaw(factoryTabs.value))
     if (json === lastPersistedPlan) return
     lastPersistedPlan = json
     localStorage.setItem('factoryTabs', json)
-    if (!fromLoad) {
+    if (!fromLoad || userEditPending) {
       setLastEdit() // Update last edit time whenever the data changes, from any source.
     }
   }
+
+  // Sticky until the write actually happens. schedulePersist cancels and replaces the pending
+  // timer, so without this the LAST scheduler decided the provenance of a write that may already
+  // contain someone's edit.
+  let pendingUserEdit = false
 
   const schedulePersist = () => {
     // Read now, not when the timer fires: persistence is debounced by 500ms and a load finishes
     // well inside that, so reading isLoaded at fire time saw a loaded app and stamped it anyway.
     const duringLoad = !isLoaded.value
+    if (!duringLoad) {
+      pendingUserEdit = true
+    }
     clearTimeout(persistTimer)
     persistTimer = setTimeout(() => persistPlan(duringLoad), 500)
   }
@@ -412,6 +426,14 @@ export const useAppStore = defineStore('app', () => {
     askRawBreakingNotice()
 
     eventBus.emit('loadingCompleted')
+
+    // Flushed synchronously, as a load, BEFORE the flag flips. Everything above has scheduled a
+    // debounced write 500ms out; the moment isLoaded is true, a direct flush (the 5-second
+    // interval, a tab switch, closing the tab) that lands inside that window would cancel the
+    // pending load-origin write and save the migration as though the user had made it, stamping
+    // lastEdit. Writing it here leaves that later write with nothing to do, since persistPlan
+    // returns early when the plan has not changed since the last one.
+    persistPlan(true)
     isLoaded.value = true
 
     // Reset the saved factories
@@ -944,6 +966,7 @@ export const useAppStore = defineStore('app', () => {
     planRepairs,
     dismissPlanRepairs,
     getLastEdit,
+    persistPlan,
     setLastSave,
     setLastEdit,
     getFactories,

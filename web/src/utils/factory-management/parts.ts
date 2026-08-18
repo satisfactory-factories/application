@@ -24,8 +24,23 @@ const MIN_SATISFACTION_TOLERANCE = 0.001
 // cannot clear those: three decimal places is the finest quantity the planner stores.
 const TOLERANCE_SLACK = 1 + 1e-9
 
+// The one definition of "close enough at this scale", so the two questions below cannot drift.
+const toleranceFor = (required: number): number =>
+  Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE) * TOLERANCE_SLACK
+
 export const isAmountSatisfied = (remaining: number, required: number): boolean =>
-  remaining >= -Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE) * TOLERANCE_SLACK
+  remaining >= -toleranceFor(required)
+
+/**
+ * Is what is left over actually worth reporting, or is it arithmetic noise?
+ *
+ * The mirror of isAmountSatisfied, and deliberately sharing its scale. A caller that restates the
+ * rule as a flat constant diverges from the engine as the numbers grow: at 100,000/min a flat
+ * 0.001 is a hundred times stricter than the tolerance the engine just used to call the same line
+ * balanced, so it would report a surplus on a line the planner considers met.
+ */
+export const isSurplusSignificant = (remaining: number, required: number): boolean =>
+  remaining > toleranceFor(required)
 
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)

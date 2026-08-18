@@ -25,6 +25,7 @@
  */
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
+import { isSurplusSignificant } from '@/utils/factory-management/parts'
 
 export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
@@ -117,10 +118,6 @@ export const isEndProduct = (factory: Factory, partId: string): boolean =>
   factory.parts[partId]?.isEndProduct === true &&
   factoryOutputs(factory).includes(partId)
 
-// The smallest surplus worth reporting. Matches the satisfaction tolerance in parts.ts: below
-// this is arithmetic noise rather than an item piling up.
-const SURPLUS_TOLERANCE = 0.001
-
 // A byproduct with nowhere to go. Unlike a product you chose to make, you cannot decline it: it
 // fills the machine's output slot and stops the line.
 //
@@ -137,7 +134,7 @@ const SURPLUS_TOLERANCE = 0.001
 const undemandedByproduct = (factory: Factory, partId: string): boolean =>
   factoryByproducts(factory).includes(partId) &&
   factory.parts[partId]?.isEndProduct !== true &&
-  (factory.parts[partId]?.amountRemaining ?? 0) > SURPLUS_TOLERANCE
+  isSurplusSignificant(factory.parts[partId]?.amountRemaining ?? 0, factory.parts[partId]?.amountRequired ?? 0)
 
 export const isUnhandledByproduct = (factory: Factory, partId: string): boolean =>
   undemandedByproduct(factory, partId) && factory.parts[partId]?.isSinkable === false

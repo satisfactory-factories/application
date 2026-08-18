@@ -607,6 +607,23 @@ describe('app-store', () => {
       expect(appStore.showRawBreakingNotice).toBe(true)
     })
 
+    // loadingCompleted schedules a debounced write 500ms out and then flips isLoaded true. A direct
+    // flush landing inside that window - the 5s interval, a tab switch, closing the tab - would see
+    // a loaded app, cancel the pending load-origin write, and stamp the migration as a user edit.
+    // checkForOOS reads that timestamp to decide whether the account copy is stale.
+    it('does not stamp lastEdit when a direct flush lands just after a load finishes', async () => {
+      const before = new Date('2020-01-01T00:00:00Z')
+      localStorage.setItem('lastEdit', before.toISOString())
+      resetAppStore(true)
+
+      await appStore.beginLoading(unmigratedPlan())
+
+      // What the interval, visibilitychange and pagehide handlers all do.
+      appStore.persistPlan()
+
+      expect(appStore.getLastEdit().toISOString()).toBe(before.toISOString())
+    })
+
     // A restore from the account bypasses the loader, so loadingCompleted never fires. It used to
     // be the one arrival path that clears plannerVersion (deliberately, so the question WOULD be
     // asked) and then had nothing ask it - the plan just turned red with no explanation.
