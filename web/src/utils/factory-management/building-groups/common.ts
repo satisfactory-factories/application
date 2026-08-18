@@ -878,7 +878,17 @@ export const updateBuildingGroupViaPart = (
   // E.g., if baseRate is 15 and amount is 20, then targetEffective ≈ 20/15 ≈ 1.33 buildings.
   const targetEffective = amount / baseRate
 
-  // 5a. If the user has dialed in an overclock, their building count is deliberate — keep
+  // 5a. A well grows by satellites, not by pressurizers — see solveWellGroup, which the other
+  // three solve paths all defer to. Without it the generic solve below reaches its answer in
+  // buildings, so typing 601 into a 600/min well asked for a second pressurizer and typing 3000
+  // asked for five: wells that are not on the player's map, at 750 MW, reading as a solved plan.
+  // Returns false for anything that is not a well, so the ordinary paths below are untouched.
+  if (solveWellGroup(group, targetEffective, item.recipe)) {
+    recalculateGroupMetrics(item, groupType, factory)
+    return
+  }
+
+  // 5b. If the user has dialed in an overclock, their building count is deliberate — keep
   // it and simply rescale the clock to hit the new output. Re-solving the count/clock
   // (step 6) prefers spreading the work across more buildings at a sub-100% clock, which
   // blows away the delicate setup (e.g. 1 building @ 223.333% becoming 3 @ 75%). Only do

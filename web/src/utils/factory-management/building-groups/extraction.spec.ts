@@ -529,6 +529,43 @@ describe('extraction', async () => {
       expect(product.buildingGroups[0].overclockPercent).toBe(83.3333)
       expect(product.buildingGroups[0].parts.Stone).toBe(150)
     })
+
+    // The output chip is editable on a well group, and this was the one solve path that did not
+    // defer to solveWellGroup. It reached its answer in buildings, so it answered a bigger target
+    // with more pressurizers - wells that are not on the player's map, each paying 150 MW.
+    describe('on a resource well', () => {
+      const wellProduct = (satellites: { impure: number, normal: number, pure: number }) => {
+        const factory = newFactory('Water Well')
+        addProductToFactory(factory, { id: 'Water', recipe: 'Extract_Water_Well', amount: 60 })
+        const product = factory.products[0]
+        product.buildingGroupItemSync = true
+        const group = product.buildingGroups[0]
+        group.buildingCount = 1
+        group.satellites = satellites
+        group.overclockPercent = 100
+        calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+        return { factory, product, group }
+      }
+
+      it('takes a small increase on the clock, not on a second pressurizer', () => {
+        const { factory, product, group } = wellProduct({ impure: 0, normal: 10, pure: 0 })
+        expect(product.amount).toBe(600)
+
+        updateBuildingGroupViaPart(group, product, ItemType.Product, factory, 'Water', 601)
+
+        expect(group.buildingCount).toBe(1)
+        expect(group.satellites).toEqual({ impure: 0, normal: 10, pure: 0 })
+      })
+
+      it('never multiplies pressurizers to reach a larger target', () => {
+        const { factory, product, group } = wellProduct({ impure: 0, normal: 10, pure: 0 })
+
+        updateBuildingGroupViaPart(group, product, ItemType.Product, factory, 'Water', 3000)
+
+        expect(group.buildingCount).toBe(1)
+        expect(group.overclockPercent).toBeLessThanOrEqual(250)
+      })
+    })
   })
 
   // A well makes nothing without satellites, so no building count meets a target. Dividing by the
