@@ -280,8 +280,8 @@ describe('Complex Demo Plan', () => {
       expect(copperIngotsFac.dependencies.metrics.CopperIngot).toStrictEqual({
         part: 'CopperIngot',
         supply: 520,
-        request: 520,
-        difference: 0,
+        request: 480,
+        difference: 40,
         isRequestSatisfied: true,
       })
     })
@@ -290,7 +290,9 @@ describe('Complex Demo Plan', () => {
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
       expect(copperMineFac.displayOrder).toBe(4) // Head of the Copper group, where the chain starts
-      expect(copperMineFac.rawResources.OreCopper).toBeUndefined()
+      // Its own extractors are what supply it, so what shows here is the gap between what it digs
+      // and what it has promised away - a real shortfall to act on, not the old free ore.
+      expect(copperMineFac.rawResources.OreCopper).toMatchObject({ id: 'OreCopper', amount: 160 })
 
       const ore = copperMineFac.products[0]
       expect(ore.id).toBe('OreCopper')
@@ -299,18 +301,20 @@ describe('Complex Demo Plan', () => {
       expect(ore.buildingGroups).toHaveLength(2)
       expect(ore.buildingGroups[0]).toMatchObject({ extractorBuilding: 'minermk3', purity: 'normal', buildingCount: 1 })
       expect(ore.buildingGroups[1]).toMatchObject({ extractorBuilding: 'minermk1', purity: 'pure', buildingCount: 1 })
-      // 240 on a normal node plus 280 from an overclocked Mk.1 on a pure one.
-      expect(ore.amount).toBe(520)
+      // 240 on a normal node plus 120 from a Mk.1 on a pure one: deliberately 160 short of
+      // the 520 the smelters ask for, so the plan opens with an export shortage to look at.
+      expect(ore.amount).toBe(360)
     })
 
-    it('should ship its ore to Copper Ingots with a little to spare', () => {
+    it('should be unable to meet what Copper Ingots asks of it', () => {
       expect(copperMineFac.dependencies.metrics.OreCopper).toStrictEqual({
         part: 'OreCopper',
-        supply: 520,
+        supply: 360,
         request: 520,
-        difference: 0,
-        isRequestSatisfied: true,
+        difference: -160,
+        isRequestSatisfied: false,
       })
+      expect(copperMineFac.hasProblem).toBe(true)
     })
   })
 
@@ -328,7 +332,7 @@ describe('Complex Demo Plan', () => {
       expect(copperBasicsFac.inputs.length).toBe(1)
       expect(copperBasicsFac.inputs[0].factoryId).toBe(copperIngotsFac.id)
       expect(copperBasicsFac.inputs[0].outputPart).toBe('CopperIngot')
-      expect(copperBasicsFac.inputs[0].amount).toBe(520)
+      expect(copperBasicsFac.inputs[0].amount).toBe(480) // Deliberate shortage: it needs 520
 
       // Dependencies
       expect(copperBasicsFac.dependencies.metrics.Cable).toStrictEqual({

@@ -26,7 +26,7 @@ describe('calculateTotalRawResources', () => {
 
     expect(totals.length).toBeGreaterThan(0)
     const byId = Object.fromEntries(totals.map(entry => [entry.id, entry.totalAmount]))
-    expect(byId.OreCopper).toBe(520)
+    expect(byId.OreCopper).toBe(360)
     expect(byId.LiquidOil).toBe(960)
   })
 
