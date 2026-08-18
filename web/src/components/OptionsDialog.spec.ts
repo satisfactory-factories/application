@@ -19,6 +19,13 @@ const settle = async () => {
   await nextTick()
 }
 
+// The preview's inputs debounce their solve, so an edit needs real time to pass before the
+// group has moved — two ticks only get as far as the value the user typed.
+const settleDebounce = async () => {
+  await new Promise(resolve => setTimeout(resolve, 900))
+  await settle()
+}
+
 const open = async () => {
   (document.getElementById('options-button') as HTMLElement).click()
   await settle()
@@ -77,7 +84,7 @@ describe('OptionsDialog', () => {
       output.value = '300'
       output.dispatchEvent(new Event('input', { bubbles: true }))
       output.dispatchEvent(new Event('change', { bubbles: true }))
-      await settle()
+      await settleDebounce()
 
       // Through the planner's own solver: 300/min is 5 Mk.1s, so it drops the underclock.
       expect(value('balance-preview-buildings')).toBe('5')
