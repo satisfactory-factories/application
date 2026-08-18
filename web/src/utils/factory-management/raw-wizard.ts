@@ -21,6 +21,7 @@ import {
   getExtractionRecipeForPart,
   isExtractionRecipe,
   isPlainExtraction,
+  isWellRecipe,
 } from '@/utils/factory-management/building-groups/extraction'
 import { getPartDisplayName } from '@/utils/helpers'
 import { addProductBuildingGroup, buildingsNeededForPartsProducts } from '@/utils/factory-management/building-groups/product'
@@ -112,8 +113,13 @@ export const DEFAULT_EXTRACTOR: WizardExtractorChoice = { building: 'minermk2', 
 // resource the alternative is a single Water factory feeding twenty others.
 const ON_SITE_BY_DEFAULT = ['Water']
 
+// Wells are excluded deliberately, not incidentally. A well's output is set by how many satellite
+// nodes it covers, so growing one to cover an import means adding pressurizers — which invents
+// wells that are not on the player's map. The wizard offers Water and Crude Oil from their
+// extractors only, and leaves wells to be wired up by hand in Imports.
 const hasExtractionProduct = (factory: Factory, partId: string): boolean =>
-  factory.products.some(product => product.id === partId && isExtractionRecipe(product.recipe))
+  factory.products.some(product =>
+    product.id === partId && isExtractionRecipe(product.recipe) && !isWellRecipe(product.recipe))
 
 export const collectRawWizardRows = (factories: Factory[]): WizardRow[] => {
   const rows: WizardRow[] = []
@@ -134,11 +140,15 @@ export const collectRawWizardRows = (factories: Factory[]): WizardRow[] => {
 
       const wellOnly = !getExtractionRecipeForPart(partId)
 
+      // wellOnly is asked FIRST. Asking about candidates first meant a Nitrogen row in a plan that
+      // already held a well was stored as `import`, while choicesForRow still returned ['ignore']
+      // — so the row drew the "can't fix" chip, offered no radio buttons, and applied a choice the
+      // user could neither see nor change.
       let choice: WizardChoice = 'mine'
-      if (candidates.length > 0) {
-        choice = 'import'
-      } else if (wellOnly) {
+      if (wellOnly) {
         choice = 'ignore'
+      } else if (candidates.length > 0) {
+        choice = 'import'
       } else if (ON_SITE_BY_DEFAULT.includes(partId)) {
         choice = 'onsite'
       }
@@ -231,7 +241,10 @@ const validateRows = (rows: WizardRow[], factories: Factory[]) => {
       }
     }
 
-    if (row.choice !== 'import' && row.wellOnly) {
+    // Every choice, not just mine/onsite. `ignore` rows are skipped at the top of this loop, so
+    // anything still here on a well row is something the UI never offered — it draws the "can't
+    // fix" chip and no radio buttons for these.
+    if (row.wellOnly) {
       throw new WizardValidationError(`${row.partName} comes from a resource well, which has to be placed by hand.`)
     }
   }
