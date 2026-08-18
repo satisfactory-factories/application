@@ -5,7 +5,7 @@
     </h4>
     <v-chip
       id="stats-power-summary-generation"
-      class="sf-chip generation no-margin"
+      class="sf-chip generation small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -14,7 +14,7 @@
     </v-chip>
     <v-chip
       id="stats-power-summary-consumption"
-      class="sf-chip consumption no-margin"
+      class="sf-chip consumption small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -24,7 +24,7 @@
     <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
       <v-chip
         id="stats-power-summary-difference"
-        class="sf-chip no-margin"
+        class="sf-chip small no-margin"
         :class="balanceDifference >= 0 ? 'green' : 'red'"
         variant="tonal"
       >
@@ -218,15 +218,85 @@
       </v-table>
     </v-col>
   </v-row>
+
+  <!-- Per factory. Collapsed by default: the plan-level figures above are what most people come
+       for, and forty rows under them would bury those. Deliberately simpler than the tables above
+       — no min/max columns, since the point here is which factory is costing what. -->
+  <div class="d-flex align-center mt-4">
+    <h2 class="text-h5 font-weight-bold text-no-wrap">
+      <i class="fas fa-industry mr-2" />By factory
+    </h2>
+    <v-btn
+      class="ml-auto"
+      color="primary"
+      :prepend-icon="factoriesHidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      size="small"
+      :variant="factoriesHidden ? 'outlined' : 'flat'"
+      @click="factoriesHidden = !factoriesHidden"
+    >{{ factoriesHidden ? 'Show' : 'Hide' }}</v-btn>
+  </div>
+  <v-table
+    v-if="!factoriesHidden && factoryPower.length > 0"
+    id="stats-power-by-factory"
+    class="power-table mt-2"
+    density="compact"
+  >
+    <thead>
+      <tr>
+        <th>Factory</th>
+        <th class="text-right">Generated</th>
+        <th class="text-right">Consumed</th>
+        <th class="text-right">Difference</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        v-for="entry in factoryPower"
+        :key="entry.factory.id"
+        class="hover"
+        @click="navigateToFactory(entry.factory.id)"
+      >
+        <td>
+          <div class="d-flex align-center ga-2">
+            <factory-icon-display :icon="entry.factory.icon" size="20" />
+            <span>{{ entry.factory.name }}</span>
+          </div>
+        </td>
+        <td class="text-right">{{ entry.produced > 0 ? mw(entry.produced) : '—' }}</td>
+        <td class="text-right">{{ entry.consumed > 0 ? mw(entry.consumed) : '—' }}</td>
+        <td
+          class="text-right"
+          :class="{ 'text-green': entry.difference > 0, 'text-red': entry.difference < 0 }"
+        >
+          {{ mw(entry.difference) }}
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr id="stats-power-by-factory-total" class="font-weight-bold total-row">
+        <td>Total</td>
+        <td class="text-right">{{ mw(totalPower.totalPowerProduced) }}</td>
+        <td class="text-right">{{ mw(totalPower.totalPowerConsumed) }}</td>
+        <td
+          class="text-right"
+          :class="{
+            'text-green': totalPower.totalPowerDifference > 0,
+            'text-red': totalPower.totalPowerDifference < 0,
+          }"
+        >{{ mw(totalPower.totalPowerDifference) }}</td>
+      </tr>
+    </tfoot>
+  </v-table>
 </template>
 
 <script setup lang="ts">
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { calculateTotalPower } from '@/utils/statistics'
+  import { calculateFactoryPower, calculateTotalPower } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
 
   const props = defineProps<{
     factories: Factory[];
@@ -234,6 +304,19 @@
   }>()
 
   const totalPower = computed(() => calculateTotalPower(props.factories))
+
+  // Biggest net drain first: the factory to look at is the one costing the most, and a plan
+  // ordered by display order buries it wherever the user happened to put it.
+  const factoryPower = computed(() => calculateFactoryPower(props.factories))
+
+  // Its own key, not the section's: someone who wants the plan totals open still does not
+  // necessarily want forty factory rows under them.
+  const factoriesHidden = ref<boolean>(localStorage.getItem('statisticsPowerByFactoryHidden') !== 'false')
+  watch(factoriesHidden, value => {
+    localStorage.setItem('statisticsPowerByFactoryHidden', value.toString())
+  })
+
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   const { powerTarget, hasTarget } = usePowerTarget()
   const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)

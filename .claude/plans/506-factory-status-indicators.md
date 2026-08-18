@@ -571,7 +571,7 @@ unreviewable — which is why `outOfSync`, `redundantImport` and `duplicateImpor
   token + SCSS; (5) `FactoryStatusChips.vue` incl. the growth animation; (6) the display sites;
   (7) the Satisfaction header refactor; (8) `fix(web):` the power-producer building-group rollup.
 - `CHANGELOG.md` entry under `[Unreleased]`.
-- **Release**: the in-flight release is Beta v0.6, "The Mining Update". Phase 1 is additive and
+- **Release**: the in-flight release is Beta v0.6, "The Groundwork Update". Phase 1 is additive and
   presentation-only apart from the one bug fix, so it is safe for v0.6. The branch is cut from `main`
   while PR #503 (mining) is still open and touches five of the same files — **rebase onto `main` once
   #503 merges** and re-run the suite before opening the PR.

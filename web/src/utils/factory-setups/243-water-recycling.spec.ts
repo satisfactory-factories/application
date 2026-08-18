@@ -25,18 +25,20 @@ describe('243 Scenario Plan', () => {
       expect(mockFactory.parts.Water.amountSuppliedViaProduction).toBe(480)
     })
 
-    it('should only demand the water shortfall from raw supply', () => {
-      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(960)
+    // Water is extractable, so the loop's shortfall is a real one — the byproduct covers 480
+    // of the 1440 and the rest has to be pumped or imported.
+    it('should not top the water shortfall up for free', () => {
+      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(0)
     })
 
     it('should not tell the user to over-feed water into the loop', () => {
       expect(mockFactory.rawResources.Water.amount).toBe(960)
     })
 
-    it('should fully satisfy water', () => {
-      expect(mockFactory.parts.Water.amountSupplied).toBe(1440)
-      expect(mockFactory.parts.Water.amountRemaining).toBe(0)
-      expect(mockFactory.parts.Water.satisfied).toBe(true)
+    it('should leave the recycled water short by what the loop cannot recover', () => {
+      expect(mockFactory.parts.Water.amountSupplied).toBe(480)
+      expect(mockFactory.parts.Water.amountRemaining).toBe(-960)
+      expect(mockFactory.parts.Water.satisfied).toBe(false)
     })
 
     it('should demand the correct amounts of the other raw resources', () => {
@@ -44,8 +46,8 @@ describe('243 Scenario Plan', () => {
       expect(mockFactory.rawResources.Coal.amount).toBe(480)
     })
 
-    it('should mark the factory as satisfied', () => {
-      expect(mockFactory.requirementsSatisfied).toBe(true)
+    it('should mark the factory as unsatisfied while the water is unmet', () => {
+      expect(mockFactory.requirementsSatisfied).toBe(false)
     })
 
     it('should flag water as recycled', () => {

@@ -11,7 +11,7 @@
           @click="closeSplash"
         />
       </v-card-title>
-      <v-card-text>
+      <v-card-text ref="slideBody">
         <!-- Slide 1: Announcement hero -->
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-4">The "Overclocked" Update is here!</h2>
@@ -251,53 +251,28 @@
   // Bumped from seenV5Splash: v0.5 is a rolling release, and this slideshow covers much
   // more than the original splash did — so it re-shows to users who dismissed that one.
   const key = 'seenV51Splash'
-  const seenSplash = localStorage.getItem(key)
-  const seenIntro = localStorage.getItem('dismissed-introduction') ?? 'false'
-  // If the user has not seen the intro splash, don't show them this as there would be two splashes.
-  const shouldShow = seenSplash !== 'true' && seenIntro === 'true'
 
+  // This deck no longer opens on its own. v0.6 is the current release and owns the automatic
+  // show; this one is history, reachable from that deck's last slide for anyone who missed it.
   const showSplash = ref<boolean>(false)
   const currentSlide = ref(0)
 
-  // Present the splash only once the planner has finished loading — showing it during the
-  // load means the page resizing underneath can shift the dialog mid-interaction and cause
-  // misclicks. Some flows (e.g. demo plan setup) load more than once back to back, so the
-  // show is debounced: it fires shortly after the last loadingCompleted and is cancelled
-  // whenever a new load begins.
-  let showTimer: ReturnType<typeof setTimeout> | undefined
-
-  const onLoadStarted = () => {
-    clearTimeout(showTimer)
-  }
-
-  const onLoadingCompleted = () => {
-    clearTimeout(showTimer)
-    showTimer = setTimeout(() => {
-      teardownLoadListeners()
-      showSplash.value = true
-    }, 750)
-  }
-
-  const teardownLoadListeners = () => {
-    clearTimeout(showTimer)
-    eventBus.off('loadingCompleted', onLoadingCompleted)
-    eventBus.off('prepareForLoad', onLoadStarted)
-    eventBus.off('loaderInit', onLoadStarted)
-  }
+  // Every slide shares one scroll container, so without this a slide read to the bottom leaves
+  // the next one opening half way down.
+  const slideBody = ref<{ $el: HTMLElement } | null>(null)
+  watch(currentSlide, async () => {
+    await nextTick()
+    // scrollTop rather than scrollTo: jsdom implements the property but not the method.
+    const body = slideBody.value?.$el
+    if (body) body.scrollTop = 0
+  })
 
   onMounted(() => {
-    if (shouldShow) {
-      eventBus.on('loadingCompleted', onLoadingCompleted)
-      eventBus.on('prepareForLoad', onLoadStarted)
-      eventBus.on('loaderInit', onLoadStarted)
-    }
-    // Manual re-show via the header's "Show changes" button — works even after dismissal
-    eventBus.on('splashShow', show)
+    eventBus.on('splashShowV5', show)
   })
 
   onUnmounted(() => {
-    teardownLoadListeners()
-    eventBus.off('splashShow', show)
+    eventBus.off('splashShowV5', show)
   })
 
   const slides = [
