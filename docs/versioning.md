@@ -10,6 +10,10 @@ As stated in the release documentation, the frontend is automatically deployed w
 
 With this in mind, versioning is not strictly necessary for the frontend, as it is continually deployed.
 
+### One exception: anything that changes what the frontend sends the API
+
+**A pull request that changes the shape of what the planner saves to an account must bump the version in the root `package.json`, in the same PR.** The API refuses saves from clients below `MIN_CLIENT_VERSION`, and that number is the root version stamped into the build — so it is the only thing telling an old tab apart from a current one. Two incompatible builds carrying the same version cannot be separated by the gate, and raising the minimum afterwards would either refuse both or allow both. See the [backend README](../backend/README.md#the-client-version-gate) for how the gate works, and [issue #166](https://github.com/satisfactory-factories/application/issues/166) for what it exists to prevent.
+
 However, what is important to denote versioning for is for public users. They won't understand incremental updates, and communicating said incremental updates to them will result in ping fatigue (via Discord) or "size bias" via social media, e.g. "too small of a change to care".
 
 ## So how do we version?

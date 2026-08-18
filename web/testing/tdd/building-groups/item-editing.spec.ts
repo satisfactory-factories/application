@@ -173,8 +173,9 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await itemAmountInput.setValue(120) // 4 buildings once applied
 
-      // Before the debounce (250ms) elapses, the building group must NOT have updated yet.
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // The write is debounced, so it must not be synchronous with the input. Asserted with no
+      // sleep: waiting part of the debounce out and asserting it has NOT fired yet is a race that
+      // a scheduling hiccup loses, and no timeout can fix that.
       expect(product.buildingGroups[0].buildingCount).toBe(2)
 
       // After the debounce elapses, the change is applied.

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import {
   calculateFactories,
@@ -516,5 +517,68 @@ describe('load-time repairs', () => {
 
     expect(() => validateFactories([factory], gameData)).not.toThrow()
     expect(factory.inputs).toHaveLength(1)
+  })
+  // flushInvalidRequests decides whether it may judge a provider's outputs at all. It used to
+  // infer that from the part ledger being non-empty, which is a different question:
+  // calculateFactoryDependencies fills a provider's `parts` as a side effect while processing a
+  // CONSUMER, but `byProducts` is only written by the provider's own pass. So a provider sitting
+  // after its consumer in the array arrived half-done and had its export silently deleted.
+  describe('order independence of the byproduct check', () => {
+    const buildOilChain = () => {
+      const oil = newFactory('Oil', 0, 11)
+      const consumer = newFactory('Rubber', 1, 12)
+      // Plastic emits Heavy Oil Residue as a byproduct - the array the check reads.
+      addProductToFactory(oil, { id: 'Plastic', amount: 300, recipe: 'Plastic' })
+      addProductToFactory(consumer, { id: 'Rubber', amount: 100, recipe: 'ResidualRubber' })
+      addInputToFactory(consumer, { factoryId: oil.id, outputPart: 'HeavyOilResidue', amount: 100 })
+      return { oil, consumer }
+    }
+
+    it('keeps a byproduct import with the provider first', () => {
+      const { oil, consumer } = buildOilChain()
+      const plan = [oil, consumer]
+      calculateFactories(plan, gameData)
+
+      expect(consumer.inputs).toHaveLength(1)
+      expect(oil.dependencies.requests[consumer.id]).toHaveLength(1)
+      expectIntegrity(plan)
+    })
+
+    it('keeps the same byproduct import with the provider last', () => {
+      const { oil, consumer } = buildOilChain()
+      const plan = [consumer, oil]
+      calculateFactories(plan, gameData)
+
+      expect(consumer.inputs).toHaveLength(1)
+      expect(oil.dependencies.requests[consumer.id]).toHaveLength(1)
+      expectIntegrity(plan)
+    })
+  })
+  // Every other spec in this repo builds plans as PLAIN arrays, where a Vue proxy and its raw
+  // object are the same thing. The app never does: the store's plan is reactive, so reading an
+  // element out of it hands back a proxy while the calculation engine reads through toRaw. A
+  // pass-completion mark stamped on the proxy is invisible to the next calculation, which then
+  // treats a long-calculated plan as brand new and skips the very check that prunes dead exports.
+  describe('on a reactive plan, as the app has', () => {
+    it('still prunes an export whose product has gone', () => {
+      const provider = newFactory('Iron Ingots', 0, 21)
+      const consumer = newFactory('Iron Plates', 1, 22)
+      addProductToFactory(provider, { id: 'IronIngot', amount: 1000, recipe: 'IngotIron' })
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 300, recipe: 'IronPlate' })
+      addInputToFactory(consumer, { factoryId: provider.id, outputPart: 'IronIngot', amount: 450 })
+
+      const plan = reactive([provider, consumer])
+      calculateFactories(plan, gameData)
+      expect(plan[1].inputs).toHaveLength(1)
+
+      // The provider stops making it, and only the provider recalculates - what Planner.vue does.
+      plan[0].products[0].id = 'CopperIngot'
+      plan[0].products[0].recipe = 'IngotCopper'
+      calculateFactory(plan[0], plan, gameData)
+
+      expect(plan[1].inputs).toHaveLength(0)
+      expect(plan[1].parts.IronIngot?.amountSupplied ?? 0).toBe(0)
+      expect(plan[1].requirementsSatisfied).toBe(false)
+    })
   })
 })

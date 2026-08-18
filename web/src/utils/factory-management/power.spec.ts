@@ -234,6 +234,8 @@ describe('power', () => {
         amountSuppliedViaRaw: 0,
         amountRemaining: 441.6,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         satisfied: true,
         exportable: true, // Because it's produced in the factory in question
       })
@@ -286,6 +288,8 @@ describe('power', () => {
           amountSuppliedViaRaw: 0,
           amountRemaining: -0.2,
           isRaw: false,
+          isEndProduct: false,
+          isSinkable: true,
           satisfied: false,
           exportable: false,
         })
@@ -304,6 +308,8 @@ describe('power', () => {
           amountSuppliedViaProduction: 10,
           amountRemaining: 10,
           isRaw: false,
+          isEndProduct: false,
+          isSinkable: false,
           satisfied: true,
           exportable: true,
         })
@@ -314,19 +320,23 @@ describe('power', () => {
         expect(factory.powerProducers[0].buildingCount).toBe(1)
       })
 
+      // A generator's supplemental water is raw demand like any other: nothing supplies it
+      // until the factory extracts or imports it.
       it('should add the supplemental fuel to the factory.parts array and it be raw and not exportable', () => {
         expect(factory.parts.Water).toEqual({
           amountRequired: 240,
           amountRequiredProduction: 0,
           amountRequiredExports: 0,
           amountRequiredPower: 240,
-          amountSupplied: 240,
+          amountSupplied: 0,
           amountSuppliedViaInput: 0,
-          amountSuppliedViaRaw: 240,
+          amountSuppliedViaRaw: 0,
           amountSuppliedViaProduction: 0,
-          amountRemaining: 0,
+          amountRemaining: -240,
           isRaw: true,
-          satisfied: true,
+          isEndProduct: false,
+          isSinkable: false,
+          satisfied: false,
           exportable: false,
         })
       })

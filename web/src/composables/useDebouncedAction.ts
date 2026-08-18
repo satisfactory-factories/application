@@ -21,11 +21,12 @@ export const useDebouncedAction = () => {
   const debouncing = ref('')
   let callId = 0
 
-  const runDebounced = async (key: string, action: () => void) => {
+  // `delay` is optional and defaults to the shared window, so existing callers are untouched.
+  const runDebounced = async (key: string, action: () => void, delay?: number) => {
     const id = ++callId
     debouncing.value = key
 
-    await debounce()
+    await debounce(delay)
 
     // A newer edit arrived while waiting — let its call do the (single) recalculation.
     if (id !== callId) return

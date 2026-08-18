@@ -8,6 +8,7 @@
     class="game-asset-content"
     :data-hover-link="wiki ? '' : undefined"
     :data-hover-tooltip="title"
+    :data-hover-tooltip-note="note || undefined"
   >
     <v-img
       v-if="!ficsmas && !unknown"
@@ -35,6 +36,8 @@
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
     title?: string
+    // A second tooltip line, for a caller with something to add beyond the name.
+    note?: string
     // Marks the image as a wiki link, so the tooltip can say so on its own line.
     wiki?: boolean
   }>()

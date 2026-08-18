@@ -129,8 +129,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
 
-    // Before the 250ms debounce fires, the group power should NOT have recalculated yet
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // The write is debounced, so it must not be synchronous with the input. Asserted with no
+    // sleep at all: waiting part of the debounce out and asserting it has NOT fired yet is a race
+    // that a scheduling hiccup loses, and no timeout can fix that.
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce, it updates: 2 smelters @ 200% = 20 MW
@@ -252,13 +253,14 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     // Clock should have adjusted to match 40
     // 40 / 30 = 1.333 buildings.
-    // Best fit is 2 buildings @ 66.667%? Or 1 building @ 133.333%?
-    // Code prefers <= 100% clock, so 2 buildings @ 66.667%
+    // Best fit is 2 buildings @ 66.6667%? Or 1 building @ 133.3333%?
+    // Code prefers <= 100% clock, so 2 buildings @ 66.6667%
     expect(buildingGroup.buildingCount).toBe(2)
-    expect(buildingGroup.overclockPercent).toBe(67)
+    expect(buildingGroup.overclockPercent).toBe(66.6667)
 
-    // Amount should be exactly 40. Actually it will be 30 * 2 * 0.67 = 40.2 due to ceil.
-    expect(buildingGroup.parts.OreIron).toBe(40.2)
+    // 30 * 2 * 0.666667 = the 40 the user typed. Rounding the clock up to a whole
+    // percent used to land on 40.2 instead.
+    expect(buildingGroup.parts.OreIron).toBe(40)
   })
 
   test('BG-E-I-PROD-1: Editing an ingredient has a debounce', async () => {

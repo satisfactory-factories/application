@@ -100,6 +100,7 @@
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { confirmDialog } from '@/utils/helpers'
+  import { serializePlan } from '@/utils/plan-backup'
   import eventBus from '@/utils/eventBus'
 
   const { getFactories, getCurrentTab, prepareLoader, forceCalculation } = useAppStore()
@@ -144,10 +145,15 @@
     // settings, tasks, notes, collapse state, sync state, etc). The tab id is
     // intentionally omitted — a paste replaces the current tab and keeps its own id.
     // Older exports were a bare Factory[] array, which paste still accepts.
-    const plan = JSON.stringify({
+    const plan = serializePlan({
       name: getCurrentTab()?.name,
       factories: getFactories(),
       powerTarget: powerTarget.value,
+      // Travels with the plan: pasting a plan that has already been answered for must not ask
+      // again, and pasting one from before the change must.
+      plannerVersion: getCurrentTab()?.plannerVersion,
+      // The only group state the factories don't carry themselves.
+      groups: getCurrentTab()?.groups,
     })
     navigator.clipboard.writeText(plan)
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
@@ -164,18 +170,37 @@
         if (!Array.isArray(factoriesToLoad)) {
           throw new Error('Plan does not contain a factories array.')
         }
+        if (isLegacy) {
+          const tab = getCurrentTab()
+          if (tab) {
+            delete tab.plannerVersion
+            // A blob from before groups existed has none, so anything here belongs to the plan
+            // being replaced.
+            delete tab.groups
+          }
+        }
+
         emit('clear-all')
 
         setTimeout(() => {
-          prepareLoader(factoriesToLoad)
-          // Replace the current tab's settings with the pasted plan's (keeps its id).
+          // Replace the current tab's settings with the pasted plan's (keeps its id) before
+          // loading, so the plan is calculated against its own settings rather than the
+          // outgoing tab's.
           if (!isLegacy) {
             powerTarget.value = Number(parsedPlan.powerTarget) || 0
             const tab = getCurrentTab()
             if (tab && parsedPlan.name) {
               tab.name = parsedPlan.name
             }
+            if (tab) {
+              tab.plannerVersion = parsedPlan.plannerVersion
+              // Assigned rather than merged, and assigned even when the blob has none: clearing
+              // the factories cannot take memberless groups with it, so anything left here
+              // belongs to the plan being replaced.
+              tab.groups = parsedPlan.groups
+            }
           }
+          prepareLoader(factoriesToLoad)
         }, 250)
       } catch (err) {
         if (err instanceof Error) {
