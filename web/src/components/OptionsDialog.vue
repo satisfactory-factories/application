@@ -260,9 +260,10 @@
               :min="1"
               suffix="/min"
               variant="outlined"
-              width="130px"
-              @update:model-value="rebuildPreview"
+              width="138px"
+              @update:model-value="debouncePreviewAmount"
             />
+            <debounce-spinner :active="pendingRecalc === 'preview-amount'" />
           </div>
           <!-- Its own line: beside the input it wrapped at most amounts anyway. -->
           <div class="text-medium-emphasis">
@@ -303,8 +304,9 @@
                 hide-spin-buttons
                 :min="0"
                 width="80px"
-                @update:model-value="refreshPreview"
+                @update:model-value="debouncePreviewGroup('buildings')"
               />
+              <debounce-spinner :active="pendingRecalc === 'preview-buildings'" />
             </v-chip>
             <span class="text-medium-emphasis mx-1">@</span>
             <v-chip class="sf-chip yellow input unit no-margin" variant="tonal">
@@ -320,9 +322,10 @@
                 :max="250"
                 :min="0"
                 width="110px"
-                @update:model-value="refreshPreview"
+                @update:model-value="debouncePreviewGroup('clock')"
               />
               <span class="clock-unit mx-2">%</span>
+              <debounce-spinner :active="pendingRecalc === 'preview-clock'" />
             </v-chip>
             <span class="text-medium-emphasis mx-1">=</span>
             <v-chip class="sf-chip raw-resource input no-margin" variant="tonal">
@@ -337,9 +340,10 @@
                 hide-spin-buttons
                 :min="0"
                 width="110px"
-                @update:model-value="solvePreviewFromOutput"
+                @update:model-value="debouncePreviewOutput"
               />
               <span class="ml-1">/min</span>
+              <debounce-spinner :active="pendingRecalc === 'preview-output'" />
             </v-chip>
           </div>
 
@@ -370,6 +374,7 @@
   import { groupColorVars, palette } from '@/utils/colors'
   import eventBus from '@/utils/eventBus'
   import { setBalanceTolerance, TOLERANCE_RANGE, usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { useDebouncedAction } from '@/composables/useDebouncedAction'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { balanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
@@ -413,6 +418,11 @@
 
   const previewFactory = ref<Factory | null>(null)
   const previewAmount = ref(PREVIEW_START.amount)
+  // What the preview has actually been recalculated for. `previewAmount` is the input's own copy
+  // and moves on every keystroke; every figure below reads this instead, so a verdict is never
+  // computed from a half-typed number. The planner's status line waits on its recalculation in
+  // exactly the same way.
+  const previewCommittedAmount = ref(PREVIEW_START.amount)
   const previewProduct = computed(() => previewFactory.value?.products[0])
   const previewGroup = computed(() => previewProduct.value?.buildingGroups[0] as BuildingGroup)
 
@@ -449,6 +459,7 @@
     const gameData = gameDataStore.getGameData()
     if (!previewFactory.value || !previewProduct.value || !gameData) return
     previewProduct.value.amount = previewAmount.value
+    previewCommittedAmount.value = previewAmount.value
     calculateFactories([previewFactory.value], gameData, { origin: 'recalculate' })
     refreshPreview()
   }
@@ -463,7 +474,32 @@
     previewVersion.value++
   }
 
-  const previewRequiredBuildings = computed(() => previewAmount.value / PREVIEW_RATE)
+  /**
+   * The same wait the planner's building group row puts on its own inputs, through the same
+   * composable: the typed value echoes instantly, only the recalculation is held back, and a
+   * spinner sits in the chip while it is pending.
+   *
+   * Without it every keystroke ran a recalculation, and the output field's solve ran against a
+   * half-typed number — on the way to 280 the group was re-solved at 2, then at 28, each solve
+   * starting from what the last one left behind.
+   */
+  const { debouncing: pendingRecalc, runDebounced } = useDebouncedAction()
+
+  /**
+   * Longer than the planner's shared 250ms, which is under the gap between digits when a number is
+   * typed at a normal pace — so each digit got its own window and committed on its own. The timer
+   * does restart per keystroke; the window simply has to outlast the pause between them.
+   */
+  const PREVIEW_DEBOUNCE_MS = 750
+
+  const debouncePreviewAmount = () =>
+    runDebounced('preview-amount', rebuildPreview, PREVIEW_DEBOUNCE_MS)
+  const debouncePreviewGroup = (field: 'buildings' | 'clock') =>
+    runDebounced(`preview-${field}`, refreshPreview, PREVIEW_DEBOUNCE_MS)
+  const debouncePreviewOutput = (value: number) =>
+    runDebounced('preview-output', () => solvePreviewFromOutput(value), PREVIEW_DEBOUNCE_MS)
+
+  const previewRequiredBuildings = computed(() => previewCommittedAmount.value / PREVIEW_RATE)
 
   const previewOutput = computed(() => {
     void previewVersion.value // The group is a plain object, so the edits need declaring
@@ -473,16 +509,23 @@
     ) * PREVIEW_RATE
   })
 
-  // Two-way: reads the group's output, writes it back through the solver.
-  const previewOutputField = computed({
-    get: () => Number(formatNumber(previewOutput.value)),
-    set: solvePreviewFromOutput,
-  })
+  /**
+   * The output field's own copy of the figure, rather than a computed reading the group.
+   *
+   * Every other input here echoes what was typed instantly through v-model and leaves the solve
+   * to the debounce. A computed getter cannot: it reports the group, which does not move until
+   * the solve lands, so it would fight the digits being typed into it. The watcher is what puts
+   * the solved figure back, exactly as the planner's own group row has its parts rewritten.
+   */
+  const previewOutputField = ref(0)
+  watch(previewOutput, output => {
+    previewOutputField.value = Number(formatNumber(output))
+  }, { immediate: true })
 
-  const previewRemainingRate = computed(() => previewAmount.value - previewOutput.value)
+  const previewRemainingRate = computed(() => previewCommittedAmount.value - previewOutput.value)
 
-  const previewMaxRate = computed(() => previewAmount.value + previewToleranceRate.value)
-  const previewMinRate = computed(() => previewAmount.value - previewToleranceRate.value)
+  const previewMaxRate = computed(() => previewCommittedAmount.value + previewToleranceRate.value)
+  const previewMinRate = computed(() => previewCommittedAmount.value - previewToleranceRate.value)
 
   // Through the real helper, so the example can never promise something the planner then judges
   // differently.
@@ -587,6 +630,13 @@ $tree-gutter: 4px;
 .tolerance-preview {
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+// Vuetify leaves the suffix flush against the stepper, so "/min" sits touching the arrows.
+// Anchored on the panel and reached with :deep(): the suffix is Vuetify's own node and carries
+// no scope attribute, so a bare selector never lands on it.
+.tolerance-preview :deep(#balance-preview-amount + .v-text-field__suffix) {
+  margin-right: 8px;
 }
 
 .preview-header {
