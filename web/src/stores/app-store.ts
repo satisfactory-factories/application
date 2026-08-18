@@ -774,7 +774,13 @@ export const useAppStore = defineStore('app', () => {
       if (legacyTab) {
         legacyTab.plannerVersion = undefined
       }
-      setFactories(data)
+      // Recalculated, not trusted. This array was written by a client that meant something
+      // different by it - raw resources were assumed supplied - so its stored ledger is the one
+      // thing here that cannot be believed, and it is exactly what the notice below reads.
+      setFactories(data, true)
+      // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
+      // nothing else calls this - the plan simply turned red with nothing on screen saying why.
+      askRawBreakingNotice()
       return
     }
 
@@ -788,7 +794,8 @@ export const useAppStore = defineStore('app', () => {
       tab.groups = data.groups
       tab.plannerVersion = data.plannerVersion
     }
-    setFactories(data.factories ?? [])
+    setFactories(data.factories ?? [], true)
+    askRawBreakingNotice()
   }
 
   const getCurrentTab = () => {

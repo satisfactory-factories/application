@@ -607,6 +607,33 @@ describe('app-store', () => {
       expect(appStore.showRawBreakingNotice).toBe(true)
     })
 
+    // A restore from the account bypasses the loader, so loadingCompleted never fires. It used to
+    // be the one arrival path that clears plannerVersion (deliberately, so the question WOULD be
+    // asked) and then had nothing ask it - the plan just turned red with no explanation.
+    it('raises the notice for a bare array restored from the account', () => {
+      appStore.loadServerPlan(unmigratedPlan())
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    it('raises the notice for a whole tab restored from the account', () => {
+      const tab = appStore.getCurrentTab()!
+      appStore.loadServerPlan({
+        ...tab, plannerVersion: undefined, factories: unmigratedPlan(),
+      })
+
+      expect(appStore.showRawBreakingNotice).toBe(true)
+    })
+
+    it('stays silent for an already answered tab restored from the account', () => {
+      const tab = appStore.getCurrentTab()!
+      appStore.loadServerPlan({
+        ...tab, plannerVersion: config.plannerVersion, factories: unmigratedPlan(),
+      })
+
+      expect(appStore.showRawBreakingNotice).toBe(false)
+    })
+
     // Someone starting from nothing has no plan to have been broken, so there is no news.
     it('stays silent for an empty plan', async () => {
       await appStore.beginLoading([])
