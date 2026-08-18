@@ -32,6 +32,19 @@ export const addProductToFactory = (
     displayOrder?: number,
   }
 ) => {
+  // An item with no recipe is not a product. The engine counts its output as supplied while
+  // asking for no ingredients and no buildings, so one of these silently satisfies whatever it
+  // was added to fix - a shortage clicked from the satisfaction panel simply disappeared.
+  // Refused here as well as at the source (getDefaultRecipeIdForPart), because this is the last
+  // point before it reaches the plan.
+  //
+  // An empty row - no item AND no recipe - is the ordinary "add product" button, which hands the
+  // user a blank line to fill in. That one is fine.
+  if (options.id && !options.recipe) {
+    console.warn(`addProductToFactory: Refusing to add "${options.id}" with no recipe!`)
+    return
+  }
+
   // If there is no amount set, set it up so that the building count is at least 1.
   if (!options.amount) {
     const recipe = getRecipe(options.recipe, gameData)
