@@ -154,6 +154,11 @@ export interface FactoryPowerSyncState {
   powerAmount: number
   recipe: string // And also the fuel used
   ingredientAmount: number
+  // Which building this producer was when it was marked in sync. Needed because the state is keyed
+  // by the producer's id rather than its building, so swapping the building in place keeps the same
+  // key and would otherwise go unnoticed. Optional: plans marked in sync before the key changed
+  // have no record of it, and an absent value must not read as a change.
+  building?: string
 }
 
 export interface FactoryTask {

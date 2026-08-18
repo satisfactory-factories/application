@@ -107,8 +107,13 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "Coal": {
+          "amount": 1320,
+          "recipe": "Extract_Coal"
+        }
+      },
       "syncStatePower": {},
       "displayOrder": 0,
       "tasks": [],
@@ -235,8 +240,13 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "LiquidOil": {
+          "amount": 2360,
+          "recipe": "Extract_LiquidOil"
+        }
+      },
       "syncStatePower": {},
       "displayOrder": 1,
       "tasks": [],
@@ -356,8 +366,13 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "SAM": {
+          "amount": 4320,
+          "recipe": "Extract_SAM"
+        }
+      },
       "syncStatePower": {},
       "displayOrder": 2,
       "tasks": [],
@@ -477,8 +492,13 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "OreBauxite": {
+          "amount": 2200,
+          "recipe": "Extract_OreBauxite"
+        }
+      },
       "syncStatePower": {},
       "displayOrder": 3,
       "tasks": [],
@@ -790,15 +810,19 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 4,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "SAMIngot": {
-          "amount": 240,
+          "amount": 1080,
           "recipe": "IngotSAM"
         },
         "SAMFluctuator": {
-          "amount": 40,
+          "amount": 20,
           "recipe": "SAMFluctuator"
+        },
+        "DarkEnergy": {
+          "amount": 1350,
+          "recipe": "DarkEnergy"
         }
       },
       "tasks": [],
@@ -1447,8 +1471,37 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": true,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "AluminaSolution": {
+          "amount": 2640,
+          "recipe": "Alternate_SloppyAlumina"
+        },
+        "AluminumScrap": {
+          "amount": 3960,
+          "recipe": "AluminumScrap"
+        },
+        "AluminumIngot": {
+          "amount": 2640,
+          "recipe": "PureAluminumIngot"
+        },
+        "AluminumPlate": {
+          "amount": 720,
+          "recipe": "AluminumSheet"
+        },
+        "AluminumCasing": {
+          "amount": 960,
+          "recipe": "AluminumCasing"
+        },
+        "AluminumPlateReinforced": {
+          "amount": 90,
+          "recipe": "HeatSink"
+        },
+        "Water": {
+          "amount": 880,
+          "recipe": "Extract_Water"
+        }
+      },
       "displayOrder": 5,
       "tasks": [],
       "notes": "Major issues with byproducts here",
@@ -1736,11 +1789,19 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
+        "OreIron": {
+          "amount": 2520,
+          "recipe": "Extract_OreIron"
+        },
         "IronIngot": {
           "amount": 4680,
           "recipe": "Alternate_PureIronIngot"
+        },
+        "Water": {
+          "amount": 1440,
+          "recipe": "Extract_Water"
         }
       },
       "syncStatePower": {},
@@ -2018,11 +2079,19 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 7,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "Cement": {
           "amount": 3840,
           "recipe": "Alternate_WetConcrete"
+        },
+        "Stone": {
+          "amount": 5760,
+          "recipe": "Extract_Stone"
+        },
+        "Water": {
+          "amount": 4800,
+          "recipe": "Extract_Water"
         }
       },
       "syncStatePower": {},
@@ -2303,11 +2372,19 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
+        "OreCopper": {
+          "amount": 2520,
+          "recipe": "Extract_OreCopper"
+        },
         "CopperIngot": {
           "amount": 6300,
           "recipe": "Alternate_PureCopperIngot"
+        },
+        "Water": {
+          "amount": 1680,
+          "recipe": "Extract_Water"
         }
       },
       "syncStatePower": {},
@@ -2913,23 +2990,31 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 9,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
-        "CopperIngot": {
-          "amount": 4320,
-          "recipe": "IngotCopper"
-        },
         "CopperSheet": {
-          "amount": 320,
-          "recipe": "CopperSheet"
+          "amount": 1687.5,
+          "recipe": "Alternate_SteamedCopperSheet"
         },
         "Wire": {
-          "amount": 3360,
-          "recipe": "Wire"
+          "amount": 5400,
+          "recipe": "Alternate_FusedWire"
+        },
+        "CopperDust": {
+          "amount": 400,
+          "recipe": "CopperDust"
         },
         "Cable": {
-          "amount": 960,
-          "recipe": "Cable"
+          "amount": 2160,
+          "recipe": "Alternate_CoatedCable"
+        },
+        "HeavyOilResidue": {
+          "amount": 480,
+          "recipe": "Alternate_HeavyOilResidue"
+        },
+        "Water": {
+          "amount": 1687.5,
+          "recipe": "Extract_Water"
         }
       },
       "syncStatePower": {},
@@ -3327,8 +3412,21 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": true,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "QuartzCrystal": {
+          "amount": 720,
+          "recipe": "QuartzCrystal"
+        },
+        "Silica": {
+          "amount": 3780,
+          "recipe": "Alternate_Silica"
+        },
+        "CrystalOscillator": {
+          "amount": 24,
+          "recipe": "CrystalOscillator"
+        }
+      },
       "displayOrder": 10,
       "tasks": [],
       "notes": "",
@@ -3661,11 +3759,23 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 11,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "Gunpowder": {
           "amount": 60,
           "recipe": "Gunpowder"
+        },
+        "GunpowderMK2": {
+          "amount": 20,
+          "recipe": "GunpowderMK2"
+        },
+        "Coal": {
+          "amount": 30,
+          "recipe": "Extract_Coal"
+        },
+        "Sulfur": {
+          "amount": 30,
+          "recipe": "Extract_Sulfur"
         }
       },
       "tasks": [],
@@ -3929,15 +4039,15 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 12,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
-        "IronIngot": {
-          "amount": 480,
-          "recipe": "IngotIron"
-        },
         "IronPlate": {
-          "amount": 320,
+          "amount": 960,
           "recipe": "IronPlate"
+        },
+        "IronPlateReinforced": {
+          "amount": 202.5,
+          "recipe": "Alternate_ReinforcedIronPlate_2"
         }
       },
       "tasks": [],
@@ -4253,15 +4363,23 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 13,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
+        "OreGold": {
+          "amount": 3000,
+          "recipe": "Extract_OreGold"
+        },
         "GoldIngot": {
-          "amount": 450,
-          "recipe": "IngotCaterium"
+          "amount": 1500,
+          "recipe": "Alternate_PureCateriumIngot"
         },
         "HighSpeedWire": {
-          "amount": 1922,
+          "amount": 3840,
           "recipe": "Quickwire"
+        },
+        "Water": {
+          "amount": 3000,
+          "recipe": "Extract_Water"
         }
       },
       "syncStatePower": {},
@@ -4733,35 +4851,31 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 14,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "Plastic": {
-          "amount": 840,
+          "amount": 2920,
           "recipe": "Plastic"
+        },
+        "LiquidFuel": {
+          "amount": 960,
+          "recipe": "ResidualFuel"
         },
         "Rubber": {
           "amount": 240,
-          "recipe": "Rubber"
+          "recipe": "Alternate_RecycledRubber"
         },
-        "LiquidFuel": {
-          "amount": 480,
-          "recipe": "ResidualFuel"
-        },
-        "GunpowderMK2": {
-          "amount": 60,
-          "recipe": "GunpowderMK2"
-        },
-        "CartridgeStandard": {
-          "amount": 300,
-          "recipe": "Cartridge"
+        "FluidCanister": {
+          "amount": 40,
+          "recipe": "FluidCanister"
         },
         "Fuel": {
           "amount": 40,
           "recipe": "Fuel"
         },
-        "FluidCanister": {
-          "amount": 40,
-          "recipe": "FluidCanister"
+        "LiquidOil": {
+          "amount": 4380,
+          "recipe": "Extract_LiquidOil"
         }
       },
       "tasks": [],
@@ -4822,7 +4936,15 @@
       },
       "previousInputs": [],
       "dataVersion": "2025-02-20",
-      "syncStatePower": {},
+      "syncStatePower": {
+        "2738": {
+          "powerAmount": 10000,
+          "buildingAmount": 40,
+          "recipe": "GeneratorFuel_LiquidFuel",
+          "ingredientAmount": 800,
+          "building": "generatorfuel"
+        }
+      },
       "group": {
         "id": "g-7f6a6e13",
         "name": "Basics",
@@ -5402,19 +5524,23 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 16,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "SteelIngot": {
-          "amount": 2160,
-          "recipe": "IngotSteel"
+          "amount": 3240,
+          "recipe": "Alternate_IngotSteel_1"
         },
         "SteelPipe": {
-          "amount": 640,
-          "recipe": "SteelPipe"
+          "amount": 1200,
+          "recipe": "Alternate_SteelPipe_Molded"
         },
         "SteelPlate": {
-          "amount": 240,
-          "recipe": "SteelBeam"
+          "amount": 720,
+          "recipe": "Alternate_SteelBeam_Molded"
+        },
+        "Coal": {
+          "amount": 2160,
+          "recipe": "Extract_Coal"
         }
       },
       "tasks": [],
@@ -5740,10 +5866,10 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 17,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "Stator": {
-          "amount": 90,
+          "amount": 210,
           "recipe": "Stator"
         },
         "Rotor": {
@@ -5937,10 +6063,10 @@
       "hidden": false,
       "hasProblem": false,
       "displayOrder": 18,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "SteelPlateReinforced": {
-          "amount": 72,
+          "amount": 144,
           "recipe": "EncasedIndustrialBeam"
         }
       },
@@ -6380,15 +6506,19 @@
       "hidden": false,
       "hasProblem": true,
       "displayOrder": 19,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "ModularFrame": {
-          "amount": 48,
+          "amount": 84,
           "recipe": "ModularFrame"
         },
         "ModularFrameHeavy": {
-          "amount": 8,
+          "amount": 14,
           "recipe": "ModularFrameHeavy"
+        },
+        "ModularFrameFused": {
+          "amount": 4.5,
+          "recipe": "FusedModularFrame"
         }
       },
       "tasks": [],
@@ -6764,8 +6894,21 @@
       "usingRawResourcesOnly": false,
       "hidden": false,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "CartridgeStandard": {
+          "amount": 150,
+          "recipe": "Cartridge"
+        },
+        "CartridgeChaos": {
+          "amount": 250,
+          "recipe": "CartridgeChaos"
+        },
+        "NobeliskExplosive": {
+          "amount": 10,
+          "recipe": "Nobelisk"
+        }
+      },
       "displayOrder": 20,
       "tasks": [],
       "notes": "",
@@ -7006,8 +7149,17 @@
       "usingRawResourcesOnly": false,
       "hidden": false,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "Diamond": {
+          "amount": 400,
+          "recipe": "Alternate_Diamond_OilBased"
+        },
+        "TimeCrystal": {
+          "amount": 48,
+          "recipe": "TimeCrystal"
+        }
+      },
       "displayOrder": 21,
       "tasks": [],
       "notes": "",
@@ -7342,8 +7494,21 @@
       "usingRawResourcesOnly": false,
       "hidden": false,
       "hasProblem": true,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "Water": {
+          "amount": 840,
+          "recipe": "Extract_Water"
+        },
+        "SulfuricAcid": {
+          "amount": 600,
+          "recipe": "SulfuricAcid"
+        },
+        "NitricAcid": {
+          "amount": 180,
+          "recipe": "NitricAcid"
+        }
+      },
       "displayOrder": 22,
       "tasks": [],
       "notes": "",
@@ -7402,7 +7567,7 @@
       "usingRawResourcesOnly": false,
       "hidden": false,
       "hasProblem": false,
-      "inSync": null,
+      "inSync": true,
       "syncState": {},
       "displayOrder": 23,
       "tasks": [],
@@ -7456,7 +7621,15 @@
       },
       "previousInputs": [],
       "dataVersion": "2025-02-20",
-      "syncStatePower": {},
+      "syncStatePower": {
+        "733": {
+          "powerAmount": 1500,
+          "buildingAmount": 3,
+          "recipe": "AlienPowerAugmenter",
+          "ingredientAmount": 0,
+          "building": "alienpoweraugmenter"
+        }
+      },
       "group": {
         "id": "g-24859696",
         "name": "Global Power",
@@ -7489,7 +7662,7 @@
       "usingRawResourcesOnly": false,
       "hidden": false,
       "hasProblem": false,
-      "inSync": null,
+      "inSync": true,
       "syncState": {},
       "displayOrder": 24,
       "tasks": [],
@@ -7607,7 +7780,29 @@
       },
       "previousInputs": [],
       "dataVersion": "2025-02-20",
-      "syncStatePower": {},
+      "syncStatePower": {
+        "744": {
+          "powerAmount": 400,
+          "buildingAmount": 4,
+          "recipe": "GeneratorGeoThermal_Impure",
+          "ingredientAmount": 0,
+          "building": "geothermalgenerator"
+        },
+        "745": {
+          "powerAmount": 600,
+          "buildingAmount": 3,
+          "recipe": "GeneratorGeoThermal_Normal",
+          "ingredientAmount": 0,
+          "building": "geothermalgenerator"
+        },
+        "746": {
+          "powerAmount": 800,
+          "buildingAmount": 2,
+          "recipe": "GeneratorGeoThermal_Pure",
+          "ingredientAmount": 0,
+          "building": "geothermalgenerator"
+        }
+      },
       "group": {
         "id": "g-24859696",
         "name": "Global Power",
@@ -8185,23 +8380,27 @@
       "hidden": true,
       "hasProblem": false,
       "displayOrder": 25,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "SpaceElevatorPart_1": {
-          "amount": 24,
+          "amount": 10,
           "recipe": "SpaceElevatorPart_1"
         },
         "SpaceElevatorPart_3": {
-          "amount": 30,
+          "amount": 45,
           "recipe": "SpaceElevatorPart_3"
         },
         "SpaceElevatorPart_4": {
-          "amount": 10,
+          "amount": 5,
           "recipe": "SpaceElevatorPart_4"
         },
         "SpaceElevatorPart_5": {
-          "amount": 6,
+          "amount": 9,
           "recipe": "SpaceElevatorPart_5"
+        },
+        "SpaceElevatorPart_2": {
+          "amount": 15,
+          "recipe": "SpaceElevatorPart_2"
         }
       },
       "tasks": [],
@@ -8811,8 +9010,29 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": true,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "PressureConversionCube": {
+          "amount": 2,
+          "recipe": "PressureConversionCube"
+        },
+        "ModularFrameLightweight": {
+          "amount": 8,
+          "recipe": "RadioControlUnit"
+        },
+        "CoolingSystem": {
+          "amount": 14,
+          "recipe": "CoolingSystem"
+        },
+        "MotorLightweight": {
+          "amount": 2,
+          "recipe": "MotorTurbo"
+        },
+        "Water": {
+          "amount": 70,
+          "recipe": "Extract_Water"
+        }
+      },
       "displayOrder": 26,
       "tasks": [],
       "notes": "",
@@ -9386,8 +9606,25 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "SpaceElevatorPart_9": {
+          "amount": 2,
+          "recipe": "SpaceElevatorPart_9"
+        },
+        "SpaceElevatorPart_7": {
+          "amount": 4.5,
+          "recipe": "SpaceElevatorPart_7"
+        },
+        "SpaceElevatorPart_6": {
+          "amount": 6,
+          "recipe": "SpaceElevatorPart_6"
+        },
+        "SpaceElevatorPart_8": {
+          "amount": 2,
+          "recipe": "SpaceElevatorPart_8"
+        }
+      },
       "displayOrder": 27,
       "tasks": [],
       "notes": "",
@@ -9857,8 +10094,25 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": true,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "CompactedCoal": {
+          "amount": 250,
+          "recipe": "Alternate_EnrichedCoal"
+        },
+        "LiquidFuel": {
+          "amount": 378,
+          "recipe": "LiquidFuel"
+        },
+        "LiquidTurboFuel": {
+          "amount": 315,
+          "recipe": "Alternate_Turbofuel"
+        },
+        "RocketFuel": {
+          "amount": 500,
+          "recipe": "RocketFuel"
+        }
+      },
       "displayOrder": 28,
       "tasks": [],
       "notes": "",
@@ -9924,7 +10178,15 @@
         }
       ],
       "dataVersion": "2025-02-20",
-      "syncStatePower": {},
+      "syncStatePower": {
+        "8918": {
+          "powerAmount": 30000,
+          "buildingAmount": 120,
+          "recipe": "GeneratorFuel_RocketFuel",
+          "ingredientAmount": 500,
+          "building": "generatorfuel"
+        }
+      },
       "group": {
         "id": "g-97337b75",
         "name": "Advanced",
@@ -10132,8 +10394,17 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "FicsiteIngot": {
+          "amount": 120,
+          "recipe": "FicsiteIngot_AL"
+        },
+        "FicsiteMesh": {
+          "amount": 360,
+          "recipe": "FicsiteMesh"
+        }
+      },
       "displayOrder": 29,
       "tasks": [],
       "notes": "",
@@ -10957,8 +11228,37 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "DarkMatter": {
+          "amount": 270,
+          "recipe": "DarkMatter"
+        },
+        "SingularityCell": {
+          "amount": 10,
+          "recipe": "SingularityCell"
+        },
+        "QuantumEnergy": {
+          "amount": 1000,
+          "recipe": "QuantumEnergy"
+        },
+        "QuantumOscillator": {
+          "amount": 20,
+          "recipe": "SuperpositionOscillator"
+        },
+        "TemporalProcessor": {
+          "amount": 4,
+          "recipe": "TemporalProcessor"
+        },
+        "CrystalShard": {
+          "amount": 12,
+          "recipe": "SyntheticPowerShard"
+        },
+        "AlienPowerFuel": {
+          "amount": 4,
+          "recipe": "AlienPowerFuel"
+        }
+      },
       "displayOrder": 30,
       "tasks": [],
       "notes": "",
@@ -11522,8 +11822,25 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "SpaceElevatorPart_10": {
+          "amount": 10,
+          "recipe": "SpaceElevatorPart_10"
+        },
+        "SpaceElevatorPart_11": {
+          "amount": 2,
+          "recipe": "SpaceElevatorPart_11"
+        },
+        "SpaceElevatorPart_12": {
+          "amount": 4,
+          "recipe": "SpaceElevatorPart_12"
+        },
+        "Water": {
+          "amount": 50,
+          "recipe": "Extract_Water"
+        }
+      },
       "displayOrder": 31,
       "tasks": [],
       "notes": "",
@@ -11704,8 +12021,13 @@
       "usingRawResourcesOnly": true,
       "hidden": true,
       "hasProblem": false,
-      "inSync": null,
-      "syncState": {},
+      "inSync": true,
+      "syncState": {
+        "OreUranium": {
+          "amount": 800,
+          "recipe": "Extract_OreUranium"
+        }
+      },
       "syncStatePower": {},
       "displayOrder": 32,
       "tasks": [],
@@ -12162,7 +12484,7 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "ElectromagneticControlRod": {
           "amount": 64,
@@ -12175,6 +12497,10 @@
         "NuclearFuelRod": {
           "amount": 8,
           "recipe": "NuclearFuelRod"
+        },
+        "Water": {
+          "amount": 9600,
+          "recipe": "Extract_Water"
         }
       },
       "displayOrder": 33,
@@ -12278,11 +12604,12 @@
       ],
       "dataVersion": "2025-02-20",
       "syncStatePower": {
-        "generatornuclear": {
+        "564": {
           "powerAmount": 100000,
           "buildingAmount": 40,
           "recipe": "GeneratorNuclear_NuclearFuelRod",
-          "ingredientAmount": 8
+          "ingredientAmount": 8,
+          "building": "generatornuclear"
         }
       },
       "group": {
@@ -12808,7 +13135,7 @@
       "usingRawResourcesOnly": false,
       "hidden": true,
       "hasProblem": false,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "NonFissibleUranium": {
           "amount": 400,
@@ -12825,6 +13152,10 @@
         "PlutoniumFuelRod": {
           "amount": 2,
           "recipe": "PlutoniumFuelRod"
+        },
+        "Water": {
+          "amount": 4680,
+          "recipe": "Extract_Water"
         }
       },
       "displayOrder": 34,
@@ -12938,11 +13269,12 @@
       ],
       "dataVersion": "2025-02-20",
       "syncStatePower": {
-        "generatornuclear": {
+        "1118": {
           "powerAmount": 50000,
           "buildingAmount": 20,
           "recipe": "GeneratorNuclear_PlutoniumFuelRod",
-          "ingredientAmount": 2
+          "ingredientAmount": 2,
+          "building": "generatornuclear"
         }
       },
       "group": {
@@ -13423,15 +13755,27 @@
       "hidden": false,
       "hasProblem": false,
       "displayOrder": 35,
-      "inSync": false,
+      "inSync": true,
       "syncState": {
         "CircuitBoard": {
-          "amount": 90,
+          "amount": 390,
           "recipe": "CircuitBoard"
         },
+        "CircuitBoardHighSpeed": {
+          "amount": 90,
+          "recipe": "AILimiter"
+        },
+        "HighSpeedConnector": {
+          "amount": 25.5,
+          "recipe": "HighSpeedConnector"
+        },
         "Computer": {
-          "amount": 15,
+          "amount": 60,
           "recipe": "Computer"
+        },
+        "ComputerSuper": {
+          "amount": 8.5,
+          "recipe": "ComputerSuper"
         }
       },
       "tasks": [],
