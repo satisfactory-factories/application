@@ -23,8 +23,8 @@
           </ul>
         </nav>
         <v-divider />
-        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">14/Aug/2026</span></h1>
-        <p>Everything your plan needs now comes from somewhere. Raw resources are no longer an assumption: ore, water, oil and gas are dug up by buildings you place, planned and exported like anything else. The plan they feed got the folders, icons and status chips to keep track of it all.</p>
+        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
+        <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
         <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
           <p class="mb-1"><b>In this update:</b></p>
           <ul class="toc-list">
@@ -34,8 +34,15 @@
           </ul>
         </nav>
 
+        <h2 class="breaking">🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
+        <p>The planner used to top up any raw resource you were short of. Every raw resource must now be mined or imported, and an unmet one is a real shortage, with the usual buttons to mine it on the spot or import it.</p>
+        <p><b>Plans built before this will show factories in red.</b> Nothing has been changed or lost. The shortages were always there.</p>
+        <p>There is no setting for it: an optional assumption would mean the same plan meant different things to different people.</p>
+
+        <v-divider class="subsection" />
+
         <h2>🆕 <i class="fas fa-hard-hat ml-1" /><span class="ml-2">Mines</span></h2>
-        <p>Pick a raw resource as a product and the planner offers its extractor as the recipe. Because one ore line routinely mixes a Mk.3 on a pure node with a Mk.2 on a normal one, the <b>miner mark and node purity are set per building group</b>, and both stack with the group's clock exactly as they do in game. Build a dedicated mine and export the ore anywhere in your plan, or mine on site and smelt it in the same factory.</p>
+        <p>Pick a raw resource as a product and the planner offers its extractor as the recipe, along with any alternate recipe that also produces it. Miner mark and node purity are set per building group, and both stack with the group's clock as they do in game. Mine on site like any other product, or build a dedicated mine and export the ore.</p>
         <v-img
           alt="A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one"
           max-width="1200"
@@ -45,8 +52,8 @@
         <v-divider class="subsection" />
 
         <h2>🆕 <i class="fas fa-water ml-1" /><span class="ml-2">Resource Wells</span></h2>
-        <p>A well is one building group: the pressurizer, and how many satellite extractors stand on impure, normal and pure micro-nodes. The pressurizer's clock scales every satellite at once, so a well of 1 normal and 6 pure satellites reads 780 m³/min at 150 MW, and 1,950 m³/min at 503.7 MW once you shove three power shards in it. The satellites are counted as buildings to place but draw no power, because the pressurizer pays for all of them.</p>
-        <p><b>Nitrogen Gas becomes extractable for the first time</b>, wells being its only source.</p>
+        <p>A well is one building group: the pressurizer, plus its satellite extractors on impure, normal and pure micro-nodes. The pressurizer's clock scales every satellite at once and pays the power for all of them. Wells cover Water, Crude Oil and Nitrogen Gas.</p>
+        <p><b>Raw Nitrogen Gas is in the planner for the first time.</b> It was only ever available through conversion before, which was a long-standing hole.</p>
         <v-img
           alt="A resource well pressurizer with its satellite nodes by purity"
           max-width="1200"
@@ -56,7 +63,7 @@
         <v-divider class="subsection" />
 
         <h2>🆕 <i class="fas fa-tint ml-1" /><span class="ml-2">Water &amp; Oil</span></h2>
-        <p>Water sources have no purity, so the Water Extractor is simply a building that produces a raw resource at a flat 120 m³/min, and overclocks like everything else. Oil Extractors work off node purity in the usual way.</p>
+        <p>Water is now supported however you get it: Water Extractors, resource wells, alternate recipes and byproducts. Oil is supported from both Oil Extractors and resource wells.</p>
         <v-img
           alt="Water Extractors, which have no node purity"
           max-width="1200"
@@ -65,131 +72,163 @@
 
         <v-divider class="subsection" />
 
-        <h2>🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
-        <p>Until now the planner quietly topped up any raw resource you were short of, so a plan could never tell you it was missing ore. Every raw resource must now be mined or imported like anything else, and an unmet one is a real shortage, with the usual buttons to mine it on the spot or import it from a factory that does. <b>Plans built before this will show factories in red.</b> Nothing in your plan has been changed or lost; it is only being honest about what was already missing.</p>
-        <p><b>There is no setting for it, and that is deliberate.</b> An optional assumption meant the same plan could mean different things to different people, with nothing on screen to say so. The bug that ended it: a factory mining 100 of the 180 Limestone it needed read as <i>fully satisfied</i>, because the chip that would have mentioned the assumed 80 was suppressed by the one saying "extracted".</p>
-        <p>The one exception is decided by the game rather than by you. Eleven raw resources have no extractor of any kind (Leaves, Wood, Mycelia, the four alien remains, the three power slugs and the FICSMAS Gift), so demanding you mine those would leave every Fabric, Charcoal, Biomass and Protein factory permanently red with nothing the planner could offer. They stay satisfied and wear an amber <b>Manually gathered</b> chip.</p>
-
-        <v-divider class="subsection" />
-
         <h2>🆕 <i class="fas fa-shovel ml-1" /><span class="ml-2">The Raw Resources Wizard</span></h2>
-        <p>It lists every factory short of a raw resource and offers, per row: create a shared mine factory, mine it right there, import it from a factory that already mines it, or leave it alone. It lives in <b>Options</b>, the wrench beside the share button, and isn't only for migrating; run it any time a new factory comes up short.</p>
+        <p>It lists every factory short of a raw resource and offers, per row: build a shared mine, mine it on site, import it from a factory that already mines it, or leave it alone. It lives in <b>Options</b>, the wrench beside the share button. Run it any time a new factory comes up short.</p>
         <v-img
           alt="The Raw Resources Wizard listing factories short of a raw resource"
           max-width="1200"
           src="/assets/changelog/beta6/wizard.png"
         />
         <ul class="ml-6 mt-2">
-          <li><b>One mine per resource for the whole plan</b> where you ask it to build one, sized to everything that asked for it: a plan short of iron in eight places gets one Iron Ore Mine, not eight.</li>
-          <li>New mines are built on <b>Miner Mk.2s at normal purity</b>. Only the building count and the power depend on that guess, never the amount of ore, so adjust each group to the nodes you actually have.</li>
-          <li><b>Water defaults to being extracted on site</b>, since that is how it is nearly always built, and a resource already mined somewhere in your plan defaults to importing from there.</li>
-          <li><b>Resource wells are the one thing it won't build.</b> A well's rate comes from its satellite nodes, so sizing one automatically would multiply the pressurizer instead and land an order of magnitude out while reading as solved. Nitrogen rows offer nothing at all, and say why. Wiring an import from a well you already have is one click in Imports.</li>
-          <li>It shows you every factory it will touch, everything they will produce and every export they gain, and <b>writes nothing until you confirm</b>. There is no undo in the planner, so the whole change is built to one side first: if any part of it can't be applied, nothing is written at all. <b>Download a backup</b> from the confirmation screen for a way back.</li>
-          <li>You choose whether new mines land at the top or the bottom of the plan, and can rename any of them before they are built.</li>
+          <li><b>One mine per resource</b>, sized to everything that asked for it. Eight factories short of iron get one Iron Ore Mine.</li>
+          <li>New mines use <b>Miner Mk.2s at normal purity</b>. That guess only affects the building count and the power, never the ore, so adjust each group to the nodes you have.</li>
+          <li><b>Water defaults to on-site extraction.</b> A resource already mined somewhere in your plan defaults to importing from there.</li>
+          <li><b>Resource wells are not compatible with the wizard</b>, because of the satellites. Rather than make a bad guess it leaves them to you, and says so on any row it cannot help with. Wiring an import from a well you already have is one click in Imports.</li>
+          <li><b>Nothing is written until you confirm.</b> You see every factory, product and export first, and can download a backup from the confirmation screen.</li>
+          <li>You choose whether new mines land at the top or the bottom of the plan, and can rename them before they are built.</li>
         </ul>
 
         <v-divider class="subsection" />
 
         <h2>🆕 <i class="fas fa-folder-tree ml-1" /><span class="ml-2">Factory Groups</span></h2>
-        <p>A plan of thirty factories was a flat list, and the only ways to organise it were the name and the drag order. Factories now belong to a <b>group</b>: a named, coloured folder that collapses like a toggle, reorders, and can be dragged in and out of. Anything in no group falls into <b>Ungrouped</b>, pinned to the top.</p>
+        <p>Factories now belong to a <b>group</b>: a named, coloured folder that can be collapsed, reordered, and have factories dragged between them. Anything ungrouped falls into <b>Ungrouped</b>, pinned to the top.</p>
         <v-img
           alt="Factories organised into coloured groups in the sidebar"
           max-width="1200"
           src="/assets/changelog/beta6/factory-groups.png"
         />
         <ul class="ml-6 mt-2">
-          <li><b>In the sidebar</b>, a group is a header with its colour swatch, an editable name, a factory count, a delete button, and a line showing what the group makes: as many item icons as the sidebar is currently wide enough for, then a <b>+N</b> tile whose tooltip lists the rest. Drag a factory between groups, reorder factories inside one, or drag the groups themselves.</li>
-          <li>The sidebar draws a group as a <b>tree</b>: a line in the group's colour down the edge of the section, with an elbow into each member.</li>
-          <li><b>In the planner</b>, cards sit under a collapsible band per group, Ungrouped first. Bands only appear once there is more than one section, so a plan that has never used groups looks exactly as it did.</li>
-          <li><b>Colour</b> comes from a palette or the picker. Red and amber are deliberately not offered: they are the problem and warning tiers, and a group wearing one would read as a broken factory. A group gives its cards a muted header and a bright left spine, and a status still wins the border, so a factory short of copper stays red while its spine says where it lives.</li>
-          <li><b>Assigning</b> is a drag, or the group chip on the factory's header, which lists the groups and can make a new one on the spot. <b>Multi-group edit</b> does the same to a whole selection, so organising an existing plan doesn't mean opening forty cards in turn.</li>
-          <li><b>Group power</b> (generated, consumed and the balance per group) is off by default and switched on under <b>Options → Sidebar → Factory groups</b>. It comes with a <b>circuit boost</b> chip wherever Alien Power Augmenters are involved: that boost is a share of the whole plan's generation, so without it a group generating 3.3 GW read as 61 GW.</li>
-          <li><b>Deleting a group never deletes a factory</b>: one that still holds factories asks where they should go first.</li>
+          <li><b>In the sidebar</b>, a group header carries its colour, an editable name, a factory count, a delete button, and icons for what the group makes.</li>
+          <li><b>In the planner</b>, cards sit under a collapsible band per group, Ungrouped first.</li>
+          <li><b>Assign</b> by drag, or from the group chip on the factory header, which can make a new group on the spot. <b>Multi-group edit</b> does the same to a whole selection.
+            <v-img
+              alt="Multi-group edit assigning several selected factories to one group"
+              class="mt-2"
+              max-width="1200"
+              src="/assets/changelog/beta6/multi-group-edit.png"
+            />
+          </li>
+          <li><b>Group power</b> (generated, consumed and the balance) is optional, under <b>Options → Sidebar → Factory groups</b>. A <b>circuit boost</b> chip shows where Alien Power Augmenters are involved.</li>
+          <li><b>Deleting a group never deletes a factory.</b> One that still holds factories asks where they should go first.</li>
         </ul>
 
         <v-divider class="subsection" />
 
         <h2>🆕 <i class="fas fa-icons ml-1" /><span class="ml-2">Factory Icons</span></h2>
-        <p>Every factory drew the same generic industry glyph, so a plan of twenty factories showed twenty identical icons and the only thing distinguishing a sidebar row was a truncated name. Factories now carry <b>an icon you choose</b>, and it shows everywhere the factory is referenced: the card header, the sidebar row, the Factories Summary, the graph node, the import rows, and the import/export chips.</p>
+        <p>Factories now carry <b>an icon you choose</b>, shown on the card header, the sidebar row, the Factories Summary, the graph node, the import rows and the import/export chips.</p>
         <v-img
           alt="The factory icon picker"
           max-width="1200"
           src="/assets/changelog/beta6/factory-icons.png"
         />
         <ul class="ml-6 mt-2">
-          <li><b>352 icons to pick from.</b> Real game art for every machine, extractor and generator, every belt, lift, splitter, pipe and pump, all the power infrastructure, the stations and storage, the vehicles, the equipment, and every raw resource, fluid and component the planner knows about, plus emoji: coloured squares, circles, diamonds and triangles, the digits 0–10, and a row of symbols.</li>
-          <li><b>Two ways in:</b> click the icon on the factory itself, or the same icon on its row in the sidebar. Either opens the picker; <i>Use default</i> puts the generic glyph back.</li>
-          <li><b>The picker opens on everything</b>, laid out under category headings so you can scroll it like a sheet rather than hunting through tabs. The category buttons stay on screen, so they double as a map of what is in there.</li>
-          <li><b>Search covers the whole set</b> whichever category is selected, and matches names with their punctuation stripped: the game writes "Mk.5" and nobody types the dot, so "mk5" finds it.</li>
-          <li>A factory stores only an icon ID, so nothing about how it is drawn is baked into your saved plan. Plans saved before this show the default glyph until an icon is picked.</li>
-          <li><b>The Demo plan wears them</b>, with its copper chain folded into a copper-coloured group.</li>
+          <li><b>352 icons</b>, using in-game art for every building, product, vehicle and resource, plus emoji: coloured squares, circles, diamonds, triangles, digits and symbols.</li>
+          <li>Click the icon on the factory header, or on its sidebar row, to change it.</li>
         </ul>
 
         <v-divider class="subsection" />
 
         <h2>🆕 <i class="fas fa-heart-rate ml-1" /><span class="ml-2">Factory status indicators</span></h2>
-        <p>A factory in the sidebar used to tell you exactly one thing: it was red, or it wasn't. Three unrelated failures collapsed into one red blob, and anything short of outright broken had nowhere to appear. Factories now carry a <b>status list</b>: named conditions rendered as chips under the factory name, so a 30-factory plan can be triaged without opening a single card.</p>
+        <p>A factory in the sidebar was either red or it wasn't, and it never said what was wrong. Factories now carry <b>status chips</b> that name the problem, so you can go straight to it.</p>
         <v-img
           alt="A factory carrying status chips under its name"
           max-width="1200"
           src="/assets/changelog/beta6/status-chips.png"
         />
-        <ul class="ml-6 mt-2">
-          <li><b>Three tiers.</b> Red for a problem: the factory can't do what the plan says it does. Amber for a warning: the plan is coherent, but something is probably not what you meant, or your world is behind your plan. The higher of those paints the border, and chips aren't collapsed, so a factory both short of copper <i>and</i> out of sync shows both. The third tier is a note: worth counting, often deliberate, and it leaves the factory green.</li>
-          <li><b>Nine statuses to start with.</b> Red: shortage, unmet export request, building groups that don't add up. Amber: unhandled byproduct, out of sync with the game, redundant import, duplicate import. Note: no demand, potential blockage.</li>
-          <li><b>No demand</b> counts the products nothing asks for: no recipe in the factory needs them and no other factory imports them. A factory built to feed the sink is doing its job, which is why this one never colours the card. The chip appears beside the product, beside the item's surplus in Satisfaction, and as a count on the Factories Summary.</li>
-          <li><b>A byproduct nothing consumes will back up and stop the buildings making it.</b> You can decline to build a product nobody wants; you cannot decline the Heavy Oil Residue or the Plutonium Waste that comes off the line. How loudly the planner says so depends on whether the AWESOME Sink would take it: sinkable byproducts get a <b>Potential blockage</b> note and the factory stays green, since there is a way out you just haven't drawn yet. Fluids and radioactive items get <b>Unhandled byproduct</b>, which is amber and does colour the factory, because the sink takes neither. The product or generator responsible takes an amber background so you can see which row it is, and exporting the byproduct or blending it into a recipe clears either one.</li>
-          <li><b>End products say so, in blue.</b> Items the game itself never consumes are the end of their chain: the AI Expansion Server, the Ballistic Warp Drive, nobelisks, rebar, the Portable Miner. Having no consumer is what those are for, so they read <b>End product</b> rather than "no demand". Nuclear fuel rods and the Alien Power Matrix are correctly left out: nothing crafts with them, but generators burn them.</li>
-          <li><b>The chips say which items</b>: three shortages are three item icons and "3 shortages", not a generic warning glyph. The full list is in the tooltip. Clicking a chip scrolls to the section it points at.</li>
-          <li>The same treatment now applies everywhere factory state was already painted: the sidebar, the card border and header, the section headers, and the Factories Summary, which never painted the amber state at all.</li>
-          <li><b>The Factories Summary counts them</b>, in its header and in its sidebar row: how many factories are short of parts, have building groups that don't add up, are out of sync, and so on. Only the states that apply are shown, and the header keeps them when the summary is collapsed.</li>
-          <li><b>Those counts filter the table.</b> Click one and the summary lists only the factories behind it, ready to jump into; click it again to clear.</li>
-          <li><b>Fixed:</b> a factory whose <i>power generator</i> building groups didn't add up never turned red. The check ran, but the rollup only ever looked at products.</li>
+        <p class="mt-2"><b>The statuses below sit in three tiers.</b> Red is a serious problem. Amber is something to address at some point. Yellow shows on the factory without flagging it. The highest tier present paints the factory, and chips are never collapsed, so a factory short of copper <i>and</i> out of sync shows both.</p>
+        <ul class="status-tiers ml-6">
+          <li class="tier-problem"><b>Marks the factory red</b>
+            <ul>
+              <li><b>Shortage</b>: the factory needs more of a part than it can supply.</li>
+              <li><b>Export request unmet</b>: another factory asks for more than this one supplies.</li>
+              <li><b>Building groups do not add up</b>: the groups on an item do not cover the buildings it needs.</li>
+            </ul>
+          </li>
+          <li class="tier-warning"><b>Marks the factory amber</b>
+            <ul>
+              <li><b>Unhandled byproduct</b>: a fluid or radioactive byproduct nothing consumes and the sink will not take.</li>
+              <li><b>Out of sync</b>: the factory has changed since you marked it built in game.</li>
+              <li><b>Redundant import</b>: the part is already covered here, or by another import row.</li>
+              <li><b>Duplicate import</b>: the same part imported twice from the same factory.</li>
+            </ul>
+          </li>
+          <li class="tier-note"><b>Shows on the factory, but does not flag it</b>
+            <ul>
+              <li><b>No demand</b>: nothing asks for this product.</li>
+              <li><b>Potential blockage</b>: a byproduct nothing consumes, but the sink would take it.</li>
+            </ul>
+          </li>
         </ul>
+        <v-img
+          alt="A product row for a Ballistic Warp Drive, carrying a blue End product chip"
+          class="mt-2"
+          max-width="900"
+          src="/assets/changelog/beta6/end-product-chip.png"
+        />
+        <p class="mt-2"><b>End product</b>, in blue, marks an item the game itself never consumes, so having no demand is what it is for.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Fixed:</b> a factory whose <i>power generator</i> building groups didn't add up never turned red. The check ran, but the rollup only looked at products.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
+        <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
+        <v-img
+          alt="The Factories Summary, with status counts in its header"
+          max-width="1200"
+          src="/assets/changelog/beta6/factories-summary.png"
+        />
+        <p class="mt-2"><b>Click a count to list only the factories behind it</b>, and click it again to clear.</p>
+        <v-img
+          alt="The Factories Summary filtered to the three factories with shortages"
+          max-width="1200"
+          src="/assets/changelog/beta6/factories-summary-filtered.png"
+        />
 
         <v-divider class="subsection" />
 
         <h2>👍 <i class="fas fa-chart-line ml-1" /><span class="ml-2">Statistics enhancements</span></h2>
         <h3>Item Production</h3>
-        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> They listed the same items twice: one showing the balance, the other the supply. Item Production lists every item, with a search box and filters for surplus, deficit and balanced. The filter counts follow the search, so they say how many match both. The "Show all Products" toggle has gone with the section it controlled.</p>
+        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> Item Production lists every item, with a search box and filters for surplus, deficit and balanced. The filter counts follow the search. The "Show all Products" toggle has gone with the section it controlled.</p>
         <v-img
           alt="The Item Production table, with each item broken down by factory"
           max-width="1200"
           src="/assets/changelog/beta6/statistics-items.png"
         />
-        <h3 class="mt-4">Where the numbers come from</h3>
-        <p><b>Item Production, Raw Resources and Building Summary are tables</b>, and each says which factories are behind the figure. Item Production lists every factory producing an item with what it makes, in green, alongside any factory short of it, in red. The chips click through to the factory.</p>
+        <h3 class="mt-4">Buildings</h3>
+        <p><b>Building Summary now says which factories hold each building.</b></p>
         <v-img
           alt="The Building Summary table, listing every factory that holds each building"
           max-width="1200"
           src="/assets/changelog/beta6/statistics-buildings.png"
         />
-        <ul class="ml-6 mt-2">
-          <li><b>Raw Resources</b> counts what the plan digs up. It used to read the raw supply the planner assumed on your behalf, so it sat empty once that assumption was removed.</li>
-          <li><b>Power Consumption and Generation</b> gains a By factory breakdown, heaviest net drain first, collapsed by default.</li>
-          <li><b>Building Summary</b> no longer counts a building requirement that has dropped to zero.</li>
-        </ul>
+        <h3 class="mt-4">Power</h3>
+        <p><b>Power Consumption and Generation gains a By factory breakdown</b>, heaviest net drain first, collapsed by default.</p>
+        <v-img
+          alt="Power consumption and generation broken down by factory"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-power-by-factory.png"
+        />
 
         <v-divider class="subsection" />
 
         <h2>👍 <i class="fas fa-tasks ml-1" /><span class="ml-2">Tasks</span></h2>
-        <p><b>Tasks drag into any order</b> now, by the grip handle on the left, the same handle the sidebar's factory list uses. A task's position was fixed the moment it was added, so the only way to reprioritise was to delete it and retype it at the bottom. Completed tasks drag too.</p>
+        <p><b>Tasks drag into any order</b>, by the grip handle on the left. Completed tasks drag too. The card has had a tidy-up while it was open.</p>
         <v-img
           alt="The factory tasks card with drag handles and checkboxes"
           max-width="1200"
           src="/assets/changelog/beta6/tasks.png"
         />
-        <p class="mt-2"><b>Done is a checkbox</b> rather than a pair of buttons, and has moved to the left of the task next to the handle. The old control was a blue button that turned grey, which read as an action to take rather than a state to see. Delete stays on the right and is outlined rather than a solid red block, since it was the loudest thing in the card while being the action you least often want.</p>
 
         <v-divider class="subsection" />
 
         <h2>👍 <i class="fas fa-calculator ml-1" /><span class="ml-2">Export Calculator: belts, pipes and Fluid Trucks</span></h2>
         <ul class="ml-6">
-          <li><b>Belts are back</b>, now per destination: how many conveyors of a chosen mark it takes to carry the export, across all six marks (60/120/270/480/780/1,200 per min), with the smallest single belt that can carry it picked by default.</li>
-          <li><b>Belt groups</b> split an export across several runs, each with its own mark. Enter either an items/min amount or a whole number of belts and the other follows, so you can plan by exact throughput or by "I'll just run four belts". Over-provisioning is fine; only undercapacity raises a warning, with an amber nudge when a whole group could be deleted and the rest would still cover it. Groups persist with the plan.</li>
-          <li><b>Pipes</b> do the same for fluids, Mk.1 (300 m³/min) and Mk.2 (600 m³/min), with their own groups saved separately from the belt ones.</li>
-          <li><b>Fluid Trucks</b> (3,200 m³, added in patch 1.2) are supported, so the Truck column calculates fluid exports instead of telling you to package them. Drones and Tractors genuinely can't carry raw fluids, so those columns say so.</li>
-          <li>The tray reads as an actual recessed tray now, grows with its content instead of clipping at a fixed height, and its mixed thick/thin column borders were unified.</li>
+          <li><b>Belts are back</b>, per destination: how many conveyors of a chosen mark carry the export, across all six marks (60/120/270/480/780/1,200 per min), with the smallest belt that fits picked by default.</li>
+          <li><b>Belt groups</b> split an export across several runs, each with its own mark. Enter an items/min amount or a whole number of belts and the other follows. Only undercapacity warns, with an amber nudge when a whole group could go and the rest would still cover it. Groups persist with the plan.</li>
+          <li><b>Pipes</b> do the same for fluids, Mk.1 (300 m³/min) and Mk.2 (600 m³/min), with their own groups.</li>
+          <li><b>Fluid Trucks</b> (3,200 m³, added in patch 1.2) are supported, so the Truck column calculates fluid exports. Drones and Tractors can't carry raw fluids, and say so.</li>
         </ul>
         <v-img
           alt="The export calculator on a fluid export: Fluid Freight Cars and Fluid Trucks, with 600 m³/min split across two Mk.1 pipe groups"
@@ -202,43 +241,51 @@
 
         <h2>👍 <i class="fas fa-compass ml-1" /><span class="ml-2">Navigation improvements</span></h2>
         <ul class="ml-6">
-          <li><b>The sidebar shows which factory you're looking at</b>, with an orange bar on that entry that follows you as you scroll or jump. No more losing your place in a 30-factory plan. The Statistics and Factories Summary links get the same treatment.</li>
-          <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, via a small eye button on its edge. Clicking the chip itself still selects that destination in the Export Calculator.</li>
-          <li>An <b>Exported</b> chip now sits beside Product and Imported on any item another factory has asked for, so what leaves a factory reads off the item's own row.</li>
-          <li><b>Every game image has a tooltip.</b> Hovering an item or building icon that wasn't a wiki link told you nothing, so a row of eight icons was eight guesses.</li>
-          <li>Factory names and tasks now show a text caret and underline on hover, because nothing said they were editable: the factory name went as far as showing a pointing hand, the cursor for a button, on a field you type into.</li>
+          <li><b>The sidebar shows which factory you're looking at</b>, with an orange bar that follows you as you scroll or jump. The Statistics and Factories Summary links get the same treatment.
+            <v-img
+              alt="The sidebar factory list, with an orange bar marking the factory in view"
+              class="mt-2"
+              max-width="420"
+              src="/assets/changelog/beta6/sidebar-active-factory.png"
+            />
+          </li>
+          <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, via the small eye button on its edge. Clicking the chip itself still selects that destination in the Export Calculator.
+            <v-img
+              alt="An export chip with the eye button that jumps to the requesting factory"
+              class="mt-2"
+              max-width="420"
+              src="/assets/changelog/beta6/export-chip-jump.png"
+            />
+          </li>
+          <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
+          <li><b>Every game image has a tooltip.</b></li>
         </ul>
 
         <v-divider class="subsection" />
 
-        <h2>🔧 <i class="fas fa-ghost ml-1" /><span class="ml-2">Ghost exports, and plans that repair themselves</span></h2>
-        <p>A factory could sit there claiming to export a part to another factory that had no matching import, or worse, quietly export the wrong amount. There wasn't one cause, there were five, and each of them is fixed.</p>
+        <h2>🔧 <i class="fas fa-bullseye ml-1" /><span class="ml-2">Plan accuracy fixes</span></h2>
+        <p>A factory could claim to export a part to a factory with no matching import, or quietly export the wrong amount.</p>
         <ul class="ml-6">
-          <li><b>Two factories could end up with the same ID.</b> New IDs were drawn at random from 0–9,999 with nothing checking whether the number was in use, so a 60-factory plan had roughly a one-in-six chance of a collision, which merged two factories into one as far as the dependency system was concerned: the wrong factory named on the export chip, the supplier under-producing, and deleting either taking the other's imports with it. IDs are now issued against the plan, and a plan loaded with a collision has the clash broken and its exports rebuilt.</li>
-          <li><b>Importing the same part twice from the same factory understated the export</b>: the second import overwrote the first's amount rather than adding to it. Amounts are now totalled and duplicates already saved are merged on load.</li>
-          <li>An export could be left behind with nothing in it, a corrupt import pointing at its own factory could take the whole plan's calculation down with it, and a plan that was already wrong stayed wrong through every reload.</li>
-          <li><b>Loading a plan now checks the whole import/export chain</b>, repairs what it finds, and <b>tells you what it changed</b>: every automatic correction, grouped by factory, in one dialog. The browser alert that used to fire for this is gone; it appeared before the planner had drawn anything and sent you to the developer console.</li>
-          <li>Deleting an import, or a factory that supplies another, no longer stops half way and leaves the supplier producing for an import that doesn't exist.</li>
-          <li>Deleting one unfinished import row no longer deletes the other blank ones with it, and copying a factory no longer briefly claims to export everything the original does.</li>
+          <li><b>Two factories could have ended up with the same ID</b>, at roughly a one-in-six chance in a 60-factory plan, which merged them as far as imports and exports were concerned. IDs are now entirely unique.</li>
+          <li><b>Duplicate imports were counted twice.</b> They are no longer possible, and any already in your plan are repaired when it loads.</li>
+          <li><b>Extra validation on the import/export chain.</b> Exports left behind get cleaned up, and imports pointing at factories that no longer exist are removed.</li>
+          <li><b>Loading a plan now runs those checks</b>, repairs what it finds, and reports it. An example:
+            <v-img
+              alt="The plan repair dialog, listing every automatic correction by factory"
+              class="mt-2"
+              max-width="1200"
+              src="/assets/changelog/beta6/plan-repair.png"
+            />
+          </li>
         </ul>
-
-        <v-divider class="subsection" />
-
-        <h2>🔧 <i class="fas fa-ruler-combined ml-1" /><span class="ml-2">Numbers that were a hair off</span></h2>
-        <p>Fuel Generators burning Rocket Fuel asked for 2400.002/min instead of 2400, forcing you to hand-override the producing factory to make the two line up. The game data was at fault (the parser divided a generator's power by a fuel rate it had already rounded), and it's fixed at source, along with Compacted Coal, Alternate: Super-State Computer and both Uranium Fuel Rod recipes.</p>
-        <p><b>Plans already carrying those numbers repair themselves when they load</b>, since the quantities you asked for are inputs to the calculation rather than outputs and carried the drift forward. The check scales with the value rather than using a flat allowance, so a quantity you genuinely chose is left exactly as you set it, and anything on a building group with a fractional clock is skipped entirely. Anything repaired is listed in a dialog: which factory, which item, and the figure before and after.</p>
 
         <v-divider class="subsection" />
 
         <h2>🔧 Fixes &amp; minor adjustments</h2>
         <ul class="ml-6">
-          <li>A building group no longer appears to accept more Somersloops than the building has slots for. The calculation was always correct (the engine clamps before it does anything with the value), but the number on screen disagreed with the number being used. Entries are clamped as you type, and the up arrow greys out once the slots are full.</li>
-          <li>Editing a group's Somersloops no longer spins the refresh icon on the building count as well, and group chips line up again when one carries a wide caption.</li>
-          <li>Refreshing or deep-linking the Parts browser no longer 404s: every route was a hand-maintained list and <code>/parts</code> was never added to it. It's a catch-all now, so adding a page needs no config.</li>
-          <li>An unknown URL lands on a proper "page not found" with links back to the planner and the parts browser, rather than the bare CDN 404.</li>
-          <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window: flinging it onto another monitor used to trip the peek zone on the way out.</li>
-          <li>The API gained a health check that actually fails: it pings the database rather than only proving the process is alive, so an outage raises an alert instead of showing green.</li>
-          <li>A tab left open across a release can no longer save over your account. v0.6 saves your whole plan where v0.5 saved only its factories, so an old tab autosaving would have quietly wiped the rest of it. The API now refuses saves from a version too old to send them, and the page tells you to reload: your work stays exactly where it is, and reloading does not lose it.</li>
+          <li><b>Various rounding errors have been fixed</b>, in the game data and in plans already carrying the drifted numbers, which repair themselves on load. Please report any more on Discord.</li>
+          <li>A building group no longer appears to accept more Somersloops than the building has slots for. Entries clamp as you type and the up arrow greys out once the slots are full. The calculation was always correct; only the number on screen disagreed.</li>
+          <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window.</li>
         </ul>
 
         <v-divider class="subsection" />
@@ -246,9 +293,8 @@
         <h2>👍 <i class="fas fa-file ml-1" /><span class="ml-2">Smaller things</span></h2>
         <ul class="ml-6">
           <li>A new <b>Mining</b> template plan showing all of the above end to end, and the Demo plan gains a Copper Mine feeding its Copper Ingots.</li>
-          <li>Every raw resource in the Imports section gets a one-click button to mine it in that factory, at exactly the amount you're short of.</li>
-          <li>A mine's building groups report <b>Effective Output</b> rather than effective buildings, and when short they list how many of each miner mark would cover the gap, at every node purity.</li>
-          <li>The Converter's ore recipes now name the conversion, "Iron Ore (Convert: Limestone)", so they don't read as though the ore simply came from limestone.</li>
+          <li>Every raw resource in the Imports section gets a one-click button to mine it in that factory, at the amount you're short of.</li>
+          <li>The Converter's ore recipes name the conversion, "Iron Ore (Convert: Limestone)", so they don't read as though the ore came from limestone.</li>
         </ul>
 
         <v-divider />
@@ -631,6 +677,25 @@ h1,h2,h3,h4,h5,h6 {
   // Clears the app bar when a contents link lands on a heading.
   scroll-margin-top: 90px;
 }
+
+// The breaking change leads the release, so its heading is the one that reads as a warning.
+.breaking {
+  color: var(--sf-error);
+}
+
+// The status tiers, coloured as the chips themselves are: red and amber paint the factory,
+// an amber note leaves it green.
+.status-tiers {
+  li { margin-bottom: 0.1rem; }
+
+  // The nested statuses keep their tier's colour; only the tier headers are bold.
+  > li > ul { margin-bottom: 0.4rem; }
+}
+
+.tier-problem { color: var(--sf-problem); }
+.tier-warning { color: var(--sf-status-warning); }
+.tier-note { color: var(--sf-yellow); }
+.tier-info { color: var(--sf-blue); }
 
 .release-date {
   color: #bdbdbd;
