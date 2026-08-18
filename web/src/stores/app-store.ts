@@ -192,44 +192,52 @@ export const useAppStore = defineStore('app', () => {
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let lastPersistedPlan = ''
 
-  // Whether the pending persist was asked for by a load rather than by the user. Recorded when the
-  // persist is SCHEDULED, not read when it fires: persistence is debounced by 500ms, and a load
-  // finishes well inside that, so reading isLoaded at fire time saw a loaded app and stamped the
-  // plan anyway. The most recent scheduler wins, so a real edit arriving mid-debounce still counts.
-  let persistScheduledDuringLoad = false
-
-  const persistPlan = () => {
+  /**
+   * @param fromLoad only ever true for a debounced write that a LOAD scheduled. The v0.6 migration
+   * recalculates as it loads, and stamping that as an edit would make a stale browser copy look
+   * newer than the account's — which is exactly what checkForOOS reads to decide whether to warn
+   * before overwriting.
+   *
+   * Provenance is passed into the timer rather than held in a shared flag, because persistPlan is
+   * also called DIRECTLY by the interval, visibilitychange and pagehide below. Those exist to catch
+   * mutations that bypass schedulePersist entirely, so a shared flag let them consume a load's
+   * provenance and save a real edit without its timestamp.
+   *
+   * Their default is the CURRENT loading state, read at call time, rather than a flat false: the
+   * 5-second interval fires during any load that takes longer than that, and switching browser tabs
+   * mid-load fires visibilitychange. Treating those as user work stamped a plan nobody had edited.
+   */
+  const persistPlan = (fromLoad = !isLoaded.value) => {
     clearTimeout(persistTimer)
-    const fromLoad = persistScheduledDuringLoad
-    persistScheduledDuringLoad = false
     // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
     const json = JSON.stringify(toRaw(factoryTabs.value))
     if (json === lastPersistedPlan) return
     lastPersistedPlan = json
     localStorage.setItem('factoryTabs', json)
-    // Not for a load. The v0.6 migration recalculates as it loads, and stamping that would make a
-    // stale browser copy look newer than the account's — which is exactly what checkForOOS reads
-    // to decide whether to warn before overwriting.
     if (!fromLoad) {
       setLastEdit() // Update last edit time whenever the data changes, from any source.
     }
   }
 
   const schedulePersist = () => {
-    persistScheduledDuringLoad = !isLoaded.value
+    // Read now, not when the timer fires: persistence is debounced by 500ms and a load finishes
+    // well inside that, so reading isLoaded at fire time saw a loaded app and stamped it anyway.
+    const duringLoad = !isLoaded.value
     clearTimeout(persistTimer)
-    persistTimer = setTimeout(persistPlan, 500)
+    persistTimer = setTimeout(() => persistPlan(duringLoad), 500)
   }
 
   eventBus.on('factoryUpdated', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
 
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
-    setInterval(persistPlan, 5_000)
+    // All three wrapped: pagehide would otherwise hand its Event object in as `fromLoad`, which is
+    // truthy, and silently stop the close-the-tab flush from stamping the edit.
+    setInterval(() => persistPlan(), 5_000)
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') persistPlan()
     })
-    window.addEventListener('pagehide', persistPlan)
+    window.addEventListener('pagehide', () => persistPlan())
   }
 
   // Dev-only test hook: lets browser tests measure reactive churn during interactions.

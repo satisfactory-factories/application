@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import {
   calculateFactories,
@@ -551,6 +552,33 @@ describe('load-time repairs', () => {
       expect(consumer.inputs).toHaveLength(1)
       expect(oil.dependencies.requests[consumer.id]).toHaveLength(1)
       expectIntegrity(plan)
+    })
+  })
+  // Every other spec in this repo builds plans as PLAIN arrays, where a Vue proxy and its raw
+  // object are the same thing. The app never does: the store's plan is reactive, so reading an
+  // element out of it hands back a proxy while the calculation engine reads through toRaw. A
+  // pass-completion mark stamped on the proxy is invisible to the next calculation, which then
+  // treats a long-calculated plan as brand new and skips the very check that prunes dead exports.
+  describe('on a reactive plan, as the app has', () => {
+    it('still prunes an export whose product has gone', () => {
+      const provider = newFactory('Iron Ingots', 0, 21)
+      const consumer = newFactory('Iron Plates', 1, 22)
+      addProductToFactory(provider, { id: 'IronIngot', amount: 1000, recipe: 'IngotIron' })
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 300, recipe: 'IronPlate' })
+      addInputToFactory(consumer, { factoryId: provider.id, outputPart: 'IronIngot', amount: 450 })
+
+      const plan = reactive([provider, consumer])
+      calculateFactories(plan, gameData)
+      expect(plan[1].inputs).toHaveLength(1)
+
+      // The provider stops making it, and only the provider recalculates - what Planner.vue does.
+      plan[0].products[0].id = 'CopperIngot'
+      plan[0].products[0].recipe = 'IngotCopper'
+      calculateFactory(plan[0], plan, gameData)
+
+      expect(plan[1].inputs).toHaveLength(0)
+      expect(plan[1].parts.IronIngot?.amountSupplied ?? 0).toBe(0)
+      expect(plan[1].requirementsSatisfied).toBe(false)
     })
   })
 })

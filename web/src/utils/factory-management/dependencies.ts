@@ -1,3 +1,4 @@
+import { toRaw } from 'vue'
 import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { calculateParts, isAmountSatisfied } from '@/utils/factory-management/parts'
@@ -66,11 +67,18 @@ const pruneEmptyRequests = (factory: Factory): void => {
  */
 const completedPass = new WeakSet<Factory>()
 
+// Always keyed on the RAW object. The live plan is a Vue reactive array, so reading an element out
+// of it hands back a proxy, while cloneForCalculation reads through toRaw — mark the proxy and the
+// next calculation looks up the raw, finds nothing, and treats a long-calculated plan as brand new.
+// Every spec in the repo builds plans as plain arrays, where proxy and raw are the same object, so
+// that failed only in the app.
+const rawOf = (factory: Factory): Factory => toRaw(factory)
+
 export const markPassCompleted = (factory: Factory): void => {
-  completedPass.add(factory)
+  completedPass.add(rawOf(factory))
 }
 
-export const hasCompletedPass = (factory: Factory): boolean => completedPass.has(factory)
+export const hasCompletedPass = (factory: Factory): boolean => completedPass.has(rawOf(factory))
 
 /**
  * A clone is the same factory, so it inherits whether that factory has been calculated.
@@ -81,8 +89,8 @@ export const hasCompletedPass = (factory: Factory): boolean => completedPass.has
  */
 export const carryPassMarks = (sources: Factory[], clones: Factory[]): Factory[] => {
   sources.forEach((source, index) => {
-    if (clones[index] && completedPass.has(source)) {
-      completedPass.add(clones[index])
+    if (clones[index] && completedPass.has(rawOf(source))) {
+      completedPass.add(rawOf(clones[index]))
     }
   })
   return clones

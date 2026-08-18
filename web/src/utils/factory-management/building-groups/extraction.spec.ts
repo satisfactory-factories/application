@@ -565,6 +565,26 @@ describe('extraction', async () => {
         expect(group.buildingCount).toBe(1)
         expect(group.overclockPercent).toBeLessThanOrEqual(250)
       })
+
+      // solveWellGroup counts in reference-extractor units; the target computed just above it is
+      // in the GROUP's units, with the group's own multiplier already folded in. Handing it the
+      // group-unit figure divided the target by that multiplier a second time, so re-typing a
+      // well's own current rate cut it to 1/N for an N-satellite well - and the plan still read as
+      // satisfied. Asserts the RATE, not just the pressurizer count: the count was always right.
+      it.each([
+        [{ impure: 0, normal: 10, pure: 0 }, 600, 600],
+        [{ impure: 0, normal: 10, pure: 0 }, 601, 601],
+        [{ impure: 0, normal: 10, pure: 0 }, 300, 300],
+        [{ impure: 0, normal: 2, pure: 0 }, 240, 240],
+        [{ impure: 0, normal: 1, pure: 0 }, 61, 61],
+      ])('produces what was typed, not a fraction of it (%o -> %i)', (satellites, typed, expected) => {
+        const { factory, product, group } = wellProduct(satellites)
+
+        updateBuildingGroupViaPart(group, product, ItemType.Product, factory, 'Water', typed)
+
+        expect(getGroupExtractionRate(group, 'Extract_Water_Well') * group.buildingCount *
+          (group.overclockPercent / 100)).toBeCloseTo(expected, 3)
+      })
     })
   })
 

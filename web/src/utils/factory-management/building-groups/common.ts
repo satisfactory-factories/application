@@ -930,7 +930,13 @@ export const updateBuildingGroupViaPart = (
   // buildings, so typing 601 into a 600/min well asked for a second pressurizer and typing 3000
   // asked for five: wells that are not on the player's map, at 750 MW, reading as a solved plan.
   // Returns false for anything that is not a well, so the ordinary paths below are untouched.
-  if (solveWellGroup(group, targetEffective, item.recipe)) {
+  //
+  // Counted in REFERENCE-extractor units, which is what solveWellGroup multiplies back up by
+  // getExtractionReferenceRate. `targetEffective` above is in this GROUP's units — the group's own
+  // multiplier is already folded into baseRate — so passing it divided the target by that
+  // multiplier a second time. Typing a well's own current rate straight back into it then cut the
+  // output to 1/N for an N-satellite well, and the plan still read as satisfied.
+  if (solveWellGroup(group, amount / recipePart.perMin, item.recipe)) {
     recalculateGroupMetrics(item, groupType, factory)
     return
   }
