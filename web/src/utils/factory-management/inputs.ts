@@ -3,6 +3,7 @@ import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { recalculateFactoryDependencies } from '@/utils/factory-management/dependencies'
 import { DataInterface } from '@/interfaces/DataInterface'
+import { getPartExportRequests } from '@/utils/factory-management/exports'
 import eventBus from '@/utils/eventBus'
 // Re-exported so existing callers keep importing them from here; they live in a leaf module
 // because status.ts needs them and cannot import anything that reaches factory.ts.
@@ -233,10 +234,16 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
   return true
 }
 
-export const satisfyImport = (importIndex: number, factory: Factory): void | null => {
+// The quantity satisfyImport would set, without setting it. The Satisfy and Trim buttons name it,
+// so the user can see what they are agreeing to before pressing rather than after.
+export const satisfyImportTarget = (importIndex: number, factory: Factory): number | null => {
   const input = factory.inputs[importIndex]
-  if (!input.outputPart) {
-    console.error('updateInputToSatisfy: No output part selected for input:', input)
+  if (!input?.outputPart) {
+    return null // The user is still filling the row in.
+  }
+
+  const partData = factory.parts[input.outputPart]
+  if (!partData) {
     return null
   }
 
@@ -252,11 +259,109 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
   }, 0)
 
   // Calculate the remaining amount of the part that needs to be imported
-  const partData = factory.parts[input.outputPart]
   const difference = partData.amountRequired -
     partData.amountSuppliedViaProduction -
     totalImported
-  input.amount = difference > 0 ? difference : 0 // Don't set it to negatives
+
+  return difference > 0 ? difference : 0 // Don't set it to negatives
+}
+
+export const satisfyImport = (importIndex: number, factory: Factory): void | null => {
+  const input = factory.inputs[importIndex]
+  if (!input.outputPart) {
+    console.error('updateInputToSatisfy: No output part selected for input:', input)
+    return null
+  }
+
+  input.amount = satisfyImportTarget(importIndex, factory) as number
+}
+
+// How much of the import's part the provider can actually spare for THIS import row.
+//
+// "Satisfy" sizes an import against what the importing factory needs; this is the other side of
+// the same question — a factory can happily ask for 1,015 Dark Matter Residue from a provider
+// that only makes 900, and the shortage shows up on the provider rather than on the row that
+// caused it. The capacity is what the provider has left after it feeds its own production lines
+// and power generators, and after every promise it has already made to OTHER factories.
+//
+// The importing factory's own requests are deliberately excluded — this row is the one being
+// sized — but its other rows against the same provider and part are not, since those are
+// separate promises the provider still has to keep.
+export const calculateImportCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): number | null => {
+  const input = factory.inputs[importIndex]
+
+  if (!input?.outputPart) {
+    return null // The user is still filling the row in.
+  }
+
+  const partData = provider.parts[input.outputPart]
+
+  if (!partData) {
+    // The provider stopped making the part. calculateFactoryDependencies prunes the input on the
+    // next pass; until then there is no capacity to report.
+    return null
+  }
+
+  const consumedByProvider = partData.amountRequiredProduction + partData.amountRequiredPower
+
+  const promisedToOthers = getPartExportRequests(provider, input.outputPart)
+    .filter(request => request.requestingFactoryId !== factory.id)
+    .reduce((acc, request) => acc + request.amount, 0)
+
+  const otherRowsFromProvider = factory.inputs.reduce((acc, otherInput, index) => {
+    if (index === importIndex) return acc
+    if (otherInput.factoryId !== provider.id) return acc
+    if (otherInput.outputPart !== input.outputPart) return acc
+    return acc + (otherInput.amount ?? 0)
+  }, 0)
+
+  const capacity = partData.amountSupplied - consumedByProvider - promisedToOthers - otherRowsFromProvider
+
+  return capacity > 0 ? capacity : 0
+}
+
+// Whether the row is asking the provider for more than it can supply, which is what puts the
+// "Trim to Export Capacity" button on screen. A capacity of 0 leaves nothing to trim TO — the row is
+// entirely unsupportable, and snapping it to 0 would only trip the <=0 guard in validateInput.
+export const importExceedsCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): boolean => {
+  const capacity = calculateImportCapacity(importIndex, factory, provider)
+
+  if (capacity === null || capacity <= 0) {
+    return false
+  }
+
+  return factory.inputs[importIndex].amount > capacity
+}
+
+// Shrinks the import down to what the provider can actually supply. Never grows it: a row that
+// already fits is left exactly as the user set it.
+export const trimImportToCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): void | null => {
+  const capacity = calculateImportCapacity(importIndex, factory, provider)
+
+  if (capacity === null) {
+    console.error('inputs: trimImportToCapacity: No capacity could be calculated for import:', factory.inputs[importIndex])
+    return null
+  }
+
+  const input = factory.inputs[importIndex]
+
+  if (input.amount <= capacity) {
+    return // Already within capacity, nothing to trim.
+  }
+
+  input.amount = capacity
 }
 
 export const deleteInputPair = (factory: Factory, input: FactoryInput, factories: Factory[], gameData: DataInterface): void => {
