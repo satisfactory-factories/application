@@ -163,6 +163,7 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 
 - **Tasks can be dragged into any order**, by the grip handle on the left of each row, the same handle the sidebar's factory list uses. A task's position was fixed at the moment it was added, so the only way to reprioritise a list was to delete a task and retype it at the bottom. Completed tasks drag too.
 - **Done is now a checkbox** rather than a pair of buttons, and it has moved to the left of the task, next to the handle: an empty box while the task is open, filled green with a tick once it is done, matching the green struck-through title beside it. The old control was a blue button that turned into a grey one, which read as an action to take rather than a state to see at a glance.
+- **A typed task is added when you click away from the field**, not only when you press enter. Typing a task and then going back to the plan used to throw the text away silently, which is the one thing a notes field must never do. Enter still adds it, blank and whitespace-only entries are still ignored, and the title is trimmed.
 - Delete stays on the right and is now outlined rather than a solid red block, since it was the loudest thing in the card while being the action you least often want.
 
 ### Improved: Statistics say where a number came from
