@@ -108,6 +108,7 @@
       v-if="ungroupedSection"
       :section="ungroupedSection"
       :statuses="statuses"
+      @create-factory="createFactory"
     />
 
     <draggable
@@ -121,6 +122,7 @@
         <planner-sidebar-group
           :section="element"
           :statuses="statuses"
+          @create-factory="createFactory"
           @delete="requestGroupDelete"
         />
       </template>
@@ -137,7 +139,7 @@
         color="primary"
         prepend-icon="fas fa-plus"
         ripple
-        @click="createFactory"
+        @click="createFactory()"
       >
         Add Factory
       </v-btn>
@@ -192,7 +194,9 @@
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const emit = defineEmits<{
-    (event: 'createFactory'): void;
+    // The group the new factory belongs in: an id, null for Ungrouped, or nothing at all from the
+    // plan-wide button, which has no group in mind.
+    (event: 'createFactory', groupId?: string | null): void;
     (event: 'updateFactories', factories: Factory[]): void;
   }>()
   const compProps = defineProps<{
@@ -258,8 +262,8 @@
   // Reuses the memo above rather than walking the plan a second time.
   const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
 
-  const createFactory = () => {
-    emit('createFactory')
+  const createFactory = (groupId: string | null = null) => {
+    emit('createFactory', groupId)
   }
 </script>
 

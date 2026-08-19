@@ -198,6 +198,25 @@
         </div>
       </template>
     </draggable>
+
+    <!-- The tail of the tree, sat where the next factory in this group would appear — which is
+         where the button that makes one belongs. Outside the draggable deliberately: a button
+         inside a Sortable list is a row Sortable would try to reorder and drop factories after. -->
+    <div class="group-footer" :class="{ collapsed }">
+      <div class="add-factory">
+        <v-btn
+          class="add-factory-btn"
+          density="comfortable"
+          prepend-icon="fas fa-plus"
+          size="small"
+          :title="addFactoryTitle"
+          variant="text"
+          @click="requestFactory"
+        >
+          Add factory
+        </v-btn>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -238,6 +257,8 @@
 
   const emit = defineEmits<{
     (event: 'delete', group: NonNullable<FactoryGroupSection['group']>): void
+    // null is Ungrouped, which is a real destination: it means "make one belonging to nothing".
+    (event: 'createFactory', groupId: string | null): void
   }>()
 
   const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
@@ -287,6 +308,14 @@
   const requestDelete = () => {
     if (group.value) emit('delete', group.value)
   }
+
+  // Asked for rather than done here: the planner owns factory creation (it also has to navigate to
+  // the new card), so this only says which group the click came from.
+  const requestFactory = () => emit('createFactory', group.value?.id ?? null)
+
+  const addFactoryTitle = computed(() => group.value
+    ? `Add a new factory to ${group.value.name}`
+    : 'Add a new factory, in no group')
 
   // Must match the tile size and gap the template asks for, since the fit is arithmetic rather
   // than measurement: laying the icons out to find out how many fit would mean rendering the
@@ -532,11 +561,6 @@ $strip-border: 1px;
     width: $tree-line;
   }
 
-  &:last-child::before {
-    bottom: auto;
-    height: calc(50% - #{$tree-gutter * 0.5} + #{$tree-line * 0.5});
-  }
-
   // Elbow, reaching from the trunk to the row's left edge. Level with the middle of the row, not
   // its first line — a row carrying status chips is two lines tall, and an elbow pinned to the top
   // one points at nothing in particular.
@@ -544,6 +568,57 @@ $strip-border: 1px;
     top: calc(50% - #{$tree-gutter * 0.5} - #{$tree-line * 0.5});
     width: $tree-indent;
     height: $tree-line;
+  }
+}
+
+// The tree's terminator, and the group's own Add Factory. It hangs off the trunk exactly as a row
+// does, one slot below the last of them, so the tree ends on the button rather than on the last
+// factory with a button floating under it.
+.group-footer {
+  padding: 0 0 $tree-gutter $tree-indent;
+
+  // Collapsed, the rows are hidden and the header is the whole group; a lone "add a factory"
+  // hanging under a shut group would be the only thing left in the body.
+  &.collapsed {
+    display: none;
+  }
+}
+
+.add-factory {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -$tree-indent;
+    background-color: var(--sf-group, #616161);
+  }
+
+  // Nothing follows it, so its trunk always ends at its own elbow.
+  &::before {
+    top: 0;
+    height: calc(50% + #{$tree-line * 0.5});
+    width: $tree-line;
+  }
+
+  &::after {
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent;
+    height: $tree-line;
+  }
+}
+
+// Quiet by design: it is repeated under every group, so it reads as the next line of the tree
+// rather than as a second primary action competing with the sidebar's Add Factory.
+.add-factory-btn {
+  color: #bdbdbd;
+  font-size: 0.78rem;
+  letter-spacing: normal;
+  text-transform: none;
+
+  &:hover {
+    color: #fff;
   }
 }
 
