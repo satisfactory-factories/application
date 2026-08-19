@@ -37,7 +37,20 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   take it (240/min each, fully researched).
 - **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
   Depot Uploader, read off the game's build recipe. The 97 spheres the MAM research costs are stated
-  but not counted: that is paid once per save, not once per plan.
+  but not counted: that is paid once per save, not once per plan. The Mercer Sphere icon is new —
+  it is a collectable rather than a craftable part, so it was never in the icon set the planner
+  shipped with.
+- **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
+  doubles with each of the four upgrades to 240/min, so the section carries a research selector and
+  reports throughput against capacity — `40/min of 240/min used` plan-wide, and `40 / 240/min` per
+  item, flagged when what is spare outruns what the Uploaders can take. Saved on the plan, so a
+  shared plan carries the world it was written against.
+- **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
+  icon-only counts of items tracked, Uploaders and Mercer Spheres, plus starved and over-capacity
+  warnings when they apply.
+- The Uploader also takes a conveyor and nothing else, so fluids are excluded from it too. It has no
+  objection to radioactive items, though, unlike the sink: uploading one is how you stop it
+  irradiating you, so Uranium and Plutonium Waste can be depoted even though they cannot be sunk.
 - Three tooltips that promised sinking was "coming in a future update" now point at the control that
   does it, and the **End product** chip no longer claims the planner assumes you sink it — you say so.
 

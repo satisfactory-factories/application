@@ -59,10 +59,17 @@
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
-        <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
+        <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
+             is evenly spaced however many of them are showing. -->
+        <statistics-factory-summary
+          v-if="getFactories().length !== 0"
+          :class="{ 'mb-4': !usesDimensionalDepot }"
+          :factories="getFactories()"
+          :help-text="helpText"
+        />
         <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
              permanent advert for a feature the satisfaction table already offers in place. -->
-        <dimensional-depot v-if="usesDimensionalDepot" :factories="getFactories()" :help-text="helpText" />
+        <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" :help-text="helpText" />
         <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
           <!-- A plan that has never used groups is one Ungrouped section, and a band over the
                whole plan says nothing — so it only appears once there is something to divide. -->
@@ -651,7 +658,7 @@
     reorderFactory(factory, direction, getFactories())
   }
 
-  // Scroll to a non-factory section (Statistics, Factories Summary) by its element id.
+  // Scroll to a non-factory section (Statistics, Factories Summary, Dimensional Depot) by its id.
   // The section may be collapsed — tell it to show itself first (each listens for its own
   // id), give the reveal a beat to change the layout, then scroll. scrollToElement's
   // correction passes absorb any further shifts from content still materializing.

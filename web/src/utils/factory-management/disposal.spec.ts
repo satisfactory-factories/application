@@ -23,9 +23,17 @@ import { showBacklogAdvisory, willBacklog } from '@/utils/factory-management/sta
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import {
   isActivelySunk,
+  showDepotControl,
   showDisposalControls,
   showSinkControl,
 } from '@/utils/factory-management/satisfaction'
+import {
+  clampTier,
+  DEFAULT_DEPOT_TIER,
+  DEPOT_UPLOAD_TIERS,
+  depotRateForTier,
+  MAX_DEPOT_TIER,
+} from '@/composables/useDepotResearch'
 
 // 100/min of plates from 150 iron ingots. Solid, sinkable, and nothing else in the plan wants it,
 // so the whole output is surplus unless something is done with it.
@@ -309,13 +317,32 @@ describe('disposal', () => {
       expect(showDisposalControls(factory, 'IronPlate')).toBe(true)
     })
 
-    it('hides the sink control for a part the sink will not take', () => {
+    it('hides both controls for a fluid: neither building has a pipe input', () => {
       const oil = newFactory('Oil')
       addProductToFactory(oil, { id: 'LiquidFuel', amount: 100, recipe: 'LiquidFuel' })
       calculateFactories([oil], gameData)
 
       expect(showDisposalControls(oil, 'LiquidFuel')).toBe(true)
       expect(showSinkControl(oil, 'LiquidFuel')).toBe(false)
+      expect(showDepotControl(oil, 'LiquidFuel', gameData)).toBe(false)
+    })
+
+    // The two exclusions only LOOK alike. The AWESOME Sink refuses radioactive items outright;
+    // the Depot has no such objection — the wiki's Radiation page is explicit that uploading a
+    // radioactive part stops its radiation, which is a reason players do it deliberately.
+    it('offers the depot but not the sink for a radioactive solid', () => {
+      const nuclear = newFactory('Nuclear')
+      addProductToFactory(nuclear, { id: 'NuclearFuelRod', amount: 1, recipe: 'NuclearFuelRod' })
+      addProductToFactory(nuclear, { id: 'NonFissibleUranium', amount: 50, recipe: 'NonFissibleUranium' })
+      calculateFactories([nuclear], gameData)
+
+      expect(nuclear.parts.NonFissibleUranium.isSinkable).toBe(false)
+      expect(showSinkControl(nuclear, 'NonFissibleUranium')).toBe(false)
+      expect(showDepotControl(nuclear, 'NonFissibleUranium', gameData)).toBe(true)
+    })
+
+    it('offers the depot on an ordinary solid surplus', () => {
+      expect(showDepotControl(factory, 'IronPlate', gameData)).toBe(true)
     })
 
     // A sink still set on a part whose surplus has since been exported away is not sinking
@@ -510,6 +537,16 @@ describe('disposal', () => {
       expect(entry.totalAmount).toBe(600)
     })
 
+    // Capacity is per Uploader at the plan's researched speed, so both halves scale it.
+    it('scales capacity with the research level and the uploader count', () => {
+      const factory = platesFactory('Plates', 600)
+      calculateFactories([factory], gameData)
+      setDepotCount(factory, 'IronPlate', 3)
+
+      expect(calculateDimensionalDepot([factory], 15)[0].uploadCapacity).toBe(45)
+      expect(calculateDimensionalDepot([factory], 240)[0].uploadCapacity).toBe(720)
+    })
+
     it('sorts by display name', () => {
       const factory = newFactory('Mixed')
       addProductToFactory(factory, { id: 'IronPlate', amount: 100, recipe: 'IronPlate' })
@@ -519,6 +556,42 @@ describe('disposal', () => {
       setDepotCount(factory, 'Cable', 1)
 
       expect(calculateDimensionalDepot([factory]).map(entry => entry.id)).toEqual(['Cable', 'IronPlate'])
+    })
+  })
+
+  describe('depot upload research', () => {
+    // 15/min doubling four times is the whole progression; a wrong entry here silently changes
+    // every capacity figure in the statistics section.
+    it('doubles the rate at each of the four upgrades', () => {
+      expect(DEPOT_UPLOAD_TIERS.map(tier => tier.rate)).toEqual([15, 30, 60, 120, 240])
+    })
+
+    it('costs the Mercer Spheres the MAM asks for', () => {
+      expect(DEPOT_UPLOAD_TIERS.map(tier => tier.mercerSpheres)).toEqual([0, 3, 7, 13, 23])
+      // The wiki's stated total for the four upload-speed upgrades.
+      expect(DEPOT_UPLOAD_TIERS.reduce((total, tier) => total + tier.mercerSpheres, 0)).toBe(46)
+    })
+
+    it('defaults to fully researched', () => {
+      expect(DEFAULT_DEPOT_TIER).toBe(MAX_DEPOT_TIER)
+      expect(depotRateForTier(DEFAULT_DEPOT_TIER)).toBe(240)
+    })
+
+    // A select that has been cleared, or a plan hand-edited to something silly, must not make
+    // every capacity figure in the section NaN.
+    it.each([
+      ['a negative', -3, 0],
+      ['above the top tier', 99, MAX_DEPOT_TIER],
+      ['a NaN', Number.NaN, DEFAULT_DEPOT_TIER],
+      ['null', null, DEFAULT_DEPOT_TIER],
+      ['a fraction', 2.4, 2],
+    ])('clamps %s', (_label, input, expected) => {
+      expect(clampTier(input)).toBe(expected)
+    })
+
+    it('falls back to the top rate for an out-of-range tier', () => {
+      expect(depotRateForTier(99)).toBe(240)
+      expect(depotRateForTier(-1)).toBe(15)
     })
   })
 })

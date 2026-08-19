@@ -7,9 +7,7 @@
       <span class="ml-2 mr-2">Power Shards,</span>
       <game-asset height="32" subject="somersloop" type="item_id" width="32" />
       <span class="ml-2 mr-2">Somersloops &amp;</span>
-      <!-- No Mercer Sphere art has ever shipped with this app, so the one alien trinket of the
-           three wears a glyph rather than its item icon. -->
-      <i class="fas fa-planet-ringed text-dimensional-depot" />
+      <game-asset height="32" subject="mercer-sphere" type="item_id" width="32" />
       <span class="ml-2">Mercer Spheres</span>
     </h4>
     <v-chip
@@ -20,9 +18,7 @@
       :class="[section.chipClass, { 'ml-3': index === 0 }]"
       variant="tonal"
     >
-      <i v-if="section.glyph" :class="section.glyph" />
       <game-asset
-        v-else
         height="20"
         :subject="section.icon"
         type="item_id"
@@ -53,9 +49,7 @@
       >
         <div class="usage-block mx-auto">
           <h2 class="text-subtitle-1 font-weight-bold d-flex align-center justify-center">
-            <i v-if="section.glyph" :class="section.glyph" />
             <game-asset
-              v-else
               height="20"
               :subject="section.icon"
               type="item_id"
@@ -132,8 +126,6 @@
         key: 'shards',
         title: 'Power Shards',
         icon: 'power-shard',
-        // Only the Mercer Sphere sets this; the other two have real item art to show.
-        glyph: '',
         chipClass: 'yellow',
         empty: 'No Power Shards used in this plan.',
         entries: shards,
@@ -143,7 +135,6 @@
         key: 'sloops',
         title: 'Somersloops',
         icon: 'somersloop',
-        glyph: '',
         chipClass: 'somersloop',
         empty: 'No Somersloops used in this plan.',
         entries: sloops,
@@ -152,8 +143,7 @@
       {
         key: 'mercer',
         title: 'Mercer Spheres',
-        icon: '',
-        glyph: 'fas fa-planet-ringed',
+        icon: 'mercer-sphere',
         chipClass: 'dimensional-depot',
         empty: 'No Dimensional Depot Uploaders in this plan.',
         entries: spheres,

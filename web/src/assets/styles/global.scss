@@ -387,11 +387,6 @@
     color: var(--sf-power-consumption) !important;
 }
 
-// The Mercer Sphere glyph, which stands in for item art this app has never shipped.
-.text-dimensional-depot {
-    color: var(--sf-dimensional-depot) !important;
-}
-
 // The satisfaction breakdown's sink line. Its own colour rather than the orange the other demand
 // lines wear: the sink is demand the planner invented on the user's instruction, not demand the
 // recipes created, and it is the one line whose number is not a claim on the factory's output.

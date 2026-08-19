@@ -30,7 +30,7 @@
               <span class="ml-2">{{ formatNumber(totalContainers) }} Uploader{{ totalContainers === 1 ? '' : 's' }}</span>
             </v-chip>
             <v-chip id="depot-mercer-summary" class="sf-chip small dimensional-depot no-margin" variant="tonal">
-              <i class="fas fa-planet-ringed" />
+              <game-asset height="20" subject="mercer-sphere" type="item_id" width="20" />
               <span class="ml-2">{{ formatNumber(totalMercerSpheres) }} Mercer Sphere{{ totalMercerSpheres === 1 ? '' : 's' }}</span>
             </v-chip>
             <v-chip
@@ -47,11 +47,45 @@
             <i class="fas fa-info-circle" /> Items you have put a Dimensional Depot Uploader on, under a
             factory's Satisfaction. The rate is the surplus each factory has spare to upload.
           </p>
+          <!-- The upload rate is not a constant: it starts at 15/min and doubles with each of the
+               four MAM upgrades, so a plan written for a fresh save and one written for a finished
+               one need very different numbers of Uploaders for the same throughput. Saved on the
+               plan, so a shared plan carries the world it was written against. -->
+          <div class="d-flex align-center flex-wrap ga-3 mb-4">
+            <span class="font-weight-bold">Upload research:</span>
+            <v-select
+              id="depot-research-tier"
+              v-model="depotTier"
+              density="compact"
+              hide-details
+              item-title="title"
+              item-value="value"
+              :items="tierOptions"
+              style="max-width: 250px"
+              variant="outlined"
+            />
+            <v-chip class="sf-chip small dimensional-depot no-margin" variant="tonal">
+              <game-asset height="20" subject="dimensional-depot-uploader" type="item_id" width="20" />
+              <span class="ml-2">{{ formatNumber(depotRate) }}/min per Uploader</span>
+            </v-chip>
+            <v-chip
+              v-if="totalContainers > 0"
+              id="depot-capacity-summary"
+              class="sf-chip small no-margin"
+              :class="overCapacity ? 'status-warning-outlined' : 'green'"
+              variant="tonal"
+            >
+              <i class="fas fa-gauge" />
+              <span class="ml-2">
+                {{ formatNumber(totalAmount) }}/min of {{ formatNumber(totalCapacity) }}/min used
+              </span>
+            </v-chip>
+          </div>
           <v-table v-if="entries.length > 0" class="depot-table" density="compact">
             <thead>
               <tr>
                 <th scope="col">Item</th>
-                <th class="text-right" scope="col">Into Depot</th>
+                <th class="text-right" scope="col">Into Depot / capacity</th>
                 <th class="text-right" scope="col">Uploaders</th>
                 <th scope="col">Factories</th>
               </tr>
@@ -82,7 +116,10 @@
                     </template>
                     <span>Every factory flagged for this item has its whole output spoken for by exports or internal use,<br>so nothing at all reaches the Depot.</span>
                   </v-tooltip>
-                  <b v-else>{{ formatNumber(entry.totalAmount) }}/min</b>
+                  <template v-else>
+                    <b :class="{ 'text-status-warning': isOverCapacity(entry) }">{{ formatNumber(entry.totalAmount) }}</b>
+                    <span class="text-medium-emphasis"> / {{ formatNumber(entry.uploadCapacity) }}/min</span>
+                  </template>
                 </td>
                 <td class="text-right">
                   <v-tooltip v-if="isOverCapacity(entry)" bottom>
@@ -91,7 +128,7 @@
                         <i class="fas fa-exclamation-triangle mr-2" />{{ formatNumber(entry.totalContainers) }}
                       </v-chip>
                     </template>
-                    <span>{{ entry.totalContainers }} Uploader{{ entry.totalContainers === 1 ? '' : 's' }} can take {{ formatNumber(entry.uploadCapacity) }}/min between them, fully researched,<br>but {{ formatNumber(entry.totalAmount) }}/min is spare. The rest backs up.</span>
+                    <span>{{ entry.totalContainers }} Uploader{{ entry.totalContainers === 1 ? '' : 's' }} can take {{ formatNumber(entry.uploadCapacity) }}/min between them at your research level,<br>but {{ formatNumber(entry.totalAmount) }}/min is spare. The remaining {{ formatNumber(entry.totalAmount - entry.uploadCapacity) }}/min backs up.<br>Add Uploaders, or research a faster upload speed.</span>
                   </v-tooltip>
                   <b v-else>{{ formatNumber(entry.totalContainers) }}</b>
                 </td>
@@ -123,7 +160,8 @@
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
             One Mercer Sphere per Uploader. Unlocking the Depot and buying every upload-speed and
             capacity upgrade costs a further {{ DEPOT_RESEARCH_MERCER_SPHERES }} Mercer Spheres in the
-            MAM, once per save — not counted above.
+            MAM, once per save — not counted above. Upload speed applies per Uploader, so two
+            Uploaders on one item move twice as much.
           </p>
         </v-card-text>
       </v-card>
@@ -138,6 +176,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { calculateDimensionalDepot, DimensionalDepotEntry } from '@/utils/statistics'
   import { DEPOT_RESEARCH_MERCER_SPHERES } from '@/utils/factory-management/disposal'
+  import { DEPOT_UPLOAD_TIERS, useDepotResearch } from '@/composables/useDepotResearch'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
   import eventBus from '@/utils/eventBus'
 
@@ -148,7 +187,14 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
-  const entries = computed(() => calculateDimensionalDepot(props.factories))
+  const { depotTier, depotRate } = useDepotResearch()
+
+  const tierOptions = DEPOT_UPLOAD_TIERS.map(tier => ({
+    value: tier.tier,
+    title: `${tier.label} — ${tier.rate}/min`,
+  }))
+
+  const entries = computed(() => calculateDimensionalDepot(props.factories, depotRate.value))
 
   const totalContainers = computed(() =>
     entries.value.reduce((total, entry) => total + entry.totalContainers, 0))
@@ -159,6 +205,15 @@
     entries.value.reduce((total, entry) => total + entry.totalContainers, 0))
 
   const starvedCount = computed(() => entries.value.filter(entry => entry.starved).length)
+
+  // Plan-wide throughput against plan-wide capacity. Deliberately a sum rather than a per-item
+  // verdict: an item over capacity is called out on its own row, and this says whether the plan as
+  // a whole has enough Uploaders in it.
+  const totalAmount = computed(() =>
+    entries.value.reduce((total, entry) => total + entry.totalAmount, 0))
+  const totalCapacity = computed(() =>
+    entries.value.reduce((total, entry) => total + entry.uploadCapacity, 0))
+  const overCapacity = computed(() => entries.value.some(entry => isOverCapacity(entry)))
 
   const isOverCapacity = (entry: DimensionalDepotEntry): boolean =>
     !entry.starved && entry.totalAmount > entry.uploadCapacity

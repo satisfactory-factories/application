@@ -361,7 +361,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     icon: 'fas fa-traffic-cone',
     chip: true,
     section: 'satisfaction',
-    detail: 'These items have a surplus with no destination, so they will fill the belt and stall the buildings making them. Place an AWESOME Sink on them in the Storage column to dispose of the excess.',
+    detail: 'These items have a surplus that is not fully used up: not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking them. The belt fills up and the buildings making them stall. Add AWESOME Sinks in the Storage column to dispose of the excess.',
     // Advisory rather than a warning, and the note tier exists for exactly this: overproducing is
     // frequently deliberate, and a plan mid-build has loose ends everywhere. It is also the one
     // status a user may reasonably never want to see, which is why it alone is switchable off.

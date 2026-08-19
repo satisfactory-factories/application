@@ -4,6 +4,7 @@ import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inpu
 import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { PowerRecipe } from '@/interfaces/Recipes'
+import { DataInterface } from '@/interfaces/DataInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { getDepotCount, getSinkCount, isSunk } from '@/utils/factory-management/disposal'
 
@@ -240,6 +241,19 @@ export const showDisposalControls = (factory: Factory, partId: string): boolean 
 // facts live in isSinkablePart, which the engine stamps onto the part every calculation.
 export const showSinkControl = (factory: Factory, partId: string): boolean =>
   showDisposalControls(factory, partId) && factory.parts[partId]?.isSinkable !== false
+
+/**
+ * The Uploader also takes a conveyor and nothing else, so a fluid cannot go in it — but unlike the
+ * sink it has no objection to radioactive items. The wiki's Radiation page is explicit that
+ * uploading a radioactive part to the Depot stops its radiation entirely, so Uranium Waste and
+ * Plutonium Waste are legitimate here even though the sink refuses them.
+ *
+ * That is why this asks the game data rather than reusing `isSinkable`: the two exclusions only
+ * look alike. It also takes gameData rather than reading a stamped field, because nothing in the
+ * engine needs the answer — the Depot changes no number, so this is purely an affordance.
+ */
+export const showDepotControl = (factory: Factory, partId: string, gameData: DataInterface): boolean =>
+  showDisposalControls(factory, partId) && !gameData?.items?.parts?.[partId]?.isFluid
 
 // Only true when the sink is actually taking something. A sink placed on a part whose surplus has
 // since been exported away is still set, but it is not sinking anything, and saying "Sunk" over a

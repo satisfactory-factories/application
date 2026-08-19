@@ -100,6 +100,72 @@
         </div>
       </v-card>
     </div>
+    <!-- Dimensional Depot jump-link. Only once the plan uses it, matching the section itself:
+         a permanent row for a feature nobody in this plan has touched is a row of nothing. -->
+    <div
+      v-if="depotSummary"
+      class="mb-1 rounded factory-card"
+      :class="{ 'active-view': activeFactoryId === 'dimensional-depot' }"
+    >
+      <v-card
+        class="w-100 header list px-0 rounded-0"
+        style="box-shadow: none !important;"
+        @click="navigateToSection('dimensional-depot')"
+      >
+        <v-row class="d-flex flex-nowrap ma-0 align-center">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
+            <game-asset
+              class="mr-2"
+              height="20"
+              subject="dimensional-depot"
+              type="item_id"
+              width="20"
+            />
+            <span>Dimensional Depot</span>
+          </v-spacer>
+        </v-row>
+        <!-- Icon-only chips on their own line, like the summary's status tally above: the sidebar
+             is narrow and drags narrower still, and a word beside each number wraps the title. -->
+        <div class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip :text="`Items tracked: ${depotSummary.items}`">
+            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
+              <i class="fas fa-box" />
+              <span class="ml-1">{{ depotSummary.items }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip :text="`Dimensional Depot Uploaders: ${depotSummary.containers}`">
+            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
+              <game-asset height="14" subject="dimensional-depot-uploader" type="item_id" width="14" />
+              <span class="ml-1">{{ depotSummary.containers }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip :text="`Mercer Spheres for those Uploaders: ${depotSummary.spheres}`">
+            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
+              <game-asset height="14" subject="mercer-sphere" type="item_id" width="14" />
+              <span class="ml-1">{{ depotSummary.spheres }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip
+            v-if="depotSummary.starved > 0"
+            :text="`${depotSummary.starved} item(s) flagged for the Depot with nothing spare to send it`"
+          >
+            <v-chip class="sf-chip x-small no-margin status-warning-outlined" variant="tonal">
+              <i class="fas fa-exclamation-triangle" />
+              <span class="ml-1">{{ depotSummary.starved }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip
+            v-if="depotSummary.overCapacity > 0"
+            :text="`${depotSummary.overCapacity} item(s) arriving faster than their Uploaders can take`"
+          >
+            <v-chip class="sf-chip x-small no-margin status-warning-outlined" variant="tonal">
+              <i class="fas fa-gauge" />
+              <span class="ml-1">{{ depotSummary.overCapacity }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
+      </v-card>
+    </div>
   </div>
   <div v-show="show" class="factory-list">
     <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
@@ -178,6 +244,9 @@
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import { useDepotResearch } from '@/composables/useDepotResearch'
+  import { calculateDimensionalDepot } from '@/utils/statistics'
+  import { MERCER_SPHERES_PER_DEPOT } from '@/utils/factory-management/disposal'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
@@ -257,6 +326,25 @@
 
   // Reuses the memo above rather than walking the plan a second time.
   const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
+
+  // Null when nothing in the plan touches the Depot, which is what hides the whole jump-link —
+  // the same test Planner.vue uses to decide whether to render the section it points at.
+  const { depotRate } = useDepotResearch()
+  const depotSummary = computed(() => {
+    const entries = calculateDimensionalDepot(compProps.factories, depotRate.value)
+    if (!entries.length) return null
+
+    const containers = entries.reduce((total, entry) => total + entry.totalContainers, 0)
+    return {
+      items: entries.length,
+      containers,
+      // One sphere per Uploader, so these are the same number today; kept separate so the ratio
+      // lives in one place if it ever stops being one.
+      spheres: containers * MERCER_SPHERES_PER_DEPOT,
+      starved: entries.filter(entry => entry.starved).length,
+      overCapacity: entries.filter(entry => !entry.starved && entry.totalAmount > entry.uploadCapacity).length,
+    }
+  })
 
   const createFactory = () => {
     emit('createFactory')

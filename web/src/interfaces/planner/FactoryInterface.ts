@@ -306,6 +306,11 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+  // How far the MAM's Dimensional Depot upload-speed research has been taken, 0-4. Decides what
+  // one Uploader can actually move (15/min doubling to 240/min), so it decides whether the
+  // Uploaders in the plan can keep up with what is being sent to them. Per plan rather than per
+  // browser: it describes the world the plan is written against. Absent means fully researched.
+  depotUploadTier?: number;
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];

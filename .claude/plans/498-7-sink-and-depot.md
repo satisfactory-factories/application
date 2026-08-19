@@ -30,6 +30,16 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
 3. **Only a sink clears the backlog advisory.** Follows from 2. Confirmed with the user 2026-08-19.
 4. **AWESOME Sinks draw power: 30 MW each** (`Build_ResourceSink_C.mPowerConsumption`, Docs.json).
    The Dimensional Depot Uploader draws 0 MW. Confirmed with the user 2026-08-19.
+4b. **The two exclusions are NOT the same.** The sink refuses fluids *and* radioactive items. The
+   Uploader refuses fluids only — the wiki's [Radiation](https://satisfactory.wiki.gg/wiki/Radiation)
+   page is explicit that uploading a radioactive part to the Depot stops its radiation, which is a
+   reason players do it deliberately. So Uranium and Plutonium Waste can be depoted but not sunk,
+   and `showDepotControl` asks the game data for `isFluid` rather than reusing `isSinkable`.
+4c. **Upload speed is per Uploader and depends on MAM research.** 15/min unresearched, doubling with
+   each of four upgrades to 240/min, so capacity is `uploaders × rate`. The tier lives on
+   `FactoryTab` beside `powerTarget`: it describes the world the plan is written against, so it has
+   to travel with the plan rather than follow the browser. Absent means fully researched, which is
+   what the statistics reported before the tier existed.
 5. **Named "Dimensional Depot"**, the game's term — matching the shipped icons and the earlier
    plan's locked decision, not issue #498's "Dimension Storage". Confirmed with the user.
 6. **One Mercer Sphere per Dimensional Depot Uploader.** Read off the game's own build recipe
@@ -95,9 +105,17 @@ becomes nagging on a big plan.
 ## Statistics
 
 - **New top-level `DimensionalDepot.vue` section**, its own card beside Statistics rather than
-  inside it, purple header. One row per item: rate into the depot, container count, and a factory
-  pill per contributor carrying that factory's own container count. Rendered only when the plan
-  actually uses the depot.
+  inside it, purple header. One row per item: rate into the depot against what its Uploaders can
+  take, container count, and a factory pill per contributor carrying that factory's own container
+  count. Carries the MAM research selector. Rendered only when the plan actually uses the depot.
+- **A sidebar jump-link** beneath the Global Factories Summary, same shape as that one, with
+  icon-only chips (items, Uploaders, Mercer Spheres, plus starved / over-capacity when they apply).
+- **The trailing gap belongs to the last section**, not permanently to the Factories Summary — that
+  is why `mb-4` moved out of `StatisticsFactorySummary.vue` and is bound in `Planner.vue` instead.
+  Left as it was, adding a section after it double-spaced above and left none below.
+- **A Mercer Sphere icon had to be added.** Every other icon came from greeny's collation, which has
+  no Mercer Sphere because it is a collectable rather than a craftable part; this one comes from the
+  wiki, noted in `attribution.txt`.
 - **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader.
 
 ## Verification

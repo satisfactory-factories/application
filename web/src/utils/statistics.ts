@@ -6,11 +6,11 @@ import {
 import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
 import {
-  DEPOT_UPLOAD_RATE_PER_MIN,
   getDepotCount,
   getFactoryMercerSpheres,
   MERCER_SPHERES_PER_DEPOT,
 } from '@/utils/factory-management/disposal'
+import { DEFAULT_DEPOT_TIER, depotRateForTier } from '@/composables/useDepotResearch'
 export interface BuildingTotal {
   name: string
   totalAmount: number
@@ -278,8 +278,8 @@ export interface DimensionalDepotEntry {
   totalContainers: number
   // What the plan actually has spare to upload, items/min.
   totalAmount: number
-  // What those Uploaders could carry between them, fully researched. Below totalAmount means the
-  // depot cannot keep up and the remainder still backs up.
+  // What those Uploaders can carry between them at the plan's researched upload speed. Below
+  // totalAmount means the depot cannot keep up and the remainder still backs up.
   uploadCapacity: number
   // Every factory has the flag set but none of them has anything spare, so nothing reaches the
   // depot at all. Worth its own field: each factory looks fine on its own, and the fact only
@@ -299,7 +299,12 @@ export interface DimensionalDepotEntry {
  * starved warning — a row listing three factories, all at zero, is a user who has flagged an item
  * for the depot everywhere and is feeding it nowhere.
  */
-export const calculateDimensionalDepot = (factories: Factory[]): DimensionalDepotEntry[] => {
+export const calculateDimensionalDepot = (
+  factories: Factory[],
+  // Items/min one Uploader can move at the plan's MAM research level. Passed in rather than read
+  // from the store so this stays a pure function of the plan, which is what its spec relies on.
+  uploadRatePerMin: number = depotRateForTier(DEFAULT_DEPOT_TIER),
+): DimensionalDepotEntry[] => {
   const items: Record<string, DimensionalDepotEntry> = {}
 
   factories.forEach(factory => {
@@ -340,7 +345,7 @@ export const calculateDimensionalDepot = (factories: Factory[]): DimensionalDepo
   return Object.values(items)
     .map(entry => ({
       ...entry,
-      uploadCapacity: entry.totalContainers * DEPOT_UPLOAD_RATE_PER_MIN,
+      uploadCapacity: entry.totalContainers * uploadRatePerMin,
       starved: entry.totalAmount <= 0,
     }))
     .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))
