@@ -146,15 +146,6 @@
             </v-chip>
           </tooltip>
           <tooltip
-            v-if="depotSummary.starved > 0"
-            :text="`${depotSummary.starved} item(s) flagged for the Depot with nothing spare to send it`"
-          >
-            <v-chip class="sf-chip x-small no-margin status-warning-outlined" variant="tonal">
-              <i class="fas fa-exclamation-triangle" />
-              <span class="ml-1">{{ depotSummary.starved }}</span>
-            </v-chip>
-          </tooltip>
-          <tooltip
             v-if="depotSummary.overCapacity > 0"
             :text="`${depotSummary.overCapacity} item(s) arriving faster than their Uploaders can take`"
           >
@@ -341,8 +332,7 @@
       // One sphere per Uploader, so these are the same number today; kept separate so the ratio
       // lives in one place if it ever stops being one.
       spheres: containers * MERCER_SPHERES_PER_DEPOT,
-      starved: entries.filter(entry => entry.starved).length,
-      overCapacity: entries.filter(entry => !entry.starved && entry.totalAmount > entry.uploadCapacity).length,
+      overCapacity: entries.filter(entry => entry.totalAmount > entry.uploadCapacity).length,
     }
   })
 

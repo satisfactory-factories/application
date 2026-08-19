@@ -281,10 +281,6 @@ export interface DimensionalDepotEntry {
   // What those Uploaders can carry between them at the plan's researched upload speed. Below
   // totalAmount means the depot cannot keep up and the remainder still backs up.
   uploadCapacity: number
-  // Every factory has the flag set but none of them has anything spare, so nothing reaches the
-  // depot at all. Worth its own field: each factory looks fine on its own, and the fact only
-  // becomes visible once they are added up.
-  starved: boolean
   sources: DimensionalDepotSource[]
 }
 
@@ -295,9 +291,13 @@ export interface DimensionalDepotEntry {
  * a logistics factory that imports everything and uploads the overflow is a real build, and asking
  * "does this factory make the part" would exclude exactly that case.
  *
- * A contributor with nothing spare is KEPT rather than filtered out. It is the whole point of the
- * starved warning — a row listing three factories, all at zero, is a user who has flagged an item
- * for the depot everywhere and is feeding it nowhere.
+ * A contributor with nothing spare is KEPT rather than filtered out, and is NOT treated as a
+ * problem. An Uploader is fed off a splitter on the line, so it takes a share of whatever passes
+ * until it is full and then stops accepting — a buffer that fills once, not a consumer with a
+ * standing appetite. An item whose steady-state surplus is zero therefore still fills its depot;
+ * it just borrows from the export while doing so, and once full everything flows on as planned.
+ * The rate here is what is spare in steady state, which is the honest number, but a zero in it
+ * does not mean the depot stays empty.
  */
 export const calculateDimensionalDepot = (
   factories: Factory[],
@@ -322,7 +322,6 @@ export const calculateDimensionalDepot = (
         totalContainers: 0,
         totalAmount: 0,
         uploadCapacity: 0,
-        starved: false,
         sources: [],
       }
 
@@ -346,7 +345,6 @@ export const calculateDimensionalDepot = (
     .map(entry => ({
       ...entry,
       uploadCapacity: entry.totalContainers * uploadRatePerMin,
-      starved: entry.totalAmount <= 0,
     }))
     .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))
 }

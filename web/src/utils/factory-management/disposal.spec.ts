@@ -19,7 +19,14 @@ import {
   SINK_POWER_MW,
 } from '@/utils/factory-management/disposal'
 import { calculateDimensionalDepot } from '@/utils/statistics'
-import { showBacklogAdvisory, willBacklog } from '@/utils/factory-management/status'
+import {
+  factoryStatusClass,
+  factoryStatusDefinitions,
+  getFactoryStatuses,
+  hasFactoryProblem,
+  showBacklogAdvisory,
+  willBacklog,
+} from '@/utils/factory-management/status'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import {
   isActivelySunk,
@@ -412,6 +419,35 @@ describe('disposal', () => {
       expect(showBacklogAdvisory(factory, 'IronPlate')).toBe(false)
     })
 
+    // Promoted from `note` to `warning` once sinking became expressible: the planner can now
+    // answer the problem, so leaving it unanswered is an omission rather than an observation.
+    // Pinned because the difference is whether the factory turns amber, which is the whole point.
+    it('is a warning that colours the factory amber, but never a problem', () => {
+      const consumer = newFactory('Consumer')
+      addProductToFactory(consumer, { id: 'IronPlateReinforced', amount: 10, recipe: 'IronPlateReinforced' })
+      addInputToFactory(consumer, { factoryId: factory.id, outputPart: 'IronPlate', amount: 60 })
+      calculateFactories([factory, consumer], gameData)
+
+      const backlog = getFactoryStatuses(factory).find(status => status.type === 'willBacklog')
+      expect(backlog).toBeDefined()
+      expect(backlog!.severity).toBe('warning')
+
+      // Asserted on the status ALONE rather than on this factory's rollup: the fixture makes
+      // plates without supplying its own ingots, so it is legitimately red for a shortage that
+      // has nothing to do with the backlog. What matters here is the colour a backlog by itself
+      // produces — amber, and never red.
+      expect(factoryStatusClass([backlog!])).toEqual({ problem: false, warning: true })
+      expect(hasFactoryProblem({ ...factory, products: [], parts: {} } as typeof factory)).toBe(false)
+    })
+
+    // The registry is declared in severity order and every display site relies on that rather
+    // than sorting, so a warning sitting among the notes would render out of order.
+    it('is declared above the note-tier entries', () => {
+      const order = factoryStatusDefinitions.map(definition => definition.severity)
+      const firstNote = order.indexOf('note')
+      expect(order.lastIndexOf('warning')).toBeLessThan(firstNote)
+    })
+
     it('is silenced entirely by the option', () => {
       usePlannerOptions().value.showBacklogAdvisory = false
       const consumer = newFactory('Consumer')
@@ -442,7 +478,6 @@ describe('disposal', () => {
       expect(entry.id).toBe('IronPlate')
       expect(entry.totalAmount).toBe(100)
       expect(entry.totalContainers).toBe(2)
-      expect(entry.starved).toBe(false)
       expect(entry.sources).toEqual([
         expect.objectContaining({ id: factory.id, name: 'Plates', amount: 100, containers: 2 }),
       ])
@@ -461,9 +496,10 @@ describe('disposal', () => {
       expect(entry.sources).toHaveLength(2)
     })
 
-    // A contributor with nothing spare is kept deliberately: it is the whole point of the starved
-    // warning that the row shows who claimed to feed the item and is not.
-    it('keeps a contributor at zero without calling the item starved', () => {
+    // A contributor with nothing spare is kept deliberately: the row is a list of where the
+    // Uploaders are, and dropping the ones with no steady surplus would hide Uploaders the user
+    // has to go and build.
+    it('keeps a contributor at zero', () => {
       const feeding = platesFactory('Plates A', 100)
       const spentUp = platesFactory('Plates B', 40)
       const consumer = newFactory('Consumer')
@@ -476,10 +512,12 @@ describe('disposal', () => {
       const [entry] = calculateDimensionalDepot([feeding, spentUp])
       expect(entry.sources).toHaveLength(2)
       expect(entry.sources.find(source => source.name === 'Plates B')?.amount).toBe(0)
-      expect(entry.starved).toBe(false)
     })
 
-    it('marks the item starved when every contributor has nothing spare', () => {
+    // Zero spare is reported as zero and nothing more. An Uploader sits on a splitter and takes a
+    // share of everything that passes until it is full, so a steady-state surplus of nothing means
+    // it fills off the flow rather than that it never fills — flagging it would be wrong.
+    it('reports zero rather than a warning when every contributor has nothing spare', () => {
       const factory = platesFactory('Plates', 40)
       const consumer = newFactory('Consumer')
       addProductToFactory(consumer, { id: 'IronPlateReinforced', amount: 5, recipe: 'IronPlateReinforced' })
@@ -488,13 +526,13 @@ describe('disposal', () => {
       setDepotCount(factory, 'IronPlate', 1)
 
       const [entry] = calculateDimensionalDepot([factory])
-      expect(entry.starved).toBe(true)
       expect(entry.totalAmount).toBe(0)
+      expect(entry.totalContainers).toBe(1)
     })
 
     // Sinking zeroes amountRemaining, so reading that would report every sunk-and-depoted item as
-    // starved. The pre-sink figure is what the depot would see.
-    it('reads the pre-sink surplus, so a sunk item is not reported as starved', () => {
+    // uploading nothing. The pre-sink figure is what the depot would see.
+    it('reads the pre-sink surplus, so a sunk item still reports what it uploads', () => {
       const factory = platesFactory()
       setSinkCount(factory, 'IronPlate', 1)
       calculateFactories([factory], gameData)
@@ -502,7 +540,6 @@ describe('disposal', () => {
 
       const [entry] = calculateDimensionalDepot([factory])
       expect(entry.totalAmount).toBe(100)
-      expect(entry.starved).toBe(false)
     })
 
     it('excludes a stale flag for a part the factory no longer handles', () => {

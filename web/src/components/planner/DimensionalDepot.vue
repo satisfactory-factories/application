@@ -26,15 +26,6 @@
               <game-asset height="20" subject="mercer-sphere" type="item_id" width="20" />
               <span class="ml-2">{{ formatNumber(totalMercerSpheres) }} Mercer Sphere{{ totalMercerSpheres === 1 ? '' : 's' }}</span>
             </v-chip>
-            <v-chip
-              v-if="starvedCount > 0"
-              id="depot-starved-summary"
-              class="sf-chip small status-warning-outlined no-margin"
-              variant="tonal"
-            >
-              <i class="fas fa-exclamation-triangle" />
-              <span class="ml-2">{{ starvedCount }} receiving nothing</span>
-            </v-chip>
             <!-- A count, not a sum. Each item's capacity is its own Uploaders' and nothing else's,
                  so "how many items cannot keep up" is the only plan-wide thing worth saying. -->
             <v-chip
@@ -107,16 +98,18 @@
                   </div>
                 </td>
                 <td class="text-right">
-                  <!-- Starved and over-capacity are different failures and both are worth saying:
-                       one means nothing is arriving, the other means more is arriving than the
-                       Uploaders can take, so the remainder still backs up. -->
-                  <v-tooltip v-if="entry.starved" bottom>
+                  <!-- No spare is not a failure, which is why it gets an explanation rather than a
+                       warning. An Uploader sits on a splitter, so it takes a share of everything
+                       that passes until it is full and then stops accepting — it fills once, it
+                       does not need a standing surplus to feed it. -->
+                  <v-tooltip v-if="entry.totalAmount <= 0" bottom>
                     <template #activator="{ props: activatorProps }">
-                      <v-chip v-bind="activatorProps" class="sf-chip small status-warning-outlined">
-                        <i class="fas fa-exclamation-triangle mr-2" />Nothing spare
-                      </v-chip>
+                      <span v-bind="activatorProps" class="depot-idle">
+                        <b>0</b>
+                        <span class="text-medium-emphasis"> / {{ formatNumber(entry.uploadCapacity) }}/min</span>
+                      </span>
                     </template>
-                    <span>Every factory flagged for this item has its whole output spoken for by exports or internal use,<br>so nothing at all reaches the Depot.</span>
+                    <span>Every factory flagged for this item has its output spoken for, so there is no <em>steady</em> surplus.<br>The Depot still fills: an Uploader takes a share of everything that passes its splitter until it is<br>full, and the line carries on as before once it stops accepting. It only stays empty if you feed<br>it from the low-priority side of a priority splitter.</span>
                   </v-tooltip>
                   <template v-else>
                     <b :class="{ 'text-status-warning': isOverCapacity(entry) }">{{ formatNumber(entry.totalAmount) }}</b>
@@ -139,7 +132,6 @@
                     v-for="source in entry.sources"
                     :key="`${entry.id}-${source.id}`"
                     class="sf-chip sf-chip-clickable small factory"
-                    :class="{ 'status-warning-outlined': source.amount <= 0 }"
                     @click="navigateToFactory(source.id, `${source.id}-satisfaction-item-${entry.id}`, `${source.id}-satisfaction`)"
                   >
                     <factory-icon-display :icon="source.icon" size="20" />
@@ -211,8 +203,6 @@
   const totalMercerSpheres = computed(() =>
     entries.value.reduce((total, entry) => total + entry.totalContainers, 0))
 
-  const starvedCount = computed(() => entries.value.filter(entry => entry.starved).length)
-
   /**
    * How many items are arriving faster than their own Uploaders can take.
    *
@@ -226,7 +216,7 @@
   const overCapacityCount = computed(() => entries.value.filter(entry => isOverCapacity(entry)).length)
 
   const isOverCapacity = (entry: DimensionalDepotEntry): boolean =>
-    !entry.starved && entry.totalAmount > entry.uploadCapacity
+    entry.totalAmount > entry.uploadCapacity
 
   // Section visibility, persisted. Compare against the string — Boolean('false') is true.
   const hidden = ref<boolean>(localStorage.getItem('dimensionalDepotHidden') === 'true')
@@ -249,6 +239,12 @@
 .depot-header {
   background-color: var(--sf-dimensional-depot-panel-bg) !important;
   border-bottom: 2px solid var(--sf-dimensional-depot-panel-border) !important;
+}
+
+// The zero figure carries a tooltip, so it needs to look like something you can hover.
+.depot-idle {
+  cursor: help;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.4);
 }
 
 .depot-table {

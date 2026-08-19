@@ -322,6 +322,31 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     label: list => count(list, 'Duplicate import', 'duplicate imports'),
   },
   {
+    type: 'willBacklog',
+    severity: 'warning',
+    // A road cone: work to route around, not a fire.
+    icon: 'fas fa-traffic-cone',
+    chip: true,
+    section: 'satisfaction',
+    detail: 'These items have a surplus that is not fully used up: not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking them. The belt fills up and the buildings making them stall. Add AWESOME Sinks in the Storage column to dispose of the excess.',
+    // A warning rather than a note, and the reason is that the planner can now DO something about
+    // it. While sinking could not be expressed, a dangling surplus was an observation the user had
+    // no way to answer, so colouring the factory for it would have been nagging about a state the
+    // app itself could not resolve — that is what the note tier is for. With the Storage column
+    // there is a one-click answer, which makes an unanswered surplus a real omission: the plan
+    // reads as balanced while the factory it describes would stall.
+    //
+    // Fits the module's tier rule too. Red is arithmetic, amber is judgement — and this is
+    // judgement, because a surplus is only wrong if the user has not decided what happens to it.
+    // A Dimensional Depot deliberately does not clear it: the depot fills and then backs up, so it
+    // defers the problem rather than answering it. Only a sink or real demand does.
+    detect: factory => nonEmpty(subjects(
+      Object.keys(factory.parts).filter(part => showBacklogAdvisory(factory, part))
+    )),
+    label: list => count(list, 'Will backlog', 'will backlog'),
+    detailLabel: list => count(list, 'Item will back up', 'items will back up'),
+  },
+  {
     type: 'noDemand',
     severity: 'note',
     icon: 'fas fa-question-circle',
@@ -353,23 +378,6 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     )),
     label: list => count(list, 'Potential blockage', 'potential blockages'),
     detailLabel: list => count(list, 'Potential blockage', 'byproducts that need sinking'),
-  },
-  {
-    type: 'willBacklog',
-    severity: 'note',
-    // A road cone: something to walk around later, not something on fire now.
-    icon: 'fas fa-traffic-cone',
-    chip: true,
-    section: 'satisfaction',
-    detail: 'These items have a surplus that is not fully used up: not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking them. The belt fills up and the buildings making them stall. Add AWESOME Sinks in the Storage column to dispose of the excess.',
-    // Advisory rather than a warning, and the note tier exists for exactly this: overproducing is
-    // frequently deliberate, and a plan mid-build has loose ends everywhere. It is also the one
-    // status a user may reasonably never want to see, which is why it alone is switchable off.
-    detect: factory => nonEmpty(subjects(
-      Object.keys(factory.parts).filter(part => showBacklogAdvisory(factory, part))
-    )),
-    label: list => count(list, 'Will backlog', 'will backlog'),
-    detailLabel: list => count(list, 'Item will back up', 'items will back up'),
   },
 ]
 
@@ -548,7 +556,7 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     key: 'willBacklog',
     types: ['willBacklog'],
     icon: 'fas fa-traffic-cone',
-    class: 'status-note',
+    class: 'status-warning',
     label: ['will backlog', 'will backlog'],
     sentence: ['factory has a surplus that will back up', 'factories have a surplus that will back up'],
   },

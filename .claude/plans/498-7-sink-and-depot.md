@@ -48,9 +48,17 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
 6. **One Mercer Sphere per Dimensional Depot Uploader.** Read off the game's own build recipe
    (`Recipe_CentralStorage_C`: 1 Mercer Sphere, 10 SAM Fluctuator, 10 Modular Frame, 100 Wire),
    not off a wiki page.
-7. **The advisory uses the existing `note` tier.** #508 already shipped a third severity that gets
-   a chip and is left out of the colour rollup entirely — exactly "advisory, does not turn the
-   factory red or amber". No new tier.
+7. **The backlog advisory is a `warning`.** It shipped on the `note` tier first, which was the
+   right call while nothing in the UI could act on it. With the Storage column in the same row there
+   is now a control that fixes it, so it is amber and colours the factory amber — the user's call,
+   2026-08-19. It stays switchable off in Options for a plan mid-build.
+8. **The Depot never reports "nothing spare".** An Uploader is fed off a splitter, so it takes a
+   share of everything that passes until it is full and then stops accepting: it is a buffer that
+   fills once, not a consumer with a standing appetite. A steady-state surplus of zero therefore
+   does NOT mean the Depot stays empty, so the `starved` warning that shipped first was modelling it
+   as a consumer and contradicting decision 2. Removed rather than reworded; the one case where it
+   really would stay empty — fed from the low-priority leg of a priority splitter, which no player
+   would build — is a caveat in the tooltip on the zero.
 
 ## Data model
 
@@ -101,6 +109,8 @@ New `willBacklog` note, plus three existing entries that stop being true once si
 `willBacklog` fires on a significant surplus that no sink is taking. It does not need to test the
 sink itself: a sunk part lands at `amountRemaining === 0`, so the surplus test already excludes it.
 Suppressed where `potentialBlockage` or `noDemand` already says the same thing about the same part.
+Declared above the `note` entries, because the registry is in severity order and the display sites
+do not sort.
 
 On by default, switchable off in Options (`showBacklogAdvisory`) — it is the kind of advice that
 becomes nagging on a big plan.
@@ -112,13 +122,16 @@ becomes nagging on a big plan.
   take, container count, and a factory pill per contributor carrying that factory's own container
   count. Carries the MAM research selector. Rendered only when the plan actually uses the depot.
 - **A sidebar jump-link** beneath the Global Factories Summary, same shape as that one, with
-  icon-only chips (items, Uploaders, Mercer Spheres, plus starved / over-capacity when they apply).
+  icon-only chips (items, Uploaders, Mercer Spheres, plus over-capacity when it applies).
 - **The trailing gap belongs to the last section**, not permanently to the Factories Summary — that
   is why `mb-4` moved out of `StatisticsFactorySummary.vue` and is bound in `Planner.vue` instead.
   Left as it was, adding a section after it double-spaced above and left none below.
 - **A Mercer Sphere icon had to be added.** Every other icon came from greeny's collation, which has
   no Mercer Sphere because it is a collectable rather than a craftable part; this one comes from the
   wiki, noted in `attribution.txt`.
+- **The Depot's panel is a deep violet** (`dimensionalDepotPanel`), a separate token from the accent
+  the chips use: it has to sit under them without competing, and the muted mauve it started as read
+  as grey over a dark card rather than as a colour at all.
 - **The Depot's colour is sampled from the Mercer Sphere artwork** (`palette.mercerPurple`, the mean
   of its brightest saturated pixels). It previously shared `mutedPurple` with the Alien Power
   Augmenter's circuit boost and was too close to read apart; it is also magenta-leaning where the

@@ -33,7 +33,11 @@ interface PlannerOptions {
   // Flag items whose surplus has no destination, so they will fill the belt and stall the
   // buildings making them. On by default — it is the difference between a plan that runs and one
   // that jams — but switchable, because a plan mid-build has loose ends everywhere and being told
-  // about every one of them is nagging rather than help. See willBacklog in status.ts.
+  // about every one of them is nagging rather than help.
+  //
+  // Note this now turns factories amber, not just chips: willBacklog is a warning tier, so
+  // switching it off changes what colour a plan reads as, not merely how much it says. See
+  // willBacklog in status.ts for why it earned that tier.
   showBacklogAdvisory: boolean
 }
 

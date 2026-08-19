@@ -59,7 +59,7 @@
           <span>Warn about surpluses that will back up</span>
           <tooltip-info
             :is-caption="false"
-            text="A surplus nothing consumes fills the belt and stalls the buildings making it. This flags those items so you can sink the excess. Advisory only — it never colours a factory. Turn it off if a plan mid-build is showing you more of these than you want to read."
+            text="A surplus nothing consumes fills the belt and stalls the buildings making it. This flags those items so you can sink the excess, and marks the factory amber until you do. Turn it off if a plan mid-build is showing you more of these than you want to read."
             @click.stop
           />
         </div>

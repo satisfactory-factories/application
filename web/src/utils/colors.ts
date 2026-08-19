@@ -82,15 +82,16 @@ export const sfColors = {
   // The Dimensional Depot and the Mercer Spheres its uploaders are built from. This is the ACCENT:
   // chips, icons and the number inputs in the Storage column.
   dimensionalDepot: { color: palette.mercerPurple, border: palette.mercerPurpleBorder },
-  // The SURFACE the Depot's section header and its sidebar jump-link wear. Deliberately the muted
-  // mauve rather than the accent above: a header-width band of the bright Mercer purple competes
-  // with the chips sitting on it and reads as an alert rather than a section. Two roles, two
-  // tokens — a panel and the things on it do not want the same strength of the same colour.
+  // The SURFACE the Depot's section header and its sidebar jump-link wear. A deep violet, dark
+  // enough to sit UNDER the accent chips rather than compete with them, and saturated enough to
+  // read as purple rather than as the grey it started out: a desaturated mauve over a dark card
+  // is barely a colour at all, which was the complaint. Two roles, two tokens — a panel and the
+  // things on it do not want the same strength of the same colour.
   //
   // Opaque rather than the alpha fill this started as, for the reason `problem` gives below: it is
   // used on two different surfaces (a card and the sidebar), and an alpha value composites to a
-  // different shade on each. This is that original 22% mauve as rendered over the card.
-  dimensionalDepotPanel: { color: palette.mutedPurple, border: palette.mutedPurpleBorder, background: '#443a44' },
+  // different shade on each.
+  dimensionalDepotPanel: { color: palette.mercerPurple, border: '#a04fb5', background: '#3d1f4d' },
   // The AWESOME Sink. Gold, as it is in game, and distinct from `warning`'s yellow: a sunk
   // surplus is a resolved state, not a caution.
   awesomeSink: { color: '#d9a441', border: '#a6761a' },

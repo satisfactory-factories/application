@@ -383,12 +383,14 @@
                   <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up.</span>
                 </v-tooltip>
               </template>
-              <!-- Advisory only: the note tier never colours the factory, and this one is
-                   switchable off entirely, because a plan mid-build has loose ends everywhere. -->
+              <!-- Warning tier, so this colours the factory amber: with the Storage column beside
+                   it there is a one-click answer, which makes an unanswered surplus a real
+                   omission rather than an observation. Still switchable off entirely, for a plan
+                   mid-build where loose ends are everywhere. -->
               <template v-if="showBacklogAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
                       <i class="fas fa-traffic-cone mr-2" /><span class="mr-2">Will cause backlog</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>

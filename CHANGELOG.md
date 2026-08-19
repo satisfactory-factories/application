@@ -25,16 +25,16 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **A Dimensional Depot Uploader deliberately changes no number.** The Depot is finite storage: it
   fills, and then it backs up like any other container. Marking an item for the Depot records what
   you are building and what it costs, and leaves the surplus exactly as it is.
-- **New "Will cause backlog" advisory.** Any item left with a surplus nothing consumes, nothing
+- **New "Will cause backlog" warning.** Any item left with a surplus nothing consumes, nothing
   exports and no sink takes will fill the belt and stall the buildings making it — including the
   case nothing could previously see, where a factory makes 200 Iron Plates, ships 100, and the other
-  100 quietly back up. It is the lowest status tier: it gets a chip and never colours a factory, and
-  it can be switched off entirely under **Options → Satisfaction** for a plan mid-build.
+  100 quietly back up. It is an amber warning and marks the factory amber, because there is now a
+  control in the same row that fixes it; it can be switched off entirely under
+  **Options → Satisfaction** for a plan mid-build.
 - **New Dimensional Depot section**, its own card under the Statistics summary and only on plans
   that use it. One row per item: what the plan has spare to upload, how many Uploaders are on it,
-  and a pill per factory carrying that factory's own count. Flags two different failures — an item
-  every factory has flagged and none can feed, and an item arriving faster than its Uploaders can
-  take it (240/min each, fully researched).
+  and a pill per factory carrying that factory's own count. Flags an item arriving faster than its
+  Uploaders can take it (240/min each, fully researched), so the remainder still backs up.
 - **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
   Depot Uploader, read off the game's build recipe. The 97 spheres the MAM research costs are stated
   but not counted: that is paid once per save, not once per plan. The Mercer Sphere icon is new —
@@ -46,15 +46,15 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   reports each item's rate against what its own Uploaders can take (`40 / 480/min`), flagging any
   that cannot keep up. Saved on the plan, so a shared plan carries the world it was written against.
 - **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
-  icon-only counts of items tracked, Uploaders and Mercer Spheres, plus starved and over-capacity
-  warnings when they apply.
+  icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning
+  when it applies.
 - Clicking a factory pill in the Dimensional Depot lands on that item's own row under the
   factory's Satisfaction, unhiding the card and opening its group on the way, rather than dropping
   you at the top of the factory and leaving you to find the item.
 - **The Demo plan uses the Depot**, so the section is visible on the first plan anyone opens:
   two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic. Only the
-  Copper Ingot line has a surplus to give, so the other three read "Nothing spare" — which is the
-  starved warning doing its job on a plan that ships every one of those parts elsewhere.
+  Copper Ingot line has a steady surplus to give, so the other three read `0`, with a tooltip
+  explaining that an Uploader still fills off a splitter on a line that is fully spoken for.
 - The Uploader also takes a conveyor and nothing else, so fluids are excluded from it too. It has no
   objection to radioactive items, though, unlike the sink: uploading one is how you stop it
   irradiating you, so Uranium and Plutonium Waste can be depoted even though they cannot be sunk.
