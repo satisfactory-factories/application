@@ -82,34 +82,59 @@
           />
           <debounce-spinner :active="pendingRecalc === `${input.factoryId}-${input.outputPart}`" />
         </div>
-        <div class="input-row d-flex align-center">
+        <!-- Wraps rather than overflowing: a row can carry a Need button and a Capacity button at
+             once, and the pair plus View and delete is wider than the card on any screen. -->
+        <div class="input-row d-flex align-center flex-wrap ga-2">
+          <!-- Need and Capacity are the two questions an import row can be sized against: what this
+               factory wants, and what the supplier can actually give. Every button here names which
+               one it answers, because asking a supplier for more than it makes is a valid thing to
+               do deliberately and used to be the only thing Satisfy could do. -->
           <v-btn
             v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
-            class="rounded mr-2"
+            class="rounded"
             color="yellow"
             prepend-icon="fas fa-arrow-down"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Trim{{ satisfyTargetLabel(inputIndex) }}</v-btn>
+          >Trim to Need{{ satisfyTargetLabel(inputIndex) }}</v-btn>
           <v-btn
             v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
-            class="rounded mr-2"
+            class="rounded"
             color="green"
             prepend-icon="fas fa-arrow-up"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Satisfy{{ satisfyTargetLabel(inputIndex) }}</v-btn>
+          >Satisfy to Need{{ satisfyTargetLabel(inputIndex) }}</v-btn>
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span v-show="canSatisfyToCapacity(inputIndex)">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="rounded"
+                  color="green"
+                  prepend-icon="fas fa-arrow-to-top"
+                  size="default"
+                  @click="satisfyInputToCapacity(inputIndex, factory)"
+                >Satisfy to Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
+              </span>
+            </template>
+            <span>
+              This factory needs more than {{ providerName(inputIndex) }} can supply. Take the
+              {{ formatNumber(importCapacity(inputIndex) ?? 0) }}/min it does have spare, rather
+              than asking for the full amount and having to trim it back afterwards.
+            </span>
+          </v-tooltip>
           <v-tooltip location="top" max-width="360">
             <template #activator="{ props: tooltipProps }">
               <span v-show="exceedsCapacity(inputIndex)">
                 <v-btn
                   v-bind="tooltipProps"
-                  class="rounded mr-2"
+                  class="rounded"
                   color="yellow"
                   prepend-icon="fas fa-arrow-to-bottom"
                   size="default"
                   @click="trimInputToCapacity(inputIndex, factory)"
-                >Trim to Export Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
+                >Trim to Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
               </span>
             </template>
             <span>
@@ -129,7 +154,7 @@
             @click="navigateToSource(input)"
           >View</v-btn>
           <v-btn
-            class="rounded ml-2"
+            class="rounded"
             color="red"
             icon="fas fa-trash"
             size="small"
@@ -174,6 +199,7 @@
     calculateImportCandidates,
     calculateImportCapacity,
     calculatePossibleImports,
+    canSatisfyImportToCapacity,
     deleteInputPair,
     importExceedsCapacity,
     importFactorySelections,
@@ -183,6 +209,7 @@
     isImportRedundant,
     satisfyImport,
     satisfyImportTarget,
+    satisfyImportToCapacity,
     trimImportToCapacity,
     validateInput,
   } from '@/utils/factory-management/inputs'
@@ -384,6 +411,20 @@
   const exceedsCapacity = (inputIndex: number): boolean => {
     const provider = providerFor(inputIndex)
     return provider ? importExceedsCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const canSatisfyToCapacity = (inputIndex: number): boolean => {
+    const provider = providerFor(inputIndex)
+    return provider ? canSatisfyImportToCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const satisfyInputToCapacity = (inputIndex: number, factory: Factory) => {
+    const provider = providerFor(inputIndex)
+    if (!provider) {
+      return
+    }
+    satisfyImportToCapacity(inputIndex, factory, provider)
+    updateFactories(factory, factory.inputs[inputIndex])
   }
 
   const trimInputToCapacity = (inputIndex: number, factory: Factory) => {

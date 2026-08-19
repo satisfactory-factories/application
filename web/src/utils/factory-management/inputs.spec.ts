@@ -7,9 +7,11 @@ import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates, calculateImportCapacity,
-  calculatePossibleImports, deleteInputPair, importExceedsCapacity, importFactorySelections,
+  calculatePossibleImports, canSatisfyImportToCapacity, deleteInputPair, importExceedsCapacity,
+  importFactorySelections,
   importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
-  satisfyImportTarget, trimImportToCapacity, validateInput,
+  satisfyImportTarget, satisfyImportToCapacity, satisfyImportToCapacityTarget,
+  trimImportToCapacity, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -950,6 +952,122 @@ describe('inputs', () => {
         trimImportToCapacity(0, plateFac, ingotFac)
 
         expect(plateFac.inputs[0].amount).toBe(120)
+      })
+    })
+
+    // The other half of the same question: Trim shrinks a row down to the provider's capacity,
+    // this grows a short row up to it. Satisfy on its own would jump straight past the capacity to
+    // the full need, which then needs trimming straight back down again.
+    describe('satisfy to capacity', () => {
+      beforeEach(() => {
+        // The shared setup deliberately over-asks; shrink the row so there is room to grow into.
+        plateFac.inputs[0].amount = 50
+        calculateFactories(factories, gameData)
+      })
+
+      describe('satisfyImportToCapacityTarget', () => {
+        it('should cap the satisfy target at what the provider can spare', () => {
+          expect(satisfyImportTarget(0, plateFac)).toBe(300)
+          expect(satisfyImportToCapacityTarget(0, plateFac, ingotFac)).toBe(200)
+        })
+
+        it('should be the full need when the provider can cover it', () => {
+          ingotFac.products[0].amount = 400
+          calculateFactories(factories, gameData)
+
+          expect(satisfyImportToCapacityTarget(0, plateFac, ingotFac)).toBe(300)
+        })
+
+        it('should return null while the row is still being filled in', () => {
+          plateFac.inputs[0].outputPart = null
+          expect(satisfyImportToCapacityTarget(0, plateFac, ingotFac)).toBe(null)
+        })
+      })
+
+      describe('canSatisfyImportToCapacity', () => {
+        it('should offer when the provider cannot cover the whole need', () => {
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(true)
+        })
+
+        it('should not offer when the provider can cover the whole need', () => {
+          // Satisfy already lands within capacity, so a second button would set the same figure.
+          ingotFac.products[0].amount = 400
+          calculateFactories(factories, gameData)
+
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(false)
+        })
+
+        it('should not offer when the row already asks for more than the capacity', () => {
+          // That is Trim to Capacity's job, and it is already on screen saying the same figure.
+          plateFac.inputs[0].amount = 300
+          calculateFactories(factories, gameData)
+
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(false)
+        })
+
+        it('should not offer when the row already sits exactly on the capacity', () => {
+          plateFac.inputs[0].amount = 200
+          calculateFactories(factories, gameData)
+
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(false)
+        })
+
+        it('should not offer when the provider has nothing spare', () => {
+          // A quantity of zero is not a valid import and would only trip validateInput.
+          addProductToFactory(ingotFac, {
+            id: 'IronRod',
+            amount: 250,
+            recipe: 'IronRod',
+          })
+          calculateFactories(factories, gameData)
+
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(false)
+        })
+
+        it('should not offer while the row is still being filled in', () => {
+          plateFac.inputs[0].outputPart = null
+          expect(canSatisfyImportToCapacity(0, plateFac, ingotFac)).toBe(false)
+        })
+      })
+
+      describe('satisfyImportToCapacity', () => {
+        it('should grow the import to what the provider can spare', () => {
+          satisfyImportToCapacity(0, plateFac, ingotFac)
+          expect(plateFac.inputs[0].amount).toBe(200)
+        })
+
+        it('should leave the provider fully committed but not over-asked', () => {
+          satisfyImportToCapacity(0, plateFac, ingotFac)
+          calculateFactories(factories, gameData)
+
+          expect(ingotFac.dependencies.metrics.IronIngot.request).toBe(200)
+          expect(ingotFac.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(true)
+        })
+
+        it('should leave the importing factory showing the gap it always had', () => {
+          satisfyImportToCapacity(0, plateFac, ingotFac)
+          calculateFactories(factories, gameData)
+
+          // 300 needed, 200 obtainable: the 100 shortfall stays on the factory that has it,
+          // rather than surfacing on the provider as an export request it can never meet.
+          expect(plateFac.parts.IronIngot.amountRemaining).toBe(-100)
+        })
+
+        it('should stop at the need when the provider can cover more', () => {
+          ingotFac.products[0].amount = 400
+          calculateFactories(factories, gameData)
+
+          satisfyImportToCapacity(0, plateFac, ingotFac)
+
+          expect(plateFac.inputs[0].amount).toBe(300)
+        })
+
+        it('should return null and leave the row alone if there is no target', () => {
+          plateFac.inputs[0].outputPart = null
+
+          expect(satisfyImportToCapacity(0, plateFac, ingotFac)).toBe(null)
+          expect(plateFac.inputs[0].amount).toBe(50)
+        })
       })
     })
   })
