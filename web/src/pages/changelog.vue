@@ -287,6 +287,7 @@
             />
           </li>
           <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed.</li>
+          <li><b>A "Full width" button</b> in the sidebar, beside Hide all and Expand all, lets the plan use the entire window on a wide screen instead of the margins the planner normally keeps. On a 2560px monitor that is around 500px of width handed back to the plan. Your choice is remembered.</li>
           <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
           <li><b>Every game image has a tooltip.</b></li>
         </ul>

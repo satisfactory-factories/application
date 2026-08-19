@@ -32,6 +32,21 @@
       >
         {{ helpTextShown ? "Hide" : "Show" }} Info
       </v-btn>
+      <!-- Flat while on, tonal while off: the label alone ("Full width" / "Normal width") says
+           what the next click does, not what the planner is doing now, and this is the only
+           button here that holds a state. -->
+      <v-btn
+        class="ma-1"
+        color="blue"
+        prepend-icon="fas fa-arrows-alt-h"
+        :title="options.fullWidth
+          ? 'Put the wide-screen margins back'
+          : 'Use the whole window width for the plan (only changes anything above 2000px wide)'"
+        :variant="options.fullWidth ? 'flat' : 'tonal'"
+        @click="options.fullWidth = !options.fullWidth"
+      >
+        {{ options.fullWidth ? "Normal" : "Full" }} width
+      </v-btn>
       <v-btn
         class="ma-1"
         color="green"
@@ -99,12 +114,14 @@
 <script setup lang="ts">
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { confirmDialog } from '@/utils/helpers'
   import { serializePlan } from '@/utils/plan-backup'
   import eventBus from '@/utils/eventBus'
 
   const { getFactories, getCurrentTab, prepareLoader, forceCalculation } = useAppStore()
   const { powerTarget } = usePowerTarget()
+  const options = usePlannerOptions()
 
   const disableRecalc = ref(false)
 
