@@ -6,7 +6,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 // Re-exported so existing callers keep importing them from here; they live in a leaf module
 // because status.ts needs them and cannot import anything that reaches factory.ts.
-export { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
+export { importRowId, isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
 
 export const getInput = (factory: Factory, part: string, factoryId?: number) => {
   // Returns a SINGULAR input object by the outputPart. If multiple are detected, throw.

@@ -369,10 +369,14 @@
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
+                <!-- The chip is more specific than the row it sits in: it knows which part goes
+                     where, so it jumps to the import row taking it rather than the factory. -->
                 <v-chip
                   v-for="part in factory.dependencies.requests[dependant]"
                   :key="part.part"
-                  class="sf-chip small product"
+                  class="sf-chip sf-chip-clickable small product"
+                  title="Jump to the import taking this export"
+                  @click.stop="navigateToImport(dependant, part.part)"
                 >
                   <game-asset
                     v-if="part.part"
@@ -410,12 +414,23 @@
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
   import { groupColorVars } from '@/utils/colors'
+  import { importRowId } from '@/utils/factory-management/inputs'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
   const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+
+  // Land on the import row consuming this factory's export, rather than on the destination
+  // factory's card which only says "somewhere in here". Falls back to its Imports section.
+  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
+    navigateToFactory(
+      requestingFactoryId,
+      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
+      `${requestingFactoryId}-imports`
+    )
+  }
 
   // Aim at the row the status names, with its section as the fallback for anything that has no
   // row of its own.

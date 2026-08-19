@@ -13,8 +13,9 @@
            keys make Vue patch the wrong row's selectors. -->
       <div
         v-for="(input, inputIndex) in factory.inputs"
+        :id="importRowId(factory.id, input.factoryId, input.outputPart) ?? undefined"
         :key="inputIndex"
-        class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
+        class="status-anchor selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
           <factory-icon-display
@@ -149,6 +150,7 @@
     deleteInputPair,
     importFactorySelections,
     importPartSelections,
+    importRowId,
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
