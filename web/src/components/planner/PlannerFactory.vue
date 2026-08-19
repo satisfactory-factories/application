@@ -13,9 +13,11 @@
               />
               <factory-group-tray :factory="factory" />
               <input
-                v-model="factory.name"
+                v-model="draftName"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
+                @blur="commitName"
+                @keyup.enter="acceptName"
               >
             </div>
             <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
@@ -370,7 +372,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref } from 'vue'
+  import { computed, inject, ref, watch } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
@@ -412,6 +414,24 @@
   const { smAndDown } = useDisplay()
 
   const iconDialogOpen = ref(false)
+
+  // The name is held as a draft while typing: writing each keystroke into the factory re-rendered
+  // every place the name appears, which read as lag. Blur or Enter is what applies it.
+  const draftName = ref(props.factory.name)
+  watch(() => props.factory.name, name => {
+    draftName.value = name
+  })
+
+  const commitName = () => {
+    if (draftName.value === props.factory.name) return
+    props.factory.name = draftName.value
+  }
+
+  // Enter accepts the rename and leaves the field, matching the group name in the sidebar.
+  const acceptName = (event: KeyboardEvent) => {
+    commitName()
+    ;(event.target as HTMLInputElement).blur()
+  }
 
   // Up/down move a factory within its own group, so the buttons disable at the group's edges
   // rather than the plan's. Keyed on global position they sat enabled at every group boundary
@@ -524,6 +544,12 @@
     cursor: text;
     text-decoration: underline;
   }
+
+  // The underline is the focus feedback; the browser's ring drew a box round the whole 85%.
+  &:focus, &:focus-visible {
+    outline: none;
+  }
+
 }
 
 // Collapsed-view section rows (Imports / Producing / Exports) read as a table:
