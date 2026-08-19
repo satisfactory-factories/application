@@ -30,12 +30,20 @@ allowBuilds:
   vue-demi: true
   '@parcel/watcher': false
 
-# js-yaml 3.x reaches us only through jest's coverage tooling
-# (babel-plugin-istanbul -> @istanbuljs/load-nyc-config, which asks for ^3.13.1).
-# 3.15.0 carries GHSA-5p4m-2wfm-xmqj (quadratic CPU in !!omap resolution); the fix
-# landed in 3.15.1 on the v3-legacy line. Nothing updates it on its own -- the range
-# already allows 3.15.1, so pnpm keeps the resolution it has. Match the range and pin
-# the target explicitly: a looser key such as 'js-yaml@3' resolves to the 5.x latest,
-# which is a different API and breaks load-nyc-config.
+# js-yaml reaches us only through jest coverage tooling
+# (babel-plugin-istanbul -> @istanbuljs/load-nyc-config), which asks for ^3.13.1 and
+# would otherwise hold us on the v3-legacy line. This override is what lets us track
+# the current major instead. The key stays ^3.13.1 because that is the range being
+# matched, not the version being installed.
+#
+# This is a deliberate two-major substitution under a package that never declared it,
+# so it is worth knowing what moved. load-nyc-config calls js-yaml load() on an nyc
+# YAML config, and v5 changed that call: CORE_SCHEMA rather than DEFAULT_SCHEMA,
+# !!set loads as a Set, numbers parse differently, and empty input throws instead of
+# returning undefined. Nothing here exercises it -- no package has a .nycrc.yaml -- so
+# the test suite cannot vouch for this either way. Adding one is what would expose it.
+#
+# Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
+# that governs what Renovate proposes, not what an override pins.
 overrides:
-  js-yaml@^3.13.1: 3.15.1
+  js-yaml@^3.13.1: 5.2.3
