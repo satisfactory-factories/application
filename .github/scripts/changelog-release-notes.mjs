@@ -361,10 +361,6 @@ export function findRelease (releases, version) {
   return exact.length > 0 ? exact : matchOn(releases, majorMinor(version))
 }
 
-export function isPrerelease (title) {
-  return /^\s*(alpha|beta|rc\b|release candidate)/i.test(title)
-}
-
 function parseArgs (argv) {
   const args = { source: SOURCE }
   for (let i = 0; i < argv.length; i++) {
@@ -432,7 +428,6 @@ function main () {
     title: release.title,
     version: args.version,
     date: release.date,
-    prerelease: isPrerelease(release.title),
     characters: body.length,
   }))
 }

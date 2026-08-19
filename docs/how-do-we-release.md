@@ -15,7 +15,7 @@ Run **Actions → "Release: Publish" → Run workflow**:
 | `version` | The version, as `x.y.z` with no leading `v` (`0.6.0`). It becomes the tag, matching the existing `0.2.1` and `0.3.0`. |
 | `sha` | The commit to pin the release to. Leave blank for the current head of `main`. |
 | `draft` | Publish as a draft first, to read the notes before anyone else does. |
-| `prerelease` | `auto` marks anything the Change Log titles Alpha or Beta. |
+| `prerelease` | A build not meant for general use. Off by default, and it should stay off for anything that shipped — see below. |
 | `overwrite` | Rewrite the notes on a release that already exists, instead of failing. |
 
 The release body is that version's entry from the **in-app Change Log**
@@ -50,8 +50,17 @@ a commit from months ago. The one thing it cannot backdate is the release's own
 publication date, so the entry's `release-date` is carried into the top of the
 notes as a `_Released …_` line.
 
-`overwrite` cannot re-point an existing release's tag — GitHub does not allow
-it. Delete the release and the tag if a release ended up on the wrong commit.
+**Alpha and Beta are not pre-releases.** They are this project's maturity
+branding, and every release wearing one of those names went out to
+satisfactory-factories.app like any other. GitHub's pre-release flag means "not
+ready for general use", which would be a false claim about a build players have
+been using for months — and it also suppresses the "Latest" badge. It defaults
+to off, and only a build genuinely not meant for general use should turn it on.
+
+`overwrite` cannot re-point a **published** release's tag — GitHub does not
+allow it, so delete the release and the tag if one ended up on the wrong commit.
+A **draft** is different: its tag is not cut until the draft is published, so an
+overwrite does apply `sha` to a draft and says so in the run.
 
 The conversion is done by
 [`.github/scripts/changelog-release-notes.mjs`](../.github/scripts/changelog-release-notes.mjs),

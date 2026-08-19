@@ -35,14 +35,14 @@ on:
         description: 'Publish as a draft, so the notes can be read before anyone else sees them.'
         type: boolean
         default: false
+      # Alpha and Beta are this project's maturity branding, not a statement
+      # that a build was never shipped: every one of them went out to
+      # satisfactory-factories.app. GitHub's pre-release flag means "not ready
+      # for general use", so it is off unless a release genuinely is.
       prerelease:
-        description: 'Mark as a pre-release. "auto" marks anything the Change Log titles Alpha or Beta.'
-        type: choice
-        options:
-          - auto
-          - 'true'
-          - 'false'
-        default: auto
+        description: 'Mark as a pre-release — a build not meant for general use. Off for anything that actually shipped.'
+        type: boolean
+        default: false
       overwrite:
         description: 'Rewrite the notes on a release that already exists for this tag, instead of failing.'
         type: boolean
@@ -126,10 +126,7 @@ jobs:
             --version "$VERSION" \
             --out "$RUNNER_TEMP/release-notes.md")"
           echo "$meta"
-          {
-            echo "title=$(jq -r .title <<<"$meta")"
-            echo "prerelease=$(jq -r .prerelease <<<"$meta")"
-          } >> "$GITHUB_OUTPUT"
+          echo "title=$(jq -r .title <<<"$meta")" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
         id: publish
@@ -139,17 +136,10 @@ jobs:
           TITLE: ${{ steps.notes.outputs.title }}
           TARGET_SHA: ${{ steps.target.outputs.sha }}
           DRAFT: ${{ inputs.draft }}
-          PRERELEASE_INPUT: ${{ inputs.prerelease }}
-          PRERELEASE_AUTO: ${{ steps.notes.outputs.prerelease }}
+          PRERELEASE: ${{ inputs.prerelease }}
           OVERWRITE: ${{ inputs.overwrite }}
         run: |
           set -euo pipefail
-
-          prerelease="$PRERELEASE_INPUT"
-          if [[ "$prerelease" == "auto" ]]; then
-            prerelease="$PRERELEASE_AUTO"
-            echo "prerelease=auto resolved to $prerelease from the title \"$TITLE\""
-          fi
 
           notes="$RUNNER_TEMP/release-notes.md"
 
@@ -158,18 +148,22 @@ jobs:
               echo "::error::A release already exists for $VERSION. Re-run with overwrite to rewrite its notes."
               exit 1
             fi
-            # A release's tag cannot be re-pointed by editing it. Say so rather
-            # than reporting a sha this run never actually applied.
-            echo "::notice::Rewriting the existing $VERSION release. Its tag keeps pointing where it already did; sha is ignored on an overwrite."
-            gh release edit "$VERSION" \
-              --title "$TITLE" \
-              --notes-file "$notes" \
-              --draft="$DRAFT" \
-              --prerelease="$prerelease"
+            # A published release's tag already exists and cannot be re-pointed.
+            # A draft's has not been created yet — it is cut when the draft is
+            # published — so sha still applies there, and saying otherwise would
+            # strand a draft on whatever commit its first run happened to pick.
+            edit=(--title "$TITLE" --notes-file "$notes" --draft="$DRAFT" --prerelease="$PRERELEASE")
+            if [[ "$(gh release view "$VERSION" --json isDraft --jq .isDraft)" == "true" ]]; then
+              edit+=(--target "$TARGET_SHA")
+              echo "::notice::Rewriting the existing $VERSION draft, pinned to $TARGET_SHA. Its tag is cut when the draft is published."
+            else
+              echo "::notice::Rewriting the existing $VERSION release. Its tag keeps pointing where it already did; sha is ignored once a release is published."
+            fi
+            gh release edit "$VERSION" "${edit[@]}"
           else
             args=(--target "$TARGET_SHA" --title "$TITLE" --notes-file "$notes")
             if [[ "$DRAFT" == "true" ]]; then args+=(--draft); fi
-            if [[ "$prerelease" == "true" ]]; then args+=(--prerelease); fi
+            if [[ "$PRERELEASE" == "true" ]]; then args+=(--prerelease); fi
             gh release create "$VERSION" "${args[@]}"
           fi
 
