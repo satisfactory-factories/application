@@ -96,6 +96,21 @@
 
         <v-divider class="subsection" />
 
+        <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
+        <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
+        <v-img
+          alt="Ten Main Portals added to a factory as a custom building"
+          max-width="1200"
+          src="/assets/changelog/beta6/custom-buildings.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>They count towards the factory's power draw and its list of buildings to place.</li>
+          <li><b>The Main Portal eats Singularity Cells</b>, two a minute each. That is a demand like any other: import it, or the factory reads as short.</li>
+          <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>🆕 <i class="fas fa-folder-tree ml-1" /><span class="ml-2">Factory Groups</span></h2>
         <p>Factories now belong to a <b>group</b>: a named, coloured folder that can be collapsed, reordered, and have factories dragged between them. Anything ungrouped falls into <b>Ungrouped</b>, pinned to the top.</p>
         <v-img

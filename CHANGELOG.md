@@ -28,6 +28,13 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - **The Converter's ore recipes now name the conversion**: "Iron Ore (Convert: Limestone)" rather than "Iron Ore (Limestone)", which otherwise sat next to "Iron Ore (Miner)" in the recipe selector reading as though the ore simply came from limestone. Applies to all seventeen of them.
 - SAM is now selectable as a product, since it finally has a recipe that produces it.
 
+### Custom buildings
+
+- **Add any building that makes nothing to a factory**, under Products and Power Generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights. Twenty buildings in all. They count towards the factory's power draw and its building list.
+- **The Main Portal's Singularity Cells are a real demand.** Two a minute per portal, satisfied by importing them like any other part, so a portal room short of cells reads as a shortage.
+- **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
+- Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
+
 ### BREAKING: raw resources are no longer assumed to be supplied
 
 - **Raw resources must now be mined or imported, like anything else.** Raw demand used to be topped up silently, so a plan could never tell you it was short of ore, and a mine exporting more than its miners produce still read as green. **Plans built before this will show factories in red.** Nothing in your plan has been changed or lost. It is only being honest about what was already missing.
