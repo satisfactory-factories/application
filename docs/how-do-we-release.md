@@ -15,33 +15,47 @@ Run **Actions → "Release: Publish" → Run workflow**:
 | `version` | The version, as `x.y.z` with no leading `v` (`0.6.0`). It becomes the tag, matching the existing `0.2.1` and `0.3.0`. |
 | `sha` | The commit to pin the release to. Leave blank for the current head of `main`. |
 | `draft` | Publish as a draft first, to read the notes before anyone else does. |
-| `prerelease` | `auto` marks anything the changelog titles Alpha or Beta. |
+| `prerelease` | `auto` marks anything the Change Log titles Alpha or Beta. |
 | `overwrite` | Rewrite the notes on a release that already exists, instead of failing. |
 
-The release body is the matching section of [`CHANGELOG.md`](../CHANGELOG.md),
-published verbatim, and the release is named after that section's heading. The
-version is matched on its major and minor, so `0.6.0` finds
-`## Beta v0.6 - The "Groundwork" Update`; a patch release gets its own section
-if it needs one, and that section wins where it exists. Nothing is generated
-from commit subjects — the changelog is already written for humans and already
-mirrors the in-app Change Log, so a third description of the same update would
-only drift from the other two.
+The release body is that version's entry from the **in-app Change Log**
+([`web/src/pages/changelog.vue`](../web/src/pages/changelog.vue)), converted to
+markdown, and the release is named after its heading. The version is matched on
+its major and minor, so `0.6.0` finds `Beta v0.6 - The "Groundwork" Update`; a
+patch release gets its own entry if it needs one, and that entry wins where it
+exists.
 
-**So the changelog section has to exist before the release does.** If it does
-not, the run fails and lists the versions it does know about.
+**Deliberately not [`CHANGELOG.md`](../CHANGELOG.md).** Both describe the same
+updates, but at very different altitudes. `CHANGELOG.md` is the exhaustive
+technical record — implementation detail, paragraphs deep — which reads as noise
+to someone who only wants to know what is new. The in-app page is the
+written-for-players version: short sections, screenshots, the 🆕 / 👍 / 🔧 key.
+That is what a release should say, and it means the notes on GitHub and the
+notes in the app can never disagree.
 
-Notes are read from `CHANGELOG.md` as it stands on the branch the workflow is
-run from — `main`, normally — while the tag is pinned to `sha`. That split is what lets a past update be released
-retroactively: a section written today, against a commit from months ago. The
-one thing it cannot backdate is the release's own publication date, which is
-why each section carries a `_Released <date>._` line.
+Screenshots and videos are rewritten to absolute
+`https://satisfactory-factories.app` URLs so they render on github.com; videos
+become links, since an mp4 from another origin will not play inline there.
+Vuetify layout — the in-page contents nav, dividers, icons — is dropped.
+
+**So the Change Log entry has to exist before the release does.** If it does
+not, the run fails and lists the versions it does know about. The conversion
+also refuses to publish notes with leftover markup in them, rather than shipping
+a stray tag to everyone.
+
+Notes are read from the Change Log as it stands on the branch the workflow is
+run from — `main`, normally — while the tag is pinned to `sha`. That split is
+what lets a past update be released retroactively: an entry read today, against
+a commit from months ago. The one thing it cannot backdate is the release's own
+publication date, so the entry's `release-date` is carried into the top of the
+notes as a `_Released …_` line.
 
 `overwrite` cannot re-point an existing release's tag — GitHub does not allow
 it. Delete the release and the tag if a release ended up on the wrong commit.
 
-The extraction is done by
+The conversion is done by
 [`.github/scripts/changelog-release-notes.mjs`](../.github/scripts/changelog-release-notes.mjs),
-which is runnable on its own while writing a changelog entry:
+which is runnable on its own while writing a Change Log entry:
 
 ```bash
 node .github/scripts/changelog-release-notes.mjs --list
