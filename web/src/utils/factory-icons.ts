@@ -70,6 +70,14 @@ export const factoryIconTabs: FactoryIconGroup[] = [
 export const findFactoryIcon = (id?: string | null): FactoryIconEntry | undefined =>
   id ? byId.get(id) : undefined
 
+const byAsset = new Map(gameFactoryIcons.map(entry => [entry.asset!, entry]))
+
+// Names for art that has no game data entry behind it — buildings drawn from the item folder,
+// UI glyphs. The registry already labels every icon in the picker, so callers get a real name
+// instead of falling through to "UNKNOWN PART".
+export const findFactoryIconNameByAsset = (asset: string): string | undefined =>
+  byAsset.get(asset)?.name
+
 export const resolveFactoryIcon = (id?: string | null): ResolvedFactoryIcon => {
   const entry = findFactoryIcon(id)
 

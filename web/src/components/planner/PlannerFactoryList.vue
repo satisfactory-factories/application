@@ -49,14 +49,14 @@
         @click="navigateToSection('factory-summary')"
       >
         <v-row class="d-flex flex-nowrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
             <i class="fas fa-list mr-2" />
-            <span>Factories Summary</span>
+            <span>Global Factories Summary</span>
           </v-spacer>
           <v-tooltip right>
             <template #activator="{ props }">
               <v-col
-                class="context-icon align-content-center text-center py-0 px-2"
+                class="factory-count align-content-center text-center py-0 px-2"
                 cols="auto"
                 v-bind="props"
               >
@@ -82,6 +82,22 @@
             <span>Open fullscreen summary</span>
           </v-tooltip>
         </v-row>
+        <!-- The state of the plan in three numbers, on their own line the way a group's power and
+             product rows are: the sidebar is narrow and drags narrower still, and beside the title
+             they wrapped "Factories Summary" onto two lines instead. Only what applies is shown —
+             a row of zeroes is noise on a healthy plan, and a number appearing is the whole point. -->
+        <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip
+            v-for="chip in statusTally"
+            :key="chip.key"
+            :text="chip.tooltip"
+          >
+            <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+              <i :class="chip.icon" />
+              <span class="ml-1">{{ chip.count }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
       </v-card>
     </div>
   </div>
@@ -163,7 +179,7 @@
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
-  import { getFactoryStatuses } from '@/utils/factory-management/status'
+  import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
   import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
@@ -199,7 +215,7 @@
   // Groups. Every mutation goes through the composable, which is the single writer — this
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
-  const { countIn, deleteGroup, sections, setGroupOrder } = useFactoryGroups()
+  const { sections, setGroupOrder } = useFactoryGroups()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
@@ -209,12 +225,9 @@
   const deleteGroupOpen = ref(false)
   const groupPendingDelete = ref<FactoryGroup | null>(null)
 
+  // Always asks, empty group or not. An empty one has nothing to reassign, but deleting it was
+  // still a single click on a small red button sitting next to the group's own controls.
   const requestGroupDelete = (group: FactoryGroup) => {
-    // Nothing to reassign, so nothing to ask about — an empty group just goes.
-    if (countIn(group.id) === 0) {
-      deleteGroup(group.id)
-      return
-    }
     groupPendingDelete.value = group
     deleteGroupOpen.value = true
   }
@@ -241,6 +254,9 @@
   const statuses = computed(() => new Map(
     compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
   ))
+
+  // Reuses the memo above rather than walking the plan a second time.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
 
   const createFactory = () => {
     emit('createFactory')
@@ -345,6 +361,12 @@
   &:hover {
     color: white;
   }
+}
+
+// The plan's factory count, which is a fact rather than an affordance — the muted grey the
+// context icons wear read as disabled next to the status chips beside it.
+.factory-count {
+  color: #e0e0e0;
 }
 
 .pt-n1 {

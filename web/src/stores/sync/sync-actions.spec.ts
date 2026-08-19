@@ -1,6 +1,8 @@
 import { SyncActions } from '@/stores/sync/sync-actions'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { newFactory } from '@/utils/factory-management/factory'
+import { ClientTooOldError } from '@/errors/ClientTooOldError'
+import eventBus from '@/utils/eventBus'
 
 const apiUrl = 'http://mock.com'
 const mockData = { data: 'mock-data' }
@@ -10,9 +12,17 @@ const mockFetch = vi.fn()
 vi.mock('@/config/config', () => ({
   config: {
     apiUrl: 'http://mock.com',
+    appVersion: '0.6.0',
     dataVersion: '1.0.0',
   },
 }))
+
+// What every request to the API is expected to carry.
+const expectedHeaders = {
+  'Content-Type': 'application/json',
+  'X-Planner-Version': '0.6.0',
+  Authorization: 'Bearer mock-token',
+}
 
 // Mock stores
 const mockAuthStore = {
@@ -24,8 +34,19 @@ const mockAppStore = {
   getLastEdit: vi.fn(() => new Date(Date.now() - 1000 * 60)), // 1 minute ago
   getFactories: vi.fn(),
   setFactories: vi.fn(),
+  getCurrentTab: vi.fn(),
+  loadServerPlan: vi.fn(),
   isLoaded: true,
 }
+
+// What the app uploads from v0.6: the whole tab, so plan-level state survives a restore.
+const mockTab = (factories = [newFactory('Foo1')]) => ({
+  id: 'tab-1',
+  name: 'Default',
+  factories,
+  powerTarget: 40000,
+  plannerVersion: '0.6',
+})
 
 const mockServerData = {
   user: 'foo',
@@ -61,11 +82,35 @@ describe('SyncActions', () => {
       expect(result).toStrictEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/load`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer mock-token',
-        },
+        headers: expectedHeaders,
       })
+    })
+
+    // A read is never refused, so this is the only way an idle tab finds out it is stale.
+    it('should announce an outdated client from the response header on a read', async () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+      mockFetch.mockResolvedValue({
+        ok: true,
+        headers: { get: (header: string) => header === 'X-Planner-Client-Outdated' ? '0.7.0' : null },
+        json: vi.fn().mockResolvedValue(mockData),
+      })
+
+      await syncActions.getServerData()
+
+      expect(emit).toHaveBeenCalledWith('clientOutdated', { minimumVersion: '0.7.0' })
+    })
+
+    it('should not announce anything when the server does not send the header', async () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+      mockFetch.mockResolvedValue({
+        ok: true,
+        headers: { get: () => null },
+        json: vi.fn().mockResolvedValue(mockData),
+      })
+
+      await syncActions.getServerData()
+
+      expect(emit).not.toHaveBeenCalledWith('clientOutdated', expect.anything())
     })
 
     it('should handle request errors properly', async () => {
@@ -89,10 +134,7 @@ describe('SyncActions', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/load`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer mock-token',
-        },
+        headers: expectedHeaders,
       })
     })
   })
@@ -147,7 +189,20 @@ describe('SyncActions', () => {
       vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(true)
 
       expect(await syncActions.loadServerData(true)).toBe(true)
-      expect(mockAppStore.setFactories).toHaveBeenCalledWith(mockData.data)
+      // Both shapes are in accounts right now, so the store is handed the payload as it came.
+      expect(mockAppStore.loadServerPlan).toHaveBeenCalledWith(mockData.data)
+    })
+
+    it('should hand a whole-tab payload to the store untouched', async () => {
+      const tab = mockTab()
+      vi.spyOn(syncActions, 'getServerData').mockResolvedValue({
+        user: 'foo',
+        data: tab,
+        lastSaved: new Date(),
+      })
+
+      expect(await syncActions.loadServerData(true)).toBe(true)
+      expect(mockAppStore.loadServerPlan).toHaveBeenCalledWith(tab)
     })
   })
 
@@ -165,7 +220,8 @@ describe('SyncActions', () => {
     })
 
     it('should send sync with expected request params', async () => {
-      mockAppStore.getFactories.mockReturnValueOnce({ someData: 'foo' })
+      const tab = mockTab()
+      mockAppStore.getCurrentTab.mockReturnValueOnce(tab)
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -180,16 +236,136 @@ describe('SyncActions', () => {
       expect(result).toBe(true)
       expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer mock-token`,
-        },
-        body: JSON.stringify({ someData: 'foo' }),
+        headers: expectedHeaders,
+        // The tab, not the bare factory array: the planner version, the power target and any
+        // memberless groups are plan state and were being dropped on every restore.
+        body: JSON.stringify(tab),
+      })
+    })
+
+    it('should refuse to keep syncing when the API says this client is too old', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 426,
+        json: vi.fn().mockResolvedValue({
+          code: 'CLIENT_TOO_OLD',
+          minimumVersion: '0.7.0',
+          receivedVersion: '0.6.0',
+        }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toThrow(ClientTooOldError)
+    })
+
+    // A proxy that rewrites the status must not turn a required reload into an unexplained
+    // failure, so the body code is authoritative too.
+    it('should recognise the too-old code even without the 426 status', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ code: 'CLIENT_TOO_OLD', minimumVersion: '0.7.0' }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toThrow(ClientTooOldError)
+    })
+
+    it('should carry the minimum version on the error', async () => {
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 426,
+        json: vi.fn().mockResolvedValue({ code: 'CLIENT_TOO_OLD', minimumVersion: '0.7.0' }),
+      })
+
+      await expect(syncActions.syncData(false, true)).rejects.toMatchObject({ minimumVersion: '0.7.0' })
+    })
+
+    // An emptied plan has to reach the account, or the next restore hands back work the user
+    // deleted. The catch is that a session which has not loaded yet looks identical from here.
+    describe('an empty plan', () => {
+      const emptyTab = (groups?: any[]) => ({ ...mockTab([]), groups })
+
+      const okResponse = () => mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ message: 'All is good' }),
+      })
+
+      it('should not be saved before the account copy has been seen', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).not.toHaveBeenCalled()
+      })
+
+      it('should be saved once the account copy has been loaded', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(mockServerData)
+        vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(false)
+        await syncActions.loadServerData()
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        expect(await syncActions.syncData(false, true)).toBe(true)
+        expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, expect.objectContaining({
+          method: 'POST',
+        }))
+      })
+
+      it('should be saved when the account holds nothing to lose', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(false)
+        await syncActions.loadServerData()
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        okResponse()
+
+        expect(await syncActions.syncData(false, true)).toBe(true)
+      })
+
+      it('should be saved after this session has already written to the account', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(mockTab())
+        okResponse()
+        await syncActions.syncData(false, true)
+
+        mockAppStore.getCurrentTab.mockReturnValue(emptyTab())
+        expect(await syncActions.syncData(false, true)).toBe(true)
+      })
+
+      // Memberless groups are the one piece of plan state no factory carries, so a plan of
+      // nothing but empty folders is real state and still has to travel.
+      it('should be saved with its memberless groups', async () => {
+        vi.spyOn(syncActions, 'getServerData').mockResolvedValue(mockServerData)
+        vi.spyOn(syncActions, 'checkForOOS').mockReturnValue(false)
+        await syncActions.loadServerData()
+
+        const tab = emptyTab([{ id: 'group-1', name: 'Steel', factories: [] }])
+        mockAppStore.getCurrentTab.mockReturnValue(tab)
+        okResponse()
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/save`, expect.objectContaining({
+          body: JSON.stringify(tab),
+        }))
+      })
+
+      it('should do nothing at all when there is no tab', async () => {
+        mockAppStore.getCurrentTab.mockReturnValue(undefined)
+
+        await syncActions.syncData(false, true)
+
+        expect(mockFetch).not.toHaveBeenCalled()
       })
     })
 
     it('should handle server errors during sync', async () => {
-      mockAppStore.getFactories.mockReturnValueOnce({ someData: 'foo' })
+      mockAppStore.getCurrentTab.mockReturnValueOnce(mockTab())
 
       mockFetch.mockResolvedValue({
         ok: false,

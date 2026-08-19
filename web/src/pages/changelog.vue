@@ -2,7 +2,7 @@
   <introduction source="changelog" />
   <v-container max-width="1200">
     <v-row>
-      <v-col cols="12">
+      <v-col ref="content" cols="12">
         <h1>Change Log</h1>
         <p>
           This is a list of changes made to the site. It is not exhaustive, but it should give you a good idea of what has been added or changed.
@@ -13,9 +13,330 @@
           <li>👍: Improvement</li>
           <li>🔧: Fixes</li>
         </ul>
+        <nav v-if="releases.length" class="toc">
+          <p class="mb-1"><b>Jump to an update:</b></p>
+          <ul class="toc-list">
+            <li v-for="release in releases" :key="release.id">
+              <a :href="`#${release.id}`" @click.prevent="jumpTo(release.id)">{{ release.title }}</a>
+              <span v-if="release.date" class="text-medium-emphasis ml-2">{{ release.date }}</span>
+            </li>
+          </ul>
+        </nav>
         <v-divider />
-        <h1>Beta v0.5 - The "Overclocked" Update</h1>
+        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
+        <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
+        <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.6')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
+
+        <p>Check out what's new in the video below!</p>
+        <youtube-embed
+          class="pb-4"
+          video-id="vHCUNU37rZ4"
+        />
+
+        <h2 class="breaking">🆕 <i class="fas fa-exclamation-triangle ml-1" /><span class="ml-2">Raw inputs are no longer assumed</span></h2>
+        <p>The planner used to top up any raw resource you were short of. Every raw resource must now be mined or imported, and an unmet one is a real shortage, with the usual buttons to mine it on the spot or import it.</p>
+        <p><b>Plans built before this will show factories in red.</b> Nothing has been changed or lost. The shortages were always there.</p>
+        <p>There is no setting for it: an optional assumption would mean the same plan meant different things to different people.</p>
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-hard-hat ml-1" /><span class="ml-2">Mines</span></h2>
+        <p>Pick a raw resource as a product and the planner offers its extractor as the recipe, along with any alternate recipe that also produces it. Miner mark and node purity are set per building group, and both stack with the group's clock as they do in game. Mine on site like any other product, or build a dedicated mine and export the ore.</p>
+        <v-img
+          alt="A mine mixing Miner Mk.3s on pure nodes with a Mk.2 on a normal one"
+          max-width="1200"
+          src="/assets/changelog/beta6/miners.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-water ml-1" /><span class="ml-2">Resource Wells</span></h2>
+        <p>A well is one building group: the pressurizer, plus its satellite extractors on impure, normal and pure micro-nodes. The pressurizer's clock scales every satellite at once and pays the power for all of them. Wells cover Water, Crude Oil and Nitrogen Gas.</p>
+        <p><b>Raw Nitrogen Gas is in the planner for the first time.</b> It was only ever available through conversion before, which was a long-standing hole.</p>
+        <v-img
+          alt="A resource well pressurizer with its satellite nodes by purity"
+          max-width="1200"
+          src="/assets/changelog/beta6/resource-well.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-tint ml-1" /><span class="ml-2">Water &amp; Oil</span></h2>
+        <p>Water is now supported however you get it: Water Extractors, resource wells, alternate recipes and byproducts. Oil is supported from both Oil Extractors and resource wells.</p>
+        <v-img
+          alt="Water Extractors, which have no node purity"
+          max-width="1200"
+          src="/assets/changelog/beta6/water-extractor.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-shovel ml-1" /><span class="ml-2">The Raw Resources Wizard</span></h2>
+        <p>It lists every factory short of a raw resource and offers, per row: build a shared mine, mine it on site, import it from a factory that already mines it, or leave it alone. It lives in <b>Options</b>, the wrench beside the share button. Run it any time a new factory comes up short.</p>
+        <v-img
+          alt="The Raw Resources Wizard listing factories short of a raw resource"
+          max-width="1200"
+          src="/assets/changelog/beta6/wizard.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li><b>One mine per resource</b>, sized to everything that asked for it. Eight factories short of iron get one Iron Ore Mine.</li>
+          <li>New mines use <b>Miner Mk.2s at normal purity</b>. That guess only affects the building count and the power, never the ore, so adjust each group to the nodes you have.</li>
+          <li><b>Water defaults to on-site extraction.</b> A resource already mined somewhere in your plan defaults to importing from there.</li>
+          <li><b>Resource wells are not compatible with the wizard</b>, because of the satellites. Rather than make a bad guess it leaves them to you, and says so on any row it cannot help with. Wiring an import from a well you already have is one click in Imports.</li>
+          <li><b>Nothing is written until you confirm.</b> You see every factory, product and export first, and can download a backup from the confirmation screen.</li>
+          <li>You choose whether new mines land at the top or the bottom of the plan, and can rename them before they are built.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-folder-tree ml-1" /><span class="ml-2">Factory Groups</span></h2>
+        <p>Factories now belong to a <b>group</b>: a named, coloured folder that can be collapsed, reordered, and have factories dragged between them. Anything ungrouped falls into <b>Ungrouped</b>, pinned to the top.</p>
+        <v-img
+          alt="Factories organised into coloured groups in the sidebar"
+          max-width="1200"
+          src="/assets/changelog/beta6/factory-groups.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li><b>In the sidebar</b>, a group header carries its colour, an editable name, a factory count, a delete button, and icons for what the group makes.</li>
+          <li><b>In the planner</b>, cards sit under a collapsible band per group, Ungrouped first.</li>
+          <li><b>Assign</b> by drag, or from the group chip on the factory header, which can make a new group on the spot. <b>Multi-group edit</b> does the same to a whole selection.
+            <v-img
+              alt="Multi-group edit assigning several selected factories to one group"
+              class="mt-2"
+              max-width="1200"
+              src="/assets/changelog/beta6/multi-group-edit.png"
+            />
+          </li>
+          <li><b>Group power</b> (generated, consumed and the balance) is optional, under <b>Options → Sidebar → Factory groups</b>. A <b>circuit boost</b> chip shows where Alien Power Augmenters are involved.</li>
+          <li><b>Deleting a group never deletes a factory.</b> One that still holds factories asks where they should go first.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-icons ml-1" /><span class="ml-2">Factory Icons</span></h2>
+        <p>Factories now carry <b>an icon you choose</b>, shown on the card header, the sidebar row, the Factories Summary, the graph node, the import rows and the import/export chips.</p>
+        <v-img
+          alt="The factory icon picker"
+          max-width="1200"
+          src="/assets/changelog/beta6/factory-icons.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li><b>352 icons</b>, using in-game art for every building, product, vehicle and resource, plus emoji: coloured squares, circles, diamonds, triangles, digits and symbols.</li>
+          <li>Click the icon on the factory header, or on its sidebar row, to change it.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-heart-rate ml-1" /><span class="ml-2">Factory status indicators</span></h2>
+        <p>A factory in the sidebar was either red or it wasn't, and it never said what was wrong. Factories now carry <b>status chips</b> that name the problem, so you can go straight to it.</p>
+        <v-img
+          alt="A factory carrying status chips under its name"
+          max-width="1200"
+          src="/assets/changelog/beta6/status-chips.png"
+        />
+        <p class="mt-2"><b>The statuses below sit in three tiers.</b> Red is a serious problem. Amber is something to address at some point. Yellow shows on the factory without flagging it. The highest tier present paints the factory, and chips are never collapsed, so a factory short of copper <i>and</i> out of sync shows both.</p>
+        <ul class="status-tiers ml-6">
+          <li class="tier-problem"><b>Marks the factory red</b>
+            <ul>
+              <li><b>Shortage</b>: the factory needs more of a part than it can supply.</li>
+              <li><b>Export request unmet</b>: another factory asks for more than this one supplies.</li>
+              <li><b>Building groups do not add up</b>: the groups on an item do not cover the buildings it needs.</li>
+            </ul>
+          </li>
+          <li class="tier-warning"><b>Marks the factory amber</b>
+            <ul>
+              <li><b>Unhandled byproduct</b>: a fluid or radioactive byproduct nothing consumes and the sink will not take.</li>
+              <li><b>Out of sync</b>: the factory has changed since you marked it built in game.</li>
+              <li><b>Redundant import</b>: the part is already covered here, or by another import row.</li>
+              <li><b>Duplicate import</b>: the same part imported twice from the same factory.</li>
+            </ul>
+          </li>
+          <li class="tier-note"><b>Shows on the factory, but does not flag it</b>
+            <ul>
+              <li><b>No demand</b>: nothing asks for this product.</li>
+              <li><b>Potential blockage</b>: a byproduct nothing consumes, but the sink would take it.</li>
+            </ul>
+          </li>
+        </ul>
+        <v-img
+          alt="A product row for a Ballistic Warp Drive, carrying a blue End product chip"
+          class="mt-2"
+          max-width="900"
+          src="/assets/changelog/beta6/end-product-chip.png"
+        />
+        <p class="mt-2"><b>End product</b>, in blue, marks an item the game itself never consumes, so having no demand is what it is for.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Fixed:</b> a factory whose <i>power generator</i> building groups didn't add up never turned red. The check ran, but the rollup only looked at products.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-layer-group ml-1" /><span class="ml-2">Building Groups: Satisfy and Trim</span></h2>
+        <p>Every group row now carries its own <b>Satisfy</b> and <b>Trim</b>, which puts the whole gap on that one group and leaves the others alone. Until now the only options were to spread it across every group, or to push it onto the last one.</p>
+        <v-img
+          alt="Building groups over-producing, each row offering a Trim button"
+          max-width="1200"
+          src="/assets/changelog/beta6/building-group-trim.png"
+        />
+        <v-img
+          alt="Building groups under-producing, each row offering a Satisfy button"
+          class="mt-2"
+          max-width="1200"
+          src="/assets/changelog/beta6/building-group-satisfy.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>The group keeps its building count and the clock is rescaled to hit the new output. The count is only re-solved when the clock would land outside the game's 1-250%.</li>
+          <li>Where a group cannot hold the change at all, the button is there but disabled, and says why.</li>
+          <li>The <b>Satisfy</b> and <b>Trim</b> beside the Qty are the pair you already know, one level up: they match the <i>product</i> to what the factory and its exports ask for. The group buttons match the <i>groups</i> to the product.</li>
+          <li>How far the groups may sit from the product before they count as imbalanced is now a percentage of what the product asks for, 1% by default, under <b>Options → Building groups</b>. It was a flat 0.1 buildings, which meant one effective building of Limestone and one of Iron Rods were allowed the same drift, and a 360/min mine read as balanced while 6/min short.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
+        <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
+        <v-img
+          alt="The Factories Summary, with status counts in its header"
+          max-width="1200"
+          src="/assets/changelog/beta6/factories-summary.png"
+        />
+        <p class="mt-2"><b>Click a count to list only the factories behind it</b>, and click it again to clear.</p>
+        <v-img
+          alt="The Factories Summary filtered to the three factories with shortages"
+          max-width="1200"
+          src="/assets/changelog/beta6/factories-summary-filtered.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-chart-line ml-1" /><span class="ml-2">Statistics enhancements</span></h2>
+        <h3>Item Production</h3>
+        <p><b>Product Surplus &amp; Deficit and Produced Items are now one section.</b> Item Production lists every item, with a search box and filters for surplus, deficit and balanced. The filter counts follow the search. The "Show all Products" toggle has gone with the section it controlled.</p>
+        <v-img
+          alt="The Item Production table, with each item broken down by factory"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-items.png"
+        />
+        <h3 class="mt-4">Buildings</h3>
+        <p><b>Building Summary now says which factories hold each building.</b></p>
+        <v-img
+          alt="The Building Summary table, listing every factory that holds each building"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-buildings.png"
+        />
+        <h3 class="mt-4">Power</h3>
+        <p><b>Power Consumption and Generation gains a By factory breakdown</b>, heaviest net drain first, collapsed by default.</p>
+        <v-img
+          alt="Power consumption and generation broken down by factory"
+          max-width="1200"
+          src="/assets/changelog/beta6/statistics-power-by-factory.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-tasks ml-1" /><span class="ml-2">Tasks</span></h2>
+        <p><b>Tasks drag into any order</b>, by the grip handle on the left. Completed tasks drag too. The card has had a tidy-up while it was open.</p>
+        <v-img
+          alt="The factory tasks card with drag handles and checkboxes"
+          max-width="1200"
+          src="/assets/changelog/beta6/tasks.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-calculator ml-1" /><span class="ml-2">Export Calculator: belts, pipes and Fluid Trucks</span></h2>
+        <ul class="ml-6">
+          <li><b>Belts are back</b>, per destination: how many conveyors of a chosen mark carry the export, across all six marks (60/120/270/480/780/1,200 per min), with the smallest belt that fits picked by default.</li>
+          <li><b>Belt groups</b> split an export across several runs, each with its own mark. Enter an items/min amount or a whole number of belts and the other follows. Only undercapacity warns, with an amber nudge when a whole group could go and the rest would still cover it. Groups persist with the plan.</li>
+          <li><b>Pipes</b> do the same for fluids, Mk.1 (300 m³/min) and Mk.2 (600 m³/min), with their own groups.</li>
+          <li><b>Fluid Trucks</b> (3,200 m³, added in patch 1.2) are supported, so the Truck column calculates fluid exports. Drones and Tractors can't carry raw fluids, and say so.</li>
+        </ul>
+        <v-img
+          alt="The export calculator on a fluid export: Fluid Freight Cars and Fluid Trucks, with 600 m³/min split across two Mk.1 pipe groups"
+          class="mt-2"
+          max-width="1200"
+          src="/assets/changelog/beta6/export-calculator-fluids.png"
+        />
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-compass ml-1" /><span class="ml-2">Navigation improvements</span></h2>
+        <ul class="ml-6">
+          <li><b>The sidebar shows which factory you're looking at</b>, with an orange bar that follows you as you scroll or jump. The Statistics and Factories Summary links get the same treatment.
+            <v-img
+              alt="The sidebar factory list, with an orange bar marking the factory in view"
+              class="mt-2"
+              max-width="420"
+              src="/assets/changelog/beta6/sidebar-active-factory.png"
+            />
+          </li>
+          <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, via the small eye button on its edge. Clicking the chip itself still selects that destination in the Export Calculator.
+            <v-img
+              alt="An export chip with the eye button that jumps to the requesting factory"
+              class="mt-2"
+              max-width="420"
+              src="/assets/changelog/beta6/export-chip-jump.png"
+            />
+          </li>
+          <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
+          <li><b>Every game image has a tooltip.</b></li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-bullseye ml-1" /><span class="ml-2">Plan accuracy fixes</span></h2>
+        <p>A factory could claim to export a part to a factory with no matching import, or quietly export the wrong amount.</p>
+        <ul class="ml-6">
+          <li><b>Two factories could have ended up with the same ID</b>, at roughly a one-in-six chance in a 60-factory plan, which merged them as far as imports and exports were concerned. IDs are now entirely unique.</li>
+          <li><b>Duplicate imports were counted twice.</b> They are no longer possible, and any already in your plan are repaired when it loads.</li>
+          <li><b>Extra validation on the import/export chain.</b> Exports left behind get cleaned up, and imports pointing at factories that no longer exist are removed.</li>
+          <li><b>Loading a plan now runs those checks</b>, repairs what it finds, and reports it. An example:
+            <v-img
+              alt="The plan repair dialog, listing every automatic correction by factory"
+              class="mt-2"
+              max-width="1200"
+              src="/assets/changelog/beta6/plan-repair.png"
+            />
+          </li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>🔧 Fixes &amp; minor adjustments</h2>
+        <ul class="ml-6">
+          <li><b>Various rounding errors have been fixed</b>, in the game data and in plans already carrying the drifted numbers, which repair themselves on load. Please report any more on Discord.</li>
+          <li>Tooltips and toasts now escape the text they are given, so nothing carried inside a plan can put markup onto the page.</li>
+          <li>A building group no longer appears to accept more Somersloops than the building has slots for. Entries clamp as you type and the up arrow greys out once the slots are full. The calculation was always correct; only the number on screen disagreed.</li>
+          <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-file ml-1" /><span class="ml-2">Smaller things</span></h2>
+        <ul class="ml-6">
+          <li>A new <b>Mining</b> template plan showing all of the above end to end, and the Demo plan gains a Copper Mine feeding its Copper Ingots.</li>
+          <li>Every raw resource in the Imports section gets a one-click button to mine it in that factory, at the amount you're short of.</li>
+          <li>The Converter's ore recipes name the conversion, "Iron Ore (Convert: Limestone)", so they don't read as though the ore came from limestone.</li>
+        </ul>
+
+        <v-divider />
+        <h1>Beta v0.5 - The "Overclocked" Update <span class="release-date">21/Jul/2026</span></h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
+        <nav v-if="sectionsOf('Beta v0.5').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.5')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
         <p>Check out what's new in the video below!</p>
         <youtube-embed
           class="pb-4"
@@ -175,7 +496,7 @@
         </ul>
 
         <v-divider />
-        <h1>Alpha v0.4</h1>
+        <h1>Alpha v0.4 <span class="release-date">25/Jan/2025</span></h1>
 
         <p>Check out what's new in the video below!</p>
         <youtube-embed
@@ -298,7 +619,65 @@
   </v-container>
 </template>
 <script setup lang="ts">
+  interface Entry { id: string; title: string }
+  interface Release extends Entry { date: string; sections: Entry[] }
 
+  // The contents are read back off the rendered headings rather than kept as a second list beside
+  // them: a hand-written one silently goes stale the next time a section is added here.
+  const content = ref<{ $el: HTMLElement } | null>(null)
+  const releases = ref<Release[]>([])
+
+  const slug = (title: string) =>
+    title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+  const sectionsOf = (prefix: string) =>
+    releases.value.find(release => release.title.startsWith(prefix))?.sections ?? []
+
+  const jumpTo = (id: string) => {
+    const target = document.getElementById(id)
+    if (!target) return
+    // Deliberately not smooth: the page is 16,000px of unsized screenshots, so images finishing
+    // during the animation move the target and the scroll lands thousands of pixels short.
+    target.scrollIntoView({ block: 'start' })
+    history.replaceState(null, '', `#${id}`)
+
+    // Screenshots above the target finish loading and push it down after the jump. Land it a
+    // second time, unless the reader has scrolled themselves in the meantime.
+    const landed = document.scrollingElement?.scrollTop ?? 0
+    setTimeout(() => {
+      if ((document.scrollingElement?.scrollTop ?? 0) !== landed) return
+      target.scrollIntoView({ block: 'start' })
+    }, 400)
+  }
+
+  onMounted(() => {
+    const root = content.value?.$el
+    if (!root) return
+
+    const found: Release[] = []
+    for (const heading of root.querySelectorAll('h1, h2')) {
+      // The date is rendered inside the heading so it has one home; it is not part of the title.
+      const date = heading.querySelector('.release-date')?.textContent?.trim() ?? ''
+      const title = (heading.textContent ?? '').replace(date, '').trim()
+      if (!title || title === 'Change Log') continue
+
+      if (heading.tagName === 'H1') {
+        if (!heading.id) heading.id = slug(title)
+        found.push({ id: heading.id, title, date, sections: [] })
+      } else {
+        // Scoped to the release: "Fixes & minor adjustments" is a heading in most of them, and a
+        // shared id sends every one of those links to the first.
+        const release = found.at(-1)
+        if (!heading.id) heading.id = `${release?.id ?? 'section'}-${slug(title)}`
+        release?.sections.push({ id: heading.id, title })
+      }
+    }
+    releases.value = found
+
+    // A link shared into the page can only resolve once the ids above exist.
+    const hash = window.location.hash.slice(1)
+    if (hash) nextTick(() => jumpTo(hash))
+  })
 </script>
 
 <style lang="scss" scoped>
@@ -324,6 +703,60 @@
 h1,h2,h3,h4,h5,h6 {
   margin-top: 1rem;
   margin-bottom: 1rem;
+  // Clears the app bar when a contents link lands on a heading.
+  scroll-margin-top: 90px;
+}
+
+// The breaking change leads the release, so its heading is the one that reads as a warning.
+.breaking {
+  color: var(--sf-error);
+}
+
+// The status tiers, coloured as the chips themselves are: red and amber paint the factory,
+// an amber note leaves it green.
+.status-tiers {
+  li { margin-bottom: 0.1rem; }
+
+  // The nested statuses keep their tier's colour; only the tier headers are bold.
+  > li > ul { margin-bottom: 0.4rem; }
+}
+
+.tier-problem { color: var(--sf-problem); }
+.tier-warning { color: var(--sf-status-warning); }
+.tier-note { color: var(--sf-yellow); }
+.tier-info { color: var(--sf-blue); }
+
+.release-date {
+  color: #bdbdbd;
+  font-size: 1rem;
+  font-weight: 400;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.toc {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+
+  .toc-list {
+    columns: 2;
+    margin-bottom: 0;
+
+    li {
+      break-inside: avoid;
+      margin-bottom: 0.15rem;
+    }
+  }
+
+  a {
+    color: rgb(var(--v-theme-primary));
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 div,p,ul,video {

@@ -4,12 +4,13 @@
 - [Satisfactory Factories project](project-satisfactory-factories.md) — logistics planner for the game; my architecture docs live in `docs/architecture/`
 - [Renovate catalog lockfile mismatch](renovate-catalog-lockfile-mismatch.md) — why `sharedWorkspaceLockfile` must stay true; Renovate only ever commits the root lockfile
 - [Backend deploy & prod drift](backend-deploy-and-prod-drift.md) — before assuming the API is deployable from `main`, or reading a green Actions run as a successful deploy
-- [Building groups branch status](building-groups-branch-status.md) — in-flight overclocking/somersloop feature on branch `11-product-building-groups` (snapshot 2026-07-17)
+- [Building groups](building-groups-branch-status.md) — how overclocking/somersloops work and their gotchas; shipped, the branch it was built on is dead
 - [Calc engine gotchas](calc-engine-gotchas.md) — double-pass recalc, load-bearing step order, migration patches, and other traps
 - [Tab sync v2 rework](project-tab-sync-v2.md) — in-flight multi-tab sync on branch `tab-sync-v2`; rendering rework deferred to its own plan
 - [Scope plans per session](feedback-scope-plans-per-session.md) — split big multi-part features into separate plans/branches/sessions
 - [Graph rebuild plan (parked)](project-graph-rebuild-plan.md) — Vue Flow graph-view rebuild plan saved to repo `.claude/plans/graph-view-vue-flow-rebuild.md`, decisions locked, M1–M6 not started
 - [AWESOME Sink plan (Beta v0.6)](project-awesome-sink-plan.md) — sink + byproduct routing plan approved, in `.claude/plans/awesome-sink-and-byproduct-routing.md`; do NOT implement during Beta v0.5
+- [Surplus disposition is not production-tied](surplus-disposition-not-production-tied.md) — sink/depot features key off surplus alone, never off whether the factory makes the part
 - [TDD specs fail intentionally](tdd-specs-fail-intentionally.md) — web/testing/tdd/ holds WIP specs written before implementation; failures there may be pre-existing user work
 - [Dependency modernization plan](dependency-modernization-plan.md) — phased upgrade programme state; TS capped at 6.0, ESLint target 9+neostandard, vue-router pinned ~4.4.5, VNumberInput gotchas
 - [Vuetify 4 migration](vuetify-4-migration-checklist.md) — done in PR #490; cascade layers invert app-vs-Vuetify precedence, and one layer bug only shows in a production build
@@ -26,6 +27,14 @@
 - [VNumberInput clamping](vnumberinput-clamping.md) — clamp typed values on entry and remount the field; `:max` swallows the update event
 - [Export/import chain invariants](export-import-chain-invariants.md) — exports are derived from imports, factory IDs must be unique, and a loaded plan won't self-heal unless validation asks for a recalc
 - [Factory status registry](factory-status-registry.md) — adding a status is one array entry; keep the warning tier out of the engine loop and mirror the product-less guard or saved plans change colour
+- [Extraction output multiplier](extraction-output-multiplier.md) — how miner mark + node purity plug into the building-group maths without forking the solver
+- [Raw input assumption](raw-input-assumption.md) — removed entirely; the only survivors are decided by the game data, and misjudging that rule erases shortages silently
+- [Raw Resources Wizard](raw-resources-wizard.md) — why apply is transactional, and the building-group sync dance a created mine needs
+- [Game data version cache](game-data-version-cache.md) — bump `dataVersion` every time the data is regenerated, or browsers keep serving the old JSON
 - [Factory icon registry](factory-icon-registry.md) — plans store a bare icon ID we can never migrate; regenerate the registry after a game data change and never rename an ID
 - [Factory groups invariant](factory-groups-invariant.md) — groups ride on the factory (the save payload is a bare Factory[]) and are a sort of the one flat array; both break silently
+- [Client version gate](client-version-gate.md) — the rules the API's version gate must keep, and why build-time constants travel as `VITE_*` rather than a Vite `define`
 - [Game asset tooltips](game-asset-tooltips.md) — why every game image went tooltip-less: VImg eats a `title`, and a three-root component drops it with no warning
+- [Changelog: no word salad](changelog-no-word-salad.md) — release copy states the change and stops; reasons belong in commits, not the changelog
+- [Building group balance tolerance](building-group-balance-tolerance.md) — balanced is a percentage of the item's demand with a ceiling, and changing it has to force a recalc
+- [Input debounce window](input-debounce-window.md) — the timer does reset per keystroke; the 250ms window is just shorter than typing, and reverse-solving inputs compound partial values
