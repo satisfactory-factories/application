@@ -32,6 +32,17 @@ describe('navigation-highlight', () => {
       expect(resolveFlashTarget(section)).toBe(section.querySelector('h1'))
     })
 
+    it('should flash the row that owns an empty anchor, which has no box of its own', () => {
+      document.body.innerHTML = `
+        <div id="row">
+          <div id="anchor" class="status-anchor"></div>
+          <span>Plutonium Waste</span>
+        </div>`
+      const anchor = document.getElementById('anchor')!
+
+      expect(resolveFlashTarget(anchor)).toBe(document.getElementById('row'))
+    })
+
     it('should prefer an explicitly marked heading over anything found by shape', () => {
       document.body.innerHTML = `
         <div id="section">
@@ -50,7 +61,7 @@ describe('navigation-highlight', () => {
     })
 
     it('should pulse the element and clean the class up afterwards', () => {
-      document.body.innerHTML = '<div id="row"></div>'
+      document.body.innerHTML = '<div id="row"><span>Iron Ingot</span></div>'
       const row = document.getElementById('row')!
 
       flashElement(row)
@@ -71,7 +82,7 @@ describe('navigation-highlight', () => {
     })
 
     it('should replay on a repeat jump rather than let the first cleanup cut it short', () => {
-      document.body.innerHTML = '<div id="row"></div>'
+      document.body.innerHTML = '<div id="row"><span>Iron Ingot</span></div>'
       const row = document.getElementById('row')!
 
       flashElement(row)

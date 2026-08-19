@@ -278,7 +278,7 @@
               src="/assets/changelog/beta6/sidebar-active-factory.png"
             />
           </li>
-          <li><b>Jump straight to the import taking an export</b>, from any export chip in the satisfaction table via the small eye button on its edge, or from the part chips under a collapsed factory's "Exporting:" list. You land on the import row itself, not just on the destination factory. Clicking the chip itself still selects that destination in the Export Calculator.
+          <li><b>Jump straight to the import taking an export</b>, from any export chip in the satisfaction table via the small eye button on its edge, or from the part chips under a collapsed factory's "Exporting:" list. You land on the import row itself, not just on the destination factory. Clicking the chip itself still selects that destination in the Export Calculator. An import's <b>View</b> button makes the trip in reverse, landing on the product that supplies it.
             <v-img
               alt="An export chip with the eye button that jumps to the requesting factory"
               class="mt-2"
@@ -286,7 +286,7 @@
               src="/assets/changelog/beta6/export-chip-jump.png"
             />
           </li>
-          <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed.</li>
+          <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed. A chip that counts several things lights all of them: "3 shortages" takes you to the first and pulses all three.</li>
           <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
           <li><b>Every game image has a tooltip.</b></li>
         </ul>
