@@ -244,6 +244,7 @@
 
         <h2>👍 <i class="fas fa-tasks ml-1" /><span class="ml-2">Tasks</span></h2>
         <p><b>Tasks drag into any order</b>, by the grip handle on the left. Completed tasks drag too. The card has had a tidy-up while it was open.</p>
+        <p><b>A task you have typed is added when you click away</b>, not only when you press enter, so going back to the plan mid-thought no longer loses it.</p>
         <v-img
           alt="The factory tasks card with drag handles and checkboxes"
           max-width="1200"
