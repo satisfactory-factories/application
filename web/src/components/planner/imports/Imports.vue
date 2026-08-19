@@ -90,7 +90,7 @@
             prepend-icon="fas fa-arrow-down"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Trim</v-btn>
+          >Trim{{ satisfyTargetLabel(inputIndex) }}</v-btn>
           <v-btn
             v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
             class="rounded mr-2"
@@ -98,18 +98,18 @@
             prepend-icon="fas fa-arrow-up"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Satisfy</v-btn>
+          >Satisfy{{ satisfyTargetLabel(inputIndex) }}</v-btn>
           <v-tooltip location="top" max-width="360">
             <template #activator="{ props: tooltipProps }">
               <span v-show="exceedsCapacity(inputIndex)">
                 <v-btn
                   v-bind="tooltipProps"
                   class="rounded mr-2"
-                  color="orange"
+                  color="yellow"
                   prepend-icon="fas fa-arrow-to-bottom"
                   size="default"
                   @click="trimInputToCapacity(inputIndex, factory)"
-                >Trim to Capacity</v-btn>
+                >Trim to Export Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
               </span>
             </template>
             <span>
@@ -181,13 +181,14 @@
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
+    satisfyImportTarget,
     trimImportToCapacity,
     validateInput,
   } from '@/utils/factory-management/inputs'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { useDisplay } from 'vuetify'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { fixTargetSuffix, formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
@@ -346,6 +347,11 @@
     const provider = findFactory(input.factoryId)
     return provider?.id ? provider : null
   }
+
+  // What Satisfy/Trim would set the Qty to, appended to the button so the figure is visible
+  // before the press rather than only after it.
+  const satisfyTargetLabel = (inputIndex: number): string =>
+    fixTargetSuffix(satisfyImportTarget(inputIndex, props.factory))
 
   const providerName = (inputIndex: number): string => providerFor(inputIndex)?.name ?? 'This factory'
 

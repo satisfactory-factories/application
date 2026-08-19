@@ -63,6 +63,18 @@ export function formatNumberFully (value: any, precision = 3, snap = false): num
   return snap ? snapNearInteger(Number(result)) : Number(result)
 }
 
+// The "(1234)" a Satisfy/Trim button appends to name the figure it would set, so the user can see
+// what they are agreeing to before pressing rather than after. Empty when there is no figure to
+// give — a half-built row, or a building group no setting could balance — so the button reads
+// exactly as it always did rather than claiming a target of "(0)".
+export function fixTargetSuffix (target: number | null | undefined, unit?: 'mw'): string {
+  if (target === null || target === undefined || !Number.isFinite(target)) {
+    return ''
+  }
+
+  return ` (${unit === 'mw' ? formatMw(target) : formatNumber(target)})`
+}
+
 // Matches the in-game power screens: MW with thousands separators (e.g. "5,100 MW").
 // The non-breaking space stops the value wrapping onto a new line before the unit.
 export function formatMw (value: number): string {

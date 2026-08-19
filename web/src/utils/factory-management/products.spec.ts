@@ -5,6 +5,7 @@ import {
   addProductToFactory,
   byProductAsProductCheck,
   fixProduct,
+  fixProductTarget,
   getProduct,
   getProductAmountByPart,
   increaseProductQtyViaBuilding,
@@ -612,6 +613,40 @@ describe('products', () => {
 
         expect(mockFactory.products[1].amount).toBe(40) // HOR should be satisfied to 40
       })
+    })
+  })
+
+  describe('fixProductTarget', () => {
+    it('should return null if the product ID is missing', () => {
+      expect(fixProductTarget({ id: '', amount: 100, recipe: 'IngotIron' } as FactoryItem, mockFactory)).toBe(null)
+    })
+
+    it('should return null if the part has not been calculated', () => {
+      expect(fixProductTarget({ id: 'IronPlate', amount: 100, recipe: 'IronPlate' } as FactoryItem, mockFactory)).toBe(null)
+    })
+
+    it('should report the quantity fixProduct would set', () => {
+      addProductToFactory(mockFactory, {
+        id: 'CopperIngot',
+        amount: 1000,
+        recipe: 'IngotCopper',
+      })
+      calculateFactories([mockFactory], gameData)
+      mockFactory.parts.CopperIngot.amountRequired = 123
+
+      expect(fixProductTarget(mockFactory.products[1], mockFactory)).toBe(123)
+    })
+
+    it('should agree with what fixProduct actually sets', () => {
+      const factories = create321Scenario().getFactories()
+      const byproductFac = factories[0]
+      calculateFactories(factories, gameData)
+
+      const target = fixProductTarget(byproductFac.products[1], byproductFac)
+      fixProduct(byproductFac.products[1], byproductFac)
+
+      expect(byproductFac.products[1].amount).toBe(target)
+      expect(target).toBe(40)
     })
   })
 

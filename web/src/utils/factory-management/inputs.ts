@@ -227,10 +227,16 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
   return true
 }
 
-export const satisfyImport = (importIndex: number, factory: Factory): void | null => {
+// The quantity satisfyImport would set, without setting it. The Satisfy and Trim buttons name it,
+// so the user can see what they are agreeing to before pressing rather than after.
+export const satisfyImportTarget = (importIndex: number, factory: Factory): number | null => {
   const input = factory.inputs[importIndex]
-  if (!input.outputPart) {
-    console.error('updateInputToSatisfy: No output part selected for input:', input)
+  if (!input?.outputPart) {
+    return null // The user is still filling the row in.
+  }
+
+  const partData = factory.parts[input.outputPart]
+  if (!partData) {
     return null
   }
 
@@ -246,11 +252,21 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
   }, 0)
 
   // Calculate the remaining amount of the part that needs to be imported
-  const partData = factory.parts[input.outputPart]
   const difference = partData.amountRequired -
     partData.amountSuppliedViaProduction -
     totalImported
-  input.amount = difference > 0 ? difference : 0 // Don't set it to negatives
+
+  return difference > 0 ? difference : 0 // Don't set it to negatives
+}
+
+export const satisfyImport = (importIndex: number, factory: Factory): void | null => {
+  const input = factory.inputs[importIndex]
+  if (!input.outputPart) {
+    console.error('updateInputToSatisfy: No output part selected for input:', input)
+    return null
+  }
+
+  input.amount = satisfyImportTarget(importIndex, factory) as number
 }
 
 // How much of the import's part the provider can actually spare for THIS import row.
@@ -302,7 +318,7 @@ export const calculateImportCapacity = (
 }
 
 // Whether the row is asking the provider for more than it can supply, which is what puts the
-// "Trim to Capacity" button on screen. A capacity of 0 leaves nothing to trim TO — the row is
+// "Trim to Export Capacity" button on screen. A capacity of 0 leaves nothing to trim TO — the row is
 // entirely unsupportable, and snapping it to 0 would only trip the <=0 guard in validateInput.
 export const importExceedsCapacity = (
   importIndex: number,

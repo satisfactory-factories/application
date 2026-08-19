@@ -9,7 +9,7 @@ import {
   calculateImportCandidates, calculateImportCapacity,
   calculatePossibleImports, deleteInputPair, importExceedsCapacity, importFactorySelections,
   importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
-  trimImportToCapacity, validateInput,
+  satisfyImportTarget, trimImportToCapacity, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -709,6 +709,55 @@ describe('inputs', () => {
         // The import should now be 5, as 25 is produced internally.
         expect(issueFactory.inputs[0].amount).toBe(5)
       })
+    })
+  })
+
+  describe('satisfyImportTarget', () => {
+    let factories: Factory[]
+    let ironPlateFac: Factory
+    beforeEach(() => {
+      factories = create324Scenario().getFactories()
+      ironPlateFac = findFacByName('Iron Plates', factories)
+    })
+
+    it('should return null if there is no outputPart', () => {
+      ironPlateFac.inputs[0].outputPart = null
+      expect(satisfyImportTarget(0, ironPlateFac)).toBe(null)
+    })
+
+    it('should report the quantity satisfyImport would set', () => {
+      ironPlateFac.inputs = ironPlateFac.inputs.slice(0, 1)
+      ironPlateFac.inputs[0].amount = 50
+      calculateFactories(factories, gameData)
+
+      expect(satisfyImportTarget(0, ironPlateFac)).toBe(75)
+    })
+
+    it('should account for the other imports of the same part', () => {
+      ironPlateFac.inputs[0].amount = 50
+      ironPlateFac.inputs[1].amount = 0
+      calculateFactories(factories, gameData)
+
+      expect(satisfyImportTarget(1, ironPlateFac)).toBe(25)
+    })
+
+    it('should never report a negative target', () => {
+      ironPlateFac.inputs[0].amount = 100
+      ironPlateFac.inputs[1].amount = 0
+      calculateFactories(factories, gameData)
+
+      expect(satisfyImportTarget(1, ironPlateFac)).toBe(0)
+    })
+
+    it('should agree with what satisfyImport actually sets', () => {
+      ironPlateFac.inputs[0].amount = 100
+      ironPlateFac.inputs = ironPlateFac.inputs.slice(0, 1)
+      calculateFactories(factories, gameData)
+
+      const target = satisfyImportTarget(0, ironPlateFac)
+      satisfyImport(0, ironPlateFac)
+
+      expect(ironPlateFac.inputs[0].amount).toBe(target)
     })
   })
 
