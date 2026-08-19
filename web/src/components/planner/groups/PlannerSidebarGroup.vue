@@ -58,7 +58,7 @@
 
         <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
           <i class="fas fa-industry" />
-          <span class="mx-2">{{ section.factories.length }}</span>
+          <span class="ml-2">{{ section.factories.length }}</span>
         </v-chip>
 
         <!-- Set apart from the readouts beside them: these two act, and a delete button flush
@@ -516,10 +516,11 @@ $strip-border: 1px;
   }
 }
 
-// The icon and the count are set apart by an ml-2, which left the number looking wedged against
-// the right edge while the icon had room. `.sf-chip.small` sets its padding with !important.
+// Never shrinks: the header is a flex row, and once the group name filled it the chip was the
+// item that gave way — two digits then clipped against its own border. Padding is the chip's own
+// symmetric 10px, with a single ml-2 setting the number apart from the icon.
 .factory-count {
-  padding-right: 16px !important;
+  flex: 0 0 auto;
 }
 
 // The count sits close to the buttons; the separation that matters is between the two buttons, so
