@@ -82,6 +82,15 @@ export const addProductToFactory = (
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
 
+// The DOM id of one product row, shared by the row itself, by the byproduct markers it carries
+// and by everything that jumps to it — an import's View button lands on the product supplying it
+// rather than on the supplying factory's card, which only says "somewhere in here".
+//
+// `subject` is the product's part, a byproduct's part, or a power producer's building: a producer's
+// own id is a random instance number, so its row is addressed by what it burns.
+export const productRowId = (factoryId: number | string, subject: string): string =>
+  `${factoryId}-products-item-${subject}`
+
 export const productHasFractionalClock = (product: FactoryItem): boolean =>
   hasFractionalClock(product.buildingGroups)
 
@@ -254,6 +263,25 @@ export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory
 export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) =>
   hasNoDemand(factory, product.id)
 
+// The quantity fixProduct would set, without setting it. The Satisfy and Trim buttons name it, so
+// the user can see what they are agreeing to before pressing rather than after.
+//
+// Null when the question cannot be answered — a half-built product, or one whose part ledger has
+// not been calculated yet — in which case the button falls back to naming no figure at all.
+export const fixProductTarget = (product: FactoryItem, factory: Factory): number | null => {
+  if (!product?.id || !factory.parts[product.id]) {
+    return null
+  }
+
+  const partData = factory.parts[product.id]
+
+  // Byproducts are handled by reading the part ledger rather than the recipe: the ledger already
+  // accounts for whatever else in the factory produces this part.
+  const diff = partData.amountRequired - partData.amountSuppliedViaProduction
+
+  return diff + product.amount
+}
+
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {
   // If the product is not found, throw
   if (!product.id) {
@@ -268,15 +296,8 @@ export const fixProduct = (product: FactoryItem, factory: Factory): void => {
     throw new Error(error)
   }
 
-  const partData = factory.parts[product.id]
-
-  // If the factory is producing byproducts, we need to handle that properly. Using the part data we should be able to achieve this regardless of the product type.
-
-  const produced = partData.amountSuppliedViaProduction
-  const required = partData.amountRequired
-  const diff = required - produced
-
-  product.amount = diff + product.amount
+  // Non-null: both throwing guards above have already run.
+  product.amount = fixProductTarget(product, factory) as number
 
   // updateFactory must be called!
 }

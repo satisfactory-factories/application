@@ -428,7 +428,7 @@
         size="small"
         @click="balanceGroup"
       >
-        Trim
+        Trim{{ balanceTargetLabel }}
         <tooltip-info :is-caption="false" :text="balanceTooltip" />
       </v-btn>
       <v-btn
@@ -441,7 +441,7 @@
         size="small"
         @click="balanceGroup"
       >
-        Satisfy
+        Satisfy{{ balanceTargetLabel }}
         <tooltip-info :is-caption="false" :text="balanceTooltip" />
       </v-btn>
       <div class="underchip">&nbsp;</div>
@@ -461,7 +461,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { sfColors } from '@/utils/colors'
   import { useDisplay } from 'vuetify'
-  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { canBuildingOverclock, getBuildingDisplayName, isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
   import {
     applyRemainderToGroup,
@@ -471,6 +471,7 @@
     getGroupPowerShards,
     getShardsPerBuilding,
     solveGroupForRemainder,
+    solveGroupTargetOutput,
     updateBuildingGroupViaPart,
   } from '@/utils/factory-management/building-groups/common'
   import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
@@ -551,6 +552,13 @@
   // Null when there is no setting this group could take, which is what disables the button.
   const balanceSolution = computed(() =>
     solveGroupForRemainder(props.item, props.group, props.type))
+
+  // What Satisfy/Trim would leave this group producing, appended to the button so the figure is
+  // visible before the press rather than only after it. A power group's headline is its MW.
+  const balanceTargetLabel = computed(() => fixTargetSuffix(
+    solveGroupTargetOutput(props.item, props.group, props.type),
+    props.type === ItemType.Power ? 'mw' : undefined
+  ))
 
   const balanceTooltip = computed(() => {
     if (!balanceSolution.value) {

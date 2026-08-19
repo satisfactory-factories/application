@@ -3,8 +3,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlannerGlobalActions from './PlannerGlobalActions.vue'
+import Tooltip from '@/components/tooltip.vue'
 import { useAppStore } from '@/stores/app-store'
 import { usePowerTarget } from '@/composables/usePowerTarget'
+import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import { newFactory } from '@/utils/factory-management/factory'
 
 // The copy/paste plan buttons must carry the plan's power target (a tab-level
@@ -46,6 +48,50 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText, readText } })
     // confirmReplace() calls window.confirm when a plan already exists.
     vi.stubGlobal('confirm', vi.fn(() => true))
+  })
+
+  // Every button in this row hints at what it does, and does it the same way as the rest of the
+  // app. A native `title` is not that: it looks nothing like a v-tooltip, and a browser shows
+  // none at all for a disabled control — which is half of these on an empty plan.
+  it('wraps every button in a tooltip, and none carries a native title', () => {
+    const subject = mountSubject()
+    const buttons = subject.findAll('button')
+
+    expect(buttons.length).toBeGreaterThan(0)
+    expect(buttons.filter(b => b.attributes('title') !== undefined)).toHaveLength(0)
+    expect(subject.findAllComponents(Tooltip)).toHaveLength(buttons.length)
+    expect(subject.findAllComponents(Tooltip).every(t => !!t.props('text'))).toBe(true)
+  })
+
+  // A greyed-out button that says nothing is the case a native title could never cover, and the
+  // reason all of these are disabled is the same one.
+  it('explains why each button is disabled on an empty plan', () => {
+    const subject = mountSubject()
+    const hints = subject.findAllComponents(Tooltip).map(t => t.props('text') as string)
+
+    for (const label of ['hide', 'expand', 'clear', 'copy', 'recalculate']) {
+      expect(hints.some(hint => hint.startsWith(`Nothing to ${label} yet`))).toBe(true)
+    }
+  })
+
+  // The one button here that holds a state rather than firing an action, and it is the only
+  // control for it — so a plan opened on a wide monitor has to come back full width next time.
+  it('full width button toggles the stored option', async () => {
+    localStorage.removeItem('plannerOptions')
+    const options = usePlannerOptions()
+    options.value.fullWidth = false
+
+    const subject = mountSubject()
+    expect(subject.text()).toContain('Full width')
+
+    await clickButton(subject, 'Full width')
+
+    expect(options.value.fullWidth).toBe(true)
+    expect(subject.text()).toContain('Normal width')
+
+    await clickButton(subject, 'Normal width')
+
+    expect(options.value.fullWidth).toBe(false)
   })
 
   it('copy serializes the full tab (name, factories, powerTarget)', () => {

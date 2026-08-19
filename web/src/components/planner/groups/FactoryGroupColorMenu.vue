@@ -2,9 +2,10 @@
   <v-menu v-model="open" :close-on-content-click="false" location="bottom start">
     <template #activator="{ props: activatorProps }">
       <button
+        aria-label="Change group colour"
         class="group-swatch"
+        data-hover-tooltip="Change group colour"
         :style="{ backgroundColor: modelValue }"
-        title="Change group colour"
         type="button"
         v-bind="activatorProps"
         @click.stop
@@ -16,17 +17,19 @@
           <button
             v-for="entry in groupPalette"
             :key="entry.value"
+            :aria-label="entry.name"
             class="group-swatch large"
             :class="{ selected: entry.value.toLowerCase() === modelValue.toLowerCase() }"
+            :data-hover-tooltip="entry.name"
             :style="{ backgroundColor: entry.value }"
-            :title="entry.name"
             type="button"
             @click="pick(entry.value)"
           />
           <!-- Anything at all is allowed, the grid is just the shortlist. -->
           <button
+            aria-label="Custom colour"
             class="group-swatch large custom-trigger"
-            title="Custom colour"
+            data-hover-tooltip="Custom colour"
             type="button"
             @click="custom = true"
           >
@@ -41,10 +44,11 @@
             <button
               v-for="color in customColors"
               :key="color"
+              :aria-label="color"
               class="group-swatch large"
               :class="{ selected: color === modelValue.toLowerCase() }"
+              :data-hover-tooltip="color"
               :style="{ backgroundColor: color }"
-              :title="color"
               type="button"
               @click="pick(color)"
             />

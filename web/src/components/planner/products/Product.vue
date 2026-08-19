@@ -1,7 +1,7 @@
 <template>
   <div
     v-for="(product, productIndex) in factory.products"
-    :id="`${factory.id}-products-item-${product.id}`"
+    :id="productRowId(factory.id, product.id)"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
@@ -10,7 +10,7 @@
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
     <div
       v-for="byProduct in product.byProducts ?? []"
-      :id="`${factory.id}-products-item-${byProduct.id}`"
+      :id="productRowId(factory.id, byProduct.id)"
       :key="`anchor-${byProduct.id}`"
       class="status-anchor"
     />
@@ -100,7 +100,7 @@
         color="green"
         prepend-icon="fas fa-arrow-up"
         @click="doFixProduct(product, factory)"
-      >Satisfy</v-btn>
+      >Satisfy{{ fixTargetLabel(product, factory) }}</v-btn>
       <v-btn
         v-show="shouldShowFix(product, factory) == 'surplus'"
         class="rounded align-self-center"
@@ -108,7 +108,7 @@
         prepend-icon="fas fa-arrow-down"
         size="default"
         @click="doFixProduct(product, factory)"
-      >Trim</v-btn>
+      >Trim{{ fixTargetLabel(product, factory) }}</v-btn>
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
         <i class="fas fa-industry mr-1" />Internal
       </v-chip>
@@ -286,7 +286,9 @@
   import {
     byProductAsProductCheck,
     fixProduct,
+    fixProductTarget,
     increaseProductQtyViaBuilding,
+    productRowId,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
@@ -295,7 +297,7 @@
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
@@ -538,6 +540,11 @@
     fixProduct(product, factory)
     updateFactory(factory)
   }
+
+  // What Satisfy/Trim would set the Qty to, appended to the button so the figure is visible
+  // before the press rather than only after it.
+  const fixTargetLabel = (product: FactoryItem, factory: Factory): string =>
+    fixTargetSuffix(fixProductTarget(product, factory))
 
   const autocompletePartItemsGenerator = () => {
     const gameDataParts = getGameData().items.parts

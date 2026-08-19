@@ -3,10 +3,14 @@ import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/fac
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
 import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
+import { canPartBeProducedDirectly } from '@/utils/factory-management/common'
+import { fetchGameData } from '@/utils/gameDataService'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { isSunk } from '@/utils/factory-management/disposal'
+
+const gameData = await fetchGameData()
 
 const nuclearParts = ['NuclearWaste', 'PlutoniumWaste']
 
@@ -52,7 +56,13 @@ export const showAddToFactory = (factory: Factory, part: PartMetrics, partId: st
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !part.satisfied
+  if (part.satisfied) {
+    return false
+  }
+  // Another factory can only make what some factory could make. Offering this for a part with no
+  // recipe of its own built a factory with an empty product row and left an import pointing at
+  // it, which supplied nothing - Dissolved Silica and the Power Slugs both landed there.
+  return canPartBeProducedDirectly(partId, gameData)
 }
 
 // Adds the shortage of a part as a product on the target factory, and imports it back into the
@@ -101,22 +111,42 @@ export const showAddProduct = (factory: Factory, part: PartMetrics, partId: stri
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !getProduct(factory, partId) && !part.satisfied
+  if (part.satisfied) {
+    return false
+  }
+  // Deliberately productOnly: the part already arriving as a byproduct of something else is no
+  // reason to refuse making it on purpose as well. Dark Matter Residue drops out of every Quantum
+  // Encoder recipe and is also made outright by a Converter, and a factory short of it could add
+  // it to any *other* factory but not the one that needed it — which made no sense to anyone.
+  if (getProduct(factory, partId, true)) {
+    return false
+  }
+  // Nothing to add if the game has no recipe that makes the part on purpose; those get
+  // "Correct Manually" instead.
+  return canPartBeProducedDirectly(partId, gameData)
 }
 
 export const showFixProduct = (factory: Factory, part: PartMetrics, partId: string) => {
   return getProduct(factory, partId, true) && !part.satisfied
 }
 
+// The dead end: a shortage of something this factory only gets as a byproduct, and that the game
+// gives no way of making on purpose. Scaling the byproduct means scaling whatever produces it,
+// which the planner won't guess at, so the user is told to sort it out themselves.
+//
+// A part that *can* be made on purpose is not a dead end even while it arrives here as a
+// byproduct — it gets "+ Product" (see showAddProduct) instead.
 export const showCorrectManually = (factory: Factory, part: PartMetrics, partId: string) => {
-  const isByProduct = factory.byProducts.find(byProduct => byProduct.id === partId)
-  // If the product is already a byproduct and isn't satisfied, show it
-  if (isByProduct && !part.satisfied) {
-    return true
+  if (part.satisfied) {
+    return false
   }
 
-  // Beyond a byproduct, we don't care about it's state
-  return false
+  const isByProduct = factory.byProducts.some(byProduct => byProduct.id === partId)
+  if (!isByProduct) {
+    return false
+  }
+
+  return !canPartBeProducedDirectly(partId, gameData)
 }
 
 export const showFixImport = (factory: Factory, part: PartMetrics, partId: string) => {

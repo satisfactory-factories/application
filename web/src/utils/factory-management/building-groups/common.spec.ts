@@ -24,6 +24,7 @@ import {
   deleteBuildingGroup,
   getTotalPowerShards,
   solveGroupForRemainder,
+  solveGroupTargetOutput,
   syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -1275,6 +1276,38 @@ describe('powerProducer simplified cases', async () => {
       calculateFactories([wellFactory], gameData, { origin: 'buildingGroup' })
 
       expect(solveGroupForRemainder(gas, gas.buildingGroups[0], ItemType.Product)).toBeNull()
+    })
+
+    describe('solveGroupTargetOutput', () => {
+      it('reports the output the group would land on, which the button names', () => {
+        // 200/min from the first group leaves the second needing 160 of the item's 360.
+        expect(solveGroupTargetOutput(stone, stone.buildingGroups[1], ItemType.Product)).toBe(160)
+      })
+
+      it('reports the same figure when trimming a surplus', () => {
+        stone.buildingGroups[1].overclockPercent = 120 // 216/min, so 56/min over
+        calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+        expect(solveGroupTargetOutput(stone, stone.buildingGroups[1], ItemType.Product)).toBe(160)
+      })
+
+      it('agrees with what applying the remainder actually produces', () => {
+        const target = solveGroupTargetOutput(stone, stone.buildingGroups[1], ItemType.Product)
+
+        applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
+        calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+        expect(stone.buildingGroups[1].parts.Stone).toBeCloseTo(target as number, 1)
+      })
+
+      it('gives no figure when no setting of the group could balance the item', () => {
+        stone.buildingGroups[0].buildingCount = 40 // 1,600/min against 360 asked for
+        stone.buildingGroups[1].buildingCount = 1
+        calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+        // The button is disabled in this case, so naming a target it cannot reach would mislead.
+        expect(solveGroupTargetOutput(stone, stone.buildingGroups[1], ItemType.Product)).toBeNull()
+      })
     })
   })
 

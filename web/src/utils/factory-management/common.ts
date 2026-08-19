@@ -52,6 +52,25 @@ export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | unde
   return recipe
 }
 
+// Recipes that make the part outright, as opposed to dropping it as a byproduct of making
+// something else. The distinction matters wherever a part is turned into a product: a product's
+// amount is always read against its recipe's *primary* output, so a recipe that only drops the
+// part on the side would silently reinterpret the number the user asked for as an amount of
+// something else entirely.
+export const getPrimaryProductRecipes = (partId: string, gameData: DataInterface): Recipe[] => {
+  return gameData.recipes.filter(recipe =>
+    recipe.products.some(product => product.part === partId && !product.isByProduct)
+  )
+}
+
+// True when the game gives at least one way of making the part on purpose. Only a handful of
+// parts fail this — Dissolved Silica falls out of Quartz Purification and nothing else. Dark
+// Matter Residue looks like one of them in most factories, since every Quantum Encoder recipe
+// drops it, but a Converter makes it outright, so it is not.
+export const canPartBeProducedDirectly = (partId: string, gameData: DataInterface): boolean => {
+  return getPrimaryProductRecipes(partId, gameData).length > 0
+}
+
 export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | undefined => {
   if (!gameData || !id) {
     return

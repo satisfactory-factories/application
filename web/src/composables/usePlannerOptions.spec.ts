@@ -37,6 +37,12 @@ describe('usePlannerOptions', () => {
     expect(options.value.showGroupPower).toBe(false)
   })
 
+  it('should keep the wide-screen gutters until asked otherwise', async () => {
+    const options = await load()
+
+    expect(options.value.fullWidth).toBe(false)
+  })
+
   it('should restore what was stored', async () => {
     localStorage.setItem('plannerOptions', JSON.stringify({ showInternalGroupProducts: true }))
     const options = await load()
@@ -56,6 +62,7 @@ describe('usePlannerOptions', () => {
       showGroupPower: false,
       balanceTolerancePercent: 1,
       showBacklogAdvisory: true,
+      fullWidth: false,
     })
   })
 
@@ -92,6 +99,7 @@ describe('usePlannerOptions', () => {
 
     expect(options.value.showGroupProducts).toBe(true)
     expect(options.value.showGroupPower).toBe(false)
+    expect(options.value.fullWidth).toBe(false)
   })
 
   it('should default the balance tolerance to 1%', async () => {

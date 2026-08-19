@@ -154,7 +154,7 @@
                         <i class="fas fa-exclamation-circle" /><span class="ml-1">CORRECT MANUALLY</span>
                       </div>
                     </template>
-                    <span>This item is a byproduct, currently the planner does not know how to scale byproducts correctly<br> as there could be a number of ways to do it that the user may not want.<br> Please scale it manually.</span>
+                    <span>This item can only be made as a byproduct of something else.<br> The planner does not know how to scale byproducts correctly, as there could be a number of ways to do it that you may not want.<br> Please scale it manually.</span>
                   </v-tooltip>
                 </v-btn>
                 <v-btn
@@ -832,7 +832,8 @@
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {
-    const product = getProduct(factory, partId) as FactoryItem
+    // productOnly: a byproduct has no amount of its own to scale, and fixProduct would write one.
+    const product = getProduct(factory, partId, true) as FactoryItem
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')

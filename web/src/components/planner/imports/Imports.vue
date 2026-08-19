@@ -90,7 +90,7 @@
             prepend-icon="fas fa-arrow-down"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Trim</v-btn>
+          >Trim{{ satisfyTargetLabel(inputIndex) }}</v-btn>
           <v-btn
             v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
             class="rounded mr-2"
@@ -98,15 +98,35 @@
             prepend-icon="fas fa-arrow-up"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Satisfy</v-btn>
+          >Satisfy{{ satisfyTargetLabel(inputIndex) }}</v-btn>
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span v-show="exceedsCapacity(inputIndex)">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="rounded mr-2"
+                  color="yellow"
+                  prepend-icon="fas fa-arrow-to-bottom"
+                  size="default"
+                  @click="trimInputToCapacity(inputIndex, factory)"
+                >Trim to Export Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
+              </span>
+            </template>
+            <span>
+              {{ providerName(inputIndex) }} can only spare
+              {{ formatNumber(importCapacity(inputIndex) ?? 0) }}/min of this item after its own
+              production and its other exports. Trim this import down to that.
+            </span>
+          </v-tooltip>
           <v-btn
             class="rounded"
             color="primary"
             :disabled="!input.factoryId"
             prepend-icon="fas fa-industry"
             size="default"
+            title="Jump to the product supplying this import"
             variant="outlined"
-            @click="navigateToFactory(input.factoryId)"
+            @click="navigateToSource(input)"
           >View</v-btn>
           <v-btn
             class="rounded ml-2"
@@ -152,22 +172,28 @@
     addInputToFactory,
     calculateAbleToImport,
     calculateImportCandidates,
+    calculateImportCapacity,
     calculatePossibleImports,
     deleteInputPair,
+    importExceedsCapacity,
     importFactorySelections,
     importPartSelections,
     importRowId,
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
+    satisfyImportTarget,
+    trimImportToCapacity,
     validateInput,
   } from '@/utils/factory-management/inputs'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { useDisplay } from 'vuetify'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { fixTargetSuffix, formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
+  import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const { getFactories } = useAppStore()
@@ -178,7 +204,26 @@
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const updateFactory = inject('updateFactory') as (factory: Factory, mode?: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: number | null) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: number | null,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
+
+  // The mirror of the export chips' jump: land on the product supplying this import rather than on
+  // the supplying factory's card, which only says "somewhere in here". A part supplied as a
+  // byproduct has no row of its own, and its marker sends the flash to the product that makes it.
+  // The Products section is the fallback for the rest — a factory can export a surplus of
+  // something it imports, which it produces nowhere.
+  const navigateToSource = (input: FactoryInput) => {
+    if (!input.factoryId) return
+
+    navigateToFactory(
+      input.factoryId,
+      input.outputPart ? productRowId(input.factoryId, input.outputPart) : undefined,
+      `${input.factoryId}-products`
+    )
+  }
 
   const props = defineProps<{
     factory: Factory;
@@ -310,6 +355,43 @@
 
   const updateInputToSatisfy = (inputIndex: number, factory: Factory) => {
     satisfyImport(inputIndex, factory)
+    updateFactories(factory, factory.inputs[inputIndex])
+  }
+
+  // The provider a row points at, or null while the row is still half-filled. findFac hands back
+  // an empty object rather than throwing when the id is unknown, so the id is what gets tested.
+  const providerFor = (inputIndex: number): Factory | null => {
+    const input = props.factory.inputs[inputIndex]
+    if (!input?.factoryId || !input.outputPart) {
+      return null
+    }
+    const provider = findFactory(input.factoryId)
+    return provider?.id ? provider : null
+  }
+
+  // What Satisfy/Trim would set the Qty to, appended to the button so the figure is visible
+  // before the press rather than only after it.
+  const satisfyTargetLabel = (inputIndex: number): string =>
+    fixTargetSuffix(satisfyImportTarget(inputIndex, props.factory))
+
+  const providerName = (inputIndex: number): string => providerFor(inputIndex)?.name ?? 'This factory'
+
+  const importCapacity = (inputIndex: number): number | null => {
+    const provider = providerFor(inputIndex)
+    return provider ? calculateImportCapacity(inputIndex, props.factory, provider) : null
+  }
+
+  const exceedsCapacity = (inputIndex: number): boolean => {
+    const provider = providerFor(inputIndex)
+    return provider ? importExceedsCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const trimInputToCapacity = (inputIndex: number, factory: Factory) => {
+    const provider = providerFor(inputIndex)
+    if (!provider) {
+      return
+    }
+    trimImportToCapacity(inputIndex, factory, provider)
     updateFactories(factory, factory.inputs[inputIndex])
   }
 
