@@ -23,6 +23,31 @@
           </ul>
         </nav>
         <v-divider />
+        <h1>Beta v0.7 <span class="release-date">In development</span></h1>
+        <p>Buildings that produce nothing — portals, stations, lights — can now be planned like everything else.</p>
+        <nav v-if="sectionsOf('Beta v0.7').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.7')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
+
+        <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
+        <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
+        <v-img
+          alt="Ten Main Portals added to a factory as a custom building"
+          max-width="1200"
+          src="/assets/changelog/beta7/custom-buildings.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>They count towards the factory's power draw and its list of buildings to place.</li>
+          <li><b>The Main Portal eats Singularity Cells</b>, two a minute each. That is a demand like any other: import it, or the factory reads as short.</li>
+          <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
+        </ul>
+
+        <v-divider />
         <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
         <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
         <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
@@ -92,21 +117,6 @@
           <li><b>Resource wells are not compatible with the wizard</b>, because of the satellites. Rather than make a bad guess it leaves them to you, and says so on any row it cannot help with. Wiring an import from a well you already have is one click in Imports.</li>
           <li><b>Nothing is written until you confirm.</b> You see every factory, product and export first, and can download a backup from the confirmation screen.</li>
           <li>You choose whether new mines land at the top or the bottom of the plan, and can rename them before they are built.</li>
-        </ul>
-
-        <v-divider class="subsection" />
-
-        <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
-        <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
-        <v-img
-          alt="Ten Main Portals added to a factory as a custom building"
-          max-width="1200"
-          src="/assets/changelog/beta6/custom-buildings.png"
-        />
-        <ul class="ml-6 mt-2">
-          <li>They count towards the factory's power draw and its list of buildings to place.</li>
-          <li><b>The Main Portal eats Singularity Cells</b>, two a minute each. That is a demand like any other: import it, or the factory reads as short.</li>
-          <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
         </ul>
 
         <v-divider class="subsection" />
