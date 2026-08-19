@@ -201,6 +201,23 @@
 
         <v-divider class="subsection" />
 
+        <h2>👍 <i class="fas fa-arrow-to-bottom ml-1" /><span class="ml-2">Satisfy &amp; Trim say what they will set</span></h2>
+        <p>Every <b>Satisfy</b> and <b>Trim</b> now names the figure it would land on, right there on the button. No more pressing one to find out what it does, then trying to remember the old number to undo it.</p>
+        <v-img
+          alt="A product's Trim (480) button above an import's Trim to Export Capacity (360) button"
+          max-width="1200"
+          src="/assets/changelog/beta6/satisfy-trim-targets.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>Products, imports and building groups all carry it, each in its own units: a product's new Qty/min, an import's new quantity, and the output a building group would be left producing (MW for a power generator's group).</li>
+          <li><b>New: Trim to Export Capacity.</b> An import that asks a factory for more than it can make now offers to trim itself to fit. Nothing used to stop you requesting 1,015 of something from a factory producing 900 — and the 115 it could never deliver showed up on the <i>supplier</i>, a long way from the row that caused it.</li>
+          <li>Capacity is what the supplier has <b>spare</b>: what it makes, less what its own production and generators consume, less everything it has already promised to other factories.</li>
+          <li>It only ever shrinks a request. A row that already fits is left alone, so this is not a second <b>Satisfy</b>: Satisfy sizes an import against what <i>this</i> factory needs, Trim to Export Capacity sizes it against what the supplier can actually give.</li>
+          <li>The shortfall doesn't vanish, it moves to where it belongs: the supplier goes green, and this factory shows the gap it always really had.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
         <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
         <v-img
