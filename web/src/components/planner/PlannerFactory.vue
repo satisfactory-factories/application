@@ -327,13 +327,16 @@
                   </v-chip>
                 </template>
                 <!-- Power generators produce as surely as products do, and a factory made only of
-                     them used to collapse to "Empty factory!". Green with a bolt, the same livery
-                     the generator's own power chip wears when expanded. -->
+                     them used to collapse to "Empty factory!". Green, and led by the same bolt-plus
+                     the generator's own power chip wears when expanded: a building icon on its own
+                     reads as a product, as though the factory were manufacturing generators. -->
                 <v-chip
                   v-for="(producer, producerIndex) in factory.powerProducers"
                   :key="`${factory.id}-power-${producerIndex}`"
                   class="sf-chip green"
                 >
+                  <i class="fas fa-bolt" />
+                  <i class="fas fa-plus mr-2" />
                   <game-asset
                     v-if="producer.building"
                     clickable
@@ -342,7 +345,6 @@
                     type="building"
                     width="32"
                   />
-                  <i v-else class="fas fa-bolt" />
                   <span class="ml-2">
                     <b>{{ producerName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
                   </span>
