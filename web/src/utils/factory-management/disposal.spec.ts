@@ -5,6 +5,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
 import {
+  DEPOT_RESEARCH_MERCER_SPHERES,
   getDepotCount,
   getFactoryDepots,
   getFactoryMercerSpheres,
@@ -37,12 +38,16 @@ import {
 import {
   clampTier,
   DEFAULT_DEPOT_TIER,
+  DEPOT_EXPANSION_TIERS,
   DEPOT_UNLOCK_MERCER_SPHERES,
   DEPOT_UPLOAD_TIERS,
   depotRateForTier,
   depotResearchLabel,
+  depotStacksForTier,
   depotTierLabel,
+  MANUAL_UPLOADER_MERCER_SPHERES,
   MAX_DEPOT_TIER,
+  mercerSpheresForExpansion,
   mercerSpheresForTier,
 } from '@/composables/useDepotResearch'
 
@@ -665,6 +670,26 @@ describe('disposal', () => {
       expect(depotResearchLabel(0)).toBe('unlock only')
       expect(depotResearchLabel(1)).toBe('Upgrade 1')
       expect(depotResearchLabel(MAX_DEPOT_TIER)).toBe('Upgrade 4')
+    })
+
+    // The expansion chain is priced identically to the upload one but bought separately, and it
+    // buys stacks rather than speed.
+    it('expands the depot one stack at a time', () => {
+      expect(DEPOT_EXPANSION_TIERS.map(tier => tier.stacks)).toEqual([1, 2, 3, 4, 5])
+      expect(DEPOT_EXPANSION_TIERS.map(tier => mercerSpheresForExpansion(tier.tier))).toEqual([0, 3, 10, 23, 46])
+      expect(depotStacksForTier(0)).toBe(1)
+      expect(depotStacksForTier(99)).toBe(5)
+    })
+
+    // The three lines the statistics offer are derived separately, from the MAM's per-node costs.
+    // Ticking all three at full research has to come to what the wiki states for the whole chain,
+    // or one of them is counting a node twice or not at all.
+    it('reconciles the three research lines against the full chain', () => {
+      expect(
+        mercerSpheresForTier(MAX_DEPOT_TIER) +
+        mercerSpheresForExpansion(MAX_DEPOT_TIER) +
+        MANUAL_UPLOADER_MERCER_SPHERES
+      ).toBe(DEPOT_RESEARCH_MERCER_SPHERES)
     })
   })
 })

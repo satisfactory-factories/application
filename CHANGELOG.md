@@ -36,12 +36,13 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   and a pill per factory carrying that factory's own count. Flags an item arriving faster than its
   Uploaders can take it (240/min each, fully researched), so the remainder still backs up.
 - **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
-  Depot Uploader, read off the game's build recipe, with the MAM research the plan's upload tier
-  implies on a line of its own beneath them: the two nodes that unlock the Depot plus every upload
-  upgrade up to that tier, so 2 spheres on a fresh save and 48 fully researched. Excluded from the
-  total by default — it is paid once per save, not once per plan — with a tick-box for anyone who
-  wants it counted anyway. The Depot Expansion upgrades are left out entirely, because they buy
-  storage the planner does not model. The Mercer Sphere icon is new —
+  Depot Uploader, read off the game's build recipe, and the MAM research the Depot costs is listed
+  under them with a tick-box each: upload research (the two unlock nodes plus every upload upgrade
+  up to the plan's tier), depot expansion, and the optional Manual Uploader. All three are off the
+  total by default, since they are paid once per save rather than once per plan. Ticked together at
+  full research they come to the 97 the wiki quotes for the whole chain, which a test now pins.
+  Mercer Spheres are counted in one place only, so the Depot section and its sidebar entry no
+  longer repeat the figure. The Mercer Sphere icon is new —
   it is a collectable rather than a craftable part, so it was never in the icon set the planner
   shipped with.
 - **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
@@ -52,6 +53,10 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
   icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning
   when it applies.
+- **The Dimensional Depot carries the expansion research too**, beside the upload tier: how many
+  stacks of each item the Depot holds, 1 to 5. It changes no calculation, because the planner tracks
+  rates rather than how full a container is, but it is the other half of what the MAM sells for the
+  Depot and it is what "the Depot is finite" actually means. Saved on the plan like the upload tier.
 - The Dimensional Depot's table gives its three number columns fixed widths and lets the factory
   pills — the column that actually grows with the plan — take the rest. The item column is sized to
   the longest name in the game, so nothing in it wraps.

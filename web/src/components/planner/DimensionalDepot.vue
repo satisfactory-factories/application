@@ -22,10 +22,6 @@
               <game-asset height="20" subject="dimensional-depot-uploader" type="item_id" width="20" />
               <span class="ml-2">{{ formatNumber(totalContainers) }} Uploader{{ totalContainers === 1 ? '' : 's' }}</span>
             </v-chip>
-            <v-chip id="depot-mercer-summary" class="sf-chip small dimensional-depot no-margin" variant="tonal">
-              <game-asset height="20" subject="mercer-sphere" type="item_id" width="20" />
-              <span class="ml-2">{{ formatNumber(totalMercerSpheres) }} Mercer Sphere{{ totalMercerSpheres === 1 ? '' : 's' }}</span>
-            </v-chip>
             <!-- A count, not a sum. Each item's capacity is its own Uploaders' and nothing else's,
                  so "how many items cannot keep up" is the only plan-wide thing worth saying. -->
             <v-chip
@@ -56,8 +52,8 @@
                four MAM upgrades, so a plan written for a fresh save and one written for a finished
                one need very different numbers of Uploaders for the same throughput. Saved on the
                plan, so a shared plan carries the world it was written against. -->
-          <div class="d-flex align-center flex-wrap ga-3 mb-4">
-            <span class="font-weight-bold">MAM upload research tier:</span>
+          <div class="d-flex align-center flex-wrap ga-3 mb-2">
+            <span class="research-label font-weight-bold">MAM upload research tier:</span>
             <v-select
               id="depot-research-tier"
               v-model="depotTier"
@@ -72,6 +68,28 @@
             <v-chip class="sf-chip small dimensional-depot no-margin" variant="tonal">
               <game-asset height="20" subject="dimensional-depot-uploader" type="item_id" width="20" />
               <span class="ml-2">{{ formatNumber(depotRate) }}/min per Uploader</span>
+            </v-chip>
+          </div>
+          <!-- Expansion changes no number in the planner, which tracks rates rather than how full
+               a container is. It is here because it is the other half of what the MAM sells for
+               the Depot, and because how much the Depot holds is the reason an Uploader defers a
+               backlog instead of fixing it. -->
+          <div class="d-flex align-center flex-wrap ga-3 mb-4">
+            <span class="research-label font-weight-bold">Depot expansion research:</span>
+            <v-select
+              id="depot-expansion-tier"
+              v-model="depotExpansionTier"
+              density="compact"
+              hide-details
+              item-title="title"
+              item-value="value"
+              :items="expansionOptions"
+              style="max-width: 250px"
+              variant="outlined"
+            />
+            <v-chip class="sf-chip small dimensional-depot no-margin" variant="tonal">
+              <i class="fas fa-box" />
+              <span class="ml-2">{{ depotStacks }} stack{{ depotStacks === 1 ? '' : 's' }} per item</span>
             </v-chip>
           </div>
           <v-table v-if="entries.length > 0" class="depot-table" density="compact">
@@ -149,19 +167,12 @@
             Nothing is being sent to the Dimensional Depot. Set an Uploader on a surplus item under a
             factory's <b>Satisfaction &rarr; Storage</b> column to track it here.
           </p>
-          <!-- Stated rather than added to the total: it is paid once for the save, so charging it
-               to every plan would have two plans in one save each claim the same spheres. The
-               Statistics section carries the same figure with a tick-box for anyone who does want
-               it counted. -->
+          <!-- What the Mercer Spheres cost is in the statistics, where the plan's other collectables
+               are counted. Repeating it here made this caption a paragraph. -->
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
-            One Mercer Sphere per Uploader, plus <b>{{ depotResearchSpheres }}</b> Mercer Spheres of MAM
-            research at this tier ({{ depotResearchName }}) — the two nodes that unlock the Depot, and
-            every upload upgrade up to it. That is paid once per save rather than once per plan, so it is
-            not counted above; the Mercer Sphere statistics can add it to their total. Buying the depot
-            expansions and the Manual Uploader as well takes the whole chain to
-            {{ DEPOT_RESEARCH_MERCER_SPHERES }}. Upload speed applies per Uploader, so two Uploaders on one
-            item fill twice as fast; depot storage does not stack, so they share the same one-to-five
-            stacks of space.
+            Upload speed is per Uploader, so two on one item fill twice as fast. Storage is not:
+            they share the same {{ depotStacks }} stack{{ depotStacks === 1 ? '' : 's' }} of space.
+            Mercer Sphere costs are counted in the statistics.
           </p>
         </v-card-text>
       </v-card>
@@ -175,8 +186,7 @@
   import { formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { calculateDimensionalDepot, DimensionalDepotEntry } from '@/utils/statistics'
-  import { DEPOT_RESEARCH_MERCER_SPHERES } from '@/utils/factory-management/disposal'
-  import { DEPOT_UPLOAD_TIERS, useDepotResearch } from '@/composables/useDepotResearch'
+  import { DEPOT_EXPANSION_TIERS, DEPOT_UPLOAD_TIERS, useDepotResearch } from '@/composables/useDepotResearch'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
   import eventBus from '@/utils/eventBus'
 
@@ -191,21 +201,28 @@
     id: string | number, subsection?: string, fallback?: string
   ) => void
 
-  const { depotTier, depotRate, depotResearchSpheres, depotResearchName } = useDepotResearch()
+  const {
+    depotTier,
+    depotRate,
+    depotExpansionTier,
+    depotStacks,
+  } = useDepotResearch()
 
   const tierOptions = DEPOT_UPLOAD_TIERS.map(tier => ({
     value: tier.tier,
-    title: `${tier.label} — ${tier.rate}/min`,
+    title: `${tier.label}: ${tier.rate}/min`,
+  }))
+
+  const expansionOptions = DEPOT_EXPANSION_TIERS.map(tier => ({
+    value: tier.tier,
+    title: tier.tier === 0
+      ? `Not researched: ${tier.stacks} stack`
+      : `Expansion ${tier.tier}: ${tier.stacks} stacks`,
   }))
 
   const entries = computed(() => calculateDimensionalDepot(props.factories, depotRate.value))
 
   const totalContainers = computed(() =>
-    entries.value.reduce((total, entry) => total + entry.totalContainers, 0))
-
-  // One sphere per Uploader, so this is the container count — kept as its own computed rather than
-  // written as `totalContainers` so the ratio lives in one place if it ever stops being one.
-  const totalMercerSpheres = computed(() =>
     entries.value.reduce((total, entry) => total + entry.totalContainers, 0))
 
   /**
@@ -256,6 +273,10 @@
 // the table each, which pushed the factory pills — the column that actually grows with the plan —
 // into a narrow strip that wrapped. The item column is sized to the longest name in the game
 // ("Electromagnetic Control Rod") plus its icon, so nothing in it ever wraps either.
+.research-label {
+  min-width: 210px;
+}
+
 .depot-table {
   background-color: transparent;
 

@@ -66,6 +66,40 @@ export const depotTierLabel = (tier: number): string =>
 export const depotResearchLabel = (tier: number): string =>
   clampTier(tier) === 0 ? 'unlock only' : depotTierLabel(tier)
 
+/**
+ * Depot Expansion: how many stacks of each item the Depot holds. Same four-step chain and the same
+ * prices as the upload upgrades, bought separately.
+ *
+ * Changes no calculation. The planner tracks rates, not how full a container is, so this exists to
+ * cost the research, and because "the Depot is finite" is the whole reason a depot count does not
+ * clear a backlog.
+ */
+export interface DepotExpansionTier {
+  tier: number
+  stacks: number
+  mercerSpheres: number
+}
+
+export const DEPOT_EXPANSION_TIERS: DepotExpansionTier[] = [
+  { tier: 0, stacks: 1, mercerSpheres: 0 },
+  { tier: 1, stacks: 2, mercerSpheres: 3 },
+  { tier: 2, stacks: 3, mercerSpheres: 7 },
+  { tier: 3, stacks: 4, mercerSpheres: 13 },
+  { tier: 4, stacks: 5, mercerSpheres: 23 },
+]
+
+export const depotStacksForTier = (tier: number): number =>
+  (DEPOT_EXPANSION_TIERS[clampTier(tier)] ?? DEPOT_EXPANSION_TIERS[MAX_DEPOT_TIER]).stacks
+
+export const mercerSpheresForExpansion = (tier: number): number =>
+  DEPOT_EXPANSION_TIERS
+    .slice(0, clampTier(tier) + 1)
+    .reduce((total, entry) => total + entry.mercerSpheres, 0)
+
+// The Manual Depot Uploader node: uploading straight from the pioneer's inventory. A convenience
+// rather than anything a factory plan depends on, so it is never assumed, only offered.
+export const MANUAL_UPLOADER_MERCER_SPHERES = 3
+
 // Fully researched, because a plan is usually written for where the save is going rather than
 // where it is. A plan saved before this existed has no tier at all and gets the same answer the
 // statistics gave it then, so nothing a user is already looking at changes value.
@@ -112,5 +146,30 @@ export const useDepotResearch = () => {
   const depotTierName = computed<string>(() => depotTierLabel(depotTier.value))
   const depotResearchName = computed<string>(() => depotResearchLabel(depotTier.value))
 
-  return { depotTier, depotRate, depotResearchSpheres, depotTierName, depotResearchName }
+  const depotExpansionTier = computed<number>({
+    get () {
+      const tab = appStore.getCurrentTab()
+      return tab?.depotExpansionTier == null ? DEFAULT_DEPOT_TIER : clampTier(tab.depotExpansionTier)
+    },
+    set (value) {
+      const tab = appStore.getCurrentTab()
+      if (tab) {
+        tab.depotExpansionTier = clampTier(value)
+      }
+    },
+  })
+
+  const depotStacks = computed<number>(() => depotStacksForTier(depotExpansionTier.value))
+  const depotExpansionSpheres = computed<number>(() => mercerSpheresForExpansion(depotExpansionTier.value))
+
+  return {
+    depotTier,
+    depotRate,
+    depotResearchSpheres,
+    depotTierName,
+    depotResearchName,
+    depotExpansionTier,
+    depotStacks,
+    depotExpansionSpheres,
+  }
 }

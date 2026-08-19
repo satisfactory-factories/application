@@ -38,7 +38,8 @@
   <template v-if="!hidden">
     <p v-show="helpText" class="mb-4">
       <i class="fas fa-info-circle" /> Shows which factories use Power Shards and Somersloops in their building
-      groups, and which spend Mercer Spheres on Dimensional Depot Uploaders.
+      groups, and which spend Mercer Spheres on Dimensional Depot Uploaders. The MAM research the Depot
+      costs is listed too, and can be counted in or left out.
     </p>
     <v-row id="stats-shards-sloops" class="mt-1">
       <v-col
@@ -81,40 +82,39 @@
               </tr>
             </tbody>
             <tfoot>
-              <!-- Research is a line of its own rather than a footnote: it is Mercer Spheres the
-                   save has to spend before a single Uploader works, and it dwarfs what the
-                   Uploaders themselves cost. Excluded from the total by default all the same —
-                   it is paid once per save, so counting it in a plan would have two plans in one
-                   save each claim the same spheres. -->
-              <tr v-if="section.research" :id="`stats-${section.key}-research`" class="research-row">
+              <!-- The MAM research is Mercer Spheres the save spends on the Depot, and it dwarfs
+                   what the Uploaders themselves cost, so it is shown. Off the total by default and
+                   one tick per node: it is paid once per save, and which of the three a plan should
+                   claim is the user's call, not ours. -->
+              <tr
+                v-for="line in section.researchLines"
+                :id="`stats-${section.key}-research-${line.key}`"
+                :key="line.key"
+                class="research-row"
+              >
                 <td>
                   <!-- Box and tick drawn in CSS, as in the Options dialog: Vuetify's FA aliases use
                        `far fa-square` for the unchecked state and this app ships no Font Awesome
                        regular family, so a v-checkbox has nothing to draw until it is ticked. -->
                   <div
-                    id="stats-mercer-include-research"
-                    :aria-checked="includeResearch"
+                    :id="`stats-mercer-include-${line.key}`"
+                    :aria-checked="line.included"
                     class="research-toggle d-flex align-center ga-2"
                     role="checkbox"
                     tabindex="0"
-                    @click="includeResearch = !includeResearch"
-                    @keydown.enter.prevent="includeResearch = !includeResearch"
-                    @keydown.space.prevent="includeResearch = !includeResearch"
+                    @click="toggleResearch(line.key)"
+                    @keydown.enter.prevent="toggleResearch(line.key)"
+                    @keydown.space.prevent="toggleResearch(line.key)"
                   >
-                    <span class="tick" :class="{ on: includeResearch }" />
-                    <span class="research-label" :class="{ 'text-medium-emphasis': !includeResearch }">
-                      MAM research
-                      <span class="text-caption">({{ section.research.label }})</span>
+                    <span class="tick" :class="{ on: line.included }" />
+                    <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
+                      {{ line.label }}
                     </span>
-                    <tooltip-info
-                      :is-caption="false"
-                      :text="section.research.tooltip"
-                      @click.stop
-                    />
+                    <tooltip-info :text="line.tooltip" @click.stop />
                   </div>
                 </td>
-                <td class="text-right" :class="{ 'text-medium-emphasis': !includeResearch }">
-                  <b>{{ formatNumber(section.research.amount) }}</b>
+                <td class="text-right" :class="{ 'text-medium-emphasis': !line.included }">
+                  <b>{{ formatNumber(line.amount) }}</b>
                 </td>
               </tr>
               <tr :id="`stats-${section.key}-total`" class="total-row">
@@ -140,7 +140,11 @@
     getFactorySomersloops,
   } from '@/utils/statistics'
   import { getFactoryMercerSpheres } from '@/utils/factory-management/disposal'
-  import { DEPOT_UNLOCK_MERCER_SPHERES, useDepotResearch } from '@/composables/useDepotResearch'
+  import {
+    DEPOT_UNLOCK_MERCER_SPHERES,
+    MANUAL_UPLOADER_MERCER_SPHERES,
+    useDepotResearch,
+  } from '@/composables/useDepotResearch'
   import TooltipInfo from '@/components/tooltip-info.vue'
 
   const props = defineProps<{
@@ -152,24 +156,70 @@
 
   const sumAmounts = (entries: { amount: number }[]) => entries.reduce((total, entry) => total + entry.amount, 0)
 
-  // Only the Mercer column has one, but every section declares it so the template can ask.
+  const RESEARCH_KEYS = ['upload', 'expansion', 'manual'] as const
+  type ResearchKey = typeof RESEARCH_KEYS[number]
+
+  // Only the Mercer column has any, but every section declares the field so the template can ask.
   interface ResearchLine {
-    amount: number
+    key: ResearchKey
     label: string
+    amount: number
     tooltip: string
+    included: boolean
   }
 
-  // The upload tier the plan is written against decides what its research cost is, so this reads
-  // the same setting the Dimensional Depot section carries rather than assuming a finished save.
-  const { depotResearchSpheres, depotTierName, depotResearchName } = useDepotResearch()
+  // The two tiers the plan is written against decide what its research costs, so this reads the
+  // settings the Dimensional Depot section carries rather than assuming a finished save.
+  const {
+    depotResearchSpheres,
+    depotResearchName,
+    depotStacks,
+    depotExpansionSpheres,
+  } = useDepotResearch()
 
-  // Off by default: the Uploaders are what this plan builds, the research is what the save paid
-  // for once. Persisted, because it is a statement about how the user counts rather than about
-  // any one plan.
-  const includeResearch = ref<boolean>(localStorage.getItem('statisticsMercerIncludeResearch') === 'true')
-  watch(includeResearch, value => {
-    localStorage.setItem('statisticsMercerIncludeResearch', value.toString())
-  })
+  // All off by default: the Uploaders are what this plan builds, the research is what the save
+  // paid for once. Persisted per node, because which of them a user counts is a statement about
+  // how they read the numbers rather than about any one plan.
+  const storageKey = (key: ResearchKey) => `statisticsMercerInclude:${key}`
+
+  const included = ref<Record<ResearchKey, boolean>>(
+    Object.fromEntries(
+      RESEARCH_KEYS.map(key => [key, localStorage.getItem(storageKey(key)) === 'true'])
+    ) as Record<ResearchKey, boolean>
+  )
+
+  const toggleResearch = (key: ResearchKey) => {
+    included.value[key] = !included.value[key]
+    localStorage.setItem(storageKey(key), included.value[key].toString())
+  }
+
+  // Two rules here, both learned the hard way. Labels carry no bracketed tier: the column is a
+  // third of the row and the table cannot shrink below its widest label, so a parenthetical
+  // pushed the amounts out of the card entirely. And tooltips stay to one fact each, because
+  // nobody reads a paragraph hovering over a table row.
+  const researchLines = computed<ResearchLine[]>(() => [
+    {
+      key: 'upload',
+      label: 'Upload research',
+      amount: depotResearchSpheres.value,
+      included: included.value.upload,
+      tooltip: `Unlocking the Depot (${DEPOT_UNLOCK_MERCER_SPHERES}), plus every upload upgrade up to ${depotResearchName.value}.`,
+    },
+    {
+      key: 'expansion',
+      label: 'Depot expansion',
+      amount: depotExpansionSpheres.value,
+      included: included.value.expansion,
+      tooltip: `Every Depot Expansion upgrade up to ${depotStacks.value} stack${depotStacks.value === 1 ? '' : 's'} per item.`,
+    },
+    {
+      key: 'manual',
+      label: 'Manual Uploader',
+      amount: MANUAL_UPLOADER_MERCER_SPHERES,
+      included: included.value.manual,
+      tooltip: 'Uploading from your own inventory. Optional, and nothing in a plan depends on it.',
+    },
+  ])
 
   const sections = computed(() => {
     const shards = calculateFactoriesUsing(props.factories, getFactoryPowerShards)
@@ -187,7 +237,7 @@
         empty: 'No Power Shards used in this plan.',
         entries: shards,
         total: sumAmounts(shards),
-        research: null as ResearchLine | null,
+        researchLines: [] as ResearchLine[],
       },
       {
         key: 'sloops',
@@ -197,7 +247,7 @@
         empty: 'No Somersloops used in this plan.',
         entries: sloops,
         total: sumAmounts(sloops),
-        research: null as ResearchLine | null,
+        researchLines: [] as ResearchLine[],
       },
       {
         key: 'mercer',
@@ -206,12 +256,8 @@
         chipClass: 'dimensional-depot',
         empty: 'No Dimensional Depot Uploaders in this plan.',
         entries: spheres,
-        total: sumAmounts(spheres) + (includeResearch.value ? depotResearchSpheres.value : 0),
-        research: {
-          amount: depotResearchSpheres.value,
-          label: depotResearchName.value,
-          tooltip: `${DEPOT_UNLOCK_MERCER_SPHERES} Mercer Spheres unlock the Dimensional Depot in the MAM (Mercer Sphere Analysis, then the Depot itself),<br>plus every upload upgrade up to the tier set in the Dimensional Depot section — currently ${depotTierName.value}.<br><br>Tick to add it to the total. Off by default because it is paid once per save, not once per plan,<br>so two plans in one save would otherwise both claim the same spheres.<br><br>Excludes the Depot Expansion upgrades (46 more), which buy storage the planner does not model.`,
-        },
+        total: sumAmounts(spheres) + sumAmounts(researchLines.value.filter(line => line.included)),
+        researchLines: researchLines.value,
       },
     ]
   })

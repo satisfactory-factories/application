@@ -220,7 +220,7 @@
                   </v-chip>
                 </template>
                 <span v-if="isFluidPart(partId.toString())">The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.</span>
-                <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot — doing so stops it irradiating you.</span>
+                <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot: doing so stops it irradiating you.</span>
               </v-tooltip>
               <v-chip
                 v-if="showDepotControl(factory, partId.toString(), getGameData())"
@@ -394,7 +394,7 @@
                       <i class="fas fa-traffic-cone mr-2" /><span class="mr-2">Will cause backlog</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this — its storage is finite.</span>
+                  <span>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this, because its storage is finite.</span>
                 </v-tooltip>
               </template>
               <!-- The balance only needs annotating where the number isn't earned, which is now
@@ -868,14 +868,14 @@
 
   const sinkTooltip = (partId: string) => {
     const count = getSinkCount(props.factory, partId)
-    if (count === 0) return 'AWESOME Sink — destroys the surplus, so the line never backs up. 30 MW each.'
-    return `${count} AWESOME Sink${count === 1 ? '' : 's'} — ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
+    if (count === 0) return 'AWESOME Sink: destroys the surplus, so the line never backs up. 30 MW each.'
+    return `${count} AWESOME Sink${count === 1 ? '' : 's'}: ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
   }
 
   const depotTooltip = (partId: string) => {
     const count = getDepotCount(props.factory, partId)
-    if (count === 0) return 'Dimensional Depot Uploader — uploads the surplus to your Depot. 1 Mercer Sphere each.'
-    return `${count} Dimensional Depot Uploader${count === 1 ? '' : 's'} — ${count} Mercer Sphere${count === 1 ? '' : 's'}.`
+    if (count === 0) return 'Dimensional Depot Uploader: uploads the surplus to your Depot. 1 Mercer Sphere each.'
+    return `${count} Dimensional Depot Uploader${count === 1 ? '' : 's'}: ${count} Mercer Sphere${count === 1 ? '' : 's'}.`
   }
 
   // const getCalculatorSettings = (factory: Factory, part: string | null): ExportCalculatorSettings | undefined => {

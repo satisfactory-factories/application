@@ -139,12 +139,6 @@
               <span class="ml-1">{{ depotSummary.containers }}</span>
             </v-chip>
           </tooltip>
-          <tooltip :text="`Mercer Spheres for those Uploaders: ${depotSummary.spheres}`">
-            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
-              <game-asset height="14" subject="mercer-sphere" type="item_id" width="14" />
-              <span class="ml-1">{{ depotSummary.spheres }}</span>
-            </v-chip>
-          </tooltip>
           <tooltip
             v-if="depotSummary.overCapacity > 0"
             :text="`${depotSummary.overCapacity} item(s) arriving faster than their Uploaders can take`"
@@ -237,7 +231,6 @@
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { useDepotResearch } from '@/composables/useDepotResearch'
   import { calculateDimensionalDepot } from '@/utils/statistics'
-  import { MERCER_SPHERES_PER_DEPOT } from '@/utils/factory-management/disposal'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
@@ -325,13 +318,11 @@
     const entries = calculateDimensionalDepot(compProps.factories, depotRate.value)
     if (!entries.length) return null
 
-    const containers = entries.reduce((total, entry) => total + entry.totalContainers, 0)
+    // Mercer Spheres are deliberately not here: they are counted in the statistics, beside the
+    // Power Shards and Somersloops, and saying it in both places said nothing new.
     return {
       items: entries.length,
-      containers,
-      // One sphere per Uploader, so these are the same number today; kept separate so the ratio
-      // lives in one place if it ever stops being one.
-      spheres: containers * MERCER_SPHERES_PER_DEPOT,
+      containers: entries.reduce((total, entry) => total + entry.totalContainers, 0),
       overCapacity: entries.filter(entry => entry.totalAmount > entry.uploadCapacity).length,
     }
   })

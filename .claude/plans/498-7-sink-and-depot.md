@@ -139,14 +139,17 @@ becomes nagging on a big plan.
   section header, its chips and the sidebar jump-link all draw from the one token.
 - **Summary chips live in the section header**, not the body, so collapsing the section still leaves
   the totals on screen — the same reasoning as the power strip on a collapsed Statistics card.
-- **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader, plus a
-  research line under the factories carrying what the plan's tier costs in the MAM
-  (`mercerSpheresForTier`: the 2 unlock nodes + the upload upgrades up to that tier, so 2 to 48).
-  Off the total by default and tick-able on, because it is a once-per-save cost. Depot Expansion
-  (46) and the Manual Uploader (3) are excluded — the planner models neither storage nor manual
-  uploads, and charging a plan for research it does not depend on would be wrong. Per-node costs
-  read off the MAM wiki page's Alien Technology chain; they total 97, which is what the building
-  page quotes.
+- **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader, plus
+  three tick-able research lines under the factories: upload research (`mercerSpheresForTier`: the
+  2 unlock nodes + the upload upgrades to the plan's tier, 2 to 48), depot expansion
+  (`mercerSpheresForExpansion`, 0 to 46) and the Manual Uploader (3). All off the total by default,
+  because they are once-per-save costs. Per-node costs read off the MAM wiki page's Alien
+  Technology chain; `disposal.spec.ts` asserts the three lines at full research reconcile to
+  `DEPOT_RESEARCH_MERCER_SPHERES` (97), the figure the building page quotes for the whole chain.
+- **Mercer Spheres are counted in exactly one place.** The Depot section's header chip, its sidebar
+  chip and its caption all reported them too; three copies of one number is not three facts. The
+  Depot section keeps both research selectors, because which tier a plan assumes is a decision
+  about the Depot, and the statistics count what those decisions cost.
 - **The depot table's three number columns are fixed** (350 / 200 / 150) so the factory-pill column
   takes the remainder. 350 fits "Electromagnetic Control Rod", the longest item name in the game
   data, plus its icon.

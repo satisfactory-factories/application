@@ -311,6 +311,12 @@ export interface FactoryTab {
   // Uploaders in the plan can keep up with what is being sent to them. Per plan rather than per
   // browser: it describes the world the plan is written against. Absent means fully researched.
   depotUploadTier?: number;
+  // How far the MAM's Depot Expansion research has been taken, 0-4, deciding how many stacks of
+  // each item the Depot holds (1 to 5). The planner does not model that storage, so this changes
+  // no calculation; it is here because it is Mercer Spheres the save spends on the Depot, and the
+  // statistics count them. Same reasoning as depotUploadTier for living on the plan. Absent means
+  // fully researched.
+  depotExpansionTier?: number;
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];
