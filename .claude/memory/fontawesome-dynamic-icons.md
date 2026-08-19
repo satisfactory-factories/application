@@ -20,4 +20,12 @@ Swapping the aliases to solid names does not help: the class still never reaches
 are therefore drawn in CSS in `global.scss`, keyed off Vuetify's own `.v-selection-control--dirty`.
 Don't "fix" it by reinstating icon aliases.
 
+**Clickable icons hit this too, and the fix is the `clear` alias in `plugins/vuetify.ts`.** A
+`clearable` field's X is a class icon Vuetify binds the click handler to, so Font Awesome detached
+the handler along with the `<i>` — the X rendered and did nothing, in every `clearable` field in the
+app. The `clear` alias is therefore a component (`() => h('i', { class: 'fas fa-times-circle' })`),
+not a class string: Vuetify's `VComponentIcon` wraps a component icon in a Vue-owned
+`<i class="v-icon">` that keeps the handler, the `role="button"` and the aria-label, and only the
+inner `<i>` gets swapped for an `<svg>`. Don't "simplify" it back to the string the fa iconset ships.
+
 **How to apply:** Toggle a wrapping element Vue owns, with static icon classes inside: `<span v-if="cond"><i class="fas fa-bullseye" /></span><span v-else><i class="fas fa-check-square" /></span>`. Removing the wrapper removes the nested svg; the freshly mounted one gets converted by FA's MutationObserver. Same pattern as the sync-state icons in `PlannerFactoryList.vue`. See also [[verify-tab-navigation]] for browser-driving; dismiss both modals first via localStorage `dismissed-introduction='true'` and `seenV51Splash='true'` or clicks land on the overlay.
