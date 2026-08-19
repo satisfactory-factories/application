@@ -357,6 +357,68 @@ export const trimImportToCapacity = (
   input.amount = capacity
 }
 
+// The quantity that fills as much of this factory's shortfall as the provider can actually cover:
+// the Satisfy target, capped at the provider's spare capacity.
+//
+// Satisfying a request the provider cannot meet used to be a two-press affair — Satisfy took the
+// row to the full 5,000 this factory needs, which immediately over-asked a provider with 2,600
+// spare, and Trim to Capacity then took it back down to 2,600. This lands on the 2,600 in one go.
+export const satisfyImportToCapacityTarget = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): number | null => {
+  const need = satisfyImportTarget(importIndex, factory)
+  const capacity = calculateImportCapacity(importIndex, factory, provider)
+
+  if (need === null || capacity === null) {
+    return null // The user is still filling the row in.
+  }
+
+  return Math.min(need, capacity)
+}
+
+// Whether the row is worth offering a "Satisfy to Capacity" for, which is only when it says
+// something the buttons beside it don't:
+//
+//  - a capacity of 0 leaves nothing to satisfy to, and would trip the <=0 guard in validateInput
+//  - a provider that can cover the whole need makes this identical to Satisfy
+//  - a capacity below what the row already asks for makes this identical to Trim to Capacity
+export const canSatisfyImportToCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): boolean => {
+  const need = satisfyImportTarget(importIndex, factory)
+  const capacity = calculateImportCapacity(importIndex, factory, provider)
+
+  if (need === null || capacity === null || capacity <= 0) {
+    return false
+  }
+
+  if (capacity >= need) {
+    return false
+  }
+
+  return capacity > (factory.inputs[importIndex].amount ?? 0)
+}
+
+// Grows the import to as much of this factory's shortfall as the provider can actually spare.
+export const satisfyImportToCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): void | null => {
+  const target = satisfyImportToCapacityTarget(importIndex, factory, provider)
+
+  if (target === null) {
+    console.error('inputs: satisfyImportToCapacity: No target could be calculated for import:', factory.inputs[importIndex])
+    return null
+  }
+
+  factory.inputs[importIndex].amount = target
+}
+
 export const deleteInputPair = (factory: Factory, input: FactoryInput, factories: Factory[], gameData: DataInterface): void => {
   // Remove the exact row the user clicked. Matching on factory + part instead would take
   // every half-configured row (all of which read as null-null) with it.

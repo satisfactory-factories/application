@@ -168,6 +168,8 @@
       item-key="id"
       :model-value="groupSections"
       @change="onGroupOrderChange"
+      @end="draggingGroup = false"
+      @start="draggingGroup = true"
     >
       <template #item="{ element }">
         <planner-sidebar-group
@@ -240,6 +242,7 @@
   import { useDepotResearch } from '@/composables/useDepotResearch'
   import { calculateDimensionalDepot } from '@/utils/statistics'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
@@ -279,6 +282,10 @@
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
   const { sections, setGroupOrder } = useFactoryGroups()
+
+  // Held for the duration of a group drag so a sidebar that is only peeked out doesn't collapse
+  // out from under the group being dragged. See Planner.vue's peekLocked.
+  const { draggingGroup } = useFactoryDrag()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
