@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-  import { onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
+  import { computed, onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
   import { useDisplay } from 'vuetify'
 
   import {
@@ -134,6 +134,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
+  import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
@@ -194,7 +195,7 @@
 
   const onPeekMouseMove = (event: MouseEvent) => {
     cancelProvisionalPeek()
-    if (showSidebar.value || !lgAndUp.value || isResizingSidebar.value) return
+    if (showSidebar.value || !lgAndUp.value || peekLocked.value) return
     if (!sidebarPeek.value && event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
       sidebarPeek.value = true
     } else if (sidebarPeek.value && event.clientX > sidebarWidth.value) {
@@ -205,7 +206,7 @@
   // The peeked tray must survive the cursor briefly outrunning the edge while
   // it's being drag-resized.
   const onSidebarMouseLeave = () => {
-    if (!isResizingSidebar.value) {
+    if (!peekLocked.value) {
       sidebarPeek.value = false
     }
   }
@@ -227,13 +228,13 @@
   }
 
   const onPeekMouseOut = (event: MouseEvent) => {
-    if (showSidebar.value || !lgAndUp.value || event.relatedTarget) return
+    if (showSidebar.value || !lgAndUp.value || peekLocked.value || event.relatedTarget) return
     if (event.clientX <= peekZoneWidth && event.clientY >= peekTopOffset) {
       sidebarPeek.value = true
       cancelProvisionalPeek()
       provisionalPeekTimer = window.setTimeout(() => {
         provisionalPeekTimer = null
-        if (!isResizingSidebar.value) sidebarPeek.value = false
+        if (!peekLocked.value) sidebarPeek.value = false
       }, peekGraceMs)
     }
   }
@@ -241,7 +242,7 @@
   // Alt-tabbing away leaves no mouse events behind — without this the tray
   // stays open in the now-background window.
   const onWindowBlur = () => {
-    if (!isResizingSidebar.value) {
+    if (!peekLocked.value) {
       cancelProvisionalPeek()
       sidebarPeek.value = false
     }
@@ -277,6 +278,22 @@
     storedSidebarWidth ? Math.max(storedSidebarWidth, minSidebarWidth) : defaultSidebarWidth
   )
   const isResizingSidebar = ref<boolean>(false)
+
+  // Reasons the peeked tray must stay put regardless of where the cursor goes. Resizing is one:
+  // the cursor routinely outruns the edge it is dragging. A sidebar drag is the other — dropping
+  // the tray mid-drag takes the drop targets with it, and the pointer events that would peek it
+  // back out don't arrive while a drag is in flight.
+  const { draggingSidebarItem } = useFactoryDrag()
+  const peekLocked = computed(() => isResizingSidebar.value || draggingSidebarItem.value)
+
+  // Force the tray out for the duration of a drag started from it, and hand it back to the normal
+  // peek rules on drop rather than slamming it shut: the cursor may well have finished inside the
+  // tray, and the next mousemove or mouseleave closes it if it hasn't.
+  watch(draggingSidebarItem, dragging => {
+    if (!dragging || showSidebar.value || !lgAndUp.value) return
+    cancelProvisionalPeek()
+    sidebarPeek.value = true
+  })
 
   const startSidebarResize = (event: MouseEvent) => {
     isResizingSidebar.value = true
