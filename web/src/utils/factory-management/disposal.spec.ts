@@ -37,9 +37,13 @@ import {
 import {
   clampTier,
   DEFAULT_DEPOT_TIER,
+  DEPOT_UNLOCK_MERCER_SPHERES,
   DEPOT_UPLOAD_TIERS,
   depotRateForTier,
+  depotResearchLabel,
+  depotTierLabel,
   MAX_DEPOT_TIER,
+  mercerSpheresForTier,
 } from '@/composables/useDepotResearch'
 
 // 100/min of plates from 150 iron ingots. Solid, sinkable, and nothing else in the plan wants it,
@@ -629,6 +633,38 @@ describe('disposal', () => {
     it('falls back to the top rate for an out-of-range tier', () => {
       expect(depotRateForTier(99)).toBe(240)
       expect(depotRateForTier(-1)).toBe(15)
+    })
+
+    // Two nodes gate the building itself: Mercer Sphere Analysis, then Dimensional Depot. Both are
+    // paid before a single Uploader can be placed, whatever tier the save stops at.
+    it('charges the unlock at every tier, and the upgrades cumulatively', () => {
+      expect(DEPOT_UNLOCK_MERCER_SPHERES).toBe(2)
+      expect(DEPOT_UPLOAD_TIERS.map(tier => mercerSpheresForTier(tier.tier))).toEqual([2, 5, 12, 25, 48])
+    })
+
+    // The chain is a chain: 240/min cannot be bought without the three upgrades below it, so the
+    // cost has to accumulate rather than name the last step's price.
+    it('reaches the wiki total for the full upload chain', () => {
+      expect(mercerSpheresForTier(MAX_DEPOT_TIER)).toBe(DEPOT_UNLOCK_MERCER_SPHERES + 46)
+    })
+
+    it('clamps a nonsense tier rather than reporting a nonsense cost', () => {
+      expect(mercerSpheresForTier(99)).toBe(48)
+      expect(mercerSpheresForTier(-1)).toBe(2)
+    })
+
+    it('names the tier it was given', () => {
+      expect(depotTierLabel(0)).toBe('Not researched')
+      expect(depotTierLabel(MAX_DEPOT_TIER)).toBe('Upgrade 4')
+      expect(depotTierLabel(99)).toBe('Upgrade 4')
+    })
+
+    // "MAM research (Not researched): 2" is a sentence arguing with itself. The unlock is still
+    // paid at tier 0, so the spend gets its own name there.
+    it('names the research spend separately at the unresearched tier', () => {
+      expect(depotResearchLabel(0)).toBe('unlock only')
+      expect(depotResearchLabel(1)).toBe('Upgrade 1')
+      expect(depotResearchLabel(MAX_DEPOT_TIER)).toBe('Upgrade 4')
     })
   })
 })

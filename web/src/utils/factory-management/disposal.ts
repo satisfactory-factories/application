@@ -42,11 +42,14 @@ export const MERCER_SPHERES_PER_DEPOT = 1
 export const DEPOT_UPLOAD_RATE_PER_MIN = 240
 
 /**
- * Mercer Spheres the MAM research costs, once, for the whole save: 46 for the four upload-speed
- * upgrades, 46 for the four depot expansions, and the unlocks on top.
+ * Mercer Spheres the whole depot chain in the MAM costs, once, for the save: 1 Mercer Sphere
+ * Analysis + 1 Dimensional Depot + 3 Manual Depot Uploader + 46 across the four upload-speed
+ * upgrades + 46 across the four depot expansions.
  *
- * Deliberately NOT added to the plan's total. It is paid once per save, not per uploader, so
- * folding it into a per-plan tally would make two plans in the same save each claim it.
+ * The figure a PLAN depends on is smaller and depends on its tier — see `mercerSpheresForTier`,
+ * which counts the two unlocks and the upload upgrades and nothing else, because the planner
+ * models neither depot storage nor manual uploads. This constant is the ceiling, for the caption
+ * that tells a user what finishing the chain costs.
  */
 export const DEPOT_RESEARCH_MERCER_SPHERES = 97
 

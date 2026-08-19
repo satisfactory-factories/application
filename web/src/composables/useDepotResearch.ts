@@ -12,7 +12,8 @@ import { useAppStore } from '@/stores/app-store'
  * plan is written against, so it has to travel with the plan on save, load and share rather than
  * following the browser to somebody else's save.
  *
- * Source for the rates and costs: https://satisfactory.wiki.gg/wiki/Dimensional_Depot_Uploader
+ * Sources: https://satisfactory.wiki.gg/wiki/Dimensional_Depot_Uploader for the rates, and the
+ * Alien Technology chain on https://satisfactory.wiki.gg/wiki/MAM for what each node costs.
  */
 export interface DepotUploadTier {
   tier: number
@@ -31,6 +32,39 @@ export const DEPOT_UPLOAD_TIERS: DepotUploadTier[] = [
 ]
 
 export const MAX_DEPOT_TIER = DEPOT_UPLOAD_TIERS.length - 1
+
+/**
+ * What the MAM asks for before an Uploader can be built at all: 1 Mercer Sphere for Mercer Sphere
+ * Analysis, which gates the chain, and 1 more for the Dimensional Depot node that gives you the
+ * building. Paid once per save, and paid whatever upload tier you stop at.
+ *
+ * The other Alien Technology nodes are deliberately NOT here. Depot Expansion (46 spheres across
+ * its four steps) buys stacks of storage, which the planner does not model, and the Manual Depot
+ * Uploader (3) is a player convenience with no place in a factory plan. Counting either would
+ * charge a plan for research it does not depend on.
+ */
+export const DEPOT_UNLOCK_MERCER_SPHERES = 2
+
+/**
+ * Mercer Spheres spent in the MAM to reach a given upload tier: the two unlock nodes plus every
+ * upload upgrade up to and including it. Cumulative, because the upgrades are a chain — you cannot
+ * buy 240/min without having bought the three below it.
+ */
+export const mercerSpheresForTier = (tier: number): number =>
+  DEPOT_UPLOAD_TIERS
+    .slice(0, clampTier(tier) + 1)
+    .reduce((total, entry) => total + entry.mercerSpheres, DEPOT_UNLOCK_MERCER_SPHERES)
+
+export const depotTierLabel = (tier: number): string =>
+  (DEPOT_UPLOAD_TIERS[clampTier(tier)] ?? DEPOT_UPLOAD_TIERS[MAX_DEPOT_TIER]).label
+
+/**
+ * What to call the research spend, which is NOT always what to call the tier. At tier 0 nothing
+ * has been upgraded but the two unlock nodes are still paid, and "MAM research (Not researched):
+ * 2" reads as a contradiction of itself.
+ */
+export const depotResearchLabel = (tier: number): string =>
+  clampTier(tier) === 0 ? 'unlock only' : depotTierLabel(tier)
 
 // Fully researched, because a plan is usually written for where the save is going rather than
 // where it is. A plan saved before this existed has no tier at all and gets the same answer the
@@ -74,6 +108,9 @@ export const useDepotResearch = () => {
   })
 
   const depotRate = computed<number>(() => depotRateForTier(depotTier.value))
+  const depotResearchSpheres = computed<number>(() => mercerSpheresForTier(depotTier.value))
+  const depotTierName = computed<string>(() => depotTierLabel(depotTier.value))
+  const depotResearchName = computed<string>(() => depotResearchLabel(depotTier.value))
 
-  return { depotTier, depotRate }
+  return { depotTier, depotRate, depotResearchSpheres, depotTierName, depotResearchName }
 }

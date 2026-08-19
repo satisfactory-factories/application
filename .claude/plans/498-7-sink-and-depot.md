@@ -139,7 +139,17 @@ becomes nagging on a big plan.
   section header, its chips and the sidebar jump-link all draw from the one token.
 - **Summary chips live in the section header**, not the body, so collapsing the section still leaves
   the totals on screen — the same reasoning as the power strip on a collapsed Statistics card.
-- **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader.
+- **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader, plus a
+  research line under the factories carrying what the plan's tier costs in the MAM
+  (`mercerSpheresForTier`: the 2 unlock nodes + the upload upgrades up to that tier, so 2 to 48).
+  Off the total by default and tick-able on, because it is a once-per-save cost. Depot Expansion
+  (46) and the Manual Uploader (3) are excluded — the planner models neither storage nor manual
+  uploads, and charging a plan for research it does not depend on would be wrong. Per-node costs
+  read off the MAM wiki page's Alien Technology chain; they total 97, which is what the building
+  page quotes.
+- **The depot table's three number columns are fixed** (350 / 200 / 150) so the factory-pill column
+  takes the remainder. 350 fits "Electromagnetic Control Rod", the longest item name in the game
+  data, plus its icon.
 
 ## Verification
 

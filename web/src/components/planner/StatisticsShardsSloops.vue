@@ -81,6 +81,42 @@
               </tr>
             </tbody>
             <tfoot>
+              <!-- Research is a line of its own rather than a footnote: it is Mercer Spheres the
+                   save has to spend before a single Uploader works, and it dwarfs what the
+                   Uploaders themselves cost. Excluded from the total by default all the same —
+                   it is paid once per save, so counting it in a plan would have two plans in one
+                   save each claim the same spheres. -->
+              <tr v-if="section.research" :id="`stats-${section.key}-research`" class="research-row">
+                <td>
+                  <!-- Box and tick drawn in CSS, as in the Options dialog: Vuetify's FA aliases use
+                       `far fa-square` for the unchecked state and this app ships no Font Awesome
+                       regular family, so a v-checkbox has nothing to draw until it is ticked. -->
+                  <div
+                    id="stats-mercer-include-research"
+                    :aria-checked="includeResearch"
+                    class="research-toggle d-flex align-center ga-2"
+                    role="checkbox"
+                    tabindex="0"
+                    @click="includeResearch = !includeResearch"
+                    @keydown.enter.prevent="includeResearch = !includeResearch"
+                    @keydown.space.prevent="includeResearch = !includeResearch"
+                  >
+                    <span class="tick" :class="{ on: includeResearch }" />
+                    <span class="research-label" :class="{ 'text-medium-emphasis': !includeResearch }">
+                      MAM research
+                      <span class="text-caption">({{ section.research.label }})</span>
+                    </span>
+                    <tooltip-info
+                      :is-caption="false"
+                      :text="section.research.tooltip"
+                      @click.stop
+                    />
+                  </div>
+                </td>
+                <td class="text-right" :class="{ 'text-medium-emphasis': !includeResearch }">
+                  <b>{{ formatNumber(section.research.amount) }}</b>
+                </td>
+              </tr>
               <tr :id="`stats-${section.key}-total`" class="total-row">
                 <td><b>Total</b></td>
                 <td class="text-right"><b>{{ formatNumber(section.total) }}</b></td>
@@ -104,6 +140,8 @@
     getFactorySomersloops,
   } from '@/utils/statistics'
   import { getFactoryMercerSpheres } from '@/utils/factory-management/disposal'
+  import { DEPOT_UNLOCK_MERCER_SPHERES, useDepotResearch } from '@/composables/useDepotResearch'
+  import TooltipInfo from '@/components/tooltip-info.vue'
 
   const props = defineProps<{
     factories: Factory[];
@@ -114,12 +152,31 @@
 
   const sumAmounts = (entries: { amount: number }[]) => entries.reduce((total, entry) => total + entry.amount, 0)
 
+  // Only the Mercer column has one, but every section declares it so the template can ask.
+  interface ResearchLine {
+    amount: number
+    label: string
+    tooltip: string
+  }
+
+  // The upload tier the plan is written against decides what its research cost is, so this reads
+  // the same setting the Dimensional Depot section carries rather than assuming a finished save.
+  const { depotResearchSpheres, depotTierName, depotResearchName } = useDepotResearch()
+
+  // Off by default: the Uploaders are what this plan builds, the research is what the save paid
+  // for once. Persisted, because it is a statement about how the user counts rather than about
+  // any one plan.
+  const includeResearch = ref<boolean>(localStorage.getItem('statisticsMercerIncludeResearch') === 'true')
+  watch(includeResearch, value => {
+    localStorage.setItem('statisticsMercerIncludeResearch', value.toString())
+  })
+
   const sections = computed(() => {
     const shards = calculateFactoriesUsing(props.factories, getFactoryPowerShards)
     const sloops = calculateFactoriesUsing(props.factories, getFactorySomersloops)
     // One per Dimensional Depot Uploader placed in the Storage column of a factory's Satisfaction.
-    // The MAM research spheres are a once-per-save cost and are stated in the Dimensional Depot
-    // section instead — charging them to a plan would have every plan in a save claim them.
+    // The MAM research spheres are a once-per-save cost, so they get their own line below the
+    // factories rather than being folded into them — see the research row.
     const spheres = calculateFactoriesUsing(props.factories, getFactoryMercerSpheres)
     return [
       {
@@ -130,6 +187,7 @@
         empty: 'No Power Shards used in this plan.',
         entries: shards,
         total: sumAmounts(shards),
+        research: null as ResearchLine | null,
       },
       {
         key: 'sloops',
@@ -139,6 +197,7 @@
         empty: 'No Somersloops used in this plan.',
         entries: sloops,
         total: sumAmounts(sloops),
+        research: null as ResearchLine | null,
       },
       {
         key: 'mercer',
@@ -147,7 +206,12 @@
         chipClass: 'dimensional-depot',
         empty: 'No Dimensional Depot Uploaders in this plan.',
         entries: spheres,
-        total: sumAmounts(spheres),
+        total: sumAmounts(spheres) + (includeResearch.value ? depotResearchSpheres.value : 0),
+        research: {
+          amount: depotResearchSpheres.value,
+          label: depotResearchName.value,
+          tooltip: `${DEPOT_UNLOCK_MERCER_SPHERES} Mercer Spheres unlock the Dimensional Depot in the MAM (Mercer Sphere Analysis, then the Depot itself),<br>plus every upload upgrade up to the tier set in the Dimensional Depot section — currently ${depotTierName.value}.<br><br>Tick to add it to the total. Off by default because it is paid once per save, not once per plan,<br>so two plans in one save would otherwise both claim the same spheres.<br><br>Excludes the Depot Expansion upgrades (46 more), which buy storage the planner does not model.`,
+        },
       },
     ]
   })
@@ -181,5 +245,46 @@
   tfoot .total-row td {
     border-top: 2px solid rgba(255, 255, 255, 0.24);
   }
+}
+
+.research-toggle {
+  cursor: pointer;
+  user-select: none;
+  width: fit-content;
+}
+
+// One line: wrapped onto two, the tier in brackets ends up under the tick and reads as a second
+// row of the table rather than as part of this one.
+.research-label {
+  white-space: nowrap;
+}
+
+.tick {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  display: inline-block;
+  flex: 0 0 auto;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tick.on {
+  background-color: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
+}
+
+// Two borders of a rotated box: the short arm and the long arm of a tick.
+.tick.on::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: -0.5px;
+  width: 4px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 </style>

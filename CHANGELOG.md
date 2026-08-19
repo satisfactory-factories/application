@@ -36,8 +36,12 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   and a pill per factory carrying that factory's own count. Flags an item arriving faster than its
   Uploaders can take it (240/min each, fully researched), so the remainder still backs up.
 - **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
-  Depot Uploader, read off the game's build recipe. The 97 spheres the MAM research costs are stated
-  but not counted: that is paid once per save, not once per plan. The Mercer Sphere icon is new —
+  Depot Uploader, read off the game's build recipe, with the MAM research the plan's upload tier
+  implies on a line of its own beneath them: the two nodes that unlock the Depot plus every upload
+  upgrade up to that tier, so 2 spheres on a fresh save and 48 fully researched. Excluded from the
+  total by default — it is paid once per save, not once per plan — with a tick-box for anyone who
+  wants it counted anyway. The Depot Expansion upgrades are left out entirely, because they buy
+  storage the planner does not model. The Mercer Sphere icon is new —
   it is a collectable rather than a craftable part, so it was never in the icon set the planner
   shipped with.
 - **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
@@ -48,6 +52,9 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
   icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning
   when it applies.
+- The Dimensional Depot's table gives its three number columns fixed widths and lets the factory
+  pills — the column that actually grows with the plan — take the rest. The item column is sized to
+  the longest name in the game, so nothing in it wraps.
 - Clicking a factory pill in the Dimensional Depot lands on that item's own row under the
   factory's Satisfaction, unhiding the card and opening its group on the way, rather than dropping
   you at the top of the factory and leaving you to find the item.

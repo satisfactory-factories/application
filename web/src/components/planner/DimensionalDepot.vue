@@ -77,15 +77,15 @@
           <v-table v-if="entries.length > 0" class="depot-table" density="compact">
             <thead>
               <tr>
-                <th scope="col">Item</th>
-                <th class="text-right" scope="col">Into Depot / capacity</th>
-                <th class="text-right" scope="col">Uploaders</th>
+                <th class="col-item" scope="col">Item</th>
+                <th class="col-rate text-right" scope="col">Into Depot / capacity</th>
+                <th class="col-uploaders text-right" scope="col">Uploaders</th>
                 <th scope="col">Factories</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="entry in entries" :id="`depot-row-${entry.id}`" :key="entry.id">
-                <td>
+                <td class="col-item">
                   <div class="d-flex align-center ga-2">
                     <game-asset
                       clickable
@@ -97,7 +97,7 @@
                     <b>{{ getPartDisplayName(entry.id) }}</b>
                   </div>
                 </td>
-                <td class="text-right">
+                <td class="col-rate text-right">
                   <!-- No spare is not a failure, which is why it gets an explanation rather than a
                        warning. An Uploader sits on a splitter, so it takes a share of everything
                        that passes until it is full and then stops accepting — it fills once, it
@@ -116,7 +116,7 @@
                     <span class="text-medium-emphasis"> / {{ formatNumber(entry.uploadCapacity) }}/min</span>
                   </template>
                 </td>
-                <td class="text-right">
+                <td class="col-uploaders text-right">
                   <v-tooltip v-if="isOverCapacity(entry)" bottom>
                     <template #activator="{ props: activatorProps }">
                       <v-chip v-bind="activatorProps" class="sf-chip small status-warning-outlined">
@@ -150,13 +150,18 @@
             factory's <b>Satisfaction &rarr; Storage</b> column to track it here.
           </p>
           <!-- Stated rather than added to the total: it is paid once for the save, so charging it
-               to every plan would have two plans in one save each claim the same 97 spheres. -->
+               to every plan would have two plans in one save each claim the same spheres. The
+               Statistics section carries the same figure with a tick-box for anyone who does want
+               it counted. -->
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
-            One Mercer Sphere per Uploader. Unlocking the Depot and buying every upload-speed and
-            capacity upgrade costs a further {{ DEPOT_RESEARCH_MERCER_SPHERES }} Mercer Spheres in the
-            MAM, once per save — not counted above. Upload speed applies per Uploader, so two Uploaders on
-            one item fill twice as fast; depot storage does not stack, so they share the same
-            one-to-five stacks of space.
+            One Mercer Sphere per Uploader, plus <b>{{ depotResearchSpheres }}</b> Mercer Spheres of MAM
+            research at this tier ({{ depotResearchName }}) — the two nodes that unlock the Depot, and
+            every upload upgrade up to it. That is paid once per save rather than once per plan, so it is
+            not counted above; the Mercer Sphere statistics can add it to their total. Buying the depot
+            expansions and the Manual Uploader as well takes the whole chain to
+            {{ DEPOT_RESEARCH_MERCER_SPHERES }}. Upload speed applies per Uploader, so two Uploaders on one
+            item fill twice as fast; depot storage does not stack, so they share the same one-to-five
+            stacks of space.
           </p>
         </v-card-text>
       </v-card>
@@ -186,7 +191,7 @@
     id: string | number, subsection?: string, fallback?: string
   ) => void
 
-  const { depotTier, depotRate } = useDepotResearch()
+  const { depotTier, depotRate, depotResearchSpheres, depotResearchName } = useDepotResearch()
 
   const tierOptions = DEPOT_UPLOAD_TIERS.map(tier => ({
     value: tier.tier,
@@ -247,11 +252,30 @@
   border-bottom: 1px dotted rgba(255, 255, 255, 0.4);
 }
 
+// Three fixed columns and one free one. The numbers are short and were being handed a third of
+// the table each, which pushed the factory pills — the column that actually grows with the plan —
+// into a narrow strip that wrapped. The item column is sized to the longest name in the game
+// ("Electromagnetic Control Rod") plus its icon, so nothing in it ever wraps either.
 .depot-table {
   background-color: transparent;
 
   th {
     white-space: nowrap;
+  }
+
+  .col-item {
+    width: 350px;
+    max-width: 350px;
+  }
+
+  .col-rate {
+    width: 200px;
+    max-width: 200px;
+  }
+
+  .col-uploaders {
+    width: 150px;
+    max-width: 150px;
   }
 }
 </style>
