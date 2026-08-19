@@ -29,3 +29,13 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
   '@parcel/watcher': false
+
+# js-yaml 3.x reaches us only through jest's coverage tooling
+# (babel-plugin-istanbul -> @istanbuljs/load-nyc-config, which asks for ^3.13.1).
+# 3.15.0 carries GHSA-5p4m-2wfm-xmqj (quadratic CPU in !!omap resolution); the fix
+# landed in 3.15.1 on the v3-legacy line. Nothing updates it on its own -- the range
+# already allows 3.15.1, so pnpm keeps the resolution it has. Match the range and pin
+# the target explicitly: a looser key such as 'js-yaml@3' resolves to the 5.x latest,
+# which is a different API and breaks load-nyc-config.
+overrides:
+  js-yaml@^3.13.1: 3.15.1
