@@ -139,6 +139,11 @@ export interface FactoryGroup {
   order: number;
 }
 
+export interface FactoryPartDisposal {
+  sinks: number;
+  depots: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -151,6 +156,9 @@ export interface Factory {
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
+  // Per-part disposal — the AWESOME Sinks and Dimensional Depot Uploaders placed on each part's
+  // surplus. Optional: plans saved before it have no map at all.
+  partDisposal?: { [partId: string]: FactoryPartDisposal };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;

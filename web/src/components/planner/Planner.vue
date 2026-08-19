@@ -60,6 +60,9 @@
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
         <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
+        <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
+             permanent advert for a feature the satisfaction table already offers in place. -->
+        <dimensional-depot v-if="usesDimensionalDepot" :factories="getFactories()" :help-text="helpText" />
         <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
           <!-- A plan that has never used groups is one Ungrouped section, and a band over the
                whole plan says nothing — so it only appears once there is something to divide. -->
@@ -112,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-  import { onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
+  import { computed, onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
   import { useDisplay } from 'vuetify'
 
   import {
@@ -138,6 +141,7 @@
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
+  import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { groupColorVars } from '@/utils/colors'
 
   const { getGameData } = useGameDataStore()
@@ -165,6 +169,12 @@
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
   const helpText = ref(localStorage.getItem('helpText') === 'true')
+
+  // Cheap: a key count on a map that is empty for every plan that does not use the feature, so
+  // this does not walk the parts of every factory on each render.
+  const usesDimensionalDepot = computed(() => getFactories().some(
+    factory => Object.values(factory.partDisposal ?? {}).some(disposal => disposal.depots > 0)
+  ))
 
   const planVisible = ref(false)
   const navigationReady = ref(false)
@@ -389,6 +399,7 @@
     const entries: (number | string)[] = [
       'statistics',
       'factory-summary',
+      ...(usesDimensionalDepot.value ? ['dimensional-depot'] : []),
       ...groupSections.value.flatMap(section => [
         `group-${section.group?.id ?? 'ungrouped'}`,
         ...(sectionCollapsed(section) ? [] : section.factories.map(factory => factory.id)),

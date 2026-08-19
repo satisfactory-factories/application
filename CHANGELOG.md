@@ -2,6 +2,45 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## [Unreleased]
+
+### AWESOME Sinks and the Dimensional Depot
+
+Closes #498 and the surplus half of #7. Every item under a factory's Satisfaction now has a
+**Storage** column, left of Satisfaction, holding two counts: how many AWESOME Sinks and how many
+Dimensional Depot Uploaders you have put on that item's surplus.
+
+- **An AWESOME Sink disposes of the surplus, so the planner treats it as gone.** Set one or more on
+  an item and its surplus reads `0/min surplus` with a gold **n/min sunk** chip beside it and the
+  pre-sink figure in brackets underneath — the number sinking removed is never hidden. The sink is a
+  priority splitter, not a consumer with an appetite of its own: internal use and exports are served
+  first and always win, so adding an export request later shrinks the sunk amount by itself. A fully
+  sunk item also stops being nagged with **Trim**, because a factory that deliberately overproduces
+  into a sink is doing exactly what it was built for.
+- **Sinks draw power.** 30 MW each, counted into the factory's consumption and so into the plan's,
+  matching `Build_ResourceSink_C` in the game's own data. The Depot Uploader draws nothing.
+- **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a
+  conveyor input only) or radioactive items, and a count left on one from an earlier edit stays
+  inert rather than quietly zeroing a surplus that in game would not move.
+- **A Dimensional Depot Uploader deliberately changes no number.** The Depot is finite storage: it
+  fills, and then it backs up like any other container. Marking an item for the Depot records what
+  you are building and what it costs, and leaves the surplus exactly as it is.
+- **New "Will cause backlog" advisory.** Any item left with a surplus nothing consumes, nothing
+  exports and no sink takes will fill the belt and stall the buildings making it — including the
+  case nothing could previously see, where a factory makes 200 Iron Plates, ships 100, and the other
+  100 quietly back up. It is the lowest status tier: it gets a chip and never colours a factory, and
+  it can be switched off entirely under **Options → Satisfaction** for a plan mid-build.
+- **New Dimensional Depot section**, its own card under the Statistics summary and only on plans
+  that use it. One row per item: what the plan has spare to upload, how many Uploaders are on it,
+  and a pill per factory carrying that factory's own count. Flags two different failures — an item
+  every factory has flagged and none can feed, and an item arriving faster than its Uploaders can
+  take it (240/min each, fully researched).
+- **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
+  Depot Uploader, read off the game's build recipe. The 97 spheres the MAM research costs are stated
+  but not counted: that is paid once per save, not once per plan.
+- Three tooltips that promised sinking was "coming in a future update" now point at the control that
+  does it, and the **End product** chip no longer claims the planner assumes you sink it — you say so.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

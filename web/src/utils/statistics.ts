@@ -5,6 +5,12 @@ import {
 } from '@/utils/helpers'
 import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
+import {
+  DEPOT_UPLOAD_RATE_PER_MIN,
+  getDepotCount,
+  getFactoryMercerSpheres,
+  MERCER_SPHERES_PER_DEPOT,
+} from '@/utils/factory-management/disposal'
 export interface BuildingTotal {
   name: string
   totalAmount: number
@@ -257,6 +263,98 @@ export const getFactorySomersloops = (factory: Factory): number => {
   }
   return total
 }
+
+/**
+ * One factory's contribution to a depoted item: how many Uploaders it has on the part, and how much
+ * of the part it actually has spare to feed them.
+ */
+export interface DimensionalDepotSource extends FactoryContribution {
+  containers: number
+}
+
+export interface DimensionalDepotEntry {
+  id: string
+  // Uploaders across the whole plan for this item.
+  totalContainers: number
+  // What the plan actually has spare to upload, items/min.
+  totalAmount: number
+  // What those Uploaders could carry between them, fully researched. Below totalAmount means the
+  // depot cannot keep up and the remainder still backs up.
+  uploadCapacity: number
+  // Every factory has the flag set but none of them has anything spare, so nothing reaches the
+  // depot at all. Worth its own field: each factory looks fine on its own, and the fact only
+  // becomes visible once they are added up.
+  starved: boolean
+  sources: DimensionalDepotSource[]
+}
+
+/**
+ * What the plan sends to the Dimensional Depot, per item.
+ *
+ * Reads the surplus rather than production, for the same reason the toggle is offered on surplus:
+ * a logistics factory that imports everything and uploads the overflow is a real build, and asking
+ * "does this factory make the part" would exclude exactly that case.
+ *
+ * A contributor with nothing spare is KEPT rather than filtered out. It is the whole point of the
+ * starved warning — a row listing three factories, all at zero, is a user who has flagged an item
+ * for the depot everywhere and is feeding it nowhere.
+ */
+export const calculateDimensionalDepot = (factories: Factory[]): DimensionalDepotEntry[] => {
+  const items: Record<string, DimensionalDepotEntry> = {}
+
+  factories.forEach(factory => {
+    Object.keys(factory.partDisposal ?? {}).forEach(partId => {
+      const containers = getDepotCount(factory, partId)
+      if (containers <= 0) return
+
+      // The disposal map is sticky, so it can name a part the factory no longer handles. A stale
+      // key is inert rather than an error: the user's intent is preserved if the part comes back.
+      const part = factory.parts[partId]
+      if (!part) return
+
+      const entry = items[partId] ??= {
+        id: partId,
+        totalContainers: 0,
+        totalAmount: 0,
+        uploadCapacity: 0,
+        starved: false,
+        sources: [],
+      }
+
+      // Sunk parts land at zero remaining, so the pre-sink figure is what the depot would see if
+      // the sink were not there. Falls back to amountRemaining for a plan saved before the field.
+      const spare = Math.max(0, part.amountRemainingPreSink ?? part.amountRemaining ?? 0)
+
+      entry.totalContainers += containers
+      entry.totalAmount += spare
+      entry.sources.push({
+        id: factory.id,
+        name: factory.name,
+        icon: factory.icon,
+        amount: spare,
+        containers,
+      })
+    })
+  })
+
+  return Object.values(items)
+    .map(entry => ({
+      ...entry,
+      uploadCapacity: entry.totalContainers * DEPOT_UPLOAD_RATE_PER_MIN,
+      starved: entry.totalAmount <= 0,
+    }))
+    .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))
+}
+
+// Mercer Spheres the plan's Dimensional Depot Uploaders cost to build, one apiece. The MAM research
+// is deliberately excluded — see DEPOT_RESEARCH_MERCER_SPHERES.
+export const getFactoryMercerSpheresUsed = (factory: Factory): number => getFactoryMercerSpheres(factory)
+
+export const calculateTotalMercerSpheres = (factories: Factory[]): number =>
+  factories.reduce((total, factory) => total + getFactoryMercerSpheres(factory), 0)
+
+// Re-exported so components reference one definition rather than restating "one per uploader".
+export { MERCER_SPHERES_PER_DEPOT }
 
 // Per-factory usage list for the statistics summary — only factories actually using any.
 export const calculateFactoriesUsing = (

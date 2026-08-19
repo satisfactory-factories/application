@@ -96,6 +96,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
       metrics: {},
     } as FactoryDependency,
     exportCalculator: {},
+    partDisposal: {},
     rawResources: {},
     power: {} as FactoryPower,
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong

@@ -45,6 +45,27 @@
 
         <v-divider class="my-4" />
 
+        <h3 class="text-subtitle-1 font-weight-bold mb-1">Satisfaction</h3>
+        <div
+          :aria-checked="options.showBacklogAdvisory"
+          class="option-toggle d-flex align-center ga-3"
+          role="checkbox"
+          tabindex="0"
+          @click="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+          @keydown.enter.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+          @keydown.space.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+        >
+          <span class="tick" :class="{ on: options.showBacklogAdvisory }" />
+          <span>Warn about surpluses that will back up</span>
+          <tooltip-info
+            :is-caption="false"
+            text="A surplus nothing consumes fills the belt and stalls the buildings making it. This flags those items so you can sink the excess. Advisory only — it never colours a factory. Turn it off if a plan mid-build is showing you more of these than you want to read."
+            @click.stop
+          />
+        </div>
+
+        <v-divider class="my-4" />
+
         <h3 class="text-subtitle-1 font-weight-bold mb-1">Sidebar</h3>
         <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Factory groups</h4>
 

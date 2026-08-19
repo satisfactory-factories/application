@@ -9,6 +9,7 @@ import {
   getWell,
   isExtractionRecipe,
 } from '@/utils/factory-management/building-groups/extraction'
+import { getFactorySinkPower } from '@/utils/factory-management/disposal'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -152,6 +153,14 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       consumedMax += group.powerUsageMax ?? group.powerUsage
     })
   })
+
+  // AWESOME Sinks the user has placed on this factory's surpluses. A flat 30 MW each, counted
+  // into the swing figures identically: the sink has no clock, so it never runs at anything but
+  // its rated draw.
+  const sinkPower = getFactorySinkPower(factory)
+  consumed += sinkPower
+  consumedMin += sinkPower
+  consumedMax += sinkPower
 
   factory.power.consumed = formatNumberFully(consumed, 1)
   factory.power.consumedMin = formatNumberFully(consumedMin, 1)

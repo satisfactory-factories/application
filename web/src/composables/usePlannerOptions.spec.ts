@@ -55,6 +55,7 @@ describe('usePlannerOptions', () => {
       showGroupProductKinds: true,
       showGroupPower: false,
       balanceTolerancePercent: 1,
+      showBacklogAdvisory: true,
     })
   })
 

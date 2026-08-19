@@ -5,6 +5,12 @@
         <th class="text-h6 text-left border-e-md" scope="row">
           <i class="fas fa-box" /><span class="ml-2">Item</span>
         </th>
+        <th class="text-h6 border-e-md text-center" scope="row">
+          <div class="d-flex align-center justify-center">
+            <i class="fas fa-inbox-in" /><span class="ml-2">Storage</span>
+            <tooltip-info text="Where this item's surplus goes.<br><b>AWESOME Sink</b>: the excess is destroyed, so the surplus reads as zero and the line never backs up. Each sink draws 30 MW.<br><b>Dimensional Depot Uploader</b>: the excess is uploaded to your Depot. Storage is finite, so this defers a backlog rather than preventing one, and the surplus is left as it is. Each uploader costs 1 Mercer Sphere." />
+          </div>
+        </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
           <i class="fas fa-balance-scale" /><span class="ml-2">Satisfaction</span>
           <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
@@ -180,6 +186,63 @@
               </div>
             </div>
           </td>
+          <td class="border-e-md storage" :class="satisfactionShading(part, partId.toString())">
+            <!-- Empty rather than disabled on a row with nothing to dispose of: a shortage has no
+                 surplus to send anywhere, and two greyed spinners on every such row is noise. -->
+            <div v-if="showDisposalControls(factory, partId.toString())" class="d-flex flex-column ga-1 align-center">
+              <div v-if="showSinkControl(factory, partId.toString())" class="d-flex align-center ga-2">
+                <game-asset
+                  height="28"
+                  subject="awesome-sink"
+                  :tooltip="sinkTooltip(partId.toString())"
+                  type="item_id"
+                  width="28"
+                />
+                <v-number-input
+                  :id="`${factory.id}-sink-count-${partId}`"
+                  class="disposal-input"
+                  control-variant="stacked"
+                  density="compact"
+                  hide-details
+                  :min="0"
+                  :model-value="getSinkCount(factory, partId.toString())"
+                  variant="outlined"
+                  @update:model-value="updateSinkCount(partId.toString(), $event)"
+                />
+              </div>
+              <!-- The sink refuses fluids (no pipe input) and radioactive items. Saying so is
+                   better than an absent control the user cannot account for. -->
+              <v-tooltip v-else bottom>
+                <template #activator="{ props: activatorProps }">
+                  <v-chip v-bind="activatorProps" class="sf-chip status-note x-small">
+                    <i class="fas fa-ban mr-1" />Cannot be sunk
+                  </v-chip>
+                </template>
+                <span>The AWESOME Sink has a conveyor input only, and refuses radioactive items.<br>Package this fluid first, or feed it to a recipe that consumes it.</span>
+              </v-tooltip>
+              <div class="d-flex align-center ga-2">
+                <game-asset
+                  height="28"
+                  subject="dimensional-depot-uploader"
+                  :tooltip="depotTooltip(partId.toString())"
+                  type="item_id"
+                  width="28"
+                />
+                <v-number-input
+                  :id="`${factory.id}-depot-count-${partId}`"
+                  class="disposal-input"
+                  control-variant="stacked"
+                  density="compact"
+                  hide-details
+                  :min="0"
+                  :model-value="getDepotCount(factory, partId.toString())"
+                  variant="outlined"
+                  @update:model-value="updateDepotCount(partId.toString(), $event)"
+                />
+              </div>
+            </div>
+            <p v-else class="text-center text-medium-emphasis">-</p>
+          </td>
           <td class="border-e-md satisfaction" :class="satisfactionShading(part, partId.toString())">
             <div v-if="satisfactionBreakdowns">
               <div class="text-green d-flex justify-space-between align-center">
@@ -227,6 +290,15 @@
                   -{{ formatNumber(part.amountRequiredExports ) }}/min
                 </span>
               </div>
+              <div v-if="part.amountRequiredSink" class="d-flex justify-space-between align-center text-awesome-sink">
+                <span>To AWESOME Sink</span>
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-sink`"
+                  class="align-self-end text-right"
+                >
+                  -{{ formatNumber(part.amountRequiredSink) }}/min
+                </span>
+              </div>
               <v-divider class="my-2" color="#ccc" />
             </div>
             <div class="text-center">
@@ -238,6 +310,46 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
+              <!-- The number sinking removed is never hidden. Without this the row would read a
+                   flat zero and there would be no way to tell a factory that produces exactly what
+                   it needs from one throwing 100/min into a sink. -->
+              <template v-if="isActivelySunk(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip awesome-sink small">
+                      <game-asset
+                        class="mr-2"
+                        height="18"
+                        subject="awesome-sink"
+                        type="item_id"
+                        width="18"
+                      />
+                      <b><span :id="`${factory.id}-satisfaction-${partId.toString()}-sunk`">{{ formatNumber(part.amountRequiredSink ?? 0) }}</span>/min sunk</b>
+                    </v-chip>
+                  </template>
+                  <span>{{ getSinkCount(factory, partId.toString()) }} AWESOME Sink{{ getSinkCount(factory, partId.toString()) === 1 ? '' : 's' }} take whatever is left after production and exports.<br>Exports and internal use are served first, so adding an export request here shrinks the sunk amount by itself.</span>
+                </v-tooltip>
+                <p class="text-caption text-medium-emphasis mb-0">
+                  ({{ formatNumber(part.amountRemainingPreSink ?? 0) }}/min surplus without sinking)
+                </p>
+              </template>
+              <template v-if="isDepoted(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip dimensional-depot small">
+                      <game-asset
+                        class="mr-2"
+                        height="18"
+                        subject="dimensional-depot"
+                        type="item_id"
+                        width="18"
+                      />
+                      <b>Depot &times;{{ getDepotCount(factory, partId.toString()) }}</b>
+                    </v-chip>
+                  </template>
+                  <span>Uploaded to your Dimensional Depot.<br>Depot storage is finite, so this is a buffer rather than a destination — the surplus below is left as it is because the belt still backs up once the depot is full.</span>
+                </v-tooltip>
+              </template>
               <!-- Blue, and never alongside No demand: an item the game gives no consumer is
                    finished, not spare. -->
               <template v-if="isEndProduct(factory, partId.toString())">
@@ -247,7 +359,7 @@
                       <i class="fas fa-flag-checkered mr-2" /><span>End product</span>
                     </v-chip>
                   </template>
-                  <span>Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it.</span>
+                  <span>Nothing in the game consumes this item, so it is the end of its chain.<br>Deliver it to the Space Elevator, or set an AWESOME Sink on it in the Storage column.</span>
                 </v-tooltip>
               </template>
               <!-- The byproduct pair, exclusive by construction. Sinkable is the soft one: a way
@@ -259,7 +371,7 @@
                       <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
                     </v-chip>
                   </template>
-                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update.</span>
+                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Set an AWESOME Sink on it in the Storage column, blend it into a recipe that consumes it, or export it.</span>
                 </v-tooltip>
               </template>
               <template v-if="isUnhandledByproduct(factory, partId.toString())">
@@ -284,7 +396,19 @@
                       <i class="fas fa-question-circle mr-2" /><span>No demand</span>
                     </v-chip>
                   </template>
-                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking, so if you are sinking this, ignore it for now.</span>
+                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up.</span>
+                </v-tooltip>
+              </template>
+              <!-- Advisory only: the note tier never colours the factory, and this one is
+                   switchable off entirely, because a plan mid-build has loose ends everywhere. -->
+              <template v-if="showBacklogAdvisory(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
+                      <i class="fas fa-traffic-cone mr-2" /><span class="mr-2">Will cause backlog</span> <i class="fas fa-info-circle" />
+                    </v-chip>
+                  </template>
+                  <span>This item has a surplus with nowhere to go: it is not consumed here, not exported, and no AWESOME Sink is taking it.<br>The belt fills up and the buildings making it stall. Add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this — its storage is finite.</span>
                 </v-tooltip>
               </template>
               <!-- The balance only needs annotating where the number isn't earned, which is now
@@ -417,7 +541,7 @@
         <tr
           v-if="openedCalculator === partId && getPartExportRequests(factory, partId.toString()).length > 0"
         >
-          <td class="calculator-row bg-grey-darken-3" colspan="5">
+          <td class="calculator-row bg-grey-darken-3" colspan="6">
             <div class="calculator-tray" :class="{ expanded: calculatorShow }">
               <export-calculator
                 :key="partId + factory.exportCalculator[partId].selected"
@@ -448,13 +572,21 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
-  import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import {
+    hasNoDemand,
+    isEndProduct,
+    isPotentialBlockage,
+    isUnhandledByproduct,
+    showBacklogAdvisory,
+  } from '@/utils/factory-management/status'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
     addShortageToFactory,
     convertWasteToGeneratorFuel,
+    isActivelySunk,
     showByProductChip,
+    showDisposalControls,
     showExportedChip,
     showImportedChip,
     showInternalChip,
@@ -462,9 +594,18 @@
     showProductChip,
     showRecycledChip,
     showSatisfactionItemButton,
+    showSinkControl,
     showUnpackagedChip,
   } from '@/utils/factory-management/satisfaction'
   import { getInput } from '@/utils/factory-management/inputs'
+  import {
+    getDepotCount,
+    getSinkCount,
+    isDepoted,
+    setDepotCount,
+    setSinkCount,
+    SINK_POWER_MW,
+  } from '@/utils/factory-management/disposal'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
@@ -718,6 +859,36 @@
     updateFactory(factory)
   }
 
+  /**
+   * Both counts persist but deliberately do NOT recalculate the same way.
+   *
+   * The depot changes nothing in the ledger, so it only needs saving. The sink DOES — it takes the
+   * whole surplus — so it has to go through updateFactory like any other engine input. Emitting
+   * `factoryUpdated` for the depot rather than calling updateFactory keeps a purely cosmetic flag
+   * off the critical path: a full recalculation blocks the main thread for seconds on a big plan.
+   */
+  const updateSinkCount = (partId: string, count: unknown) => {
+    setSinkCount(props.factory, partId, count)
+    updateFactory(props.factory)
+  }
+
+  const updateDepotCount = (partId: string, count: unknown) => {
+    setDepotCount(props.factory, partId, count)
+    eventBus.emit('factoryUpdated', props.factory)
+  }
+
+  const sinkTooltip = (partId: string) => {
+    const count = getSinkCount(props.factory, partId)
+    if (count === 0) return 'AWESOME Sink — destroys the surplus, so the line never backs up. 30 MW each.'
+    return `${count} AWESOME Sink${count === 1 ? '' : 's'} — ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
+  }
+
+  const depotTooltip = (partId: string) => {
+    const count = getDepotCount(props.factory, partId)
+    if (count === 0) return 'Dimensional Depot Uploader — uploads the surplus to your Depot. 1 Mercer Sphere each.'
+    return `${count} Dimensional Depot Uploader${count === 1 ? '' : 's'} — ${count} Mercer Sphere${count === 1 ? '' : 's'}.`
+  }
+
   // const getCalculatorSettings = (factory: Factory, part: string | null): ExportCalculatorSettings | undefined => {
   //   if (part === null) {
   //     console.error(`Could not get calculator settings for invalid part ${part}`)
@@ -779,9 +950,21 @@ table {
         &.satisfaction {
           width: 300px
         }
+
+        &.storage {
+          width: 170px;
+        }
       }
     }
   }
+}
+
+// Narrow enough that two of them plus their icons fit the Storage column without pushing the
+// Satisfaction column off the card. Vuetify's number input is sized for a form field, which is
+// several times wider than a count that will realistically be a single digit.
+.disposal-input {
+  width: 86px;
+  min-width: 86px;
 }
 
 // Sits inside the export chip, so it has to shed the icon button's circle and

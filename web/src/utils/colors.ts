@@ -32,6 +32,11 @@ export const palette = {
   yellowBorder: '#ac9902',
   purple: '#bd67ff',
   purpleBorder: '#9a1df6',
+  // The muted violet of the Mercer Sphere / Dimensional Depot artwork. Deliberately far less
+  // saturated than `purple` above, which is the Somersloop's — a plan showing both wants them
+  // telling apart at a glance.
+  mutedPurple: '#9f6d9f',
+  mutedPurpleBorder: '#7a4a7a',
   lightBlue: '#4fc3f7',
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
@@ -69,6 +74,13 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // The Dimensional Depot and the Mercer Spheres its uploaders are built from. Shares the circuit
+  // boost's shade today but gets its own token: unrelated concepts, and a semantic name means
+  // either can be re-tuned without dragging the other along.
+  dimensionalDepot: { color: palette.mutedPurple, border: palette.mutedPurpleBorder },
+  // The AWESOME Sink. Gold, as it is in game, and distinct from `warning`'s yellow: a sunk
+  // surplus is a resolved state, not a caution.
+  awesomeSink: { color: '#d9a441', border: '#a6761a' },
   // A setting on a building group rather than something that flows through it: the node
   // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
   // these were reading as `rawResource` beige, which is the colour of the ore itself.
@@ -78,7 +90,7 @@ export const sfColors = {
   // that no chip matched). One definition each, now shared.
   powerConsumption: { color: '#e59344', border: '#e59344' },
   powerGeneration: { color: '#9e9e9e', border: '#9e9e9e' },
-  circuitBoost: { color: '#9f6d9f', border: '#9f6d9f' },
+  circuitBoost: { color: palette.mutedPurple, border: palette.mutedPurple },
   peakConsumption: { color: '#5cb0c5', border: '#5cb0c5' },
 
   // Muted info blue: the fill of "please note" info notices and of interactive

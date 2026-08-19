@@ -526,6 +526,14 @@ export const useAppStore = defineStore('app', () => {
         }
       })
 
+      // Patch for #498 / #7. Deliberately does NOT set needsCalculation: an empty map means no
+      // part is sunk or depoted, which is exactly what every plan saved before this did, so
+      // nothing derived changes and a needless recalculation would block the main thread for
+      // seconds on a big plan.
+      if (factory.partDisposal === undefined) {
+        factory.partDisposal = {}
+      }
+
       // Patch for #250
       if (factory.tasks === undefined) {
         factory.tasks = []

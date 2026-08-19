@@ -286,6 +286,18 @@
     border-color: var(--sf-somersloop-border) !important;
   }
 
+  // The two surplus destinations. Kept next to each other because they are one control in the
+  // satisfaction table, and told apart by hue rather than by reading the label.
+  &.dimensional-depot {
+    color: var(--sf-dimensional-depot) !important;
+    border-color: var(--sf-dimensional-depot-border) !important;
+  }
+
+  &.awesome-sink {
+    color: var(--sf-awesome-sink) !important;
+    border-color: var(--sf-awesome-sink-border) !important;
+  }
+
   // Power — generation / consumption / peak draw / Alien Power Augmenter boost.
   &.generation {
     color: var(--sf-power-generation) !important;
@@ -373,6 +385,18 @@
 // consumption chip colour.
 .text-power-consumption {
     color: var(--sf-power-consumption) !important;
+}
+
+// The Mercer Sphere glyph, which stands in for item art this app has never shipped.
+.text-dimensional-depot {
+    color: var(--sf-dimensional-depot) !important;
+}
+
+// The satisfaction breakdown's sink line. Its own colour rather than the orange the other demand
+// lines wear: the sink is demand the planner invented on the user's instruction, not demand the
+// recipes created, and it is the one line whose number is not a claim on the factory's output.
+.text-awesome-sink {
+    color: var(--sf-awesome-sink) !important;
 }
 
 // Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.

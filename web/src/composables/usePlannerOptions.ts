@@ -30,6 +30,11 @@ interface PlannerOptions {
   // How far an item's building groups may sit from what it asks for before they count as
   // imbalanced, as a percentage of that requirement. See balanceTolerance.
   balanceTolerancePercent: number
+  // Flag items whose surplus has no destination, so they will fill the belt and stall the
+  // buildings making them. On by default — it is the difference between a plan that runs and one
+  // that jams — but switchable, because a plan mid-build has loose ends everywhere and being told
+  // about every one of them is nagging rather than help. See willBacklog in status.ts.
+  showBacklogAdvisory: boolean
 }
 
 const DEFAULTS: PlannerOptions = {
@@ -38,6 +43,7 @@ const DEFAULTS: PlannerOptions = {
   showGroupProductKinds: true,
   showGroupPower: false,
   balanceTolerancePercent: 1,
+  showBacklogAdvisory: true,
 }
 
 // A tolerance of zero would paint every plan red and a negative one is meaningless, so a stored

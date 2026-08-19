@@ -5,6 +5,7 @@ import { getPartExportRequests } from '@/utils/factory-management/exports'
 import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { getDepotCount, getSinkCount, isSunk } from '@/utils/factory-management/disposal'
 
 const nuclearParts = ['NuclearWaste', 'PlutoniumWaste']
 
@@ -215,6 +216,36 @@ export const showInternalChip = (factory: Factory, partId: string) => {
   }
   return shouldShowInternal(product, factory)
 }
+
+/**
+ * Whether the Storage column offers this part a sink and a depot at all.
+ *
+ * Surplus-driven, never production-driven: what matters is that there is something left over, not
+ * what created it. A logistics factory that imports everything and has to do something with the
+ * overflow is a real build, and gating on local production would exclude the very factory whose
+ * surplus most needs a destination.
+ *
+ * Stays true once a count is set even if the surplus has since dried up — otherwise the control
+ * that put the count there disappears and the user cannot take it back off.
+ */
+export const showDisposalControls = (factory: Factory, partId: string): boolean => {
+  const part = factory.parts[partId]
+  if (!part) return false
+  if (getSinkCount(factory, partId) > 0 || getDepotCount(factory, partId) > 0) return true
+
+  return (part.amountRemainingPreSink ?? part.amountRemaining ?? 0) > 0
+}
+
+// The sink has a conveyor input and nothing else, and it refuses radioactive items outright. Both
+// facts live in isSinkablePart, which the engine stamps onto the part every calculation.
+export const showSinkControl = (factory: Factory, partId: string): boolean =>
+  showDisposalControls(factory, partId) && factory.parts[partId]?.isSinkable !== false
+
+// Only true when the sink is actually taking something. A sink placed on a part whose surplus has
+// since been exported away is still set, but it is not sinking anything, and saying "Sunk" over a
+// zero would be a lie.
+export const isActivelySunk = (factory: Factory, partId: string): boolean =>
+  isSunk(factory, partId) && (factory.parts[partId]?.amountRequiredSink ?? 0) > 0
 
 export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number) => {
   // In order to get the fuel amount to insert into the UI, we need to do some math.

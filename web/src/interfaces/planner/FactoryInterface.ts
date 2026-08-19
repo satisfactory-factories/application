@@ -20,6 +20,13 @@ export interface PartMetrics {
   // Whether the AWESOME Sink would take this part. Decides how serious an unwanted byproduct is:
   // a sinkable one has a way out, a fluid or radioactive one does not. Derived like isEndProduct.
   isSinkable?: boolean;
+  // What the AWESOME Sinks placed on this part take: everything left once production, power and
+  // exports have had their share. Zero unless the user placed a sink, and always zero for a part
+  // the sink will not accept. Derived every calculation, so optional for plans saved before it.
+  amountRequiredSink?: number;
+  // The surplus this part would carry if it were not being sunk. Kept so the satisfaction row can
+  // show the number sinking removed rather than silently reporting zero.
+  amountRemainingPreSink?: number;
   satisfied: boolean; // Use of use flag for templating.
   exportable: boolean // Whether the product should be a candidate for imports.
 }
@@ -236,6 +243,22 @@ export interface FactoryGroup {
   // every member on each toggle cost a save and a recalculation per factory.
 }
 
+/**
+ * What the user has told the planner to do with a part's surplus.
+ *
+ * The two are one axis with very different consequences, which is why they sit in one record. A
+ * sink is disposal: the surplus is gone, and the ledger says so. A depot is storage: finite, so it
+ * defers a backlog rather than preventing one, and it changes no number at all.
+ */
+export interface FactoryPartDisposal {
+  // AWESOME Sink buildings on this part. Any positive number sinks the WHOLE surplus — the sink
+  // takes whatever the belt brings it, so the count says what to build and what it draws, not how
+  // much it will accept.
+  sinks: number;
+  // Dimensional Depot Uploaders on this part. One Mercer Sphere each.
+  depots: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -248,6 +271,12 @@ export interface Factory {
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
+  // Per-part disposal — the sinks and depot uploaders placed on each part's surplus. Its own map
+  // rather than a field on PartMetrics because parts.ts wipes and rebuilds factory.parts on every
+  // calculation. Sticky by design: a flag is never pruned when its part leaves the factory, so
+  // read-time filtering makes a stale key inert and bringing the part back restores the intent.
+  // Optional so plans saved before it load untouched; newFactory and initFactories set `{}`.
+  partDisposal?: { [partId: string]: FactoryPartDisposal };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
