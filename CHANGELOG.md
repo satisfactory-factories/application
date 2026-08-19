@@ -41,13 +41,17 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   it is a collectable rather than a craftable part, so it was never in the icon set the planner
   shipped with.
 - **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
-  doubles with each of the four upgrades to 240/min, so the section carries a research selector and
-  reports throughput against capacity — `40/min of 240/min used` plan-wide, and `40 / 240/min` per
-  item, flagged when what is spare outruns what the Uploaders can take. Saved on the plan, so a
-  shared plan carries the world it was written against.
+  doubles with each of the four upgrades to 240/min, and the rate is per Uploader — two on one item
+  fill at 480/min, though depot storage does not stack. The section carries a research selector and
+  reports each item's rate against what its own Uploaders can take (`40 / 480/min`), flagging any
+  that cannot keep up. Saved on the plan, so a shared plan carries the world it was written against.
 - **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
   icon-only counts of items tracked, Uploaders and Mercer Spheres, plus starved and over-capacity
   warnings when they apply.
+- **The Demo plan uses the Depot**, so the section is visible on the first plan anyone opens:
+  two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic. Only the
+  Copper Ingot line has a surplus to give, so the other three read "Nothing spare" — which is the
+  starved warning doing its job on a plan that ships every one of those parts elsewhere.
 - The Uploader also takes a conveyor and nothing else, so fluids are excluded from it too. It has no
   objection to radioactive items, though, unlike the sink: uploading one is how you stop it
   irradiating you, so Uranium and Plutonium Waste can be depoted even though they cannot be sunk.

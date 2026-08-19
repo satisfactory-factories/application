@@ -395,15 +395,15 @@
 // would turn the top of the sidebar into a stack of competing panels.
 .section-links .factory-card.depot-link {
   .v-card {
-    background-color: var(--sf-dimensional-depot-bg) !important;
+    background-color: var(--sf-dimensional-depot-panel-bg) !important;
 
     &:hover {
       // The plain white hover wash reads grey over a coloured fill, so lift the fill itself.
-      background-color: color-mix(in srgb, var(--sf-dimensional-depot-bg) 82%, #fff) !important;
+      background-color: color-mix(in srgb, var(--sf-dimensional-depot-panel-bg) 82%, #fff) !important;
     }
   }
 
-  border-left: 3px solid var(--sf-dimensional-depot-border) !important;
+  border-left: 3px solid var(--sf-dimensional-depot-panel-border) !important;
 }
 
 .section-links {

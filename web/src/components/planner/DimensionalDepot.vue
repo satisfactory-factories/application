@@ -35,6 +35,17 @@
               <i class="fas fa-exclamation-triangle" />
               <span class="ml-2">{{ starvedCount }} receiving nothing</span>
             </v-chip>
+            <!-- A count, not a sum. Each item's capacity is its own Uploaders' and nothing else's,
+                 so "how many items cannot keep up" is the only plan-wide thing worth saying. -->
+            <v-chip
+              v-if="overCapacityCount > 0"
+              id="depot-over-capacity-summary"
+              class="sf-chip small status-warning-outlined no-margin"
+              variant="tonal"
+            >
+              <i class="fas fa-tachometer-alt" />
+              <span class="ml-2">{{ overCapacityCount }} over capacity</span>
+            </v-chip>
           </v-col>
           <v-col class="text-right" cols="auto">
             <v-btn
@@ -70,18 +81,6 @@
             <v-chip class="sf-chip small dimensional-depot no-margin" variant="tonal">
               <game-asset height="20" subject="dimensional-depot-uploader" type="item_id" width="20" />
               <span class="ml-2">{{ formatNumber(depotRate) }}/min per Uploader</span>
-            </v-chip>
-            <v-chip
-              v-if="totalContainers > 0"
-              id="depot-capacity-summary"
-              class="sf-chip small no-margin"
-              :class="overCapacity ? 'status-warning-outlined' : 'green'"
-              variant="tonal"
-            >
-              <i class="fas fa-tachometer-alt" />
-              <span class="ml-2">
-                {{ formatNumber(totalAmount) }}/min of {{ formatNumber(totalCapacity) }}/min used
-              </span>
             </v-chip>
           </div>
           <v-table v-if="entries.length > 0" class="depot-table" density="compact">
@@ -210,14 +209,17 @@
 
   const starvedCount = computed(() => entries.value.filter(entry => entry.starved).length)
 
-  // Plan-wide throughput against plan-wide capacity. Deliberately a sum rather than a per-item
-  // verdict: an item over capacity is called out on its own row, and this says whether the plan as
-  // a whole has enough Uploaders in it.
-  const totalAmount = computed(() =>
-    entries.value.reduce((total, entry) => total + entry.totalAmount, 0))
-  const totalCapacity = computed(() =>
-    entries.value.reduce((total, entry) => total + entry.uploadCapacity, 0))
-  const overCapacity = computed(() => entries.value.some(entry => isOverCapacity(entry)))
+  /**
+   * How many items are arriving faster than their own Uploaders can take.
+   *
+   * A COUNT rather than a plan-wide rate-against-capacity total, which is what this used to be and
+   * was wrong. Capacity belongs to an item: the Uploaders on Iron Plate do nothing for Copper
+   * Ingot, so the sum of every item's capacity is not a budget anything spends against. Totalled
+   * that way, a plan could read "100/min of 480/min used" while one item sat badly over its own
+   * limit and another barely touched its Uploader — and worse, it implied a single global cap,
+   * which is not how the Depot works at all.
+   */
+  const overCapacityCount = computed(() => entries.value.filter(entry => isOverCapacity(entry)).length)
 
   const isOverCapacity = (entry: DimensionalDepotEntry): boolean =>
     !entry.starved && entry.totalAmount > entry.uploadCapacity
@@ -241,8 +243,8 @@
 // than from its title. Deliberately blended into the card surface rather than used at full
 // strength — a solid violet band next to the Statistics header reads as an error state.
 .depot-header {
-  background-color: var(--sf-dimensional-depot-bg) !important;
-  border-bottom: 2px solid var(--sf-dimensional-depot-border) !important;
+  background-color: var(--sf-dimensional-depot-panel-bg) !important;
+  border-bottom: 2px solid var(--sf-dimensional-depot-panel-border) !important;
 }
 
 .depot-table {
