@@ -1,8 +1,10 @@
 # Changelog
 
-All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Beta v0.5 (the 0.1.x–0.2.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
+All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
 ## Beta v0.6 - The "Groundwork" Update
+
+_Released 19 August 2026._
 
 Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.
 
@@ -223,6 +225,8 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 
 ## Beta v0.5 — The "Overclocked" Update
 
+_Released 21 July 2026._
+
 After a long hiatus: the highly anticipated Overclocking and Somersloop support via Building Groups, a huge Power update, an item-centric Parts & Recipes browser, and a planner-wide UI refresh.
 
 ### Building Groups — Overclocking & Somersloops
@@ -322,3 +326,52 @@ After a long hiatus: the highly anticipated Overclocking and Somersloop support 
 - Upgraded the web build/test toolchain across two majors: Vite 5 → 7, Vitest 2 → 4 (plus @vitejs/plugin-vue 6, coverage-v8 4, jsdom 29, vite-plugin-vue-devtools 8, @types/node 24). This clears **all 37 known vulnerabilities** in the web package, including a critical arbitrary-file-read/execute hole in Vitest's UI server. Test-suite adaptations for Vitest's new mock semantics (`resetAllMocks` now restores real implementations and `spyOn` reuses existing mocks, so a few tests needed their spy history cleared explicitly).
 - Upgraded every dependency across web, backend and parsing to its latest patch/minor version (highlights: Vuetify 3.7 → 3.12, Vue 3.5.40, Vue Flow 1.48, sass 1.101, Mongoose 8.24, Express 4.22, jsonwebtoken 9.0.3 — which fixes the backend crashing on Node 26, so Node 26 is now supported). Vuetify's `VNumberInput` graduated from labs along the way with two behaviour changes that needed adapting: it now rounds typed values to whole numbers by default (the planner configures unrestricted decimal precision globally, keeping fractional per-minute rates working), and it mis-handles the `v-model.number` modifier (silently dropping every keystroke), so the redundant `.number` modifiers were removed from all number inputs. (vue-router was held at 4.4.x during this pass, then upgraded to 5 in the routing-stack modernisation above.)
 - `pnpm test` no longer runs Vitest in watch mode (it never finished in CI), and tests run with an in-memory `Storage` implementation under Node 24+.
+
+## Alpha v0.4
+
+_Released 25 January 2025._
+
+A stability release: long-running planner bugs squashed (over **20** of them), measures added to stop the planner breaking in the first place, and a large batch of quality-of-life work across Products, Imports and Satisfaction. [Release video](https://www.youtube.com/watch?v=xiE7AwfzOpc) · [itemised list of changes on GitHub](https://github.com/orgs/satisfactory-factories/projects/2/views/1?filterQuery=+milestone%3A%22Alpha+4%22+&sortedBy%5Bdirection%5D=asc&sortedBy%5BcolumnId%5D=Title).
+
+### Export Calculator v2
+
+- 🆕 The export calculator returns, and now accounts for multiple transport types: trains (solids & fluids), drones, trucks and tractors (solids only). Attempting to transport a fluid by a solids-only method tells you to package it first.
+- 🆕 Timer buttons on the "drivable" transport methods: ride the route, start the timer, stop it, and the calculator updates itself from what you drove.
+- 🆕 Each transport method shows its accuracy, listing the full assumptions and potential caveats behind the figure.
+
+### Loading Sequence
+
+- 🆕 Loading a plan is completely redesigned. Factories load in sequence, validated as they go to prevent plan corruption, with a progress indicator saying how far along it is. A large plan used to simply appear frozen for 30 seconds or more; now there is feedback at every step.
+
+### Products
+
+- 🆕 Product **ingredients** and **buildings** can have their values changed directly, so adjusting the Wire on a Cable product scales the Cable output to match.
+- 👍 Internal byproducts are accounted for properly: a product that also arrives as a byproduct of the same type (Sulphuric Acid as both a product and a byproduct of Encased Uranium Cells) no longer offers a TRIM button.
+- 🔧 The "FIX PRODUCTION" double buttons are gone, replaced by proper **Satisfy / Trim** buttons that take more scenarios into account, including internal requirements and exports.
+
+### Imports
+
+- 👍 **Import candidate selection is rewritten.** It now weighs the destination factory's requirements far more strongly, byproducts included. The previous system had a number of edge cases where it would show factories that were not relevant (Water imports appearing for no reason) or fail to show ones that were.
+- 👍🔧 **TRIM and SATISFY account for other imports of the same part.** They used to check only the import being trimmed or satisfied against the factory's shortage or overflow; they now calculate the difference across every import of that part.
+- 🔧 A factory is no longer an import candidate if it imports a raw resource the destination factory needs.
+- 🆕 Redundant imports — where one import alone can cover the demand — are flagged **Redundant!** rather than forcing you to rebalance them.
+- 🆕 Imports with no amount set are flagged **No amount set!**.
+- 🔧 The TRIM button no longer shows when an import is also a byproduct in the factory.
+
+### Satisfaction
+
+- 👍 **Uranium / Plutonium waste handling.** Producing waste previously required working out for yourself that you needed a power plant, and it was erroneously possible to select Uranium Waste as a product with no recipe. The Satisfaction section now carries a **+ Generator** button that adds a Nuclear Reactor with the correct fuel rod, at exactly the amount needed to produce that much waste.
+- 👍 **Part roles.** Each part now shows what role it plays in the factory — Product, Byproduct, Import or Internal — making its relationship to the factory much easier to read.
+- 👍 **"MANUALLY FIX" indicators.** Where an automatic fix might not be what you wanted (multiple products, imports or byproducts of the same part), the planner now says so and asks you to fix it by hand rather than guessing.
+- 🔧 **TRIM / SATISFY fixes.** A long tail of edge cases resolved, accounting for byproducts and imports across the factory, so the buttons appear only when they apply — which also fixes them doing nothing when pressed.
+- 🔧 **Generator power & building maths.** Multiple generator groups of the same building and fuel type were not producing correct power or building counts.
+
+### Fixes & minor adjustments
+
+- 🔧 Fixed a **planner-breaking bug** in how Chrome, Edge and other Chromium derivatives render the mobile tray, which broke the planner outright in those browsers.
+- 👍 GameSync now drops factories out of sync when their power generators change.
+- 👍 **Tab memory**: changing tabs and reloading remembers the last opened tab instead of always opening the first.
+- 👍 **Performance improvements**: the hidden factories UI is now genuinely hidden when a factory is expanded, changes written to a factory are reduced so the UI framework has less to do, and various bits of dead code slowing factory calculation down were removed.
+- 👍 The "too many factories open" banner can be dismissed until the page is reloaded.
+- 🔧 The template manager can open multiple templates without needing a page reload.
+- 🔧 Packaged Rocket Fuel shows the correct icon.

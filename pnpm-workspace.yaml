@@ -29,3 +29,21 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
   '@parcel/watcher': false
+
+# js-yaml reaches us only through jest coverage tooling
+# (babel-plugin-istanbul -> @istanbuljs/load-nyc-config), which asks for ^3.13.1 and
+# would otherwise hold us on the v3-legacy line. This override is what lets us track
+# the current major instead. The key stays ^3.13.1 because that is the range being
+# matched, not the version being installed.
+#
+# This is a deliberate two-major substitution under a package that never declared it,
+# so it is worth knowing what moved. load-nyc-config calls js-yaml load() on an nyc
+# YAML config, and v5 changed that call: CORE_SCHEMA rather than DEFAULT_SCHEMA,
+# !!set loads as a Set, numbers parse differently, and empty input throws instead of
+# returning undefined. Nothing here exercises it -- no package has a .nycrc.yaml -- so
+# the test suite cannot vouch for this either way. Adding one is what would expose it.
+#
+# Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
+# that governs what Renovate proposes, not what an override pins.
+overrides:
+  js-yaml@^3.13.1: 5.2.3

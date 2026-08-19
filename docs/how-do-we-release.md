@@ -2,6 +2,75 @@
 
 This document will describe how the various components of Satisfactory Factories are released to users.
 
+## GitHub releases
+
+Deploys are trunk-based, so merging to `main` is what ships an update. A GitHub
+release is therefore a *record* of an update, cut by hand once it is done —
+nothing waits on it.
+
+Run **Actions → "Release: Publish" → Run workflow**:
+
+| Input | |
+| --- | --- |
+| `version` | The version, as `x.y.z` with no leading `v` (`0.6.0`). It becomes the tag, matching the existing `0.2.1` and `0.3.0`. |
+| `sha` | The commit to pin the release to. Leave blank for the current head of `main`. |
+| `draft` | Publish as a draft first, to read the notes before anyone else does. |
+| `prerelease` | A build not meant for general use. Off by default, and it should stay off for anything that shipped — see below. |
+| `overwrite` | Rewrite the notes on a release that already exists, instead of failing. |
+
+The release body is that version's entry from the **in-app Change Log**
+([`web/src/pages/changelog.vue`](../web/src/pages/changelog.vue)), converted to
+markdown, and the release is named after its heading. The version is matched on
+its major and minor, so `0.6.0` finds `Beta v0.6 - The "Groundwork" Update`; a
+patch release gets its own entry if it needs one, and that entry wins where it
+exists.
+
+**Deliberately not [`CHANGELOG.md`](../CHANGELOG.md).** Both describe the same
+updates, but at very different altitudes. `CHANGELOG.md` is the exhaustive
+technical record — implementation detail, paragraphs deep — which reads as noise
+to someone who only wants to know what is new. The in-app page is the
+written-for-players version: short sections, screenshots, the 🆕 / 👍 / 🔧 key.
+That is what a release should say, and it means the notes on GitHub and the
+notes in the app can never disagree.
+
+Screenshots and videos are rewritten to absolute
+`https://satisfactory-factories.app` URLs so they render on github.com; videos
+become links, since an mp4 from another origin will not play inline there.
+Vuetify layout — the in-page contents nav, dividers, icons — is dropped.
+
+**So the Change Log entry has to exist before the release does.** If it does
+not, the run fails and lists the versions it does know about. The conversion
+also refuses to publish notes with leftover markup in them, rather than shipping
+a stray tag to everyone.
+
+Notes are read from the Change Log as it stands on the branch the workflow is
+run from — `main`, normally — while the tag is pinned to `sha`. That split is
+what lets a past update be released retroactively: an entry read today, against
+a commit from months ago. The one thing it cannot backdate is the release's own
+publication date, so the entry's `release-date` is carried into the top of the
+notes as a `_Released …_` line.
+
+**Alpha and Beta are not pre-releases.** They are this project's maturity
+branding, and every release wearing one of those names went out to
+satisfactory-factories.app like any other. GitHub's pre-release flag means "not
+ready for general use", which would be a false claim about a build players have
+been using for months — and it also suppresses the "Latest" badge. It defaults
+to off, and only a build genuinely not meant for general use should turn it on.
+
+`overwrite` cannot re-point a **published** release's tag — GitHub does not
+allow it, so delete the release and the tag if one ended up on the wrong commit.
+A **draft** is different: its tag is not cut until the draft is published, so an
+overwrite does apply `sha` to a draft and says so in the run.
+
+The conversion is done by
+[`.github/scripts/changelog-release-notes.mjs`](../.github/scripts/changelog-release-notes.mjs),
+which is runnable on its own while writing a Change Log entry:
+
+```bash
+node .github/scripts/changelog-release-notes.mjs --list
+node .github/scripts/changelog-release-notes.mjs --version 0.6.0 --print
+```
+
 ## Frontend (web)
 Frontend is automatically deployed whenever main is merged. This is called [Trunk based development](https://trunkbaseddevelopment.com/#trunk-based-development-for-smaller-teams).
 
