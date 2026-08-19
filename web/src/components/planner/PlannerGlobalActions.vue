@@ -1,112 +1,132 @@
 <template>
   <v-row>
     <v-col>
-      <v-btn
-        class="ma-1"
-        color="blue"
-        :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-compress-alt"
-
-        variant="tonal"
-        @click="emit('hide-all')"
-      >
-        Hide all
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="blue"
-        :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-expand-alt"
-
-        variant="tonal"
-        @click="expandAll"
-      >
-        Expand all
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="blue"
-        prepend-icon="fas fa-info-circle"
-        variant="tonal"
-        @click="emit('toggle-help-text')"
-      >
-        {{ helpTextShown ? "Hide" : "Show" }} Info
-      </v-btn>
+      <!-- Every button here is wrapped rather than carrying a `title`: a native tooltip can't say
+           anything useful about a disabled control, and five of these disable themselves on an
+           empty plan — exactly when someone is most likely to hover one asking why it won't
+           click. <tooltip> puts the v-tooltip on a wrapper span, so the hint still appears, and
+           each disabled button explains itself instead of just going grey. -->
+      <tooltip :text="isEmpty ? 'Nothing to hide yet — add a factory first.' : 'Collapse every factory down to its header, to see the shape of the whole plan at once.'">
+        <v-btn
+          class="ma-1"
+          color="blue"
+          :disabled="isEmpty"
+          prepend-icon="fas fa-compress-alt"
+          variant="tonal"
+          @click="emit('hide-all')"
+        >
+          Hide all
+        </v-btn>
+      </tooltip>
+      <tooltip :text="isEmpty ? 'Nothing to expand yet — add a factory first.' : 'Open every factory card. Past ten factories this will make the page lag, and you\'ll be warned before it does.'">
+        <v-btn
+          class="ma-1"
+          color="blue"
+          :disabled="isEmpty"
+          prepend-icon="fas fa-expand-alt"
+          variant="tonal"
+          @click="expandAll"
+        >
+          Expand all
+        </v-btn>
+      </tooltip>
+      <tooltip :text="helpTextShown ? 'Hide the explanatory notes dotted through the planner.' : 'Show an explanatory note on each section of the planner, saying what it is for.'">
+        <v-btn
+          class="ma-1"
+          color="blue"
+          prepend-icon="fas fa-info-circle"
+          variant="tonal"
+          @click="emit('toggle-help-text')"
+        >
+          {{ helpTextShown ? "Hide" : "Show" }} Info
+        </v-btn>
+      </tooltip>
       <!-- Flat while on, tonal while off: the label alone ("Full width" / "Normal width") says
            what the next click does, not what the planner is doing now, and this is the only
            button here that holds a state. -->
-      <v-btn
-        class="ma-1"
-        color="blue"
-        prepend-icon="fas fa-arrows-alt-h"
-        :title="options.fullWidth
-          ? 'Put the wide-screen margins back'
-          : 'Use the whole window width for the plan (only changes anything above 2000px wide)'"
-        :variant="options.fullWidth ? 'flat' : 'tonal'"
-        @click="options.fullWidth = !options.fullWidth"
-      >
-        {{ options.fullWidth ? "Normal" : "Full" }} width
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="green"
-        prepend-icon="fas fa-users-class"
-        ripple
-        variant="tonal"
-        @click="eventBus.emit('introToggle', true)"
-      >
-        Show Intro
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="yellow"
-        prepend-icon="fas fa-file-import"
-        ripple
-        variant="tonal"
-        @click="emit('import-world')"
-      >
-        Import world [WIP]
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="red"
-        :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-trash"
-        variant="tonal"
-        @click="confirmDelete('Are you really sure? This will delete literally everything!') && emit('clear-all')"
-      >
-        Clear
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="secondary"
-        :disabled="getFactories().length === 0"
-        prepend-icon="fas fa-copy"
-        variant="tonal"
-        @click="copyPlanToClipboard"
-      >
-        Copy plan
-      </v-btn>
-      <v-btn
-        class="ma-1"
-        color="secondary"
-        prepend-icon="fas fa-clipboard"
-        variant="tonal"
-        @click="confirmReplace() && pastePlanFromClipboard()"
-      >
-        Paste plan
-      </v-btn>
+      <tooltip :text="options.fullWidth ? 'Put back the margins the planner keeps either side of the plan on a wide screen.' : 'Give the plan the whole window, dropping the margins the planner keeps either side of it on a wide screen. Below 2000px there are none to drop.'">
+        <v-btn
+          class="ma-1"
+          color="blue"
+          prepend-icon="fas fa-arrows-alt-h"
+          :variant="options.fullWidth ? 'flat' : 'tonal'"
+          @click="options.fullWidth = !options.fullWidth"
+        >
+          {{ options.fullWidth ? "Normal" : "Full" }} width
+        </v-btn>
+      </tooltip>
+      <tooltip text="Replay the introduction: what the planner is, and how a plan is put together.">
+        <v-btn
+          class="ma-1"
+          color="green"
+          prepend-icon="fas fa-users-class"
+          ripple
+          variant="tonal"
+          @click="eventBus.emit('introToggle', true)"
+        >
+          Show Intro
+        </v-btn>
+      </tooltip>
+      <tooltip text="Work in progress: build a plan from a Satisfactory save file.">
+        <v-btn
+          class="ma-1"
+          color="yellow"
+          prepend-icon="fas fa-file-import"
+          ripple
+          variant="tonal"
+          @click="emit('import-world')"
+        >
+          Import world [WIP]
+        </v-btn>
+      </tooltip>
+      <tooltip :text="isEmpty ? 'Nothing to clear yet — the plan is already empty.' : 'Delete every factory in this plan. There is no undo, so copy the plan first if you might want it back.'">
+        <v-btn
+          class="ma-1"
+          color="red"
+          :disabled="isEmpty"
+          prepend-icon="fas fa-trash"
+          variant="tonal"
+          @click="confirmDelete('Are you really sure? This will delete literally everything!') && emit('clear-all')"
+        >
+          Clear
+        </v-btn>
+      </tooltip>
+      <tooltip :text="isEmpty ? 'Nothing to copy yet — add a factory first.' : 'Copy the whole plan to your clipboard: every factory, plus the tab name, power target and groups. Save it to a file, or paste it into another tab.'">
+        <v-btn
+          class="ma-1"
+          color="secondary"
+          :disabled="isEmpty"
+          prepend-icon="fas fa-copy"
+          variant="tonal"
+          @click="copyPlanToClipboard"
+        >
+          Copy plan
+        </v-btn>
+      </tooltip>
+      <tooltip text="Replace this tab with a plan copied to your clipboard. You'll be asked first if this tab already has factories in it.">
+        <v-btn
+          class="ma-1"
+          color="secondary"
+          prepend-icon="fas fa-clipboard"
+          variant="tonal"
+          @click="confirmReplace() && pastePlanFromClipboard()"
+        >
+          Paste plan
+        </v-btn>
+      </tooltip>
       <templates />
-      <v-btn
-        class="ma-1"
-        color="amber"
-        :disabled="getFactories().length === 0 || disableRecalc"
-        prepend-icon="fas fa-calculator-alt"
-        variant="tonal"
-        @click="forceRecalc"
-      >
-        Recalculate
-      </v-btn>
+      <tooltip :text="recalcTooltip">
+        <v-btn
+          class="ma-1"
+          color="amber"
+          :disabled="isEmpty || disableRecalc"
+          prepend-icon="fas fa-calculator-alt"
+          variant="tonal"
+          @click="forceRecalc"
+        >
+          Recalculate
+        </v-btn>
+      </tooltip>
     </v-col>
   </v-row>
 </template>
@@ -124,6 +144,16 @@
   const options = usePlannerOptions()
 
   const disableRecalc = ref(false)
+
+  // Named because it is the reason five of these buttons are disabled, and each says so in its
+  // own tooltip rather than leaving the reader to guess at a greyed-out control.
+  const isEmpty = computed(() => getFactories().length === 0)
+
+  const recalcTooltip = computed(() => {
+    if (disableRecalc.value) return 'Recalculating…'
+    if (isEmpty.value) return 'Nothing to recalculate yet — add a factory first.'
+    return 'Recalculate every factory from scratch. Slow enough on a big plan that the browser will complain, so it asks first — only worth it if a number looks wrong.'
+  })
 
   defineProps<{ helpTextShown: boolean }>()
 

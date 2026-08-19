@@ -1,9 +1,13 @@
 <template>
-  <v-btn
-    class="ma-1"
-    prepend-icon="fas fa-files-medical"
-    @click="dialog = true"
-  >Templates</v-btn>
+  <!-- Wrapped like the buttons it sits among in the sidebar's global actions, so the row's
+       hints all arrive the same way. -->
+  <tooltip text="Load one of the example plans — a small starter, the full demo, or Mael's MegaPlan. Overwrites the current plan without asking.">
+    <v-btn
+      class="ma-1"
+      prepend-icon="fas fa-files-medical"
+      @click="dialog = true"
+    >Templates</v-btn>
+  </tooltip>
   <v-dialog v-model="dialog" max-width="1200">
     <v-card class="pa-2">
       <v-card-title>
