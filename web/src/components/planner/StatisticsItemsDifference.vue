@@ -59,6 +59,9 @@
       >
         {{ option.label }} ({{ option.count }})
       </v-btn>
+      <!-- `persistent-clear`: Vuetify otherwise fades the X in on hover or focus only. Type a
+           query, click a filter button, and the way to undo the query has disappeared — so pin it
+           for as long as the box has text in it. -->
       <v-text-field
         id="stats-items-search"
         v-model="search"
@@ -66,6 +69,7 @@
         clearable
         density="compact"
         hide-details
+        persistent-clear
         placeholder="Search items"
         prepend-inner-icon="fas fa-search"
         variant="outlined"
