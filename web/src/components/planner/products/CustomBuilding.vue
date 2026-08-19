@@ -99,7 +99,10 @@
           <tooltip :text="getPartDisplayName(ingredient.part)">
             <game-asset clickable :subject="ingredient.part" type="item" />
           </tooltip>
-          <span class="ml-2"><b>{{ formatNumber(ingredient.perMin) }}</b>/min</span>
+          <!-- `.sf-chip.input` zeroes its horizontal padding for the chips that hold an inline
+               number input, so a read-only figure has to bring its own right gutter. Same
+               spacing as the power producer's matrix demand chip, which is the same shape. -->
+          <span class="ml-2 mr-4"><b>{{ formatNumber(ingredient.perMin) }}</b>/min</span>
         </v-chip>
         <tooltip-info
           :text="upkeepHelpText(customBuilding)"
