@@ -167,7 +167,9 @@ describe('dependencies', () => {
       expect(factories.find).toBeCalledTimes(0)
     })
 
-    it('should prevent adding dependencies to itself', () => {
+    // Throwing here used to abort the whole plan's calculation, leaving the planner blank
+    // over one corrupt row. The input is corrupt data either way, so drop it and carry on.
+    it('should drop a self-referencing input rather than aborting the calculation', () => {
       const input = {
         factoryId: mockFactory.id,
         outputPart: 'IronIngot',
@@ -177,7 +179,10 @@ describe('dependencies', () => {
       addInputToFactory(mockFactory, input)
       expect(() => {
         calculateAllDependencies(factories, gameData, true)
-      }).toThrow()
+      }).not.toThrow()
+
+      expect(mockFactory.inputs).toEqual([])
+      expect(mockFactory.dependencies.requests[mockFactory.id]).toBeUndefined()
     })
 
     it('should prevent adding dependencies when provider factory does not exist', () => {
@@ -440,6 +445,8 @@ describe('dependencies', () => {
         amountRemaining: -90,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(factoryA.parts.CompactedCoal).toEqual({
@@ -454,6 +461,8 @@ describe('dependencies', () => {
         amountRemaining: 540,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
     })

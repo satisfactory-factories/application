@@ -1,16 +1,27 @@
 <template>
   <template v-if="!validToDisplay">
-    <p class="text-body-2">There are no factories available to import the current product selection.</p>
+    <!-- A mine reaches here too, and "no factories available" blames the rest of the plan for
+         something that is simply not applicable to it. -->
+    <p v-if="ableToImport(factory) === 'producesRawOnly'" class="text-body-2">
+      Imports don't apply here: this factory only produces raw resources, and extracting them takes no ingredients.
+    </p>
+    <p v-else class="text-body-2">There are no factories available to import the current product selection.</p>
   </template>
   <template v-else>
     <v-card class="rounded sub-card border-md mb-2">
+      <!-- Keyed by index: every half-configured row reads as "null-null", and duplicate
+           keys make Vue patch the wrong row's selectors. -->
       <div
         v-for="(input, inputIndex) in factory.inputs"
-        :key="`${input.factoryId}-${input.outputPart}`"
+        :key="inputIndex"
         class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
-          <i class="fas fa-industry mr-2" style="width: 32px; height: 32px;" />
+          <factory-icon-display
+            class="mr-2"
+            :icon="input.factoryId ? findFactory(input.factoryId)?.icon : undefined"
+            size="32"
+          />
           <!-- This is being watched for changes to update the old factory -->
           <v-autocomplete
             v-model.number="input.factoryId"
@@ -20,7 +31,7 @@
             max-width="300px"
             variant="outlined"
             width="300px"
-            @update:model-value="handleInputFactoryChange(factory)"
+            @update:model-value="handleInputFactoryChange(factory, inputIndex)"
           />
         </div>
         <div class="input-row d-flex align-center">
@@ -122,7 +133,7 @@
         @click="addEmptyInput(factory)"
       >Add Import
       </v-btn>
-      <span v-if="ableToImport(factory) === 'rawOnly'" class="ml-2">(This factory is only using raw resources and requires no imports.)</span>
+      <span v-if="ableToImport(factory) === 'producesRawOnly'" class="ml-2">(Imports don't apply here: this factory only produces raw resources, and extracting them takes no ingredients.)</span>
       <span v-if="ableToImport(factory) === 'noImportFacs'" class="ml-2">(There are no factories that have exports available to supply this factory.)</span>
     </div>
   </template>
@@ -138,6 +149,7 @@
     deleteInputPair,
     importFactorySelections,
     importPartSelections,
+    isDuplicateImport,
     isImportRedundant,
     satisfyImport,
     validateInput,
@@ -233,7 +245,13 @@
     return calculateAbleToImport(factory, importCandidates.value)
   }
 
-  const handleInputFactoryChange = (factory: Factory) => {
+  const handleInputFactoryChange = (factory: Factory, inputIndex: number) => {
+    // The part selector filters out combinations already in use, but switching the factory
+    // can land on one. Clear the part and let the user pick again.
+    if (isDuplicateImport(factory, inputIndex)) {
+      factory.inputs[inputIndex].outputPart = null
+    }
+
     // Initiate a factory update for all factories involved
     updateFactory(factory) // This factory
 

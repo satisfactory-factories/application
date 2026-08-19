@@ -1,36 +1,52 @@
 <template>
   <v-row>
     <v-col>
-      <v-card :id="factory.id" :class="factoryClass(factory)">
+      <v-card :id="factory.id" :class="cardClass" :style="groupStyle">
         <v-row class="header">
           <v-col class="flex-grow-1" cols="auto" md="8">
-            <div class="text-h4 text-md-h5">
-              <i class="fas fa-industry" />
+            <div class="text-h4 text-md-h5 d-flex align-center">
+              <factory-icon-display
+                clickable
+                :icon="factory.icon"
+                size="32"
+                @click="iconDialogOpen = true"
+              />
+              <factory-group-tray :factory="factory" />
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
               >
             </div>
+            <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
             <!-- chips bar -->
             <div class="d-flex align-center flex-wrap mt-1 ga-2">
+              <!-- status chips: what is wrong, ahead of everything descriptive. outOfSync is
+                   excluded because the sync chip further down this same bar already says it,
+                   with help text and a reset button the status chip cannot offer. -->
+              <factory-status-chips
+                navigable
+                size="small"
+                :statuses="cardStatuses"
+                @navigate="target => navigateToStatus(target)"
+              />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -46,7 +62,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -62,7 +78,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
+                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -74,7 +90,7 @@
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small no-margin"
+                  class="sf-chip sf-chip-info small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
@@ -82,16 +98,29 @@
                   <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
+              <!-- circuit boost chip. Its own chip because it is not this factory's power: an
+                   augmenter adds a percentage of the WHOLE plan's generation, so a factory
+                   generating nothing can still be why the plan's total is far above the sum of
+                   the generators you can see. -->
+              <tooltip
+                v-if="factoryBoost > 0"
+                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid, ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
+              >
+                <v-chip class="sf-chip sf-chip-info small circuit-boost no-margin">
+                  <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />
+                  <span class="ml-2">{{ formatMw(factoryBoost) }}</span>
+                </v-chip>
+              </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow no-margin">
+                <v-chip class="sf-chip sf-chip-info small yellow no-margin">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
                 </v-chip>
               </tooltip>
               <!-- somersloops chip -->
               <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop no-margin">
+                <v-chip class="sf-chip sf-chip-info small sloop no-margin">
                   <game-asset height="18" subject="somersloop" type="item_id" width="18" />
                   <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
@@ -102,21 +131,21 @@
             <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"
-              :color="factory.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
-              :disabled="factory.displayOrder === 0"
+              :color="atGroupStart ? 'grey-darken-3' : 'primary'"
+              :disabled="atGroupStart"
               icon="fas fa-arrow-up"
               size="small"
-              title="Move Factory Up"
+              :title="atGroupStart ? 'Already first in its group' : 'Move Factory Up'"
               variant="outlined"
               @click="moveFactory(factory, 'up')"
             />
             <v-btn
               class="mr-2 rounded"
-              :color="factory.displayOrder === totalFactories - 1 ? 'grey-darken-3' : 'primary'"
-              :disabled="factory.displayOrder === totalFactories - 1"
+              :color="atGroupEnd ? 'grey-darken-3' : 'primary'"
+              :disabled="atGroupEnd"
               icon="fas fa-arrow-down"
               size="small"
-              title="Move Factory Down"
+              :title="atGroupEnd ? 'Already last in its group' : 'Move Factory Down'"
               variant="outlined"
               @click="moveFactory(factory, 'down')"
             />
@@ -161,18 +190,24 @@
         </v-row>
         <v-card-text v-if="!factory.hidden">
           <products-and-power
+            :id="`${factory.id}-products`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
+            :id="`${factory.id}-imports`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
+            :id="`${factory.id}-satisfaction`"
             :factory="factory"
             :help-text="helpText"
+            :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <v-row>
@@ -201,7 +236,7 @@
             class="text-body-1 py-2 px-4 collapsed-section"
             :class="factory.products.length > 0 ? 'border-b-md' : ''"
           >
-            <p class="section-label">Imports:</p>
+            <p class="section-label">Importing:</p>
             <div class="section-chips">
               <div
                 v-for="[inputFactoryId, inputs] in groupedInputs"
@@ -209,7 +244,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(inputFactoryId)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(inputFactoryId).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(inputFactoryId).name }}</b>
                 </span>
@@ -296,7 +331,7 @@
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
           >
-            <p class="section-label">Exports:</p>
+            <p class="section-label">Exporting:</p>
             <div class="section-chips">
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"
@@ -304,7 +339,7 @@
                 class="factory-group-chip clickable"
                 @click="navigateToFactory(dependant)"
               >
-                <i class="fas fa-industry ml-1" />
+                <factory-icon-display class="ml-1" :icon="findFactory(dependant).icon" size="20" />
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
@@ -335,20 +370,36 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject } from 'vue'
+  import { computed, inject, ref } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { countActiveTasks } from '@/utils/factory-management/factory'
+  import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
+  import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
+  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
+  import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
+  import { groupColorVars } from '@/utils/colors'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+
+  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // row of its own.
+  const navigateToStatus = (target: { section: string, subject?: string }) => {
+    const section = `${props.factory.id}-${target.section}`
+    navigateToFactory(
+      props.factory.id,
+      target.subject ? `${section}-item-${target.subject}` : section,
+      section
+    )
+  }
 
   const props = defineProps<{
     factory: Factory
@@ -356,7 +407,18 @@
     totalFactories: number;
   }>()
 
+  const { getFactories } = useAppStore()
+
   const { smAndDown } = useDisplay()
+
+  const iconDialogOpen = ref(false)
+
+  // Up/down move a factory within its own group, so the buttons disable at the group's edges
+  // rather than the plan's. Keyed on global position they sat enabled at every group boundary
+  // and did nothing when pressed.
+  const groupPosition = computed(() => factoryPositionInGroup(props.factory, getFactories()))
+  const atGroupStart = computed(() => groupPosition.value.index <= 0)
+  const atGroupEnd = computed(() => groupPosition.value.index === groupPosition.value.total - 1)
 
   const gameSyncHelpText = 'Game Sync is when you have implemented the factory inside the game.<br> When it drops out of sync, there are changes that you need to implement.<br> When a factory\'s products are changed, the factory will be out of sync, or if you set it manually.'
 
@@ -368,6 +430,13 @@
 
   // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
   const powerDiffDisplay = computed(() => formatMw(Math.abs(factoryPowerDifference.value)))
+
+  // What this factory's augmenters add to the grid, and the share of the plan's generation that
+  // represents — the number that makes a 61 GW group read as 251 GW on the plan.
+  const factoryBoost = computed(() => props.factory.power?.boostMw ?? 0)
+  const boostPercentDisplay = computed(() =>
+    `${formatNumber((props.factory.power?.boostPercent ?? 0) * 100)}%`,
+  )
 
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
@@ -387,13 +456,23 @@
     return [...groups.entries()]
   })
 
-  const factoryClass = (factory: Factory) => {
-    return {
-      'factory-card': true,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync !== null ? !factory.inSync : false,
-    }
-  }
+  // Derived once here and passed down, rather than each section header calling the helper itself:
+  // that would run the predicates three more times per expanded card.
+  const statuses = computed(() => getFactoryStatuses(props.factory))
+
+  const cardStatuses = computed(() => statuses.value.filter(status => status.type !== 'outOfSync'))
+
+  const cardClass = computed(() => ({
+    'factory-card': true,
+    grouped: !!props.factory.group,
+    ...factoryStatusClass(statuses.value),
+  }))
+
+  // Per-group data, so custom properties rather than a class — there is no fixed set of colours
+  // to write rules for.
+  const groupStyle = computed(() =>
+    props.factory.group ? groupColorVars(props.factory.group.color) : undefined
+  )
 
   const confirmDelete = (message = 'Are you sure you want to delete this factory?') => {
     return confirm(message)
@@ -422,11 +501,15 @@
   opacity: 1;
 }
 
+// The reset button ends the chip, so the chip's own right padding only reads as a
+// gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
+.sf-chip.small.sync-chip {
+  padding-right: 0 !important;
+}
+
 .factory-name {
   width: 85%;
   padding: 6px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
 
   // The markup's `pl-0` beat this on `!important` until Vuetify 4 layered the
   // spacing helpers. Scoped so it outranks the rule above deterministically.
@@ -434,9 +517,12 @@
     padding-left: revert-layer;
   }
 
-  &:hover {
-    cursor: pointer;
-    background-color: #323232;
+  // Underline the name itself rather than filling the field: the field runs to 85% of the
+  // header, so a fill highlighted far more than the thing you were about to edit. A text
+  // caret, not a hand, for the same reason — this is a field you type in, not a button.
+  &:hover, &:focus {
+    cursor: text;
+    text-decoration: underline;
   }
 }
 
@@ -468,33 +554,6 @@
     > .sf-chip {
       margin: 0 !important;
     }
-  }
-}
-
-// Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
-// imported from / exported to that factory. Shares the factory token + card header
-// background (see src/utils/colors.ts).
-.factory-group-chip {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  border: 2px solid var(--sf-factory-border);
-  border-radius: 28px;
-  background-color: var(--sf-factory-bg);
-  color: var(--sf-factory);
-  padding: 4px 6px 4px 10px;
-  row-gap: 4px;
-
-  // The global .sf-chip.no-margin rule out-specifies utility classes like ml-1,
-  // so the 4px rhythm between part chips has to live here, where the scope
-  // attribute wins the specificity contest.
-  .sf-chip {
-    margin: 0 0 0 4px !important;
-  }
-
-  &.clickable:hover {
-    cursor: pointer;
-    background-color: #323232;
   }
 }
 </style>

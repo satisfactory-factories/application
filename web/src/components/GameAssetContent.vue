@@ -1,16 +1,28 @@
 <template>
-  <v-img
-    v-if="!ficsmas && !unknown"
-    :alt="subject"
-    aspect-ratio="1/1"
-    :max-height="heightPx"
-    :max-width="widthPx"
-    :min-height="heightPx"
-    :min-width="widthPx"
-    :src="imgUrl"
-  />
-  <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
-  <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  <!-- The wrapper exists to carry the tooltip mark. It is a data attribute rather than a `title`
+       or a <v-tooltip> of its own: one delegated <game-asset-tooltip> at the app shell reads it on
+       hover, so hundreds of images across a plan cost one overlay component between them. (A
+       `title` would not have worked on the VImg anyway — it renders its own root and forwards
+       attributes to an inner <img> that does not exist until the image loads.) -->
+  <span
+    class="game-asset-content"
+    :data-hover-link="wiki ? '' : undefined"
+    :data-hover-tooltip="title"
+    :data-hover-tooltip-note="note || undefined"
+  >
+    <v-img
+      v-if="!ficsmas && !unknown"
+      :alt="subject"
+      aspect-ratio="1/1"
+      :max-height="heightPx"
+      :max-width="widthPx"
+      :min-height="heightPx"
+      :min-width="widthPx"
+      :src="imgUrl"
+    />
+    <v-icon v-if="ficsmas" icon="fas fa-snowflake" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+    <v-icon v-if="unknown" icon="fas fa-question" :style="{ width: widthPx + 'px', height: heightPx + 'px' }" />
+  </span>
 </template>
 
 <script setup lang="ts">
@@ -23,6 +35,11 @@
     height?: string | number | undefined
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
+    title?: string
+    // A second tooltip line, for a caller with something to add beyond the name.
+    note?: string
+    // Marks the image as a wiki link, so the tooltip can say so on its own line.
+    wiki?: boolean
   }>()
 
   // State
@@ -104,3 +121,13 @@
     return `/assets/game/${type}/${name}_${pxSize}.png`
   }
 </script>
+
+<style scoped>
+/* Sized entirely by the image inside it — inline-flex so it neither adds a line box nor
+   baseline-aligns, which would drop icons a few pixels inside chips. */
+.game-asset-content {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+</style>

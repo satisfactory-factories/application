@@ -8,7 +8,7 @@ import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates,
   calculatePossibleImports, deleteInputPair, importFactorySelections,
-  importPartSelections, isImportRedundant, satisfyImport, validateInput,
+  importPartSelections, isDuplicateImport, isImportRedundant, satisfyImport, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -401,10 +401,24 @@ describe('inputs', () => {
         const result = calculateAbleToImport(ingotFactory, [])
         expect(result).toBe('noProductsOrProducers')
       })
-      it('should return rawOnly if the factory is only using raw resources', () => {
+      // A mine's only part is the ore it digs up, and extraction takes no ingredients, so there
+      // is nothing it could import however the raw assumption is set.
+      it('should return producesRawOnly for a mine', () => {
+        const mine = newFactory('Copper Mine', 3, 4)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(calculateAbleToImport(mine, [ironIngotFac])).toBe('producesRawOnly')
+      })
+      // A factory whose demand is entirely raw used to be blocked from importing, because its
+      // supply was assumed. Importing from a mine factory is now exactly what it should do.
+      it('should offer imports to a factory that only consumes raw resources', () => {
         ingotFactory.usingRawResourcesOnly = true
-        const result = calculateAbleToImport(ingotFactory, [])
-        expect(result).toBe('rawOnly')
+        expect(calculateAbleToImport(ingotFactory, [ironIngotFac])).toBe(true)
       })
       it('should return noImportFacs if there are no import candidates', () => {
         const result = calculateAbleToImport(ingotFactory, [])
@@ -775,6 +789,72 @@ describe('inputs', () => {
       expect(ingotFac.parts.IronIngot.amountRequired).toBe(0) // Iron Ingot demand
       expect(ingotFac.parts.CopperIngot.amountRequired).toBe(100) // Copper Ingot demand
       expect(ironPlateFac.parts.IronIngot.amountSupplied).toBe(0) // Iron Ingot removed supply
+    })
+
+    // Every unfinished row reads as "null-null", so deleting by factory + part took them all.
+    it('should only delete the row it was given when other rows are half-configured', () => {
+      addInputToFactory(ironPlateFac, { factoryId: null, outputPart: null, amount: 0 })
+      addInputToFactory(ironPlateFac, { factoryId: null, outputPart: null, amount: 0 })
+
+      deleteInputPair(ironPlateFac, ironPlateFac.inputs[2], factories, gameData)
+
+      expect(ironPlateFac.inputs.length).toBe(2)
+      expect(ironPlateFac.inputs[0].outputPart).toBe('IronIngot')
+    })
+
+    it('should delete a half-configured row without throwing', () => {
+      addInputToFactory(ironPlateFac, { factoryId: null, outputPart: null, amount: 0 })
+
+      expect(() => deleteInputPair(ironPlateFac, ironPlateFac.inputs[1], factories, gameData)).not.toThrow()
+      expect(ironPlateFac.inputs.length).toBe(1)
+    })
+
+    it('should do nothing when the input has already been removed', () => {
+      const input = ironPlateFac.inputs[0]
+      deleteInputPair(ironPlateFac, input, factories, gameData)
+
+      expect(() => deleteInputPair(ironPlateFac, input, factories, gameData)).not.toThrow()
+      expect(ironPlateFac.inputs.length).toBe(0)
+    })
+  })
+
+  describe('isDuplicateImport', () => {
+    it('should detect a second import of the same part from the same factory', () => {
+      addInputToFactory(mockDependantFactory, {
+        factoryId: mockFactory.id,
+        outputPart: 'IronIngot',
+        amount: 100,
+      })
+      mockDependantFactory.inputs.push({
+        factoryId: mockFactory.id,
+        outputPart: 'IronIngot',
+        amount: 50,
+      })
+
+      expect(isDuplicateImport(mockDependantFactory, 1)).toBe(true)
+    })
+
+    it('should not flag the same part imported from different factories', () => {
+      const otherFactory = newFactory('Other Iron Ingots', 0, 107)
+      addInputToFactory(mockDependantFactory, {
+        factoryId: mockFactory.id,
+        outputPart: 'IronIngot',
+        amount: 100,
+      })
+      addInputToFactory(mockDependantFactory, {
+        factoryId: otherFactory.id,
+        outputPart: 'IronIngot',
+        amount: 50,
+      })
+
+      expect(isDuplicateImport(mockDependantFactory, 1)).toBe(false)
+    })
+
+    it('should not flag rows the user is still filling in', () => {
+      addInputToFactory(mockDependantFactory, { factoryId: null, outputPart: null, amount: 0 })
+      addInputToFactory(mockDependantFactory, { factoryId: null, outputPart: null, amount: 0 })
+
+      expect(isDuplicateImport(mockDependantFactory, 1)).toBe(false)
     })
   })
 

@@ -1,7 +1,7 @@
 name: "Backend: Trigger Deployment Webhook"
 
 # Reusable, and deliberately the last link in the chain. Pokes the webhooks
-# server, which SSHes to the API box and runs /root/update.sh there.
+# server, which SSHes to the API box and redeploys it there.
 #
 #   POST <WEBHOOK_URL>   — the deploy hook on the webhooks host
 #
@@ -21,20 +21,29 @@ jobs:
   send-webhook:
     name: Trigger deployment
     runs-on: ubuntu-latest
+    # Backstop only. --max-time below should resolve first.
+    timeout-minutes: 5
     steps:
+      # curl rather than an action. Every Actions wrapper for this leaves Node's
+      # default agent in place, and since Node 19 https.globalAgent carries
+      # timeout: 5000 — so the socket is killed at 5s no matter what timeout the
+      # action was given, and the error still quotes the configured value. The
+      # hook waits for the whole deploy, so that fired on every single run.
       - name: Trigger webhook
-        uses: ramzzisudip/secure-github-webhook@0.3.0
-        with:
-          url: "${{ secrets.WEBHOOK_URL }}"
-          data: '{ "application": "satisfactory-factories" }'
-          timeout: 2000
-          hmacSecret: "${{ secrets.WEBHOOK_SECRET }}"
-
-      # A green tick here means the webhook server accepted the request, NOT
-      # that the deploy worked: the hook returns 200 without waiting for the
-      # SSH, so a failed deploy still looks successful in Actions. The real
-      # confirmation is /root/deploy.log on the API box.
-      - name: What green means here
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
-          echo "Webhook accepted. This does NOT confirm the deploy succeeded."
-          echo "Confirm on the box: ssh sf 'tail -5 /root/deploy.log'"
+          body='{"application":"satisfactory-factories"}'
+          signature=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -r | cut -d' ' -f1)
+
+          # The hook answers 200 or 500 carrying the deploy's own output, so this
+          # step's result is the deploy's result — green here now does mean deployed.
+          # 180s clears the ~100s at which the proxy in front gives up and returns a
+          # 524, which at least says the deploy was still running.
+          curl --fail-with-body --silent --show-error --max-time 180 \
+            --header 'Content-Type: application/json' \
+            --header "X-Hub-Signature-256: sha256=$signature" \
+            --header "X-Hub-SHA: $GITHUB_SHA" \
+            --data "$body" \
+            "$WEBHOOK_URL"

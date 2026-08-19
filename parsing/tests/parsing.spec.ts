@@ -20,7 +20,7 @@ describe('common', () => {
 
     describe('parsing tests', () => {
         test('parts should be of expected length', async () => {
-            expect(Object.keys(results.items.parts).length).toBe(156);
+            expect(Object.keys(results.items.parts).length).toBe(157);
         })
         test('raw resources should be of expected length', async () => {
             //debugging code to print out all raw resources for verification
@@ -61,12 +61,12 @@ describe('common', () => {
         })
 
         test('recipe length should be correct', () => {
-            expect(results.recipes.length).toBe(291);
+            expect(results.recipes.length).toBe(306);
         })
 
 
         test('buildings should generate correct data', () => {
-            expect(Object.keys(results.buildings).length).toBe(17);
+            expect(Object.keys(results.buildings).length).toBe(24);
             expect(results.buildings).toStrictEqual({
                 assemblermk1: 15,
                 blender: 75,
@@ -86,6 +86,15 @@ describe('common', () => {
                 packager: 10,
                 quantumencoder: 0.1,  // This has variable power consumption and is calculated in the recipe
                 smeltermk1: 4,
+                // Extractors: placed on resource nodes, so they never appear in mProducedIn
+                minermk1: 5,
+                minermk2: 15,
+                minermk3: 45,
+                oilpump: 40,
+                waterpump: 20,
+                // Resource wells: the pressurizer draws the power, the satellites draw none.
+                frackingsmasher: 150,
+                frackingextractor: 0,
             })
         })
 
@@ -136,7 +145,6 @@ describe('common', () => {
                 "Crystal",
                 "Crystal_mk2",
                 "Crystal_mk3",
-                "SAM",
                 "Gift",
             ];
 
@@ -153,6 +161,11 @@ describe('common', () => {
             expect(results.items.parts["PlutoniumWaste"].name).toBe('Plutonium Waste');
         });
 
+        test('SAM is producible now it has an extraction recipe', () => {
+            expect(results.items.parts["SAM"]).toBeDefined();
+            expect(results.items.rawResources["SAM"]).toBeDefined();
+        });
+
         test('burnable collectables must still have power generation recipes', () => {
             const fuels = ["Leaves", "Wood", "Mycelia"];
 
@@ -163,6 +176,144 @@ describe('common', () => {
                 expect(recipe).toBeDefined();
                 expect(recipe.ingredients[0].part).toBe(fuel);
             });
+        });
+    })
+
+    // Extraction recipes are synthetic — extractors sit on resource nodes and never appear in
+    // mProducedIn — so every field is asserted here rather than trusted from the game data.
+    describe('extraction recipes', () => {
+        const findExtraction = (id: string): ParserRecipe =>
+            results.recipes.find((recipe: ParserRecipe) => recipe.id === id);
+
+        test('every mineable solid gets a miner recipe with all three marks', () => {
+            const solids = [
+                'OreIron', 'OreCopper', 'OreGold', 'Stone', 'Coal',
+                'RawQuartz', 'Sulfur', 'OreBauxite', 'OreUranium', 'SAM',
+            ];
+
+            solids.forEach(part => {
+                const recipe = findExtraction(`Extract_${part}`);
+                expect(recipe).toBeDefined();
+                expect(recipe.ingredients).toEqual([]);
+                expect(recipe.products).toEqual([{ part, amount: 1, perMin: 60, isByProduct: false }]);
+                expect(recipe.isAlternate).toBe(false);
+                expect(recipe.extraction?.purities).toEqual(['impure', 'normal', 'pure']);
+                expect(recipe.extraction?.extractors).toEqual([
+                    { building: 'minermk1', ratePerMin: 60 },
+                    { building: 'minermk2', ratePerMin: 120 },
+                    { building: 'minermk3', ratePerMin: 240 },
+                ]);
+                // The reference rate must be the first extractor at normal purity, since every
+                // building group's output is expressed as a multiple of it.
+                expect(recipe.products[0].perMin).toBe(recipe.extraction?.extractors[0].ratePerMin);
+                expect(recipe.building).toEqual({ name: 'minermk1', power: 5 });
+            });
+        });
+
+        test('oil extraction is purity-based at 120 m3/min on a normal node', () => {
+            const recipe = findExtraction('Extract_LiquidOil');
+            expect(recipe.displayName).toBe('Crude Oil (Oil Extractor)');
+            expect(recipe.products[0]).toEqual({ part: 'LiquidOil', amount: 1, perMin: 120, isByProduct: false });
+            expect(recipe.extraction?.purities).toEqual(['impure', 'normal', 'pure']);
+            expect(recipe.extraction?.extractors).toEqual([{ building: 'oilpump', ratePerMin: 120 }]);
+            expect(recipe.building).toEqual({ name: 'oilpump', power: 40 });
+        });
+
+        test('water has no purity — a flat 120 m3/min', () => {
+            const recipe = findExtraction('Extract_Water');
+            expect(recipe.displayName).toBe('Water (Water Extractor)');
+            expect(recipe.products[0]).toEqual({ part: 'Water', amount: 1, perMin: 120, isByProduct: false });
+            expect(recipe.extraction?.purities).toEqual(['normal']);
+            expect(recipe.extraction?.extractors).toEqual([{ building: 'waterpump', ratePerMin: 120 }]);
+            expect(recipe.building).toEqual({ name: 'waterpump', power: 20 });
+        });
+
+        test('collectables never get an extraction recipe', () => {
+            ['Leaves', 'Wood', 'Mycelia', 'HogParts', 'Crystal', 'NitrogenGas'].forEach(part => {
+                expect(findExtraction(`Extract_${part}`)).toBeUndefined();
+            });
+        });
+
+        // "Iron Ore (Limestone)" sits next to "Iron Ore (Miner)" in the recipe selector and reads
+        // as though the ore just comes from limestone, so the Converter recipes name the process.
+        test('converter recipes for raw resources name the conversion', () => {
+            const expected: Record<string, string> = {
+                Iron_Limestone: 'Iron Ore (Convert: Limestone)',
+                Quartz_Coal: 'Raw Quartz (Convert: Coal)',
+                Quartz_Bauxite: 'Raw Quartz (Convert: Bauxite)',
+                Uranium_Bauxite: 'Uranium Ore (Convert: Bauxite)',
+                Nitrogen_Caterium: 'Nitrogen Gas (Convert: Caterium)',
+            };
+
+            Object.entries(expected).forEach(([id, displayName]) => {
+                expect(results.recipes.find((recipe: ParserRecipe) => recipe.id === id).displayName).toBe(displayName);
+            });
+        });
+
+        test('every raw-producing converter recipe is relabelled, and nothing else is', () => {
+            const rawResources = new Set(Object.keys(results.items.rawResources));
+            const converterRaw = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.building.name === 'converter' && rawResources.has(recipe.products[0].part));
+
+            expect(converterRaw.length).toBe(17);
+            converterRaw.forEach((recipe: ParserRecipe) => {
+                expect(recipe.displayName).toContain('(Convert: ');
+            });
+
+            // Ficsite Ingot (Iron) and the like are Converter recipes too, but not raw resources.
+            const untouched = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.building.name === 'converter' && !rawResources.has(recipe.products[0].part));
+            untouched.forEach((recipe: ParserRecipe) => {
+                expect(recipe.displayName).not.toContain('Convert: ');
+            });
+        });
+
+        // A resource well is a powered pressurizer driving unpowered satellite extractors, each
+        // on its own micro-node. Rates are identical across all three well resources.
+        test('every well resource gets a well recipe with satellite rates', () => {
+            ['Water', 'LiquidOil', 'NitrogenGas'].forEach(part => {
+                const recipe = findExtraction(`Extract_${part}_Well`);
+                expect(recipe).toBeDefined();
+                expect(recipe.ingredients).toEqual([]);
+                expect(recipe.products).toEqual([{ part, amount: 1, perMin: 60, isByProduct: false }]);
+                expect(recipe.building).toEqual({ name: 'frackingsmasher', power: 150 });
+                // Purity sits on each satellite, not on the well.
+                expect(recipe.extraction?.purities).toEqual([]);
+                expect(recipe.extraction?.well).toEqual({
+                    satelliteBuilding: 'frackingextractor',
+                    satelliteRates: { impure: 30, normal: 60, pure: 120 },
+                });
+            });
+        });
+
+        test('nitrogen gas is only obtainable from a well', () => {
+            const nitrogenExtraction = results.recipes.filter((recipe: ParserRecipe) =>
+                recipe.extraction && recipe.products[0].part === 'NitrogenGas');
+
+            expect(nitrogenExtraction.length).toBe(1);
+            expect(nitrogenExtraction[0].id).toBe('Extract_NitrogenGas_Well');
+        });
+
+        test('solid resources never get a well', () => {
+            ['OreIron', 'Coal', 'RawQuartz'].forEach(part => {
+                expect(findExtraction(`Extract_${part}_Well`)).toBeUndefined();
+                expect(findExtraction(`Extract_${part}`).extraction?.well).toBeUndefined();
+            });
+        });
+
+        test('the satellite extractor is recorded as drawing no power', () => {
+            // It genuinely draws nothing — the pressurizer pays the whole 150 MW — so the
+            // variable-power sentinel must not invent a draw for it.
+            expect(results.buildings.frackingextractor).toBe(0);
+            expect(results.buildings.frackingsmasher).toBe(150);
+        });
+
+        test('every extractor building is in the buildings map with its power draw', () => {
+            expect(results.buildings.minermk1).toBe(5);
+            expect(results.buildings.minermk2).toBe(15);
+            expect(results.buildings.minermk3).toBe(45);
+            expect(results.buildings.oilpump).toBe(40);
+            expect(results.buildings.waterpump).toBe(20);
         });
     })
 

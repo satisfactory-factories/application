@@ -7,6 +7,27 @@ export interface RecipeItem {
   isByProduct?: boolean;
 }
 
+export type NodePurity = 'impure' | 'normal' | 'pure'
+
+// Extraction recipes have no ingredients: an extractor placed on a resource node produces it
+// outright. The mark and node purity are chosen per building group, so the recipe only declares
+// what is available. `extractors` is ordered cheapest first and its first entry's rate is the
+// recipe's reference rate — every group's real output is expressed as a multiple of it.
+// A resource well is a powered pressurizer driving unpowered satellite extractors, each on its
+// own micro-node with its own purity. The pressurizer's clock scales every satellite at once,
+// so a well behaves as one overclockable building whose output is the sum of its satellites.
+export interface RecipeWell {
+  satelliteBuilding: string;
+  satelliteRates: { [purity in NodePurity]: number };
+}
+
+export interface RecipeExtraction {
+  // Empty for wells: purity sits on each satellite, not on the group.
+  purities: NodePurity[];
+  extractors: { building: string; ratePerMin: number }[];
+  well?: RecipeWell;
+}
+
 export interface Recipe {
   id: string;
   displayName: string;
@@ -21,6 +42,7 @@ export interface Recipe {
     minPower?: number;
     maxPower?: number;
   }
+  extraction?: RecipeExtraction;
   isAlternate: boolean;
   isFicsmas: boolean;
 }

@@ -6,7 +6,7 @@
           <i class="fas fa-box" /><span class="ml-2">Item</span>
         </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
-          <i class="fas fa-abacus" /><span class="ml-2">Satisfaction</span>
+          <i class="fas fa-balance-scale" /><span class="ml-2">Satisfaction</span>
           <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
         </th>
         <th class="text-h6 text-center" scope="row">
@@ -17,8 +17,8 @@
     </thead>
     <tbody>
       <template v-for="(part, partId) in filteredParts" :key="partId">
-        <tr>
-          <td class="border-e-md name" :class="satisfactionShading(part)">
+        <tr :id="`${factory.id}-satisfaction-item-${partId}`">
+          <td class="border-e-md name" :class="satisfactionShading(part, partId.toString())">
             <div class="d-flex justify-space-between">
               <div class="d-flex align-center" :class="classes(part)">
                 <game-asset
@@ -38,31 +38,38 @@
                   <div>
                     <b>{{ getPartDisplayName(partId.toString()) }}</b>
                   </div>
+                  <!-- Each chip leads with the icon its concept wears elsewhere in the app, so a
+                       row of them can be read at a glance rather than word by word. -->
                   <v-chip v-if="showProductChip(factory, partId.toString())" class="sf-chip blue x-small mr-2">
-                    Product
+                    <i class="fas fa-cube mr-1" />Product
                   </v-chip>
                   <v-chip v-if="showByProductChip(factory, partId.toString())" class="sf-chip byproduct x-small mr-2">
-                    Byproduct
+                    <i class="fas fa-cubes mr-1" />Byproduct
                   </v-chip>
                   <v-tooltip v-if="showRecycledChip(factory, partId.toString())" bottom>
                     <template #activator="{ props: activatorProps }">
                       <v-chip v-bind="activatorProps" class="sf-chip green x-small mr-2">
-                        <span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
+                        <i class="fas fa-recycle mr-1" /><span class="mr-1">Recycled</span> <i class="fas fa-info-circle" />
                       </v-chip>
                     </template>
                     <span>This byproduct is used as an ingredient by other products within the same factory.<br>The planner subtracts it from the amount you need to supply via Imports, so you don't over-feed the system.</span>
                   </v-tooltip>
                   <v-chip v-if="showImportedChip(factory, partId.toString())" class="sf-chip import x-small mr-2">
-                    Imported
+                    <i class="fas fa-dolly mr-1" />Imported
                   </v-chip>
-                  <v-chip v-if="showRawChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    Raw
+                  <!-- White to match the factory chips this part's export requests appear as
+                       in the Exports column to the right. -->
+                  <v-chip v-if="showExportedChip(factory, partId.toString())" class="sf-chip factory x-small mr-2">
+                    <i class="fas fa-truck-container mr-1" />Exported
+                  </v-chip>
+                  <v-chip v-if="showManuallyGatheredChip(factory, partId.toString())" class="sf-chip hand-gathered x-small mr-2">
+                    <i class="fas fa-hands mr-1" />Manually gathered
                   </v-chip>
                   <v-chip v-if="showUnpackagedChip(factory, partId.toString())" class="sf-chip cyan x-small mr-2">
-                    Unpackaged
+                    <i class="fas fa-box-open mr-1" />Unpackaged
                   </v-chip>
                   <v-chip v-if="showInternalChip(factory, partId.toString())" class="sf-chip green x-small mr-2">
-                    Internal
+                    <i class="fas fa-industry mr-1" />Internal
                   </v-chip>
                 </div>
               </div>
@@ -173,7 +180,7 @@
               </div>
             </div>
           </td>
-          <td class="border-e-md satisfaction" :class="satisfactionShading(part)">
+          <td class="border-e-md satisfaction" :class="satisfactionShading(part, partId.toString())">
             <div v-if="satisfactionBreakdowns">
               <div class="text-green d-flex justify-space-between align-center">
                 <span>Production</span>
@@ -231,21 +238,72 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
-              <template v-if="showRawChip(factory, partId.toString())">
+              <!-- Blue, and never alongside No demand: an item the game gives no consumer is
+                   finished, not spare. -->
+              <template v-if="isEndProduct(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Raw</span> <i class="fas fa-info-circle" />
+                    <v-chip v-bind="activatorProps" class="sf-chip blue small">
+                      <i class="fas fa-flag-checkered mr-2" /><span>End product</span>
                     </v-chip>
                   </template>
-                  <span>Raw Items e.g. Iron Ore are always satisfied. Expand the Satisfaction Breakdowns or look at the Imports section for details of how much is needed.</span>
+                  <span>Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it.</span>
+                </v-tooltip>
+              </template>
+              <!-- The byproduct pair, exclusive by construction. Sinkable is the soft one: a way
+                   out exists, so the chip says so and the factory stays green. -->
+              <template v-if="isPotentialBlockage(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
+                      <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
+                    </v-chip>
+                  </template>
+                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update.</span>
+                </v-tooltip>
+              </template>
+              <template v-if="isUnhandledByproduct(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
+                      <i class="fas fa-exclamation-triangle mr-2" /><span>Unhandled byproduct</span>
+                    </v-chip>
+                  </template>
+                  <span>Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will.</span>
+                </v-tooltip>
+              </template>
+              <!-- Amber rather than red, and it leaves the factory green: making something
+                   nothing asks for is often the whole point of the factory. The two chips above
+                   cover the byproduct case, which says the same thing with more consequence. -->
+              <template v-if="hasNoDemand(factory, partId.toString()) && !isPotentialBlockage(factory, partId.toString()) && !isUnhandledByproduct(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <!-- No trailing info icon: the question mark already says the chip is
+                         explaining itself, and hovering it is how you read the rest. -->
+                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
+                      <i class="fas fa-question-circle mr-2" /><span>No demand</span>
+                    </v-chip>
+                  </template>
+                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking, so if you are sinking this, ignore it for now.</span>
+                </v-tooltip>
+              </template>
+              <!-- The balance only needs annotating where the number isn't earned, which is now
+                   only ever the resources the game gives you no way to extract. -->
+              <template v-if="showManuallyGatheredChip(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip hand-gathered small">
+                      <i class="fas fa-hands mr-2" /><span class="mr-2">{{ formatNumber(part.amountSuppliedViaRaw) }}/min gathered</span> <i class="fas fa-info-circle" />
+                    </v-chip>
+                  </template>
+                  <span>There is no extractor in the game for this resource: Leaves, Wood, Mycelia, alien remains, power slugs and FICSMAS gifts are all picked up by hand.<br>The planner takes them as supplied, because there is nothing it could ask you to build.</span>
                 </v-tooltip>
               </template>
               <template v-if="showUnpackagedChip(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip cyan small">
-                      <span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
+                      <i class="fas fa-box-open mr-2" /><span class="mr-2">Unpackaged</span> <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>This fluid is supplied by unpackaging within this factory rather than being drawn from raw resources.</span>
@@ -291,7 +349,7 @@
               </div>
             </div>
           </td>
-          <td :class="satisfactionShading(part)">
+          <td :class="satisfactionShading(part, partId.toString())">
             <p v-if="getPartExportRequests(factory, partId.toString()).length === 0" class="text-center">
               -
             </p>
@@ -300,30 +358,50 @@
                 <v-chip
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="sf-chip small factory"
+                  class="sf-chip sf-chip-clickable small factory"
                   :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
-                  <i class="fas fa-industry" />
+                  <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
                   </span>
+                  <v-btn
+                    class="chip-jump-btn ml-2"
+                    color="primary"
+                    icon="fas fa-eye"
+                    size="x-small"
+                    title="Jump to this factory"
+                    variant="flat"
+                    @click.stop="navigateToFactory(request.requestingFactoryId)"
+                  />
                 </v-chip>
               </div>
             </div>
           </td>
-          <td class="text-right" :class="satisfactionShading(part)" style="width: 40px">
-            <v-btn
+          <td class="text-right" :class="satisfactionShading(part, partId.toString())" style="width: 40px">
+            <v-tooltip
               v-if="openedCalculator !== partId && getPartExportRequests(factory, partId.toString()).length > 0"
-              class="rounded"
-              color="primary"
-              icon="fas fa-calculator"
-              size="small"
-              title="Export Calculator"
-              variant="outlined"
-              @click="initCalculator(factory, partId.toString(), factory.exportCalculator[partId]?.selected)"
-            />
+              location="top"
+            >
+              <template #activator="{ props: activatorProps }">
+                <!-- Span carries the activator: a disabled button gets no pointer events, so the tooltip never fires. -->
+                <span v-bind="activatorProps">
+                  <v-btn
+                    class="rounded"
+                    color="primary"
+                    :disabled="!factory.exportCalculator[partId]?.selected"
+                    icon="fas fa-calculator"
+                    size="small"
+                    variant="outlined"
+                    @click="initCalculator(factory, partId.toString(), factory.exportCalculator[partId]?.selected)"
+                  />
+                </span>
+              </template>
+              <span v-if="factory.exportCalculator[partId]?.selected">Export Calculator</span>
+              <span v-else>Please select a factory from the left</span>
+            </v-tooltip>
             <v-btn
               v-if="openedCalculator === partId"
               class="rounded"
@@ -370,16 +448,18 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
+  import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
     addShortageToFactory,
     convertWasteToGeneratorFuel,
     showByProductChip,
+    showExportedChip,
     showImportedChip,
     showInternalChip,
+    showManuallyGatheredChip,
     showProductChip,
-    showRawChip,
     showRecycledChip,
     showSatisfactionItemButton,
     showUnpackagedChip,
@@ -438,10 +518,13 @@
     }
   }
 
-  const satisfactionShading = (part: PartMetrics) => {
+  const satisfactionShading = (part: PartMetrics, partId: string) => {
     return {
       'border-green': part.satisfied,
       'border-red': !part.satisfied,
+      // A byproduct with nowhere to go is satisfied by the numbers and still stops the line, so
+      // it takes the row the same way a shortage does, one tier down.
+      'border-amber': isUnhandledByproduct(props.factory, partId),
     }
   }
 
@@ -466,7 +549,7 @@
       const targetFactory = newFactory(`${getPartDisplayName(part)} Factory`)
       appStore.addFactory(targetFactory)
 
-      addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part))
+      addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part), Math.abs(factory.parts[part]?.amountRemaining ?? 0))
       calculateFactories(appStore.getFactories(), getGameData())
       eventBus.emit('toast', { message: `Created "${targetFactory.name}" producing "${getPartDisplayName(part)}"!` })
 
@@ -552,11 +635,17 @@
   }
 
   const closeCalculator = async () => {
+    const part = openedCalculator.value
     calculatorShow.value = false
 
     await new Promise(resolve => setTimeout(resolve, 300))
 
     openedCalculator.value = ''
+
+    // The selection lights up the export chip, so a closed tray must not leave one selected.
+    if (part && props.factory.exportCalculator[part]) {
+      props.factory.exportCalculator[part].selected = null
+    }
   }
 
   const changeCalculatorSelection = (factory: Factory, requestFacIdRaw: number | string | null | undefined, part: string) => {
@@ -585,6 +674,8 @@
   }
 
   const isRequestSelected = (factory: Factory, factoryId: string, part: string) => {
+    // Plans saved before the selection was cleared on close can still carry one; only honour it while the tray is open.
+    if (openedCalculator.value !== part) return false
     if (!factory.exportCalculator[part]) {
       // console.error(`Could not find export calculator settings for part ${part}`)
       return false
@@ -669,6 +760,12 @@ table {
           border-block: thin solid var(--sf-problem-border) !important;
         }
 
+        // Declared after red so a row that is somehow both reads as the worse of the two.
+        &.border-amber:not(.border-red) {
+          background: var(--sf-status-warning-bg) !important;
+          border-block: thin solid var(--sf-status-warning-border) !important;
+        }
+
         &.name {
           height: 78px !important;
           width: 500px;
@@ -685,6 +782,16 @@ table {
       }
     }
   }
+}
+
+// Sits inside the export chip, so it has to shed the icon button's circle and
+// claw back the chip's right padding to avoid looking bolted on.
+.chip-jump-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 4px !important;
+  margin-right: -4px;
 }
 
 .calculator-tray {

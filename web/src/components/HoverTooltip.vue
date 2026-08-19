@@ -1,0 +1,75 @@
+<!-- One tooltip for the whole application.
+
+     Mounted once, at the app shell. A plan renders hundreds of item and building images, and
+     giving each one its own <v-tooltip> would mount hundreds of overlay components to show at most
+     one at a time. Instead anything that wants a tooltip marks itself with `data-hover-tooltip`
+     and a single delegated mouseover listener points this one tooltip at whatever is under the
+     cursor, so the cost is one component and one listener no matter how big the plan gets.
+
+     `data-hover-link` adds the second line for something that opens elsewhere when clicked. -->
+<template>
+  <v-tooltip
+    v-if="target"
+    :key="nonce"
+    location="top"
+    :model-value="true"
+    :target="target"
+  >
+    <div>{{ text }}</div>
+    <!-- Two elements rather than one string with a <br>: v-tooltip's `text` escapes markup, and
+         v-html here would be interpolating a display name straight into the DOM. `note` is the
+         same idea for a caller with something to add — what a badge on the icon means. -->
+    <div v-if="note" class="hint">{{ note }}</div>
+    <div v-if="link" class="hint">Click to open on wiki</div>
+  </v-tooltip>
+</template>
+
+<script setup lang="ts">
+  import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+  const target = ref<HTMLElement | null>(null)
+  const text = ref('')
+  const note = ref('')
+  const link = ref(false)
+  // Remounts the overlay per target: reusing it makes the tooltip slide across the screen from
+  // the previous image rather than appearing over the new one.
+  const nonce = ref(0)
+
+  const clear = () => {
+    target.value = null
+  }
+
+  const onPointerOver = (event: Event) => {
+    const found = (event.target as Element | null)?.closest?.('[data-hover-tooltip]')
+    const el = found instanceof HTMLElement ? found : null
+
+    if (el === target.value) return
+    if (!el) return clear()
+
+    text.value = el.dataset.hoverTooltip ?? ''
+    note.value = el.dataset.hoverTooltipNote ?? ''
+    link.value = 'hoverLink' in el.dataset
+    target.value = el
+    nonce.value++
+  }
+
+  onMounted(() => {
+    document.addEventListener('mouseover', onPointerOver, { passive: true })
+    // The pointer leaving the window fires no further mouseover, so the tooltip would hang.
+    document.addEventListener('mouseleave', clear, { passive: true })
+    window.addEventListener('blur', clear, { passive: true })
+  })
+
+  onBeforeUnmount(() => {
+    document.removeEventListener('mouseover', onPointerOver)
+    document.removeEventListener('mouseleave', clear)
+    window.removeEventListener('blur', clear)
+  })
+</script>
+
+<style scoped>
+.hint {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+</style>

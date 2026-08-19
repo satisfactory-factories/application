@@ -15,7 +15,9 @@ import {
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
   calculateFactoryDependencies,
+  carryPassMarks,
   flushInvalidRequests,
+  markPassCompleted,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
@@ -57,9 +59,30 @@ export const findFacByName = (name: string, factories: Factory[]): Factory => {
   return factory
 }
 
+// Factory IDs key dependency requests and inputs, so a collision silently merges two
+// factories' exports (and deleting one takes the other's imports with it). Math.random()
+// over 10k values collides ~50% of the time at 120 factories, so IDs must be issued
+// against the plan. 0 is never issued: findFac and the input validation both read it as
+// "not set". NOSONAR: a display identifier, not a security token.
+export const generateFactoryId = (factories: Factory[] = []): number => {
+  const taken = new Set(factories.map(factory => factory.id))
+  let range = 10000
+
+  for (let attempt = 0; ; attempt++) {
+    const id = Math.floor(Math.random() * range) + 1 // NOSONAR
+    if (!taken.has(id)) {
+      return id
+    }
+    // Saturated ID space (a very large plan) — widen rather than spin forever.
+    if (attempt > 0 && attempt % 50 === 0) {
+      range *= 10
+    }
+  }
+}
+
 export const newFactory = (name = 'A new factory', order?: number, id?: number): Factory => {
   return {
-    id: id ?? Math.floor(Math.random() * 10000),
+    id: id ?? generateFactoryId(),
     name,
     products: [],
     byProducts: [],
@@ -170,13 +193,13 @@ const calculateFactoryEngine = (
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
     if (shouldSyncItemToGroups(product, ItemType.Product)) {
-      checkForItemUpdate(product, factory)
+      checkForItemUpdate(product, factory, ItemType.Product)
     }
   })
   factory.powerProducers.forEach(producer => {
     syncBuildingGroups(producer, ItemType.Power, factory, modes)
     if (shouldSyncItemToGroups(producer, ItemType.Power)) {
-      checkForItemUpdate(producer, factory)
+      checkForItemUpdate(producer, factory, ItemType.Power)
     }
   })
 
@@ -206,6 +229,10 @@ const calculateFactoryEngine = (
   allFactories.forEach(fac => {
     calculateHasProblem(fac)
   })
+
+  // Everything this factory's own pass writes now exists, byproducts included. flushInvalidRequests
+  // reads this to decide whether it may judge the factory's outputs at all.
+  markPassCompleted(factory)
 
   // Emit an event that the data has been updated so it can be synced.
   // During a clone run the wrapper emits after committing, with the real objects.
@@ -262,10 +289,41 @@ let cloneRunDepth = 0
 // operating on the clone and must run the engine directly rather than re-cloning.
 const inCloneRun = () => cloneRunDepth > 0
 
-const cloneForCalculation = (factories: Factory[]): Factory[] =>
+// Unwraps every proxy on the way down, producing a plain copy. Only used as the fallback
+// below — it is a hand-rolled traversal where structuredClone is native.
+const deepRaw = (value: unknown): unknown => {
+  const raw = toRaw(value)
+
+  if (raw === null || typeof raw !== 'object') {
+    return raw
+  }
+  if (Array.isArray(raw)) {
+    return raw.map(deepRaw)
+  }
+
+  const copy: Record<string, unknown> = {}
+  for (const key of Object.keys(raw)) {
+    copy[key] = deepRaw((raw as Record<string, unknown>)[key])
+  }
+  return copy
+}
+
+const cloneForCalculation = (factories: Factory[]): Factory[] => {
   // toRaw both the array and its elements: callers hand us either the store's reactive
   // array (raw elements inside) or a plain array that may contain reactive proxies.
-  structuredClone(toRaw(factories).map(factory => toRaw(factory)))
+  const raws = toRaw(factories).map(factory => toRaw(factory))
+
+  try {
+    return carryPassMarks(raws, structuredClone(raws))
+  } catch (err) {
+    // structuredClone refuses a Proxy, and assigning the result of a reactive array's
+    // filter() stores the proxies it read out as elements — see rawArray in common.ts,
+    // which every such site now uses. A miss would otherwise break every subsequent
+    // calculation, so unwrap the hard way rather than leaving the plan uncalculated.
+    console.error('factory: cloneForCalculation: the plan holds a reactive proxy, falling back to a deep unwrap. This is a bug — the assignment that stored it should use rawArray().', err)
+    return carryPassMarks(raws, deepRaw(raws) as Factory[])
+  }
+}
 
 // Diff the calculation results onto the live factories; returns the ones that changed.
 const commitResults = (targets: Factory[], results: Factory[]): Factory[] => {
@@ -310,6 +368,10 @@ export const calculateFactory = (
     cloneRunDepth--
   }
 
+  // The pass ran on the clones, so the marks landed there. Carry them back onto the live plan
+  // or the next calculation starts believing nothing has ever been calculated.
+  carryPassMarks(results, allFactories)
+
   const changed = commitResults(allFactories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
   // The edited factory's user-made change (e.g. a new product amount) happened before
@@ -338,6 +400,8 @@ export const calculateFactories = (
     cloneRunDepth--
   }
 
+  carryPassMarks(results, factories)
+
   const changed = commitResults(factories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
   eventBus.emit('calculationsCompleted')
@@ -347,26 +411,43 @@ export const countActiveTasks = (factory: Factory) => {
   return factory.tasks.filter(task => !task.completed).length
 }
 
+// Position of a factory among the others in its own group, and how many of them there are.
+// The up/down buttons and the reorder below both work in these terms rather than global ones:
+// a swap across a group boundary would either tear the group apart or, once the grouping sort
+// re-ran, silently undo itself.
+export const factoryPositionInGroup = (
+  factory: Factory,
+  allFactories: Factory[],
+): { index: number, total: number } => {
+  const siblings = allFactories.filter(
+    candidate => (candidate.group?.id ?? null) === (factory.group?.id ?? null)
+  )
+  return { index: siblings.indexOf(factory), total: siblings.length }
+}
+
 export const reorderFactory = (factory: Factory, direction: string, allFactories: Factory[]) => {
-  const currentOrder = factory.displayOrder
-  let targetOrder
+  const siblings = allFactories.filter(
+    candidate => (candidate.group?.id ?? null) === (factory.group?.id ?? null)
+  )
+  const currentIndex = siblings.indexOf(factory)
+  const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-  if (direction === 'up' && currentOrder > 0) {
-    targetOrder = currentOrder - 1
-  } else if (direction === 'down' && currentOrder < allFactories.length - 1) {
-    targetOrder = currentOrder + 1
-  } else {
-    return // Invalid move
+  if (currentIndex === -1 || targetIndex < 0 || targetIndex >= siblings.length) {
+    return // At the edge of its own group
   }
 
-  // Find the target factory and swap display orders
-  const targetFactory = allFactories.find(fac => fac.displayOrder === targetOrder)
-  if (targetFactory) {
-    targetFactory.displayOrder = currentOrder
-    factory.displayOrder = targetOrder
-  }
+  // Swap the two within the flat array, which keeps the group contiguous by construction, then
+  // reindex from position. Not regenerateSortOrders(): that sorts by the OLD displayOrder first,
+  // which would put the swap straight back.
+  const target = siblings[targetIndex]
+  const from = allFactories.indexOf(factory)
+  const to = allFactories.indexOf(target)
+  allFactories[from] = target
+  allFactories[to] = factory
 
-  regenerateSortOrders(allFactories)
+  allFactories.forEach((entry, index) => {
+    entry.displayOrder = index
+  })
 }
 
 export const regenerateSortOrders = (factories: Factory[]) => {

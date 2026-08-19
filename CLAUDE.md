@@ -57,16 +57,16 @@ This is the core of the app. Everything else is UI around it.
 
 ### Backend (`backend/backend.ts`)
 
-Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT), `/save` + `/load` (authenticated plan sync), `/share` + `/share/:id` (shareable plans, rate-limited). Mongoose models in `backend/models/`. API base URL is selected in `web/src/config/config.ts` by `VITE_ENV`.
+Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT), `/save` + `/load` (authenticated plan sync), `/share` + `/share/:id` (shareable plans, rate-limited), `/hello` (liveness) and `/health` (liveness + a Mongo ping, 503 when the database is unreachable — this is what uptime monitoring points at). Mongoose models in `backend/models/`. API base URL is selected in `web/src/config/config.ts` by `VITE_ENV`.
 
 ### Game data versioning (important, easy to get wrong)
 
 When game recipes/items change, regenerate data via the parser, then:
 1. Copy the parser output to `web/public/gameData_v<version>.json` with a **new** version name.
-2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-01`) — this triggers clients to re-download.
+2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-07`) — this triggers clients to re-download.
 3. Delete the old `web/public/gameData_*.json`.
 
-The version tracks the game's minor version. See `README.md` for the full parser workflow.
+The version tracks the game's minor version. See `parsing/README.md` for the full parser workflow.
 
 ## Conventions
 

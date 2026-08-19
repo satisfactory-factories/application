@@ -1,7 +1,9 @@
+import { toRaw } from 'vue'
 import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactory, findFac } from '@/utils/factory-management/factory'
-import { calculateParts } from '@/utils/factory-management/parts'
+import { calculateParts, isAmountSatisfied } from '@/utils/factory-management/parts'
 import { DataInterface } from '@/interfaces/DataInterface'
+import { rawArray } from '@/utils/factory-management/common'
 
 // Adds dependencies between two factories.
 export const updateDependency = (
@@ -13,7 +15,7 @@ export const updateDependency = (
     const errorMsg = `Factory ${factory.name} is attempting to add a dependency to factory ${provider.name} with no output part. The invalid input has been deleted.`
     console.error(errorMsg)
     // Delete the invalid input
-    factory.inputs = factory.inputs.filter(i => i !== input)
+    factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
     alert(errorMsg)
     return
   }
@@ -44,7 +46,56 @@ export const updateDependency = (
   })
 }
 
+// An empty request array still renders as an export ("Factory X" with no parts against it),
+// so a key that has lost its last request must go with it.
+const pruneEmptyRequests = (factory: Factory): void => {
+  Object.keys(factory.dependencies.requests).forEach(requestedFactoryId => {
+    if (factory.dependencies.requests[requestedFactoryId]?.length === 0) {
+      delete factory.dependencies.requests[requestedFactoryId]
+    }
+  })
+}
+
 // Scans for invalid dependency requests and removes the request and the input from the erroneous factory.
+/**
+ * Factories whose own calculation pass has run to completion in this session.
+ *
+ * Deliberately a WeakSet rather than a field on Factory: it is transient bookkeeping about a
+ * calculation, not part of a saved plan, and it must never reach localStorage or the API. Clones
+ * made for a calculation run start unmarked, which is correct — a fresh run has to re-establish
+ * it. Marked by the engine at the end of every pass; see calculateFactoryEngine.
+ */
+const completedPass = new WeakSet<Factory>()
+
+// Always keyed on the RAW object. The live plan is a Vue reactive array, so reading an element out
+// of it hands back a proxy, while cloneForCalculation reads through toRaw — mark the proxy and the
+// next calculation looks up the raw, finds nothing, and treats a long-calculated plan as brand new.
+// Every spec in the repo builds plans as plain arrays, where proxy and raw are the same object, so
+// that failed only in the app.
+const rawOf = (factory: Factory): Factory => toRaw(factory)
+
+export const markPassCompleted = (factory: Factory): void => {
+  completedPass.add(rawOf(factory))
+}
+
+export const hasCompletedPass = (factory: Factory): boolean => completedPass.has(rawOf(factory))
+
+/**
+ * A clone is the same factory, so it inherits whether that factory has been calculated.
+ *
+ * Without this a single-factory recalculation could never judge anything: it clones the plan and
+ * flushInvalidRequests runs at the very START of the pass, so every clone would still be unmarked
+ * and a genuinely dead export would survive forever.
+ */
+export const carryPassMarks = (sources: Factory[], clones: Factory[]): Factory[] => {
+  sources.forEach((source, index) => {
+    if (clones[index] && completedPass.has(rawOf(source))) {
+      completedPass.add(rawOf(clones[index]))
+    }
+  })
+  return clones
+}
+
 export const flushInvalidRequests = (factories: Factory[], gameData: DataInterface): void => {
   // console.log('dependencies: flushInvalidRequests')
   factories.forEach(factory => {
@@ -53,14 +104,16 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
       return
     }
 
+    pruneEmptyRequests(factory)
+
     // Scan all requests for the factory
     Object.keys(factory.dependencies.requests).forEach(requestedFactoryId => {
-      const requests: FactoryDependencyRequest[] = factory.dependencies.requests[requestedFactoryId]
+      // deleteRequestPair recalculates both affected factories mid-loop, which rewrites this
+      // array (and can strip the key entirely, e.g. when a copied factory carries its
+      // original's requests). Iterate a snapshot and re-read the live array as we go.
+      const requests: FactoryDependencyRequest[] = [...(factory.dependencies.requests[requestedFactoryId] ?? [])]
 
-      // deleteRequestPair recalculates both affected factories mid-loop, which can strip
-      // this key from under the Object.keys snapshot (e.g. when a copied factory carries
-      // its original's requests). Nothing left to scan in that case.
-      if (!requests) {
+      if (requests.length === 0) {
         return
       }
 
@@ -73,41 +126,65 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         return // Nothing to do as the factory doesn't exist.
       }
 
+      // A factory that has not completed a pass yet (a template, or a plan built in code) cannot
+      // be asked "do you make this?" — the answer is built moments later, and judging it here
+      // deletes perfectly good export/import pairs on the plan's very first calculation.
+      //
+      // This used to be inferred from the part ledger being non-empty, which is NOT the same
+      // question and produced an order-dependent bug. The productCheck below reads `byProducts`
+      // and the power producers' byproducts, both written by the provider's OWN pass; but
+      // calculateFactoryDependencies fills a provider's `parts` as a side effect while
+      // processing a CONSUMER. So a provider sitting after its consumer in the array arrived
+      // here half-done: parts full, byproducts still empty. It looked calculated, failed the
+      // productCheck, and had the import and its matching export silently deleted.
+      //
+      // Whether that happened depended purely on array order. `[refinery, consumer]` kept the
+      // import and `[consumer, refinery]` lost it, on identical data.
+      const isCalculated = hasCompletedPass(factory)
+
       requests.forEach(request => {
+        // A previous iteration (or the recalculation it triggered) may already have removed it.
+        if (!factory.dependencies.requests[requestedFactoryId]?.includes(request)) {
+          return
+        }
+
         // Check if the requested part exists within the factory
         const foundPart = factory.parts[request.part]
 
         // If the product does not exist, remove the dependency and the input.
-        if (!foundPart) {
+        if (isCalculated && !foundPart) {
           console.warn(`flushInvalidRequests: partCheck Factory "${factory.name}" (${factory.id}) does not have the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)
+          pruneEmptyRequests(factory)
+          return
         }
+
         const foundProduct = factory.products.find(product => product.id === request.part)
         const foundByProduct = factory.byProducts.find(byProduct => byProduct.id === request.part)
         const foundPowerProducerByProduct = factory.powerProducers.find(powerProducer => powerProducer.byproduct?.part === request.part)
 
         // If a part is found, check if the part is produced within the factory. If it isn't, remove the dependency and the input.
         // Thankfully since we are doing the dependency calculation BEFORE the parts calculation, the part data will be eventually correct.
-        if (foundPart && (!foundProduct && !foundByProduct && !foundPowerProducerByProduct)) {
+        if (isCalculated && !foundProduct && !foundByProduct && !foundPowerProducerByProduct) {
           console.warn(`flushInvalidRequests: productCheck: Factory "${factory.name}" (${factory.id}) does not produce the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)
+          pruneEmptyRequests(factory)
+          return
         }
 
         // Check the other end for invalid inputs
         const foundInput = dependantFactory.inputs.find(input => input.factoryId === factory.id && input.outputPart === request.part)
         if (!foundInput) {
-          console.warn(`flushInvalidRequests: inputCheck: Found invalid input for "${factory.name}" (${factory.id}) was requesting ${request.part} from "${dependantFactory.name}" (${dependantFactory.id}) where it does not exist.`, foundInput)
+          console.warn(`flushInvalidRequests: inputCheck: Found invalid input for "${factory.name}" (${factory.id}) was requesting ${request.part} from "${dependantFactory.name}" (${dependantFactory.id}) where it does not exist.`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)
-        }
-
-        // If all requests from the factory have been removed, also delete the key.
-        if (factory.dependencies.requests[requestedFactoryId]?.length === 0) {
-          delete factory.dependencies.requests[requestedFactoryId]
+          pruneEmptyRequests(factory)
         }
       })
+
+      pruneEmptyRequests(factory)
     })
   })
 }
@@ -123,7 +200,7 @@ export const removeFactoryDependants = (factory: Factory, factories: Factory[]) 
         console.error(`Dependent factory ${dependentId} not found!`)
         return
       }
-      dependent.inputs = dependent.inputs.filter(input => input.factoryId !== factory.id)
+      dependent.inputs = rawArray(dependent.inputs.filter(input => input.factoryId !== factory.id))
 
       // Remove the dependency from the calling factory
       // Not that this massively matters as the factory is likely getting deleted
@@ -166,6 +243,11 @@ export const calculateFactoryDependencies = (
 ): void => {
   const providersToRecalculate = new Set<number>()
 
+  // A part can legitimately be imported from the same factory more than once (a plan saved
+  // before the UI blocked it, or a share link). One request per provider+part is what the
+  // export side renders, so the amounts are totalled rather than the last one winning.
+  const totals = new Map<string, { provider: Factory, input: FactoryInput, amount: number }>()
+
   factory.inputs.forEach(input => {
     // Handle the case where the user is mid-way selecting an input.
     if (input.factoryId === 0 || !input.outputPart) {
@@ -173,9 +255,12 @@ export const calculateFactoryDependencies = (
       return
     }
 
-    // Stop if the factory input is somehow the same as the factory itself.
+    // A factory cannot import from itself. Corrupt data, not a user action — drop the input
+    // rather than throwing, which would abort the whole plan's calculation.
     if (input.factoryId === factory.id) {
-      throw new Error(`Factory ${factory.id} is trying to add a dependency to itself!`)
+      console.error(`dependencies: calculateFactoryDependencies: Factory ${factory.id} is trying to add a dependency to itself! Removing input.`)
+      factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
+      return
     }
 
     const provider = factories.find(fac => fac.id === input.factoryId)
@@ -183,18 +268,33 @@ export const calculateFactoryDependencies = (
       console.error(`Factory with ID ${input.factoryId} not found.`)
 
       // Remove it from the inputs if this is the case as it's invalid.
-      factory.inputs = factory.inputs.filter(i => i !== input)
+      factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
       return
     }
 
     // Check if the provider factory has the part that the dependant factory is requesting.
-    if (!loadMode && !provider.parts[input.outputPart]) {
+    // A provider with no part ledger at all has not been calculated yet — its ledger is
+    // built moments later, and concluding "it doesn't make this" from an empty one deletes
+    // valid imports. deleteRequestPair recalculates mid-flush, which is how that happens
+    // even when the caller passed loadMode.
+    const providerCalculated = Object.keys(provider.parts).length > 0
+    if (!loadMode && providerCalculated && !provider.parts[input.outputPart]) {
       console.error(`dependencies: calculateFactoryDependencies: Factory ${provider.name} (${provider.id}) does not have the part ${input.outputPart} requested by ${factory.name} (${factory.id}). Removing input.`)
-      factory.inputs = factory.inputs.filter(i => i !== input)
+      factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
       return
     }
 
-    updateDependency(factory, provider, input)
+    const key = `${provider.id}-${input.outputPart}`
+    const existing = totals.get(key)
+    if (existing) {
+      existing.amount += input.amount
+    } else {
+      totals.set(key, { provider, input, amount: input.amount })
+    }
+  })
+
+  totals.forEach(({ provider, input, amount }) => {
+    updateDependency(factory, provider, { ...input, amount })
     providersToRecalculate.add(provider.id)
   })
 
@@ -220,8 +320,13 @@ export const removeDependency = (factory: Factory, dependantFactory: Factory, pa
   }
 
   if (part) {
-    factory.dependencies.requests[dependantFactory.id] = factory.dependencies.requests[dependantFactory.id].filter(req => req.part !== part)
-  } else {
+    factory.dependencies.requests[dependantFactory.id] = rawArray(
+      factory.dependencies.requests[dependantFactory.id].filter(req => req.part !== part)
+    )
+  }
+
+  // An empty array still shows up as an export against the dependant's name.
+  if (!part || factory.dependencies.requests[dependantFactory.id].length === 0) {
     delete factory.dependencies.requests[dependantFactory.id]
   }
 }
@@ -259,7 +364,7 @@ export const calculateDependencyMetricsSupply = (factory: Factory) => {
     const metrics = factory.dependencies.metrics[part]
     metrics.supply = factory.parts[part].amountSupplied
     metrics.difference = metrics.supply - metrics.request
-    metrics.isRequestSatisfied = metrics.difference >= 0
+    metrics.isRequestSatisfied = isAmountSatisfied(metrics.difference, metrics.request)
   })
 }
 
@@ -273,12 +378,11 @@ export const deleteRequestPair = (
   // Filter out the dependency request(s) for the part from the erroneous factory.
   removeDependency(factory, dependantFactory, request.part)
 
-  // Delete any inputs from the requesting factory
-  dependantFactory.inputs.forEach((input, index) => {
-    if (input.factoryId === factory.id && input.outputPart === request.part) {
-      dependantFactory.inputs.splice(index, 1)
-    }
-  })
+  // Delete any inputs from the requesting factory. Filtered rather than spliced in a loop,
+  // which skips the element after each removal when the part is imported more than once.
+  dependantFactory.inputs = rawArray(dependantFactory.inputs.filter(
+    input => !(input.factoryId === factory.id && input.outputPart === request.part)
+  ))
 
   // Recalculate the both factories now as the part demand has changed likely for both.
   calculateFactory(factory, factories, gameData)

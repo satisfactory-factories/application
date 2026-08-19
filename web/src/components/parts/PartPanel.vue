@@ -44,7 +44,7 @@
         <v-chip
           v-for="factory in producedIn"
           :key="factory.id"
-          class="sf-chip"
+          class="sf-chip sf-chip-clickable"
           color="primary"
           style="border-color: rgb(0, 123, 255) !important"
           :title="`Go to ${factory.name} in the Planner`"

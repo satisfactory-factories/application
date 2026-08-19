@@ -39,16 +39,17 @@ still there as a break-glass path and says so at the top.
 
 ## Things that surprise you later
 
-- **A green Actions run does not mean the deploy worked.** The webhook returns
-  `200` as soon as it accepts the request — it does not wait for the SSH, and it
-  does not report the script's exit code. The only honest confirmation is
-  `/root/deploy.log` on the box.
+- **A green Actions run means the deploy worked.** Since 2026-07-28 the hook waits
+  for the deploy and answers `200` or `500` carrying the script's own output, so the
+  Deploy step's result *is* the deploy's result. It did not always — it used to answer
+  `200` the moment it accepted the request, which is what the older advice further
+  down is written against. `/root/deploy.log` is still where the reason lives.
 - **A wrong `WEBHOOK_SECRET` does *not* fail silently.** Verified against
   `webhook` 2.8.2 on 2026-07-27: a signature computed with the wrong secret
   returns `500` (`invalid payload signatures`) and fails the Deploy step. `404`
   means the hook isn't loaded. `403` means no signature header was sent at all.
-  Only `200` is ambiguous — and it is ambiguous in exactly one direction: the
-  command ran, but nothing reports whether it *worked*.
+  `200` now means the script ran *and* exited `0`, with its output in the response
+  body — it used to mean only that the request was accepted.
 - **The image builds from the repo root, not from `backend/`.**
   `backend/package.json` pins `ts-node`, `typescript` and the eslint packages
   with `catalog:`, and a catalog only resolves when pnpm can see
@@ -208,6 +209,9 @@ Three lines are worth reading carefully:
 - **`Container state: healthy`** means `--wait` actually blocked on the
   healthcheck. If it says `NO HEALTHCHECK`, this box's compose file is missing
   the healthcheck block and the deploy only confirmed the container is *running*.
+  The healthcheck probes `/health`, which pings Mongo — so `healthy` means the
+  database answered too, and a deploy attempted while Mongo is down will fail
+  here rather than going green.
 - **`Deployment finished!`** is the last line of a successful run. If the log ends
   anywhere else, the deploy died — and a `DEPLOY FAILED (exit N) at line L` line
   should say where:
@@ -222,8 +226,8 @@ container sf-backend is unhealthy
 Then confirm the API itself:
 
 ```bash
-curl -s https://api.satisfactory-factories.app/hello
-# {"message":"Hello, the server is running!"}
+curl -s https://api.satisfactory-factories.app/health
+# {"status":"ok","uptime":142,"database":{"status":"ok","state":"connected","responseTime":3}}
 
 ssh sf 'docker ps --format "{{.Names}}\t{{.Image}}\t{{.Status}}"'
 # sf-backend  maelstromeous/satisfactory-factories:backend-latest  Up 2 minutes (healthy)
@@ -250,10 +254,10 @@ again, so a local retag is a stopgap, not a state anyone else can see.
 
 | Symptom | Likely cause |
 | --- | --- |
-| Actions green, nothing changed on the box | Three different causes, and **the webhook returns `200` for all of them**: a wrong `WEBHOOK_SECRET`, a failed SSH, or a no-op pull. Work down `/root/deploy.log` on `sf` first — if it has no new entry at all, the hook never ran the script, so suspect the secret. Then `app/config/logs/webhooks.log` on the webhooks box |
+| Actions green, nothing changed on the box | Almost always a genuine no-op pull — `deploy.log` will say `Image unchanged`. A wrong `WEBHOOK_SECRET` and a failed SSH both fail the Deploy step now rather than hiding behind a `200` |
 | `Image unchanged` in `deploy.log` after a real change | The box's `/root/docker/docker-compose.yml` still pulls the old `ghcr.io/...` tag. It is not version-controlled — edit it there |
 | Deploy step fails with `500` | `WEBHOOK_SECRET` here does not match `webhook.env` on the webhooks box. The daemon logs `error evaluating hook: invalid payload signatures` |
-| **Deploy step green but no entry in `deploy.log`** | The hook ran `deploy.sh` but the SSH failed — `200` is returned before the SSH result is known. Check `app/config/logs/webhooks.log` on the webhooks box: `docker compose -f /root/webhooks/docker-compose.yml logs webhook` |
+| **Deploy step green but no entry in `deploy.log`** | Routine before 2026-07-28, when `200` came back before the SSH result was known. It should not happen now — if it does, check `app/config/logs/webhooks.log` on the webhooks box: `docker compose -f /root/webhooks/docker-compose.yml logs webhook` |
 | `404` from the webhook step | The `satisfactory-factories` hook is not loaded. On the webhooks box: `cd /root/webhooks && ./sync.sh` and check the hook list it prints. `404` is the *only* HTTP status that reliably tells you something is wrong |
 | `DEPLOY FAILED` in `deploy.log` after `up --wait` | The new image starts but never turns healthy. `ssh sf 'docker logs sf-backend'` — most likely a bad `sf.env` or Mongo unreachable |
 | Publish step fails on `pnpm install --frozen-lockfile` | `backend/pnpm-lock.yaml` is out of date with `backend/package.json`. Run `pnpm install` in `backend/` and commit the lockfile |
@@ -281,6 +285,9 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
 - `/root/docker/docker-compose.yml` must match `backend/docker-compose-server.yml`
   — the Docker Hub image and the healthcheck that `up --wait` blocks on. The
   existing `3001:3001` port line is already correct and needs no change.
+  **The healthcheck moved from `/hello` to `/health`** and the box's copy has to
+  be edited by hand for that to take effect; until it is, the container's health
+  state still only proves the process is up.
 - `/root/update.sh` must match `backend/update.sh`, mode `755`.
 - The webhooks box's deploy key must be in `/root/.ssh/authorized_keys`
   (fingerprint `SHA256:Y69lglv47Mp3dkMh9a/CL1u9PmYldx4u+NTDb0QiFDs`).

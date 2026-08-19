@@ -11,6 +11,7 @@
   import { useAppStore } from '@/stores/app-store'
   import { useRoute } from 'vue-router'
   import router from '@/router'
+  import { apiHeaders, checkResponseForOutdatedClient } from '@/utils/api'
 
   const data = ref<DataInterface | null>({} as DataInterface)
 
@@ -51,10 +52,10 @@
     try {
       const response = await fetch(`${apiUrl}/share/${shareId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: apiHeaders(),
       })
+      // A read, so it is never refused — but the header tells a stale tab it is stale.
+      checkResponseForOutdatedClient(response)
       const data: ShareDataReturnResponse = await response.json()
       if (response.ok) {
         console.log('Data:', data)

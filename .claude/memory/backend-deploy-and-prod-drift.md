@@ -1,8 +1,11 @@
 ---
 name: backend-deploy-and-prod-drift
-description: Production runs a 19-month-old API image that main can no longer rebuild — the deploy automation and its three prerequisite fixes are in PR #439, not yet merged or exercised
-metadata:
+description: "Production runs a 19-month-old API image that main can no longer rebuild — the deploy automation and its three prerequisite fixes are in PR #439, not yet merged or exercised"
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: c8f2ec29-4279-445c-a3ea-4132f13d5e7f
+  modified: 2026-08-01T14:03:26.448Z
 ---
 
 As of **2026-07-27**, the live API on the `sf` box runs an image built ~19 months ago.
@@ -33,6 +36,12 @@ running on the box, and each one individually looks like it works. Anyone who as
 API is deployable from `main` today, or reads a green Actions run as proof, will reach the
 wrong conclusion. The pattern to remember beyond these three: **on this project, the deploy
 path has no test coverage, so its breakages accumulate silently until someone needs to ship.**
+
+**Open drift as of 2026-08-01:** the repo's `docker-compose-server.yml` now probes `/health`
+(which pings Mongo and 503s), but the box's copy still probes `/hello`. Until it is copied
+across by hand, the container's health state still only proves the process is up — and once
+it *is* copied, `(healthy)` starts meaning "Mongo answered too", so a deploy attempted during
+a database outage will fail at `up -d --wait` rather than going green. That is intended.
 
 **How to apply:** `docs/deployment.md` (added by #439) is the authoritative description of
 the chain once merged — read it rather than re-deriving. Verify a deploy on the box

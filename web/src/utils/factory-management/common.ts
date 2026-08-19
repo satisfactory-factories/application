@@ -1,6 +1,13 @@
 import { BuildingGroup, Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
+import { toRaw } from 'vue'
+
+// `factory.inputs = factory.inputs.filter(...)` on a reactive factory stores the *proxies*
+// filter() read out as the new array's elements. structuredClone — how the calculation
+// engine clones the plan — refuses a Proxy, so the next recalculation throws. Wrap any
+// array derived from a reactive one before assigning it back.
+export const rawArray = <T>(items: T[]): T[] => items.map(item => toRaw(item))
 
 // A fractional overclock the user dialled in themselves (223.333%) is deliberate precision —
 // quantities derived from it must be kept exact rather than snapped to the nearest whole
@@ -92,6 +99,8 @@ export const getBuildingDisplayName = (building: string) => {
     ['assemblermk1', 'Assembler'],
     ['blender', 'Blender'],
     ['constructormk1', 'Constructor'],
+    ['frackingextractor', 'Resource Well Extractor'],
+    ['frackingsmasher', 'Resource Well Pressurizer'],
     ['converter', 'Converter'],
     ['foundrymk1', 'Foundry'],
     ['hadroncollider', 'Particle Accelerator'],
@@ -102,11 +111,25 @@ export const getBuildingDisplayName = (building: string) => {
     ['geothermalgenerator', 'Geothermal Generator'],
     ['generatornuclear', 'Nuclear Power Plant'],
     ['manufacturermk1', 'Manufacturer'],
+    ['minermk1', 'Miner Mk.1'],
+    ['minermk2', 'Miner Mk.2'],
+    ['minermk3', 'Miner Mk.3'],
+    ['oilpump', 'Oil Extractor'],
     ['oilrefinery', 'Oil Refinery'],
     ['packager', 'Packager'],
     ['quantumencoder', 'Quantum Encoder'],
     ['smeltermk1', 'Smelter'],
-    ['waterExtractor', 'Water Extractor'],
+    ['waterpump', 'Water Extractor'],
+    // Logistics. Keyed by icon slug rather than by the game's internal name like the entries
+    // above: these only ever reach here from the export calculator, which names them by icon.
+    ['conveyor-belt-mk-1', 'Conveyor Belt Mk.1'],
+    ['conveyor-belt-mk-2', 'Conveyor Belt Mk.2'],
+    ['conveyor-belt-mk-3', 'Conveyor Belt Mk.3'],
+    ['conveyor-belt-mk-4', 'Conveyor Belt Mk.4'],
+    ['conveyor-belt-mk-5', 'Conveyor Belt Mk.5'],
+    ['conveyor-belt-mk-6', 'Conveyor Belt Mk.6'],
+    ['pipeline-mk-1', 'Pipeline Mk.1'],
+    ['pipeline-mk-2', 'Pipeline Mk.2'],
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`

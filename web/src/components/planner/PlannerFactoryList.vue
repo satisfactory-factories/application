@@ -49,14 +49,14 @@
         @click="navigateToSection('factory-summary')"
       >
         <v-row class="d-flex flex-nowrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
             <i class="fas fa-list mr-2" />
-            <span>Factories Summary</span>
+            <span>Global Factories Summary</span>
           </v-spacer>
           <v-tooltip right>
             <template #activator="{ props }">
               <v-col
-                class="context-icon align-content-center text-center py-0 px-2"
+                class="factory-count align-content-center text-center py-0 px-2"
                 cols="auto"
                 v-bind="props"
               >
@@ -82,95 +82,57 @@
             <span>Open fullscreen summary</span>
           </v-tooltip>
         </v-row>
+        <!-- The state of the plan in three numbers, on their own line the way a group's power and
+             product rows are: the sidebar is narrow and drags narrower still, and beside the title
+             they wrapped "Factories Summary" onto two lines instead. Only what applies is shown —
+             a row of zeroes is noise on a healthy plan, and a number appearing is the whole point. -->
+        <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip
+            v-for="chip in statusTally"
+            :key="chip.key"
+            :text="chip.tooltip"
+          >
+            <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+              <i :class="chip.icon" />
+              <span class="ml-1">{{ chip.count }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
       </v-card>
     </div>
   </div>
-  <draggable
-    v-show="show"
-    v-model="factoriesCopy"
-    class="factory-list"
-    item-key="id"
-    @end="onDragEnd"
-  >
-    <template #item="{ element }">
-      <div :key="element.id" class="mb-1 rounded" :class="factoryClass(element)">
-        <v-card
-          class="w-100 header list px-0 rounded-0 "
-          style="box-shadow: none !important;"
-          @click="navigateToFactory(element.id)"
-        >
-          <v-row class="d-flex flex-nowrap ma-0">
-            <v-spacer class="d-flex align-center text-body-1 pa-2">
-              <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-              <i class="fas fa-industry mr-2" />
-              <span>{{ truncateFactoryName(element.name) }}</span>
-            </v-spacer>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  v-if="countActiveTasks(element as Factory)"
-                  class="context-icon align-content-center text-center py-0 px-1"
-                  cols="auto"
-                  v-bind="props"
-                  @click="navigateToFactory(element.id, `${element.id}-tasks`)"
-                  @click.stop
-                >
-                  <i class="d-inline fas fa-tasks mr-1" />
-                  <span>{{ countActiveTasks(element as Factory) }}</span>
-                </v-col>
-              </template>
-              <span>Tasks: {{ countActiveTasks(element as Factory) }}</span>
-            </v-tooltip>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  v-if="element.notes"
-                  class="context-icon align-content-center text-center py-0 px-1"
-                  cols="auto"
-                  v-bind="props"
-                  @click="navigateToFactory(element.id, `${element.id}-notes`)"
-                  @click.stop
-                >
-                  <i class="d-inline fas fa-sticky-note" />
-                </v-col>
-              </template>
-              <span>See notes</span>
-            </v-tooltip>
-            <v-tooltip right>
-              <template #activator="{ props }">
-                <v-col
-                  class="pa-0 ml-2 align-content-center text-center sync-state"
-                  :class="syncStateClass(element)"
-                  cols="auto"
-                  v-bind="props"
-                >
-                  <div v-if="element.inSync" class="d-inline">
-                    <i class="fas fa-check" />
-                  </div>
-                  <div v-if="element.inSync === false" class="d-inline">
-                    <i class="fas fa-times" />
-                  </div>
-                  <div v-if="element.inSync === null" class="d-inline">
-                    <i class="fas fa-question" />
-                  </div>
-                </v-col>
-              </template>
-              <span>
-                {{ element.inSync === true
-                  ? 'In sync with game'
-                  : element.inSync === false
-                    ? 'Out of sync with game'
-                    : 'Game sync unknown'
-                }}
-              </span>
-            </v-tooltip>
-          </v-row>
-        </v-card>
-      </div>
-    </template>
-  </draggable>
+  <div v-show="show" class="factory-list">
+    <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
+         not stored, so there is no group record to reorder. -->
+    <planner-sidebar-group
+      v-if="ungroupedSection"
+      :section="ungroupedSection"
+      :statuses="statuses"
+    />
+
+    <draggable
+      :group="{ name: 'sidebar-groups' }"
+      handle=".group-drag-handle"
+      item-key="id"
+      :model-value="groupSections"
+      @change="onGroupOrderChange"
+    >
+      <template #item="{ element }">
+        <planner-sidebar-group
+          :section="element"
+          :statuses="statuses"
+          @delete="requestGroupDelete"
+        />
+      </template>
+    </draggable>
+  </div>
+
+  <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-group-bulk-dialog v-model="bulkGroupOpen" />
+  <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
+
   <v-row class="pa-0 ma-0">
-    <v-col class="text-center" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
+    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <v-btn
         color="primary"
         prepend-icon="fas fa-plus"
@@ -179,24 +141,54 @@
       >
         Add Factory
       </v-btn>
+      <!-- Group management sits on its own line under it: neither button is the thing you reach
+           for most, and side by side they competed with Add Factory for the same glance. -->
+      <div class="d-flex justify-center flex-wrap ga-2">
+        <v-btn
+          class="create-group-btn"
+          color="secondary"
+          prepend-icon="fas fa-folder-plus"
+          ripple
+          size="small"
+          variant="outlined"
+          @click="createGroupOpen = true"
+        >
+          Group
+        </v-btn>
+        <v-btn
+          class="bulk-group-btn"
+          color="secondary"
+          :disabled="factories.length === 0"
+          prepend-icon="fas fa-object-group"
+          ripple
+          size="small"
+          variant="outlined"
+          @click="bulkGroupOpen = true"
+        >
+          Multi-Group Edit
+        </v-btn>
+      </div>
     </v-col>
   </v-row>
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, type Ref, watch } from 'vue'
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { countActiveTasks } from '@/utils/factory-management/factory'
+  import { computed, inject, ref, type Ref } from 'vue'
+  import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
+  import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
+  import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
+  import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
+  import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
 
-  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string) => void
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
-  // Scroll-spy from Planner.vue: the factory id (or section element id, e.g.
-  // 'statistics') currently under the user's eye-line.
+  // Scroll-spy from Planner.vue, used by the two jump-link cards above the factory list.
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const emit = defineEmits<{
@@ -220,14 +212,33 @@
     : totalPower.value.totalPowerDifference)
   const powerDeficit = computed(() => powerDifference.value < 0)
 
-  const factoriesCopy = ref([...compProps.factories])
+  // Groups. Every mutation goes through the composable, which is the single writer — this
+  // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
+  // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
+  const { sections, setGroupOrder } = useFactoryGroups()
 
-  // The copy holds the same factory objects, so name/status changes flow through them
-  // reactively — it only goes stale when membership or order changes. Watching that
-  // via an id fingerprint avoids a deep watch re-traversing the whole plan per flush.
-  watch(() => compProps.factories.map(factory => factory.id).join('|'), () => {
-    factoriesCopy.value = [...compProps.factories]
-  })
+  const ungroupedSection = computed(() => sections.value.find(section => !section.group))
+  const groupSections = computed(() => sections.value.filter(section => section.group))
+
+  const createGroupOpen = ref(false)
+  const bulkGroupOpen = ref(false)
+  const deleteGroupOpen = ref(false)
+  const groupPendingDelete = ref<FactoryGroup | null>(null)
+
+  // Always asks, empty group or not. An empty one has nothing to reassign, but deleting it was
+  // still a single click on a small red button sitting next to the group's own controls.
+  const requestGroupDelete = (group: FactoryGroup) => {
+    groupPendingDelete.value = group
+    deleteGroupOpen.value = true
+  }
+
+  const onGroupOrderChange = (event: { moved?: { newIndex: number, oldIndex: number } }) => {
+    if (!event.moved) return
+    const ordered = groupSections.value.map(section => section.group as FactoryGroup)
+    const [group] = ordered.splice(event.moved.oldIndex, 1)
+    ordered.splice(event.moved.newIndex, 0, group)
+    setGroupOrder(ordered)
+  }
 
   // "Cheat" here by when a load is requested we hide the list
   eventBus.on('prepareForLoad', () => {
@@ -238,33 +249,17 @@
     show.value = true
   })
 
-  const factoryClass = (factory: Factory) => {
-    return {
-      'factory-card': true,
-      'active-view': factory.id === activeFactoryId.value,
-      problem: factory.hasProblem,
-      needsSync: !factory.hasProblem && factory.inSync === false,
-    }
-  }
+  // One pass over the plan rather than a call per row per chip — the sidebar renders every factory,
+  // so a template-expression call would multiply the predicates by the chip count.
+  const statuses = computed(() => new Map(
+    compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
+  ))
+
+  // Reuses the memo above rather than walking the plan a second time.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
 
   const createFactory = () => {
     emit('createFactory')
-  }
-
-  const truncateFactoryName = (name: string, limit: number = 24) => {
-    return name.length > limit ? name.substring(0, limit) + '...' : name
-  }
-
-  const onDragEnd = () => {
-    emit('updateFactories', factoriesCopy.value)
-  }
-
-  const syncStateClass = (factory: Factory) => {
-    return {
-      'bg-green-darken-2': factory.inSync,
-      'bg-orange-darken-2': factory.inSync === false,
-      'bg-grey-darken-2': factory.inSync === null,
-    }
   }
 </script>
 
@@ -366,6 +361,12 @@
   &:hover {
     color: white;
   }
+}
+
+// The plan's factory count, which is a fact rather than an affordance — the muted grey the
+// context icons wear read as disabled next to the status chips beside it.
+.factory-count {
+  color: #e0e0e0;
 }
 
 .pt-n1 {

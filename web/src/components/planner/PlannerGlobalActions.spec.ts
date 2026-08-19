@@ -80,6 +80,64 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(appStore.getCurrentTab().name).toBe('Pasted Plan')
   })
 
+  // Groups with members ride on the factories and need no help. Memberless ones live only on the
+  // tab, so the clipboard is the one place they can be lost — or left behind.
+  it('copy carries the memberless groups the factories cannot', () => {
+    seedFactory()
+    appStore.getCurrentTab().groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
+
+    const subject = mountSubject()
+    clickButton(subject, 'Copy plan')
+
+    const payload = JSON.parse(writeText.mock.calls[0][0])
+    expect(payload.groups).toEqual([{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }])
+  })
+
+  it('paste replaces the destination tab\'s memberless groups with the pasted plan\'s', async () => {
+    seedFactory()
+    appStore.getCurrentTab().groups = [{ id: 'old', name: 'Outgoing', color: '#4caf50', order: 0 }]
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({
+      factories: [newFactory('Pasted')],
+      powerTarget: 0,
+      groups: [{ id: 'new', name: 'Incoming', color: '#2196f3', order: 0 }],
+    }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    expect(appStore.getCurrentTab().groups).toEqual([
+      { id: 'new', name: 'Incoming', color: '#2196f3', order: 0 },
+    ])
+  })
+
+  it('paste of a plan with no memberless groups leaves none behind', async () => {
+    seedFactory()
+    appStore.getCurrentTab().groups = [{ id: 'old', name: 'Outgoing', color: '#4caf50', order: 0 }]
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    expect(appStore.getCurrentTab().groups).toBeUndefined()
+  })
+
+  it('paste of a legacy array leaves no memberless groups behind either', async () => {
+    seedFactory()
+    appStore.getCurrentTab().groups = [{ id: 'old', name: 'Outgoing', color: '#4caf50', order: 0 }]
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify([newFactory('Legacy')]))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    expect(appStore.getCurrentTab().groups).toBeUndefined()
+  })
+
   it('paste of a legacy array loads factories and leaves tab settings untouched', async () => {
     seedFactory()
     appStore.getCurrentTab().name = 'Keep Me'

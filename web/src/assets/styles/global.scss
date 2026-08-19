@@ -147,6 +147,23 @@
   }
 }
 
+// Shape says whether a chip does anything. Anything pressable — @click, menu or dialog activator —
+// must carry `sf-chip-clickable` and takes the 4px corner of the buttons beside it. Vuetify cannot
+// work this out for us: it hangs `v-chip--link` off any bound click listener, so a chip whose
+// handler is an inert guard reads as pressable to it. Pills are the default, so `sf-chip-info` is
+// only worth spelling out where a static chip shares a bar with pressable ones.
+.sf-chip-clickable {
+  border-radius: 4px !important;
+  cursor: pointer;
+}
+
+.sf-chip-info {
+  border-radius: 9999px !important;
+  // v-chip--link brings a pointer cursor with it, so the shape and the cursor have to be put back
+  // together or the chip still invites a click.
+  cursor: default;
+}
+
 .sf-chip {
   padding: 20px 12px !important;
   border: 2px solid #7f7f7f !important;
@@ -184,6 +201,29 @@
     border-color: var(--sf-error-border) !important;
   }
 
+  // Factory status chips (#506). Filled rather than outlined, unlike every chip above: these sit
+  // on the same bar as the yellow tasks/notes chips, and outlined amber beside outlined yellow is
+  // indistinguishable. White text because the fills are dark enough to carry it.
+  &.status-problem {
+    color: white !important;
+    border-color: var(--sf-problem-border) !important;
+    background-color: var(--sf-problem-bg);
+  }
+
+  &.status-warning {
+    color: white !important;
+    border-color: var(--sf-status-warning-border) !important;
+    background-color: var(--sf-status-warning-bg);
+  }
+
+  // The note tier (`status-note`) is outlined yellow, below: it never colours the factory, so it
+  // must not read as either of the two fills above, which do.
+
+  &.status-note {
+    color: var(--sf-status-note) !important;
+    border-color: var(--sf-status-note-border) !important;
+  }
+
   &.green, &.success {
     color: var(--sf-success) !important;
     border-color: var(--sf-success-border) !important;
@@ -211,6 +251,19 @@
   &.cyan, &.raw-resource {
     color: var(--sf-raw-resource) !important;
     border-color: var(--sf-raw-resource-border) !important;
+  }
+
+  // Amber as an outlined chip rather than the fill `.status-warning` carries. `hand-gathered` is a
+  // raw resource with no extractor in the game — amber because it is an assumption the planner is
+  // making on your behalf, not a state of the plan, so the factory itself stays green.
+  &.hand-gathered, &.status-warning-outlined {
+    color: var(--sf-status-warning) !important;
+    border-color: var(--sf-status-warning-border) !important;
+  }
+
+  &.node-setting {
+    color: var(--sf-node-setting) !important;
+    border-color: var(--sf-node-setting-border) !important;
   }
 
   &.orange, &.building {
@@ -294,8 +347,11 @@
 
     // A text label directly after an icon: the image already carries its own 8px
     // gutter (inside the link wrapper when clickable), so the span's left margin
-    // would double it.
+    // would double it. `.game-asset-content` is the tooltip wrapper every game
+    // image now sits in — no markup pairs it with a bare label today, but leaving
+    // it out is a doubled gap waiting for the first one that does.
     .game-asset-clickable + span:not([class]),
+    .game-asset-content + span:not([class]),
     img + span:not([class]),
     .v-img + span:not([class]) {
       margin-left: 0 !important;
@@ -317,6 +373,11 @@
 // consumption chip colour.
 .text-power-consumption {
     color: var(--sf-power-consumption) !important;
+}
+
+// Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.
+.text-status-warning {
+    color: var(--sf-status-warning) !important;
 }
 
 // Plain-text item labels (building-group under-chip "x / building" lines) share
@@ -350,6 +411,20 @@
 
 .sub-card {
   background-color: rgb(50, 50, 50) !important;
+
+  // A sub-card in a problem state (e.g. Raw Resources the factory is short of) is flagged
+  // the same way an unsatisfied factory card is.
+  &.problem {
+    border-color: var(--sf-problem-border) !important;
+    background-color: var(--sf-problem-bg) !important;
+  }
+
+  // Same idea one tier down: a product or generator carrying a warning (a byproduct with nowhere
+  // to go) takes the whole row, so it is obvious which of a dozen rows the chip belongs to.
+  &.warning {
+    border-color: var(--sf-status-warning-border) !important;
+    background-color: var(--sf-status-warning-bg) !important;
+  }
 
   // This `border-bottom` has never actually applied: Vuetify 3 emitted
   // `.border-md` with `!important`, which beat it. v4 layers the helper instead,
@@ -397,12 +472,31 @@
       border-bottom: 0;
     }
 
+    // Buttons in a card header all take the same small radius. Chips follow the app-wide rule
+    // above instead — squared only when they are pressable, so the header's static readouts
+    // (power, shards, sloops) stop looking like controls.
+    .v-btn {
+      border-radius: 4px !important;
+    }
+
     // A collapsed card renders the header alone: its divider would sit flush on the
     // card's own bottom border and read as one extra-thick line, so drop it when no
     // body follows. (:last-child can't express this — Vuetify appends a
     // .v-card__underlay after the slot content.)
     &:not(:has(~ .v-card-text)) {
       border-bottom: 0 !important;
+    }
+  }
+
+  // A card in a group. Deliberately no border of its own: the planner draws a tree down the left
+  // of a group now, so the membership was being said twice — and saying it in the border meant
+  // taking the border away from status, which is the thing that actually needs it. The header
+  // keeps its muted tint, which tells the two apart without competing for the same channel.
+  &.grouped {
+    position: relative;
+
+    .header {
+      background-color: var(--sf-group-muted);
     }
   }
 
@@ -414,19 +508,12 @@
     }
   }
 
-  &.needsSync {
-    border: 2px solid var(--sf-building-border) !important;
+  // Was `.needsSync`, which now names only one of several amber statuses (#506).
+  &.warning {
+    border: 2px solid var(--sf-status-warning-border) !important;
 
     .header {
-      background-color: rgba(255, 136, 0, 0.16);
-    }
-  }
-
-  &.inSync {
-    border: 2px solid var(--sf-success) !important;
-
-    .header {
-      background-color: rgba(76, 175, 80, 0.16);
+      background-color: var(--sf-status-warning-bg);
     }
   }
 }
@@ -441,8 +528,10 @@
   padding-block: revert-layer;
 }
 
+// 20px against ~13px chip text made the bolt the loudest thing in every power readout, and
+// there is one in most of them. Sized to sit with its own label rather than over it.
 .fa-bolt {
-  font-size: 20px;
+  font-size: 15px;
   margin-right: 2px
 }
 
@@ -565,6 +654,14 @@
   }
 }
 
+// Anything a status chip can jump to keeps a gap above it. Landing flush under the app chrome
+// puts the row directly beneath the "too many factories" banner, which sits over the top of it.
+.factory-item,
+.status-anchor,
+tr[id*="-satisfaction-item-"] {
+  scroll-margin-top: 50px;
+}
+
 .factory-item {
   border-left: 5px solid var(--sf-blue) !important;
   position: relative;
@@ -603,5 +700,87 @@
 
   &.problem {
     border-left-color: var(--sf-error) !important;
+  }
+}
+// Radio and checkbox marks, drawn rather than iconned.
+//
+// Two things break the icon route. Vuetify's fa iconset points these at `far` (Regular), which the
+// vendored build doesn't ship — so nothing rendered at all. Swapping in solid names doesn't fix it
+// either: Font Awesome replaces the <i> Vuetify renders with an <svg>, detaching the node Vue owns,
+// so flipping the class between the on and off state never reaches the DOM and the glyph freezes at
+// whatever it first drew. A radio would show the selected mark on a row the user had moved away
+// from. Same trap as #fontawesome-dynamic-icons.
+//
+// `--dirty` is Vuetify's own selected-state class, so this tracks the control rather than guessing.
+%selection-mark {
+  border: 2px solid currentcolor;
+  box-sizing: border-box;
+  content: '';
+  height: 18px;
+  opacity: 0.55;
+  width: 18px;
+}
+
+.v-radio, .v-checkbox, .v-checkbox-btn {
+  .v-selection-control__input > :is(.v-icon, svg) {
+    display: none;
+  }
+
+  // The real click target is this input, stretched over the control with inset:0 — but the browser's
+  // own margin for a radio/checkbox (3px 5px) shifts it down and right of the mark you can see.
+  // Clicking the middle of a radio missed it entirely; clicking low and right worked.
+  .v-selection-control__input > input {
+    margin: 0;
+  }
+
+  &.v-selection-control--dirty .v-selection-control__input::after {
+    background: currentcolor;
+    opacity: 1;
+  }
+}
+
+.v-radio .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 50%;
+}
+
+// Filled from the inside so the ring stays visible: background-clip keeps the fill off the border.
+.v-radio.v-selection-control--dirty .v-selection-control__input::after {
+  background-clip: content-box;
+  padding: 3px;
+}
+
+.v-checkbox .v-selection-control__input::after,
+.v-checkbox-btn .v-selection-control__input::after {
+  @extend %selection-mark;
+  border-radius: 3px;
+}
+
+// A factory-coloured "chip" wrapping the part chips that belong to one factory — the collapsed
+// card's imports and exports, and the Raw Resources statistics table. Global rather than scoped
+// because two components now draw it; it shares the factory token and the card header background
+// (see src/utils/colors.ts).
+.factory-group-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 2px solid var(--sf-factory-border);
+  border-radius: 28px;
+  background-color: var(--sf-factory-bg);
+  color: var(--sf-factory);
+  padding: 4px 6px 4px 10px;
+  row-gap: 4px;
+
+  // Three classes deep on purpose. `.sf-chip.no-margin` is itself an !important two-class rule,
+  // so matching it would leave source order to decide the 4px rhythm between part chips — which
+  // is exactly the kind of thing that breaks when the file is reordered.
+  .sf-chip,
+  .sf-chip.no-margin {
+    margin: 0 0 0 4px !important;
+  }
+
+  &.clickable:hover {
+    cursor: pointer;
+    background-color: #323232;
   }
 }
