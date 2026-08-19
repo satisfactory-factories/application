@@ -286,7 +286,7 @@
               src="/assets/changelog/beta6/export-chip-jump.png"
             />
           </li>
-          <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed.</li>
+          <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed. A chip that counts several things lights all of them: "3 shortages" takes you to the first and pulses all three.</li>
           <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
           <li><b>Every game image has a tooltip.</b></li>
         </ul>
