@@ -22,6 +22,14 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a
   conveyor input only) or radioactive items, and a count left on one from an earlier edit stays
   inert rather than quietly zeroing a surplus that in game would not move.
+- **Both controls are offered on every item**, whether the factory makes it, imports it, or is
+  short of it. They first shipped gated on a surplus, which hid them from the build the Depot is
+  most useful for: a logistics factory that imports a part precisely so it can upload it has
+  imports that balance exactly, so it had no surplus, so it was offered no Uploader. Nothing needed
+  the gate — a sink takes what is spare and nothing more, so one set on a part with nothing spare
+  is inert rather than forbidden, and starts working by itself when the part does have something
+  spare. What the buildings physically refuse (fluids, and radioactive items for the sink) is still
+  enforced.
 - **A Dimensional Depot Uploader deliberately changes no number.** The Depot is finite storage: it
   fills, and then it backs up like any other container. Marking an item for the Depot records what
   you are building and what it costs, and leaves the surplus exactly as it is.

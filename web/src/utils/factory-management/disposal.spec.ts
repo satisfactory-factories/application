@@ -320,11 +320,45 @@ describe('disposal', () => {
       expect(showSinkControl(factory, 'IronPlate')).toBe(true)
     })
 
-    it('does not offer them on a shortage', () => {
-      expect(showDisposalControls(factory, 'IronIngot')).toBe(false)
+    // Deliberately not gated on a surplus. A logistics factory imports a part exactly so it can
+    // upload it, and balanced imports leave nothing spare, so a surplus gate hid the control from
+    // the build the Depot exists for.
+    it('offers them on a shortage too', () => {
+      expect(factory.parts.IronIngot.amountRemaining).toBeLessThan(0)
+      expect(showDisposalControls(factory, 'IronIngot')).toBe(true)
+      expect(showSinkControl(factory, 'IronIngot')).toBe(true)
+      expect(showDepotControl(factory, 'IronIngot', gameData)).toBe(true)
     })
 
-    // Otherwise the control that set the count vanishes and the user cannot take it back off.
+    // An imported part consumed exactly: nothing spare, and the case that made the surplus gate
+    // wrong. The Uploader has to be offered here.
+    it('offers them on an import with nothing spare', () => {
+      const source = platesFactory('Source')
+      const consumer = newFactory('Consumer')
+      addProductToFactory(consumer, { id: 'IronPlateReinforced', amount: 5, recipe: 'IronPlateReinforced' })
+      addInputToFactory(consumer, { factoryId: source.id, outputPart: 'IronPlate', amount: 30 })
+      calculateFactories([source, consumer], gameData)
+
+      expect(consumer.parts.IronPlate.amountRemaining).toBe(0)
+      expect(showDisposalControls(consumer, 'IronPlate')).toBe(true)
+      expect(showDepotControl(consumer, 'IronPlate', gameData)).toBe(true)
+    })
+
+    // Sinking a part with nothing spare has to be inert rather than forbidden: that is what lets
+    // the control be offered everywhere without lying about the ledger.
+    it('takes nothing when a sink is set on a part with no surplus', () => {
+      const source = platesFactory('Source')
+      const consumer = newFactory('Consumer')
+      addProductToFactory(consumer, { id: 'IronPlateReinforced', amount: 5, recipe: 'IronPlateReinforced' })
+      addInputToFactory(consumer, { factoryId: source.id, outputPart: 'IronPlate', amount: 30 })
+      setSinkCount(consumer, 'IronPlate', 2)
+      calculateFactories([source, consumer], gameData)
+
+      expect(consumer.parts.IronPlate.amountRequiredSink).toBe(0)
+      expect(consumer.parts.IronPlate.amountRemaining).toBe(0)
+      expect(isActivelySunk(consumer, 'IronPlate')).toBe(false)
+    })
+
     it('keeps offering them once a count is set, even with the surplus gone', () => {
       setSinkCount(factory, 'IronPlate', 1)
       calculateFactories([factory], gameData)

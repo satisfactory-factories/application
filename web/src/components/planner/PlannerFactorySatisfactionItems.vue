@@ -187,8 +187,9 @@
             </div>
           </td>
           <td class="border-e-md storage" :class="satisfactionShading(part, partId.toString())">
-            <!-- Empty rather than disabled on a row with nothing to dispose of: a shortage has no
-                 surplus to send anywhere, and two greyed spinners on every such row is noise. -->
+            <!-- Offered on every row, including one with nothing spare today. A sink there takes
+                 max(0, surplus), so it is inert until there IS a surplus rather than forbidden,
+                 and an Uploader on an imported part is the whole point of a logistics factory. -->
             <div v-if="showDisposalControls(factory, partId.toString())" class="d-flex flex-column ga-1 align-center">
               <v-chip
                 v-if="showSinkControl(factory, partId.toString())"

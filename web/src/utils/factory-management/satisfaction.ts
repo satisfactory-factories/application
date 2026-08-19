@@ -6,7 +6,7 @@ import { isExtractionRecipe } from '@/utils/factory-management/building-groups/e
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { getDepotCount, getSinkCount, isSunk } from '@/utils/factory-management/disposal'
+import { isSunk } from '@/utils/factory-management/disposal'
 
 const nuclearParts = ['NuclearWaste', 'PlutoniumWaste']
 
@@ -221,21 +221,23 @@ export const showInternalChip = (factory: Factory, partId: string) => {
 /**
  * Whether the Storage column offers this part a sink and a depot at all.
  *
- * Surplus-driven, never production-driven: what matters is that there is something left over, not
- * what created it. A logistics factory that imports everything and has to do something with the
- * overflow is a real build, and gating on local production would exclude the very factory whose
- * surplus most needs a destination.
+ * Every part the factory handles, whether it makes it, imports it, or is short of it. This used to
+ * require a surplus, which was wrong in the case the Depot is most useful for: a logistics factory
+ * that imports a part precisely so it can upload it. Its imports balance exactly, so it had no
+ * surplus, so the planner offered it no Uploader, and the build the feature exists to support was
+ * the one build it forbade.
  *
- * Stays true once a count is set even if the surplus has since dried up — otherwise the control
- * that put the count there disappears and the user cannot take it back off.
+ * Nothing needs a surplus gate to stay honest. The sink takes `max(0, surplus)`, so a sink on a
+ * part with nothing spare is inert by construction rather than by being hidden, and it starts
+ * working by itself the moment the part does have something spare. The Depot changes no number at
+ * all. So the gate only ever removed a choice; it never protected a calculation.
+ *
+ * The building exclusions still apply, in showSinkControl and showDepotControl below: those are
+ * about what the buildings physically accept, which is a fact about the game rather than a
+ * judgement about the plan.
  */
-export const showDisposalControls = (factory: Factory, partId: string): boolean => {
-  const part = factory.parts[partId]
-  if (!part) return false
-  if (getSinkCount(factory, partId) > 0 || getDepotCount(factory, partId) > 0) return true
-
-  return (part.amountRemainingPreSink ?? part.amountRemaining ?? 0) > 0
-}
+export const showDisposalControls = (factory: Factory, partId: string): boolean =>
+  Boolean(factory.parts[partId])
 
 // The sink has a conveyor input and nothing else, and it refuses radioactive items outright. Both
 // facts live in isSinkablePart, which the engine stamps onto the part every calculation.

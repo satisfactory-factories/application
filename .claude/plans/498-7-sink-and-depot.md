@@ -60,6 +60,14 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    really would stay empty — fed from the low-priority leg of a priority splitter, which no player
    would build — is a caveat in the tooltip on the zero.
 
+9. **The controls are offered on every part, not only on a surplus.** The original surplus gate
+   excluded the logistics factory — imports balanced exactly, no surplus, no Uploader offered —
+   which is the build the Depot is for. The gate protected nothing: `amountRequiredSink` is
+   `max(0, surplus)`, so a sink with nothing to take is already inert, and the Depot changes no
+   number at all. User's call, 2026-08-19. The physical exclusions (fluids; radioactive for the
+   sink) still stand, because those are facts about the buildings rather than judgements about
+   the plan.
+
 ## Data model
 
 ```ts
