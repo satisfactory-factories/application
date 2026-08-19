@@ -198,6 +198,29 @@
         </div>
       </template>
     </draggable>
+
+    <!-- The tail of the tree, sat where the next factory in this group would appear — which is
+         where the button that makes one belongs. Outside the draggable deliberately: a button
+         inside a Sortable list is a row Sortable would try to reorder and drop factories after. -->
+    <div class="group-footer" :class="{ collapsed }">
+      <div class="add-factory">
+        <!-- The elbow's long arm: an element rather than a pseudo-element because it has to end
+             where the button begins, and the button is centred rather than a known width away.
+             It and the spacer opposite are what centre the button between them. -->
+        <span aria-hidden="true" class="branch-arm" />
+        <v-btn
+          class="add-factory-btn"
+          color="primary"
+          prepend-icon="fas fa-plus"
+          size="small"
+          :title="addFactoryTitle"
+          @click="requestFactory"
+        >
+          Add factory
+        </v-btn>
+        <span aria-hidden="true" class="branch-spacer" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -238,6 +261,8 @@
 
   const emit = defineEmits<{
     (event: 'delete', group: NonNullable<FactoryGroupSection['group']>): void
+    // null is Ungrouped, which is a real destination: it means "make one belonging to nothing".
+    (event: 'createFactory', groupId: string | null): void
   }>()
 
   const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
@@ -287,6 +312,14 @@
   const requestDelete = () => {
     if (group.value) emit('delete', group.value)
   }
+
+  // Asked for rather than done here: the planner owns factory creation (it also has to navigate to
+  // the new card), so this only says which group the click came from.
+  const requestFactory = () => emit('createFactory', group.value?.id ?? null)
+
+  const addFactoryTitle = computed(() => group.value
+    ? `Add a new factory to ${group.value.name}`
+    : 'Add a new factory, in no group')
 
   // Must match the tile size and gap the template asks for, since the fit is arithmetic rather
   // than measurement: laying the icons out to find out how many fit would mean rendering the
@@ -532,11 +565,6 @@ $strip-border: 1px;
     width: $tree-line;
   }
 
-  &:last-child::before {
-    bottom: auto;
-    height: calc(50% - #{$tree-gutter * 0.5} + #{$tree-line * 0.5});
-  }
-
   // Elbow, reaching from the trunk to the row's left edge. Level with the middle of the row, not
   // its first line — a row carrying status chips is two lines tall, and an elbow pinned to the top
   // one points at nothing in particular.
@@ -545,6 +573,63 @@ $strip-border: 1px;
     width: $tree-indent;
     height: $tree-line;
   }
+}
+
+// The tree's terminator, and the group's own Add Factory. It hangs off the trunk one slot below
+// the last row, so the tree ends on the button rather than on the last factory with a button
+// floating under it.
+.group-footer {
+  padding: 0 0 $tree-gutter $tree-indent;
+
+  // Collapsed, the rows are hidden and the header is the whole group; a lone "add a factory"
+  // hanging under a shut group would be the only thing left in the body.
+  &.collapsed {
+    display: none;
+  }
+}
+
+// The elbow reaches the button from the side, exactly as it reaches a factory row — the button is
+// simply further along, being centred. The trunk and the stub across the indent are drawn here;
+// the arm covering the rest of the distance has to be an element (see the template).
+.add-factory {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -$tree-indent;
+    background-color: var(--sf-group, #616161);
+  }
+
+  // Trunk, ending at its own elbow: nothing follows it.
+  &::before {
+    top: 0;
+    height: calc(50% + #{$tree-line * 0.5});
+    width: $tree-line;
+  }
+
+  // The elbow's first stub, across the indent the rows are inset by. The arm carries on from
+  // where this ends, so the two read as one line.
+  &::after {
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent;
+    height: $tree-line;
+  }
+}
+
+.branch-arm {
+  flex: 1 1 0;
+  height: $tree-line;
+  background-color: var(--sf-group, #616161);
+}
+
+// Nothing but the arm's opposite number: equal flex either side is what holds the button in the
+// middle while the arm takes whatever room is left to the left of it.
+.branch-spacer {
+  flex: 1 1 0;
 }
 
 // The "overlay over the group you could be entering" — the element Sortable actually measures

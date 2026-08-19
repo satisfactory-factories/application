@@ -146,7 +146,7 @@
 
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
-  const { sections: groupSections } = useFactoryGroups()
+  const { sections: groupSections, moveFactoryToGroup } = useFactoryGroups()
   const { isCollapsed, isMounted, setCollapsed, toggleCollapsed, usePlan } = useGroupCollapse()
 
   // Which plan's collapse state is in play. Group ids survive a copied plan, and Ungrouped has no
@@ -427,10 +427,17 @@
     planVisible.value = false
   }
 
-  const createFactory = () => {
+  // `groupId` is where the click came from: a group's own Add Factory button in the sidebar names
+  // its group, everything else leaves the factory ungrouped as it always has.
+  const createFactory = (groupId: string | null = null) => {
     const factory = newFactory()
     factory.displayOrder = getFactories().length
     addFactory(factory)
+    // Grouped after the fact rather than born into it: addFactory cannot see where the click came
+    // from, and seats every new factory at the end of the Ungrouped block. The move re-seats it at
+    // the end of its group and re-sorts the plan, so the card lands where the sidebar row is.
+    if (groupId) moveFactoryToGroup(factory.id, groupId)
+    // Reads the factory's group, so it opens the right one — hence after the move, not before.
     navigateToFactory(factory.id)
   }
 

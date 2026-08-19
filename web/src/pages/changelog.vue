@@ -114,6 +114,7 @@
               src="/assets/changelog/beta6/multi-group-edit.png"
             />
           </li>
+          <li><b>Every group ends with its own Add Factory button</b>, which makes a factory and puts it straight into that group — no adding it at the bottom of the plan and dragging it back up.</li>
           <li><b>Group power</b> (generated, consumed and the balance) is optional, under <b>Options → Sidebar → Factory groups</b>. A <b>circuit boost</b> chip shows where Alien Power Augmenters are involved.</li>
           <li><b>Deleting a group never deletes a factory.</b> One that still holds factories asks where they should go first.</li>
         </ul>
