@@ -38,4 +38,4 @@ allowBuilds:
 # the target explicitly: a looser key such as 'js-yaml@3' resolves to the 5.x latest,
 # which is a different API and breaks load-nyc-config.
 overrides:
-  js-yaml@^3.13.1: 3.15.1
+  js-yaml@^3.13.1: 5.2.3
