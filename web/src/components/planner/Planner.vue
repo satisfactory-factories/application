@@ -596,8 +596,9 @@
 
   // `subsection` may name a row that isn't on screen (a status chip jumping to the product that
   // owns the problem), so callers pass the section as a fallback rather than the jump silently
-  // doing nothing.
-  const navigateToFactory = (factoryId: number | string, subsection?: string, fallback?: string) => {
+  // doing nothing. Several rows can be named at once — a chip reading "3 shortages" is about
+  // three of them — in which case the jump lands on the topmost and lights all three.
+  const navigateToFactory = (factoryId: number | string, subsection?: string | string[], fallback?: string) => {
     const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
@@ -612,59 +613,81 @@
     // another page — would silently do nothing. Open the group first.
     setCollapsed(factory.group?.id ?? null, false)
 
+    const requested = Array.isArray(subsection) ? subsection : subsection ? [subsection] : []
+
+    // The card itself is the last resort behind whatever the caller named: a jump that aims at a
+    // row inside a card that has not rendered yet would otherwise land nowhere at all, and being
+    // taken to the factory beats being taken nowhere.
+    const fallbacks = fallback ? [fallback, `${factoryId}`] : [`${factoryId}`]
+
     // Wait a bit for the factory to unhide fully. Hack but works well.
-    setTimeout(() => scrollToElement([subsection ?? `${factoryId}`, fallback ?? `${factoryId}`]), 50)
+    setTimeout(() => scrollToElement(
+      requested.length ? requested : [`${factoryId}`],
+      fallbacks
+    ), 50)
   }
 
-  // Scrolls to the element, then corrects for layout shifts: factory cards materialize as they
+  // Scrolls to the target, then corrects for layout shifts: factory cards materialize as they
   // scroll past the viewport, growing the content above the target and leaving the scroll short.
   //
-  // Takes candidates in preference order and re-resolves them on every attempt: a row inside a
-  // card that has not materialized yet is not in the DOM at click time, and the correction pass
-  // is where it appears.
+  // Every target is a row the jump is about, and every one of them that exists is flashed; the
+  // scroll lands on whichever sits highest up the page, so the rest follow it down the screen.
+  // The `fallbacks` stand in, in preference order, only while none of the targets are in the DOM
+  // — a row inside a card that has not materialized yet is not there at click time, and the
+  // correction passes are where it appears, which is why the ids are re-resolved on every
+  // attempt.
   //
-  // `flashed` carries the id already pulsed down the correction passes, so landing on a fallback
-  // and later resolving the row itself flashes both, while a pass that changes nothing does not
-  // re-flash what the user is already looking at.
-  const scrollToElement = (candidates: string | string[], attempt = 0, flashed?: string) => {
-    const ids = Array.isArray(candidates) ? candidates : [candidates]
-    const elementId = ids.find(id => document.getElementById(id))
-    const element = elementId ? document.getElementById(elementId) : null
-    if (!element || !elementId) return
+  // `flashed` carries the ids already pulsed down those passes, so a row that turns up late gets
+  // its flash without re-flashing what the user is already looking at.
+  const scrollToElement = (
+    candidates: string | string[],
+    fallbacks: string | string[] = [],
+    attempt = 0,
+    flashed: string[] = []
+  ) => {
+    const targets = Array.isArray(candidates) ? candidates : [candidates]
+    const standIns = Array.isArray(fallbacks) ? fallbacks : [fallbacks]
+    const present = targets.filter(id => document.getElementById(id))
+    const standIn = standIns.find(id => document.getElementById(id))
+    const ids = present.length ? present : (standIn ? [standIn] : [])
+    if (!ids.length) return
+
+    const topOf = (id: string) => document.getElementById(id)?.getBoundingClientRect().top ?? Infinity
+    const anchorId = ids.reduce((highest, id) => topOf(id) < topOf(highest) ? id : highest)
 
     // Corrections snap instantly - re-running the smooth animation would chase a moving target.
-    element.scrollIntoView({ behavior: attempt === 0 ? 'smooth' : 'auto', block: 'start' })
+    document.getElementById(anchorId)!.scrollIntoView({
+      behavior: attempt === 0 ? 'smooth' : 'auto',
+      block: 'start',
+    })
 
-    if (elementId !== flashed) {
-      // Give the smooth scroll a beat to land first. Pulsing the moment it sets off means the
-      // flash is half over by the time the target is on screen — the correction passes below
-      // arrive mid-pulse, which is exactly when the user is looking at it.
-      if (attempt === 0) {
-        setTimeout(() => {
-          const arrived = document.getElementById(elementId)
-          if (arrived) flashElement(arrived)
-        }, 350)
-      } else {
-        flashElement(element)
-      }
-    }
+    const pending = ids.filter(id => !flashed.includes(id))
+    const flashAll = () => pending.forEach(id => {
+      const arrived = document.getElementById(id)
+      if (arrived) flashElement(arrived)
+    })
+    // Give the smooth scroll a beat to land first. Pulsing the moment it sets off means the flash
+    // is half over by the time the target is on screen — the correction passes below arrive
+    // mid-pulse, which is exactly when the user is looking at it.
+    if (attempt === 0) setTimeout(flashAll, 350)
+    else flashAll()
 
     if (attempt >= 4) return
     setTimeout(() => {
-      // Re-query rather than closing over `element` — cards materializing
+      // Re-query rather than closing over the element — cards materializing
       // above can replace the node, and a detached node's rect reads 0,
       // which silently skips the correction.
-      const current = document.getElementById(elementId)
+      const current = document.getElementById(anchorId)
       if (!current) return
       // ~114px is where the top of a scrolled-to element sits (page header + tab bar), and a row
       // jumped to from a status chip adds its 50px scroll-margin on top of that — so the tolerance
       // has to clear both, or the correction pass fights the margin it just applied.
       const scrolledShort = Math.abs(current.getBoundingClientRect().top) > 200
-      // Keep looking while we are parked on a fallback: the preferred target is a row inside a
-      // card that may still be rendering, and settling for its section would leave the flash on
-      // the section heading rather than the row the jump was aimed at.
-      if (scrolledShort || elementId !== ids[0]) {
-        scrollToElement(ids, attempt + 1, elementId)
+      // Keep looking while any target is still missing — we are either parked on the fallback or
+      // showing only some of the rows the jump is about, and settling for either would leave the
+      // rest unlit.
+      if (scrolledShort || present.length < targets.length) {
+        scrollToElement(targets, standIns, attempt + 1, [...flashed, ...pending])
       }
     }, 600)
   }

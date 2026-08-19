@@ -102,7 +102,12 @@
 <script setup lang="ts">
   import { computed, inject, ref, type Ref } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
-  import { FactoryStatus, factoryStatusClass } from '@/utils/factory-management/status'
+  import {
+    FactoryStatus,
+    factoryStatusClass,
+    FactoryStatusSection,
+    statusJumpTargets,
+  } from '@/utils/factory-management/status'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryIconDialog from '@/components/planner/FactoryIconDialog.vue'
@@ -113,17 +118,17 @@
     statuses?: FactoryStatus[]
   }>()
 
-  const navigateToFactory = inject('navigateToFactory') as (id: number, subsection?: string, fallback?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: number,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
 
-  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // Aim at every row the status names, with its section as the fallback for anything that has no
   // row of its own (or whose card has not rendered yet).
-  const navigateToStatus = (target: { section: string, subject?: string }) => {
-    const section = `${props.factory.id}-${target.section}`
-    navigateToFactory(
-      props.factory.id,
-      target.subject ? `${section}-item-${target.subject}` : section,
-      section
-    )
+  const navigateToStatus = (target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(props.factory.id, target)
+    navigateToFactory(props.factory.id, targets, fallback)
   }
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 

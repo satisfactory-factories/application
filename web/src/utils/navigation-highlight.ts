@@ -12,13 +12,22 @@ export const NAV_FLASH_DURATION = 1200
 // which for a factory card is its own header and not a nested section's.
 const HEADING_SELECTORS = ['[data-nav-flash]', '.header', '.v-card-title', 'h1', 'h2']
 
+// A jump can land on a marker rather than on anything you can see: a byproduct has no row of its
+// own, so the product row that makes it carries an empty, zero-height div bearing the byproduct's
+// id purely so the jump has somewhere to go. There is no box there to paint — flashing it lit
+// nothing at all — so the pulse goes to whatever owns the marker.
+const isEmptyAnchor = (element: HTMLElement) =>
+  element.children.length === 0 && !element.textContent?.trim()
+
 export const resolveFlashTarget = (element: HTMLElement): HTMLElement => {
+  const subject = isEmptyAnchor(element) && element.parentElement ? element.parentElement : element
+
   for (const selector of HEADING_SELECTORS) {
-    const heading = element.querySelector<HTMLElement>(selector)
+    const heading = subject.querySelector<HTMLElement>(selector)
     if (heading) return heading
   }
 
-  return element
+  return subject
 }
 
 // The pending cleanup per element, so a second flash can cancel the first one's. Without it the

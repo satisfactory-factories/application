@@ -71,10 +71,12 @@
     navigable: false,
   })
 
-  // The subject rides along so the jump can land on the row that owns the problem rather than on
-  // the section heading above it. The parent composes the element id: only it knows the factory.
+  // The subjects ride along so the jump can land on the rows that own the problem rather than on
+  // the section heading above them. All of them, not just the first: a chip reading "3 shortages"
+  // is about three rows, and lighting one of them makes the user hunt for the other two. The
+  // parent composes the element ids: only it knows the factory.
   const emit = defineEmits<{
-    (event: 'navigate', target: { section: FactoryStatusSection, subject?: string }): void
+    (event: 'navigate', target: { section: FactoryStatusSection, subjects: string[] }): void
   }>()
 
   const isNavigable = (status: FactoryStatus) => props.navigable && !!status.section
@@ -86,7 +88,7 @@
     ? {
       onClick: (event: MouseEvent | KeyboardEvent) => {
         event.stopPropagation()
-        emit('navigate', { section: status.section!, subject: status.subjects[0]?.id })
+        emit('navigate', { section: status.section!, subjects: status.subjects.map(subject => subject.id) })
       },
     }
     : {}
