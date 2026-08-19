@@ -190,26 +190,25 @@
             <!-- Empty rather than disabled on a row with nothing to dispose of: a shortage has no
                  surplus to send anywhere, and two greyed spinners on every such row is noise. -->
             <div v-if="showDisposalControls(factory, partId.toString())" class="d-flex flex-column ga-1 align-center">
-              <div v-if="showSinkControl(factory, partId.toString())" class="d-flex align-center ga-2">
-                <game-asset
-                  height="28"
-                  subject="awesome-sink"
-                  :tooltip="sinkTooltip(partId.toString())"
-                  type="item_id"
-                  width="28"
-                />
+              <v-chip
+                v-if="showSinkControl(factory, partId.toString())"
+                class="sf-chip input awesome-sink no-margin disposal-chip"
+                variant="tonal"
+              >
+                <tooltip :text="sinkTooltip(partId.toString())">
+                  <game-asset height="24" subject="awesome-sink" type="item_id" width="24" />
+                </tooltip>
                 <v-number-input
                   :id="`${factory.id}-sink-count-${partId}`"
-                  class="disposal-input sink"
+                  class="inline-inputs ml-0 disposal-input"
                   control-variant="stacked"
                   density="compact"
                   hide-details
                   :min="0"
                   :model-value="getSinkCount(factory, partId.toString())"
-                  variant="outlined"
                   @update:model-value="updateSinkCount(partId.toString(), $event)"
                 />
-              </div>
+              </v-chip>
               <!-- An absent control the user cannot account for reads as a bug, so say why. The
                    two exclusions differ: the sink refuses fluids AND radioactive items, while the
                    Depot only refuses fluids — uploading a radioactive part is not just allowed, it
@@ -223,26 +222,25 @@
                 <span v-if="isFluidPart(partId.toString())">The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.</span>
                 <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot — doing so stops it irradiating you.</span>
               </v-tooltip>
-              <div v-if="showDepotControl(factory, partId.toString(), getGameData())" class="d-flex align-center ga-2">
-                <game-asset
-                  height="28"
-                  subject="dimensional-depot-uploader"
-                  :tooltip="depotTooltip(partId.toString())"
-                  type="item_id"
-                  width="28"
-                />
+              <v-chip
+                v-if="showDepotControl(factory, partId.toString(), getGameData())"
+                class="sf-chip input dimensional-depot no-margin disposal-chip"
+                variant="tonal"
+              >
+                <tooltip :text="depotTooltip(partId.toString())">
+                  <game-asset height="24" subject="dimensional-depot-uploader" type="item_id" width="24" />
+                </tooltip>
                 <v-number-input
                   :id="`${factory.id}-depot-count-${partId}`"
-                  class="disposal-input depot"
+                  class="inline-inputs ml-0 disposal-input"
                   control-variant="stacked"
                   density="compact"
                   hide-details
                   :min="0"
                   :model-value="getDepotCount(factory, partId.toString())"
-                  variant="outlined"
                   @update:model-value="updateDepotCount(partId.toString(), $event)"
                 />
-              </div>
+              </v-chip>
             </div>
             <p v-else class="text-center text-medium-emphasis">-</p>
           </td>
@@ -335,23 +333,6 @@
                 <p class="text-caption text-medium-emphasis mb-0">
                   ({{ formatNumber(part.amountRemainingPreSink ?? 0) }}/min surplus without sinking)
                 </p>
-              </template>
-              <template v-if="isDepoted(factory, partId.toString())">
-                <v-tooltip bottom>
-                  <template #activator="{ props: activatorProps }">
-                    <v-chip v-bind="activatorProps" class="sf-chip dimensional-depot small">
-                      <game-asset
-                        class="mr-2"
-                        height="18"
-                        subject="dimensional-depot"
-                        type="item_id"
-                        width="18"
-                      />
-                      <b>Depot &times;{{ getDepotCount(factory, partId.toString()) }}</b>
-                    </v-chip>
-                  </template>
-                  <span>Uploaded to your Dimensional Depot.<br>Depot storage is finite, so this is a buffer rather than a destination — the surplus below is left as it is because the belt still backs up once the depot is full.</span>
-                </v-tooltip>
               </template>
               <!-- Blue, and never alongside No demand: an item the game gives no consumer is
                    finished, not spare. -->
@@ -605,7 +586,6 @@
   import {
     getDepotCount,
     getSinkCount,
-    isDepoted,
     setDepotCount,
     setSinkCount,
     SINK_POWER_MW,
@@ -966,44 +946,23 @@ table {
   }
 }
 
-// Narrow enough that two of them plus their icons fit the Storage column without pushing the
-// Satisfaction column off the card. Vuetify's number input is sized for a form field, which is
-// several times wider than a count that will realistically be a single digit.
-//
-// Each spinner wears its destination's colour, the way the Product chip wears the product blue:
-// the two rows are otherwise identical grey boxes, and the icon beside them is small enough that
-// telling sink from Uploader meant looking twice.
+// Icon and count in one chip, the way every other inline number field in the planner is built
+// (BuildingGroup.vue is the model). The chip carries the fill and its destination's colour — a
+// bare outlined input read as a hollow box nothing else in the app has, and the two rows are
+// otherwise identical, so the icon alone meant looking twice to tell sink from Uploader.
+.disposal-chip {
+  // Fixed so the two rows line up down the column whatever the counts are.
+  width: 106px;
+}
+
+// Narrower than the app's usual inline input: this counts buildings, realistically a single
+// digit, and two of them have to fit beside the Satisfaction column.
 .disposal-input {
-  width: 86px;
-  min-width: 86px;
-
-  &.sink {
-    --disposal-color: var(--sf-awesome-sink);
-    --disposal-border: var(--sf-awesome-sink-border);
-  }
-
-  &.depot {
-    --disposal-color: var(--sf-dimensional-depot);
-    --disposal-border: var(--sf-dimensional-depot-border);
-  }
-
-  // The outline draws from currentColor at a reduced opacity, so both have to be set — colour
-  // alone leaves it at the default grey.
-  :deep(.v-field__outline) {
-    color: var(--disposal-border);
-    --v-field-border-opacity: 1;
-  }
+  width: 64px;
+  min-width: 64px;
 
   :deep(input) {
-    color: var(--disposal-color);
     font-weight: 700;
-    text-align: center;
-  }
-
-  // The stacked increment/decrement buttons, which otherwise stay the default grey and read as
-  // disabled next to a coloured field.
-  :deep(.v-btn) {
-    color: var(--disposal-color);
   }
 }
 

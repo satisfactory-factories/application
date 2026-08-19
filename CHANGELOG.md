@@ -48,6 +48,9 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
   icon-only counts of items tracked, Uploaders and Mercer Spheres, plus starved and over-capacity
   warnings when they apply.
+- Clicking a factory pill in the Dimensional Depot lands on that item's own row under the
+  factory's Satisfaction, unhiding the card and opening its group on the way, rather than dropping
+  you at the top of the factory and leaving you to find the item.
 - **The Demo plan uses the Depot**, so the section is visible on the first plan anyone opens:
   two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic. Only the
   Copper Ingot line has a surplus to give, so the other three read "Nothing spare" — which is the

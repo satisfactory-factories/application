@@ -140,7 +140,7 @@
                     :key="`${entry.id}-${source.id}`"
                     class="sf-chip sf-chip-clickable small factory"
                     :class="{ 'status-warning-outlined': source.amount <= 0 }"
-                    @click="navigateToFactory(source.id)"
+                    @click="navigateToFactory(source.id, `${source.id}-satisfaction-item-${entry.id}`, `${source.id}-satisfaction`)"
                   >
                     <factory-icon-display :icon="source.icon" size="20" />
                     <span class="ml-2">
@@ -188,7 +188,11 @@
     helpText: boolean;
   }>()
 
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
+  // Takes the row to aim at plus a fallback section, so a click lands on the item's own
+  // satisfaction row rather than the top of the factory card.
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number, subsection?: string, fallback?: string
+  ) => void
 
   const { depotTier, depotRate } = useDepotResearch()
 
