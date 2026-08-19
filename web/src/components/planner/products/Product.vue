@@ -224,7 +224,7 @@
             hide-spin-buttons
             :model-value="formatNumberFully(product.buildingRequirements.amount)"
             :product="product.id"
-            width="120px"
+            width="100px"
             @update:model-value="changeBuildingAmountInput(product, $event)"
           />
           <debounce-spinner :active="pendingRecalc === `${product.id}-buildings`" />

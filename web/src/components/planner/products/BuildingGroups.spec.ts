@@ -842,3 +842,80 @@ describe('Component: BuildingGroups', () => {
     expect(subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).exists()).toBe(false)
   })
 })
+
+// An Alien Power Augmenter's groups always follow the item, so a gap between the two is the sync
+// mid-flight, never something the user is being asked to close. The balancing controls that go
+// with a gap were already hidden for them; the per-group Trim/Satisfy button and the shortfall
+// hint were not, so a plain decrease still put both on screen.
+describe('Component: BuildingGroups (always-synced buildings)', () => {
+  let factory: Factory
+  let producer: FactoryPowerProducer
+
+  const addProducer = (building: string, recipe: string) => {
+    setActivePinia(createPinia())
+    factory = newFactory('Alien Power')
+    addPowerProducerToFactory(factory, {
+      building,
+      buildingAmount: 3,
+      recipe,
+      updated: FactoryPowerChangeType.Building,
+    })
+    producer = factory.powerProducers[0]
+    producer.buildingGroupsTrayOpen = true
+    calculateFactories([factory], gameData)
+  }
+
+  // What a mid-edit factory looks like: the item has moved, the group has not caught up yet.
+  const leaveGroupShort = () => {
+    producer.buildingGroups[0].buildingCount = 1
+  }
+
+  const balanceButton = (subject: VueWrapper<any>) =>
+    subject.find(`[id="${factory.id}-${producer.buildingGroups[0].id}-balance"]`)
+
+  const shortfallHints = (subject: VueWrapper<any>) =>
+    subject.find(`[id="${factory.id}-${producer.id}-shortfall-hints"]`)
+
+  describe('an Alien Power Augmenter', () => {
+    beforeEach(() => addProducer('alienpoweraugmenter', 'AlienPowerAugmenter'))
+
+    it('offers no Trim or Satisfy on a group that is behind the item', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(balanceButton(subject).exists()).toBe(false)
+    })
+
+    it('hints at no shortfall to cover', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(shortfallHints(subject).exists()).toBe(false)
+      expect(subject.text()).not.toContain('To cover the shortfall')
+    })
+  })
+
+  // The same state on a generator the user really does have to balance by hand, so the assertions
+  // above are about the augmenter rather than about the fixture failing to produce a gap.
+  describe('a nuclear generator', () => {
+    beforeEach(() => addProducer('generatornuclear', 'GeneratorNuclear_NuclearFuelRod'))
+
+    it('still offers Trim or Satisfy on a group that is behind the item', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(balanceButton(subject).exists()).toBe(true)
+    })
+
+    it('still hints at what would cover the shortfall', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(shortfallHints(subject).exists()).toBe(true)
+    })
+  })
+})

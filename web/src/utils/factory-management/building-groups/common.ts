@@ -476,6 +476,31 @@ export const calculateBuildingGroupProblems = (
 }
 
 // Takes the building groups and rebalances them based on the building count
+// Spreads a target across groups in whole buildings, as evenly as the count allows: each
+// group gets the floor of an equal share and the leftover buildings are handed out one at a
+// time. Used for buildings that cannot overclock, where a part-building share has nowhere
+// to go. A fractional target cannot be built at all, so what is left of one lands on the
+// last group rather than being spread as noise across every group.
+const distributeWholeBuildings = (groups: BuildingGroup[], targetBuildings: number) => {
+  const base = Math.floor(targetBuildings / groups.length)
+  let remainder = targetBuildings - base * groups.length
+
+  groups.forEach((group, index) => {
+    let count = base
+    if (remainder >= 1) {
+      count++
+      remainder--
+    }
+    if (index === groups.length - 1 && remainder > 0) {
+      count += remainder
+    }
+
+    group.buildingCount = formatNumberFully(count, 3)
+    group.overclockPercent = 100
+    group.clockSetByUser = false
+  })
+}
+
 export const syncBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
@@ -526,6 +551,18 @@ export const syncBuildingGroups = (
       ) {
         return
       }
+    }
+
+    // Buildings with no clock (Geothermal, Alien Power Augmenter) cannot absorb a
+    // fractional share by underclocking. The ceil-and-underclock below would hand EVERY
+    // group a whole extra building, and the clock is then forced back to 100% — so 3
+    // augmenters over 2 groups became 2 + 2, inventing a building the user never asked
+    // for and leaving the groups permanently disagreeing with the item. Split the target
+    // into whole buildings instead.
+    if (!canBuildingOverclock(building)) {
+      distributeWholeBuildings(groups, targetBuildings)
+      recalculateGroupMetrics(item, groupType, factory)
+      return
     }
 
     // Divide the target equally among groups. The target is in output-effective
