@@ -64,5 +64,36 @@ describe('game-data-store', () => {
     it('returns nothing only when nothing can make the part', () => {
       expect(gameDataStore.getDefaultRecipeForPart('NotAPartAtAll')).toBe('')
     })
+
+    // #545: a product's amount is read against its recipe's *primary* output, so a recipe that
+    // only drops the part as a byproduct cannot be the default. Picking Plastic for Heavy Oil
+    // Residue built a row reading "300 Heavy Oil Residue" out of 300 Plastic worth of refineries.
+    it.each([
+      ['HeavyOilResidue', 'Alternate_HeavyOilResidue'],
+      ['PolymerResin', 'Alternate_PolymerResin'],
+      ['CompactedCoal', 'Alternate_EnrichedCoal'],
+      ['DarkEnergy', 'DarkEnergy'],
+    ])('makes %s outright rather than as a byproduct of something else', (part, expected) => {
+      expect(gameDataStore.getDefaultRecipeForPart(part)).toBe(expected)
+    })
+
+    it('returns nothing for a part that only ever appears as a byproduct', () => {
+      expect(gameDataStore.getDefaultRecipeForPart('DissolvedSilica')).toBe('')
+    })
+
+    it('never offers a recipe that only drops the part as a byproduct', () => {
+      const parts = [
+        ...Object.keys(gameDataStore.getGameData().items.parts),
+        ...Object.keys(gameDataStore.getGameData().items.rawResources),
+      ]
+
+      parts.forEach(part => {
+        const recipeId = gameDataStore.getDefaultRecipeForPart(part)
+        if (!recipeId) return
+
+        const recipe = gameDataStore.getRecipeById(recipeId)
+        expect(recipe?.products.find(product => product.part === part)?.isByProduct).toBe(false)
+      })
+    })
   })
 })
