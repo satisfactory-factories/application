@@ -350,6 +350,27 @@
                   </span>
                   <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
                 </v-chip>
+                <!-- Custom buildings produce nothing, so they are stated as what they cost. Same
+                     reasoning as the generators above: without them a portal room collapsed to
+                     "Empty factory!". -->
+                <v-chip
+                  v-for="(customBuilding, customIndex) in factory.customBuildings"
+                  :key="`${factory.id}-custom-${customIndex}`"
+                  class="sf-chip custom-building"
+                >
+                  <game-asset
+                    v-if="customBuilding.building"
+                    clickable
+                    height="32"
+                    :subject="customBuilding.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ getBuildingDisplayName(customBuilding.building) }}</b>: {{ formatNumber(Math.ceil(customBuilding.amount)) }}x
+                  </span>
+                  <span class="ml-2 text-orange">(-{{ formatMw(customBuilding.powerConsumed) }})</span>
+                </v-chip>
               </div>
             </template>
           </div>
@@ -403,7 +424,7 @@
   import { computed, inject, ref, watch } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
+  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
@@ -504,7 +525,9 @@
   // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
   // Power generators alone are a perfectly good factory, and were being called empty.
   const hasOutput = computed(() =>
-    props.factory.products.length > 0 || props.factory.powerProducers.length > 0
+    props.factory.products.length > 0 ||
+    props.factory.powerProducers.length > 0 ||
+    (props.factory.customBuildings?.length ?? 0) > 0
   )
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.

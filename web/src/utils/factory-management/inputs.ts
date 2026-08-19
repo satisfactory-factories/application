@@ -204,7 +204,11 @@ export const importPartSelections = (
 }
 
 export const calculateAbleToImport = (factory: Factory, importCandidates: Factory[]): string | boolean => {
-  if (factory.products.length === 0 && factory.powerProducers.length === 0) {
+  if (
+    factory.products.length === 0 &&
+    factory.powerProducers.length === 0 &&
+    (factory.customBuildings?.length ?? 0) === 0
+  ) {
     return 'noProductsOrProducers'
   }
 
@@ -212,7 +216,10 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
   // nothing it could import, whatever the raw assumption says.
   const parts = Object.values(factory.parts)
   if (parts.length > 0 && parts.every(part =>
-    part.isRaw && part.amountRequiredProduction === 0 && part.amountRequiredPower === 0
+    part.isRaw &&
+    part.amountRequiredProduction === 0 &&
+    part.amountRequiredPower === 0 &&
+    (part.amountRequiredBuildings ?? 0) === 0
   )) {
     return 'producesRawOnly'
   }

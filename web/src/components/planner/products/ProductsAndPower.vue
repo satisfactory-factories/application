@@ -3,7 +3,7 @@
     <div class="d-flex align-center flex-wrap mb-4 ga-2">
       <h1 class="text-h5" :class="heading.class">
         <i :class="heading.icon" />
-        <span class="ml-3">Products &amp; Power Generators</span>
+        <span class="ml-3">Products, Power &amp; Buildings</span>
       </h1>
     </div>
     <p v-show="helpText" class="text-body-2 mb-4">
@@ -13,7 +13,8 @@
       Export (and the Screws as a end product).<br>
       An <v-chip color="green">Internal</v-chip> product is one that is used to produce other products. The surplus of which can also be used as an export.<br>
       A <v-chip class="sf-chip status-note"><i class="fas fa-question-circle mr-1" />No demand</v-chip> product is one nothing asks for: not used internally, not exported. A future update will add support for sinking, so if you are sinking it, ignore this for now.<br>
-      A <v-chip class="sf-chip status-warning"><i class="fas fa-exclamation-triangle mr-1" />Potential blockage</v-chip> byproduct has nowhere to go, so it fills the machine's output and stalls the buildings making it. Blend it into a recipe that consumes it, export it, or sink it.
+      A <v-chip class="sf-chip status-warning"><i class="fas fa-exclamation-triangle mr-1" />Potential blockage</v-chip> byproduct has nowhere to go, so it fills the machine's output and stalls the buildings making it. Blend it into a recipe that consumes it, export it, or sink it.<br>
+      <v-chip class="sf-chip custom-building">Custom Buildings</v-chip> are the ones that make nothing but still cost you: portals, train stations, radar towers, lights. They add their power draw to the factory, and the few that consume parts to run (a Main Portal's Singularity Cells) add that as a demand to satisfy like any other.
     </p>
     <product :factory="factory" :help-text="helpText" />
     <v-btn
@@ -35,6 +36,16 @@
     >
       Add Power Generator
     </v-btn>
+    <custom-building :factory="factory" :help-text="helpText" />
+    <v-btn
+      color="indigo mr-2 mt-n1"
+      prepend-icon="fas fa-building"
+      ripple
+      variant="flat"
+      @click="addEmptyCustomBuilding(factory)"
+    >
+      Add Custom Building
+    </v-btn>
   </div>
 </template>
 
@@ -43,6 +54,7 @@
   import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+  import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
   import { FactoryStatus, getSectionStatuses, highestSeverity } from '@/utils/factory-management/status'
 
   const props = defineProps<{
@@ -75,6 +87,10 @@
       recipe: '',
       updated: FactoryPowerChangeType.Power,
     })
+  }
+
+  const addEmptyCustomBuilding = (factory: Factory) => {
+    addCustomBuildingToFactory(factory)
   }
 
   const updateOrder = (list: any[], direction: 'up' | 'down', item: any) => {

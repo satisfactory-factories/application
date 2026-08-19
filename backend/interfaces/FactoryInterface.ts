@@ -7,6 +7,7 @@ export interface PartMetrics {
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
   amountRequiredPower: number;
+  amountRequiredBuildings: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaRaw: number; // This is the amount supplied by the raw resources assumed to be handled by the user.
@@ -125,6 +126,17 @@ export interface FactoryPowerProducer {
   updated: string | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
 }
 
+// A building the user placed that makes nothing: a portal, a train station, a radar tower. It
+// costs power, and a few of them cost parts to keep running.
+export interface FactoryCustomBuilding {
+  id: string;
+  building: string;
+  amount: number;
+  ingredients: { part: string, perMin: number }[];
+  powerConsumed: number;
+  displayOrder: number;
+}
+
 export interface FactoryPower {
   consumed: number;
   produced: number;
@@ -147,6 +159,7 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
+  customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;

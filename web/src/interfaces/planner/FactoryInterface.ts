@@ -7,6 +7,9 @@ export interface PartMetrics {
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
   amountRequiredPower: number;
+  // Demanded by custom buildings (a Portal's Singularity Cells). Absent on plans saved before
+  // custom buildings existed; initFactories backfills it.
+  amountRequiredBuildings: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaRaw: number; // This is the amount supplied by the raw resources assumed to be handled by the user.
@@ -192,6 +195,26 @@ export interface FactoryPowerProducer {
   buildingGroupItemSync: boolean
 }
 
+/**
+ * A building the user has placed in this factory that makes nothing: a portal, a train station,
+ * a radar tower. It costs power, and a few of them (the Main Portal's Singularity Cells) cost
+ * parts to keep running, which become a demand the factory has to satisfy like any other.
+ *
+ * Deliberately has no building groups: none of these can be overclocked or sloop'd, so a group
+ * would only ever echo `amount`.
+ */
+export interface FactoryCustomBuilding {
+  id: string;
+  building: string; // Key into gameData.customBuildings, e.g. 'portal'
+  amount: number; // How many the user wants
+  // Upkeep, in parts per minute for ALL of them. Seeded from the game data when the building is
+  // picked and rescaled with `amount`, but stored on the factory: a portal link that is not
+  // always open costs less than the book rate, and the user is allowed to say so.
+  ingredients: { part: string, perMin: number }[];
+  powerConsumed: number; // Calculated: amount x the building's draw
+  displayOrder: number;
+}
+
 export interface FactoryPower {
   consumed: number;
   // Trough/peak draw when variable-power buildings (Particle Accelerator etc.) swing to
@@ -244,6 +267,7 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
+  customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;

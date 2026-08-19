@@ -25,7 +25,7 @@
         label="Hide Internal Products & Raw"
       />
     </div>
-    <v-row v-if="hasParts || hasPowerProducers">
+    <v-row v-if="hasParts || hasPowerProducers || hasCustomBuildings">
       <v-col v-if="hasParts" class="pb-1" cols="12">
         <planner-factory-satisfaction-items
           :factory="factory"
@@ -89,5 +89,7 @@
   })
 
   const hasPowerProducers = computed(() => props.factory.powerProducers.length > 0)
+  // A factory of nothing but custom buildings still has power and buildings worth showing.
+  const hasCustomBuildings = computed(() => (props.factory.customBuildings?.length ?? 0) > 0)
   const hideInternalOutputs = ref(false)
 </script>

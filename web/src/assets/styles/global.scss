@@ -261,6 +261,11 @@
     border-color: var(--sf-status-warning-border) !important;
   }
 
+  &.custom-building {
+    color: var(--sf-custom-building) !important;
+    border-color: var(--sf-custom-building-border) !important;
+  }
+
   &.node-setting {
     color: var(--sf-node-setting) !important;
     border-color: var(--sf-node-setting-border) !important;

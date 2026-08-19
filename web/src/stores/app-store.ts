@@ -491,6 +491,11 @@ export const useAppStore = defineStore('app', () => {
           factory.parts[part].amountRequiredPower = 0
           needsCalculation = true
         }
+
+        // For #478
+        if (factory.parts[part].amountRequiredBuildings === undefined) {
+          factory.parts[part].amountRequiredBuildings = 0
+        }
         if (factory.parts[part].amountSuppliedViaRaw === undefined) {
           factory.parts[part].amountSuppliedViaRaw = 0
           needsCalculation = true
@@ -550,6 +555,11 @@ export const useAppStore = defineStore('app', () => {
       // Patch for #270
       if (factory.syncStatePower === undefined) {
         factory.syncStatePower = {}
+      }
+
+      // Patch for #478
+      if (factory.customBuildings === undefined) {
+        factory.customBuildings = []
       }
 
       factory.products.forEach(product => {

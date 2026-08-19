@@ -25,6 +25,7 @@ export const createNewPart = (factory: Factory, part: string) => {
       amountRequiredExports: 0,
       amountRequiredProduction: 0,
       amountRequiredPower: 0,
+      amountRequiredBuildings: 0,
       amountSupplied: 0,
       amountSuppliedViaInput: 0,
       amountSuppliedViaRaw: 0,
@@ -126,6 +127,30 @@ export const getBuildingDisplayName = (building: string) => {
     ['quantumencoder', 'Quantum Encoder'],
     ['smeltermk1', 'Smelter'],
     ['waterpump', 'Water Extractor'],
+    // Custom buildings — everything the player places that makes nothing. Mirrors the
+    // displayName the parser emits for each one; custom-buildings.spec.ts fails if the two
+    // ever drift. They are listed here as well because <game-asset> names a building without
+    // having the game data to hand.
+    ['resourcesink', 'AWESOME Sink'],
+    ['ceilinglight', 'Ceiling Light'],
+    ['dronestation', 'Drone Port'],
+    ['floodlightpole', 'Flood Light Tower'],
+    ['traindockingstationliquid', 'Fluid Freight Platform'],
+    ['fluidtruckstation', 'Fluid Truck Station'],
+    ['traindockingstation', 'Freight Platform'],
+    ['pipehyperstart', 'Hypertube Entrance'],
+    ['jumppadadjustable', 'Jump Pad'],
+    ['portal', 'Main Portal'],
+    ['elevator', 'Personnel Elevator'],
+    ['pipelinepump', 'Pipeline Pump Mk.1'],
+    ['pipelinepumpmk2', 'Pipeline Pump Mk.2'],
+    ['radartower', 'Radar Tower'],
+    ['portalsatellite', 'Satellite Portal'],
+    ['streetlight', 'Street Light'],
+    ['trainstation', 'Train Station'],
+    ['truckstation', 'Truck Station'],
+    ['landingpad', 'U-Jelly Landing Pad'],
+    ['floodlightwall', 'Wall-Mounted Flood Light'],
     // Logistics. Keyed by icon slug rather than by the game's internal name like the entries
     // above: these only ever reach here from the export calculator, which names them by icon.
     ['conveyor-belt-mk-1', 'Conveyor Belt Mk.1'],

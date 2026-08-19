@@ -39,6 +39,7 @@ export const palette = {
   teal: '#26a69a',
   pink: '#ec407a',
   indigo: '#5c6bc0',
+  indigoBorder: '#3949ab',
   lime: '#c0ca33',
   offWhite: '#eceff1',
   offWhiteBorder: '#8d9499',
@@ -69,6 +70,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // A building that produces nothing — a portal, a train station, a radar tower. Its own colour
+  // because it is neither a product nor a generator: indigo sits away from both the blue of items
+  // and the orange every other building figure wears.
+  customBuilding: { color: palette.indigo, border: palette.indigoBorder },
   // A setting on a building group rather than something that flows through it: the node
   // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
   // these were reading as `rawResource` beige, which is the colour of the ore itself.

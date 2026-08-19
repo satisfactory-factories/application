@@ -218,6 +218,21 @@
                   -{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min
                 </span>
               </div>
+              <!-- Custom buildings only, and only when there are any: a portal room's Singularity
+                   Cells are consumed by the factory but by nothing it produces, so lumping them
+                   into Internal Consumption would read as a recipe eating them. -->
+              <div
+                v-if="(part.amountRequiredBuildings ?? 0) > 0"
+                class="text-orange d-flex justify-space-between align-center"
+              >
+                <span>Custom Buildings</span>
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-buildings`"
+                  class="align-self-end text-right"
+                >
+                  -{{ formatNumber(part.amountRequiredBuildings ?? 0) }}/min
+                </span>
+              </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
                 <span
