@@ -14,6 +14,7 @@ import {
   hasNoDemand,
   highestSeverity,
   isEndProduct,
+  statusJumpTargets,
   tallyFactoryStatuses,
 } from '@/utils/factory-management/status'
 
@@ -574,6 +575,29 @@ describe('status', () => {
       for (const section of ['satisfaction', 'imports', 'products'] as const) {
         expect(getSectionStatuses(statuses, section)).toEqual([])
       }
+    })
+  })
+
+  describe('statusJumpTargets', () => {
+    test('aims at every row the status names, so a chip covering three lights all three', () => {
+      expect(statusJumpTargets(2, {
+        section: 'satisfaction',
+        subjects: ['IronPlate', 'IronRod', 'Screw'],
+      })).toEqual({
+        targets: [
+          '2-satisfaction-item-IronPlate',
+          '2-satisfaction-item-IronRod',
+          '2-satisfaction-item-Screw',
+        ],
+        fallback: '2-satisfaction',
+      })
+    })
+
+    test('falls back to the section for a status that names nothing', () => {
+      expect(statusJumpTargets(2, { section: 'products', subjects: [] })).toEqual({
+        targets: ['2-products'],
+        fallback: '2-products',
+      })
     })
   })
 

@@ -1,7 +1,8 @@
 import { ref, watch } from 'vue'
 
 /**
- * Toggles from the Options dialog that change how the planner is drawn.
+ * Toggles that change how the planner is drawn, written by the Options dialog and the sidebar's
+ * global actions.
  *
  * Module scope, not component state: the sidebar is mounted twice at once (docked and drawer) and
  * the dialog that writes these is a third component entirely, so a ref per instance would let the
@@ -30,6 +31,11 @@ interface PlannerOptions {
   // How far an item's building groups may sit from what it asks for before they count as
   // imbalanced, as a percentage of that requirement. See balanceTolerance.
   balanceTolerancePercent: number
+  // Drop the wide-screen gutters and let the plan fill the window. Off by default: the gutters
+  // exist so a factory card doesn't stretch into an unreadable line on a big monitor, but a plan
+  // with wide satisfaction tables would rather have the pixels. Only does anything past 2000px —
+  // below that the planner already fills the window. See Planner.vue's .full-width rules.
+  fullWidth: boolean
 }
 
 const DEFAULTS: PlannerOptions = {
@@ -38,6 +44,7 @@ const DEFAULTS: PlannerOptions = {
   showGroupProductKinds: true,
   showGroupPower: false,
   balanceTolerancePercent: 1,
+  fullWidth: false,
 }
 
 // A tolerance of zero would paint every plan red and a negative one is meaningless, so a stored

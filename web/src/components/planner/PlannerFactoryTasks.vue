@@ -13,6 +13,7 @@
         outlined
         placeholder="Add a task..."
         :rules="[newTaskRules.length]"
+        @blur="addTask"
         @keyup.enter="addTask"
       />
       <p v-if="factory.tasks.length >= 40" class="text-red">You are only allowed up to 50 tasks.</p>
@@ -117,21 +118,27 @@
     },
   }
 
+  // Called on enter and on blur, so typing something and clicking away adds the task rather
+  // than silently throwing it away. Both paths land here with the field already cleared by a
+  // previous add, hence the empty check comes before anything that can nag the user.
   const addTask = () => {
+    const title = newTask.value.trim()
+    if (title.length === 0) {
+      newTask.value = ''
+      return
+    }
     if (props.factory.tasks.length >= 50) {
       alert('You have reached the maximum number of tasks allowed (50).')
       return
     }
-    if (newTask.value.length === 0) return
-    // Only add a new task if there isn't already an empty one
-    props.factory.tasks.push({ title: newTask.value, completed: false })
 
     // Prevent people from adding a stupidly long task
-    if (newTask.value.length > 200) {
+    if (title.length > 200) {
       alert('Task is too long. Please keep it under 200 characters.')
       return
     }
 
+    props.factory.tasks.push({ title, completed: false })
     newTask.value = ''
   }
 
