@@ -1,28 +1,30 @@
 name: "Release: Publish"
 
-# Publishes a GitHub release whose body is the matching section of CHANGELOG.md,
-# verbatim.
+# Publishes a GitHub release whose body is that version's section of the in-app
+# Change Log, converted to markdown.
 #
-# CHANGELOG.md is written by hand for humans and already mirrors the in-app
-# Change Log. Generating release notes from commit subjects instead would give a
-# third, worse description of the same update, so this workflow does no writing
-# of its own: pick a version, and the section under that version's `## ` heading
-# becomes the release body.
+# The source is web/src/pages/changelog.vue — the page players actually read —
+# not CHANGELOG.md. Both describe the same updates, but at very different
+# altitudes: CHANGELOG.md is the exhaustive technical record and reads as noise
+# to someone who only wants to know what is new, while the in-app page is the
+# written-for-players version, with screenshots and a 🆕 / 👍 / 🔧 key. This
+# workflow does no writing of its own: pick a version, and that release's
+# entry becomes the release body.
 #
 # Deploys are trunk-based (docs/how-do-we-release.md) — merging to main is what
 # ships the app — so a release here is a record of what shipped, not the act of
 # shipping it. That is also why this is dispatch-only: releases are cut when
 # someone decides an update is done, not on every push to main.
 #
-# The notes always come from CHANGELOG.md on the branch this workflow runs from,
-# while the tag is pinned to `sha`. That split is deliberate: it is what lets a
-# past update be released retroactively, using a section written today against a
-# commit from months ago.
+# The notes always come from the Change Log on the branch this workflow runs
+# from, while the tag is pinned to `sha`. That split is deliberate: it is what
+# lets a past update be released retroactively, using an entry written today
+# against a commit from months ago.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release, e.g. 0.6.0. Becomes the tag, and its major.minor picks the CHANGELOG.md section.'
+        description: 'Version to release, e.g. 0.6.0. Becomes the tag, and its major.minor picks the Change Log release.'
         required: true
         type: string
       sha:
@@ -34,7 +36,7 @@ on:
         type: boolean
         default: false
       prerelease:
-        description: 'Mark as a pre-release. "auto" marks anything the changelog titles Alpha or Beta.'
+        description: 'Mark as a pre-release. "auto" marks anything the Change Log titles Alpha or Beta.'
         type: choice
         options:
           - auto
@@ -114,7 +116,7 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "subject=$(git log -1 --format=%s "$sha")" >> "$GITHUB_OUTPUT"
 
-      - name: Read the release notes out of CHANGELOG.md
+      - name: Convert the Change Log entry into release notes
         id: notes
         env:
           VERSION: ${{ inputs.version }}
@@ -191,5 +193,5 @@ jobs:
             echo "| Tag | \`$VERSION\` |"
             echo "| Commit | \`${TARGET_SHA:0:8}\` — $SUBJECT |"
             echo
-            echo "Notes taken from the \`$TITLE\` section of CHANGELOG.md."
+            echo "Notes taken from the \`$TITLE\` entry of the in-app Change Log."
           } >> "$GITHUB_STEP_SUMMARY"
