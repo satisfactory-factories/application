@@ -96,6 +96,12 @@ export const isAlwaysSyncedBuilding = (building: string): boolean => {
   return ALWAYS_SYNCED_BUILDINGS.has(building)
 }
 
+// A power producer is named by its building, but a freshly added one has no building until the
+// user picks it — every view that lists producers hits that half-configured state, so the fallback
+// belongs here rather than in each of them.
+export const getPowerProducerDisplayName = (producer: { building: string }): string =>
+  producer.building ? getBuildingDisplayName(producer.building) : 'Power Generator'
+
 export const getBuildingDisplayName = (building: string) => {
   const buildingFriendly = new Map<string, string>([
     ['assemblermk1', 'Assembler'],

@@ -350,6 +350,14 @@
       margin: 0 !important;
     }
 
+    // A read-only inline input (a group's Somersloop build cost, an augmenter group's
+    // matrix rate) must read as read-only. Vuetify's own disabled dimming does not
+    // survive inside a chip, so without this the field looks exactly like the editable
+    // ones beside it and only reveals itself when clicking does nothing.
+    .inline-inputs.v-input--disabled {
+      opacity: 0.5;
+    }
+
     // A text label directly followed by an input (e.g. "Oil Refinery" in the
     // Requires chip): the input brings its own left gutter, so the span's right
     // margin would double the gap between them.

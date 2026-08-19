@@ -7,7 +7,7 @@
     :factories="factories"
     :loaded-from="loadedFrom"
     :total-factories="factories.length"
-    @create-factory="emit('createFactory')"
+    @create-factory="emit('createFactory', $event)"
     @update-factories="emit('updateFactories', $event)"
   />
   <v-divider color="#ccc" thickness="2px" />
@@ -35,7 +35,7 @@
   }>()
 
   const emit = defineEmits<{
-    (event: 'createFactory'): void;
+    (event: 'createFactory', groupId?: string | null): void;
     (event: 'updateFactories', factories: Factory[]): void;
     (event: 'clearAll'): void;
     (event: 'hideAll'): void;

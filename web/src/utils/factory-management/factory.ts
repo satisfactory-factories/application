@@ -124,7 +124,17 @@ export interface CalculationModes {
   // Internal: set when calculateFactory re-runs itself after a building-group
   // sync changed item amounts, to prevent further recursion.
   groupResync?: boolean
+  // Internal: set when calculateFactory re-runs itself after the post-sync power pass
+  // changed what the power producers consume, to prevent further recursion.
+  powerResync?: boolean
 }
+
+// What the factory's power producers consume, as a value comparable across passes.
+// Alien Power Augmenters derive their matrix demand from their building groups rather than
+// from their own amount, so this is the one demand that can move during the group sync.
+const powerIngredientFingerprint = (factory: Factory): string =>
+  JSON.stringify(factory.powerProducers.map(producer =>
+    producer.ingredients.map(ingredient => [ingredient.part, ingredient.perMin])))
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
 // This is the raw engine: it mutates whatever objects it is handed, rebuilding parts /
@@ -217,8 +227,19 @@ const calculateFactoryEngine = (
     return calculateFactoryEngine(factory, allFactories, gameData, { ...modes, groupResync: true })
   }
 
+  // An Alien Power Augmenter's matrix demand is read off its building groups, not off its
+  // own building amount, so the sync above can change what this factory consumes — and
+  // calculateParts built the ledger from the pre-sync figures. Fingerprint the demand
+  // either side of the pass below and re-run once if it moved; without this the groups
+  // show the new figure while satisfaction, imports and dependencies sit an edit behind.
+  const preResyncIngredients = powerIngredientFingerprint(factory)
+
   // It's possible that the power producers have changed, so we need to recalculate the power.
   calculatePowerProducers(factory, gameData)
+
+  if (!modes.powerResync && preResyncIngredients !== powerIngredientFingerprint(factory)) {
+    return calculateFactoryEngine(factory, allFactories, gameData, { ...modes, powerResync: true })
+  }
 
   calculateFinalBuildingsAndPower(factory)
 
