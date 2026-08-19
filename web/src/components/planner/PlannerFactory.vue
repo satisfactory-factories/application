@@ -236,7 +236,7 @@
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
-            :class="factory.products.length > 0 ? 'border-b-md' : ''"
+            :class="hasOutput ? 'border-b-md' : ''"
           >
             <p class="section-label">Importing:</p>
             <div class="section-chips">
@@ -296,7 +296,7 @@
             class="text-body-1 py-2 px-4 collapsed-section"
             :class="hasExports(factory) ? 'border-b-md' : ''"
           >
-            <p v-if="factory.products.length === 0">Empty factory! Select a product!</p>
+            <p v-if="!hasOutput">Empty factory! Select a product!</p>
             <template v-else>
               <p class="section-label">Producing:</p>
               <div class="section-chips">
@@ -326,6 +326,30 @@
                       (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
                   </v-chip>
                 </template>
+                <!-- Power generators produce as surely as products do, and a factory made only of
+                     them used to collapse to "Empty factory!". Green, and led by the same bolt-plus
+                     the generator's own power chip wears when expanded: a building icon on its own
+                     reads as a product, as though the factory were manufacturing generators. -->
+                <v-chip
+                  v-for="(producer, producerIndex) in factory.powerProducers"
+                  :key="`${factory.id}-power-${producerIndex}`"
+                  class="sf-chip green"
+                >
+                  <i class="fas fa-bolt" />
+                  <i class="fas fa-plus mr-2" />
+                  <game-asset
+                    v-if="producer.building"
+                    clickable
+                    height="32"
+                    :subject="producer.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ producerName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
+                  </span>
+                  <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
+                </v-chip>
               </div>
             </template>
           </div>
@@ -373,8 +397,9 @@
 
 <script setup lang="ts">
   import { computed, inject, ref, watch } from 'vue'
-  import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryInput, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
+  import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
@@ -460,6 +485,16 @@
 
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
+
+  // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
+  // Power generators alone are a perfectly good factory, and were being called empty.
+  const hasOutput = computed(() =>
+    props.factory.products.length > 0 || props.factory.powerProducers.length > 0
+  )
+
+  // A generator the user has not finished picking has no building to name yet.
+  const producerName = (producer: FactoryPowerProducer): string =>
+    producer.building ? getBuildingDisplayName(producer.building) : 'Power Generator'
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
   const groupedInputs = computed<[number, FactoryInput[]][]>(() => {
