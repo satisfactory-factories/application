@@ -104,7 +104,7 @@
          a permanent row for a feature nobody in this plan has touched is a row of nothing. -->
     <div
       v-if="depotSummary"
-      class="mb-1 rounded factory-card"
+      class="mb-1 rounded factory-card depot-link"
       :class="{ 'active-view': activeFactoryId === 'dimensional-depot' }"
     >
       <v-card
@@ -159,7 +159,7 @@
             :text="`${depotSummary.overCapacity} item(s) arriving faster than their Uploaders can take`"
           >
             <v-chip class="sf-chip x-small no-margin status-warning-outlined" variant="tonal">
-              <i class="fas fa-gauge" />
+              <i class="fas fa-tachometer-alt" />
               <span class="ml-1">{{ depotSummary.overCapacity }}</span>
             </v-chip>
           </tooltip>
@@ -387,6 +387,23 @@
       opacity: 1;
     }
   }
+}
+
+// The jump-link wears the section's own colour, so the sidebar entry and the card it scrolls to
+// are recognisably the same thing. Kept to this one entry deliberately: Statistics and the
+// Factories Summary are neutral because they are about the whole plan, and colouring all three
+// would turn the top of the sidebar into a stack of competing panels.
+.section-links .factory-card.depot-link {
+  .v-card {
+    background-color: var(--sf-dimensional-depot-bg) !important;
+
+    &:hover {
+      // The plain white hover wash reads grey over a coloured fill, so lift the fill itself.
+      background-color: color-mix(in srgb, var(--sf-dimensional-depot-bg) 82%, #fff) !important;
+    }
+  }
+
+  border-left: 3px solid var(--sf-dimensional-depot-border) !important;
 }
 
 .section-links {

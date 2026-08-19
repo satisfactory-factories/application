@@ -35,11 +35,14 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    page is explicit that uploading a radioactive part to the Depot stops its radiation, which is a
    reason players do it deliberately. So Uranium and Plutonium Waste can be depoted but not sunk,
    and `showDepotControl` asks the game data for `isFluid` rather than reusing `isSinkable`.
-4c. **Upload speed is per Uploader and depends on MAM research.** 15/min unresearched, doubling with
-   each of four upgrades to 240/min, so capacity is `uploaders × rate`. The tier lives on
-   `FactoryTab` beside `powerTarget`: it describes the world the plan is written against, so it has
-   to travel with the plan rather than follow the browser. Absent means fully researched, which is
-   what the statistics reported before the tier existed.
+4c. **Upload speed is per Uploader and STACKS; storage does not.** 15/min unresearched, doubling
+   with each of four upgrades to 240/min, and two Uploaders on one item fill at 480/min — verified
+   against a patch-1.0 Steam thread, since the wiki only states the rate as a property of the
+   building without addressing stacking. Depot *storage* is per item type and does not stack, which
+   is why extra Uploaders buy fill speed rather than a bigger buffer. So capacity is
+   `uploaders × rate`. The tier lives on `FactoryTab` beside `powerTarget`: it describes the world
+   the plan is written against, so it has to travel with the plan rather than follow the browser.
+   Absent means fully researched, which is what the statistics reported before the tier existed.
 5. **Named "Dimensional Depot"**, the game's term — matching the shipped icons and the earlier
    plan's locked decision, not issue #498's "Dimension Storage". Confirmed with the user.
 6. **One Mercer Sphere per Dimensional Depot Uploader.** Read off the game's own build recipe
@@ -116,6 +119,13 @@ becomes nagging on a big plan.
 - **A Mercer Sphere icon had to be added.** Every other icon came from greeny's collation, which has
   no Mercer Sphere because it is a collectable rather than a craftable part; this one comes from the
   wiki, noted in `attribution.txt`.
+- **The Depot's colour is sampled from the Mercer Sphere artwork** (`palette.mercerPurple`, the mean
+  of its brightest saturated pixels). It previously shared `mutedPurple` with the Alien Power
+  Augmenter's circuit boost and was too close to read apart; it is also magenta-leaning where the
+  Somersloop's violet is blue-leaning, so a plan showing both alien trinkets separates by hue. The
+  section header, its chips and the sidebar jump-link all draw from the one token.
+- **Summary chips live in the section header**, not the body, so collapsing the section still leaves
+  the totals on screen — the same reasoning as the power strip on a collapsed Statistics card.
 - **`StatisticsShardsSloops.vue` gains a third column**, Mercer Spheres, at one per uploader.
 
 ## Verification

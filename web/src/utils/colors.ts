@@ -32,11 +32,16 @@ export const palette = {
   yellowBorder: '#ac9902',
   purple: '#bd67ff',
   purpleBorder: '#9a1df6',
-  // The muted violet of the Mercer Sphere / Dimensional Depot artwork. Deliberately far less
-  // saturated than `purple` above, which is the Somersloop's — a plan showing both wants them
-  // telling apart at a glance.
+  // The muted mauve the Alien Power Augmenter's circuit boost wears.
   mutedPurple: '#9f6d9f',
   mutedPurpleBorder: '#7a4a7a',
+  // Sampled from the Mercer Sphere artwork itself (the mean of its brightest saturated pixels),
+  // so the Dimensional Depot wears the colour of the thing it is built from. Deliberately NOT
+  // mutedPurple, which it used to share with the circuit boost and was too close to read apart;
+  // and magenta-leaning rather than the Somersloop's blue-leaning violet, so a plan showing both
+  // alien trinkets tells them apart by hue rather than by icon alone.
+  mercerPurple: '#dc73e2',
+  mercerPurpleBorder: '#9e52a2',
   lightBlue: '#4fc3f7',
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
@@ -74,10 +79,10 @@ export const sfColors = {
   building: { color: palette.orange, border: palette.orangeBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
-  // The Dimensional Depot and the Mercer Spheres its uploaders are built from. Shares the circuit
-  // boost's shade today but gets its own token: unrelated concepts, and a semantic name means
-  // either can be re-tuned without dragging the other along.
-  dimensionalDepot: { color: palette.mutedPurple, border: palette.mutedPurpleBorder },
+  // The Dimensional Depot and the Mercer Spheres its uploaders are built from. The background is
+  // the opaque blend used by every panel header that carries a colour — see `problem` below for
+  // why these are not alpha values.
+  dimensionalDepot: { color: palette.mercerPurple, border: palette.mercerPurpleBorder, background: '#4e3950' },
   // The AWESOME Sink. Gold, as it is in game, and distinct from `warning`'s yellow: a sunk
   // surplus is a resolved state, not a caution.
   awesomeSink: { color: '#d9a441', border: '#a6761a' },

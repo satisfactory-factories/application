@@ -5,22 +5,15 @@
         <!-- Its own section rather than a card inside Statistics: what goes to the Depot is a
              decision about the plan, not a measurement of it, and it is the one place the
              Uploaders you have to go and build are counted. -->
-        <v-row class="header depot-header">
-          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
-            <game-asset height="36" subject="dimensional-depot" type="item_id" width="36" />
-            <span class="ml-3">Dimensional Depot</span>
-          </v-col>
-          <v-col class="text-right" cols="4">
-            <v-btn
-              color="primary"
-              :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
-              :variant="hidden ? 'outlined' : 'flat'"
-              @click="hidden = !hidden"
-            >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
-          </v-col>
-        </v-row>
-        <v-card-text v-if="!hidden" class="text-body-1">
-          <div class="d-flex align-center flex-wrap ga-2 mb-4">
+        <!-- The totals ride in the header rather than in the body, so collapsing the section
+             still leaves the numbers on screen — the same reasoning as the power strip on a
+             collapsed Statistics card. -->
+        <v-row class="header depot-header align-center">
+          <v-col class="d-flex align-center flex-wrap ga-2 flex-grow-1">
+            <span class="text-h4 d-flex align-center">
+              <game-asset height="36" subject="dimensional-depot" type="item_id" width="36" />
+              <span class="ml-3">Dimensional Depot</span>
+            </span>
             <v-chip id="depot-items-summary" class="sf-chip small dimensional-depot no-margin" variant="tonal">
               <i class="fas fa-box" />
               <span class="ml-2">{{ entries.length }} item{{ entries.length === 1 ? '' : 's' }} tracked</span>
@@ -42,7 +35,17 @@
               <i class="fas fa-exclamation-triangle" />
               <span class="ml-2">{{ starvedCount }} receiving nothing</span>
             </v-chip>
-          </div>
+          </v-col>
+          <v-col class="text-right" cols="auto">
+            <v-btn
+              color="primary"
+              :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+              :variant="hidden ? 'outlined' : 'flat'"
+              @click="hidden = !hidden"
+            >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
+          </v-col>
+        </v-row>
+        <v-card-text v-if="!hidden" class="text-body-1">
           <p v-show="helpText" class="mb-4">
             <i class="fas fa-info-circle" /> Items you have put a Dimensional Depot Uploader on, under a
             factory's Satisfaction. The rate is the surplus each factory has spare to upload.
@@ -52,7 +55,7 @@
                one need very different numbers of Uploaders for the same throughput. Saved on the
                plan, so a shared plan carries the world it was written against. -->
           <div class="d-flex align-center flex-wrap ga-3 mb-4">
-            <span class="font-weight-bold">Upload research:</span>
+            <span class="font-weight-bold">MAM upload research tier:</span>
             <v-select
               id="depot-research-tier"
               v-model="depotTier"
@@ -75,7 +78,7 @@
               :class="overCapacity ? 'status-warning-outlined' : 'green'"
               variant="tonal"
             >
-              <i class="fas fa-gauge" />
+              <i class="fas fa-tachometer-alt" />
               <span class="ml-2">
                 {{ formatNumber(totalAmount) }}/min of {{ formatNumber(totalCapacity) }}/min used
               </span>
@@ -160,8 +163,9 @@
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
             One Mercer Sphere per Uploader. Unlocking the Depot and buying every upload-speed and
             capacity upgrade costs a further {{ DEPOT_RESEARCH_MERCER_SPHERES }} Mercer Spheres in the
-            MAM, once per save — not counted above. Upload speed applies per Uploader, so two
-            Uploaders on one item move twice as much.
+            MAM, once per save — not counted above. Upload speed applies per Uploader, so two Uploaders on
+            one item fill twice as fast; depot storage does not stack, so they share the same
+            one-to-five stacks of space.
           </p>
         </v-card-text>
       </v-card>
@@ -237,7 +241,7 @@
 // than from its title. Deliberately blended into the card surface rather than used at full
 // strength — a solid violet band next to the Statistics header reads as an error state.
 .depot-header {
-  background-color: rgba(159, 109, 159, 0.22) !important;
+  background-color: var(--sf-dimensional-depot-bg) !important;
   border-bottom: 2px solid var(--sf-dimensional-depot-border) !important;
 }
 
