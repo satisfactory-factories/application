@@ -346,7 +346,7 @@
                     width="32"
                   />
                   <span class="ml-2">
-                    <b>{{ producerName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
+                    <b>{{ getPowerProducerDisplayName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
                   </span>
                   <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
                 </v-chip>
@@ -397,9 +397,9 @@
 
 <script setup lang="ts">
   import { computed, inject, ref, watch } from 'vue'
-  import { Factory, FactoryInput, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
@@ -491,10 +491,6 @@
   const hasOutput = computed(() =>
     props.factory.products.length > 0 || props.factory.powerProducers.length > 0
   )
-
-  // A generator the user has not finished picking has no building to name yet.
-  const producerName = (producer: FactoryPowerProducer): string =>
-    producer.building ? getBuildingDisplayName(producer.building) : 'Power Generator'
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
   const groupedInputs = computed<[number, FactoryInput[]][]>(() => {

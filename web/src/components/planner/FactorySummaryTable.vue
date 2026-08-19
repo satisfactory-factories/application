@@ -21,8 +21,11 @@
         <th class="text-left text-h6 border-e-md satisfaction-column" scope="row">
           <i class="fas fa-check" /><span class="ml-2">Satisfaction</span>
         </th>
+        <!-- "& Power" rather than "Products": the column carries power generators too, and a
+             generator chip under a heading that says Products is the same mislabel as a bare
+             building icon on the chip itself. -->
         <th class="text-left text-h6 border-e-md" scope="row">
-          <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products</span>
+          <i class="fas fa-conveyor-belt-alt" /><span class="ml-2">Products &amp; Power</span>
         </th>
         <th class="text-left text-h6 border-e-md" scope="row">
           <i class="fas fa-arrow-to-right" /><span class="ml-2">Imports</span>
@@ -145,6 +148,30 @@
                 <b class="ml-2">{{ formatNumber(part.amount) }}/min</b>
               </v-chip>
             </tooltip>
+            <!-- Power generators belong in this column for the same reason they belong in the
+                 collapsed card's Producing row: a factory of nothing but generators had an empty
+                 cell here, reading as a factory that does nothing. Green and bolt-led, as
+                 everywhere else power is stated; the generator's name and count are in the
+                 tooltip, which is where this table puts a chip's detail. -->
+            <tooltip
+              v-for="(producer, producerIndex) in factory.powerProducers"
+              :key="`${factory.id}-power-${producerIndex}`"
+              :text="producerTooltip(producer)"
+            >
+              <v-chip class="sf-chip summary-chip green">
+                <i class="fas fa-bolt" />
+                <i class="fas fa-plus mr-2" />
+                <game-asset
+                  v-if="producer.building"
+                  clickable
+                  height="32"
+                  :subject="producer.building"
+                  type="building"
+                  width="32"
+                />
+                <b class="ml-2">{{ formatMw(producer.powerProduced) }}</b>
+              </v-chip>
+            </tooltip>
           </div>
         </td>
         <td class="border-e-md">
@@ -230,10 +257,11 @@
 
 <script setup lang="ts">
   import { computed, nextTick, onMounted, ref, watch } from 'vue'
-  import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
+  import { Factory, FactoryItem, FactoryPowerProducer, PartMetrics } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName, hasMetricsForPart } from '@/utils/helpers'
   import { calculateExports, calculateImports, PartFlowSummary } from '@/utils/summary'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { formatMw, formatNumber } from '@/utils/numberFormatter'
+  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import {
     FactoryStatus,
     factoryStatusClass,
@@ -365,6 +393,12 @@
 
     return text
   }
+
+  // Name and building count go in the tooltip, matching how a product chip states its part: the
+  // cell stays narrow enough for a plan with a hundred rows in it.
+  const producerTooltip = (producer: FactoryPowerProducer): string =>
+    `<b>${getPowerProducerDisplayName(producer)}</b>: ${formatNumber(Math.ceil(producer.buildingAmount))}x` +
+    `<br>${formatMw(producer.powerProduced)} to the grid`
 
   const flowTooltip = (summary: PartFlowSummary, direction: 'from' | 'to'): string => {
     const lines = summary.factories.map(
