@@ -233,23 +233,33 @@
             </span>
             <!-- Split across groups, this figure has nowhere sensible to land: an augmenter
                  has no clock, so the split is whole buildings and the planner would have to
-                 guess which group grows. The building groups own the count instead. -->
-            <tooltip :disabled="!buildingCountOwnedByGroups(producer)" text="Set the count in the Building Groups below.<br>With more than one group there is no clock to spread a change across, so the groups decide how many buildings there are.">
-              <v-number-input
-                :id="`${factory.id}-${producer.id}-building-count`"
-                v-model="producer.buildingAmount"
-                class="inline-inputs ml-0"
-                control-variant="stacked"
-                density="compact"
-                :disabled="buildingCountOwnedByGroups(producer)"
-                hide-details
-                hide-spin-buttons
-                :min="0.001"
-                :producer="producer.id"
-                width="100px"
-                @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
+                 guess which group grows. The building groups own the count instead — said out
+                 loud, because a greyed-out field on its own only tells you that it stopped
+                 working, never why. -->
+            <template v-if="buildingCountOwnedByGroups(producer)">
+              <span :id="`${factory.id}-${producer.id}-building-count`" class="count-locked-value">
+                <b>{{ formatNumber(producer.buildingAmount) }}</b>
+              </span>
+              <span class="count-locked-label">Disabled</span>
+              <tooltip-info
+                :is-caption="false"
+                text="This augmenter is split across more than one Building Group.<br>Augmenters have no clock, so there is no way to give a group half a building — and nothing here says which group a change should grow. The Building Groups below decide the count instead."
               />
-            </tooltip>
+            </template>
+            <v-number-input
+              v-else
+              :id="`${factory.id}-${producer.id}-building-count`"
+              v-model="producer.buildingAmount"
+              class="inline-inputs ml-0"
+              control-variant="stacked"
+              density="compact"
+              hide-details
+              hide-spin-buttons
+              :min="0.001"
+              :producer="producer.id"
+              width="100px"
+              @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
+            />
             <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Building}`" />
           </v-chip>
         </span>
@@ -478,5 +488,17 @@
   // as a footnote rather than competing with the status chips above it.
   .augmenter-grid-note {
     color: rgba(255, 255, 255, 0.7);
+  }
+
+  // The count once its building groups own it. The figure keeps the chip's colour so it still
+  // reads as the count, and the label beside it is muted to the same 0.5 a disabled inline
+  // input carries, so the pair reads as one state rather than two separate facts.
+  .count-locked-value {
+    margin: 0 0 0 8px !important;
+  }
+
+  .count-locked-label {
+    margin: 0 0 0 8px !important;
+    opacity: 0.5;
   }
 </style>

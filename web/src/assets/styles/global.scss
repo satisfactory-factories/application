@@ -338,10 +338,10 @@
       margin: 0 !important;
     }
 
-    // A locked inline input (an Alien Power Augmenter's building count, which its
-    // building groups own) must read as locked. Vuetify's own disabled dimming does
-    // not survive inside a chip, so without this the field looks exactly like the
-    // editable ones beside it and only reveals itself when clicking does nothing.
+    // A read-only inline input (a group's Somersloop build cost, an augmenter group's
+    // matrix rate) must read as read-only. Vuetify's own disabled dimming does not
+    // survive inside a chip, so without this the field looks exactly like the editable
+    // ones beside it and only reveals itself when clicking does nothing.
     .inline-inputs.v-input--disabled {
       opacity: 0.5;
     }
