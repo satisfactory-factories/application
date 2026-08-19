@@ -204,9 +204,10 @@
          inside a Sortable list is a row Sortable would try to reorder and drop factories after. -->
     <div class="group-footer" :class="{ collapsed }">
       <div class="add-factory">
-        <!-- The last leg of the branch, drawn on its own element: the row's two pseudo-elements
-             are spent on the trunk and the rail, and this one has to start from the centre. -->
-        <span aria-hidden="true" class="branch-riser" />
+        <!-- The elbow's long arm: an element rather than a pseudo-element because it has to end
+             where the button begins, and the button is centred rather than a known width away.
+             It and the spacer opposite are what centre the button between them. -->
+        <span aria-hidden="true" class="branch-arm" />
         <v-btn
           class="add-factory-btn"
           color="primary"
@@ -217,6 +218,7 @@
         >
           Add factory
         </v-btn>
+        <span aria-hidden="true" class="branch-spacer" />
       </div>
     </div>
   </div>
@@ -586,17 +588,13 @@ $strip-border: 1px;
   }
 }
 
-// How far the branch drops below the button before turning back up into it.
-$branch-drop: 12px;
-
-// The button is centred rather than left-aligned like a row, so the branch cannot simply poke its
-// left edge the way an elbow meets a factory: it runs down past the button, along the bottom and
-// back up into the middle of it.
+// The elbow reaches the button from the side, exactly as it reaches a factory row — the button is
+// simply further along, being centred. The trunk and the stub across the indent are drawn here;
+// the arm covering the rest of the distance has to be an element (see the template).
 .add-factory {
   position: relative;
   display: flex;
-  justify-content: center;
-  padding-bottom: $branch-drop;
+  align-items: center;
 
   &::before,
   &::after {
@@ -606,30 +604,32 @@ $branch-drop: 12px;
     background-color: var(--sf-group, #616161);
   }
 
-  // Trunk, carried down the group's edge to the rail.
+  // Trunk, ending at its own elbow: nothing follows it.
   &::before {
     top: 0;
-    bottom: 0;
+    height: calc(50% + #{$tree-line * 0.5});
     width: $tree-line;
   }
 
-  // Rail, along the bottom from the trunk to the button's centre.
+  // The elbow's first stub, across the indent the rows are inset by. The arm carries on from
+  // where this ends, so the two read as one line.
   &::after {
-    bottom: 0;
-    width: calc(50% + #{$tree-indent});
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent;
     height: $tree-line;
   }
 }
 
-// Up from the rail into the middle of the button's bottom edge.
-.branch-riser {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: $tree-line;
-  height: $branch-drop;
-  margin-left: -$tree-line * 0.5;
+.branch-arm {
+  flex: 1 1 0;
+  height: $tree-line;
   background-color: var(--sf-group, #616161);
+}
+
+// Nothing but the arm's opposite number: equal flex either side is what holds the button in the
+// middle while the arm takes whatever room is left to the left of it.
+.branch-spacer {
+  flex: 1 1 0;
 }
 
 // The "overlay over the group you could be entering" — the element Sortable actually measures
