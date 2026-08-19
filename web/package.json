@@ -3,7 +3,7 @@
   "description": "Web component for Satisfactory Factories.",
   "author": "Matt Cavanagh",
   "license": "AGPL-3.0-or-later",
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "dev": "VITE_ENV=dev vite",
     "build": "vue-tsc --noEmit && vite build",
@@ -46,7 +46,7 @@
     "@vue/test-utils": "^2.4.11",
     "eslint": "catalog:",
     "eslint-plugin-vue": "^10.9.2",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "neostandard": "^0.13.0",
     "puppeteer-core": "^25.3.0",
     "sass": "1.102.0",
