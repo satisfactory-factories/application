@@ -2,6 +2,52 @@
 
 This document will describe how the various components of Satisfactory Factories are released to users.
 
+## GitHub releases
+
+Deploys are trunk-based, so merging to `main` is what ships an update. A GitHub
+release is therefore a *record* of an update, cut by hand once it is done —
+nothing waits on it.
+
+Run **Actions → "Release: Publish" → Run workflow**:
+
+| Input | |
+| --- | --- |
+| `version` | The version, as `x.y.z` with no leading `v` (`0.6.0`). It becomes the tag, matching the existing `0.2.1` and `0.3.0`. |
+| `sha` | The commit to pin the release to. Leave blank for the current head of `main`. |
+| `draft` | Publish as a draft first, to read the notes before anyone else does. |
+| `prerelease` | `auto` marks anything the changelog titles Alpha or Beta. |
+| `overwrite` | Rewrite the notes on a release that already exists, instead of failing. |
+
+The release body is the matching section of [`CHANGELOG.md`](../CHANGELOG.md),
+published verbatim, and the release is named after that section's heading. The
+version is matched on its major and minor, so `0.6.0` finds
+`## Beta v0.6 - The "Groundwork" Update`; a patch release gets its own section
+if it needs one, and that section wins where it exists. Nothing is generated
+from commit subjects — the changelog is already written for humans and already
+mirrors the in-app Change Log, so a third description of the same update would
+only drift from the other two.
+
+**So the changelog section has to exist before the release does.** If it does
+not, the run fails and lists the versions it does know about.
+
+Notes are read from `CHANGELOG.md` as it stands on the branch the workflow is
+run from — `main`, normally — while the tag is pinned to `sha`. That split is what lets a past update be released
+retroactively: a section written today, against a commit from months ago. The
+one thing it cannot backdate is the release's own publication date, which is
+why each section carries a `_Released <date>._` line.
+
+`overwrite` cannot re-point an existing release's tag — GitHub does not allow
+it. Delete the release and the tag if a release ended up on the wrong commit.
+
+The extraction is done by
+[`.github/scripts/changelog-release-notes.mjs`](../.github/scripts/changelog-release-notes.mjs),
+which is runnable on its own while writing a changelog entry:
+
+```bash
+node .github/scripts/changelog-release-notes.mjs --list
+node .github/scripts/changelog-release-notes.mjs --version 0.6.0 --print
+```
+
 ## Frontend (web)
 Frontend is automatically deployed whenever main is merged. This is called [Trunk based development](https://trunkbaseddevelopment.com/#trunk-based-development-for-smaller-teams).
 
