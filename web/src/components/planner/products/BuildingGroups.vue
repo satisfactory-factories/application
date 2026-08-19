@@ -138,7 +138,7 @@
        pills alongside the status line made it far too wide. Orange throughout, the colour the
        building count already wears — in cyan a bare 0.293 read as a quantity of the ore. -->
   <div
-    v-if="shortfallHints.length > 0"
+    v-if="!isAlwaysSynced && shortfallHints.length > 0"
     :id="`${factory.id}-${item.id}-shortfall-hints`"
     class="mb-2 d-flex align-center flex-wrap ga-2 group-status"
   >

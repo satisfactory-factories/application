@@ -411,8 +411,10 @@
     </template>
     <!-- Puts the whole gap on this group, where the remainder buttons above pick the group for
          you. Absent when the item is balanced, and disabled when this group cannot hold the
-         change — a trim deeper than the group goes would need a clock below the game's 1%. -->
-    <div v-if="!isBalanced" class="ml-auto">
+         change — a trim deeper than the group goes would need a clock below the game's 1%.
+         Always-synced buildings never offer it: the group follows the item automatically, so
+         any gap here is the sync mid-flight rather than something for the user to close. -->
+    <div v-if="!isBalanced && !isAlwaysSynced" class="ml-auto">
       <!-- Same colours and arrows as the product's own Satisfy/Trim, which does the same job one
            level up. Two buttons rather than one with bound icon and colour: FontAwesome replaces
            the icon element and detaches it from Vue, so a swapped `prepend-icon` never lands. -->
@@ -460,7 +462,7 @@
   import { sfColors } from '@/utils/colors'
   import { useDisplay } from 'vuetify'
   import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
-  import { canBuildingOverclock, getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { canBuildingOverclock, getBuildingDisplayName, isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
   import {
     applyRemainderToGroup,
     calculateRemainingBuildingCount,
@@ -543,6 +545,8 @@
     isWithinBalanceTolerance(buildingsRemaining.value, getBuildingCount(props.item, props.type)))
 
   const isOverProducing = computed(() => buildingsRemaining.value < 0)
+
+  const isAlwaysSynced = computed(() => isAlwaysSyncedBuilding(props.building))
 
   // Null when there is no setting this group could take, which is what disables the button.
   const balanceSolution = computed(() =>

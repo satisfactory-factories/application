@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import PowerProducer from './PowerProducer.vue'
+import TooltipInfo from '@/components/tooltip-info.vue'
 import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import {
@@ -305,6 +306,17 @@ describe('Component: PowerProducer (augmenter building count)', () => {
     it('should say it is disabled, and why', () => {
       expect(buildingChip().textContent).toContain('Disabled')
       expect(buildingChip().querySelector('.fa-info-circle')).not.toBeNull()
+    })
+
+    // House style: the planner's copy uses ordinary punctuation, not em dashes. The tooltip only
+    // mounts its content on hover, so the wording is read off the prop rather than the DOM.
+    it('should explain it without an em dash', () => {
+      const explanations = augmenterSubject.findAllComponents(TooltipInfo)
+        .map(tooltip => tooltip.props('text') as string)
+        .filter(text => text.includes('no way to give a group half a building'))
+
+      expect(explanations).toHaveLength(1)
+      expect(explanations[0]).not.toContain('\u2014')
     })
   })
 

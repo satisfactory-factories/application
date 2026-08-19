@@ -243,7 +243,7 @@
               <span class="count-locked-label">Disabled</span>
               <tooltip-info
                 :is-caption="false"
-                text="This augmenter is split across more than one Building Group.<br>Augmenters have no clock, so there is no way to give a group half a building — and nothing here says which group a change should grow. The Building Groups below decide the count instead."
+                text="This augmenter is split across more than one Building Group.<br>Augmenters have no clock, so there is no way to give a group half a building, and nothing here says which group a change should grow. The Building Groups below decide the count instead."
               />
             </template>
             <v-number-input
