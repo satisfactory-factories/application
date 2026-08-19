@@ -99,6 +99,25 @@
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
           >Satisfy</v-btn>
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span v-show="exceedsCapacity(inputIndex)">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="rounded mr-2"
+                  color="orange"
+                  prepend-icon="fas fa-arrow-to-bottom"
+                  size="default"
+                  @click="trimInputToCapacity(inputIndex, factory)"
+                >Trim to Capacity</v-btn>
+              </span>
+            </template>
+            <span>
+              {{ providerName(inputIndex) }} can only spare
+              {{ formatNumber(importCapacity(inputIndex) ?? 0) }}/min of this item after its own
+              production and its other exports. Trim this import down to that.
+            </span>
+          </v-tooltip>
           <v-btn
             class="rounded"
             color="primary"
@@ -152,19 +171,23 @@
     addInputToFactory,
     calculateAbleToImport,
     calculateImportCandidates,
+    calculateImportCapacity,
     calculatePossibleImports,
     deleteInputPair,
+    importExceedsCapacity,
     importFactorySelections,
     importPartSelections,
     importRowId,
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
+    trimImportToCapacity,
     validateInput,
   } from '@/utils/factory-management/inputs'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { useDisplay } from 'vuetify'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
@@ -310,6 +333,38 @@
 
   const updateInputToSatisfy = (inputIndex: number, factory: Factory) => {
     satisfyImport(inputIndex, factory)
+    updateFactories(factory, factory.inputs[inputIndex])
+  }
+
+  // The provider a row points at, or null while the row is still half-filled. findFac hands back
+  // an empty object rather than throwing when the id is unknown, so the id is what gets tested.
+  const providerFor = (inputIndex: number): Factory | null => {
+    const input = props.factory.inputs[inputIndex]
+    if (!input?.factoryId || !input.outputPart) {
+      return null
+    }
+    const provider = findFactory(input.factoryId)
+    return provider?.id ? provider : null
+  }
+
+  const providerName = (inputIndex: number): string => providerFor(inputIndex)?.name ?? 'This factory'
+
+  const importCapacity = (inputIndex: number): number | null => {
+    const provider = providerFor(inputIndex)
+    return provider ? calculateImportCapacity(inputIndex, props.factory, provider) : null
+  }
+
+  const exceedsCapacity = (inputIndex: number): boolean => {
+    const provider = providerFor(inputIndex)
+    return provider ? importExceedsCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const trimInputToCapacity = (inputIndex: number, factory: Factory) => {
+    const provider = providerFor(inputIndex)
+    if (!provider) {
+      return
+    }
+    trimImportToCapacity(inputIndex, factory, provider)
     updateFactories(factory, factory.inputs[inputIndex])
   }
 

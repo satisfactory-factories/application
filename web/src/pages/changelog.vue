@@ -201,6 +201,21 @@
 
         <v-divider class="subsection" />
 
+        <h2>👍 <i class="fas fa-arrow-to-bottom ml-1" /><span class="ml-2">Imports: Trim to Capacity</span></h2>
+        <p>An import that asks a factory for more than it can make now offers to <b>trim itself to fit</b>. Nothing used to stop you requesting 1,015 of something from a factory producing 900 — and the 115 it could never deliver showed up on the <i>supplier</i>, a long way from the row that caused it.</p>
+        <v-img
+          alt="An import row asking for more Copper Ore than the mine produces, offering a Trim to Capacity button"
+          max-width="1200"
+          src="/assets/changelog/beta6/import-trim-to-capacity.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>Capacity is what the supplier has <b>spare</b>: what it makes, less what its own production and generators consume, less everything it has already promised to other factories.</li>
+          <li>It only ever shrinks a request. A row that already fits is left alone, so this is not a second <b>Satisfy</b>: Satisfy sizes an import against what <i>this</i> factory needs, Trim to Capacity sizes it against what the supplier can actually give.</li>
+          <li>The shortfall doesn't vanish, it moves to where it belongs: the supplier goes green, and this factory shows the gap it always really had.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
         <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
         <v-img

@@ -6,9 +6,10 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
   addInputToFactory, calculateAbleToImport,
-  calculateImportCandidates,
-  calculatePossibleImports, deleteInputPair, importFactorySelections,
-  importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport, validateInput,
+  calculateImportCandidates, calculateImportCapacity,
+  calculatePossibleImports, deleteInputPair, importExceedsCapacity, importFactorySelections,
+  importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
+  trimImportToCapacity, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -707,6 +708,199 @@ describe('inputs', () => {
 
         // The import should now be 5, as 25 is produced internally.
         expect(issueFactory.inputs[0].amount).toBe(5)
+      })
+    })
+  })
+
+  describe('import capacity', () => {
+    let factories: Factory[]
+    let ingotFac: Factory
+    let plateFac: Factory
+
+    // 200 IronPlate needs 300 IronIngot, and the provider only makes 200 of them: the import is
+    // asking for a third more than the provider will ever hand over.
+    beforeEach(() => {
+      ingotFac = newFactory('Iron Ingots', 0, 201)
+      plateFac = newFactory('Iron Plates', 1, 202)
+      factories = [ingotFac, plateFac]
+
+      addProductToFactory(ingotFac, {
+        id: 'IronIngot',
+        amount: 200,
+        recipe: 'IngotIron',
+      })
+      addProductToFactory(plateFac, {
+        id: 'IronPlate',
+        amount: 200,
+        recipe: 'IronPlate',
+      })
+      addInputToFactory(plateFac, {
+        factoryId: ingotFac.id,
+        outputPart: 'IronIngot',
+        amount: 300,
+      })
+
+      calculateFactories(factories, gameData)
+    })
+
+    describe('calculateImportCapacity', () => {
+      it('should return null if there is no outputPart', () => {
+        plateFac.inputs[0].outputPart = null
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(null)
+      })
+
+      it('should return null if the provider does not have the part', () => {
+        delete ingotFac.parts.IronIngot
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(null)
+      })
+
+      it('should report everything the provider makes when nothing else claims it', () => {
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(200)
+      })
+
+      it("should exclude what the provider's own production consumes", () => {
+        // 50 IronRod eats 50 of the provider's own ingots.
+        addProductToFactory(ingotFac, {
+          id: 'IronRod',
+          amount: 50,
+          recipe: 'IronRod',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(150)
+      })
+
+      it("should exclude what the provider's power generation consumes", () => {
+        // The provider makes 100 LiquidFuel and burns some of it in its own generator.
+        addProductToFactory(ingotFac, {
+          id: 'LiquidFuel',
+          amount: 100,
+          recipe: 'ResidualFuel',
+        })
+        addPowerProducerToFactory(ingotFac, {
+          building: 'generatorfuel',
+          powerAmount: 250,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Power,
+        })
+        addPowerProducerToFactory(plateFac, {
+          building: 'generatorfuel',
+          powerAmount: 250,
+          recipe: 'GeneratorFuel_LiquidFuel',
+          updated: FactoryPowerChangeType.Power,
+        })
+        addInputToFactory(plateFac, {
+          factoryId: ingotFac.id,
+          outputPart: 'LiquidFuel',
+          amount: 100,
+        })
+        calculateFactories(factories, gameData)
+
+        expect(ingotFac.parts.LiquidFuel.amountRequiredPower).toBe(20)
+        expect(calculateImportCapacity(1, plateFac, ingotFac)).toBe(80)
+      })
+
+      it('should exclude what the provider has already promised to other factories', () => {
+        const otherFac = newFactory('Iron Rods', 2, 203)
+        factories.push(otherFac)
+        addProductToFactory(otherFac, {
+          id: 'IronRod',
+          amount: 60,
+          recipe: 'IronRod',
+        })
+        addInputToFactory(otherFac, {
+          factoryId: ingotFac.id,
+          outputPart: 'IronIngot',
+          amount: 60,
+        })
+        calculateFactories(factories, gameData)
+
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(140)
+      })
+
+      it('should exclude the factory\'s other rows against the same provider and part', () => {
+        // The UI blocks a second row for the same provider + part, but plans saved before it did
+        // (and share links) still carry them, and the provider owes both.
+        plateFac.inputs.push({
+          factoryId: ingotFac.id,
+          outputPart: 'IronIngot',
+          amount: 25,
+        })
+        calculateFactories(factories, gameData)
+
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(175)
+      })
+
+      it('should never report a negative capacity', () => {
+        // The provider turns every ingot it makes into rods, leaving nothing to export.
+        addProductToFactory(ingotFac, {
+          id: 'IronRod',
+          amount: 250,
+          recipe: 'IronRod',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(0)
+      })
+    })
+
+    describe('importExceedsCapacity', () => {
+      it('should be true when the import asks for more than the provider can spare', () => {
+        expect(importExceedsCapacity(0, plateFac, ingotFac)).toBe(true)
+      })
+
+      it('should be false when the import fits within the capacity', () => {
+        plateFac.inputs[0].amount = 200
+        calculateFactories(factories, gameData)
+
+        expect(importExceedsCapacity(0, plateFac, ingotFac)).toBe(false)
+      })
+
+      it('should be false when there is no capacity at all to trim to', () => {
+        addProductToFactory(ingotFac, {
+          id: 'IronRod',
+          amount: 250,
+          recipe: 'IronRod',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(importExceedsCapacity(0, plateFac, ingotFac)).toBe(false)
+      })
+
+      it('should be false while the row is still being filled in', () => {
+        plateFac.inputs[0].outputPart = null
+        expect(importExceedsCapacity(0, plateFac, ingotFac)).toBe(false)
+      })
+    })
+
+    describe('trimImportToCapacity', () => {
+      it('should return null if there is no outputPart', () => {
+        plateFac.inputs[0].outputPart = null
+        expect(trimImportToCapacity(0, plateFac, ingotFac)).toBe(null)
+      })
+
+      it('should trim the import down to what the provider can spare', () => {
+        trimImportToCapacity(0, plateFac, ingotFac)
+        expect(plateFac.inputs[0].amount).toBe(200)
+      })
+
+      it('should clear the provider\'s shortage once trimmed', () => {
+        expect(ingotFac.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(false)
+
+        trimImportToCapacity(0, plateFac, ingotFac)
+        calculateFactories(factories, gameData)
+
+        expect(ingotFac.dependencies.metrics.IronIngot.request).toBe(200)
+        expect(ingotFac.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(true)
+      })
+
+      it('should never grow an import that already fits', () => {
+        plateFac.inputs[0].amount = 120
+        calculateFactories(factories, gameData)
+
+        trimImportToCapacity(0, plateFac, ingotFac)
+
+        expect(plateFac.inputs[0].amount).toBe(120)
       })
     })
   })
