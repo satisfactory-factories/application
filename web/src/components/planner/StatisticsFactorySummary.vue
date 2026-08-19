@@ -390,7 +390,7 @@
   }
 
   const navigateToFactory = inject('navigateToFactory') as (
-    id: string | number, subsection?: string, fallback?: string
+    id: string | number, subsection?: string | string[], fallback?: string
   ) => void
 
   const props = defineProps<{
@@ -530,7 +530,7 @@
   // Navigating from the fullscreen view has to dismiss it first, since the scroll target is in the
   // main content behind it. Wait out the close transition too: scrolling while the dialog's
   // scroll-lock is still active aims at a shifting layout.
-  const goToFactoryFromDialog = (factoryId: number, subsection?: string, fallback?: string) => {
+  const goToFactoryFromDialog = (factoryId: number, subsection?: string | string[], fallback?: string) => {
     expanded.value = false
     setTimeout(() => navigateToFactory(factoryId, subsection, fallback), 400)
   }

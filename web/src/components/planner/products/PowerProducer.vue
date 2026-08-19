@@ -1,7 +1,7 @@
 <template>
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
-    :id="`${factory.id}-products-item-${producer.building}`"
+    :id="productRowId(factory.id, producer.building)"
     :key="`${factory.id}-${producerIndex}`"
     class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: producer.byproduct && isUnhandledByproduct(factory, producer.byproduct.part) }"
@@ -10,7 +10,7 @@
          the top of the row, so it scrolls to the row. -->
     <div
       v-if="producer.byproduct"
-      :id="`${factory.id}-products-item-${producer.byproduct.part}`"
+      :id="productRowId(factory.id, producer.byproduct.part)"
       class="status-anchor"
     />
     <div class="factory-item-controls">
@@ -295,6 +295,7 @@
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void

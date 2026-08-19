@@ -1,7 +1,7 @@
 <template>
   <div
     v-for="(product, productIndex) in factory.products"
-    :id="`${factory.id}-products-item-${product.id}`"
+    :id="productRowId(factory.id, product.id)"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
@@ -10,7 +10,7 @@
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
     <div
       v-for="byProduct in product.byProducts ?? []"
-      :id="`${factory.id}-products-item-${byProduct.id}`"
+      :id="productRowId(factory.id, byProduct.id)"
       :key="`anchor-${byProduct.id}`"
       class="status-anchor"
     />
@@ -287,6 +287,7 @@
     byProductAsProductCheck,
     fixProduct,
     increaseProductQtyViaBuilding,
+    productRowId,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,

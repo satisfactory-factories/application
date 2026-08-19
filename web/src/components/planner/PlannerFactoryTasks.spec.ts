@@ -89,4 +89,65 @@ describe('Component: PlannerFactoryTasks', () => {
 
     expect(factory.tasks.map(task => task.completed)).toEqual([false, false, false])
   })
+
+  describe('adding a task', () => {
+    const newTaskField = (subject: VueWrapper) => subject.find('.v-text-field input')
+
+    it('adds the task when the field loses focus', async () => {
+      const subject = mountSubject()
+      const field = newTaskField(subject)
+      await field.setValue('Delta')
+      await field.trigger('blur')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta'])
+      expect((field.element as HTMLInputElement).value).toBe('')
+    })
+
+    it('adds the task on enter', async () => {
+      const subject = mountSubject()
+      const field = newTaskField(subject)
+      await field.setValue('Delta')
+      await field.trigger('keyup.enter')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta'])
+    })
+
+    // Enter clears the field, so the blur that follows when the user clicks away must not
+    // add a second, empty task.
+    it('does not add the task twice when enter is followed by a blur', async () => {
+      const subject = mountSubject()
+      const field = newTaskField(subject)
+      await field.setValue('Delta')
+      await field.trigger('keyup.enter')
+      await field.trigger('blur')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta'])
+    })
+
+    it('ignores a blur with nothing typed', async () => {
+      const subject = mountSubject()
+      await newTaskField(subject).trigger('blur')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+    })
+
+    it('ignores a blur with only whitespace typed', async () => {
+      const subject = mountSubject()
+      const field = newTaskField(subject)
+      await field.setValue('   ')
+      await field.trigger('blur')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect((field.element as HTMLInputElement).value).toBe('')
+    })
+
+    it('trims the title it stores', async () => {
+      const subject = mountSubject()
+      const field = newTaskField(subject)
+      await field.setValue('  Delta  ')
+      await field.trigger('blur')
+
+      expect(factory.tasks[3].title).toBe('Delta')
+    })
+  })
 })

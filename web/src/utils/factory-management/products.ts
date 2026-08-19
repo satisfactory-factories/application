@@ -82,6 +82,15 @@ export const addProductToFactory = (
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
 
+// The DOM id of one product row, shared by the row itself, by the byproduct markers it carries
+// and by everything that jumps to it — an import's View button lands on the product supplying it
+// rather than on the supplying factory's card, which only says "somewhere in here".
+//
+// `subject` is the product's part, a byproduct's part, or a power producer's building: a producer's
+// own id is a random instance number, so its row is addressed by what it burns.
+export const productRowId = (factoryId: number | string, subject: string): string =>
+  `${factoryId}-products-item-${subject}`
+
 export const productHasFractionalClock = (product: FactoryItem): boolean =>
   hasFractionalClock(product.buildingGroups)
 

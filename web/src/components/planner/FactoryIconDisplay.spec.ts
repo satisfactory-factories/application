@@ -64,17 +64,21 @@ describe('FactoryIconDisplay', () => {
     expect(emitted().click).toHaveLength(1)
   })
 
-  it('names the current icon in the clickable title so the affordance is discoverable', () => {
+  // The hint is a HoverTooltip rather than a native `title`, so the whole app's tooltips look
+  // alike; `aria-label` carries the name the attribute used to give the button.
+  it('names the current icon in the clickable hint so the affordance is discoverable', () => {
     const { container } = renderIcon({ icon: 'sq-blue', clickable: true })
+    const button = container.querySelector('button')
 
-    expect(container.querySelector('button')?.getAttribute('title'))
-      .toContain('Blue square')
+    expect(button?.getAttribute('data-hover-tooltip')).toContain('Blue square')
+    expect(button?.getAttribute('aria-label')).toContain('Blue square')
+    expect(button?.getAttribute('title')).toBeNull()
   })
 
   it('prefers an explicit title', () => {
     const { container } = renderIcon({ icon: 'sq-blue', clickable: true, title: 'Pick an icon' })
 
-    expect(container.querySelector('button')?.getAttribute('title')).toBe('Pick an icon')
+    expect(container.querySelector('button')?.getAttribute('data-hover-tooltip')).toBe('Pick an icon')
   })
 
   // FontAwesome's SVG replacement detaches the <i> it converts, so swapping a bare <i> for

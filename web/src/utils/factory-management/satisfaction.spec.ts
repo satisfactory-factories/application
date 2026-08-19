@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
+import { create545Scenario } from '@/utils/factory-setups/545-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   addShortageToFactory,
@@ -77,8 +78,26 @@ describe('satisfaction', () => {
         // SteelPlateReinforced is now satisfied
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addProduct')).toBe(false)
       })
-      it('should NOT show for a part that is already a byproduct within the factory', () => {
-        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'addProduct')).toBe(false)
+      // #545: being a byproduct of something else is no reason to refuse making it on purpose.
+      // Heavy Oil Residue falls out of Plastic here, and Alt: Heavy Oil Residue makes it outright.
+      it('should show for a byproduct within the factory that the game can also make outright', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'addProduct')).toBe(true)
+      })
+      it('should NOT show for a byproduct within the factory that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'addProduct')).toBe(false)
+      })
+      it('should NOT show for a part that is already a product within the factory', () => {
+        addProductToFactory(mockFactory, {
+          id: 'SteelPlate',
+          amount: 1,
+          recipe: 'SteelPlate',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addProduct')).toBe(false)
       })
     })
 
@@ -97,8 +116,23 @@ describe('satisfaction', () => {
     })
 
     describe('correctManually', () => {
-      it('should show for a part that is already a byproduct within the factory', () => {
-        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'correctManually')).toBe(true)
+      // #545: the button is the dead end, so it is only for parts nothing can make on purpose.
+      it('should show for a byproduct within the factory that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'correctManually')).toBe(true)
+      })
+      it('should NOT show for a byproduct within the factory that the game can also make outright', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'correctManually')).toBe(false)
+      })
+      it('should NOT show for a byproduct-only part that is satisfied', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        // Halve the consumer so the byproduct covers it.
+        byProductOnly[0].products[1].amount = 135
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'correctManually')).toBe(false)
       })
       it('should NOT show for a product already in the factory', () => {
         addProductToFactory(mockFactory, {
@@ -110,6 +144,61 @@ describe('satisfaction', () => {
       })
       it('should NOT show for a part that can be added as a product directly', () => {
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'correctManually')).toBe(false)
+      })
+    })
+
+    // #545: Phase 5 Intermediates. Dark Matter Residue arrives as a byproduct of the Quantum
+    // Encoder recipes and is burnt by Dark Matter Crystal faster than they supply it, so the
+    // factory is short of a part it is already producing on the side - and which a Converter can
+    // make outright. The planner offered "Correct Manually" and "Add to factory" (another
+    // factory), but no way to make up the shortfall where it was needed.
+    describe('#545: a byproduct the game can also make outright', () => {
+      let darkMatterFac: Factory
+      let darkMatterFactories: Factory[]
+
+      beforeEach(() => {
+        darkMatterFac = newFactory('Phase 5 Intermediates')
+        darkMatterFactories = [darkMatterFac]
+
+        // Produces 125/min Dark Matter Residue as a byproduct...
+        addProductToFactory(darkMatterFac, {
+          id: 'QuantumOscillator',
+          amount: 5,
+          recipe: 'SuperpositionOscillator',
+        })
+        // ...and consumes 250/min of it.
+        addProductToFactory(darkMatterFac, {
+          id: 'DarkMatter',
+          amount: 50,
+          recipe: 'DarkMatter',
+        })
+        calculateFactories(darkMatterFactories, gameData)
+      })
+
+      it('is short of the byproduct', () => {
+        expect(darkMatterFac.parts.DarkEnergy.satisfied).toBe(false)
+        expect(darkMatterFac.byProducts.find(byProduct => byProduct.id === 'DarkEnergy')).toBeDefined()
+      })
+
+      it('offers "+ Product" so the shortfall can be made in this factory', () => {
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'addProduct')).toBe(true)
+      })
+
+      it('does NOT tell the user to correct it manually', () => {
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'correctManually')).toBe(false)
+      })
+
+      it('offers "Fix Product" instead of "+ Product" once it is also a product', () => {
+        addProductToFactory(darkMatterFac, {
+          id: 'DarkEnergy',
+          amount: 1,
+          recipe: 'DarkEnergy',
+        })
+        calculateFactories(darkMatterFactories, gameData)
+
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'addProduct')).toBe(false)
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'fixProduct')).toBe(true)
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'correctManually')).toBe(false)
       })
     })
 
@@ -321,6 +410,13 @@ describe('satisfaction', () => {
     describe('addToFactory', () => {
       it('should show for a part that is not satisfied', () => {
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addToFactory')).toBe(true)
+      })
+      // #545: another factory can only make what some factory could make.
+      it('should NOT show for a part that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'addToFactory')).toBe(false)
       })
       it('should NOT show for a part that is raw', () => {
         addProductToFactory(mockFactory, {

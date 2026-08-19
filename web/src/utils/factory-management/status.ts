@@ -526,3 +526,20 @@ export const getSectionStatuses = (statuses: FactoryStatus[], section: FactorySt
 
 export const getChipStatuses = (statuses: FactoryStatus[]): FactoryStatus[] =>
   statuses.filter(status => status.chip)
+
+// Where a status chip's jump aims: one element id per subject the status names, so a chip
+// covering three shortages lands on the first of them and lights all three rather than picking
+// one and leaving the others to be hunted for. The section is the fallback, for a status with no
+// subjects and for rows whose card has not rendered yet.
+export const statusJumpTargets = (
+  factoryId: number | string,
+  target: { section: FactoryStatusSection, subjects?: string[] }
+): { targets: string[], fallback: string } => {
+  const section = `${factoryId}-${target.section}`
+  const subjects = target.subjects ?? []
+
+  return {
+    targets: subjects.length ? subjects.map(subject => `${section}-item-${subject}`) : [section],
+    fallback: section,
+  }
+}

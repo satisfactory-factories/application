@@ -431,7 +431,12 @@
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
-  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import {
+    factoryStatusClass,
+    FactoryStatusSection,
+    getFactoryStatuses,
+    statusJumpTargets,
+  } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
   import { groupColorVars } from '@/utils/colors'
@@ -441,7 +446,11 @@
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
 
   // Land on the import row consuming this factory's export, rather than on the destination
   // factory's card which only says "somewhere in here". Falls back to its Imports section.
@@ -453,15 +462,11 @@
     )
   }
 
-  // Aim at the row the status names, with its section as the fallback for anything that has no
+  // Aim at every row the status names, with its section as the fallback for anything that has no
   // row of its own.
-  const navigateToStatus = (target: { section: string, subject?: string }) => {
-    const section = `${props.factory.id}-${target.section}`
-    navigateToFactory(
-      props.factory.id,
-      target.subject ? `${section}-item-${target.subject}` : section,
-      section
-    )
+  const navigateToStatus = (target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(props.factory.id, target)
+    navigateToFactory(props.factory.id, targets, fallback)
   }
 
   const props = defineProps<{

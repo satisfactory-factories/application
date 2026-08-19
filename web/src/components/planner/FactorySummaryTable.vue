@@ -290,7 +290,9 @@
   import {
     FactoryStatus,
     factoryStatusClass,
+    FactoryStatusSection,
     getSectionStatuses,
+    statusJumpTargets,
   } from '@/utils/factory-management/status'
 
   const props = withDefaults(defineProps<{
@@ -316,7 +318,7 @@
   const emit = defineEmits<{
     // A factory id, optionally with the element to land on and a fallback if that row is not in
     // the DOM yet. The parent owns navigation because only it knows whether a dialog must close.
-    (event: 'navigate', factoryId: number, subsection?: string, fallback?: string): void
+    (event: 'navigate', factoryId: number, subsection?: string | string[], fallback?: string): void
     (event: 'measured', height: number): void
   }>()
 
@@ -391,11 +393,11 @@
   const nonImportStatuses = (factory: Factory) =>
     statusesFor(factory).filter(status => status.section !== 'imports')
 
-  // Aims at the row the status names, with its section as the fallback for anything with no row of
-  // its own. The parent composes nothing: it only has to get us to the factory.
-  const goToStatus = (factoryId: number, target: { section: string, subject?: string }) => {
-    const section = `${factoryId}-${target.section}`
-    emit('navigate', factoryId, target.subject ? `${section}-item-${target.subject}` : section, section)
+  // Aims at every row the status names, with its section as the fallback for anything with no row
+  // of its own. The parent composes nothing: it only has to get us to the factory.
+  const goToStatus = (factoryId: number, target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(factoryId, target)
+    emit('navigate', factoryId, targets, fallback)
   }
 
   const unsatisfiedParts = (factory: Factory): [string, PartMetrics][] =>

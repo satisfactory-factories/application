@@ -4,6 +4,7 @@ import { CustomBuilding, DataInterface } from '@/interfaces/DataInterface'
 import { config } from '@/config/config'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { loadLocalGameData } from './local-game-data-loader'
+import { getPrimaryProductRecipes } from '@/utils/factory-management/common'
 
 export const useGameDataStore = defineStore('game-data', () => {
   const localData = loadLocalGameData()
@@ -81,6 +82,17 @@ export const useGameDataStore = defineStore('game-data', () => {
     })
   }
 
+  // Only the recipes that make the part outright, i.e. not the ones that merely drop it as a
+  // byproduct. Anything building a *product* from a part wants this list rather than the one
+  // above; see getPrimaryProductRecipes for why.
+  const getPrimaryRecipesForPart = (part: string): Recipe[] => {
+    if (!gameData.value || !part) {
+      return []
+    }
+
+    return getPrimaryProductRecipes(part, gameData.value)
+  }
+
   const getRecipesForPowerProducer = (building: string): PowerRecipe[] | [] => {
     if (!gameData.value || !building) {
       console.error('getRecipesForPowerProducer: No game data or building provided!')
@@ -94,7 +106,11 @@ export const useGameDataStore = defineStore('game-data', () => {
   }
 
   const getDefaultRecipeIdForPart = (part: string) => {
-    const recipes = getRecipesForPart(part)
+    // Primary recipes only. A product's amount is always read against its recipe's first product,
+    // so handing back a recipe that only drops the part on the side (Plastic, for Heavy Oil
+    // Residue) makes the number the user typed mean an amount of something else - the row reads
+    // "300 Heavy Oil Residue" while the factory builds 300 Plastic worth of refineries.
+    const recipes = getPrimaryRecipesForPart(part)
     if (recipes.length === 1) {
       return recipes[0].id
     }
@@ -126,8 +142,13 @@ export const useGameDataStore = defineStore('game-data', () => {
     //
     // A non-alternate is the least surprising guess, and the selector is right there for anyone
     // who meant a different one. '' now means only what it says: nothing can make this part.
-    const defaultRecipes = recipes.filter(recipe => !recipe.isAlternate)
-    return defaultRecipes[0]?.id ?? recipes[0]?.id ?? ''
+    //
+    // Unpackaging is never a way of *making* something - the packaged form has to come from the
+    // unpackaged one first - so it is the last thing to land on, ahead only of nothing at all.
+    const isUnpackaging = (recipe: Recipe) => recipe.id.startsWith('Unpackage')
+    const madeRecipes = recipes.filter(recipe => !isUnpackaging(recipe))
+    const defaultRecipes = madeRecipes.filter(recipe => !recipe.isAlternate)
+    return defaultRecipes[0]?.id ?? madeRecipes[0]?.id ?? recipes[0]?.id ?? ''
   }
 
   const getDefaultRecipeForPowerProducer = (building: string): PowerRecipe => {
@@ -182,6 +203,7 @@ export const useGameDataStore = defineStore('game-data', () => {
     getRecipeById,
     getPowerRecipeById,
     getRecipesForPart,
+    getPrimaryRecipesForPart,
     getRecipesForPowerProducer,
     getDefaultRecipeForPart: getDefaultRecipeIdForPart,
     getDefaultRecipeForPowerProducer,
