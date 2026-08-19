@@ -278,7 +278,7 @@
               src="/assets/changelog/beta6/sidebar-active-factory.png"
             />
           </li>
-          <li><b>Jump straight to the import taking an export</b>, from any export chip in the satisfaction table via the small eye button on its edge, or from the part chips under a collapsed factory's "Exporting:" list. You land on the import row itself, not just on the destination factory. Clicking the chip itself still selects that destination in the Export Calculator.
+          <li><b>Jump straight to the import taking an export</b>, from any export chip in the satisfaction table via the small eye button on its edge, or from the part chips under a collapsed factory's "Exporting:" list. You land on the import row itself, not just on the destination factory. Clicking the chip itself still selects that destination in the Export Calculator. An import's <b>View</b> button makes the trip in reverse, landing on the product that supplies it.
             <v-img
               alt="An export chip with the eye button that jumps to the requesting factory"
               class="mt-2"

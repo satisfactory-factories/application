@@ -613,10 +613,15 @@
 
     const requested = Array.isArray(subsection) ? subsection : subsection ? [subsection] : []
 
+    // The card itself is the last resort behind whatever the caller named: a jump that aims at a
+    // row inside a card that has not rendered yet would otherwise land nowhere at all, and being
+    // taken to the factory beats being taken nowhere.
+    const fallbacks = fallback ? [fallback, `${factoryId}`] : [`${factoryId}`]
+
     // Wait a bit for the factory to unhide fully. Hack but works well.
     setTimeout(() => scrollToElement(
       requested.length ? requested : [`${factoryId}`],
-      fallback ?? `${factoryId}`
+      fallbacks
     ), 50)
   }
 
@@ -625,23 +630,24 @@
   //
   // Every target is a row the jump is about, and every one of them that exists is flashed; the
   // scroll lands on whichever sits highest up the page, so the rest follow it down the screen.
-  // `fallback` stands in only while none of them are in the DOM — a row inside a card that has
-  // not materialized yet is not there at click time, and the correction passes are where it
-  // appears, which is why the ids are re-resolved on every attempt.
+  // The `fallbacks` stand in, in preference order, only while none of the targets are in the DOM
+  // — a row inside a card that has not materialized yet is not there at click time, and the
+  // correction passes are where it appears, which is why the ids are re-resolved on every
+  // attempt.
   //
   // `flashed` carries the ids already pulsed down those passes, so a row that turns up late gets
   // its flash without re-flashing what the user is already looking at.
   const scrollToElement = (
     candidates: string | string[],
-    fallback?: string,
+    fallbacks: string | string[] = [],
     attempt = 0,
     flashed: string[] = []
   ) => {
     const targets = Array.isArray(candidates) ? candidates : [candidates]
+    const standIns = Array.isArray(fallbacks) ? fallbacks : [fallbacks]
     const present = targets.filter(id => document.getElementById(id))
-    const ids = present.length
-      ? present
-      : (fallback && document.getElementById(fallback) ? [fallback] : [])
+    const standIn = standIns.find(id => document.getElementById(id))
+    const ids = present.length ? present : (standIn ? [standIn] : [])
     if (!ids.length) return
 
     const topOf = (id: string) => document.getElementById(id)?.getBoundingClientRect().top ?? Infinity
@@ -679,7 +685,7 @@
       // showing only some of the rows the jump is about, and settling for either would leave the
       // rest unlit.
       if (scrolledShort || present.length < targets.length) {
-        scrollToElement(targets, fallback, attempt + 1, [...flashed, ...pending])
+        scrollToElement(targets, standIns, attempt + 1, [...flashed, ...pending])
       }
     }, 600)
   }
