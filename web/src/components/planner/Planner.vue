@@ -139,6 +139,7 @@
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import { groupColorVars } from '@/utils/colors'
+  import { flashElement } from '@/utils/navigation-highlight'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -619,7 +620,11 @@
   // Takes candidates in preference order and re-resolves them on every attempt: a row inside a
   // card that has not materialized yet is not in the DOM at click time, and the correction pass
   // is where it appears.
-  const scrollToElement = (candidates: string | string[], attempt = 0) => {
+  //
+  // `flashed` carries the id already pulsed down the correction passes, so landing on a fallback
+  // and later resolving the row itself flashes both, while a pass that changes nothing does not
+  // re-flash what the user is already looking at.
+  const scrollToElement = (candidates: string | string[], attempt = 0, flashed?: string) => {
     const ids = Array.isArray(candidates) ? candidates : [candidates]
     const elementId = ids.find(id => document.getElementById(id))
     const element = elementId ? document.getElementById(elementId) : null
@@ -628,17 +633,36 @@
     // Corrections snap instantly - re-running the smooth animation would chase a moving target.
     element.scrollIntoView({ behavior: attempt === 0 ? 'smooth' : 'auto', block: 'start' })
 
+    if (elementId !== flashed) {
+      // Give the smooth scroll a beat to land first. Pulsing the moment it sets off means the
+      // flash is half over by the time the target is on screen — the correction passes below
+      // arrive mid-pulse, which is exactly when the user is looking at it.
+      if (attempt === 0) {
+        setTimeout(() => {
+          const arrived = document.getElementById(elementId)
+          if (arrived) flashElement(arrived)
+        }, 350)
+      } else {
+        flashElement(element)
+      }
+    }
+
     if (attempt >= 4) return
     setTimeout(() => {
       // Re-query rather than closing over `element` — cards materializing
       // above can replace the node, and a detached node's rect reads 0,
       // which silently skips the correction.
       const current = document.getElementById(elementId)
+      if (!current) return
       // ~114px is where the top of a scrolled-to element sits (page header + tab bar), and a row
       // jumped to from a status chip adds its 50px scroll-margin on top of that — so the tolerance
       // has to clear both, or the correction pass fights the margin it just applied.
-      if (current && Math.abs(current.getBoundingClientRect().top) > 200) {
-        scrollToElement(ids, attempt + 1)
+      const scrolledShort = Math.abs(current.getBoundingClientRect().top) > 200
+      // Keep looking while we are parked on a fallback: the preferred target is a row inside a
+      // card that may still be rendering, and settling for its section would leave the flash on
+      // the section heading rather than the row the jump was aimed at.
+      if (scrolledShort || elementId !== ids[0]) {
+        scrollToElement(ids, attempt + 1, elementId)
       }
     }, 600)
   }

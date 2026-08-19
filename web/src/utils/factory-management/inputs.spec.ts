@@ -8,7 +8,7 @@ import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates,
   calculatePossibleImports, deleteInputPair, importFactorySelections,
-  importPartSelections, isDuplicateImport, isImportRedundant, satisfyImport, validateInput,
+  importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
@@ -855,6 +855,18 @@ describe('inputs', () => {
       addInputToFactory(mockDependantFactory, { factoryId: null, outputPart: null, amount: 0 })
 
       expect(isDuplicateImport(mockDependantFactory, 1)).toBe(false)
+    })
+  })
+
+  describe('importRowId', () => {
+    it('should build the id the import row and its jump targets share', () => {
+      expect(importRowId(2, 1, 'IronIngot')).toBe('2-import-1-IronIngot')
+    })
+
+    it('should give half-configured rows no id, so they cannot collide', () => {
+      expect(importRowId(2, null, 'IronIngot')).toBe(null)
+      expect(importRowId(2, 1, null)).toBe(null)
+      expect(importRowId(2, null, null)).toBe(null)
     })
   })
 
