@@ -5,8 +5,9 @@ import {
   FactoryPowerChangeType,
   FactoryPowerProducer,
 } from '@/interfaces/planner/FactoryInterface'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
+import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { calculateTotalPower } from '@/utils/statistics'
@@ -646,6 +647,85 @@ describe('power', () => {
         expect(producer.ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 5 }])
         expect(producer.buildingGroups[0].parts.AlienPowerFuel).toBeUndefined()
         expect(group2.parts.AlienPowerFuel).toBe(5)
+      })
+
+      // A single calculateFactory pass is what the planner runs when the user edits an item;
+      // calculateFactories runs the engine twice over, which hid this class of staleness.
+      describe('matrix demand after an item edit (single pass)', () => {
+        beforeEach(() => {
+          producer.buildingGroups[0].supplyMatrixes = true
+          calculateFactory(factory, [factory], gameData)
+        })
+
+        it('should recalculate the matrix requirement when the building amount is raised', () => {
+          producer.buildingAmount = 4
+          producer.updated = FactoryPowerChangeType.Building
+
+          calculateFactory(factory, [factory], gameData)
+
+          expect(producer.buildingGroups[0].buildingCount).toBe(4)
+          expect(producer.buildingGroups[0].parts.AlienPowerFuel).toBe(20)
+          expect(producer.ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 20 }])
+          // The group and the parts ledger must agree in the SAME pass — this used to lag
+          // an edit behind, leaving satisfaction reading the old figure.
+          expect(factory.parts.AlienPowerFuel.amountRequired).toBe(20)
+          expect(factory.parts.AlienPowerFuel.amountRequiredPower).toBe(20)
+        })
+
+        it('should recalculate the matrix requirement when the building amount is lowered', () => {
+          producer.buildingAmount = 1
+          producer.updated = FactoryPowerChangeType.Building
+
+          calculateFactory(factory, [factory], gameData)
+
+          expect(producer.buildingGroups[0].buildingCount).toBe(1)
+          expect(producer.ingredients).toEqual([{ part: 'AlienPowerFuel', perMin: 5 }])
+          expect(factory.parts.AlienPowerFuel.amountRequired).toBe(5)
+        })
+
+        it('should recalculate the matrix requirement when the power amount is changed', () => {
+          producer.powerAmount = 2000 // 4 augmenters at 500 MW each
+          producer.updated = FactoryPowerChangeType.Power
+
+          calculateFactory(factory, [factory], gameData)
+
+          expect(producer.buildingCount).toBe(4)
+          expect(producer.buildingGroups[0].buildingCount).toBe(4)
+          expect(factory.parts.AlienPowerFuel.amountRequired).toBe(20)
+        })
+
+        it('should mark an import that no longer covers the raised demand as insufficient', () => {
+          const matrixFactory = newFactory('Matrix plant')
+          addProductToFactory(matrixFactory, { id: 'AlienPowerFuel', amount: 10, recipe: 'AlienPowerFuel' })
+          addInputToFactory(factory, {
+            factoryId: matrixFactory.id,
+            outputPart: 'AlienPowerFuel',
+            amount: 10,
+          })
+          calculateFactories([factory, matrixFactory], gameData)
+
+          expect(factory.parts.AlienPowerFuel.satisfied).toBe(true)
+
+          producer.buildingAmount = 4
+          producer.updated = FactoryPowerChangeType.Building
+
+          calculateFactory(factory, [factory, matrixFactory], gameData)
+
+          expect(factory.parts.AlienPowerFuel.amountRequired).toBe(20)
+          expect(factory.parts.AlienPowerFuel.amountSupplied).toBe(10)
+          expect(factory.parts.AlienPowerFuel.amountRemaining).toBe(-10)
+          expect(factory.parts.AlienPowerFuel.satisfied).toBe(false)
+          expect(factory.hasProblem).toBe(true)
+        })
+
+        it('should drop the matrix requirement when the group stops supplying matrixes', () => {
+          producer.buildingGroups[0].supplyMatrixes = false
+
+          calculateFactory(factory, [factory], gameData, { origin: 'buildingGroup' })
+
+          expect(producer.ingredients).toEqual([])
+          expect(factory.parts.AlienPowerFuel).toBeUndefined()
+        })
       })
 
       it('should boost based on the total generation across all factories', () => {
