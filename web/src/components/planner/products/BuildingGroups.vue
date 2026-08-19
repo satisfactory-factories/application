@@ -179,7 +179,7 @@
     <v-btn
       :id="`${factory.id}-add-building-group`"
       color="primary"
-      @click="addBuildingGroup(item, type, factory)"
+      @click="addGroup()"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -217,6 +217,7 @@
   } from '@/utils/factory-management/building-groups/common'
   import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
+  import { CalculationModes } from '@/utils/factory-management/factory'
 
   const props = defineProps<{
     factory: Factory
@@ -224,6 +225,8 @@
     building: string
     type: ItemType
   }>()
+
+  const updateFactory = inject('updateFactory') as (factory: Factory, modes?: CalculationModes) => void
 
   const buildingsRemaining = ref(0)
   const effectiveBuildings = ref(0)
@@ -371,6 +374,23 @@
   }
 
   const isAlwaysSynced = computed(() => isAlwaysSyncedBuilding(props.building))
+
+  const addGroup = () => {
+    addBuildingGroup(props.item, props.type, props.factory)
+
+    // An always-synced building re-splits the buildings it already has across the new group
+    // rather than gaining one (see addPowerProducerBuildingGroup), and for an augmenter that
+    // moves real matrix demand from one group to another — so the factory's parts have to be
+    // recalculated. Everything else deliberately leaves the new group as an imbalance for the
+    // user to fill in, which needs no recalculation.
+    if (isAlwaysSynced.value) {
+      updateFactory(props.factory, {
+        useBuildingGroupBuildings: true,
+        forceRebalance: false,
+        origin: 'buildingGroup',
+      })
+    }
+  }
 
   eventBus.on('factoryUpdated', recalculateMetrics)
 
