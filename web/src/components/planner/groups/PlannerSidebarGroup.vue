@@ -6,20 +6,31 @@
       <!-- Deliberately the biggest thing in the sidebar after the plan itself: a group is the unit
            people navigate by, and at the old size its title sat below the factory names under it. -->
       <div class="group-title-row d-flex align-center ga-2 px-2 py-2">
-        <i
+        <!-- data-hover-tooltip rather than `title` throughout this header, matching the expand
+             button below: a group's controls are drawn once per group, so they take the one
+             delegated tooltip at the app shell rather than a v-tooltip each. `aria-label` names
+             the icon-only buttons that the removed `title` used to. -->
+        <!-- The hint sits on a wrapper rather than the icon: FontAwesome replaces the <i> with
+             an <svg>, and HoverTooltip only accepts an HTMLElement, so on the icon itself it
+             never fires. (A native `title` never worked here either — SVG ignores the
+             attribute.) The drag handle class stays on the icon, which is what Sortable grabs. -->
+        <span
           v-if="group"
-          class="fas fa-grip-lines group-drag-handle text-grey-darken-1"
-          title="Drag to reorder group"
-        />
+          class="d-inline-flex align-center"
+          data-hover-tooltip="Drag to reorder group"
+        >
+          <i class="fas fa-grip-lines group-drag-handle text-grey-darken-1" />
+        </span>
         <!-- Two keyed icons rather than one with a bound class: Font Awesome replaces the <i> with
              an <svg> of its own, which Vue's patch then no longer owns, so flipping the class left
              the chevron pointing down forever. A keyed element forces a fresh node. -->
         <v-btn
+          :aria-label="collapsed ? 'Expand group' : 'Collapse group'"
           class="chevron"
+          :data-hover-tooltip="collapsed ? 'Expand group' : 'Collapse group'"
           density="compact"
           icon
           size="small"
-          :title="collapsed ? 'Expand group' : 'Collapse group'"
           variant="text"
           @click="toggle"
         >
@@ -53,8 +64,6 @@
         <!-- Set apart from the readouts beside them: these two act, and a delete button flush
              against a count is a delete button someone reaches by accident. -->
         <div class="header-actions d-flex align-center ga-1">
-          <!-- HoverTooltip rather than `title`: a native tooltip alongside it would answer the
-               same hover twice. `aria-label` keeps the icon-only button named without one. -->
           <v-btn
             :aria-label="`Show the ${groupName} factories in the summary`"
             class="expand-group"
@@ -67,12 +76,13 @@
           />
           <v-btn
             v-if="group"
+            aria-label="Delete group"
             class="delete-group"
             color="red"
+            data-hover-tooltip="Delete this group. The factories in it are kept, and go back to being ungrouped."
             density="comfortable"
             icon="fas fa-trash"
             size="small"
-            title="Delete group"
             variant="text"
             @click.stop="requestDelete"
           />
@@ -211,9 +221,9 @@
         <v-btn
           class="add-factory-btn"
           color="primary"
+          :data-hover-tooltip="addFactoryTooltip"
           prepend-icon="fas fa-plus"
           size="small"
-          :title="addFactoryTitle"
           @click="requestFactory"
         >
           Add factory
@@ -317,7 +327,7 @@
   // the new card), so this only says which group the click came from.
   const requestFactory = () => emit('createFactory', group.value?.id ?? null)
 
-  const addFactoryTitle = computed(() => group.value
+  const addFactoryTooltip = computed(() => group.value
     ? `Add a new factory to ${group.value.name}`
     : 'Add a new factory, in no group')
 

@@ -5,7 +5,7 @@
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
 
   <building-group-tutorial />
-  <div class="planner-container">
+  <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
       <planner-sidebar-content
@@ -133,6 +133,7 @@
   } from '@/utils/factory-management/factory'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
+  import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
@@ -147,6 +148,7 @@
   const { getFactories, setFactories, clearFactories, addFactory } = useAppStore()
 
   const { sections: groupSections, moveFactoryToGroup } = useFactoryGroups()
+  const plannerOptions = usePlannerOptions()
   const { isCollapsed, isMounted, setCollapsed, toggleCollapsed, usePlan } = useGroupCollapse()
 
   // Which plan's collapse state is in play. Group ids survive a copied plan, and Ungrouped has no
@@ -893,6 +895,32 @@ $band-gap: 8px;
 
     @media screen and (min-width: 2560px) {
       padding-right: calc(100vw - 1800px - 20vw) !important;
+    }
+  }
+}
+
+// Full width: drop the wide-screen gutters and let the plan have the whole window. The gutters
+// above stop a factory card stretching into an unreadable line on a big monitor, but a plan whose
+// satisfaction and summary tables are already scrolling sideways would rather have the pixels —
+// so which of the two applies is the reader's call, from the sidebar's global actions.
+// Below 2000px there are no gutters to drop and this changes nothing.
+.planner-container.full-width {
+  @media screen and (min-width: 2000px) {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  // The rule this overrides is itself !important, so this has to be too — specificity alone
+  // cannot beat it.
+  @media screen and (min-width: 2560px) {
+    margin-left: 0 !important;
+  }
+
+  .main-content {
+    // Back to the pa-3 the column carries at every other width, rather than 0: the cards need
+    // the same breathing room off the right edge that they have off the left.
+    @media screen and (min-width: 2000px) {
+      padding-right: 12px !important;
     }
   }
 }
