@@ -64,7 +64,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />

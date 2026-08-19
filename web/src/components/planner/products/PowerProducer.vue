@@ -224,7 +224,7 @@
         </v-chip>
         <span>
           <v-chip
-            class="sf-chip orange input"
+            class="sf-chip building input"
             variant="tonal"
           >
             <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />

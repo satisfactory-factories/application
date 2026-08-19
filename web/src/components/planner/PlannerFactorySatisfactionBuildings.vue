@@ -69,7 +69,7 @@
         style="display: inline;"
       >
         <v-chip
-          class="sf-chip orange"
+          class="sf-chip building"
           variant="tonal"
         >
           <game-asset

@@ -185,7 +185,7 @@
 
 <style lang="scss" scoped>
   .customBuilding {
-    border-left: 5px solid var(--sf-custom-building) !important
+    border-left: 5px solid var(--sf-building) !important
   }
 
   .upkeep-note {

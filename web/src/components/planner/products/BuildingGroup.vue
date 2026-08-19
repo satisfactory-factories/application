@@ -19,7 +19,7 @@
     </div>
     <div>
       <v-chip
-        class="sf-chip orange input mx-1"
+        class="sf-chip building input mx-1"
         variant="tonal"
       >
         <tooltip :text="getBuildingDisplayName(groupBuilding)">

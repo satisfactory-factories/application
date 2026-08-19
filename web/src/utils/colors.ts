@@ -67,13 +67,14 @@ export const sfColors = {
   product: { color: palette.blue, border: palette.blueBorder },
   byproduct: { color: palette.cyan, border: palette.cyanBorder },
   rawResource: { color: palette.beige, border: palette.beigeBorder },
-  building: { color: palette.orange, border: palette.orangeBorder },
+  // Blue rather than orange: orange is this planner's busiest colour — the out-of-sync chip, the
+  // warning tier, power consumption and the redundant-import flag all wear it — and buildings are
+  // the most numerous thing on a card, so they were the half of it worth giving back. Indigo is
+  // deliberately a step away from `product`'s brighter azure: the two sit side by side in every
+  // satisfaction row, and reading as the same blue would be worse than reading as two colours.
+  building: { color: palette.indigo, border: palette.indigoBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
-  // A building that produces nothing — a portal, a train station, a radar tower. Its own colour
-  // because it is neither a product nor a generator: indigo sits away from both the blue of items
-  // and the orange every other building figure wears.
-  customBuilding: { color: palette.indigo, border: palette.indigoBorder },
   // A setting on a building group rather than something that flows through it: the node
   // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
   // these were reading as `rawResource` beige, which is the colour of the ore itself.
