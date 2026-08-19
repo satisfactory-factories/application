@@ -10,12 +10,18 @@
   <template v-else>
     <v-card class="rounded sub-card border-md mb-2">
       <!-- Keyed by index: every half-configured row reads as "null-null", and duplicate
-           keys make Vue patch the wrong row's selectors. -->
+           keys make Vue patch the wrong row's selectors.
+
+           The space around a row is its own padding, not a margin: a margin belongs to nothing,
+           so the gap above the first row and the gaps between rows sat outside every row's box
+           and outside the jump highlight, which then read as a band floating between the
+           separators rather than the row itself. Same pixels either way — the 8px above a row
+           used to be its margin collapsing with the one below the row before it. -->
       <div
         v-for="(input, inputIndex) in factory.inputs"
         :id="importRowId(factory.id, input.factoryId, input.outputPart) ?? undefined"
         :key="inputIndex"
-        class="status-anchor selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
+        class="status-anchor selectors d-flex flex-column flex-md-row ga-3 px-4 py-2 border-b-md no-bottom"
       >
         <div class="input-row d-flex align-center">
           <factory-icon-display
