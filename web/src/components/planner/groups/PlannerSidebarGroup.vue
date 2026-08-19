@@ -204,13 +204,15 @@
          inside a Sortable list is a row Sortable would try to reorder and drop factories after. -->
     <div class="group-footer" :class="{ collapsed }">
       <div class="add-factory">
+        <!-- The last leg of the branch, drawn on its own element: the row's two pseudo-elements
+             are spent on the trunk and the rail, and this one has to start from the centre. -->
+        <span aria-hidden="true" class="branch-riser" />
         <v-btn
           class="add-factory-btn"
-          density="comfortable"
+          color="primary"
           prepend-icon="fas fa-plus"
           size="small"
           :title="addFactoryTitle"
-          variant="text"
           @click="requestFactory"
         >
           Add factory
@@ -571,9 +573,9 @@ $strip-border: 1px;
   }
 }
 
-// The tree's terminator, and the group's own Add Factory. It hangs off the trunk exactly as a row
-// does, one slot below the last of them, so the tree ends on the button rather than on the last
-// factory with a button floating under it.
+// The tree's terminator, and the group's own Add Factory. It hangs off the trunk one slot below
+// the last row, so the tree ends on the button rather than on the last factory with a button
+// floating under it.
 .group-footer {
   padding: 0 0 $tree-gutter $tree-indent;
 
@@ -584,8 +586,17 @@ $strip-border: 1px;
   }
 }
 
+// How far the branch drops below the button before turning back up into it.
+$branch-drop: 12px;
+
+// The button is centred rather than left-aligned like a row, so the branch cannot simply poke its
+// left edge the way an elbow meets a factory: it runs down past the button, along the bottom and
+// back up into the middle of it.
 .add-factory {
   position: relative;
+  display: flex;
+  justify-content: center;
+  padding-bottom: $branch-drop;
 
   &::before,
   &::after {
@@ -595,31 +606,30 @@ $strip-border: 1px;
     background-color: var(--sf-group, #616161);
   }
 
-  // Nothing follows it, so its trunk always ends at its own elbow.
+  // Trunk, carried down the group's edge to the rail.
   &::before {
     top: 0;
-    height: calc(50% + #{$tree-line * 0.5});
+    bottom: 0;
     width: $tree-line;
   }
 
+  // Rail, along the bottom from the trunk to the button's centre.
   &::after {
-    top: calc(50% - #{$tree-line * 0.5});
-    width: $tree-indent;
+    bottom: 0;
+    width: calc(50% + #{$tree-indent});
     height: $tree-line;
   }
 }
 
-// Quiet by design: it is repeated under every group, so it reads as the next line of the tree
-// rather than as a second primary action competing with the sidebar's Add Factory.
-.add-factory-btn {
-  color: #bdbdbd;
-  font-size: 0.78rem;
-  letter-spacing: normal;
-  text-transform: none;
-
-  &:hover {
-    color: #fff;
-  }
+// Up from the rail into the middle of the button's bottom edge.
+.branch-riser {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: $tree-line;
+  height: $branch-drop;
+  margin-left: -$tree-line * 0.5;
+  background-color: var(--sf-group, #616161);
 }
 
 // The "overlay over the group you could be entering" — the element Sortable actually measures
