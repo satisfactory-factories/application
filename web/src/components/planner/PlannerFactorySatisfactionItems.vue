@@ -483,9 +483,9 @@
                     color="primary"
                     icon="fas fa-eye"
                     size="x-small"
-                    title="Jump to this factory"
+                    title="Jump to the import taking this export"
                     variant="flat"
-                    @click.stop="navigateToFactory(request.requestingFactoryId)"
+                    @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
                   />
                 </v-chip>
               </div>
@@ -585,7 +585,7 @@
     showSinkControl,
     showUnpackagedChip,
   } from '@/utils/factory-management/satisfaction'
-  import { getInput } from '@/utils/factory-management/inputs'
+  import { getInput, importRowId } from '@/utils/factory-management/inputs'
   import {
     getDepotCount,
     getSinkCount,
@@ -605,7 +605,23 @@
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string,
+    fallback?: string,
+  ) => void
+
+  // The export chips name where a part goes; the jump lands on the import row that asked for it,
+  // which is what the user is actually after — the destination factory's card only says "somewhere
+  // in here". The Imports section is the fallback for the odd case where the row has no id yet
+  // (a half-configured import still being filled in).
+  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
+    navigateToFactory(
+      requestingFactoryId,
+      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
+      `${requestingFactoryId}-imports`
+    )
+  }
 
   const appStore = useAppStore()
 

@@ -681,12 +681,50 @@
   }
 }
 
-// Anything a status chip can jump to keeps a gap above it. Landing flush under the app chrome
+// Anything a jump can land on keeps a gap above it. Landing flush under the app chrome
 // puts the row directly beneath the "too many factories" banner, which sits over the top of it.
 .factory-item,
 .status-anchor,
 tr[id*="-satisfaction-item-"] {
   scroll-margin-top: 50px;
+}
+
+// The pulse a jump leaves on its target (see src/utils/navigation-highlight.ts). Global rather
+// than scoped: the targets are factory headers, section headings, import rows and satisfaction
+// rows, spread across a dozen components.
+// The pulse holds most of its brightness through the middle of the animation rather than spiking
+// and dropping: it starts as the smooth scroll sets off, so a quick blink would be over by the
+// time the target arrives on screen.
+@keyframes sf-nav-flash {
+  0% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0); }
+  12% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.55); }
+  55% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.45); }
+  100% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0); }
+}
+
+.sf-nav-flash {
+  // An inset shadow rather than a background: the targets bring backgrounds of their own (card
+  // headers, shaded satisfaction cells), and an overlay tints all of them the same way.
+  animation: sf-nav-flash 1.1s ease-out;
+}
+
+// A row paints no inset shadow of its own — the table hands the background to the cells, so they
+// carry the flash instead.
+tr.sf-nav-flash {
+  animation: none;
+
+  > td,
+  > th {
+    animation: sf-nav-flash 1.1s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-nav-flash,
+  tr.sf-nav-flash > td,
+  tr.sf-nav-flash > th {
+    animation: none;
+  }
 }
 
 .factory-item {
