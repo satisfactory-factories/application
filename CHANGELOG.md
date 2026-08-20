@@ -13,6 +13,12 @@ _In development._
 - **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
 - Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
 
+### Material costs
+
+- **Power & Buildings now has a Material Costs panel**, showing what it would cost, in parts, to build every production building, power generator and custom building the factory needs. Closed by default; toggle it open to see the breakdown.
+- Each part lists its total quantity, and a chip per building that needs it — the building's image and how many of them.
+- **Use this as a guide only.** No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

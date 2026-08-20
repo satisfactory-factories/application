@@ -87,18 +87,108 @@
           </span>
         </v-chip>
       </div>
+      <v-btn
+        :id="`${factory.id}-buildings-materials-toggle`"
+        block
+        class="mt-3"
+        size="default"
+        variant="tonal"
+        @click="materialsOpen = !materialsOpen"
+      >
+        <span class="mr-2">
+          <span v-if="materialsOpen"><i class="fas fa-chevron-up" /></span>
+          <span v-else><i class="fas fa-chevron-down" /></span>
+        </span>
+        <i class="fas fa-cubes" />
+        <span class="ml-2">{{ materialsOpen ? 'Close ' : 'Open ' }}Material Costs</span>
+        <tooltip-info :is-caption="false" text="What it would cost, in parts, to build every production building, power generator and custom building above.<br>Use this as a guide only — see the note below." />
+      </v-btn>
+      <v-expand-transition>
+        <div v-if="materialsOpen" class="mt-3">
+          <v-alert
+            :id="`${factory.id}-buildings-materials-note`"
+            class="mb-3"
+            density="compact"
+            type="info"
+            variant="tonal"
+          >
+            <b>Please note:</b> this will never be 100% accurate. No assumptions are made about belts, foundations,
+            or any other structural or cosmetic building — only production buildings, power generators and custom
+            buildings directly involved in making your products are counted. Use this as a guide only.
+          </v-alert>
+          <v-table v-if="materialCostRows.length > 0" class="materials-table" density="compact">
+            <thead>
+              <tr>
+                <th class="text-left">Part</th>
+                <th class="text-right">Quantity</th>
+                <th class="text-left">Used In</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in materialCostRows"
+                :id="`${factory.id}-buildings-material-${row.part}`"
+                :key="row.part"
+              >
+                <td>
+                  <game-asset
+                    clickable
+                    height="28px"
+                    :subject="row.part"
+                    type="item"
+                    width="28px"
+                  />
+                  <span class="ml-2">{{ getPartDisplayName(row.part) }}</span>
+                </td>
+                <td class="text-right">{{ formatNumber(row.amount) }}</td>
+                <td>
+                  <v-chip
+                    v-for="usage in row.usedIn"
+                    :key="`${row.part}-${usage.building}`"
+                    class="sf-chip building x-small mr-1"
+                    variant="tonal"
+                  >
+                    <tooltip :text="getBuildingDisplayName(usage.building)">
+                      <game-asset height="18px" :subject="usage.building" type="building" width="18px" />
+                    </tooltip>
+                    <span class="ml-1">{{ formatNumber(usage.amount) }}x</span>
+                  </v-chip>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+          <p v-else class="text-body-2 mb-0">
+            <i class="fas fa-info-circle mr-2" />No buildings need materials to construct yet.
+          </p>
+        </div>
+      </v-expand-transition>
     </v-card-text>
   </v-card>
 </template>
 <script setup lang="ts">
+  import { computed, ref } from 'vue'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { getPartDisplayName } from '@/utils/helpers'
 
   const props = defineProps<{
     factory: Factory;
     helpText: boolean;
   }>()
+
+  const materialsOpen = ref(false)
+
+  // Sorted by display name so the table reads consistently regardless of insertion order.
+  const materialCostRows = computed(() => {
+    return Object.entries(props.factory.buildingMaterialCosts ?? {})
+      .map(([part, data]) => ({
+        part,
+        amount: data.amount,
+        usedIn: Object.entries(data.buildings).map(([building, amount]) => ({ building, amount })),
+      }))
+      .sort((a, b) => getPartDisplayName(a.part).localeCompare(getPartDisplayName(b.part)))
+  })
 
   const hasVariablePower = computed(() => {
     const consumedMax = props.factory.power.consumedMax
