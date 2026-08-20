@@ -9,6 +9,7 @@
 import { CustomBuilding, DataInterface } from '@/interfaces/DataInterface'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { generateFactoryItemId } from '@/utils/factory-management/common'
 
 // Custom buildings are drawn with the game's ITEM icons: the building icon set the app ships
 // only ever covered production buildings and generators, so a portal or a train station has no
@@ -63,8 +64,7 @@ export const addCustomBuildingToFactory = (
   } = {},
 ) => {
   factory.customBuildings.push({
-    // NOSONAR: a display identifier, not a security token.
-    id: Math.floor(Math.random() * 10000).toString(), // NOSONAR
+    id: generateFactoryItemId(factory),
     building: options.building ?? '',
     amount: options.amount ?? 1,
     ingredients: [], // Calculated

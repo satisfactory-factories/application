@@ -18,6 +18,37 @@ export const hasFractionalClock = (groups: BuildingGroup[] | undefined): boolean
     group.clockSetByUser === true && (group.overclockPercent ?? 100) % 1 !== 0)
 }
 
+/**
+ * An id for a row inside a factory — a power producer or a custom building.
+ *
+ * Issued against what the factory already holds, for the same reason generateFactoryId is issued
+ * against the plan: these ids key the game-sync snapshots, so two rows sharing one id collapse
+ * into a single snapshot entry, and the count check then drops the factory out of sync the
+ * instant it is marked as built, with nothing on screen to explain it. They also key element ids
+ * on the card, where a duplicate breaks getElementById outright — which is why the taken set
+ * spans both collections rather than just the one being added to.
+ *
+ * NOSONAR: a display identifier, not a security token.
+ */
+export const generateFactoryItemId = (factory: Factory): string => {
+  const taken = new Set<string>([
+    ...(factory.powerProducers ?? []).map(producer => producer.id),
+    ...(factory.customBuildings ?? []).map(customBuilding => customBuilding.id),
+  ])
+  let range = 10000
+
+  for (let attempt = 0; ; attempt++) {
+    const id = Math.floor(Math.random() * range).toString() // NOSONAR
+    if (!taken.has(id)) {
+      return id
+    }
+    // Saturated id space — widen rather than spin forever.
+    if (attempt > 0 && attempt % 50 === 0) {
+      range *= 10
+    }
+  }
+}
+
 export const createNewPart = (factory: Factory, part: string) => {
   if (!factory.parts[part]) {
     factory.parts[part] = {

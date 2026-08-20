@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
   addCustomBuildingToFactory,
   calculateCustomBuildings,
@@ -101,6 +102,51 @@ describe('custom buildings', () => {
 
       expect(factory.customBuildings.map(building => building.displayOrder)).toEqual([0, 1])
       expect(factory.customBuildings[1].amount).toBe(4)
+    })
+  })
+
+  describe('row ids', () => {
+    it('should never issue the same id twice within a factory', () => {
+      for (let i = 0; i < 200; i++) {
+        addCustomBuildingToFactory(factory, { building: 'radartower' })
+      }
+
+      const ids = factory.customBuildings.map(customBuilding => customBuilding.id)
+      expect(new Set(ids).size).toBe(ids.length)
+    })
+
+    // The ids also key element ids on the card, where a duplicate breaks getElementById.
+    it('should not collide with a power producer in the same factory', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        powerAmount: 100,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Power,
+      })
+      const producerId = factory.powerProducers[0].id
+
+      for (let i = 0; i < 50; i++) {
+        addCustomBuildingToFactory(factory, { building: 'radartower' })
+      }
+
+      expect(factory.customBuildings.map(building => building.id)).not.toContain(producerId)
+    })
+
+    // Saturation widens the range instead of spinning forever.
+    it('should still issue an id when the whole starting range is taken', () => {
+      factory.customBuildings = Array.from({ length: 10000 }, (_, index) => ({
+        id: index.toString(),
+        building: 'radartower',
+        amount: 1,
+        ingredients: [],
+        powerConsumed: 0,
+        displayOrder: index,
+      }))
+
+      addCustomBuildingToFactory(factory, { building: 'portal' })
+
+      const issued = factory.customBuildings[10000].id
+      expect(Number(issued)).toBeGreaterThanOrEqual(10000)
     })
   })
 
