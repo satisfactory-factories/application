@@ -549,6 +549,9 @@ export const useAppStore = defineStore('app', () => {
       if (factory.checklistExports === undefined) {
         factory.checklistExports = {}
       }
+      if (factory.checklistExportSyncedAmounts === undefined) {
+        factory.checklistExportSyncedAmounts = {}
+      }
 
       // Patch for #180
       if (factory.powerProducers === undefined) {

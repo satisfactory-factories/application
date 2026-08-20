@@ -27,9 +27,10 @@
           <input
             :checked="!!input.completed"
             class="checklist-tick"
-            title="Mark this import as built"
+            :class="{ desynced: isInputChecklistDesynced(input) }"
+            :title="isInputChecklistDesynced(input) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this import as built'"
             type="checkbox"
-            @change="input.completed = !input.completed"
+            @change="toggleChecklistInput(input)"
           >
         </div>
         <div class="input-row d-flex align-center">
@@ -229,6 +230,7 @@
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
+  import { isInputChecklistDesynced, toggleChecklistInput } from '@/utils/factory-management/checklist'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
@@ -510,6 +512,28 @@
       top: 0;
       transform: rotate(45deg);
       width: 5px;
+    }
+
+    // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+    // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
+    // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+    &.desynced:checked {
+      background-color: var(--sf-status-warning-border);
+      border-color: var(--sf-status-warning-border);
+
+      &::after {
+        border-width: 0;
+        content: '?';
+        font-size: 13px;
+        font-weight: bold;
+        height: 18px;
+        left: 0;
+        line-height: 18px;
+        text-align: center;
+        top: 0;
+        transform: none;
+        width: 18px;
+      }
     }
   }
 </style>

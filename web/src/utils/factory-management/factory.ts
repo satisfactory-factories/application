@@ -114,6 +114,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     checklistEnabled: false,
     checklistPanelHidden: false,
     checklistExports: {},
+    checklistExportSyncedAmounts: {},
     dataVersion: '2025-01-03',
   }
 }

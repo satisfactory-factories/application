@@ -5,7 +5,14 @@
 // engine, so storing state directly on a request risks it being silently dropped. Ticks for
 // exports are therefore kept in factory.checklistExports, keyed by the (destination factory,
 // part) pair the export chip actually represents.
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+//
+// Desync tracking: every checked item also stamps a `checklistSyncedAmount` baseline (the export
+// equivalent lives in factory.checklistExportSyncedAmounts, same keying as checklistExports). If
+// the plan's own number for that item later drifts away from the baseline, the item is "desynced"
+// — ticked as built, but the plan has since asked for something different. Toggling an item back
+// to checked re-stamps the baseline, which is how a player acknowledges the new number. Marking
+// the whole factory in sync with the game (setSyncState) re-stamps every baseline at once.
+import { Factory, FactoryInput, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 
 export const checklistExportKey = (requestingFactoryId: number | string, part: string): string =>
@@ -17,13 +24,67 @@ export const isChecklistExportComplete = (
   part: string
 ): boolean => !!factory.checklistExports[checklistExportKey(requestingFactoryId, part)]
 
+// `amount` is the export request's current amount, stamped as the new baseline whenever this
+// toggles an item ON (first tick, or acknowledging a desync by re-checking it).
 export const toggleChecklistExport = (
   factory: Factory,
   requestingFactoryId: number | string,
-  part: string
+  part: string,
+  amount: number
 ): void => {
   const key = checklistExportKey(requestingFactoryId, part)
-  factory.checklistExports[key] = !factory.checklistExports[key]
+  const nowComplete = !factory.checklistExports[key]
+  factory.checklistExports[key] = nowComplete
+  if (nowComplete) {
+    factory.checklistExportSyncedAmounts[key] = amount
+  }
+}
+
+export const toggleChecklistProduct = (product: FactoryItem): void => {
+  product.completed = !product.completed
+  if (product.completed) {
+    product.checklistSyncedAmount = product.amount
+  }
+}
+
+export const toggleChecklistInput = (input: FactoryInput): void => {
+  input.completed = !input.completed
+  if (input.completed) {
+    input.checklistSyncedAmount = input.amount
+  }
+}
+
+export const toggleChecklistPowerProducer = (producer: FactoryPowerProducer): void => {
+  producer.completed = !producer.completed
+  if (producer.completed) {
+    producer.checklistSyncedAmount = producer.buildingAmount
+  }
+}
+
+// Desynced: ticked as built, but the number it was ticked against has since moved. An absent
+// baseline (never ticked since this existed) must read as "not desynced" rather than firing on
+// every old save the first time it loads.
+export const isProductChecklistDesynced = (product: FactoryItem): boolean =>
+  !!product.completed && product.checklistSyncedAmount !== undefined &&
+  product.checklistSyncedAmount !== product.amount
+
+export const isInputChecklistDesynced = (input: FactoryInput): boolean =>
+  !!input.completed && input.checklistSyncedAmount !== undefined &&
+  input.checklistSyncedAmount !== input.amount
+
+export const isPowerProducerChecklistDesynced = (producer: FactoryPowerProducer): boolean =>
+  !!producer.completed && producer.checklistSyncedAmount !== undefined &&
+  producer.checklistSyncedAmount !== producer.buildingAmount
+
+export const isChecklistExportDesynced = (
+  factory: Factory,
+  requestingFactoryId: number | string,
+  part: string,
+  amount: number
+): boolean => {
+  if (!isChecklistExportComplete(factory, requestingFactoryId, part)) return false
+  const synced = factory.checklistExportSyncedAmounts[checklistExportKey(requestingFactoryId, part)]
+  return synced !== undefined && synced !== amount
 }
 
 // Total checklist items this factory currently has: one per product, per power producer, per

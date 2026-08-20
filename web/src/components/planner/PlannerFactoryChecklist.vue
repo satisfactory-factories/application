@@ -39,9 +39,10 @@
             <input
               :checked="!!product.completed"
               class="checklist-tick"
+              :class="{ desynced: isProductChecklistDesynced(product) }"
               title="Mark as built"
               type="checkbox"
-              @change="product.completed = !product.completed"
+              @change="toggleChecklistProduct(product)"
             >
             <game-asset
               v-if="product.id"
@@ -52,6 +53,7 @@
               width="24"
             />
             <span class="ml-2">{{ getPartDisplayName(product.id) }}</span>
+            <v-chip v-if="isProductChecklistDesynced(product)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
           </div>
         </div>
         <div v-if="factory.powerProducers.length > 0" class="checklist-group">
@@ -60,9 +62,10 @@
             <input
               :checked="!!producer.completed"
               class="checklist-tick"
+              :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
               title="Mark as built"
               type="checkbox"
-              @change="producer.completed = !producer.completed"
+              @change="toggleChecklistPowerProducer(producer)"
             >
             <game-asset
               v-if="producer.building"
@@ -73,6 +76,7 @@
               width="24"
             />
             <span class="ml-2">{{ getPowerProducerDisplayName(producer) }}</span>
+            <v-chip v-if="isPowerProducerChecklistDesynced(producer)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
           </div>
         </div>
         <div v-if="factory.inputs.length > 0" class="checklist-group">
@@ -81,9 +85,10 @@
             <input
               :checked="!!input.completed"
               class="checklist-tick"
+              :class="{ desynced: isInputChecklistDesynced(input) }"
               title="Mark as built"
               type="checkbox"
-              @change="input.completed = !input.completed"
+              @change="toggleChecklistInput(input)"
             >
             <game-asset
               v-if="input.outputPart"
@@ -97,6 +102,7 @@
               {{ getPartDisplayName(input.outputPart ?? '') }}
               <span v-if="input.factoryId" class="text-grey-lighten-1">from {{ findFactory(input.factoryId).name }}</span>
             </span>
+            <v-chip v-if="isInputChecklistDesynced(input)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
           </div>
         </div>
         <div v-if="exportRequests.length > 0" class="checklist-group">
@@ -109,9 +115,10 @@
             <input
               :checked="isChecklistExportComplete(factory, request.requestingFactoryId, request.part)"
               class="checklist-tick"
+              :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistExport(factory, request.requestingFactoryId, request.part)"
+              @change="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
             >
             <game-asset
               clickable
@@ -124,6 +131,10 @@
               {{ getPartDisplayName(request.part) }}
               <span class="text-grey-lighten-1">to {{ findFactory(request.requestingFactoryId).name }}</span>
             </span>
+            <v-chip
+              v-if="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
+              class="sf-chip x-small status-warning no-margin"
+            >Desynced</v-chip>
           </div>
         </div>
       </template>
@@ -142,7 +153,14 @@
     countChecklistTotal,
     isChecklistComplete,
     isChecklistExportComplete,
+    isChecklistExportDesynced,
+    isInputChecklistDesynced,
+    isPowerProducerChecklistDesynced,
+    isProductChecklistDesynced,
     toggleChecklistExport,
+    toggleChecklistInput,
+    toggleChecklistPowerProducer,
+    toggleChecklistProduct,
   } from '@/utils/factory-management/checklist'
 
   const props = defineProps<{
@@ -208,6 +226,28 @@
     top: 0;
     transform: rotate(45deg);
     width: 5px;
+  }
+
+  // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
+  // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+  &.desynced:checked {
+    background-color: var(--sf-status-warning-border);
+    border-color: var(--sf-status-warning-border);
+
+    &::after {
+      border-width: 0;
+      content: '?';
+      font-size: 13px;
+      font-weight: bold;
+      height: 18px;
+      left: 0;
+      line-height: 18px;
+      text-align: center;
+      top: 0;
+      transform: none;
+      width: 18px;
+    }
   }
 }
 </style>

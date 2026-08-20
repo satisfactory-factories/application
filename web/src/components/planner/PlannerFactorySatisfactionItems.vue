@@ -382,9 +382,10 @@
                     v-if="factory.checklistEnabled"
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                     class="checklist-tick mr-2"
-                    title="Mark this export as built"
+                    :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
+                    :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
                     type="checkbox"
-                    @change="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString())"
+                    @change="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                     @click.stop
                   >
                   <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
@@ -472,7 +473,7 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
-  import { isChecklistExportComplete, toggleChecklistExport } from '@/utils/factory-management/checklist'
+  import { isChecklistExportComplete, isChecklistExportDesynced, toggleChecklistExport } from '@/utils/factory-management/checklist'
   import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
@@ -878,6 +879,28 @@ table {
     top: 0;
     transform: rotate(45deg);
     width: 5px;
+  }
+
+  // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
+  // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+  &.desynced:checked {
+    background-color: var(--sf-status-warning-border);
+    border-color: var(--sf-status-warning-border);
+
+    &::after {
+      border-width: 0;
+      content: '?';
+      font-size: 13px;
+      font-weight: bold;
+      height: 18px;
+      left: 0;
+      line-height: 18px;
+      text-align: center;
+      top: 0;
+      transform: none;
+      width: 18px;
+    }
   }
 }
 </style>

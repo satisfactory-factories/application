@@ -43,9 +43,10 @@
         <input
           :checked="!!producer.completed"
           class="checklist-tick"
-          title="Mark this generator as built"
+          :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
+          :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
           type="checkbox"
-          @change="producer.completed = !producer.completed"
+          @change="toggleChecklistPowerProducer(producer)"
         >
       </div>
       <div class="input-row d-flex align-center">
@@ -303,6 +304,7 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isPowerProducerChecklistDesynced, toggleChecklistPowerProducer } from '@/utils/factory-management/checklist'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -541,6 +543,28 @@
       top: 0;
       transform: rotate(45deg);
       width: 5px;
+    }
+
+    // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+    // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
+    // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+    &.desynced:checked {
+      background-color: var(--sf-status-warning-border);
+      border-color: var(--sf-status-warning-border);
+
+      &::after {
+        border-width: 0;
+        content: '?';
+        font-size: 13px;
+        font-weight: bold;
+        height: 18px;
+        left: 0;
+        line-height: 18px;
+        text-align: center;
+        top: 0;
+        transform: none;
+        width: 18px;
+      }
     }
   }
 </style>
