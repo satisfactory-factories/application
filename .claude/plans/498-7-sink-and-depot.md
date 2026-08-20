@@ -123,11 +123,13 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    field and `:model-value` rather than `v-model`, per #vnumberinput-clamping: with a max set an
    out-of-range entry stops emitting at all, so the clamp never runs. User's call, 2026-08-20.
 
-15. **The research tick boxes are Vuetify's.** They were drawn in CSS because Vuetify's FA
-   aliases point at `far fa-square`, which this bundle does not ship. That reasoning was stale:
-   `global.scss` already draws the marks for every `v-checkbox-btn` in the app, so the hand-rolled
-   box was both redundant and the only one in the app that did not line up with its label.
-   `inline` matters, because a selection control is `flex: 1 1 auto` by default and ate the cell.
+15. **The research tick boxes are the factory task list's, promoted to `.sf-tick` in
+   `global.scss`.** They started hand-rolled in this component, then briefly became
+   `v-checkbox-btn`, which still did not look like anything else in the app. The task list had
+   already solved it: a native checkbox with `appearance: none` and the box and tick drawn in
+   CSS, green when ticked. Both components now draw the same one, so there is one definition to
+   keep rather than three that drift. `task-tick` stays on the task input purely as its test's
+   handle. User's call, 2026-08-20.
 
 ## Data model
 

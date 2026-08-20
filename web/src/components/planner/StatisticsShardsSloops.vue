@@ -94,17 +94,17 @@
               >
                 <td>
                   <div class="d-flex flex-column ga-1">
-                    <div class="d-flex align-center ga-1 flex-nowrap">
-                      <!-- `inline` because a selection control is flex: 1 1 auto by default, which
-                         made the box eat the cell and shove the label to the far right. -->
-                      <v-checkbox-btn
+                    <div class="d-flex align-center ga-2 flex-nowrap">
+                      <!-- The same drawn tick the factory task list uses; see .sf-tick in
+                           global.scss for why it is a native checkbox rather than a Vuetify one. -->
+                      <input
                         :id="`stats-mercer-include-${line.key}`"
-                        density="compact"
-                        hide-details
-                        inline
-                        :model-value="line.included"
-                        @update:model-value="toggleResearch(line.key)"
-                      />
+                        :checked="line.included"
+                        class="sf-tick"
+                        :title="line.included ? `Leave ${line.label} out of the total` : `Count ${line.label} in the total`"
+                        type="checkbox"
+                        @change="toggleResearch(line.key)"
+                      >
                       <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
                         {{ line.label }}
                       </span>
@@ -351,6 +351,6 @@
 
 // Lined up under the label rather than under the tick, so the row reads as one setting.
 .tier-row {
-  padding-left: 30px;
+  padding-left: 26px;
 }
 </style>
