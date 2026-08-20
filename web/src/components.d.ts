@@ -25,6 +25,8 @@ declare module 'vue' {
     DebounceSpinner: typeof import('./components/planner/DebounceSpinner.vue')['default']
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
     ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
+    FactoryArrangeDialog: typeof import('./components/planner/groups/FactoryArrangeDialog.vue')['default']
+    FactoryArrangeSection: typeof import('./components/planner/groups/FactoryArrangeSection.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
     FactoryGroupBulkDialog: typeof import('./components/planner/groups/FactoryGroupBulkDialog.vue')['default']
     FactoryGroupColorMenu: typeof import('./components/planner/groups/FactoryGroupColorMenu.vue')['default']

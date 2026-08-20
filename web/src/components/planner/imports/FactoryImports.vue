@@ -7,12 +7,9 @@
       </h1>
       <factory-status-chips detailed size="small" :statuses="sectionStatuses" />
     </div>
-    <p v-show="helpText" class="text-body-2 mb-4">
-      <i class="fas fa-info-circle" /> Imports are the resources needed to produce the factory's products and ensure its satisfaction. To set up imports, you select another factory and choose one of its outputs. This creates a "request" for that output. The selected factory must fulfill this request, and you'll be notified if it cannot meet the demand. All available outputs are listed in the Outputs section of the factory you choose.
-    </p>
     <div v-if="Object.keys(factory.rawResources).length > 0 || Object.keys(factory.parts).length > 0">
       <raw-resources :factory="factory" />
-      <imports :factory="factory" :help-text="helpText" />
+      <imports :factory="factory" />
     </div>
     <p v-else class="text-body-1">Awaiting product selection.</p>
   </div>
@@ -28,7 +25,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
     statuses?: FactoryStatus[];
   }>()
 

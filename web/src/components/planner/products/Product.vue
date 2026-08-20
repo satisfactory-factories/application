@@ -328,7 +328,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   // Takes the whole row amber, so a warning chip halfway down a long product list is attached to

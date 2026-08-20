@@ -29,7 +29,6 @@
       <v-col v-if="hasParts" class="pb-1" cols="12">
         <planner-factory-satisfaction-items
           :factory="factory"
-          :help-text="helpText"
           :show-surplus-outputs="hideInternalOutputs"
         />
       </v-col>
@@ -38,7 +37,6 @@
       <v-col cols="12">
         <planner-factory-satisfaction-buildings
           :factory="factory"
-          :help-text="helpText"
         />
       </v-col>
     </v-row>
@@ -69,7 +67,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
     statuses?: FactoryStatus[];
   }>()
 
