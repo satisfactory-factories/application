@@ -94,6 +94,15 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    parts stay, because the map is sticky by design and every reader already skips them. Raised
    by the Codex build review, 2026-08-20.
 
+13. **A one-time explainer the first time a sink is set.** Both assumptions a sink rests on are
+   invisible in the numbers, and a sink otherwise looks like a button that makes the red go
+   away. So the first time a count above zero lands on anything, a dialog says them: a
+   programmable splitter sending the sink only the excess, and a belt fast enough to carry that
+   excess (a Mk.1 belt in front of a 720/min surplus still backs up). Keyed on
+   `tutorialAwesomeSink` in localStorage, per browser rather than per plan, because it is the
+   player who needs telling and they need it whichever plan they are in. Follows the building
+   group tutorial's pattern exactly. User's call, 2026-08-20.
+
 ## Data model
 
 ```ts

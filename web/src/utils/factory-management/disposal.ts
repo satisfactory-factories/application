@@ -18,6 +18,7 @@
  * reached from `factory.ts` via `problems.ts`. It imports the interface and nothing else.
  */
 import { Factory, FactoryPartDisposal } from '@/interfaces/planner/FactoryInterface'
+import eventBus from '@/utils/eventBus'
 
 /**
  * Mercer Spheres per Dimensional Depot Uploader.
@@ -114,6 +115,26 @@ const write = (factory: Factory, partId: string, field: keyof FactoryPartDisposa
 
 export const setSinkCount = (factory: Factory, partId: string, count: unknown): void =>
   write(factory, partId, 'sinks', count)
+
+// Per browser rather than per plan: it is the player who needs telling once, and they need it
+// whichever plan they happen to be in when they first reach for a sink.
+export const SINK_TUTORIAL_KEY = 'tutorialAwesomeSink'
+
+/**
+ * Shows the sink explainer the first time a sink is set on anything, and never again.
+ *
+ * A sink looks like a free "make the red go away" button, and nothing in the numbers reveals the
+ * two things the planner is assuming about the build: a programmable splitter sending it only the
+ * excess, and a belt fast enough to carry that excess. Both are invisible until the factory is
+ * running and wrong, so they get said once, at the moment someone first commits to a sink.
+ */
+export const notifySinkTutorial = (count: number): void => {
+  if (count <= 0) return
+  if (localStorage.getItem(SINK_TUTORIAL_KEY)) return
+
+  localStorage.setItem(SINK_TUTORIAL_KEY, 'true')
+  eventBus.emit('openAwesomeSinkTutorial')
+}
 
 export const setDepotCount = (factory: Factory, partId: string, count: unknown): void =>
   write(factory, partId, 'depots', count)

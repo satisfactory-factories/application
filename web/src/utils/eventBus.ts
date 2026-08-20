@@ -48,6 +48,10 @@ type Events = {
 
   navigationReady: undefined;
 
+  // Shown once, the first time a sink count is set above zero: the two build assumptions the
+  // planner makes about a sink are invisible in the numbers, so they have to be said somewhere.
+  openAwesomeSinkTutorial: undefined;
+
   // Building Groups
   openBuildingGroupTutorial: undefined;
   buildingGroupUpdated: Factory;

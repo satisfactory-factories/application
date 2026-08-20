@@ -589,6 +589,7 @@
   import {
     getDepotCount,
     getSinkCount,
+    notifySinkTutorial,
     setDepotCount,
     setSinkCount,
     SINK_POWER_MW,
@@ -873,6 +874,9 @@
    */
   const updateSinkCount = (partId: string, count: unknown) => {
     setSinkCount(props.factory, partId, count)
+    // Read back rather than trusting the input: the field emits null when cleared and can step
+    // below zero, and only what actually landed counts as committing to a sink.
+    notifySinkTutorial(getSinkCount(props.factory, partId))
     updateFactory(props.factory)
   }
 

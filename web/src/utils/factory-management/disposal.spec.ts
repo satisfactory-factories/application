@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
+import eventBus from '@/utils/eventBus'
 import {
   DEPOT_RESEARCH_MERCER_SPHERES,
   getDepotCount,
@@ -15,9 +16,11 @@ import {
   isDepoted,
   isSunk,
   MERCER_SPHERES_PER_DEPOT,
+  notifySinkTutorial,
   setDepotCount,
   setSinkCount,
   SINK_POWER_MW,
+  SINK_TUTORIAL_KEY,
 } from '@/utils/factory-management/disposal'
 import { calculateDimensionalDepot } from '@/utils/statistics'
 import {
@@ -502,6 +505,47 @@ describe('disposal', () => {
       expect(showBacklogAdvisory(factory, 'IronPlate')).toBe(false)
 
       usePlannerOptions().value.showBacklogAdvisory = true
+    })
+  })
+
+  // The two assumptions a sink rests on are invisible in the numbers, so the explainer is the
+  // only place they get said. Per browser, because it is the player who needs telling.
+  describe('notifySinkTutorial', () => {
+    beforeEach(() => {
+      localStorage.removeItem(SINK_TUTORIAL_KEY)
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('opens the explainer the first time a sink is set', () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifySinkTutorial(1)
+
+      expect(emit).toHaveBeenCalledWith('openAwesomeSinkTutorial')
+      expect(localStorage.getItem(SINK_TUTORIAL_KEY)).toBe('true')
+    })
+
+    it('never opens it a second time', () => {
+      notifySinkTutorial(1)
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifySinkTutorial(3)
+
+      expect(emit).not.toHaveBeenCalled()
+    })
+
+    // Clearing the field emits null and the spinner can step below its minimum, so only a count
+    // that actually landed counts as committing to a sink.
+    it.each([0, -1])('says nothing for a count of %s', count => {
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifySinkTutorial(count)
+
+      expect(emit).not.toHaveBeenCalled()
+      expect(localStorage.getItem(SINK_TUTORIAL_KEY)).toBeNull()
     })
   })
 
