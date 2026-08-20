@@ -103,7 +103,8 @@
                unclocked, and what they give at the 250% cap. A plan between the two is buildable
                and needs power shards, which is a thing you see rather than read. The extractor
                those ceilings assume is named by its own icon — the same nodes worked by a Mk.1
-               come to a quarter of a Mk.3's. -->
+               come to a quarter of a Mk.3's. Nodes take a diamond, the shape the game draws them
+               as on the map, and sit below a rule: extraction and nodes are different questions. -->
           <td class="utilisation">
             <template v-if="!resource.utilisation">
               <span class="text-medium-emphasis">&mdash;</span>
@@ -114,14 +115,14 @@
                   <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
                 </span>
                 <span class="text-caption text-medium-emphasis">Unlimited &mdash; any shoreline</span>
-                <span class="bar-inline"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</span>
               </div>
+              <div class="bar-figure"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</div>
             </template>
             <template v-else>
               <div
                 v-for="ceiling in extractionCeilings(resource.utilisation)"
                 :key="ceiling.clock"
-                class="ceiling"
+                class="bar-block"
               >
                 <div class="bar-line">
                   <span class="bar-key">
@@ -137,46 +138,65 @@
                   />
                 </div>
                 <!-- Snug under its own bar rather than out to the right of it, so every bar in the
-                     table is the same length whatever its figures read. -->
+                     table runs the full width of the column whatever its figures read. The share
+                     is spelled out after them in the bar's own colour: a bar says "nearly full",
+                     the percentage says how nearly. -->
                 <div class="bar-figure">
                   <b>{{ formatCompactPrecise(resource.totalAmount) }}</b>
                   <span class="text-medium-emphasis"> / {{ formatCompactPrecise(ceiling.capacity) }}</span>/min
+                  <span class="bar-percent" :style="{ color: barColour(ceiling.fraction) }">({{ percentLabel(ceiling.fraction) }})</span>
                 </div>
               </div>
-              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-line">
-                <span class="bar-key"><span class="bar-key-text">Nodes</span></span>
-                <v-progress-linear
-                  bg-opacity="0.15"
-                  :color="barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
-                  height="10"
-                  :model-value="barValue(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
-                  rounded
-                />
-                <!-- Node counts are two short numbers, so they stay beside their bar: the bar's
-                     width is fixed, so nothing they do changes its length. -->
-                <span class="bar-inline">
+              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-block nodes">
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <i class="fas fa-diamond bar-key-icon" />
+                    <span class="bar-key-text ml-1">Nodes</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                    height="10"
+                    :model-value="barValue(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                    rounded
+                  />
+                </div>
+                <div class="bar-figure">
                   <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesUsed)) }}</b>
                   <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesAvailable)) }}</span>
-                </span>
+                  <span
+                    class="bar-percent"
+                    :style="{ color: barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable)) }"
+                  >({{ percentLabel(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable)) }})</span>
+                </div>
               </div>
               <!-- Only where wells are actually in play: every oil plan would otherwise carry a
                    "0 / 18" well row saying nothing. -->
               <div
                 v-if="resource.nodeUsage && (totalNodes(resource.nodeUsage.satellitesUsed) > 0 || totalNodes(resource.nodeUsage.nodesAvailable) === 0)"
-                class="bar-line"
+                class="bar-block nodes"
               >
-                <span class="bar-key"><span class="bar-key-text">Well nodes</span></span>
-                <v-progress-linear
-                  bg-opacity="0.15"
-                  :color="barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
-                  height="10"
-                  :model-value="barValue(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
-                  rounded
-                />
-                <span class="bar-inline">
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <i class="fas fa-diamond bar-key-icon" />
+                    <span class="bar-key-text ml-1">Well nodes</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                    height="10"
+                    :model-value="barValue(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                    rounded
+                  />
+                </div>
+                <div class="bar-figure">
                   <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesUsed)) }}</b>
                   <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesAvailable)) }}</span>
-                </span>
+                  <span
+                    class="bar-percent"
+                    :style="{ color: barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable)) }"
+                  >({{ percentLabel(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable)) }})</span>
+                </div>
               </div>
               <!-- What is left in prose is advice rather than status: which Converter recipe makes
                    up the shortfall, or which purities to spread across. The status itself is a
@@ -262,6 +282,19 @@
     { clock: '100%', capacity: utilisation.capacity.atStandardClock, fraction: utilisation.ofStandardClock },
     { clock: '250%', capacity: utilisation.capacity.atMaxClock, fraction: utilisation.ofMaxClock },
   ]
+
+  // The bar's own share, spelled out. Rounded to whole percent — this is a "how close am I"
+  // figure, not a measurement — with a floor so a trickle off a huge world does not read as 0%.
+  const percentLabel = (fraction: number) => {
+    if (!Number.isFinite(fraction)) {
+      return '\u2014'
+    }
+    const percent = fraction * 100
+    if (percent > 0 && percent < 1) {
+      return '<1%'
+    }
+    return `${formatNumber(percent, 0)}%`
+  }
 
   const nodeFraction = (used: NodeCounts, available: NodeCounts) => {
     const total = totalNodes(available)
@@ -405,15 +438,15 @@
   th:nth-child(2),
   td:nth-child(2) {
     width: 1%;
-    min-width: 360px;
+    min-width: 440px;
   }
 
-  // Key, bar, and (for nodes) figures. The bar's track is a FIXED width rather than a fraction of
-  // what is left: with `1fr` a longer figure beside it stole track, and no two bars in the table
-  // were the same length, which is the one thing a column of bars has to be.
+  // Key and bar, and nothing else on the line: with the figures moved underneath, the bar takes
+  // every pixel the column has left. Table columns are one width, so `1fr` still leaves every bar
+  // in the table exactly as long as every other.
   .bar-line {
     display: grid;
-    grid-template-columns: 84px 190px auto;
+    grid-template-columns: 84px 1fr;
     align-items: center;
     gap: 10px;
   }
@@ -424,6 +457,14 @@
     font-size: 0.78rem;
     white-space: nowrap;
     color: rgb(var(--v-theme-on-surface));
+  }
+
+  // Sized to sit level with the extractor icons above it rather than to the text beside it.
+  .bar-key-icon {
+    font-size: 0.9rem;
+    width: 20px;
+    text-align: center;
+    color: var(--sf-status-note, rgb(var(--v-theme-on-surface)));
   }
 
   // Muted on the text alone: dimming the whole key takes the extractor icon down with it, and
@@ -439,24 +480,22 @@
     font-size: 0.8rem;
   }
 
-  .bar-inline {
-    white-space: nowrap;
-    font-size: 0.85rem;
+  .bar-percent {
+    margin-left: 4px;
+    font-weight: 600;
   }
 
-  // A dash between the two extraction ceilings — the same measure twice, so they are separated
-  // rather than divided. The solid rule below is for the real change of subject, extraction to
-  // nodes.
-  .ceiling + .ceiling {
+  .bar-block + .bar-block {
     margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px dashed rgba(255, 255, 255, 0.16);
   }
 
-  .ceiling:last-of-type {
-    margin-bottom: 6px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  // One rule in the whole cell, at the one place the subject changes: how much comes out of the
+  // ground, against how many places there are to take it from. The two extraction ceilings are the
+  // same measure twice and need nothing between them.
+  .bar-block:not(.nodes) + .bar-block.nodes {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px dotted rgba(255, 255, 255, 0.28);
   }
 
   .details {

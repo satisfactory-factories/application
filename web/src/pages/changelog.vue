@@ -281,7 +281,7 @@
         <ul class="ml-6 mt-2">
           <li><b>Extraction</b> gets a bar against each ceiling: what every node gives unclocked, and what the same nodes give at the 250% cap. 6.7k of 5k Crude Oil on the first and 6.7k of 12.6k on the second is exactly what "needs power shards" looks like. The extractor those ceilings assume is named by its own icon.</li>
           <li><b>Nodes</b> is how many extractors your plan places against how many exist to stand on. Purity is picked per building group, so nothing used to stop a plan putting 24 Raw Quartz miners on a map holding 17 quartz nodes.</li>
-          <li>Every bar is green while there is room, amber from 60%, red from 80%. What is wrong with a resource is a chip beside its name.</li>
+          <li>Every bar is green while there is room, amber from 60%, red from 80%, with its figures and its share of the ceiling sat underneath it in the same colour. What is wrong with a resource is a chip beside its name.</li>
           <li>Over the unclocked ceiling your plan needs power shards, and says so. Over the 250% one, the resource simply is not on the map in that quantity.</li>
           <li><b>You are told where the rest could come from.</b> Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite). Crude Oil and SAM have no synthesis route at all, so for those the map's total is final.</li>
           <li>The Raw Resources and Statistics headers both carry a count of what is beyond the map, so a collapsed section still tells you.</li>
