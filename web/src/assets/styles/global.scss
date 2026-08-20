@@ -629,6 +629,20 @@
   letter-spacing: normal !important;
 }
 
+// Shared by the Statistics card's h4 section headings (Statistics.vue, StatisticsPower.vue,
+// StatisticsResources.vue, StatisticsItemsDifference.vue, StatisticsShardsSloops.vue,
+// StatisticsBuildings.vue): a fixed-width column for the leading icon so every heading's text
+// starts at the same x position, whatever the icon's own glyph width (fa-warehouse is
+// noticeably wider than fa-power-off or fa-globe). Sized to fit the widest of them with room
+// to spare, and margined the same as the mr-3/ml-3 gap it replaces.
+.stats-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  margin-right: 12px;
+}
+
 // Vuetify's default hover overlay (4%) is invisible on outlined buttons —
 // hovering one should visibly fill it with a tint of its own colour.
 // Doubled class: the button element also carries .v-theme--dark, whose own

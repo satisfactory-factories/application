@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2">
     <h4 class="text-h4">
-      <i class="fas fa-power-off mr-3 section-icon power" />Power Consumption and Generation
+      <span class="stats-heading-icon"><i class="fas fa-power-off section-icon power" /></span>Power Consumption and Generation
     </h4>
     <v-chip
       id="stats-power-summary-generation"

@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-building section-icon" />
-      <span class="ml-3">Building Summary</span>
+      <span class="stats-heading-icon"><i class="fas fa-building section-icon" /></span>Building Summary
     </h4>
     <v-chip
       v-if="totalBuildingCount > 0"

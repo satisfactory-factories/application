@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-warehouse section-icon" />
-      <span class="ml-3">Item Production</span>
+      <span class="stats-heading-icon"><i class="fas fa-warehouse section-icon" /></span>Item Production
     </h4>
     <v-chip
       v-if="surplusCount > 0"

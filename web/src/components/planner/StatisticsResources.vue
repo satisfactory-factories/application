@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-globe section-icon" />
-      <span class="ml-3">Raw Resources</span>
+      <span class="stats-heading-icon"><i class="fas fa-globe section-icon" /></span>Raw Resources
     </h4>
     <v-chip
       v-if="allFactoryRawResources.length > 0"
