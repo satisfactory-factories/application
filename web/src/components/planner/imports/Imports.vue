@@ -254,7 +254,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const validToDisplay = computed(() => {

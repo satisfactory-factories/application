@@ -97,7 +97,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const hasVariablePower = computed(() => {
