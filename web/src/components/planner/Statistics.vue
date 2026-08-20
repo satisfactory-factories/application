@@ -16,7 +16,7 @@
               <i class="fas fa-exclamation-triangle" />
               <span class="ml-2">
                 {{ worldProblems.blockers }}
-                {{ worldProblems.blockers === 1 ? 'resource' : 'resources' }} beyond the map
+                {{ worldProblems.blockers === 1 ? 'resource' : 'resources' }} beyond map allowances
               </span>
             </v-chip>
           </v-col>

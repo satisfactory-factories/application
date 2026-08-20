@@ -21,7 +21,7 @@
       variant="flat"
     >
       <i class="fas fa-exclamation-triangle" />
-      <span class="ml-2">{{ problems.blockers }} beyond the map</span>
+      <span class="ml-2">{{ problems.blockers }} beyond map allowances</span>
     </v-chip>
     <v-chip
       v-if="problems.needsOverclock.length > 0"
@@ -99,42 +99,52 @@
               </v-chip>
             </div>
           </td>
-          <!-- Extraction and nodes are the same question asked twice — how much of what exists is
-               spoken for — so they read as two bars of one measure rather than two columns. -->
+          <!-- Extraction is measured against both ceilings, one bar each: what the nodes give
+               unclocked, and what they give at the 250% cap. A plan between the two is buildable
+               and needs power shards, which is a thing you see rather than read. The extractor
+               those ceilings assume is named by its own icon — the same nodes worked by a Mk.1
+               come to a quarter of a Mk.3's. -->
           <td class="utilisation">
             <template v-if="!resource.utilisation">
               <span class="text-medium-emphasis">&mdash;</span>
             </template>
             <template v-else-if="resource.utilisation.status === 'unlimited'">
-              <div class="bar-row">
-                <span class="bar-label">Extraction</span>
-                <span class="text-caption text-medium-emphasis">Unlimited &mdash; drawn from any shoreline</span>
-                <span class="bar-values"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</span>
+              <div class="bar-line">
+                <span class="bar-key">
+                  <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
+                </span>
+                <span class="text-caption text-medium-emphasis">Unlimited &mdash; any shoreline</span>
+                <span class="bar-inline"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</span>
               </div>
             </template>
             <template v-else>
-              <div class="bar-row">
-                <span class="bar-label">Extraction</span>
-                <v-progress-linear
-                  bg-opacity="0.15"
-                  :color="barColour(resource.utilisation.ofMaxClock)"
-                  height="10"
-                  :model-value="barValue(resource.utilisation.ofMaxClock)"
-                  rounded
-                />
-                <span class="bar-values">
+              <div
+                v-for="ceiling in extractionCeilings(resource.utilisation)"
+                :key="ceiling.clock"
+                class="ceiling"
+              >
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
+                    <span class="bar-key-text ml-1">@{{ ceiling.clock }}</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(ceiling.fraction)"
+                    height="10"
+                    :model-value="barValue(ceiling.fraction)"
+                    rounded
+                  />
+                </div>
+                <!-- Snug under its own bar rather than out to the right of it, so every bar in the
+                     table is the same length whatever its figures read. -->
+                <div class="bar-figure">
                   <b>{{ formatCompactPrecise(resource.totalAmount) }}</b>
-                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(resource.utilisation.capacity.atMaxClock) }}</span>/min
-                </span>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(ceiling.capacity) }}</span>/min
+                </div>
               </div>
-              <!-- "92.1k/min at 250%" is meaningless without the machine it assumes: the same
-                   nodes worked by a Mk.1 come to a quarter of it. -->
-              <div class="bar-caption text-caption text-medium-emphasis">
-                {{ getBuildingDisplayName(resource.utilisation.capacity.extractor) }} at 250%
-                &middot; {{ formatCompactPrecise(resource.utilisation.capacity.atStandardClock) }}/min at 100%
-              </div>
-              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-row">
-                <span class="bar-label">Nodes</span>
+              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-line">
+                <span class="bar-key"><span class="bar-key-text">Nodes</span></span>
                 <v-progress-linear
                   bg-opacity="0.15"
                   :color="barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
@@ -142,7 +152,9 @@
                   :model-value="barValue(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
                   rounded
                 />
-                <span class="bar-values">
+                <!-- Node counts are two short numbers, so they stay beside their bar: the bar's
+                     width is fixed, so nothing they do changes its length. -->
+                <span class="bar-inline">
                   <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesUsed)) }}</b>
                   <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesAvailable)) }}</span>
                 </span>
@@ -151,9 +163,9 @@
                    "0 / 18" well row saying nothing. -->
               <div
                 v-if="resource.nodeUsage && (totalNodes(resource.nodeUsage.satellitesUsed) > 0 || totalNodes(resource.nodeUsage.nodesAvailable) === 0)"
-                class="bar-row"
+                class="bar-line"
               >
-                <span class="bar-label">Well nodes</span>
+                <span class="bar-key"><span class="bar-key-text">Well nodes</span></span>
                 <v-progress-linear
                   bg-opacity="0.15"
                   :color="barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
@@ -161,7 +173,7 @@
                   :model-value="barValue(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
                   rounded
                 />
-                <span class="bar-values">
+                <span class="bar-inline">
                   <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesUsed)) }}</b>
                   <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesAvailable)) }}</span>
                 </span>
@@ -210,7 +222,6 @@
   import {
     getPartDisplayName,
   } from '@/utils/helpers'
-  import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
   import {
     calculateResourceNodeUsage,
@@ -243,6 +254,14 @@
   }
 
   const barValue = (fraction: number) => Math.min(100, Math.max(0, fraction * 100))
+
+  // The two ceilings, in the order a plan meets them: what every node gives with no power shards,
+  // then what the same nodes give at the game's clock cap. Sitting between the two is what
+  // "needs power shards" means, and with a bar each it is visible without reading anything.
+  const extractionCeilings = (utilisation: ResourceUtilisation) => [
+    { clock: '100%', capacity: utilisation.capacity.atStandardClock, fraction: utilisation.ofStandardClock },
+    { clock: '250%', capacity: utilisation.capacity.atMaxClock, fraction: utilisation.ofMaxClock },
+  ]
 
   const nodeFraction = (used: NodeCounts, available: NodeCounts) => {
     const total = totalNodes(available)
@@ -389,40 +408,61 @@
     min-width: 360px;
   }
 
-  // Label, bar, figures — one grid so every row's bar starts and ends on the same pixel, whatever
-  // its label reads.
-  .bar-row {
+  // Key, bar, and (for nodes) figures. The bar's track is a FIXED width rather than a fraction of
+  // what is left: with `1fr` a longer figure beside it stole track, and no two bars in the table
+  // were the same length, which is the one thing a column of bars has to be.
+  .bar-line {
     display: grid;
-    grid-template-columns: 72px minmax(70px, 1fr) auto;
+    grid-template-columns: 84px 190px auto;
     align-items: center;
     gap: 10px;
-    padding: 2px 0;
   }
 
-  .bar-label {
+  .bar-key {
+    display: inline-flex;
+    align-items: center;
     font-size: 0.78rem;
+    white-space: nowrap;
     color: rgb(var(--v-theme-on-surface));
-    opacity: 0.7;
   }
 
-  .bar-values {
+  // Muted on the text alone: dimming the whole key takes the extractor icon down with it, and
+  // the icon is the only thing naming the machine the ceiling assumes.
+  .bar-key-text {
+    opacity: 0.75;
+  }
+
+  // Under its own bar and tight to it: the figure belongs to the bar above, not to the row below.
+  .bar-figure {
+    padding-left: 94px;
+    margin-top: -1px;
+    font-size: 0.8rem;
+  }
+
+  .bar-inline {
     white-space: nowrap;
     font-size: 0.85rem;
   }
 
-  // Indented to the bar's own column, so it reads as a footnote to the bar above rather than a
-  // row of its own.
-  .bar-caption {
-    padding-left: 82px;
-    // Wrapping splits "at 100%" onto its own line, which reads as a third bar's label rather
-    // than the tail of this sentence. The column shrink-wraps, so it simply gets wider.
-    white-space: nowrap;
+  // A dash between the two extraction ceilings — the same measure twice, so they are separated
+  // rather than divided. The solid rule below is for the real change of subject, extraction to
+  // nodes.
+  .ceiling + .ceiling {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  }
+
+  .ceiling:last-of-type {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
   }
 
   .details {
     color: var(--sf-status-warning);
     max-width: 46ch;
-    padding-left: 82px;
+    padding-left: 94px;
   }
 
   // v-table's default cell height assumes one line; these rows hold chips and wrap.
