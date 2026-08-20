@@ -4,7 +4,7 @@ export const config = {
   // backend can refuse writes from a tab too old to know the current save shape. Nothing to do
   // with `plannerVersion` below, which is a property of a plan rather than of the app.
   appVersion: import.meta.env.VITE_APP_VERSION,
-  dataVersion: '1.2-08',
+  dataVersion: '1.2-09',
   // Stamped onto every factory as `plannerVersion`, marking a plan as having been answered for
   // the raw-resources change. Bump only when a release needs to ask a plan-wide question again.
   plannerVersion: '0.6',

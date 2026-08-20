@@ -2,11 +2,17 @@
   <div class="d-flex align-center">
     <!-- Each icon next to the words it belongs to, rather than both stacked in front of the title
          where neither says which is which. -->
-    <h4 class="text-h4 d-flex align-center ga-1">
-      <game-asset height="32" subject="power-shard" type="item_id" width="32" />
-      <span class="ml-2 mr-2">Power Shards &amp;</span>
-      <game-asset height="32" subject="somersloop" type="item_id" width="32" />
-      <span class="ml-2">Somersloops</span>
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><game-asset height="32" subject="power-shard" type="item_id" width="32" /></span>
+      <span class="shards-label">Power Shards &amp;</span>
+      <game-asset
+        class="ml-2"
+        height="32"
+        subject="somersloop"
+        type="item_id"
+        width="32"
+      />
+      <span class="ml-2 sloops-label">Somersloops</span>
     </h4>
     <v-chip
       v-for="(section, index) in summarySections"
@@ -132,6 +138,15 @@
 </script>
 
 <style lang="scss" scoped>
+// Matches the summary chips' own colours (chipClass 'yellow' / 'somersloop' above).
+.shards-label {
+  color: var(--sf-yellow);
+}
+
+.sloops-label {
+  color: var(--sf-somersloop);
+}
+
 .usage-block {
   max-width: 420px;
 }

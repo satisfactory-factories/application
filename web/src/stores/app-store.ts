@@ -579,6 +579,14 @@ export const useAppStore = defineStore('app', () => {
         factory.syncStateCustomBuildings = {}
       }
 
+      // Patch for #477. Unlike an empty array, {} is NOT what a recalculation would produce for
+      // an existing factory's buildings — they had a real material cost all along, it just was
+      // not being calculated yet — so this forces one rather than leaving the panel empty.
+      if (factory.buildingMaterialCosts === undefined) {
+        factory.buildingMaterialCosts = {}
+        needsCalculation = true
+      }
+
       factory.products.forEach(product => {
         // Patch for #11
         if (product.buildingGroups === undefined || product.buildingGroups.length === 0) {

@@ -47,6 +47,12 @@
           <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
         </ul>
 
+        <h2>🆕 <i class="fas fa-cubes ml-1" /><span class="ml-2">Material Costs</span></h2>
+        <p>Power &amp; Buildings now has a Material Costs panel: what it would cost, in parts, to build every production building, power generator and custom building in the factory. Closed by default; toggle it open to see the breakdown.</p>
+        <ul class="ml-6 mt-2">
+          <li>Each part lists its total quantity, and a chip per building that needs it, showing that building's image and how many of them.</li>
+          <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
+        </ul>
         <v-divider class="subsection" />
 
         <h2>🔧 <i class="fas fa-sort ml-1" /><span class="ml-2">Arrange the plan without dragging</span></h2>

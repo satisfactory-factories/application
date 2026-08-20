@@ -34,6 +34,20 @@ export interface BuildingRequirement {
   powerProduced?: number;
 }
 
+/**
+ * The material cost of every building this factory needs, for one part. Summed across
+ * production buildings, power generators, extractors and custom buildings alike — anything
+ * counted in `buildingRequirements` — from the game data's per-building construction cost.
+ *
+ * `buildings` breaks the total down by which building(s) call for the part, keyed by building
+ * name with the building's own count as the value (every one of them needs the same cost, so
+ * this is the count, not a re-multiplied amount) — the "used in" chips issue #477 asks for.
+ */
+export interface BuildingMaterialCost {
+  amount: number;
+  buildings: { [building: string]: number };
+}
+
 export interface ByProductItem {
   id: string;
   amount: number;
@@ -307,6 +321,11 @@ export interface Factory {
   customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
+  // The material cost report behind Power & Buildings' "Material Costs" panel (#477). Keyed by
+  // part. Absent on plans saved before it existed; initFactories backfills it and forces a
+  // recalculation, since — unlike an empty array — the true figures for existing buildings are
+  // not "0" or "nothing" until then.
+  buildingMaterialCosts: { [key: string]: BuildingMaterialCost };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
   dependencies: FactoryDependency;

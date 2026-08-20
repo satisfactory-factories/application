@@ -3,8 +3,8 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
+          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
+            <span class="stats-heading-icon"><i class="fas fa-chart-line" /></span>Statistics
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
