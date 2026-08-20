@@ -17,11 +17,12 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   first and always win, so adding an export request later shrinks the sunk amount by itself. A fully
   sunk item also stops being nagged with **Trim**, because a factory that deliberately overproduces
   into a sink is doing exactly what it was built for.
-- **The first sink you set explains what the planner is assuming.** A one-off dialog, per browser,
-  covering the two things a sunk item takes for granted and cannot check: that a Programmable
-  Splitter feeds the sink only the excess rather than a plain splitter halving the line into it, and
-  that the belt running to the sink can carry the whole surplus. A Mk.1 belt in front of a 720/min
-  surplus still backs up whatever colour the item shows here.
+- **The first sink and the first Uploader each get a one-off explainer.** Per browser, shown once.
+  The sink one states the two assumptions behind a sunk item: Programmable Splitters sending the
+  excess to your sinks, and a belt of adequate speed feeding them. Break either and the numbers are
+  inaccurate. The Uploader one points at the plan-wide Dimensional Depot summary at the top of the
+  planner, and is clear that nothing is assumed about how much an Uploader takes off the belt, only
+  that it eventually backs up.
 - **Sinks draw power.** 30 MW each, counted into the factory's consumption and so into the plan's,
   matching `Build_ResourceSink_C` in the game's own data. The Depot Uploader draws nothing.
 - **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a
