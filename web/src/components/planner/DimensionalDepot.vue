@@ -184,12 +184,9 @@
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
             Upload speed is per Uploader, so two on one item fill twice as fast. Storage is shared.
           </p>
-          <!-- The figure and the sunk figure are both the surplus, and a reader who adds them up
-               gets twice the material. Says why once, here, rather than on every row. -->
           <p class="text-caption text-medium-emphasis mt-2 mb-0">
-            <b>Upload speed</b> is what the plan has spare for that item, not a rate it keeps up
-            forever. A Depot holds a fixed amount, and only you know when you spend it, so an item
-            that is also sunk shows the same surplus in both places rather than a split of it.
+            <b>Upload speed</b> makes use of that item's surplus. Bear in mind it will fluctuate as
+            you draw on the Dimensional Depot itself.
           </p>
         </v-card-text>
       </v-card>

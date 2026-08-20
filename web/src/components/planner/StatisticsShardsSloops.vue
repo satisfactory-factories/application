@@ -93,24 +93,46 @@
                 class="research-row"
               >
                 <td>
-                  <!-- Box and tick drawn in CSS, as in the Options dialog: Vuetify's FA aliases use
-                       `far fa-square` for the unchecked state and this app ships no Font Awesome
-                       regular family, so a v-checkbox has nothing to draw until it is ticked. -->
-                  <div
-                    :id="`stats-mercer-include-${line.key}`"
-                    :aria-checked="line.included"
-                    class="research-toggle d-flex align-center ga-2"
-                    role="checkbox"
-                    tabindex="0"
-                    @click="toggleResearch(line.key)"
-                    @keydown.enter.prevent="toggleResearch(line.key)"
-                    @keydown.space.prevent="toggleResearch(line.key)"
-                  >
-                    <span class="tick" :class="{ on: line.included }" />
-                    <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
-                      {{ line.label }}
+                  <div class="d-flex flex-column ga-1">
+                    <div class="d-flex align-center ga-1 flex-nowrap">
+                      <!-- `inline` because a selection control is flex: 1 1 auto by default, which
+                         made the box eat the cell and shove the label to the far right. -->
+                      <v-checkbox-btn
+                        :id="`stats-mercer-include-${line.key}`"
+                        density="compact"
+                        hide-details
+                        inline
+                        :model-value="line.included"
+                        @update:model-value="toggleResearch(line.key)"
+                      />
+                      <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
+                        {{ line.label }}
+                      </span>
+                      <tooltip-info :text="line.tooltip" @click.stop />
+                    </div>
+                    <!-- Below the label rather than beside it. The Mercer column is a third of the
+                         row and the table cannot shrink below its widest cell, so a level field on
+                         the same line pushed the amounts off the card entirely.
+                         The same tab values the Dimensional Depot section sets, so a level typed in
+                         either place is the one the other shows. -->
+                    <span v-if="line.tier" class="d-flex align-center ga-2 tier-row">
+                      <span class="text-caption text-medium-emphasis">Level</span>
+                      <!-- No :max, and :model-value rather than v-model: with a max set an
+                           out-of-range entry stops emitting at all, so the clamp never runs. The
+                           key remounts the field when the value was corrected, because Vuetify
+                           keeps its own copy of the typed text. See #vnumberinput-clamping. -->
+                      <v-number-input
+                        :id="`stats-mercer-tier-${line.key}`"
+                        :key="tierKey"
+                        class="inline-inputs tier-input"
+                        control-variant="stacked"
+                        density="compact"
+                        hide-details
+                        :min="0"
+                        :model-value="line.key === 'upload' ? depotTier : depotExpansionTier"
+                        @update:model-value="setTier(line.key, $event)"
+                      />
                     </span>
-                    <tooltip-info :text="line.tooltip" @click.stop />
                   </div>
                 </td>
                 <td class="text-right" :class="{ 'text-medium-emphasis': !line.included }">
@@ -141,6 +163,7 @@
   } from '@/utils/statistics'
   import { getFactoryMercerSpheres } from '@/utils/factory-management/disposal'
   import {
+    clampTier,
     DEPOT_UNLOCK_MERCER_SPHERES,
     MANUAL_UPLOADER_MERCER_SPHERES,
     useDepotResearch,
@@ -166,6 +189,9 @@
     amount: number
     tooltip: string
     included: boolean
+    // Set on the two lines whose cost is decided by a research level the plan carries, which is
+    // what puts a level field on the row. The Manual Uploader is a single node with no levels.
+    tier?: boolean
   }
 
   // The two tiers the plan is written against decide what its research costs, so this reads the
@@ -175,6 +201,8 @@
     depotResearchName,
     depotStacks,
     depotExpansionSpheres,
+    depotTier,
+    depotExpansionTier,
   } = useDepotResearch()
 
   // All off by default: the Uploaders are what this plan builds, the research is what the save
@@ -187,6 +215,20 @@
       RESEARCH_KEYS.map(key => [key, localStorage.getItem(storageKey(key)) === 'true'])
     ) as Record<ResearchKey, boolean>
   )
+
+  // The two research levels are the plan's, not this table's: the Dimensional Depot section reads
+  // and writes the same tab fields, so a level set here is the one it shows and vice versa.
+  const tierKey = ref(0)
+
+  const setTier = (key: ResearchKey, value: unknown) => {
+    const typed = Number(value)
+    const clamped = clampTier(typed)
+
+    if (key === 'upload') depotTier.value = clamped
+    else depotExpansionTier.value = clamped
+
+    if (!Number.isFinite(typed) || typed !== clamped) tierKey.value++
+  }
 
   const toggleResearch = (key: ResearchKey) => {
     included.value[key] = !included.value[key]
@@ -203,6 +245,7 @@
       label: 'Upload research',
       amount: depotResearchSpheres.value,
       included: included.value.upload,
+      tier: true,
       tooltip: `Unlocking the Depot (${DEPOT_UNLOCK_MERCER_SPHERES}), plus every upload upgrade up to ${depotResearchName.value}.`,
     },
     {
@@ -210,6 +253,7 @@
       label: 'Depot expansion',
       amount: depotExpansionSpheres.value,
       included: included.value.expansion,
+      tier: true,
       tooltip: `Every Depot Expansion upgrade up to ${depotStacks.value} stack${depotStacks.value === 1 ? '' : 's'} per item.`,
     },
     {
@@ -293,44 +337,20 @@
   }
 }
 
-.research-toggle {
-  cursor: pointer;
-  user-select: none;
-  width: fit-content;
-}
-
-// One line: wrapped onto two, the tier in brackets ends up under the tick and reads as a second
-// row of the table rather than as part of this one.
+// One line: wrapped, the level field ends up under the tick and reads as a second row of the
+// table rather than as part of this one.
 .research-label {
   white-space: nowrap;
 }
 
-.tick {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-radius: 3px;
-  display: inline-block;
+// Wide enough for one digit plus the stacked steppers, and no wider.
+.tier-input {
+  width: 78px;
   flex: 0 0 auto;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.tick.on {
-  background-color: rgb(var(--v-theme-primary));
-  border-color: rgb(var(--v-theme-primary));
-}
-
-// Two borders of a rotated box: the short arm and the long arm of a tick.
-.tick.on::after {
-  content: '';
-  position: absolute;
-  left: 3.5px;
-  top: -0.5px;
-  width: 4px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+// Lined up under the label rather than under the tick, so the row reads as one setting.
+.tier-row {
+  padding-left: 30px;
 }
 </style>

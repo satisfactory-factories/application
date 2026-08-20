@@ -115,6 +115,20 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    over the event bus (`jumpToSection`). The statistics card unhides for the Mercer anchor as
    well as its own id, or the jump lands on a section that is not on the page.
 
+14. **The two research levels are settable from the statistics table as well.** Same tab fields,
+   read and written through `useDepotResearch`, so a level typed in either place is the one the
+   other shows; the composable holds no state of its own, which is what the new spec pins. The
+   field sits under its label rather than beside it, because the Mercer column is a third of the
+   statistics row and a level on the same line pushed the amounts off the card. No `:max` on the
+   field and `:model-value` rather than `v-model`, per #vnumberinput-clamping: with a max set an
+   out-of-range entry stops emitting at all, so the clamp never runs. User's call, 2026-08-20.
+
+15. **The research tick boxes are Vuetify's.** They were drawn in CSS because Vuetify's FA
+   aliases point at `far fa-square`, which this bundle does not ship. That reasoning was stale:
+   `global.scss` already draws the marks for every `v-checkbox-btn` in the app, so the hand-rolled
+   box was both redundant and the only one in the app that did not line up with its label.
+   `inline` matters, because a selection control is `flex: 1 1 auto` by default and ate the cell.
+
 ## Data model
 
 ```ts
