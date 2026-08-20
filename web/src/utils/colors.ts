@@ -39,7 +39,8 @@ export const palette = {
   teal: '#26a69a',
   pink: '#ec407a',
   indigo: '#5c6bc0',
-  indigoLight: '#8c9eff',
+  indigoLight: '#8392e3',
+  indigoLightBorder: '#44aff0',
   lime: '#c0ca33',
   offWhite: '#eceff1',
   offWhiteBorder: '#8d9499',
@@ -70,8 +71,8 @@ export const sfColors = {
   // Blue rather than orange: orange is this planner's busiest colour and buildings are the most
   // numerous thing on a card. A step away from `product`'s azure, since the two sit side by side
   // in every satisfaction row. Light indigo, not 400: the token is chip TEXT on a dark card, and
-  // 400 sat at roughly 3:1 against it.
-  building: { color: palette.indigoLight, border: palette.indigo },
+  // 400 sat at roughly 3:1 against it. The border is deliberately a brighter blue than the text.
+  building: { color: palette.indigoLight, border: palette.indigoLightBorder },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
   // A setting on a building group rather than something that flows through it: the node
