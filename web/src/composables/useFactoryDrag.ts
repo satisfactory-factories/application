@@ -23,4 +23,32 @@ const draggingGroup = ref(false)
  */
 const draggingSidebarItem = computed(() => draggingFactory.value || draggingGroup.value)
 
-export const useFactoryDrag = () => ({ draggingFactory, draggingGroup, draggingSidebarItem })
+/**
+ * Whether reordering by drag is offered at all.
+ *
+ * On a touchscreen the gesture that picks a row up is the same one that scrolls the sidebar, so
+ * every attempt to scroll past a factory dragged it instead and the sidebar could not be used.
+ * Sortable has no way to tell the two apart, so drag is treated as a pointer-precision feature:
+ * where the primary pointer is coarse it is off, and the Arrange dialog's buttons do the job.
+ *
+ * `(pointer: coarse)` rather than a width breakpoint, so a touchscreen laptop driven by its
+ * trackpad keeps drag and a large tablet does not.
+ */
+const dragEnabled = ref(true)
+
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  const coarse = window.matchMedia('(pointer: coarse)')
+  const apply = () => {
+    dragEnabled.value = !coarse.matches
+  }
+  apply()
+  // A device can gain or lose a mouse mid-session, and Safari only grew addEventListener here in 14.
+  coarse.addEventListener?.('change', apply)
+}
+
+export const useFactoryDrag = () => ({
+  draggingFactory,
+  draggingGroup,
+  draggingSidebarItem,
+  dragEnabled,
+})
