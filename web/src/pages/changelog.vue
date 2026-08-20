@@ -47,6 +47,15 @@
           <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
         </ul>
 
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-sort ml-1" /><span class="ml-2">Arrange the plan without dragging</span></h2>
+        <p>The sidebar could not be scrolled on a phone. Picking a factory or a group up is the same gesture as scrolling the list, so a touch meant to scroll dragged the row instead. Dragging is now offered only where the pointer is precise enough for it.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Arrange</b> opens a dialog for reordering the plan with buttons: groups against each other, factories within their group, and factories from one group into another.</li>
+          <li>Groups can still be dragged in that dialog, and in the sidebar, wherever there is a pointer to drag with.</li>
+        </ul>
+
         <v-divider />
         <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
         <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>

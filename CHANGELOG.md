@@ -13,6 +13,11 @@ _In development._
 - **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
 - Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
 
+### Sidebar: arrange the plan without dragging
+
+- **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
+- **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
