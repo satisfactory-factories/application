@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { newFactory } from '@/utils/factory-management/factory'
 import { updateDependency } from '@/utils/factory-management/dependencies'
+import { mockPowerProducer } from '@/utils/factory-management/status-fixtures'
 import {
   checklistExportKey,
   countChecklistCompleted,
@@ -34,7 +35,7 @@ describe('checklist', () => {
   })
 
   describe('countChecklistTotal / countChecklistCompleted', () => {
-    it('counts one item per product, input and export request, and only completed ones as done', () => {
+    it('counts one item per product, power producer, input and export request, and only completed ones as done', () => {
       const provider = newFactory('Provider', 0, 1)
       const consumer = newFactory('Consumer', 1, 2)
 
@@ -43,16 +44,17 @@ describe('checklist', () => {
         { id: 'IronRod', recipe: 'IronRod', amount: 50, displayOrder: 1, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true, completed: false }
       )
       provider.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200, completed: true })
+      provider.powerProducers.push(mockPowerProducer('generatorcoal', { completed: true }))
 
       // Two exports from provider to consumer.
       updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronPlate', amount: 60, completed: false })
       updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronRod', amount: 20, completed: false })
 
-      expect(countChecklistTotal(provider)).toBe(5) // 2 products + 1 input + 2 export requests
+      expect(countChecklistTotal(provider)).toBe(6) // 2 products + 1 power producer + 1 input + 2 export requests
 
       toggleChecklistExport(provider, consumer.id, 'IronPlate')
 
-      expect(countChecklistCompleted(provider)).toBe(3) // IronPlate product + IronIngot input + IronPlate export
+      expect(countChecklistCompleted(provider)).toBe(4) // IronPlate product + generator + IronIngot input + IronPlate export
     })
   })
 })

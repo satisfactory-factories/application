@@ -198,6 +198,9 @@ export interface FactoryPowerProducer {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this generator as built. See FactoryItem.completed for
+  // why this is optional and kept regardless of checklist mode.
+  completed?: boolean
 }
 
 export interface FactoryPower {

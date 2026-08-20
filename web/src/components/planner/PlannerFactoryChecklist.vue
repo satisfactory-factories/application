@@ -30,7 +30,7 @@
     </v-row>
     <v-card-text v-if="!factory.checklistPanelHidden" class="text-body-1">
       <p v-if="totalCount === 0" class="text-body-2">
-        Nothing to check off yet — add products, imports or exports to this factory.
+        Nothing to check off yet: add products, power producers, imports or exports to this factory.
       </p>
       <template v-else>
         <div v-if="factory.products.length > 0" class="checklist-group">
@@ -52,6 +52,27 @@
               width="24"
             />
             <span class="ml-2">{{ getPartDisplayName(product.id) }}</span>
+          </div>
+        </div>
+        <div v-if="factory.powerProducers.length > 0" class="checklist-group">
+          <p class="checklist-group-title">Power</p>
+          <div v-for="(producer, producerIndex) in factory.powerProducers" :key="producerIndex" class="checklist-row">
+            <input
+              :checked="!!producer.completed"
+              class="checklist-tick"
+              title="Mark as built"
+              type="checkbox"
+              @change="producer.completed = !producer.completed"
+            >
+            <game-asset
+              v-if="producer.building"
+              clickable
+              height="24"
+              :subject="producer.building"
+              type="building"
+              width="24"
+            />
+            <span class="ml-2">{{ getPowerProducerDisplayName(producer) }}</span>
           </div>
         </div>
         <div v-if="factory.inputs.length > 0" class="checklist-group">
@@ -114,6 +135,7 @@
   import { computed, inject } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import {
     countChecklistCompleted,
@@ -155,8 +177,8 @@
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
-// icons at Font Awesome Regular, which this app doesn't ship, so the unticked box renders as
-// nothing at all — see PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+// icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+// nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
 .checklist-tick {
   appearance: none;
   border: 2px solid rgba(255, 255, 255, 0.45);

@@ -834,8 +834,8 @@ table {
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
-// icons at Font Awesome Regular, which this app doesn't ship, so the unticked box renders as
-// nothing at all — see PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+// icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+// nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
 .checklist-tick {
   appearance: none;
   border: 2px solid rgba(255, 255, 255, 0.45);

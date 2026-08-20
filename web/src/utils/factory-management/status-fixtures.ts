@@ -38,5 +38,6 @@ export const mockPowerProducer = (
   buildingGroupsTrayOpen: false,
   buildingGroupsHaveProblem: false,
   buildingGroupItemSync: true,
+  completed: false,
   ...overrides,
 })
