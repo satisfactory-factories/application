@@ -48,7 +48,7 @@
           @click="createOpen = true"
         >New group</v-btn>
         <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">Done</v-btn>
+        <v-btn color="primary" variant="flat" @click="isOpen = false">Done</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
