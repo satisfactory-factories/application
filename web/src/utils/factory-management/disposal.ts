@@ -81,7 +81,10 @@ export const isDepoted = (factory: Factory, partId: string): boolean =>
 // Negative and non-finite counts are floored to zero rather than rejected: every control that
 // writes these can emit null (a cleared field) or a negative (a spinner stepped past its minimum),
 // and a NaN reaching the ledger would make the sink bucket NaN and the part unsatisfiable.
-const clean = (count: unknown): number => {
+//
+// Exported because load validation has to apply the same rule. The setters are not the only way
+// in: a shared plan is somebody else's JSON, so the map arrives unsanitised.
+export const cleanDisposalCount = (count: unknown): number => {
   const value = Number(count)
   if (!Number.isFinite(value) || value <= 0) return 0
   return Math.floor(value)
@@ -90,7 +93,7 @@ const clean = (count: unknown): number => {
 const write = (factory: Factory, partId: string, field: keyof FactoryPartDisposal, count: unknown): void => {
   if (!partId) return
 
-  const value = clean(count)
+  const value = cleanDisposalCount(count)
   const existing = factory.partDisposal?.[partId]
 
   if (!existing) {

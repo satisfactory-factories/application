@@ -849,6 +849,11 @@ export const useAppStore = defineStore('app', () => {
         tab.powerTarget = data.powerTarget
         tab.groups = data.groups
         tab.plannerVersion = data.plannerVersion
+        // Assigned even when the saved plan has none, for the same reason as groups: absent
+        // means fully researched, so keeping the local tab's tiers would size somebody else's
+        // plan against this browser's last save rather than their own.
+        tab.depotUploadTier = data.depotUploadTier
+        tab.depotExpansionTier = data.depotExpansionTier
       }
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
       // are the user's own and its ledger means what it says. A forced recalculation treats
@@ -875,6 +880,8 @@ export const useAppStore = defineStore('app', () => {
       factories = [],
       powerTarget,
       groups,
+      depotUploadTier,
+      depotExpansionTier,
     } = tab
 
     factoryTabs.value.push({
@@ -894,6 +901,11 @@ export const useAppStore = defineStore('app', () => {
       // warning it needs. Its factories are what tell the two apart, the same rule the default
       // tab uses: a tab conjured out of nothing has never assumed a raw resource in its life.
       plannerVersion: tab.plannerVersion ?? (factories.length > 0 ? undefined : config.plannerVersion),
+      // The Depot research the incoming plan was written against. A share link that dropped
+      // these would arrive reading as fully researched, quietly giving the recipient 16x the
+      // upload speed the sender planned for and hiding every over-capacity warning.
+      depotUploadTier,
+      depotExpansionTier,
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1

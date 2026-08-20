@@ -68,6 +68,28 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    sink) still stand, because those are facts about the buildings rather than judgements about
    the plan.
 
+10. **A sunk part's Depot inflow is capped at what its Uploaders can take.** The sink consumes
+   the whole pre-sink surplus in the ledger, so reporting that same surplus as Depot inflow
+   counted the items twice. Both destinations on one part means a splitter feeding each: the
+   Uploaders take what their research allows and the sink eats the overflow. Without a sink the
+   full figure still stands, because the amount the Depot cannot keep up with is exactly what
+   the over-capacity warning exists to say. Raised by the Codex build review, 2026-08-20.
+
+11. **The research tiers travel with the plan, and absence clears rather than inherits.** They
+   are on the tab, so every field-by-field transfer path had to be taught them: clipboard copy
+   and paste, the backup download, the account restore, and the share link's `addTab`. Absent
+   means fully researched, so a path that dropped them silently gave a tier-0 plan 16x the
+   upload speed and hid every over-capacity row. Paste and restore assign them even when the
+   incoming plan has none, for the same reason `groups` does: what is left otherwise belongs to
+   the plan being replaced. Raised by the Codex build review, 2026-08-20.
+
+12. **The disposal map is repaired on load, and unknown part IDs are left alone.** A share link
+   is another player's JSON, so the map arrives without ever having passed through the setters
+   that sanitise it: a null record threw when the power total walked it, and a negative or
+   string count reached the totals. `repairPartDisposal` applies the setters' own rule. Unknown
+   parts stay, because the map is sticky by design and every reader already skips them. Raised
+   by the Codex build review, 2026-08-20.
+
 ## Data model
 
 ```ts

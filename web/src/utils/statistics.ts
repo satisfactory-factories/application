@@ -8,6 +8,7 @@ import { getTotalPowerShards } from '@/utils/factory-management/building-groups/
 import {
   getDepotCount,
   getFactoryMercerSpheres,
+  isSunk,
   MERCER_SPHERES_PER_DEPOT,
 } from '@/utils/factory-management/disposal'
 import { DEFAULT_DEPOT_TIER, depotRateForTier } from '@/composables/useDepotResearch'
@@ -329,13 +330,23 @@ export const calculateDimensionalDepot = (
       // the sink were not there. Falls back to amountRemaining for a plan saved before the field.
       const spare = Math.max(0, part.amountRemainingPreSink ?? part.amountRemaining ?? 0)
 
+      // Both destinations on one part means a splitter feeding each. The Uploaders take what
+      // they can at their researched rate and the sink eats the overflow, so charging the depot
+      // with the whole surplus would count the same items twice: once here and once in the
+      // sink's bucket, which the ledger has already taken in full. Without a sink the full
+      // figure stands, because the amount the depot cannot keep up with is exactly what the
+      // over-capacity warning exists to say.
+      const amount = isSunk(factory, partId)
+        ? Math.min(spare, containers * uploadRatePerMin)
+        : spare
+
       entry.totalContainers += containers
-      entry.totalAmount += spare
+      entry.totalAmount += amount
       entry.sources.push({
         id: factory.id,
         name: factory.name,
         icon: factory.icon,
-        amount: spare,
+        amount,
         containers,
       })
     })

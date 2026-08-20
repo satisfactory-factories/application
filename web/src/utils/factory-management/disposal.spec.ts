@@ -585,6 +585,32 @@ describe('disposal', () => {
       expect(entry.totalAmount).toBe(100)
     })
 
+    // The sink takes the whole pre-sink surplus in the ledger, so reporting that same surplus
+    // here as well would count the items twice. A splitter feeds both: the Uploaders take what
+    // their research allows and the sink eats the overflow.
+    it('caps a sunk item at what its Uploaders can actually take', () => {
+      const factory = platesFactory()
+      setSinkCount(factory, 'IronPlate', 1)
+      calculateFactories([factory], gameData)
+      setDepotCount(factory, 'IronPlate', 1)
+
+      const [entry] = calculateDimensionalDepot([factory], depotRateForTier(0))
+      expect(entry.totalAmount).toBe(15)
+      expect(entry.uploadCapacity).toBe(15)
+    })
+
+    // Without a sink there is nowhere else for the overflow to go, so the full figure stands and
+    // exceeding capacity is exactly what the over-capacity warning is there to say.
+    it('still reports the whole surplus over capacity when nothing is sinking it', () => {
+      const factory = platesFactory()
+      calculateFactories([factory], gameData)
+      setDepotCount(factory, 'IronPlate', 1)
+
+      const [entry] = calculateDimensionalDepot([factory], depotRateForTier(0))
+      expect(entry.totalAmount).toBe(100)
+      expect(entry.uploadCapacity).toBe(15)
+    })
+
     it('excludes a stale flag for a part the factory no longer handles', () => {
       const factory = platesFactory()
       calculateFactories([factory], gameData)
