@@ -37,9 +37,6 @@
       </v-chip>
     </tooltip>
   </div>
-  <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
-  </p>
   <v-alert
     id="stats-power-accuracy-note"
     class="mt-2 mb-2"
@@ -300,7 +297,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const totalPower = computed(() => calculateTotalPower(props.factories))

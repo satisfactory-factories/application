@@ -266,7 +266,10 @@
     border-color: var(--sf-node-setting-border) !important;
   }
 
-  &.orange, &.building {
+  // No `.orange` alias: the token is blue now, and a class named for a colour it no longer wears
+  // is how the literal hexes crept back in last time. Chips that genuinely mean amber use
+  // `.status-warning-outlined`.
+  &.building, &.custom-building {
     color: var(--sf-building) !important;
     border-color: var(--sf-building-border) !important;
   }

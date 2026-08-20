@@ -73,6 +73,7 @@ type SummablePartField =
   | 'amountRemaining' |
   'amountRequiredExports' |
   'amountRequiredPower' |
+  'amountRequiredBuildings' |
   'amountRequiredProduction' |
   'amountSuppliedViaProduction'
 
@@ -200,13 +201,15 @@ const kindOf = (
   if (requestedFrom(factories, memberIds, partId, false)) return 'export'
   // Handed to a sibling, or consumed on the spot. Either way it never leaves the group.
   //
-  // Both kinds of consumption count. `amountRequiredProduction` is what recipes eat;
+  // Every kind of consumption counts. `amountRequiredProduction` is what recipes eat;
   // `amountRequiredPower` is what generators burn, and leaving it out reported Uranium Fuel Rods
   // fed straight into a Nuclear Power Plant as having no demand. Water is the same story on a
-  // generator's water input. See calculateParts, where `amountRequired` sums these two plus
+  // generator's water input. `amountRequiredBuildings` is custom building upkeep — Singularity
+  // Cells fed to a portal room. See calculateParts, where `amountRequired` sums these three plus
   // exports for exactly this reason.
   const consumedInside = sumPart(factories, partId, 'amountRequiredProduction') > 0 ||
-    sumPart(factories, partId, 'amountRequiredPower') > 0
+    sumPart(factories, partId, 'amountRequiredPower') > 0 ||
+    sumPart(factories, partId, 'amountRequiredBuildings') > 0
   return requestedFrom(factories, memberIds, partId, true) || consumedInside ? 'internal' : 'product'
 }
 
