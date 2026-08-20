@@ -174,6 +174,13 @@
             they share the same {{ depotStacks }} stack{{ depotStacks === 1 ? '' : 's' }} of space.
             Mercer Sphere costs are counted in the statistics.
           </p>
+          <!-- The figure and the sunk figure are both the surplus, and a reader who adds them up
+               gets twice the material. Says why once, here, rather than on every row. -->
+          <p class="text-caption text-medium-emphasis mt-2 mb-0">
+            <b>Into Depot</b> is what the plan has spare for that item, not a rate it keeps up
+            forever. A Depot holds a fixed amount, and only you know when you spend it, so an item
+            that is also sunk shows the same surplus in both places rather than a split of it.
+          </p>
         </v-card-text>
       </v-card>
     </v-col>

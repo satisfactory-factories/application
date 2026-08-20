@@ -886,7 +886,7 @@
 
   const sinkTooltip = (partId: string) => {
     const count = getSinkCount(props.factory, partId)
-    if (count === 0) return 'AWESOME Sink: destroys the surplus, so the line never backs up. 30 MW each.'
+    if (count === 0) return 'AWESOME Sink: destroys the whole surplus, so the line never backs up. Assumes a programmable splitter sending it only the excess. 30 MW each.'
     return `${count} AWESOME Sink${count === 1 ? '' : 's'}: ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
   }
 

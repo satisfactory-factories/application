@@ -68,12 +68,15 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    sink) still stand, because those are facts about the buildings rather than judgements about
    the plan.
 
-10. **A sunk part's Depot inflow is capped at what its Uploaders can take.** The sink consumes
-   the whole pre-sink surplus in the ledger, so reporting that same surplus as Depot inflow
-   counted the items twice. Both destinations on one part means a splitter feeding each: the
-   Uploaders take what their research allows and the sink eats the overflow. Without a sink the
-   full figure still stands, because the amount the Depot cannot keep up with is exactly what
-   the over-capacity warning exists to say. Raised by the Codex build review, 2026-08-20.
+10. **A sunk part shows the whole surplus in both places, and the two are not additive.** The
+   Codex build review called this a double count and I capped the Depot figure at what its
+   Uploaders could take. That was wrong and has been reverted. The planner's model is a
+   programmable splitter routing the excess to the sink, not a plain splitter halving the line,
+   so the sink takes the whole surplus and nullifies it. The Depot is a finite buffer on the
+   same line: it fills, then backs up until the player spends it, and nothing can know when that
+   happens. So its intake is not modelled at all, and "Into Depot" is what the plan has spare
+   rather than a rate it sustains. The assumption is now stated in the sink tooltip and under
+   the Depot table, because the two figures do look addable. User's call, 2026-08-20.
 
 11. **The research tiers travel with the plan, and absence clears rather than inherits.** They
    are on the tab, so every field-by-field transfer path had to be taught them: clipboard copy

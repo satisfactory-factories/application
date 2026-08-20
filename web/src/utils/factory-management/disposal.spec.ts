@@ -585,30 +585,21 @@ describe('disposal', () => {
       expect(entry.totalAmount).toBe(100)
     })
 
-    // The sink takes the whole pre-sink surplus in the ledger, so reporting that same surplus
-    // here as well would count the items twice. A splitter feeds both: the Uploaders take what
-    // their research allows and the sink eats the overflow.
-    it('caps a sunk item at what its Uploaders can actually take', () => {
-      const factory = platesFactory()
-      setSinkCount(factory, 'IronPlate', 1)
-      calculateFactories([factory], gameData)
-      setDepotCount(factory, 'IronPlate', 1)
+    // The two figures are not meant to be added up, so a sink does not reduce this one. The
+    // sink takes the whole surplus, and the depot is a finite buffer on the same line whose
+    // fill and drain nothing here can know about.
+    it('reports the whole surplus whether or not the item is also sunk', () => {
+      const sunk = platesFactory('Sunk')
+      setSinkCount(sunk, 'IronPlate', 1)
+      const notSunk = platesFactory('Not sunk')
+      calculateFactories([sunk, notSunk], gameData)
+      setDepotCount(sunk, 'IronPlate', 1)
+      setDepotCount(notSunk, 'IronPlate', 1)
 
-      const [entry] = calculateDimensionalDepot([factory], depotRateForTier(0))
-      expect(entry.totalAmount).toBe(15)
-      expect(entry.uploadCapacity).toBe(15)
-    })
-
-    // Without a sink there is nowhere else for the overflow to go, so the full figure stands and
-    // exceeding capacity is exactly what the over-capacity warning is there to say.
-    it('still reports the whole surplus over capacity when nothing is sinking it', () => {
-      const factory = platesFactory()
-      calculateFactories([factory], gameData)
-      setDepotCount(factory, 'IronPlate', 1)
-
-      const [entry] = calculateDimensionalDepot([factory], depotRateForTier(0))
-      expect(entry.totalAmount).toBe(100)
-      expect(entry.uploadCapacity).toBe(15)
+      const [entry] = calculateDimensionalDepot([sunk, notSunk], depotRateForTier(0))
+      expect(entry.sources.find(source => source.name === 'Sunk')?.amount).toBe(100)
+      expect(entry.sources.find(source => source.name === 'Not sunk')?.amount).toBe(100)
+      expect(entry.uploadCapacity).toBe(30)
     })
 
     it('excludes a stale flag for a part the factory no longer handles', () => {
