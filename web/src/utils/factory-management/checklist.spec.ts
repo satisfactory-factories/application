@@ -6,6 +6,7 @@ import {
   checklistExportKey,
   countChecklistCompleted,
   countChecklistTotal,
+  isChecklistComplete,
   isChecklistExportComplete,
   toggleChecklistExport,
 } from '@/utils/factory-management/checklist'
@@ -55,6 +56,25 @@ describe('checklist', () => {
       toggleChecklistExport(provider, consumer.id, 'IronPlate')
 
       expect(countChecklistCompleted(provider)).toBe(4) // IronPlate product + generator + IronIngot input + IronPlate export
+    })
+  })
+
+  describe('isChecklistComplete', () => {
+    it('is false for an empty factory rather than reading an untouched checklist as done', () => {
+      const factory = newFactory('Empty', 0, 1)
+      expect(isChecklistComplete(factory)).toBe(false)
+    })
+
+    it('is true only once every product, power producer and input is ticked', () => {
+      const factory = newFactory('Solo', 0, 1)
+      factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true, completed: false })
+      factory.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200, completed: true })
+
+      expect(isChecklistComplete(factory)).toBe(false)
+
+      factory.products[0].completed = true
+
+      expect(isChecklistComplete(factory)).toBe(true)
     })
   })
 })

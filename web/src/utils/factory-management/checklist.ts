@@ -42,3 +42,11 @@ export const countChecklistCompleted = (factory: Factory): number => {
     .length
   return products + powerProducers + inputs + exports
 }
+
+// Fully checked, and not simply empty: a factory with nothing to check off yet should not read
+// as "done". Shared by the header chip, the sidebar row and the summary panel so "complete"
+// means the same thing everywhere it is shown.
+export const isChecklistComplete = (factory: Factory): boolean => {
+  const total = countChecklistTotal(factory)
+  return total > 0 && countChecklistCompleted(factory) === total
+}

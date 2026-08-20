@@ -5,7 +5,7 @@
         <div>
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
-        <v-chip class="sf-chip small no-margin" :class="completedCount === totalCount && totalCount > 0 ? 'green' : 'blue'">
+        <v-chip class="sf-chip small no-margin" :class="isChecklistComplete(factory) ? 'green' : 'blue'">
           {{ completedCount }}/{{ totalCount }} complete
         </v-chip>
       </v-col>
@@ -140,6 +140,7 @@
   import {
     countChecklistCompleted,
     countChecklistTotal,
+    isChecklistComplete,
     isChecklistExportComplete,
     toggleChecklistExport,
   } from '@/utils/factory-management/checklist'

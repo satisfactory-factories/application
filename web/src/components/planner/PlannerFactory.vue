@@ -88,7 +88,11 @@
               </div>
               <!-- checklist progress chip -->
               <div v-if="factory.checklistEnabled">
-                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-checklist`)">
+                <v-chip
+                  class="sf-chip sf-chip-clickable small no-margin"
+                  :class="isChecklistComplete(factory) ? 'green' : 'blue'"
+                  @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+                >
                   <i class="fas fa-check" />
                   <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
                 </v-chip>
@@ -445,7 +449,7 @@
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
-  import { countChecklistCompleted, countChecklistTotal } from '@/utils/factory-management/checklist'
+  import { countChecklistCompleted, countChecklistTotal, isChecklistComplete } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'

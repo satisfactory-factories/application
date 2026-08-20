@@ -57,6 +57,7 @@
             <v-col
               v-if="factory.checklistEnabled"
               class="context-icon align-content-center text-center py-0 px-1"
+              :class="isChecklistComplete(factory) ? 'text-green' : ''"
               cols="auto"
               v-bind="activatorProps"
               @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
@@ -127,7 +128,7 @@
     statusJumpTargets,
   } from '@/utils/factory-management/status'
   import { countActiveTasks } from '@/utils/factory-management/factory'
-  import { countChecklistCompleted, countChecklistTotal } from '@/utils/factory-management/checklist'
+  import { countChecklistCompleted, countChecklistTotal, isChecklistComplete } from '@/utils/factory-management/checklist'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryIconDialog from '@/components/planner/FactoryIconDialog.vue'
