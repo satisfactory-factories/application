@@ -117,6 +117,11 @@
             buildings directly involved in making your products are counted. Use this as a guide only.
           </v-alert>
           <v-table v-if="materialCostRows.length > 0" class="materials-table" density="compact">
+            <colgroup>
+              <col class="part-col">
+              <col class="quantity-col">
+              <col>
+            </colgroup>
             <thead>
               <tr>
                 <th class="text-left">Part</th>
@@ -217,3 +222,20 @@
   })
 
 </script>
+<style lang="scss" scoped>
+.materials-table {
+  table-layout: fixed;
+
+  // Sized to fit the longest part display name in the game data ("Electromagnetic Control
+  // Rod", measured at ~262px including its icon and cell padding) plus a small safety margin,
+  // so Quantity sits snug beside Part instead of the browser stretching the column across
+  // whatever space the "Used In" chips leave free.
+  .part-col {
+    width: 290px;
+  }
+
+  .quantity-col {
+    width: 90px;
+  }
+}
+</style>
