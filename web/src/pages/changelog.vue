@@ -285,7 +285,7 @@
           <li>Over the unclocked ceiling your plan needs power shards, and says so. Over the 250% one, the resource simply is not on the map in that quantity.</li>
           <li><b>You are told where the rest could come from.</b> Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite). Crude Oil and SAM have no synthesis route at all, so for those the map's total is final.</li>
           <li>The Raw Resources and Statistics headers both carry a count of what is beyond the map, so a collapsed section still tells you.</li>
-          <li>Water is exempt — extractors sit on any shoreline. Figures assume the default vanilla world; 1.2's randomised worlds and resource-rich game modes deal different node counts.</li>
+          <li>Water is exempt — an extractor sits on open water rather than a node, so the only thing capping it is how much water you have room to build on, which no plan gets near. Figures assume the default vanilla world; 1.2's randomised worlds and resource-rich game modes deal different node counts.</li>
         </ul>
 
         <v-divider class="subsection" />

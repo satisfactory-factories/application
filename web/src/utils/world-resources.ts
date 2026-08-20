@@ -161,7 +161,9 @@ export const getResourceCapacity = (part: string): ResourceCapacity | undefined 
  * `ok`             — inside what the nodes give at 100%.
  * `needsOverclock` — buildable, but only with power shards on the extractors.
  * `impossible`     — past the 250% cap: the resource is not on the map in that quantity.
- * `unlimited`      — Water. No ceiling to be near.
+ * `unlimited`      — Water. Not strictly unlimited: an extractor still needs a patch of water
+ *                    to stand on, so a big enough plan runs out of map. There is no node count
+ *                    to measure that against, and no plan comes close, so it is not policed.
  */
 export type ResourceUtilisationStatus = 'unlimited' | 'ok' | 'needsOverclock' | 'impossible'
 
@@ -267,7 +269,8 @@ export const calculateResourceNodeUsage = (factories: Factory[]): ResourceNodeUs
   factories.forEach(factory => {
     factory.products.forEach(product => {
       const world = WORLD_RESOURCE_NODES[product.id]
-      // Unlimited resources have no nodes to overcommit — a Water Extractor sits on a shoreline.
+      // Unlimited resources have no nodes to overcommit — a Water Extractor sits on open water,
+      // and the map is not counting how much of that is left.
       if (!world || world.unlimited) {
         return
       }

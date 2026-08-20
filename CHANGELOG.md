@@ -208,7 +208,7 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - **A plan past the wall is told where the rest could come from.** Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite) rather than left at "impossible". Crude Oil and SAM have no synthesis route at all — nothing in the game makes either — so for those the map's total is final, and the warning says so instead of implying a way out.
 - **What is wrong with a resource is a chip beside its name** — *Beyond the map*, *Needs power shards*, *Not enough nodes*, *Purity mismatch* — the way the Factories Summary hangs status off a factory. Only advice is left in prose: which Converter recipe makes up a shortfall, or which purities to spread across.
 - **The headers carry it too.** Raw Resources counts what is beyond the map and what needs shards beside its resource count, and Statistics repeats the blocker count on its own header — visible with the whole section collapsed, which is how a returning visitor finds it.
-- Water is exempt throughout: extractors sit on any shoreline, so there is no ceiling to be near. Figures assume the default vanilla world — 1.2's randomised worlds and the resource-rich game modes deal different node counts.
+- Water is exempt throughout: an extractor sits on open water rather than a node, so the only thing capping it is how much water you have room to build on — effectively unlimited rather than strictly so, and no plan gets near it. Figures assume the default vanilla world — 1.2's randomised worlds and the resource-rich game modes deal different node counts.
 
 ### Fixes
 

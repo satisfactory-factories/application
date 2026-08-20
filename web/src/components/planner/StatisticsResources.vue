@@ -47,8 +47,7 @@
       factories mine, pump or extract, against what the map holds. <b>Extraction</b> is what you
       take against the most the world can give — every node worked by its best extractor at the
       250% clock cap. <b>Nodes</b> is how many extractors your plan places against how many nodes
-      exist to stand on. Figures assume the default vanilla world; 1.2's randomised worlds and the
-      resource-rich game modes deal different node counts.
+      exist to stand on.
     </p>
     <v-alert
       v-if="problems.blockers > 0"
@@ -114,7 +113,7 @@
                 <span class="bar-key">
                   <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
                 </span>
-                <span class="text-caption text-medium-emphasis">Unlimited &mdash; any shoreline</span>
+                <span class="text-caption text-medium-emphasis">Effectively unlimited &mdash; bounded only by space on the water</span>
               </div>
               <div class="bar-figure"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</div>
             </template>
@@ -229,6 +228,18 @@
       </tbody>
     </v-table>
     <p v-else class="text-body-1">Nothing in this plan extracts a raw resource yet.</p>
+    <!-- Not behind the help toggle, which is off for most people: every figure above is wrong for
+         a world generated with anything other than the defaults, and nothing in a plan records
+         which settings a save was started with. -->
+    <p v-if="allFactoryRawResources.length > 0" id="stats-raw-resources-assumption" class="assumption text-caption mt-3">
+      <i class="fas fa-info-circle" />
+      <span class="ml-2">
+        Every figure here assumes a <b>default vanilla world</b>. Advanced Game Settings and the
+        1.2 world-generation options change what the map holds &mdash; randomised node layouts, the
+        resource-rich and fossil-fuel-rich presets, and the node purity settings all deal different
+        counts. A plan cannot tell which of those a save was started with.
+      </span>
+    </p>
   </template>
 </template>
 
@@ -510,5 +521,11 @@
     padding-bottom: 8px !important;
     height: auto !important;
   }
+}
+
+.assumption {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
+  max-width: 92ch;
 }
 </style>
