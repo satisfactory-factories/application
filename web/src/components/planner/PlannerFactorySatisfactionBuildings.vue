@@ -150,12 +150,10 @@
                   <v-chip
                     v-for="usage in row.usedIn"
                     :key="`${row.part}-${usage.building}`"
-                    class="sf-chip building x-small mr-1"
+                    class="sf-chip building small mr-1"
                     variant="tonal"
                   >
-                    <tooltip :text="getBuildingDisplayName(usage.building)">
-                      <game-asset height="18px" :subject="usage.building" type="building" width="18px" />
-                    </tooltip>
+                    <game-asset height="24px" :subject="usage.building" type="building" width="24px" />
                     <span class="ml-1">{{ formatNumber(usage.amount) }}x</span>
                   </v-chip>
                 </td>
