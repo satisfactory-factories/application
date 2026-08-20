@@ -39,7 +39,7 @@ export const palette = {
   teal: '#26a69a',
   pink: '#ec407a',
   indigo: '#5c6bc0',
-  indigoBorder: '#3949ab',
+  indigoLight: '#8c9eff',
   lime: '#c0ca33',
   offWhite: '#eceff1',
   offWhiteBorder: '#8d9499',
@@ -67,12 +67,11 @@ export const sfColors = {
   product: { color: palette.blue, border: palette.blueBorder },
   byproduct: { color: palette.cyan, border: palette.cyanBorder },
   rawResource: { color: palette.beige, border: palette.beigeBorder },
-  // Blue rather than orange: orange is this planner's busiest colour — the out-of-sync chip, the
-  // warning tier, power consumption and the redundant-import flag all wear it — and buildings are
-  // the most numerous thing on a card, so they were the half of it worth giving back. Indigo is
-  // deliberately a step away from `product`'s brighter azure: the two sit side by side in every
-  // satisfaction row, and reading as the same blue would be worse than reading as two colours.
-  building: { color: palette.indigo, border: palette.indigoBorder },
+  // Blue rather than orange: orange is this planner's busiest colour and buildings are the most
+  // numerous thing on a card. A step away from `product`'s azure, since the two sit side by side
+  // in every satisfaction row. Light indigo, not 400: the token is chip TEXT on a dark card, and
+  // 400 sat at roughly 3:1 against it.
+  building: { color: palette.indigoLight, border: palette.indigo },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
   // A setting on a building group rather than something that flows through it: the node
