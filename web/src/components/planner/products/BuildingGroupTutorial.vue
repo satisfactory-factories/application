@@ -3,37 +3,43 @@
     <v-card>
       <v-card-title><h3 class="text-h3">Building Groups Tutorial</h3></v-card-title>
       <v-card-text class="verbage">
-        <p>Building Groups turn a product's abstract building count into the real sets of machines you'd build in-game. A common practice is for pioneers to split up an input so it can be load balanced, because of throughput constraints (e.g. Crude Oil throughput limit of 600m3 in a single pipe), or space restrictions. Each group has its own building count, clock speed and Somersloops.</p>
-        <h4 class="text-h4">What do they do?</h4>
-        <ul class="ml-4">
-          <li><b>Split up your factory into logical groups: </b> This is useful if you have a constraint, e.g. a series of pipes that you need to distribute a raw resource e.g. oil amongst different groups.</li>
-          <li><b><span class="text-amber">[Under/Over]clocking</span></b>: You are able to clock each group individually, which will update the amount produced by the group. The Power Shards needed are totalled up on the Building Groups bar (1 per building per 50% clock above 100%).</li>
-          <li><b><span class="text-purple">Somersloops</span></b>: You can slot Somersloops into each group's buildings to amplify production — see below for the details.</li>
-          <li><b>Fine tuning of resource distribution</b>: You can apply <b>exactly</b> how much of a given resource is consumed by the group, for maximum control. You can carve it up however you like, from adjusting the output of the group, or the input of it, the building count and clock will be adjusted to accommodate.</li>
-          <li><b>Balancing and remainder handling</b>: If you have a pre-existing group, using the buttons you can create more groups and then redistribute the resources evenly, or apply the increased demand to the group you just made at a single button press. Check the tooltips on each button to see what it does.</li>
-        </ul>
-        <p>When you click on Evenly balance or any of the remainder buttons, the tool will lean towards <b>adding more buildings and underclocking them</b> rather than overclocking, simply because the act of overclocking requires Shards that the player may not have. If this is undesirable, simply make a new empty group and you'll have full control and can overclock instead.</p>
+        <p>Building Groups turn a product's abstract building count into the real sets of machines you'd build in-game — each with its own building count, clock speed and Somersloops.</p>
 
         <v-divider />
 
-        <h4 class="text-h4">Sync</h4>
-        <p>
-          When you add a product it starts with one group, with <b>Sync enabled</b>: editing the <b>item</b> rebalances its groups evenly, and editing a <b>group</b> updates the item's totals — so you can e.g. clock the entire line in one go.
-        </p>
-        <p>
-          <b>Adding a second group turns Sync off</b> so your manual adjustments aren't overwritten (it stays off after deleting groups). You then have full manual control, and it's up to you to ensure the groups cover the item's demand — keep an eye on the "Effective Buildings" readout and use the helper buttons to rebalance. It will be very obvious when the math doesn't add up: the Building Groups bar goes red. <b>There is a 1% margin of error</b> before the tool yells at you to correct it, as with some recipes it is simply not possible to be 100% balanced. You can change that figure in Options, under Building groups. You can re-enable Sync at any time to restore automatic syncing.
-        </p>
+        <h4 class="text-h4">Split into groups</h4>
+        <p>Add a group per real-world set of machines, then set each group's building count. Handy when a constraint — pipe throughput, space — means you need to build the same product as separate physical clusters.</p>
+        <img alt="Adding building groups and setting each group's building count" class="tutorial-gif" src="/assets/tutorials/building-groups-split.gif">
+
+        <v-divider />
+
+        <h4 class="text-h4">Overclocking</h4>
+        <p>Clock a group up or down to change what it produces. <span class="text-amber">OC @ 100%</span> resets every group's clock in one click. Overclocking above 100% costs Power Shards (1 per building per 50% over), totalled on the Building Groups bar.</p>
+        <img alt="Overclocking and underclocking a building group's clock speed" class="tutorial-gif" src="/assets/tutorials/building-groups-overclock.gif">
 
         <v-divider />
 
         <h4 class="text-h4">Somersloops</h4>
-        <p>Each building has a number of Somersloop slots depending on its type (e.g. Constructors 1, Assemblers 2, Manufacturers 4). Filling slots boosts each building's <b>output</b> — up to <b>double</b> when fully slooped — <b>without increasing ingredient consumption</b>, at the cost of drastically increased power usage (power scales with the square of the amplification, on top of any overclock). The total Somersloops used are shown on the Building Groups bar so you know exactly how many you're committing.</p>
+        <p><span class="text-purple">Somersloops</span> amplify a group's output — up to <b>double</b> per building — <b>without</b> using more ingredients, at the cost of a sharp rise in power usage. Slots per building depend on the building type (Constructors 1, Assemblers 2, Manufacturers 4).</p>
+        <img alt="Adding Somersloops to a building group to amplify its output" class="tutorial-gif" src="/assets/tutorials/building-groups-somersloops.gif">
+
+        <v-divider />
+
+        <h4 class="text-h4">Fine tuning, balancing &amp; remainders</h4>
+        <p>Type an exact output on any group and the building count/clock adjust to match — carve up a product however you like. If that leaves the item short or over, <span class="text-amber">Evenly balance</span> and the remainder buttons fix it in one click; hover each for what it does. They favour <b>adding buildings and underclocking</b> over overclocking, since overclocking costs Shards you may not have — make a new empty group instead if you want full manual control.</p>
+        <img alt="Setting an exact group output, then rebalancing the remainder onto another group" class="tutorial-gif" src="/assets/tutorials/building-groups-fine-tuning.gif">
+
+        <v-divider />
+
+        <h4 class="text-h4">Sync</h4>
+        <p>A product's first group starts with <b>Sync enabled</b>: editing the item rebalances its group, and editing the group updates the item's total — so a single-group product can be clocked from either end. <b>Adding a second group turns Sync off</b> so manual adjustments aren't overwritten (it stays off after deleting groups too); re-enable it any time.</p>
+        <img alt="Editing an item's quantity with Sync enabled and watching its group update" class="tutorial-gif" src="/assets/tutorials/building-groups-sync.gif">
 
         <v-divider />
 
         <h4 class="text-h4">How "Effective Buildings" works</h4>
-        <p>Effective Buildings is the number of buildings (after Clocking and Slooping) in terms of <b>production</b> that all Building Groups output. For example, if you had a product requiring 10 buildings worth of constructors to make an item, you can create Building Group of 5 buildings with 200% overclock to be effectively 10 buildings.</p>
-        <p><span class="text-amber font-weight-bold">NOTE:</span> In some scenarios it is simply not possible to get effective buildings to be exactly zero, so we expect you to <i>slightly</i> overproduce. The tool will do it's best to balance things for you, should you request it.</p>
+        <p>Effective Buildings is what all groups produce, expressed as buildings at 100% clock — so 5 buildings at 200% overclock count the same as 10 at 100%. It goes red the moment the groups don't add up to what the item needs; a 1% margin of error is allowed (configurable in Options) since some recipes can't hit exactly 100%.</p>
+        <img alt="Trading building count for clock speed while Effective Buildings stays the same" class="tutorial-gif" src="/assets/tutorials/building-groups-effective-buildings.gif">
       </v-card-text>
       <v-card-actions>
         <v-btn color="primary" @click="openTutorial = false">Close</v-btn>
@@ -62,5 +68,12 @@
   li {
     margin-bottom: 0 !important;
   }
+}
+
+.tutorial-gif {
+  display: block;
+  max-width: 100%;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 </style>
