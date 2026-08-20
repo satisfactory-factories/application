@@ -13,6 +13,11 @@ _In development._
 - **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
 - Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
 
+### Sidebar: arrange the plan without dragging
+
+- **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
+- **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
+
 ### Interface
 
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
