@@ -115,11 +115,11 @@
     ? totalPower.value.totalPowerProduced - powerTarget.value
     : totalPower.value.totalPowerDifference)
 
-  // Default to not showing the stats on first ever load
-  const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'false'
+  // Default to hidden on first ever load — a fresh visitor (or a demo plan) should land on the
+  // factory cards, not a wall of statistics.
+  const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'true'
 
   // Initialize the 'hidden' refs based on the value in localStorage.
-  // Compare against the string — Boolean('false') is true, which hid the section for fresh visitors.
   const hidden = ref<boolean>(statisticsHidden === 'true')
 
   // Watch the 'hidden' ref and update localStorage whenever it changes
