@@ -206,7 +206,7 @@
           <v-chip
             v-for="extractor in extractorCounts(product)"
             :key="`${product.id}-${extractor.building}`"
-            class="sf-chip orange"
+            class="sf-chip building"
             variant="tonal"
           >
             <game-asset clickable :subject="extractor.building" type="building" />
@@ -217,7 +217,7 @@
         </template>
         <v-chip
           v-else
-          class="sf-chip orange input"
+          class="sf-chip building input"
           variant="tonal"
         >
           <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" clickable :subject="product.buildingRequirements.name" type="building" />
@@ -337,7 +337,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   // Takes the whole row amber, so a warning chip halfway down a long product list is attached to

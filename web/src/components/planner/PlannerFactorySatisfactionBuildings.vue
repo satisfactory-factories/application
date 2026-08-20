@@ -69,7 +69,7 @@
         style="display: inline;"
       >
         <v-chip
-          class="sf-chip orange"
+          class="sf-chip building"
           variant="tonal"
         >
           <game-asset
@@ -97,7 +97,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const hasVariablePower = computed(() => {

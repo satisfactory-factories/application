@@ -176,7 +176,7 @@
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">No amount set!</span>
           </v-chip>
-          <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small orange">
+          <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small status-warning-outlined">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">Redundant!</span>
           </v-chip>
@@ -263,7 +263,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const validToDisplay = computed(() => {

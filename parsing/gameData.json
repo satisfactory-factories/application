@@ -11241,5 +11241,132 @@
                 "power": 2500
             }
         }
+    ],
+    "customBuildings": [
+        {
+            "name": "resourcesink",
+            "displayName": "AWESOME Sink",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "ceilinglight",
+            "displayName": "Ceiling Light",
+            "power": 2,
+            "ingredients": []
+        },
+        {
+            "name": "dronestation",
+            "displayName": "Drone Port",
+            "power": 100,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightpole",
+            "displayName": "Flood Light Tower",
+            "power": 6,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstationliquid",
+            "displayName": "Fluid Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "fluidtruckstation",
+            "displayName": "Fluid Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstation",
+            "displayName": "Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "pipehyperstart",
+            "displayName": "Hypertube Entrance",
+            "power": 10,
+            "ingredients": []
+        },
+        {
+            "name": "jumppadadjustable",
+            "displayName": "Jump Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "portal",
+            "displayName": "Main Portal",
+            "power": 250,
+            "ingredients": [
+                {
+                    "part": "SingularityCell",
+                    "perMin": 2
+                }
+            ]
+        },
+        {
+            "name": "elevator",
+            "displayName": "Personnel Elevator",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepump",
+            "displayName": "Pipeline Pump Mk.1",
+            "power": 4,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepumpmk2",
+            "displayName": "Pipeline Pump Mk.2",
+            "power": 8,
+            "ingredients": []
+        },
+        {
+            "name": "radartower",
+            "displayName": "Radar Tower",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "portalsatellite",
+            "displayName": "Satellite Portal",
+            "power": 250,
+            "ingredients": []
+        },
+        {
+            "name": "streetlight",
+            "displayName": "Street Light",
+            "power": 1,
+            "ingredients": []
+        },
+        {
+            "name": "trainstation",
+            "displayName": "Train Station",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "truckstation",
+            "displayName": "Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "landingpad",
+            "displayName": "U-Jelly Landing Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightwall",
+            "displayName": "Wall-Mounted Flood Light",
+            "power": 6,
+            "ingredients": []
+        }
     ]
 }

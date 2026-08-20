@@ -233,7 +233,7 @@
         </v-chip>
         <span>
           <v-chip
-            class="sf-chip orange input"
+            class="sf-chip building input"
             variant="tonal"
           >
             <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />
@@ -322,7 +322,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const deletePowerProducer = (index: number, factory: Factory) => {
@@ -491,7 +490,7 @@
 
 <style lang="scss" scoped>
   .powerProducer {
-    border-left: 5px solid #ff9800 !important
+    border-left: 5px solid var(--sf-power-generation) !important
   }
 
   // A standing caveat about the whole plan, not a problem with this producer — so it reads

@@ -23,7 +23,6 @@ const mountSubject = (factory: Factory) => {
   return mount(PowerProducer, {
     propsData: {
       factory,
-      helpText: false,
     },
     global: {
       plugins: [vuetify],
@@ -44,7 +43,7 @@ let fuelQuantity: any
 let powerAmount: any
 let buildingCount: any
 let factory: Factory
-let subject: VueWrapper<{ factory: Factory, helpText: boolean }>
+let subject: VueWrapper<{ factory: Factory }>
 
 const updateElements = (powerProducer: FactoryPowerProducer) => {
   // Elements
@@ -249,7 +248,7 @@ describe('Component: PowerProducer', () => {
 describe('Component: PowerProducer (augmenter building count)', () => {
   let augmenterFactory: Factory
   let augmenter: FactoryPowerProducer
-  let augmenterSubject: VueWrapper<{ factory: Factory, helpText: boolean }>
+  let augmenterSubject: VueWrapper<{ factory: Factory }>
 
   const countField = (): Element | null =>
     augmenterSubject.element.querySelector(`[id="${augmenterFactory.id}-${augmenter.id}-building-count"]`)

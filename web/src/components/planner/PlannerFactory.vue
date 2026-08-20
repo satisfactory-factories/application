@@ -64,7 +64,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -218,21 +218,18 @@
           <products-and-power
             :id="`${factory.id}-products`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
             :id="`${factory.id}-imports`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
             :id="`${factory.id}-satisfaction`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
@@ -241,14 +238,12 @@
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
           </v-row>
@@ -374,6 +369,27 @@
                   </span>
                   <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
                 </v-chip>
+                <!-- Custom buildings produce nothing, so they are stated as what they cost. Same
+                     reasoning as the generators above: without them a portal room collapsed to
+                     "Empty factory!". -->
+                <v-chip
+                  v-for="(customBuilding, customIndex) in factory.customBuildings"
+                  :key="`${factory.id}-custom-${customIndex}`"
+                  class="sf-chip custom-building"
+                >
+                  <game-asset
+                    v-if="customBuilding.building"
+                    clickable
+                    height="32"
+                    :subject="customBuilding.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ getBuildingDisplayName(customBuilding.building) }}</b>: {{ formatNumber(Math.ceil(customBuilding.amount)) }}x
+                  </span>
+                  <span class="ml-2 text-orange">(-{{ formatMw(customBuilding.powerConsumed) }})</span>
+                </v-chip>
               </div>
             </template>
           </div>
@@ -427,7 +443,7 @@
   import { computed, inject, ref, watch } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
+  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import { countChecklistCompleted, countChecklistTotal } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
@@ -477,7 +493,6 @@
 
   const props = defineProps<{
     factory: Factory
-    helpText: boolean
     totalFactories: number;
   }>()
 
@@ -536,7 +551,9 @@
   // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
   // Power generators alone are a perfectly good factory, and were being called empty.
   const hasOutput = computed(() =>
-    props.factory.products.length > 0 || props.factory.powerProducers.length > 0
+    props.factory.products.length > 0 ||
+    props.factory.powerProducers.length > 0 ||
+    (props.factory.customBuildings?.length ?? 0) > 0
   )
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
@@ -583,7 +600,9 @@
 
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
-      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
+      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
+      // A portal room makes nothing and generates nothing, and is still a thing you built.
+      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
   }
 
   const resetSyncState = (factory: Factory) => {

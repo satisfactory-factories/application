@@ -17,7 +17,9 @@
       <v-row class="d-flex flex-nowrap ma-0">
         <v-spacer class="d-flex flex-column justify-center text-body-1 pa-2">
           <div class="d-flex align-center">
-            <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
+            <!-- Gone where drag is off (see useFactoryDrag): a grip on a row that cannot be
+                 dragged is an invitation to the gesture that used to break the sidebar. -->
+            <i v-if="dragEnabled" class="fas fa-grip-lines text-grey-darken-1 mr-2" />
             <factory-icon-display
               class="mr-2"
               clickable
@@ -126,6 +128,7 @@
   } from '@/utils/factory-management/status'
   import { countActiveTasks } from '@/utils/factory-management/factory'
   import { countChecklistCompleted, countChecklistTotal } from '@/utils/factory-management/checklist'
+  import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryIconDialog from '@/components/planner/FactoryIconDialog.vue'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
@@ -148,6 +151,8 @@
     navigateToFactory(props.factory.id, targets, fallback)
   }
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
+
+  const { dragEnabled } = useFactoryDrag()
 
   const iconDialogOpen = ref(false)
 

@@ -22,10 +22,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount buildings of each
-      type in all your factories, and which factories they stand in.
-    </p>
     <v-table v-if="totalBuildingsByType.length > 0" id="stats-buildings" class="stats-table" density="compact">
       <thead>
         <tr>
@@ -78,7 +74,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const totalBuildingsByType = computed(() => calculateTotalBuildingsByType(props.factories))
