@@ -26,6 +26,7 @@ import {
   PURITY_MULTIPLIERS,
 } from '@/utils/factory-management/building-groups/extraction'
 import { MAX_CLOCK_PERCENT } from '@/utils/factory-management/building-groups/common'
+import { calculateTotalRawResources } from '@/utils/statistics'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -77,12 +78,17 @@ export const totalNodes = (counts?: NodeCounts): number =>
 
 // The fastest extractor the game offers for a resource. Capacity is quoted against it because
 // that is the ceiling the map has; a plan still on Mk.2 miners is reading a target, not a lie.
-const bestExtractorRate = (part: string): number => {
+// Named as well as measured, since "12,600/min at 250%" says nothing without the machine it
+// assumes — the same nodes worked by a Mk.1 come to a quarter of it.
+const bestExtractor = (part: string): { building: string, ratePerMin: number } | undefined => {
   const extraction = getExtraction(getExtractionRecipeForPart(part))
   if (!extraction) {
-    return 0
+    return undefined
   }
-  return extraction.extractors.reduce((best, extractor) => Math.max(best, extractor.ratePerMin), 0)
+  return extraction.extractors.reduce(
+    (best, extractor) => extractor.ratePerMin > (best?.ratePerMin ?? 0) ? extractor : best,
+    extraction.extractors[0],
+  )
 }
 
 const wellRecipeForPart = (part: string): string | undefined =>
@@ -99,7 +105,10 @@ export interface ResourceCapacity {
   nodes: NodeCounts
   wells: NodeCounts
   extractionPoints: number
-  // Every node worked by the best extractor, no power shards.
+  // The building the two figures below assume: the fastest extractor the game offers for this
+  // resource, or the well satellite extractor where the resource only comes out of wells.
+  extractor: string
+  // Every node worked by that extractor, no power shards.
   atStandardClock: number
   // The same at the game's 250% clock cap. Nothing can exceed this.
   atMaxClock: number
@@ -120,8 +129,10 @@ export const getResourceCapacity = (part: string): ResourceCapacity | undefined 
   const nodes = world.nodes ?? emptyNodeCounts()
   const wells = world.wells ?? emptyNodeCounts()
 
-  const nodeRate = bestExtractorRate(part)
+  const extractor = bestExtractor(part)
+  const nodeRate = extractor?.ratePerMin ?? 0
   const satelliteRates = wellSatelliteRates(part)
+  const wellExtraction = getExtraction(wellRecipeForPart(part))
 
   const fromNodes = PURITIES.reduce(
     (total, purity) => total + (nodes[purity] * nodeRate * PURITY_MULTIPLIERS[purity]),
@@ -139,6 +150,8 @@ export const getResourceCapacity = (part: string): ResourceCapacity | undefined 
     nodes,
     wells,
     extractionPoints: totalNodes(nodes) + totalNodes(wells),
+    // Nitrogen Gas has no nodes of its own, so the machine to name is the satellite extractor.
+    extractor: extractor?.building ?? wellExtraction?.well?.satelliteBuilding ?? '',
     atStandardClock,
     atMaxClock: atStandardClock * (MAX_CLOCK_PERCENT / 100),
   }
@@ -294,4 +307,53 @@ export const calculateResourceNodeUsage = (factories: Factory[]): ResourceNodeUs
           ),
     }
   })
+}
+
+export interface WorldResourceProblems {
+  // Resources the map cannot supply at all, and resources with more extractors placed than there
+  // are nodes to stand on. Both are blockers; they are kept apart because the fix differs.
+  overCapacity: string[]
+  overNodes: string[]
+  // Buildable, but only with power shards on the extractors. Not a blocker, so not counted.
+  needsOverclock: string[]
+  // Distinct resources carrying a blocker — what a header chip counts.
+  blockers: number
+}
+
+/**
+ * The plan's world-resource problems in one pass, for the headers above the table.
+ *
+ * A section the user has collapsed (Statistics defaults to it on a returning visitor) has to be
+ * able to say something is wrong inside it, or the warning only reaches whoever was already
+ * scrolling through the table that carries it.
+ */
+export const calculateWorldResourceProblems = (factories: Factory[]): WorldResourceProblems => {
+  const nodeUsage = calculateResourceNodeUsage(factories)
+  const overCapacity: string[] = []
+  const overNodes: string[] = []
+  const needsOverclock: string[] = []
+
+  calculateTotalRawResources(factories).forEach(resource => {
+    const utilisation = getResourceUtilisation(resource.id, resource.totalAmount)
+    if (!utilisation || utilisation.status === 'unlimited') {
+      return
+    }
+
+    if (utilisation.status === 'impossible') {
+      overCapacity.push(resource.id)
+    } else if (utilisation.status === 'needsOverclock') {
+      needsOverclock.push(resource.id)
+    }
+
+    if (nodeUsage.find(entry => entry.id === resource.id)?.overcommitted) {
+      overNodes.push(resource.id)
+    }
+  })
+
+  return {
+    overCapacity,
+    overNodes,
+    needsOverclock,
+    blockers: new Set([...overCapacity, ...overNodes]).size,
+  }
 }

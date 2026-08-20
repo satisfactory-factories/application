@@ -274,15 +274,16 @@
         <h3 class="mt-4">Raw Resources</h3>
         <p><b>Raw Resources now says how much of the world your plan is using.</b> A plan can balance perfectly and still be unbuildable — the planner only ever checked whether your factories add up, never whether the ground holds enough to begin with.</p>
         <v-img
-          alt="The Raw Resources table showing world capacity and utilisation, with warnings on the resources that exceed it"
+          alt="The Raw Resources table showing extraction against world capacity and nodes used against nodes available"
           max-width="1200"
           src="/assets/changelog/beta6/raw-resource-utilisation.png"
         />
         <ul class="ml-6 mt-2">
-          <li><b>Two ceilings.</b> "World has" is every node on the map worked by the best extractor with no power shards; under it is the same nodes at the 250% clock cap, which nothing can exceed. Crude Oil, for instance, is 5,040/min and 12,600/min.</li>
-          <li>Over the first, your plan needs power shards on its extractors and says so. Over the second, the resource simply is not on the map in that quantity.</li>
+          <li><b>Extraction</b> is what you take against the most the world can give: 6,740 of 12,600 Crude Oil. Under it, the machine that ceiling assumes — an Oil Extractor at 250% — and what the same nodes give with no power shards at all.</li>
+          <li><b>Nodes</b> is how many extractors your plan places against how many exist to stand on. Purity is picked per building group, so nothing used to stop a plan putting 24 Raw Quartz miners on a map holding 17 quartz nodes.</li>
+          <li>Over the unclocked ceiling your plan needs power shards, and says so. Over the 250% one, the resource simply is not on the map in that quantity.</li>
           <li><b>You are told where the rest could come from.</b> Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite). Crude Oil and SAM have no synthesis route at all, so for those the map's total is final.</li>
-          <li><b>Extractors are counted against nodes, not just rates.</b> Purity is picked per building group, so nothing stopped a plan placing 24 Raw Quartz miners when the map holds 17 quartz nodes. Now it says so.</li>
+          <li>The Raw Resources and Statistics headers both carry a count of what is beyond the map, so a collapsed section still tells you.</li>
           <li>Water is exempt — extractors sit on any shoreline. Figures assume the default vanilla world; 1.2's randomised worlds and resource-rich game modes deal different node counts.</li>
         </ul>
 

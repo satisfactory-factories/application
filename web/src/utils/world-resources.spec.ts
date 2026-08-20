@@ -5,11 +5,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
-import { newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { fetchGameData } from '@/utils/gameDataService'
 import {
   calculateResourceNodeUsage,
+  calculateWorldResourceProblems,
   getConversionRecipes,
   getResourceCapacity,
   getResourceUtilisation,
@@ -98,6 +99,64 @@ describe('world-resources', async () => {
     it('finds none for crude oil or SAM', () => {
       expect(getConversionRecipes('LiquidOil')).toEqual([])
       expect(getConversionRecipes('SAM')).toEqual([])
+    })
+  })
+
+  describe('plan problems', () => {
+    // What the section headers count. Statistics is collapsed by choice on a returning visitor,
+    // so this roll-up is the only thing standing between them and a plan that cannot be built.
+    // Calculated first, because the raw-resource totals read `factory.parts` — the pass that
+    // decides a part is raw — and the building groups are overridden afterwards so the count
+    // under test survives the solver sizing them against the product amount.
+    const mine = (part: string, amount: number, recipe: string, buildings: number) => {
+      const factory = newFactory(`${part} Mine`)
+      addProductToFactory(factory, { id: part, amount, recipe })
+      calculateFactories([factory], gameData)
+      factory.products[0].buildingGroups = [
+        { ...factory.products[0].buildingGroups[0], buildingCount: buildings, purity: 'normal' },
+      ]
+      return factory
+    }
+
+    it('counts nothing for a plan inside the map', () => {
+      const problems = calculateWorldResourceProblems([mine('OreIron', 480, 'Extract_OreIron', 4)])
+
+      expect(problems.blockers).toBe(0)
+      expect(problems.overCapacity).toEqual([])
+      expect(problems.overNodes).toEqual([])
+      expect(problems.needsOverclock).toEqual([])
+    })
+
+    it('separates a resource the map cannot supply from one with nowhere to stand', () => {
+      const problems = calculateWorldResourceProblems([
+        // 13,000/min against a 12,600/min world, on a handful of (impossibly fast) extractors.
+        mine('LiquidOil', 13000, 'Extract_LiquidOil', 4),
+        mine('OreUranium', 240, 'Extract_OreUranium', 7),
+      ])
+
+      expect(problems.overCapacity).toEqual(['LiquidOil'])
+      expect(problems.overNodes).toEqual(['OreUranium'])
+      expect(problems.blockers).toBe(2)
+    })
+
+    it('counts a resource failing both checks once', () => {
+      const problems = calculateWorldResourceProblems([mine('SAM', 12000, 'Extract_SAM', 40)])
+
+      expect(problems.overCapacity).toEqual(['SAM'])
+      expect(problems.overNodes).toEqual(['SAM'])
+      expect(problems.blockers).toBe(1)
+    })
+
+    it('reports the shard case without counting it as a blocker', () => {
+      const problems = calculateWorldResourceProblems([mine('LiquidOil', 6000, 'Extract_LiquidOil', 20)])
+
+      expect(problems.needsOverclock).toEqual(['LiquidOil'])
+      expect(problems.overCapacity).toEqual([])
+      expect(problems.blockers).toBe(0)
+    })
+
+    it('never counts water', () => {
+      expect(calculateWorldResourceProblems([mine('Water', 60000, 'Extract_Water', 500)]).blockers).toBe(0)
     })
   })
 
