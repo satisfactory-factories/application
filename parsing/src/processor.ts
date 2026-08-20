@@ -11,6 +11,8 @@ import {getProductionRecipes, getPowerGeneratingRecipes} from './recipes';
 import {getProducingBuildings, getPowerConsumptionForBuildings} from './buildings';
 import {getCustomBuildings} from './custom-buildings';
 import {ParserCustomBuilding} from "./interfaces/ParserCustomBuilding";
+import {getBuildingCosts} from './building-costs';
+import {ParserBuildingCostIngredient} from "./interfaces/ParserBuildingCost";
 
 // Function to detect if the file is UTF-16
 async function isUtf16(inputFile: string): Promise<boolean> {
@@ -101,13 +103,14 @@ function removeRecipelessItems(
 
 // Central function to process the file and generate the output
 async function processFile(
-    inputFile: string, 
-    outputFile: string) : Promise<{ buildings: { 
-                                        [key: string]: number }; 
+    inputFile: string,
+    outputFile: string) : Promise<{ buildings: {
+                                        [key: string]: number };
                                         items: ParserItemDataInterface;
                                         recipes: ParserRecipe[],
                                         powerGenerationRecipes: ParserPowerRecipe[];
                                         customBuildings: ParserCustomBuilding[];
+                                        buildingCosts: { [key: string]: ParserBuildingCostIngredient[] };
                                     } | undefined> {
     try {
         const fileContent = await readFileAsUtf8(inputFile);
@@ -126,6 +129,13 @@ async function processFile(
 
         // Everything else the player can place that draws power — portals, stations, lights.
         const customBuildings = getCustomBuildings(data, producingBuildings);
+
+        // What it costs in parts to place each building, whichever of the above it is.
+        const knownBuildings = new Set<string>([
+            ...Object.keys(buildings),
+            ...customBuildings.map(building => building.name),
+        ]);
+        const buildingCosts = getBuildingCosts(data, knownBuildings);
 
         // Pass the producing buildings with power data to getRecipes to calculate perMin and powerPerProduct
         const recipes = getProductionRecipes(data, buildings, items);
@@ -153,12 +163,13 @@ async function processFile(
             items,
             recipes,
             powerGenerationRecipes,
-            customBuildings
+            customBuildings,
+            buildingCosts
         };
 
         // Write the output to the file
         await fs.writeJson(path.resolve(outputFile), finalData, {spaces: 4});
-        console.log(`Processed ${Object.keys(items.parts).length} parts, ${Object.keys(buildings).length} buildings, ${customBuildings.length} custom buildings, and ${Object.keys(recipes).length} recipes have been written to ${outputFile}.`);
+        console.log(`Processed ${Object.keys(items.parts).length} parts, ${Object.keys(buildings).length} buildings, ${customBuildings.length} custom buildings, ${Object.keys(buildingCosts).length} building costs, and ${Object.keys(recipes).length} recipes have been written to ${outputFile}.`);
 
         return finalData;
     } catch (error) {

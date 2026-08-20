@@ -25,6 +25,12 @@ export interface BuildingRequirement {
   powerProduced?: number;
 }
 
+// The material cost report behind Power & Buildings' "Material Costs" panel (#477), for one part.
+export interface BuildingMaterialCost {
+  amount: number;
+  buildings: { [building: string]: number };
+}
+
 export interface ByProductItem {
   id: string;
   amount: number;
@@ -169,6 +175,7 @@ export interface Factory {
   customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
+  buildingMaterialCosts: { [key: string]: BuildingMaterialCost };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
   dependencies: FactoryDependency;
