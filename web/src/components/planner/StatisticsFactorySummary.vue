@@ -401,7 +401,7 @@
    * group's breakdown re-filtered the planner's section and closing it made that section rebuild
    * every row.
    */
-  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') === 'true')
+  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') !== 'false')
   const expanded = ref<boolean>(false)
   // Whether the fullscreen panel has finished animating in. Its rows wait for this.
   const dialogOpened = ref<boolean>(false)
