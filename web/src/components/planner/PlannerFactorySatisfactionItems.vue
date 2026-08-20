@@ -522,7 +522,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
     showSurplusOutputs?: boolean;
   }>()
 

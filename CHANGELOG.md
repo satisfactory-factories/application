@@ -13,6 +13,10 @@ _In development._
 - **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
 - Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
 
+### Interface
+
+- **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

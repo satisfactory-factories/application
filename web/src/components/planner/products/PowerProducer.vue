@@ -313,7 +313,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const deletePowerProducer = (index: number, factory: Factory) => {

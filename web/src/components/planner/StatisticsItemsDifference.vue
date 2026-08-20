@@ -40,10 +40,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Every item your plan makes or consumes, and whether it has
-      any spare. Red needs producing more of, green can be stored or sunk.
-    </p>
     <div class="d-flex flex-wrap align-center ga-2 mt-3 mb-3">
       <!-- Each filter wears the colour it selects, so the buttons read as the same language as
            the rows. Unselected is the same colour outlined rather than a neutral grey, which
@@ -151,7 +147,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Every item the plan touches, balanced ones included — this section absorbed the old

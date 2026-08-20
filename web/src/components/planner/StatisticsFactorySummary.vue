@@ -293,11 +293,6 @@
           </v-col>
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
-            Hover over a chip for the full details.
-          </p>
-
           <!-- The counts in the header double as filters. Said out loud because a chip that is
                also a button looks exactly like a chip that is not. -->
           <p v-if="statusTally.length" class="filter-hint mb-4">
@@ -395,7 +390,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   /**
