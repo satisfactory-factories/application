@@ -175,6 +175,7 @@
     useDepotResearch,
   } from '@/composables/useDepotResearch'
   import TooltipInfo from '@/components/tooltip-info.vue'
+  import eventBus from '@/utils/eventBus'
 
   const props = defineProps<{
     factories: Factory[];
@@ -327,6 +328,12 @@
   const hidden = ref<boolean>(localStorage.getItem('statisticsShardsSloopsHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsShardsSloopsHidden', value.toString())
+  })
+
+  // The Depot section's jump button aims here. The card above unhides itself for the same id, but
+  // this one is collapsed by default too, so without this the jump lands on a Show button.
+  eventBus.on('openSection', sectionId => {
+    if (sectionId === 'statistics-mercer-spheres') hidden.value = false
   })
 </script>
 
