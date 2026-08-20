@@ -52,7 +52,7 @@
   <v-row class="mt-1">
     <v-col cols="12" md="8">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-check-square mr-2 section-icon plan" />Plan
+        <i class="fas fa-check-square mr-2 section-icon plan" />Power in Plan
       </h2>
       <v-table class="power-table" density="compact">
         <thead>
@@ -221,7 +221,7 @@
        — no min/max columns, since the point here is which factory is costing what. -->
   <div class="d-flex align-center mt-4">
     <h2 class="text-h5 font-weight-bold text-no-wrap">
-      <i class="fas fa-industry mr-2 section-icon by-factory" />By factory
+      <i class="fas fa-industry mr-2" />Power by factory
     </h2>
     <v-btn
       class="ml-auto"
@@ -362,7 +362,6 @@
     &.power { color: var(--sf-yellow); }
     &.plan { color: var(--sf-success); }
     &.target { color: var(--sf-light-blue); }
-    &.by-factory { color: var(--sf-indigo); }
   }
 
   // Pin the note to the shared opaque muted blue (mutedBlue in colors.ts) instead
