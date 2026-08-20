@@ -136,6 +136,24 @@ export const notifySinkTutorial = (count: number): void => {
   eventBus.emit('openAwesomeSinkTutorial')
 }
 
+export const DEPOT_TUTORIAL_KEY = 'tutorialDimensionalDepot'
+
+/**
+ * Shows the Depot explainer the first time an Uploader is set, and never again.
+ *
+ * Two things someone has no way to know at that moment: that the plan-wide summary of every
+ * Uploader lives at the top of the planner rather than on this row, and what the planner is
+ * actually claiming. It does not model what an Uploader pulls off the belt, only that the Depot
+ * fills and backs up, which is what makes the surplus figures right again afterwards.
+ */
+export const notifyDepotTutorial = (count: number): void => {
+  if (count <= 0) return
+  if (localStorage.getItem(DEPOT_TUTORIAL_KEY)) return
+
+  localStorage.setItem(DEPOT_TUTORIAL_KEY, 'true')
+  eventBus.emit('openDimensionalDepotTutorial')
+}
+
 export const setDepotCount = (factory: Factory, partId: string, count: unknown): void =>
   write(factory, partId, 'depots', count)
 

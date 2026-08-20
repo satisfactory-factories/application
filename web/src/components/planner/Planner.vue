@@ -6,6 +6,7 @@
 
   <building-group-tutorial />
   <awesome-sink-tutorial />
+  <dimensional-depot-tutorial />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -151,6 +152,7 @@
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
+  import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { groupColorVars } from '@/utils/colors'

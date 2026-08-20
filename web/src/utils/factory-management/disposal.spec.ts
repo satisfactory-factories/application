@@ -7,6 +7,7 @@ import { gameData } from '@/utils/gameData'
 import eventBus from '@/utils/eventBus'
 import {
   DEPOT_RESEARCH_MERCER_SPHERES,
+  DEPOT_TUTORIAL_KEY,
   getDepotCount,
   getFactoryDepots,
   getFactoryMercerSpheres,
@@ -16,6 +17,7 @@ import {
   isDepoted,
   isSunk,
   MERCER_SPHERES_PER_DEPOT,
+  notifyDepotTutorial,
   notifySinkTutorial,
   setDepotCount,
   setSinkCount,
@@ -546,6 +548,56 @@ describe('disposal', () => {
 
       expect(emit).not.toHaveBeenCalled()
       expect(localStorage.getItem(SINK_TUTORIAL_KEY)).toBeNull()
+    })
+  })
+
+  // Says where the plan-wide summary lives, and what the planner does not claim about an
+  // Uploader. Same shape as the sink explainer, with its own key so one does not silence the
+  // other.
+  describe('notifyDepotTutorial', () => {
+    beforeEach(() => {
+      localStorage.removeItem(DEPOT_TUTORIAL_KEY)
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('opens the explainer the first time an Uploader is set', () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifyDepotTutorial(1)
+
+      expect(emit).toHaveBeenCalledWith('openDimensionalDepotTutorial')
+      expect(localStorage.getItem(DEPOT_TUTORIAL_KEY)).toBe('true')
+    })
+
+    it('never opens it a second time', () => {
+      notifyDepotTutorial(1)
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifyDepotTutorial(2)
+
+      expect(emit).not.toHaveBeenCalled()
+    })
+
+    it.each([0, -1])('says nothing for a count of %s', count => {
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifyDepotTutorial(count)
+
+      expect(emit).not.toHaveBeenCalled()
+      expect(localStorage.getItem(DEPOT_TUTORIAL_KEY)).toBeNull()
+    })
+
+    // Separate keys, so seeing one explainer does not swallow the other.
+    it('is not silenced by having seen the sink explainer', () => {
+      localStorage.setItem(SINK_TUTORIAL_KEY, 'true')
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      notifyDepotTutorial(1)
+
+      expect(emit).toHaveBeenCalledWith('openDimensionalDepotTutorial')
     })
   })
 

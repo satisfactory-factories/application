@@ -51,6 +51,9 @@ type Events = {
   // Shown once, the first time a sink count is set above zero: the two build assumptions the
   // planner makes about a sink are invisible in the numbers, so they have to be said somewhere.
   openAwesomeSinkTutorial: undefined;
+  // Same, for the first Uploader: says where the plan-wide summary lives, and what the planner
+  // does and does not claim about what an Uploader takes off the belt.
+  openDimensionalDepotTutorial: undefined;
 
   // Building Groups
   openBuildingGroupTutorial: undefined;

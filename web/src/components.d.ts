@@ -24,6 +24,7 @@ declare module 'vue' {
     Copyright: typeof import('./components/Copyright.vue')['default']
     DebounceSpinner: typeof import('./components/planner/DebounceSpinner.vue')['default']
     DimensionalDepot: typeof import('./components/planner/DimensionalDepot.vue')['default']
+    DimensionalDepotTutorial: typeof import('./components/planner/DimensionalDepotTutorial.vue')['default']
     DroneCalculator: typeof import('./components/planner/satisfaction/calculator/DroneCalculator.vue')['default']
     ExportCalculator: typeof import('./components/planner/satisfaction/calculator/ExportCalculator.vue')['default']
     FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']

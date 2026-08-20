@@ -589,6 +589,7 @@
   import {
     getDepotCount,
     getSinkCount,
+    notifyDepotTutorial,
     notifySinkTutorial,
     setDepotCount,
     setSinkCount,
@@ -882,6 +883,8 @@
 
   const updateDepotCount = (partId: string, count: unknown) => {
     setDepotCount(props.factory, partId, count)
+    // Read back for the same reason the sink does: only a count that actually landed counts.
+    notifyDepotTutorial(getDepotCount(props.factory, partId))
     eventBus.emit('factoryUpdated', props.factory)
   }
 
