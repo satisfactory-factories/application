@@ -14,6 +14,7 @@ import {
   getConversionRecipes,
   getResourceCapacity,
   getResourceUtilisation,
+  totalNodes,
   WORLD_RESOURCE_NODES,
 } from '@/utils/world-resources'
 
@@ -33,6 +34,26 @@ describe('world-resources', async () => {
         expect(capacity, `${part} has no capacity`).toBeDefined()
         expect(Math.round(capacity!.atMaxClock), `${part} max capacity`).toBe(limit)
       })
+    })
+
+    // The rate check above passes for any split reproducing the same limit, so on its own it let
+    // Limestone sit here as 15/51/29 — a 95-node map. Object counts are the independent check:
+    // three 1.2 saves (vanilla, node-randomised and fossil-fuel-rich) each hold exactly 459
+    // BP_ResourceNode and 118 BP_FrackingSatellite actors, whatever the world was generated with.
+    it('holds as many nodes and satellites as the map has objects', () => {
+      const totals = Object.keys(WORLD_RESOURCE_NODES).reduce((sum, part) => {
+        const capacity = getResourceCapacity(part)
+        return capacity && !capacity.unlimited
+          ? {
+              nodes: sum.nodes + totalNodes(capacity.nodes),
+              wells: sum.wells + totalNodes(capacity.wells),
+            }
+          : sum
+      }, { nodes: 0, wells: 0 })
+
+      expect(totals.nodes).toBe(459)
+      // 63 of the map's 118 satellites; the other 55 are Water, which has no ceiling to track.
+      expect(totals.wells).toBe(63)
     })
 
     it('reports crude oil across both nodes and wells', () => {

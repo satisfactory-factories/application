@@ -49,11 +49,18 @@ export interface WorldResourceNodes {
  * extractor rates reproduces the `limit` the parser reads out of the game for each resource,
  * which the spec asserts. Anything randomised or multiplied by Advanced Game Settings is a
  * different world and out of scope — the warning is a floor, not a promise.
+ *
+ * The limit is only half a constraint, though: several splits of a resource reproduce the same
+ * rate, so the spec also asserts the node totals, which are counted objects in a save file rather
+ * than a published figure (459 solid and oil nodes, 118 well satellites). That is what caught
+ * Limestone: it was entered here as 15/51/29, which reproduced the parser's stated limit but put
+ * 95 nodes on a map that holds 94. The limit was the wrong one — the parser had 69,900 for a
+ * resource the game extracts 69,300 of — so both were corrected rather than either trusted.
  */
 export const WORLD_RESOURCE_NODES: Record<string, WorldResourceNodes> = {
   OreIron: { nodes: { impure: 39, normal: 42, pure: 46 } },
   OreCopper: { nodes: { impure: 13, normal: 29, pure: 13 } },
-  Stone: { nodes: { impure: 15, normal: 51, pure: 29 } },
+  Stone: { nodes: { impure: 15, normal: 50, pure: 29 } },
   OreGold: { nodes: { impure: 0, normal: 9, pure: 8 } },
   Coal: { nodes: { impure: 15, normal: 31, pure: 16 } },
   RawQuartz: { nodes: { impure: 3, normal: 7, pure: 7 } },
