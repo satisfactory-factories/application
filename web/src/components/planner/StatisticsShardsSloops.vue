@@ -130,8 +130,8 @@
   // Header at-a-glance totals — only for whichever of the two is actually in use.
   const summarySections = computed(() => sections.value.filter(section => section.total > 0))
 
-  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
-  const hidden = ref<boolean>(localStorage.getItem('statisticsShardsSloopsHidden') === 'true')
+  // Section visibility, persisted. Hidden by default until explicitly shown.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsShardsSloopsHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsShardsSloopsHidden', value.toString())
   })
