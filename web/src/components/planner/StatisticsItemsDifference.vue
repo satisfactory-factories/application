@@ -200,8 +200,8 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
-  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
-  const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') === 'true')
+  // Section visibility, persisted. Hidden by default until explicitly shown.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsSurplusHidden', value.toString())
   })

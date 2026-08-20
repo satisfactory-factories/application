@@ -21,6 +21,7 @@ _In development._
 ### Interface
 
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
+- **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
 
 ## Beta v0.6 - The "Groundwork" Update
 
