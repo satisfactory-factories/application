@@ -50,6 +50,9 @@ type Events = {
 
   // Building Groups
   openBuildingGroupTutorial: undefined;
+  // Checklist mode: fired the first time any factory's checklist toggle is switched on and the
+  // player hasn't dismissed the explainer yet.
+  openChecklistTutorial: undefined;
   buildingGroupUpdated: Factory;
   toggleSidebar: undefined;
   sidebarChanged: boolean;

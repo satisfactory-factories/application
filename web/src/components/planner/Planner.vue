@@ -5,6 +5,7 @@
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
 
   <building-group-tutorial />
+  <checklist-tutorial />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -139,6 +140,7 @@
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
+  import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import { groupColorVars } from '@/utils/colors'
   import { flashElement } from '@/utils/navigation-highlight'

@@ -363,6 +363,15 @@
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
+                  <input
+                    v-if="factory.checklistEnabled"
+                    :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
+                    class="checklist-tick mr-2"
+                    title="Mark this export as built"
+                    type="checkbox"
+                    @change="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString())"
+                    @click.stop
+                  >
                   <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
@@ -448,6 +457,7 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
+  import { isChecklistExportComplete, toggleChecklistExport } from '@/utils/factory-management/checklist'
   import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
@@ -820,6 +830,40 @@ table {
     /* Above any expected content height; scrolls if the user stacks up many belt groups */
     max-height: 800px;
     overflow-y: auto;
+  }
+}
+
+// Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app doesn't ship, so the unticked box renders as
+// nothing at all — see PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+.checklist-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-block;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+  vertical-align: middle;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
   }
 }
 </style>

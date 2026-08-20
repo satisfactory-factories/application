@@ -67,6 +67,7 @@ export const addProductToFactory = (
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
     buildingGroupItemSync: true,
+    completed: false,
   })
 
   // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.

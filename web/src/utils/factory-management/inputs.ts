@@ -44,6 +44,7 @@ export const addInputToFactory = (
     factoryId: options.factoryId,
     outputPart: options.outputPart,
     amount: options.amount,
+    completed: false,
   })
 }
 

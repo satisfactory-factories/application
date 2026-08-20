@@ -88,6 +88,11 @@ export interface FactoryItem {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this product's buildings as built. Optional so every
+  // existing product literal (tests, saved plans, factory-setups) stays valid; absent reads as
+  // not-yet-built. Meaningless while factory.checklistEnabled is false, but kept regardless so
+  // re-enabling remembers progress.
+  completed?: boolean
 }
 
 export interface FactoryDependencyRequest {
@@ -142,6 +147,9 @@ export interface FactoryInput {
   factoryId: number | null;
   outputPart: string | null;
   amount: number
+  // Checklist mode: has the user marked this import's infrastructure as built. See
+  // FactoryItem.completed for why this is optional and kept regardless of checklist mode.
+  completed?: boolean
 }
 
 export interface FactorySyncState {
@@ -260,6 +268,15 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  // Checklist mode: ticks off products, imports and exports as the player builds them in-game.
+  checklistEnabled: boolean
+  // Whether the checklist summary panel (shown above Products/Power when enabled) is collapsed.
+  checklistPanelHidden: boolean
+  // Export checklist ticks, keyed by `${requestingFactoryId}:${part}` (see checklistExportKey in
+  // utils/factory-management/checklist.ts). A dependency request is derived/recalculated data, so
+  // its completion state is kept separately here rather than on the request object itself, which
+  // could be rebuilt and silently drop it.
+  checklistExports: { [key: string]: boolean }
   // ID from src/data/factory-icons.json. Absent (old plans, or "use default") shows the
   // generic industry glyph. Deliberately a bare ID: plans in localStorage, Mongo and share
   // links cannot be migrated, so nothing about how it is drawn belongs in the stored value.
