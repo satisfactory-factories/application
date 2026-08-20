@@ -279,8 +279,9 @@
           src="/assets/changelog/beta6/raw-resource-utilisation.png"
         />
         <ul class="ml-6 mt-2">
-          <li><b>Extraction</b> is what you take against the most the world can give: 6,740 of 12,600 Crude Oil. Under it, the machine that ceiling assumes — an Oil Extractor at 250% — and what the same nodes give with no power shards at all.</li>
+          <li><b>Extraction</b> is what you take against the most the world can give: 6.7k of 12.6k Crude Oil. Under it, the machine that ceiling assumes — an Oil Extractor at 250% — and what the same nodes give with no power shards at all.</li>
           <li><b>Nodes</b> is how many extractors your plan places against how many exist to stand on. Purity is picked per building group, so nothing used to stop a plan putting 24 Raw Quartz miners on a map holding 17 quartz nodes.</li>
+          <li>Both are bars: green while there is room, amber from 60%, red from 80%. What is wrong with a resource is a chip beside its name.</li>
           <li>Over the unclocked ceiling your plan needs power shards, and says so. Over the 250% one, the resource simply is not on the map in that quantity.</li>
           <li><b>You are told where the rest could come from.</b> Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite). Crude Oil and SAM have no synthesis route at all, so for those the map's total is final.</li>
           <li>The Raw Resources and Statistics headers both carry a count of what is beyond the map, so a collapsed section still tells you.</li>

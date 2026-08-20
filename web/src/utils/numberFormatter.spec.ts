@@ -1,6 +1,6 @@
 /* eslint-disable no-loss-of-precision */
 import { describe, expect, it } from 'vitest'
-import { formatCompact, formatMw, formatNumber, formatNumberFully, snapDriftedInteger, snapNearInteger } from '@/utils/numberFormatter'
+import { formatCompact, formatCompactPrecise, formatMw, formatNumber, formatNumberFully, snapDriftedInteger, snapNearInteger } from '@/utils/numberFormatter'
 
 describe('numberFormatter', () => {
   describe('formatNumber', () => {
@@ -142,6 +142,32 @@ describe('numberFormatter', () => {
     it('should carry a negative through', () => {
       expect(formatCompact(-320)).toBe('-320')
       expect(formatCompact(-1234)).toBe('-1.2k')
+    })
+  })
+
+  describe('formatCompactPrecise', () => {
+    it('keeps a decimal where formatCompact drops it', () => {
+      // The reason it exists: a table figure read against another one must not lose its tenths.
+      expect(formatCompactPrecise(92100)).toBe('92.1k')
+      expect(formatCompact(92100)).toBe('92k')
+      expect(formatCompactPrecise(12300)).toBe('12.3k')
+      expect(formatCompactPrecise(2600)).toBe('2.6k')
+    })
+
+    it('leaves sub-thousand values alone', () => {
+      expect(formatCompactPrecise(0)).toBe('0')
+      expect(formatCompactPrecise(840)).toBe('840')
+      expect(formatCompactPrecise(999)).toBe('999')
+    })
+
+    it('promotes rather than overflowing into thousands of k', () => {
+      expect(formatCompactPrecise(999_900)).toBe('999.9k')
+      expect(formatCompactPrecise(1_000_000)).toBe('1M')
+      expect(formatCompactPrecise(2_450_000)).toBe('2.5M')
+    })
+
+    it('formats negatives the same way', () => {
+      expect(formatCompactPrecise(-92100)).toBe('-92.1k')
     })
   })
 })

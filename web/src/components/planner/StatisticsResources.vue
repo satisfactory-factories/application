@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex align-center flex-wrap">
+  <div class="d-flex align-center flex-wrap ga-2 mb-4">
     <h4 class="text-h4" :class="{ 'text-red': problems.blockers > 0 }">
       <i class="fas fa-globe" />
       <span class="ml-3">Raw Resources</span>
@@ -7,7 +7,7 @@
     <v-chip
       v-if="allFactoryRawResources.length > 0"
       id="stats-raw-resources-summary"
-      class="sf-chip raw-resource small ml-3"
+      class="sf-chip raw-resource small no-margin"
       variant="tonal"
     >
       {{ allFactoryRawResources.length }} {{ allFactoryRawResources.length === 1 ? 'resource' : 'resources' }}
@@ -17,7 +17,7 @@
     <v-chip
       v-if="problems.blockers > 0"
       id="stats-raw-resources-problems"
-      class="sf-chip status-problem small ml-2"
+      class="sf-chip status-problem small no-margin"
       variant="flat"
     >
       <i class="fas fa-exclamation-triangle" />
@@ -26,7 +26,7 @@
     <v-chip
       v-if="problems.needsOverclock.length > 0"
       id="stats-raw-resources-shards"
-      class="sf-chip status-warning small ml-2"
+      class="sf-chip status-warning small no-margin"
       variant="flat"
     >
       <i class="fas fa-bolt" />
@@ -72,8 +72,7 @@
       <thead>
         <tr>
           <th>Resource</th>
-          <th class="text-right">Extraction</th>
-          <th class="text-center">Nodes</th>
+          <th>Utilisation</th>
           <th>Extracted by</th>
         </tr>
       </thead>
@@ -84,73 +83,94 @@
               <game-asset clickable :subject="resource.id" type="item" />
               <b class="ml-2">{{ getPartDisplayName(resource.id) }}</b>
             </v-chip>
+            <!-- Under the name, the way the Factories Summary hangs its status chips off a
+                 factory: what is wrong with this resource is a property of the resource, not a
+                 footnote to whichever bar happens to be over. -->
+            <div v-if="resource.statuses.length > 0" class="d-flex flex-wrap ga-1 mt-1">
+              <v-chip
+                v-for="status in resource.statuses"
+                :key="status.key"
+                class="sf-chip x-small no-margin"
+                :class="status.class"
+                variant="flat"
+              >
+                <i :class="status.icon" />
+                <span class="ml-2">{{ status.label }}</span>
+              </v-chip>
+            </div>
           </td>
-          <!-- Taken over the most the world can give, with the machine that ceiling assumes named
-               under it: "12,600/min at 250%" is meaningless without knowing whether that is a
-               Mk.1 or a Mk.3 standing on every node. -->
-          <td class="text-right">
+          <!-- Extraction and nodes are the same question asked twice — how much of what exists is
+               spoken for — so they read as two bars of one measure rather than two columns. -->
+          <td class="utilisation">
             <template v-if="!resource.utilisation">
               <span class="text-medium-emphasis">&mdash;</span>
             </template>
             <template v-else-if="resource.utilisation.status === 'unlimited'">
-              <b>{{ formatNumber(resource.totalAmount) }}</b>/min
-              <div class="text-caption text-medium-emphasis">of unlimited</div>
+              <div class="bar-row">
+                <span class="bar-label">Extraction</span>
+                <span class="text-caption text-medium-emphasis">Unlimited &mdash; drawn from any shoreline</span>
+                <span class="bar-values"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</span>
+              </div>
             </template>
             <template v-else>
-              <div class="d-flex align-center justify-end ga-2">
-                <span>
-                  <b>{{ formatNumber(resource.totalAmount) }}</b>
-                  <span class="text-medium-emphasis"> / {{ formatNumber(resource.utilisation.capacity.atMaxClock) }}</span>/min
+              <div class="bar-row">
+                <span class="bar-label">Extraction</span>
+                <v-progress-linear
+                  bg-opacity="0.15"
+                  :color="barColour(resource.utilisation.ofMaxClock)"
+                  height="10"
+                  :model-value="barValue(resource.utilisation.ofMaxClock)"
+                  rounded
+                />
+                <span class="bar-values">
+                  <b>{{ formatCompactPrecise(resource.totalAmount) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(resource.utilisation.capacity.atMaxClock) }}</span>/min
                 </span>
-                <v-chip
-                  class="sf-chip no-margin x-small"
-                  :class="chipClass(resource.severity)"
-                  variant="tonal"
-                >
-                  <b>{{ formatPercent(resource.utilisation.ofMaxClock) }}</b>
-                </v-chip>
               </div>
-              <div class="text-caption text-medium-emphasis">
+              <!-- "92.1k/min at 250%" is meaningless without the machine it assumes: the same
+                   nodes worked by a Mk.1 come to a quarter of it. -->
+              <div class="bar-caption text-caption text-medium-emphasis">
                 {{ getBuildingDisplayName(resource.utilisation.capacity.extractor) }} at 250%
-                &middot; {{ formatNumber(resource.utilisation.capacity.atStandardClock) }}/min at 100%
+                &middot; {{ formatCompactPrecise(resource.utilisation.capacity.atStandardClock) }}/min at 100%
               </div>
-              <div v-if="resource.warnings.length > 0" class="warnings text-caption mt-1">
-                <div v-for="warning in resource.warnings" :key="warning">{{ warning }}</div>
-              </div>
-            </template>
-          </td>
-          <!-- Extractors placed against nodes that exist. The rate ceiling beside it cannot make
-               this check: purity is picked per building group, so a plan can sit well inside the
-               rate and still put 24 miners on 17 nodes. -->
-          <td class="text-center">
-            <template v-if="!resource.nodeUsage">
-              <span class="text-medium-emphasis">&mdash;</span>
-            </template>
-            <template v-else>
-              <div v-if="totalNodes(resource.nodeUsage.nodesAvailable) > 0">
-                <v-chip
-                  class="sf-chip no-margin x-small"
-                  :class="chipClass(nodeSeverity(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
-                  variant="tonal"
-                >
-                  <b>{{ formatNumber(totalNodes(resource.nodeUsage.nodesUsed)) }} / {{ totalNodes(resource.nodeUsage.nodesAvailable) }}</b>
-                </v-chip>
-                <div class="text-caption text-medium-emphasis">nodes</div>
+              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-row">
+                <span class="bar-label">Nodes</span>
+                <v-progress-linear
+                  bg-opacity="0.15"
+                  :color="barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                  height="10"
+                  :model-value="barValue(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                  rounded
+                />
+                <span class="bar-values">
+                  <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesUsed)) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesAvailable)) }}</span>
+                </span>
               </div>
               <!-- Only where wells are actually in play: every oil plan would otherwise carry a
-                   "0 / 18 well nodes" row saying nothing. -->
+                   "0 / 18" well row saying nothing. -->
               <div
-                v-if="totalNodes(resource.nodeUsage.satellitesUsed) > 0 || totalNodes(resource.nodeUsage.nodesAvailable) === 0"
-                class="mt-1"
+                v-if="resource.nodeUsage && (totalNodes(resource.nodeUsage.satellitesUsed) > 0 || totalNodes(resource.nodeUsage.nodesAvailable) === 0)"
+                class="bar-row"
               >
-                <v-chip
-                  class="sf-chip no-margin x-small"
-                  :class="chipClass(nodeSeverity(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
-                  variant="tonal"
-                >
-                  <b>{{ formatNumber(totalNodes(resource.nodeUsage.satellitesUsed)) }} / {{ totalNodes(resource.nodeUsage.satellitesAvailable) }}</b>
-                </v-chip>
-                <div class="text-caption text-medium-emphasis">well nodes</div>
+                <span class="bar-label">Well nodes</span>
+                <v-progress-linear
+                  bg-opacity="0.15"
+                  :color="barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                  height="10"
+                  :model-value="barValue(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                  rounded
+                />
+                <span class="bar-values">
+                  <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesUsed)) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesAvailable)) }}</span>
+                </span>
+              </div>
+              <!-- What is left in prose is advice rather than status: which Converter recipe makes
+                   up the shortfall, or which purities to spread across. The status itself is a
+                   chip beside the resource name. -->
+              <div v-if="resource.details.length > 0" class="details text-caption mt-1">
+                <div v-for="detail in resource.details" :key="detail">{{ detail }}</div>
               </div>
             </template>
           </td>
@@ -185,7 +205,7 @@
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { formatCompactPrecise, formatNumber } from '@/utils/numberFormatter'
   import { calculateTotalRawResources } from '@/utils/statistics'
   import {
     getPartDisplayName,
@@ -199,7 +219,6 @@
     NodeCounts,
     ResourceNodeUsage,
     ResourceUtilisation,
-    ResourceUtilisationStatus,
     totalNodes,
   } from '@/utils/world-resources'
 
@@ -208,59 +227,109 @@
     helpText: boolean;
   }>()
 
-  const formatPercent = (fraction: number) => `${formatNumber(Math.round(fraction * 100))}%`
+  interface ResourceStatus {
+    key: string
+    label: string
+    icon: string
+    class: string
+  }
+
+  // Bars are read at a glance rather than measured, so the colour has to carry the meaning: green
+  // while there is room, amber from 60% where the resource is worth thinking about, red from 80%
+  // where it is nearly spoken for. Anything over the ceiling pins at full and stays red.
+  const barColour = (fraction: number) => {
+    if (fraction >= 0.8) return 'var(--sf-error)'
+    return fraction >= 0.6 ? 'var(--sf-status-warning)' : 'var(--sf-success)'
+  }
+
+  const barValue = (fraction: number) => Math.min(100, Math.max(0, fraction * 100))
+
+  const nodeFraction = (used: NodeCounts, available: NodeCounts) => {
+    const total = totalNodes(available)
+    // No nodes at all means nothing to be a fraction of; any extractor on it is over the line.
+    return total > 0 ? totalNodes(used) / total : (totalNodes(used) > 0 ? Infinity : 0)
+  }
 
   /**
-   * What the plan takes, against what the world holds.
+   * What is wrong with a resource, as chips beside its name.
    *
-   * The two checks are deliberately separate. The rate check asks whether the resource exists in
-   * that quantity; the node check asks whether the extractors fit, and a plan can pass the first
-   * and fail the second — purity is picked per building group, so nothing stops a plan describing
-   * more pure nodes than the map has while every total still balances.
+   * The rate check and the node check are separate questions — whether the resource exists in
+   * that quantity, and whether the extractors fit — and a plan can pass one and fail the other,
+   * so each gets to speak. Nothing repeats a figure the bars already carry.
    */
-  const buildWarnings = (
+  const buildStatuses = (
     utilisation: ResourceUtilisation | undefined,
     nodeUsage: ResourceNodeUsage | undefined,
-  ): string[] => {
-    const warnings: string[] = []
+  ): ResourceStatus[] => {
+    const statuses: ResourceStatus[] = []
     if (!utilisation || utilisation.status === 'unlimited') {
-      return warnings
+      return statuses
     }
 
     if (utilisation.status === 'impossible') {
-      const over = utilisation.amount - utilisation.capacity.atMaxClock
-      warnings.push(`${formatNumber(over)}/min beyond every node at the 250% cap.`)
-      warnings.push(utilisation.conversionRecipes.length > 0
-        // Naming the recipes matters: it is the difference between "give up" and "this is the
-        // Converter recipe that gets you the rest".
-        ? `Needs the Converter: ${utilisation.conversionRecipes.join(', ')}.`
-        : 'No Converter recipe makes this — the map total is final.')
+      statuses.push({
+        key: 'capacity',
+        label: 'Beyond the map',
+        icon: 'fas fa-exclamation-triangle',
+        class: 'status-problem',
+      })
     } else if (utilisation.status === 'needsOverclock') {
-      warnings.push(`Over the ${formatNumber(utilisation.capacity.atStandardClock)}/min the nodes give unclocked — needs power shards.`)
-    }
-
-    if (nodeUsage?.overcommitted) {
-      // Nodes and well satellites are reported apart, because they are: an Oil Extractor cannot
-      // be moved onto a well's micro-node, so summing the two would offer a way out that the
-      // game does not have.
-      if (totalNodes(nodeUsage.nodesUsed) > totalNodes(nodeUsage.nodesAvailable)) {
-        warnings.push(`${totalNodes(nodeUsage.nodesUsed)} extractors placed — the map has ${totalNodes(nodeUsage.nodesAvailable)} nodes.`)
-      }
-      if (totalNodes(nodeUsage.satellitesUsed) > totalNodes(nodeUsage.satellitesAvailable)) {
-        warnings.push(`${totalNodes(nodeUsage.satellitesUsed)} satellites placed — the wells hold ${totalNodes(nodeUsage.satellitesAvailable)} micro-nodes.`)
-      }
-    } else {
-      // The soft case: enough nodes exist, just not of the purity the groups name. A group
-      // defaults to a normal node, so this is usually a plan that has not described its
-      // purities yet rather than one that is wrong.
-      nodeUsage?.overcommittedPurities.forEach(purity => {
-        const used = nodeUsage.nodesUsed[purity] + nodeUsage.satellitesUsed[purity]
-        const available = nodeUsage.nodesAvailable[purity] + nodeUsage.satellitesAvailable[purity]
-        warnings.push(`${used} on ${available} ${PURITY_LABELS[purity].toLowerCase()} nodes — spread them across purities.`)
+      statuses.push({
+        key: 'shards',
+        label: 'Needs power shards',
+        icon: 'fas fa-bolt',
+        class: 'status-warning',
       })
     }
 
-    return warnings
+    if (nodeUsage?.overcommitted) {
+      statuses.push({
+        key: 'nodes',
+        label: 'Not enough nodes',
+        icon: 'fas fa-map-marker-alt',
+        class: 'status-problem',
+      })
+    } else if (nodeUsage?.overcommittedPurities.length) {
+      statuses.push({
+        key: 'purity',
+        label: 'Purity mismatch',
+        icon: 'fas fa-layer-group',
+        class: 'status-note',
+      })
+    }
+
+    return statuses
+  }
+
+  // Advice rather than status: what to do about it, which no chip or bar can say.
+  const buildDetails = (
+    utilisation: ResourceUtilisation | undefined,
+    nodeUsage: ResourceNodeUsage | undefined,
+  ): string[] => {
+    const details: string[] = []
+    if (!utilisation || utilisation.status === 'unlimited') {
+      return details
+    }
+
+    if (utilisation.status === 'impossible') {
+      // Naming the recipes matters: it is the difference between "give up" and "this is the
+      // Converter recipe that gets you the rest".
+      details.push(utilisation.conversionRecipes.length > 0
+        ? `Needs the Converter: ${utilisation.conversionRecipes.join(', ')}.`
+        : 'No Converter recipe makes this — the map total is final.')
+    }
+
+    // The node bars total the three purities, so the one thing about nodes still worth writing
+    // out is which purity a plan has overcommitted while its totals still fit.
+    if (!nodeUsage?.overcommitted) {
+      nodeUsage?.overcommittedPurities.forEach(purity => {
+        const used = nodeUsage.nodesUsed[purity] + nodeUsage.satellitesUsed[purity]
+        const available = nodeUsage.nodesAvailable[purity] + nodeUsage.satellitesAvailable[purity]
+        details.push(`${used} on ${available} ${PURITY_LABELS[purity].toLowerCase()} nodes — spread them across purities.`)
+      })
+    }
+
+    return details
   }
 
   // Everything the plan takes out of the world, per resource, with the factories doing the taking
@@ -272,18 +341,12 @@
       const utilisation = getResourceUtilisation(resource.id, resource.totalAmount)
       const usage = nodeUsage.find(entry => entry.id === resource.id)
 
-      // The row's worst finding, not just its rate: a resource inside the rate ceiling with more
-      // extractors than nodes is still a blocker, and a green chip over that reads as fine.
-      const severity: ResourceUtilisationStatus = usage?.overcommitted && utilisation
-        ? 'impossible'
-        : (utilisation?.status ?? 'ok')
-
       return {
         ...resource,
         utilisation,
         nodeUsage: usage,
-        severity,
-        warnings: buildWarnings(utilisation, usage),
+        statuses: buildStatuses(utilisation, usage),
+        details: buildDetails(utilisation, usage),
       }
     })
   })
@@ -298,15 +361,6 @@
     return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
   }
 
-  const nodeSeverity = (used: NodeCounts, available: NodeCounts): ResourceUtilisationStatus =>
-    totalNodes(used) > totalNodes(available) ? 'impossible' : 'ok'
-
-  const chipClass = (status: ResourceUtilisationStatus) => ({
-    green: status === 'ok',
-    'status-warning-outlined': status === 'needsOverclock',
-    error: status === 'impossible',
-  })
-
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   // Section visibility, persisted. Compare against the string — Boolean('false') is true.
@@ -320,37 +374,61 @@
 .stats-table {
   background-color: transparent;
 
-  // The chips column carries the width; the others only need enough not to wrap their own
-  // contents, or a plan with one long factory name squeezes the resource name onto two lines.
+  // The chips column carries the width; the resource name only needs enough not to wrap.
   th:nth-child(1),
-  td:nth-child(1),
-  th:nth-child(3),
-  td:nth-child(3) {
+  td:nth-child(1) {
     white-space: nowrap;
     width: 1%;
   }
 
-  // The extraction column carries the figures, the ceiling they are measured against and any
-  // warnings, so it needs a floor to stand on — the chips column would otherwise take the width
-  // and wrap the warnings to a word a line.
+  // Bars need a floor to be readable at: left to itself the chips column takes the width and
+  // leaves the bars a few pixels of track.
   th:nth-child(2),
   td:nth-child(2) {
     width: 1%;
-    min-width: 290px;
+    min-width: 360px;
   }
 
-  // Warning lines sit under the figures and are secondary to them, but must stay legible against
-  // the table's own muted text — they are the reason the row is coloured.
-  .warnings {
+  // Label, bar, figures — one grid so every row's bar starts and ends on the same pixel, whatever
+  // its label reads.
+  .bar-row {
+    display: grid;
+    grid-template-columns: 72px minmax(70px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 0;
+  }
+
+  .bar-label {
+    font-size: 0.78rem;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.7;
+  }
+
+  .bar-values {
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+
+  // Indented to the bar's own column, so it reads as a footnote to the bar above rather than a
+  // row of its own.
+  .bar-caption {
+    padding-left: 82px;
+    // Wrapping splits "at 100%" onto its own line, which reads as a third bar's label rather
+    // than the tail of this sentence. The column shrink-wraps, so it simply gets wider.
+    white-space: nowrap;
+  }
+
+  .details {
     color: var(--sf-status-warning);
-    max-width: 40ch;
-    margin-left: auto;
+    max-width: 46ch;
+    padding-left: 82px;
   }
 
   // v-table's default cell height assumes one line; these rows hold chips and wrap.
   td {
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     height: auto !important;
   }
 }
