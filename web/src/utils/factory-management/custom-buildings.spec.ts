@@ -12,6 +12,7 @@ import {
   getCustomBuildingPower,
 } from '@/utils/factory-management/custom-buildings'
 import { getBuildingDisplayName } from '@/utils/factory-management/common'
+import { setSyncState } from '@/utils/factory-management/syncState'
 import { gameData } from '@/utils/gameData'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -230,11 +231,26 @@ describe('custom buildings', () => {
       expect(factory.buildingRequirements.portal.powerConsumed).toBe(2500)
     })
 
-    it('should round a fractional count up to whole buildings', () => {
+    // A fractional count used to price 2.5 portals' power against 3 portals' build cost. There is
+    // no clock on any of these buildings, so the count is rounded up once, in the engine, and
+    // every derived figure follows it.
+    it('should round a fractional count up to whole buildings, and cost them all', () => {
       addCustomBuildingToFactory(factory, { building: 'radartower', amount: 2.5 })
       calculateFactories([factory], gameData)
 
+      expect(factory.customBuildings[0].amount).toBe(3)
       expect(factory.buildingRequirements.radartower.amount).toBe(3)
+      expect(factory.customBuildings[0].powerConsumed).toBe(90)
+      expect(factory.power.consumed).toBe(90)
+    })
+
+    it('should charge a fractional portal count its whole upkeep', () => {
+      addCustomBuildingToFactory(factory, { building: 'portal', amount: 2.5 })
+      calculateFactories([factory], gameData)
+
+      expect(factory.customBuildings[0].amount).toBe(3)
+      expect(factory.customBuildings[0].powerConsumed).toBe(750)
+      expect(factory.parts.SingularityCell.amountRequiredBuildings).toBe(6)
     })
 
     it('should not list a building the user has not chosen', () => {
@@ -242,6 +258,90 @@ describe('custom buildings', () => {
       calculateFactories([factory], gameData)
 
       expect(Object.keys(factory.buildingRequirements)).toEqual([])
+    })
+  })
+
+  describe('game sync', () => {
+    it('should let a factory of nothing but custom buildings be marked in sync, and stay there', () => {
+      addCustomBuildingToFactory(factory, { building: 'portal', amount: 10 })
+      calculateFactories([factory], gameData)
+
+      setSyncState(factory)
+      expect(factory.inSync).toBe(true)
+      expect(factory.syncStateCustomBuildings[factory.customBuildings[0].id]).toEqual({
+        building: 'portal',
+        amount: 10,
+        ingredientAmount: 20,
+      })
+
+      calculateFactories([factory], gameData)
+      expect(factory.inSync).toBe(true)
+    })
+
+    it('should drop out of sync when the count changes', () => {
+      addCustomBuildingToFactory(factory, { building: 'portal', amount: 10 })
+      calculateFactories([factory], gameData)
+      setSyncState(factory)
+
+      factory.customBuildings[0].amount = 11
+      calculateFactories([factory], gameData)
+
+      expect(factory.inSync).toBe(false)
+    })
+
+    it('should drop out of sync when the building is swapped for another', () => {
+      addCustomBuildingToFactory(factory, { building: 'portal', amount: 4 })
+      calculateFactories([factory], gameData)
+      setSyncState(factory)
+
+      factory.customBuildings[0].building = 'portalsatellite'
+      calculateFactories([factory], gameData)
+
+      expect(factory.inSync).toBe(false)
+    })
+
+    it('should drop out of sync when a custom building is added or deleted', () => {
+      addProductToFactory(factory, { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      addCustomBuildingToFactory(factory, { building: 'portal', amount: 2 })
+      calculateFactories([factory], gameData)
+      setSyncState(factory)
+
+      addCustomBuildingToFactory(factory, { building: 'radartower', amount: 1 })
+      calculateFactories([factory], gameData)
+      expect(factory.inSync).toBe(false)
+
+      setSyncState(factory)
+      expect(factory.inSync).toBe(true)
+      deleteCustomBuilding(1, factory)
+      calculateFactories([factory], gameData)
+      expect(factory.inSync).toBe(false)
+    })
+
+    // The half that would have bitten: a factory that also makes something keeps its green badge.
+    it('should drop a mixed factory out of sync when only its custom buildings change', () => {
+      addProductToFactory(factory, { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      addCustomBuildingToFactory(factory, { building: 'trainstation', amount: 2 })
+      calculateFactories([factory], gameData)
+      setSyncState(factory)
+      expect(factory.inSync).toBe(true)
+
+      factory.customBuildings[0].amount = 5
+      calculateFactories([factory], gameData)
+
+      expect(factory.inSync).toBe(false)
+    })
+
+    // Nothing to migrate: a plan marked in sync before the feature existed has neither the
+    // buildings nor the snapshot, so both sides are zero.
+    it('should leave a plan marked in sync before custom buildings existed alone', () => {
+      addProductToFactory(factory, { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      calculateFactories([factory], gameData)
+      setSyncState(factory)
+      delete (factory as Partial<Factory>).syncStateCustomBuildings
+
+      calculateFactories([factory], gameData)
+
+      expect(factory.inSync).toBe(true)
     })
   })
 

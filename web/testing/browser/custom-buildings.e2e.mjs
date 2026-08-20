@@ -174,6 +174,42 @@ check('the building summary counts the portals', /Main Portal 10/.test(stats.por
 check('the factories summary shows the portals as what the hub holds',
   /Portal Hub/.test(stats.summaryRow) && /10x/.test(stats.summaryRow), stats.summaryRow.slice(0, 160))
 
+// ---- Game sync: a factory of nothing but custom buildings can be synced, and notices a change
+await hub.evaluate(el => el.scrollIntoView({ block: 'start' }))
+await sleep(1200)
+
+const syncChipText = () => hub.evaluate(el => {
+  const chip = [...el.querySelectorAll('.v-chip')]
+    .find(c => /sync with game/i.test(c.innerText))
+  return chip ? { text: chip.innerText.replace(/\s+/g, ' ').trim(), disabled: chip.classList.contains('v-chip--disabled') } : null
+})
+
+const beforeSync = await syncChipText()
+check('a custom-building-only factory offers game sync', beforeSync && !beforeSync.disabled,
+  JSON.stringify(beforeSync))
+
+await hub.evaluate(el => {
+  const chip = [...el.querySelectorAll('.v-chip')].find(c => /Mark as in sync/i.test(c.innerText))
+  chip?.click()
+})
+await sleep(1500)
+const afterSync = await syncChipText()
+check('marking it in sync sticks', /In sync with game/i.test(afterSync?.text ?? ''), afterSync?.text)
+
+// Change the portal count: the world no longer matches the plan.
+const qtyId = await hub.evaluate(el =>
+  el.querySelector('.customBuilding input[id$="-amount"]')?.id ?? '')
+await page.evaluate(id => document.getElementById(id)?.focus(), qtyId)
+await page.keyboard.down('Control')
+await page.keyboard.press('KeyA')
+await page.keyboard.up('Control')
+await page.keyboard.type('12')
+await sleep(2500)
+
+const afterChange = await syncChipText()
+check('changing a custom building drops it out of sync',
+  /Out of sync with game/i.test(afterChange?.text ?? ''), afterChange?.text)
+
 check('no page errors', errors.length === 0, errors.join(' | '))
 
 console.log(`\n${results.filter(r => r.pass).length}/${results.length} passed`)

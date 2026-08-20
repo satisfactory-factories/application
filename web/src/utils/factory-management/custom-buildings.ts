@@ -98,9 +98,12 @@ export const calculateCustomBuildings = (factory: Factory, gameData: DataInterfa
       return
     }
 
-    if (customBuilding.amount < 0) {
-      customBuilding.amount = 0
-    }
+    // Whole buildings only, and rounded UP so the plan states the cost of what you would have to
+    // place. A production building's fractional count is principled — it means an underclocked
+    // machine, which really does draw less — but none of these have a clock, so half a portal is
+    // not a thing. Rounding here rather than only in the building requirements keeps power,
+    // upkeep and the count describing the same world.
+    customBuilding.amount = Math.max(0, Math.ceil(customBuilding.amount || 0))
 
     customBuilding.powerConsumed = formatNumberFully(buildingData.power * customBuilding.amount, 3)
     customBuilding.ingredients = buildingData.ingredients.map(ingredient => ({

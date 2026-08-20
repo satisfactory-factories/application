@@ -306,7 +306,9 @@ export const calculateImportCapacity = (
     return null
   }
 
-  const consumedByProvider = partData.amountRequiredProduction + partData.amountRequiredPower
+  const consumedByProvider = partData.amountRequiredProduction +
+    partData.amountRequiredPower +
+    (partData.amountRequiredBuildings ?? 0)
 
   const promisedToOthers = getPartExportRequests(provider, input.outputPart)
     .filter(request => request.requestingFactoryId !== factory.id)

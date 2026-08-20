@@ -561,6 +561,9 @@ export const useAppStore = defineStore('app', () => {
       if (factory.customBuildings === undefined) {
         factory.customBuildings = []
       }
+      if (factory.syncStateCustomBuildings === undefined) {
+        factory.syncStateCustomBuildings = {}
+      }
 
       factory.products.forEach(product => {
         // Patch for #11

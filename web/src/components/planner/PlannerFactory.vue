@@ -579,7 +579,9 @@
 
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
-      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
+      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
+      // A portal room makes nothing and generates nothing, and is still a thing you built.
+      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
   }
 
   const resetSyncState = (factory: Factory) => {

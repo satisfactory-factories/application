@@ -164,6 +164,22 @@ export interface FactoryPowerSyncState {
   building?: string
 }
 
+/**
+ * What a factory's custom buildings looked like when the user said "this is what I have built".
+ *
+ * Keyed by the custom building's own id rather than by its building, for the same reason the
+ * power producers are: a factory can legitimately hold two rows of the same building, and keying
+ * by building would collapse them into one entry that the count check could never satisfy.
+ */
+export interface FactoryCustomBuildingSyncState {
+  building: string
+  amount: number
+  // What the buildings were drawing when the snapshot was taken. Derived from `amount` and the
+  // game data's rate, so it moves when either does — a game update that changes what a Portal
+  // eats is a change to what stands in your world, even though the count never moved.
+  ingredientAmount: number
+}
+
 export interface FactoryTask {
   title: string
   completed: boolean
@@ -281,6 +297,7 @@ export interface Factory {
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   syncStatePower: { [key: string]: FactoryPowerSyncState };
+  syncStateCustomBuildings: { [key: string]: FactoryCustomBuildingSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string

@@ -107,6 +107,13 @@ export interface FactoryPowerSyncState {
   ingredientAmount: number
 }
 
+// What a factory's custom buildings looked like when it was marked as built in-game.
+export interface FactoryCustomBuildingSyncState {
+  building: string
+  amount: number
+  ingredientAmount: number
+}
+
 export interface FactoryTask {
   title: string
   completed: boolean
@@ -173,6 +180,7 @@ export interface Factory {
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   syncStatePower: { [key: string]: FactoryPowerSyncState };
+  syncStateCustomBuildings: { [key: string]: FactoryCustomBuildingSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string

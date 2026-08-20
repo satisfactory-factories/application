@@ -60,16 +60,18 @@
       <div class="input-row d-flex align-center">
         <v-number-input
           :id="`${factory.id}-${customBuilding.id}-amount`"
-          v-model="customBuilding.amount"
+          :key="amountFieldKeys[customBuilding.id] ?? 0"
           control-variant="stacked"
           :disabled="!customBuilding.building"
           hide-details
           label="Qty"
           :min="0"
+          :model-value="customBuilding.amount"
+          :step="1"
           type="number"
           variant="outlined"
           :width="smAndDown ? undefined : '130px'"
-          @update:model-value="updateCustomBuildingFigures(customBuilding, factory)"
+          @update:model-value="value => updateCustomBuildingFigures(value, customBuilding, factory)"
         />
         <debounce-spinner :active="pendingRecalc === customBuilding.id" />
       </div>
@@ -116,7 +118,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { computed, inject } from 'vue'
+  import { computed, inject, nextTick, ref } from 'vue'
   import { useDisplay } from 'vuetify'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
@@ -137,6 +139,9 @@
     factory: Factory;
     helpText: boolean;
   }>()
+
+  // One remount counter per row, bumped when a typed quantity had to be corrected.
+  const amountFieldKeys = ref<Record<string, number>>({})
 
   const buildingSelectorItems = computed(() => getCustomBuildings().map(building => ({
     title: building.displayName,
@@ -168,12 +173,29 @@
     updateFactory(factory)
   }
 
-  const updateCustomBuildingFigures = (customBuilding: FactoryCustomBuilding, factory: Factory) => {
-    runDebounced(customBuilding.id, () => {
-      if (customBuilding.amount < 0) {
-        customBuilding.amount = 0
-      }
+  // Clamp on entry rather than in the debounce. Vuetify keeps the typed text regardless of the
+  // model, so a rejected value left on screen reads as though the planner accepted it while the
+  // calculation quietly uses another number — the somersloop bug of Beta v0.5.
+  const updateCustomBuildingFigures = (
+    value: number | null,
+    customBuilding: FactoryCustomBuilding,
+    factory: Factory
+  ) => {
+    const typed = Number(value)
+    // Whole buildings only: there is no clock on a portal, so a fraction would price a building
+    // nobody can place. Rounded up, matching what the engine settles on.
+    const clamped = Number.isFinite(typed) ? Math.max(0, Math.ceil(typed)) : 0
+    const corrected = clamped !== typed
 
+    customBuilding.amount = clamped
+
+    if (corrected) {
+      // Remount the field so it shows the number being calculated with, then hand focus back.
+      amountFieldKeys.value[customBuilding.id] = (amountFieldKeys.value[customBuilding.id] ?? 0) + 1
+      nextTick(() => document.getElementById(`${factory.id}-${customBuilding.id}-amount`)?.focus())
+    }
+
+    runDebounced(customBuilding.id, () => {
       updateFactory(factory)
     })
   }
