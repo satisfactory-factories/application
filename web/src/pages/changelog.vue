@@ -53,6 +53,14 @@
           <li>Each part lists its total quantity, and a chip per building that needs it, showing that building's image and how many of them.</li>
           <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
         </ul>
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-sort ml-1" /><span class="ml-2">Arrange the plan without dragging</span></h2>
+        <p>The sidebar could not be scrolled on a phone. Picking a factory or a group up is the same gesture as scrolling the list, so a touch meant to scroll dragged the row instead. Dragging is now offered only where the pointer is precise enough for it.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Arrange</b> opens a dialog for reordering the plan with buttons: groups against each other, factories within their group, and factories from one group into another.</li>
+          <li>Groups can still be dragged in that dialog, and in the sidebar, wherever there is a pointer to drag with.</li>
+        </ul>
 
         <v-divider />
         <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>

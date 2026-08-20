@@ -29,9 +29,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows which factories use Power Shards and Somersloops in their building groups.
-    </p>
     <v-row id="stats-shards-sloops" class="mt-1">
       <v-col
         v-for="section in sections"
@@ -93,7 +90,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void

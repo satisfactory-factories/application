@@ -194,21 +194,18 @@
           <products-and-power
             :id="`${factory.id}-products`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
             :id="`${factory.id}-imports`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
             :id="`${factory.id}-satisfaction`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
@@ -217,14 +214,12 @@
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
           </v-row>
@@ -471,7 +466,6 @@
 
   const props = defineProps<{
     factory: Factory
-    helpText: boolean
     totalFactories: number;
   }>()
 

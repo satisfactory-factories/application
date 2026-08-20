@@ -137,7 +137,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   // One remount counter per row, bumped when a typed quantity had to be corrected.

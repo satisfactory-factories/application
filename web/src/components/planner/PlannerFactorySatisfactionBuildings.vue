@@ -177,7 +177,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const materialsOpen = ref(false)
