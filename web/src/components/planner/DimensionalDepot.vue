@@ -34,7 +34,19 @@
               <span class="ml-2">{{ overCapacityCount }} over capacity</span>
             </v-chip>
           </v-col>
-          <v-col class="text-right" cols="auto">
+          <v-col class="d-flex align-center justify-end ga-2 text-right" cols="auto">
+            <!-- The Mercer Sphere cost of everything here is counted in the statistics rather than
+                 repeated on this card, so the header says where instead. -->
+            <v-btn class="sf-chip small dimensional-depot mercer-jump" rounded="pill" variant="flat" @click="showMercerStats">
+              <game-asset
+                class="mr-2"
+                height="20"
+                subject="mercer-sphere"
+                type="item_id"
+                width="20"
+              />
+              Mercer Sphere statistics
+            </v-btn>
             <v-btn
               color="primary"
               :prepend-icon="hidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
@@ -179,20 +191,6 @@
             forever. A Depot holds a fixed amount, and only you know when you spend it, so an item
             that is also sunk shows the same surplus in both places rather than a split of it.
           </p>
-          <!-- The Mercer Sphere cost of everything here is counted in the statistics rather than
-               repeated on this card, so the card says where instead. -->
-          <div class="d-flex justify-center mt-4">
-            <v-btn class="mercer-jump" variant="flat" @click="showMercerStats">
-              <game-asset
-                class="mr-2"
-                height="24"
-                subject="mercer-sphere"
-                type="item_id"
-                width="24"
-              />
-              Mercer Sphere statistics
-            </v-btn>
-          </div>
         </v-card-text>
       </v-card>
     </v-col>
@@ -284,11 +282,11 @@
   border-bottom: 2px solid var(--sf-dimensional-depot-panel-border) !important;
 }
 
-// The Mercer Sphere's own violet, matching the section header, so the button reads as part of
-// this card rather than as a stray action.
+// Styled as this section's own chips: violet text and border from .sf-chip, plus the translucent
+// fill a tonal chip carries, which a v-btn cannot resolve from the token on its own.
 .mercer-jump {
-  background-color: var(--sf-dimensional-depot) !important;
-  color: #1e1e1e !important;
+  background-color: color-mix(in srgb, var(--sf-dimensional-depot) 12%, transparent) !important;
+  margin: 0 !important;
 }
 
 // The zero figure carries a tooltip, so it needs to look like something you can hover.

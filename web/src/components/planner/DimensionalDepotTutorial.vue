@@ -16,14 +16,14 @@
         </p>
         <!-- The summary is a scroll away and nothing on this dialog says where, so the dialog
              takes them rather than describing the journey. -->
-        <div class="d-flex justify-center">
-          <v-btn class="depot-jump" variant="flat" @click="showDepot">
+        <div class="d-flex justify-center mt-4">
+          <v-btn class="sf-chip small dimensional-depot depot-jump" rounded="pill" variant="flat" @click="showDepot">
             <game-asset
               class="mr-2"
-              height="24"
+              height="20"
               subject="dimensional-depot"
               type="item_id"
-              width="24"
+              width="20"
             />
             Take me to the Dimensional Depot
           </v-btn>
@@ -58,10 +58,11 @@
   }
 }
 
-// The Mercer Sphere violet the whole Depot section is keyed to, so the button reads as belonging
-// to the place it sends you.
+// Styled as the Depot section's own chips: violet text and border come from .sf-chip, and only
+// the translucent fill has to be stated, because a v-btn cannot resolve a tonal background from
+// the token by itself.
 .depot-jump {
-  background-color: var(--sf-dimensional-depot) !important;
-  color: #1e1e1e !important;
+  background-color: color-mix(in srgb, var(--sf-dimensional-depot) 12%, transparent) !important;
+  margin: 0 !important;
 }
 </style>
