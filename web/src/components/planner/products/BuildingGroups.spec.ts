@@ -258,6 +258,26 @@ describe('Component: BuildingGroups', () => {
         expect(itemBuildingCount.element.value).toBe('2.5')
       })
 
+      it('OC @ 100% should reset the clock and resync the item quantity', async () => {
+        // Regression: resetClocks used to mutate the groups without calling updateFactory,
+        // so with Sync enabled the item's own Qty/min stayed stale at whatever the last
+        // manual clock left it (see the OC @ 100% button, resetClocks in BuildingGroups.vue).
+        await buildingGroupClock.setValue('200')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(product.amount).toBe(60)
+
+        await buildingGroupClock.setValue('50')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(product.amount).toBe(15)
+
+        const ocButton = subject.findAll('button').find(b => b.text().includes('OC @ 100%'))
+        await ocButton!.trigger('click')
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        expect(buildingGroup.overclockPercent).toBe(100)
+        expect(product.amount).toBe(30)
+      })
+
       it('should the clock be changed, the group\'s power should update', async () => {
         // Product originally starts off at 30 iron ingots.
 

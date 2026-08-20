@@ -350,6 +350,11 @@
       group.overclockPercent = 100
       group.clockSetByUser = false
     })
+
+    // Without this, the groups reset visually but the factory (and, with Sync on, the
+    // item's own Qty/min) never recalculates, leaving a stale total on screen.
+    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
+    eventBus.emit('buildingGroupUpdated', props.factory)
   }
 
   const areAllClocks100 = (buildingGroups: BuildingGroup[]) => {

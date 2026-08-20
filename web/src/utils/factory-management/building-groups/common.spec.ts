@@ -23,6 +23,8 @@ import {
   checkForItemUpdate,
   deleteBuildingGroup,
   getTotalPowerShards,
+  remainderToLast,
+  remainderToNewGroup,
   solveGroupForRemainder,
   solveGroupTargetOutput,
   syncBuildingGroups,
@@ -1489,6 +1491,56 @@ describe('powerProducer simplified cases', async () => {
         // Also check the power
         expect(group.powerProduced).toBe(25000)
       })
+    })
+  })
+
+  // Regression: a solver-derived clock is rounded to the game's 4-decimal-place precision, and
+  // reconstructing the group's part total from that rounded clock routinely landed a hair off a
+  // whole number (40.001 instead of 40), the 0.001 rounding bug, on a group the user never
+  // hand-dialed a clock for.
+  describe('remainderToLast', () => {
+    it('lands on a whole number rather than drifting by 0.001', () => {
+      mockFactory = newFactory('Remainder Rounding')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+      const [group1, group2] = product.buildingGroups
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      remainderToLast(product, ItemType.Product, mockFactory)
+
+      expect(group2.parts.IronRod).toBe(40)
+      expect(group2.parts.IronIngot).toBe(40)
+    })
+  })
+
+  describe('remainderToNewGroup', () => {
+    it('lands on a whole number rather than drifting by 0.001', () => {
+      mockFactory = newFactory('Remainder Rounding')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      const group1 = product.buildingGroups[0]
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      remainderToNewGroup(product, ItemType.Product, mockFactory)
+
+      const newGroup = product.buildingGroups[1]
+      expect(newGroup.parts.IronRod).toBe(40)
+      expect(newGroup.parts.IronIngot).toBe(40)
     })
   })
 

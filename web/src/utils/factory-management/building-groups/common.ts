@@ -453,9 +453,15 @@ export const calculateBuildingGroupParts = (
       const outputMultiplier = getGroupOutputMultiplier(group, building, item.recipe)
 
       // Now apply the overclock multiplier for all parts in the group
+      //
+      // A solver-derived clock (clockSetByUser false, meaning the Remainder buttons or a
+      // typed exact output) is rounded to the game's 4-decimal-place clock precision, and
+      // reconstructing the part total from that rounded clock routinely lands a hair off a
+      // whole number (e.g. 40.001 instead of 40). Snap it back: a hand-dialed clock
+      // (clockSetByUser true) must NOT snap, so a deliberate 223.333% still reads 535.999.
       for (const part in group.parts) {
         const outputMulti = outputParts.has(part) ? outputMultiplier : 1
-        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti * outputMulti, 3)
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti * outputMulti, 3, !group.clockSetByUser)
       }
     }
   }
