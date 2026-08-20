@@ -42,7 +42,7 @@
         <img alt="Trading building count for clock speed while Effective Buildings stays the same" class="tutorial-gif" src="/assets/tutorials/building-groups-effective-buildings.gif">
       </v-card-text>
       <v-card-actions>
-        <v-btn color="primary" @click="openTutorial = false">Close</v-btn>
+        <v-btn color="primary" variant="flat" @click="openTutorial = false">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
