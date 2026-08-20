@@ -28,7 +28,8 @@
     </v-btn>
     <power-producer :factory="factory" :help-text="helpText" />
     <v-btn
-      color="yellow-darken-3 mr-2 mt-n1"
+      class="mr-2 mt-n1"
+      :color="sfColors.powerGeneration.color"
       prepend-icon="fas fa-bolt"
       ripple
       variant="flat"
@@ -38,7 +39,8 @@
     </v-btn>
     <custom-building :factory="factory" :help-text="helpText" />
     <v-btn
-      color="indigo mr-2 mt-n1"
+      class="mr-2 mt-n1"
+      :color="sfColors.building.color"
       prepend-icon="fas fa-building"
       ripple
       variant="flat"
@@ -53,6 +55,7 @@
   import { computed } from 'vue'
   import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory } from '@/utils/factory-management/products'
+  import { sfColors } from '@/utils/colors'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
   import { FactoryStatus, getSectionStatuses, highestSeverity } from '@/utils/factory-management/status'
