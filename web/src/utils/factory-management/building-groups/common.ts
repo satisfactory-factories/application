@@ -922,11 +922,13 @@ export const applyRemainderToGroup = (
 }
 
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
-  const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
+  // Bumped to "2" when the tutorial was reworked with GIFs, so pioneers who already
+  // dismissed the old text-only version see it pop up again.
+  const buildingGroupTutorialOpened = localStorage.getItem('tutorialBuildingGroups2')
 
   if (!buildingGroupTutorialOpened) {
     eventBus.emit('openBuildingGroupTutorial')
-    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+    localStorage.setItem('tutorialBuildingGroups2', 'true')
   }
 
   item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
