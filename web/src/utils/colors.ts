@@ -81,7 +81,9 @@ export const sfColors = {
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
   powerConsumption: { color: '#e59344', border: '#e59344' },
-  powerGeneration: { color: '#9e9e9e', border: '#9e9e9e' },
+  // Sky blue, not the grey it used to be: grey on a dark card read as a disabled control, and
+  // the generator row sitting next to consumption's orange wanted a cool colour anyway.
+  powerGeneration: { color: palette.lightBlue, border: palette.lightBlue },
   circuitBoost: { color: '#9f6d9f', border: '#9f6d9f' },
   peakConsumption: { color: '#5cb0c5', border: '#5cb0c5' },
 
