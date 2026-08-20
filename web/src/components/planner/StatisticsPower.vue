@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2">
-    <h4 class="text-h4">
+    <h4 class="text-h4 d-flex align-center">
       <span class="stats-heading-icon"><i class="fas fa-power-off section-icon power" /></span>Power Consumption and Generation
     </h4>
     <v-chip

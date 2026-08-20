@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex align-center">
-    <h4 class="text-h4">
+    <h4 class="text-h4 d-flex align-center">
       <span class="stats-heading-icon"><i class="fas fa-globe section-icon" /></span>Raw Resources
     </h4>
     <v-chip
