@@ -829,6 +829,11 @@ export const useAppStore = defineStore('app', () => {
         const legacyTab = getCurrentTab()
         if (legacyTab) {
           legacyTab.plannerVersion = undefined
+          // Same reasoning, and the same treatment a legacy clipboard paste gets: a bare array
+          // predates the Depot tiers entirely, so anything still here belongs to the plan being
+          // replaced rather than the one arriving.
+          legacyTab.depotUploadTier = undefined
+          legacyTab.depotExpansionTier = undefined
         }
         // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
         // something different by it - raw resources were assumed supplied - so its stored ledger

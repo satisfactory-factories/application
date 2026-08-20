@@ -81,7 +81,8 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    means fully researched, so a path that dropped them silently gave a tier-0 plan 16x the
    upload speed and hid every over-capacity row. Paste and restore assign them even when the
    incoming plan has none, for the same reason `groups` does: what is left otherwise belongs to
-   the plan being replaced. Raised by the Codex build review, 2026-08-20.
+   the plan being replaced. A bare-array restore clears them for the same reason a legacy paste
+   does. Raised by the Codex build review, 2026-08-20.
 
 12. **The disposal map is repaired on load, and unknown part IDs are left alone.** A share link
    is another player's JSON, so the map arrives without ever having passed through the setters

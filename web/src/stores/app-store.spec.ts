@@ -829,6 +829,21 @@ describe('app-store', () => {
       expect(tab?.depotExpansionTier).toBe(1)
     })
 
+    // A bare array predates the tiers by definition, so leaving the outgoing tab's in place
+    // would read somebody's pre-v0.6 plan at whatever research this tab last had.
+    it('clears the local tiers when restoring a bare factory array', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) {
+        tab.depotUploadTier = 0
+        tab.depotExpansionTier = 0
+      }
+
+      appStore.loadServerPlan([newFactory('Foo')])
+
+      expect(appStore.getCurrentTab()?.depotUploadTier).toBeUndefined()
+      expect(appStore.getCurrentTab()?.depotExpansionTier).toBeUndefined()
+    })
+
     it('clears the local tiers when the saved plan predates them', () => {
       const tab = appStore.getCurrentTab()
       if (tab) {
