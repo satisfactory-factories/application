@@ -117,11 +117,18 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
 
 14. **The two research levels are settable from the statistics table as well.** Same tab fields,
    read and written through `useDepotResearch`, so a level typed in either place is the one the
-   other shows; the composable holds no state of its own, which is what the new spec pins. The
-   field sits under its label rather than beside it, because the Mercer column is a third of the
-   statistics row and a level on the same line pushed the amounts off the card. No `:max` on the
-   field and `:model-value` rather than `v-model`, per #vnumberinput-clamping: with a max set an
-   out-of-range entry stops emitting at all, so the clamp never runs. User's call, 2026-08-20.
+   other shows; the composable holds no state of its own, which is what the new spec pins. Tick,
+   label, tooltip and level all sit on one line, in a row two lines tall: the Mercer column is a
+   third of the statistics row and the table cannot shrink below its widest cell, so the label
+   wraps rather than the cell growing.
+
+   `:max` is set to `MAX_DEPOT_TIER`, which is what greys the up arrow out at the top level.
+   `:model-value` rather than `v-model`, per #vnumberinput-clamping: an entry outside the range
+   never emits, so the field goes on showing it while the plan holds something else. Leaving the
+   field remounts it and puts the stored level back. An empty field is ignored rather than read as
+   zero, because Vuetify emits null the moment the digit is deleted and that would drop the plan
+   to unresearched mid-edit. The remount is skipped while focus stays inside the field, or a
+   stepper click unmounts itself. User's call, 2026-08-20.
 
 15. **The research tick boxes are the factory task list's, promoted to `.sf-tick` in
    `global.scss`.** They started hand-rolled in this component, then briefly became

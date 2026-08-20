@@ -93,34 +93,31 @@
                 class="research-row"
               >
                 <td>
-                  <div class="d-flex flex-column ga-1">
-                    <div class="d-flex align-center ga-2 flex-nowrap">
-                      <!-- The same drawn tick the factory task list uses; see .sf-tick in
-                           global.scss for why it is a native checkbox rather than a Vuetify one. -->
-                      <input
-                        :id="`stats-mercer-include-${line.key}`"
-                        :checked="line.included"
-                        class="sf-tick"
-                        :title="line.included ? `Leave ${line.label} out of the total` : `Count ${line.label} in the total`"
-                        type="checkbox"
-                        @change="toggleResearch(line.key)"
-                      >
-                      <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
-                        {{ line.label }}
-                      </span>
-                      <tooltip-info :text="line.tooltip" @click.stop />
-                    </div>
-                    <!-- Below the label rather than beside it. The Mercer column is a third of the
-                         row and the table cannot shrink below its widest cell, so a level field on
-                         the same line pushed the amounts off the card entirely.
-                         The same tab values the Dimensional Depot section sets, so a level typed in
+                  <!-- One line, and the label wraps rather than the cell growing. The Mercer column
+                       is a third of the row and the table cannot shrink below its widest cell, so
+                       anything that refuses to wrap pushes the amounts off the card. -->
+                  <div class="d-flex align-center ga-2 research-cell">
+                    <!-- The same drawn tick the factory task list uses; see .sf-tick in
+                         global.scss for why it is a native checkbox rather than a Vuetify one. -->
+                    <input
+                      :id="`stats-mercer-include-${line.key}`"
+                      :checked="line.included"
+                      class="sf-tick"
+                      :title="line.included ? `Leave ${line.label} out of the total` : `Count ${line.label} in the total`"
+                      type="checkbox"
+                      @change="toggleResearch(line.key)"
+                    >
+                    <span class="research-label" :class="{ 'text-medium-emphasis': !line.included }">
+                      {{ line.label }}
+                    </span>
+                    <tooltip-info :text="line.tooltip" @click.stop />
+                    <!-- The same tab values the Dimensional Depot section sets, so a level typed in
                          either place is the one the other shows. -->
-                    <span v-if="line.tier" class="d-flex align-center ga-2 tier-row">
+                    <span v-if="line.tier" class="d-flex align-center ga-1 tier-row" @focusout="resyncTier">
                       <span class="text-caption text-medium-emphasis">Level</span>
-                      <!-- No :max, and :model-value rather than v-model: with a max set an
-                           out-of-range entry stops emitting at all, so the clamp never runs. The
-                           key remounts the field when the value was corrected, because Vuetify
-                           keeps its own copy of the typed text. See #vnumberinput-clamping. -->
+                      <!-- :model-value rather than v-model, and a remount on the way out. An entry
+                           the range rejects never emits, so the field goes on showing it while the
+                           plan holds something else. See #vnumberinput-clamping. -->
                       <v-number-input
                         :id="`stats-mercer-tier-${line.key}`"
                         :key="tierKey"
@@ -128,6 +125,7 @@
                         control-variant="stacked"
                         density="compact"
                         hide-details
+                        :max="MAX_DEPOT_TIER"
                         :min="0"
                         :model-value="line.key === 'upload' ? depotTier : depotExpansionTier"
                         @update:model-value="setTier(line.key, $event)"
@@ -166,6 +164,7 @@
     clampTier,
     DEPOT_UNLOCK_MERCER_SPHERES,
     MANUAL_UPLOADER_MERCER_SPHERES,
+    MAX_DEPOT_TIER,
     useDepotResearch,
   } from '@/composables/useDepotResearch'
   import TooltipInfo from '@/components/tooltip-info.vue'
@@ -221,13 +220,22 @@
   const tierKey = ref(0)
 
   const setTier = (key: ResearchKey, value: unknown) => {
-    const typed = Number(value)
-    const clamped = clampTier(typed)
+    // An empty field is not a level. Vuetify emits null for it the moment the digit is deleted,
+    // and reading that as 0 would quietly drop the plan to unresearched mid-edit.
+    if (value === null || value === undefined || value === '') return
 
+    const clamped = clampTier(value)
     if (key === 'upload') depotTier.value = clamped
     else depotExpansionTier.value = clamped
+  }
 
-    if (!Number.isFinite(typed) || typed !== clamped) tierKey.value++
+  // Remount both fields once focus leaves, which is what puts the stored level back on screen after
+  // an emptied field. Skipped while focus moves within the field, or a stepper click is unmounted
+  // out from under itself.
+  const resyncTier = (event: FocusEvent) => {
+    const next = event.relatedTarget as Node | null
+    if (next && (event.currentTarget as HTMLElement).contains(next)) return
+    tierKey.value++
   }
 
   const toggleResearch = (key: ResearchKey) => {
@@ -337,20 +345,30 @@
   }
 }
 
-// One line: wrapped, the level field ends up under the tick and reads as a second row of the
-// table rather than as part of this one.
+// Two lines of room, which is what the label needs to wrap in a third of the row. Any less and
+// the cell refuses to shrink, taking the Amount column off the card with it.
+.research-cell {
+  min-height: 44px;
+
+  .sf-tick {
+    flex: 0 0 auto;
+  }
+}
+
 .research-label {
-  white-space: nowrap;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+// Pinned to the right of the cell so the two level fields line up with each other.
+.tier-row {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 // Wide enough for one digit plus the stacked steppers, and no wider.
 .tier-input {
   width: 78px;
   flex: 0 0 auto;
-}
-
-// Lined up under the label rather than under the tick, so the row reads as one setting.
-.tier-row {
-  padding-left: 26px;
 }
 </style>
