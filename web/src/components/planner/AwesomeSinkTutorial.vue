@@ -1,7 +1,7 @@
 <template>
   <v-dialog max-width="800" :model-value="openTutorial" scrollable>
     <v-card>
-      <v-card-title class="d-flex align-center ga-3">
+      <v-card-title class="d-flex align-center ga-3 py-4">
         <game-asset height="40" subject="awesome-sink" type="item_id" width="40" />
         <h3 class="text-h3">Sinking tutorial</h3>
       </v-card-title>

@@ -96,7 +96,7 @@
             <thead>
               <tr>
                 <th class="col-item" scope="col">Item</th>
-                <th class="col-rate text-right" scope="col">Into Depot / capacity</th>
+                <th class="col-rate text-right" scope="col">Upload speed / maximum</th>
                 <th class="col-uploaders text-right" scope="col">Uploaders</th>
                 <th scope="col">Factories</th>
               </tr>
@@ -170,17 +170,29 @@
           <!-- What the Mercer Spheres cost is in the statistics, where the plan's other collectables
                are counted. Repeating it here made this caption a paragraph. -->
           <p class="text-caption text-medium-emphasis mt-3 mb-0">
-            Upload speed is per Uploader, so two on one item fill twice as fast. Storage is not:
-            they share the same {{ depotStacks }} stack{{ depotStacks === 1 ? '' : 's' }} of space.
-            Mercer Sphere costs are counted in the statistics.
+            Upload speed is per Uploader, so two on one item fill twice as fast. Storage is shared.
           </p>
           <!-- The figure and the sunk figure are both the surplus, and a reader who adds them up
                gets twice the material. Says why once, here, rather than on every row. -->
           <p class="text-caption text-medium-emphasis mt-2 mb-0">
-            <b>Into Depot</b> is what the plan has spare for that item, not a rate it keeps up
+            <b>Upload speed</b> is what the plan has spare for that item, not a rate it keeps up
             forever. A Depot holds a fixed amount, and only you know when you spend it, so an item
             that is also sunk shows the same surplus in both places rather than a split of it.
           </p>
+          <!-- The Mercer Sphere cost of everything here is counted in the statistics rather than
+               repeated on this card, so the card says where instead. -->
+          <div class="d-flex justify-center mt-4">
+            <v-btn class="mercer-jump" variant="flat" @click="showMercerStats">
+              <game-asset
+                class="mr-2"
+                height="24"
+                subject="mercer-sphere"
+                type="item_id"
+                width="24"
+              />
+              Mercer Sphere statistics
+            </v-btn>
+          </div>
         </v-card-text>
       </v-card>
     </v-col>
@@ -253,6 +265,8 @@
     localStorage.setItem('dimensionalDepotHidden', value.toString())
   })
 
+  const showMercerStats = () => eventBus.emit('jumpToSection', 'statistics-mercer-spheres')
+
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless.
   eventBus.on('openSection', sectionId => {
     if (sectionId === 'dimensional-depot') {
@@ -268,6 +282,13 @@
 .depot-header {
   background-color: var(--sf-dimensional-depot-panel-bg) !important;
   border-bottom: 2px solid var(--sf-dimensional-depot-panel-border) !important;
+}
+
+// The Mercer Sphere's own violet, matching the section header, so the button reads as part of
+// this card rather than as a stray action.
+.mercer-jump {
+  background-color: var(--sf-dimensional-depot) !important;
+  color: #1e1e1e !important;
 }
 
 // The zero figure carries a tooltip, so it needs to look like something you can hover.

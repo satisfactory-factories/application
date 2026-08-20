@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex align-center">
+  <div id="statistics-mercer-spheres" class="d-flex align-center">
     <!-- Each icon next to the words it belongs to, rather than both stacked in front of the title
          where neither says which is which. -->
     <h4 class="text-h4 d-flex align-center ga-1 flex-wrap">

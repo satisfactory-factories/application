@@ -22,7 +22,9 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   excess to your sinks, and a belt of adequate speed feeding them. Break either and the numbers are
   inaccurate. The Uploader one points at the plan-wide Dimensional Depot summary at the top of the
   planner, and is clear that nothing is assumed about how much an Uploader takes off the belt, only
-  that it eventually backs up.
+  that it eventually backs up, and takes you straight to the summary. The Dimensional Depot
+  section returns the favour with a button to the Mercer Sphere statistics, since that is where its
+  costs are counted.
 - **Sinks draw power.** 30 MW each, counted into the factory's consumption and so into the plan's,
   matching `Build_ResourceSink_C` in the game's own data. The Depot Uploader draws nothing.
 - **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a

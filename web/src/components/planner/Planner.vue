@@ -752,6 +752,9 @@
     setTimeout(() => scrollToElement(sectionId), 50)
   }
 
+  // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
+  eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
+
   const forceSort = () => {
     // Forcefully regenerate the displayOrder counting upwards.
     getFactories().forEach((factory, index) => {

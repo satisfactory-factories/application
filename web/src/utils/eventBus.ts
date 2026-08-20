@@ -54,6 +54,9 @@ type Events = {
   // Same, for the first Uploader: says where the plan-wide summary lives, and what the planner
   // does and does not claim about what an Uploader takes off the belt.
   openDimensionalDepotTutorial: undefined;
+  // "Take me there" from a dialog. Carries a section id for the planner's own jump helper, which
+  // unhides a collapsed section before scrolling — a dialog cannot reach that helper directly.
+  jumpToSection: string;
 
   // Building Groups
   openBuildingGroupTutorial: undefined;

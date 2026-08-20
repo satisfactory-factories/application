@@ -107,6 +107,12 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    only that it eventually backs up, which is what makes the surplus figures right again.
    User's call and wording, 2026-08-20.
 
+   The Depot one carries a button straight to the section, and the section carries one to the
+   Mercer Sphere statistics, both in the Depot's own violet. A dialog cannot reach the planner's
+   jump helper, which unhides a collapsed section before scrolling, so it asks for the jump by id
+   over the event bus (`jumpToSection`). The statistics card unhides for the Mercer anchor as
+   well as its own id, or the jump lands on a section that is not on the page.
+
 ## Data model
 
 ```ts
