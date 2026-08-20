@@ -381,7 +381,7 @@
                   <input
                     v-if="factory.checklistEnabled"
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
-                    class="checklist-tick mr-2"
+                    class="checklist-tick"
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
                     :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
                     type="checkbox"
@@ -858,7 +858,11 @@ table {
   cursor: pointer;
   display: inline-block;
   height: 18px;
-  margin: 0;
+  // Baked in rather than an `mr-2` utility class: this scoped rule's [data-v-xxx] attribute
+  // selector outweighs Vuetify's plain `.mr-2` class (its spacing utilities carry no
+  // !important in Vuetify 3), so the utility class silently lost and the tick sat flush
+  // against the factory icon that follows it.
+  margin: 0 8px 0 0;
   position: relative;
   transition: background-color 0.15s ease, border-color 0.15s ease;
   width: 18px;
