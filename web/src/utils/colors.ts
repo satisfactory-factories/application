@@ -39,8 +39,7 @@ export const palette = {
   teal: '#26a69a',
   pink: '#ec407a',
   indigo: '#5c6bc0',
-  indigoLight: '#8392e3',
-  indigoLightBorder: '#44aff0',
+  tan: '#d19249',
   lime: '#c0ca33',
   offWhite: '#eceff1',
   offWhiteBorder: '#8d9499',
@@ -68,11 +67,10 @@ export const sfColors = {
   product: { color: palette.blue, border: palette.blueBorder },
   byproduct: { color: palette.cyan, border: palette.cyanBorder },
   rawResource: { color: palette.beige, border: palette.beigeBorder },
-  // Blue rather than orange: orange is this planner's busiest colour and buildings are the most
-  // numerous thing on a card. A step away from `product`'s azure, since the two sit side by side
-  // in every satisfaction row. Light indigo, not 400: the token is chip TEXT on a dark card, and
-  // 400 sat at roughly 3:1 against it. The border is deliberately a brighter blue than the text.
-  building: { color: palette.indigoLight, border: palette.indigoLightBorder },
+  // Tan, matching the colour the game paints its buildings. A blue was tried first, on the
+  // grounds that orange is this planner's busiest colour, but it read as unrelated to the
+  // building it labelled. Muted enough not to be mistaken for `statusWarning`'s brighter amber.
+  building: { color: palette.tan, border: palette.tan },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
   // A setting on a building group rather than something that flows through it: the node

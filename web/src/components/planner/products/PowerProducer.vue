@@ -482,7 +482,7 @@
 
 <style lang="scss" scoped>
   .powerProducer {
-    border-left: 5px solid #ff9800 !important
+    border-left: 5px solid var(--sf-power-generation) !important
   }
 
   // A standing caveat about the whole plan, not a problem with this producer — so it reads
