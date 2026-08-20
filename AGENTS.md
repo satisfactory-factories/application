@@ -15,6 +15,7 @@ This application is a specialized tool for players of the video game **Satisfact
 - **Exclusive References**: The tool maintains strict references to each factory to ensure data integrity during changes.
 - **Bottleneck Highlighting**: Visual indicators (via Vue Flow) show where production or logistics are failing to meet requirements (`hasProblem` flag).
 - **User Assistance**: Users can mark factories as "updated" or track their "inSync" status to manage changes across the production chain.
+- **Custom Buildings**: Buildings that run no recipe (portals, train stations, radar towers, lights) can be added to a factory. They contribute power draw, and the few with upkeep (the Main Portal's Singularity Cells) create a part demand imported like any other.
 - **Tasks & Notes**: Each factory supports internal tasks and notes for better organization.
 
 ## Tech Stack

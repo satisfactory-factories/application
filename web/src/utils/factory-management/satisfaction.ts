@@ -236,7 +236,7 @@ export const showRecycledChip = (factory: Factory, partId: string) => {
   if (!part) {
     return false
   }
-  return part.amountRequiredProduction + part.amountRequiredPower > 0
+  return part.amountRequiredProduction + part.amountRequiredPower + (part.amountRequiredBuildings ?? 0) > 0
 }
 export const showInternalChip = (factory: Factory, partId: string) => {
   const product = getProduct(factory, partId, true) as FactoryItem

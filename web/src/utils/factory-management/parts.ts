@@ -45,8 +45,10 @@ export const isSurplusSignificant = (remaining: number, required: number): boole
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
 
-  // If factory has no products there is nothing for us to do, so mark as satisfied.
-  if (factory.products.length === 0) {
+  // If factory has no products there is nothing for us to do, so mark as satisfied. Custom
+  // buildings count as something to do: a portal room makes nothing, but its upkeep is a real
+  // demand and forgiving it would leave the factory green while its portals sit dead.
+  if (factory.products.length === 0 && (factory.customBuildings?.length ?? 0) === 0) {
     factory.requirementsSatisfied = true
     return
   }
@@ -144,6 +146,18 @@ export const calculatePartRequirements = (factory: Factory, gameData: DataInterf
     })
   })
 
+  // Get the amount required by custom buildings (e.g. a Portal's Singularity Cells)
+  factory.customBuildings?.forEach(customBuilding => {
+    customBuilding.ingredients?.forEach(ingredient => {
+      if (!ingredient.perMin) {
+        return // Most custom buildings only draw power, and have no upkeep at all.
+      }
+
+      createNewPart(factory, ingredient.part)
+      factory.parts[ingredient.part].amountRequiredBuildings += ingredient.perMin
+    })
+  })
+
   // Get requirements for export demands
   // Get the amount required by export dependencies
   const requests = getRequestsForFactory(factory)
@@ -159,6 +173,7 @@ export const calculatePartRequirements = (factory: Factory, gameData: DataInterf
     partData.amountRequired =
       partData.amountRequiredProduction +
       partData.amountRequiredPower +
+      partData.amountRequiredBuildings +
       partData.amountRequiredExports
   }
 }

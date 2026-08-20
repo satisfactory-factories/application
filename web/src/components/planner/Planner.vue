@@ -548,6 +548,7 @@
     // Remove GameSync data from the new factory
     newFactory.syncState = {}
     newFactory.syncStatePower = {}
+    newFactory.syncStateCustomBuildings = {}
     newFactory.inSync = null
 
     // The clone inherits the original's exports, but the importers are still buying from

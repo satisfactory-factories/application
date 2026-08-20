@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7
+
+_In development._
+
+### Custom buildings
+
+- **Add any building that makes nothing to a factory**, under Products and Power Generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights. Twenty buildings in all. They count towards the factory's power draw and its building list.
+- **The Main Portal's Singularity Cells are a real demand.** Two a minute per portal, satisfied by importing them like any other part, so a portal room short of cells reads as a shortage.
+- **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
+- Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

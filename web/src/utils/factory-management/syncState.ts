@@ -1,9 +1,15 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryCustomBuilding } from '@/interfaces/planner/FactoryInterface'
+
+// A custom building's whole upkeep as one number, which is all the sync state needs: the parts
+// themselves are fixed by the building, so only the rate can move.
+const upkeepTotal = (customBuilding: FactoryCustomBuilding): number =>
+  (customBuilding.ingredients ?? []).reduce((total, ingredient) => total + ingredient.perMin, 0)
 
 export const setSyncState = (factory: Factory) => {
   // Reset all state
   factory.syncState = {}
   factory.syncStatePower = {}
+  factory.syncStateCustomBuildings = {}
 
   // Get the current products of the factory and set them
   factory.products.forEach(product => {
@@ -32,6 +38,14 @@ export const setSyncState = (factory: Factory) => {
     }
   })
 
+  factory.customBuildings?.forEach(customBuilding => {
+    factory.syncStateCustomBuildings[customBuilding.id] = {
+      building: customBuilding.building,
+      amount: customBuilding.amount,
+      ingredientAmount: upkeepTotal(customBuilding),
+    }
+  })
+
   factory.inSync = true
 }
 
@@ -51,7 +65,7 @@ export const checkFactorySyncState = (factory: Factory) => {
   }
 
   // Early return for completely empty factories - nothing to sync
-  if (!factory.products.length && !factory.powerProducers.length) {
+  if (!factory.products.length && !factory.powerProducers.length && !factory.customBuildings?.length) {
     factory.inSync = false
     return
   }
@@ -78,6 +92,14 @@ export const checkFactorySyncState = (factory: Factory) => {
   if (factory.powerProducers.length !== Object.keys(factory.syncStatePower).length) {
     factory.inSync = false
     return // Count mismatch detected, no need to check individual items
+  }
+
+  // Check if the number of custom buildings doesn't match (added or deleted). A plan marked in
+  // sync before custom buildings existed holds no state and has none of them, so both sides are
+  // zero and it stays in sync — there is nothing to migrate.
+  if ((factory.customBuildings?.length ?? 0) !== Object.keys(factory.syncStateCustomBuildings ?? {}).length) {
+    factory.inSync = false
+    return
   }
 
   // Step 2: Check if the sync objects match current reality on a per-product and per-powerProducer basis
@@ -151,4 +173,28 @@ export const checkFactorySyncState = (factory: Factory) => {
       return
     }
   }
+
+  if (customBuildingsOutOfSync(factory)) {
+    factory.inSync = false
+  }
+}
+
+// Its own function rather than a fourth block inside checkFactorySyncState, which is already at
+// the complexity ceiling the linter allows.
+const customBuildingsOutOfSync = (factory: Factory): boolean => {
+  return (factory.customBuildings ?? []).some(customBuilding => {
+    const syncState = factory.syncStateCustomBuildings?.[customBuilding.id]
+
+    // No state for it at all: the row is new, or was swapped out from under the snapshot.
+    if (!syncState) {
+      return true
+    }
+
+    // A swapped building can keep the same count and still be a different world. The upkeep can
+    // move without the count, too: a game data update that changes what the building consumes
+    // changes what you would have to deliver to it.
+    return syncState.building !== customBuilding.building ||
+      syncState.amount !== customBuilding.amount ||
+      syncState.ingredientAmount !== upkeepTotal(customBuilding)
+  })
 }

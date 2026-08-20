@@ -7,6 +7,9 @@ export interface PartMetrics {
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
   amountRequiredPower: number;
+  // Demanded by custom buildings (a Portal's Singularity Cells). Absent on plans saved before
+  // custom buildings existed; initFactories backfills it.
+  amountRequiredBuildings: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaRaw: number; // This is the amount supplied by the raw resources assumed to be handled by the user.
@@ -161,6 +164,22 @@ export interface FactoryPowerSyncState {
   building?: string
 }
 
+/**
+ * What a factory's custom buildings looked like when the user said "this is what I have built".
+ *
+ * Keyed by the custom building's own id rather than by its building, for the same reason the
+ * power producers are: a factory can legitimately hold two rows of the same building, and keying
+ * by building would collapse them into one entry that the count check could never satisfy.
+ */
+export interface FactoryCustomBuildingSyncState {
+  building: string
+  amount: number
+  // What the buildings were drawing when the snapshot was taken. Derived from `amount` and the
+  // game data's rate, so it moves when either does — a game update that changes what a Portal
+  // eats is a change to what stands in your world, even though the count never moved.
+  ingredientAmount: number
+}
+
 export interface FactoryTask {
   title: string
   completed: boolean
@@ -190,6 +209,26 @@ export interface FactoryPowerProducer {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+}
+
+/**
+ * A building the user has placed in this factory that makes nothing: a portal, a train station,
+ * a radar tower. It costs power, and a few of them (the Main Portal's Singularity Cells) cost
+ * parts to keep running, which become a demand the factory has to satisfy like any other.
+ *
+ * Deliberately has no building groups: none of these can be overclocked or sloop'd, so a group
+ * would only ever echo `amount`.
+ */
+export interface FactoryCustomBuilding {
+  id: string;
+  building: string; // Key into gameData.customBuildings, e.g. 'portal'
+  amount: number; // How many the user wants
+  // Upkeep, in parts per minute for ALL of them. Seeded from the game data when the building is
+  // picked and rescaled with `amount`, but stored on the factory: a portal link that is not
+  // always open costs less than the book rate, and the user is allowed to say so.
+  ingredients: { part: string, perMin: number }[];
+  powerConsumed: number; // Calculated: amount x the building's draw
+  displayOrder: number;
 }
 
 export interface FactoryPower {
@@ -244,6 +283,7 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
+  customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
   requirementsSatisfied: boolean;
@@ -257,6 +297,7 @@ export interface Factory {
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   syncStatePower: { [key: string]: FactoryPowerSyncState };
+  syncStateCustomBuildings: { [key: string]: FactoryCustomBuildingSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
