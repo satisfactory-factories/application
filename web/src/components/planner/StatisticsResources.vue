@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-globe" />
+      <i class="fas fa-globe section-icon" />
       <span class="ml-3">Raw Resources</span>
     </h4>
     <v-chip
@@ -98,6 +98,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Matches the raw-resource chips below it (see sf-chip's .cyan/.raw-resource rule).
+.section-icon {
+  color: var(--sf-raw-resource);
+}
+
 .stats-table {
   background-color: transparent;
 

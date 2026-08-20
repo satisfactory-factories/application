@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-building" />
+      <i class="fas fa-building section-icon" />
       <span class="ml-3">Building Summary</span>
     </h4>
     <v-chip
@@ -96,6 +96,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Matches the `building` chip colour used below (and throughout the app for buildings).
+.section-icon {
+  color: var(--sf-building);
+}
+
 .stats-table {
   background-color: transparent;
 

@@ -4,7 +4,7 @@
       <v-card class="factory-card">
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
+            <i class="fas fa-chart-line stats-title-icon" /><span class="ml-3">Statistics</span>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
@@ -142,3 +142,12 @@
   })
 
 </script>
+
+<style scoped lang="scss">
+  // The app's own gold accent (see sfColors.header in colors.ts) — ties the section's own
+  // title back to the app chrome it sits inside, rather than the plain white every sub-section
+  // heading used to share.
+  .stats-title-icon {
+    color: var(--sf-header-border);
+  }
+</style>

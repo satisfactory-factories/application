@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center">
     <h4 class="text-h4">
-      <i class="fas fa-warehouse" />
+      <i class="fas fa-warehouse section-icon" />
       <span class="ml-3">Item Production</span>
     </h4>
     <v-chip
@@ -213,6 +213,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Matches the `product` chip colour used throughout the app (items flowing through a factory).
+.section-icon {
+  color: var(--sf-product);
+}
+
 // Wide enough for an item name, and no wider — it shares the row with four filter buttons.
 .item-search {
   max-width: 260px;
