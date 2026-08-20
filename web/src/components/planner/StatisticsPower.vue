@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2">
-    <h4 class="text-h4">
-      <i class="fas fa-power-off mr-3" />Power Consumption and Generation
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><i class="fas fa-power-off section-icon power" /></span>Power Consumption and Generation
     </h4>
     <v-chip
       id="stats-power-summary-generation"
@@ -37,9 +37,6 @@
       </v-chip>
     </tooltip>
   </div>
-  <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
-  </p>
   <v-alert
     id="stats-power-accuracy-note"
     class="mt-2 mb-2"
@@ -55,7 +52,7 @@
   <v-row class="mt-1">
     <v-col cols="12" md="8">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-check-square mr-2" />Plan
+        <i class="fas fa-check-square mr-2 section-icon plan" />Power in Plan
       </h2>
       <v-table class="power-table" density="compact">
         <thead>
@@ -152,7 +149,7 @@
     </v-col>
     <v-col cols="12" md="4">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-bullseye mr-2" />Power Target
+        <i class="fas fa-bullseye mr-2 section-icon target" />Power Target
       </h2>
       <div class="d-flex align-center">
         <v-chip class="sf-chip input no-margin" variant="tonal">
@@ -224,7 +221,7 @@
        — no min/max columns, since the point here is which factory is costing what. -->
   <div class="d-flex align-center mt-4">
     <h2 class="text-h5 font-weight-bold text-no-wrap">
-      <i class="fas fa-industry mr-2" />By factory
+      <i class="fas fa-industry mr-2" />Power by factory
     </h2>
     <v-btn
       class="ml-auto"
@@ -300,7 +297,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const totalPower = computed(() => calculateTotalPower(props.factories))
@@ -359,6 +355,15 @@
 </script>
 
 <style scoped lang="scss">
+  // Section heading icons — a splash of colour per heading so the section list reads at a
+  // glance instead of as one long run of white icons. Reuses tokens already meaningful
+  // elsewhere on this page rather than inventing new ones.
+  .section-icon {
+    &.power { color: var(--sf-yellow); }
+    &.plan { color: var(--sf-success); }
+    &.target { color: var(--sf-light-blue); }
+  }
+
   // Pin the note to the shared opaque muted blue (mutedBlue in colors.ts) instead
   // of Vuetify's translucent tonal underlay, so it and the sidebar summary's
   // expand button are literally the same colour regardless of backdrop.

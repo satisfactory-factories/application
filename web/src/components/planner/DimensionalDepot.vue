@@ -56,10 +56,6 @@
           </v-col>
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Items you have put a Dimensional Depot Uploader on, under a
-            factory's Satisfaction. The rate is the surplus each factory has spare to upload.
-          </p>
           <!-- The upload rate is not a constant: it starts at 15/min and doubles with each of the
                four MAM upgrades, so a plan written for a fresh save and one written for a finished
                one need very different numbers of Uploaders for the same throughput. Saved on the
@@ -206,7 +202,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Takes the row to aim at plus a fallback section, so a click lands on the item's own

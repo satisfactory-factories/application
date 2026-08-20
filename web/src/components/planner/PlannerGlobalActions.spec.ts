@@ -18,7 +18,6 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
   const mountSubject = () =>
     mount(PlannerGlobalActions, {
-      propsData: { helpTextShown: false },
       global: {
         plugins: [vuetify],
         stubs: { Templates: true },

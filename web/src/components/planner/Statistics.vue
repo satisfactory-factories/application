@@ -3,8 +3,8 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
+          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
+            <span class="stats-heading-icon"><i class="fas fa-chart-line" /></span>Statistics
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
@@ -78,15 +78,15 @@
           </tooltip>
         </v-card-text>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <statistics-power :factories="factories" :help-text="helpText" />
+          <statistics-power :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-resources :factories="factories" :help-text="helpText" />
+          <statistics-resources :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-items-difference :factories="factories" :help-text="helpText" />
+          <statistics-items-difference :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-shards-sloops :factories="factories" :help-text="helpText" />
+          <statistics-shards-sloops :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-buildings :factories="factories" :help-text="helpText" />
+          <statistics-buildings :factories="factories" />
         </v-card-text>
       </v-card>
     </v-col>
@@ -105,7 +105,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Power strip shown while the statistics are collapsed. Its balance chip mirrors

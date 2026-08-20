@@ -12,14 +12,12 @@
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
       <planner-sidebar-content
         :factories="getFactories()"
-        :help-text-shown="helpText"
         loaded-from="navigation"
         @clear-all="clearAll"
         @create-factory="createFactory"
         @hide-all="showHideAll('hide')"
         @import-world="importWorld"
         @show-all="showHideAll('show')"
-        @toggle-help-text="toggleHelp()"
         @update-factories="updateFactoriesList"
       />
     </Teleport>
@@ -37,14 +35,12 @@
         <v-container class="pa-0 sidebar-content">
           <planner-sidebar-content
             :factories="getFactories()"
-            :help-text-shown="helpText"
             loaded-from="planner"
             @clear-all="clearAll"
             @create-factory="createFactory"
             @hide-all="showHideAll('hide')"
             @import-world="importWorld"
             @show-all="showHideAll('show')"
-            @toggle-help-text="toggleHelp()"
             @update-factories="updateFactoriesList"
           />
         </v-container>
@@ -60,18 +56,17 @@
         <planner-factory-placeholder-list />
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
-        <statistics v-if="getFactories().length !== 0" :factories="getFactories()" :help-text="helpText" />
+        <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
         <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
              is evenly spaced however many of them are showing. -->
         <statistics-factory-summary
           v-if="getFactories().length !== 0"
           :class="{ 'mb-4': !usesDimensionalDepot }"
           :factories="getFactories()"
-          :help-text="helpText"
         />
         <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
              permanent advert for a feature the satisfaction table already offers in place. -->
-        <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" :help-text="helpText" />
+        <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
         <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
           <!-- A plan that has never used groups is one Ungrouped section, and a band over the
                whole plan says nothing — so it only appears once there is something to divide. -->
@@ -104,7 +99,6 @@
             >
               <planner-factory
                 :factory="factory"
-                :help-text="helpText"
                 :total-factories="getFactories().length"
               />
             </div>
@@ -183,7 +177,6 @@
   const toggleSection = (section: FactoryGroupSection) => toggleCollapsed(section.group?.id ?? null)
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
-  const helpText = ref(localStorage.getItem('helpText') === 'true')
 
   // Cheap: a key count on a map that is empty for every plan that does not use the feature, so
   // this does not walk the parts of every factory on each render.
@@ -386,10 +379,6 @@
   // #############s
 
   // ==== WATCHES
-  watch(helpText, newValue => {
-    localStorage.setItem('helpText', JSON.stringify(newValue))
-  })
-
   watch(showSidebar, newValue => {
     localStorage.setItem('sidebarOpen', JSON.stringify(newValue))
     eventBus.emit('sidebarChanged', newValue)
@@ -570,6 +559,7 @@
     // Remove GameSync data from the new factory
     newFactory.syncState = {}
     newFactory.syncStatePower = {}
+    newFactory.syncStateCustomBuildings = {}
     newFactory.inSync = null
 
     // The clone inherits the original's exports, but the importers are still buying from
@@ -627,10 +617,6 @@
 
   const showHideAll = (mode: 'show' | 'hide') => {
     getFactories().forEach(factory => factory.hidden = mode === 'hide')
-  }
-
-  const toggleHelp = () => {
-    helpText.value = !helpText.value
   }
 
   // `subsection` may name a row that isn't on screen (a status chip jumping to the product that

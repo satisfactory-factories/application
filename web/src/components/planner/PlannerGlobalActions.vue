@@ -30,17 +30,6 @@
           Expand all
         </v-btn>
       </tooltip>
-      <tooltip :text="helpTextShown ? 'Hide the explanatory notes dotted through the planner.' : 'Show an explanatory note on each section of the planner, saying what it is for.'">
-        <v-btn
-          class="ma-1"
-          color="blue"
-          prepend-icon="fas fa-info-circle"
-          variant="tonal"
-          @click="emit('toggle-help-text')"
-        >
-          {{ helpTextShown ? "Hide" : "Show" }} Info
-        </v-btn>
-      </tooltip>
       <!-- Flat while on, tonal while off: the label alone ("Full width" / "Normal width") says
            what the next click does, not what the planner is doing now, and this is the only
            button here that holds a state. -->
@@ -155,12 +144,9 @@
     return 'Recalculate every factory from scratch. Slow enough on a big plan that the browser will complain, so it asks first — only worth it if a number looks wrong.'
   })
 
-  defineProps<{ helpTextShown: boolean }>()
-
   const emit = defineEmits<{
     (event: 'hide-all'): void;
     (event: 'show-all'): void;
-    (event: 'toggle-help-text'): void;
     (event: 'import-world'): void;
     (event: 'clear-all'): void;
   }>()

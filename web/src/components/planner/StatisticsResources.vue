@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
-    <h4 class="text-h4">
-      <i class="fas fa-globe" />
-      <span class="ml-3">Raw Resources</span>
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><i class="fas fa-globe section-icon" /></span>Raw Resources
     </h4>
     <v-chip
       v-if="allFactoryRawResources.length > 0"
@@ -22,10 +21,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows how much of each raw resource your plan takes out of
-      the world: everything your factories mine, pump or extract.
-    </p>
     <v-table v-if="allFactoryRawResources.length > 0" id="stats-raw-resources" class="stats-table" density="compact">
       <thead>
         <tr>
@@ -82,7 +77,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Everything the plan takes out of the world, per resource, with the factories doing the taking.
@@ -98,6 +92,11 @@
 </script>
 
 <style lang="scss" scoped>
+// Matches the raw-resource chips below it (see sf-chip's .cyan/.raw-resource rule).
+.section-icon {
+  color: var(--sf-raw-resource);
+}
+
 .stats-table {
   background-color: transparent;
 

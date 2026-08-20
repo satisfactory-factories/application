@@ -2,12 +2,24 @@
   <div id="statistics-mercer-spheres" class="d-flex align-center">
     <!-- Each icon next to the words it belongs to, rather than both stacked in front of the title
          where neither says which is which. -->
-    <h4 class="text-h4 d-flex align-center ga-1 flex-wrap">
-      <game-asset height="32" subject="power-shard" type="item_id" width="32" />
-      <span class="ml-2 mr-2">Power Shards,</span>
-      <game-asset height="32" subject="somersloop" type="item_id" width="32" />
-      <span class="ml-2 mr-2">Somersloops &amp;</span>
-      <game-asset height="32" subject="mercer-sphere" type="item_id" width="32" />
+    <h4 class="text-h4 d-flex align-center flex-wrap">
+      <span class="stats-heading-icon"><game-asset height="32" subject="power-shard" type="item_id" width="32" /></span>
+      <span class="shards-label">Power Shards,</span>
+      <game-asset
+        class="ml-2"
+        height="32"
+        subject="somersloop"
+        type="item_id"
+        width="32"
+      />
+      <span class="ml-2 sloops-label">Somersloops &amp;</span>
+      <game-asset
+        class="ml-2"
+        height="32"
+        subject="mercer-sphere"
+        type="item_id"
+        width="32"
+      />
       <span class="ml-2 mercer-label">Mercer Spheres</span>
     </h4>
     <v-chip
@@ -36,11 +48,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows which factories use Power Shards and Somersloops in their building
-      groups, and which spend Mercer Spheres on Dimensional Depot Uploaders. The MAM research the Depot
-      costs is listed too, and can be counted in or left out.
-    </p>
     <v-row id="stats-shards-sloops" class="mt-1">
       <v-col
         v-for="section in sections"
@@ -171,7 +178,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
@@ -325,9 +331,16 @@
 </script>
 
 <style lang="scss" scoped>
-// The Mercer Sphere's own colour (see sfColors.dimensionalDepot in colors.ts — sampled from the
-// item artwork itself), matching the Dimensional Depot section's accent everywhere else it
-// appears.
+// Matches the summary chips' own colours (chipClass 'yellow' / 'somersloop' / 'dimensional-depot'
+// above), so each name is the colour of the thing it counts.
+.shards-label {
+  color: var(--sf-yellow);
+}
+
+.sloops-label {
+  color: var(--sf-somersloop);
+}
+
 .mercer-label {
   color: var(--sf-dimensional-depot);
 }

@@ -25,7 +25,7 @@ describe('Component: PlannerFactory (collapsed view)', () => {
   const mountSubject = (): VueWrapper => {
     calculateFactories([factory], gameData)
     return mount(PlannerFactory, {
-      propsData: { factory, helpText: false, totalFactories: 1 },
+      propsData: { factory, totalFactories: 1 },
       global: {
         plugins: [vuetify],
         provide: {

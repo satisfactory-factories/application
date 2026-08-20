@@ -24,6 +24,8 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculateGridBoost, calculatePowerProducers } from '@/utils/factory-management/power'
+import { calculateCustomBuildings } from '@/utils/factory-management/custom-buildings'
+import { calculateBuildingMaterialCosts } from '@/utils/factory-management/building-costs'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { applyDiff } from '@/utils/factory-management/commit'
 import { toRaw } from 'vue'
@@ -87,10 +89,12 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     products: [],
     byProducts: [],
     powerProducers: [],
+    customBuildings: [],
     inputs: [],
     previousInputs: [],
     parts: {},
     buildingRequirements: {} as { [p: string]: BuildingRequirement },
+    buildingMaterialCosts: {},
     dependencies: {
       requests: {},
       metrics: {},
@@ -106,6 +110,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     inSync: null,
     syncState: {},
     syncStatePower: {},
+    syncStateCustomBuildings: {},
     displayOrder: order ?? -1, // this will get set by the planner
     tasks: [],
     notes: '',
@@ -162,6 +167,10 @@ const calculateFactoryEngine = (
 
   // Calculate the generation of power for the factory
   calculatePowerProducers(factory, gameData)
+
+  // Calculate what the factory's custom buildings (portals, stations et al) draw and consume.
+  // Must run before the parts pass, which turns their upkeep into demand.
+  calculateCustomBuildings(factory, gameData)
 
   // Calculate the amount of buildings and power required to make the factory and any power generation.
   calculateFactoryBuildingsAndPower(factory, gameData)
@@ -242,6 +251,10 @@ const calculateFactoryEngine = (
   }
 
   calculateFinalBuildingsAndPower(factory)
+
+  // The material cost report for Power & Buildings' "Material Costs" panel. Reads the building
+  // counts calculateFinalBuildingsAndPower just finalized, so it must run after it.
+  calculateBuildingMaterialCosts(factory, gameData)
 
   // Alien Power Augmenters boost the whole grid, so their MW contribution depends on
   // every factory's generation — recompute the plan-wide boost now totals are known.

@@ -15,7 +15,7 @@
              never fires. (A native `title` never worked here either — SVG ignores the
              attribute.) The drag handle class stays on the icon, which is what Sortable grabs. -->
         <span
-          v-if="group"
+          v-if="group && dragEnabled"
           class="d-inline-flex align-center"
           data-hover-tooltip="Drag to reorder group"
         >
@@ -187,6 +187,7 @@
     <draggable
       class="group-body"
       :class="{ collapsed }"
+      :disabled="!dragEnabled"
       :group="{ name: 'sidebar-factories' }"
       item-key="id"
       :model-value="rows"
@@ -276,7 +277,9 @@
   }>()
 
   const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
-  const { draggingFactory } = useFactoryDrag()
+  // dragEnabled is off wherever the pointer is coarse: a row here has no drag handle, so on a
+  // touchscreen the whole row was a drag target and the sidebar could not be scrolled past one.
+  const { draggingFactory, dragEnabled } = useFactoryDrag()
   const { isCollapsed, isMounted, toggleCollapsed } = useGroupCollapse()
 
   const group = computed(() => props.section.group)

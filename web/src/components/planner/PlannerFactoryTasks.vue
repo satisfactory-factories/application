@@ -83,7 +83,6 @@
 
   const props = defineProps <{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const newTask = ref('')

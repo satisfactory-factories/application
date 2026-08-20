@@ -226,9 +226,16 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
       // red because coal is raw, while a Fuel Generator with no fuel stayed green - and a nuclear
       // plant short of rods or water said nothing at all. A generator with no fuel is as broken as
       // a factory with no ore, whichever list the part happens to be on.
-      const fuels = new Set(factory.powerProducers.flatMap(
-        producer => (producer.ingredients ?? []).map(ingredient => ingredient.part)
-      ))
+      // Custom building upkeep (a Portal's Singularity Cells) is in here for the same reason: a
+      // portal room has no products at all, so without this its cells could never read as short.
+      const fuels = new Set([
+        ...factory.powerProducers.flatMap(
+          producer => (producer.ingredients ?? []).map(ingredient => ingredient.part)
+        ),
+        ...(factory.customBuildings ?? []).flatMap(
+          customBuilding => (customBuilding.ingredients ?? []).map(ingredient => ingredient.part)
+        ),
+      ])
 
       return nonEmpty(subjects([
         ...(hasNoProducts(factory) ? short(false).filter(part => fuels.has(part)) : short(false)),
