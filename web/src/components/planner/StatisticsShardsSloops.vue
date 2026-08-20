@@ -8,7 +8,7 @@
       <game-asset height="32" subject="somersloop" type="item_id" width="32" />
       <span class="ml-2 mr-2">Somersloops &amp;</span>
       <game-asset height="32" subject="mercer-sphere" type="item_id" width="32" />
-      <span class="ml-2">Mercer Spheres</span>
+      <span class="ml-2 mercer-label">Mercer Spheres</span>
     </h4>
     <v-chip
       v-for="(section, index) in summarySections"
@@ -325,6 +325,13 @@
 </script>
 
 <style lang="scss" scoped>
+// The Mercer Sphere's own colour (see sfColors.dimensionalDepot in colors.ts — sampled from the
+// item artwork itself), matching the Dimensional Depot section's accent everywhere else it
+// appears.
+.mercer-label {
+  color: var(--sf-dimensional-depot);
+}
+
 .usage-block {
   max-width: 420px;
 }
