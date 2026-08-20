@@ -12,7 +12,7 @@
           <v-col class="d-flex align-center flex-wrap ga-2 flex-grow-1">
             <span class="text-h4 d-flex align-center">
               <game-asset height="36" subject="dimensional-depot" type="item_id" width="36" />
-              <span class="ml-3">Dimensional Depot</span>
+              <span class="ml-3 depot-title">Dimensional Depot</span>
             </span>
             <v-chip id="depot-items-summary" class="sf-chip small dimensional-depot no-margin" variant="tonal">
               <i class="fas fa-box" />
@@ -277,6 +277,12 @@
 .depot-header {
   background-color: var(--sf-dimensional-depot-panel-bg) !important;
   border-bottom: 2px solid var(--sf-dimensional-depot-panel-border) !important;
+}
+
+// The title itself was the one thing on this header still reading as plain white — everything
+// beside it (the chips, the panel it sits on) already wears the Depot's own violet.
+.depot-title {
+  color: var(--sf-dimensional-depot);
 }
 
 // Styled as this section's own chips: violet text and border from .sf-chip, plus the translucent
