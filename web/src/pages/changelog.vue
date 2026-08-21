@@ -311,6 +311,22 @@
           max-width="1200"
           src="/assets/changelog/beta6/statistics-power-by-factory.png"
         />
+        <h3 class="mt-4">Raw Resources</h3>
+        <p><b>Raw Resources now says how much of the world your plan is using.</b> A plan can balance perfectly and still be unbuildable — the planner only ever checked whether your factories add up, never whether the ground holds enough to begin with.</p>
+        <v-img
+          alt="The Raw Resources table showing extraction against world capacity and nodes used against nodes available"
+          max-width="1200"
+          src="/assets/changelog/beta6/raw-resource-utilisation.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li><b>Extraction</b> gets a bar against each ceiling: what every node gives unclocked, and what the same nodes give at the 250% cap. 6.7k of 5k Crude Oil on the first and 6.7k of 12.6k on the second is exactly what "needs power shards" looks like. The extractor those ceilings assume is named by its own icon.</li>
+          <li><b>Nodes</b> is how many extractors your plan places against how many exist to stand on. Purity is picked per building group, so nothing used to stop a plan putting 24 Raw Quartz miners on a map holding 17 quartz nodes.</li>
+          <li>Every bar is green while there is room, amber from 60%, red from 80%, with its figures and its share of the ceiling sat underneath it in the same colour. What is wrong with a resource is a chip beside its name.</li>
+          <li>Over the unclocked ceiling your plan needs power shards, and says so. Over the 250% one, the resource simply is not on the map in that quantity.</li>
+          <li><b>You are told where the rest could come from.</b> Most resources have a Converter recipe behind them, so a plan short of Uranium is pointed at Uranium Ore (Convert: Bauxite). Crude Oil and SAM have no synthesis route at all, so for those the map's total is final.</li>
+          <li>The Raw Resources and Statistics headers both carry a count of what is beyond the map, so a collapsed section still tells you.</li>
+          <li>Water is exempt — an extractor sits on open water rather than a node, so the only thing capping it is how much water you have room to build on, which no plan gets near. Figures assume the default vanilla world; 1.2's randomised worlds and resource-rich game modes deal different node counts.</li>
+        </ul>
 
         <v-divider class="subsection" />
 

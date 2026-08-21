@@ -269,7 +269,7 @@ function getRawResources(data: any[]): { [key: string]: ParserRawResource } {
         "OreUranium": 2100,
         "RawQuartz": 13500,
         "SAM": 10200,
-        "Stone": 69900,
+        "Stone": 69300,
         "Sulfur": 10800,
         "Water": 9007199254740991,
     };
