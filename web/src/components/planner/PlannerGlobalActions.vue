@@ -187,6 +187,10 @@
       plannerVersion: getCurrentTab()?.plannerVersion,
       // The only group state the factories don't carry themselves.
       groups: getCurrentTab()?.groups,
+      // Describes the save the plan is written against, not the browser, so it travels with the
+      // plan. Absent means fully researched, so dropping these would rewrite the plan's capacity.
+      depotUploadTier: getCurrentTab()?.depotUploadTier,
+      depotExpansionTier: getCurrentTab()?.depotExpansionTier,
     })
     navigator.clipboard.writeText(plan)
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
@@ -210,6 +214,9 @@
             // A blob from before groups existed has none, so anything here belongs to the plan
             // being replaced.
             delete tab.groups
+            // Same for the Depot tiers: a bare-array blob predates them entirely.
+            delete tab.depotUploadTier
+            delete tab.depotExpansionTier
           }
         }
 
@@ -231,6 +238,12 @@
               // the factories cannot take memberless groups with it, so anything left here
               // belongs to the plan being replaced.
               tab.groups = parsedPlan.groups
+              // Assigned unconditionally for the same reason. A blob written before these
+              // existed means "not stated", which reads as fully researched — inheriting the
+              // outgoing tab's tiers instead would silently size the pasted plan against
+              // somebody else's save.
+              tab.depotUploadTier = parsedPlan.depotUploadTier
+              tab.depotExpansionTier = parsedPlan.depotExpansionTier
             }
           }
           prepareLoader(factoriesToLoad)

@@ -319,6 +319,12 @@
                       :class="differenceClass(factory.parts[part.id].amountRemaining)"
                     >
                       (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                    <!-- A sunk part balances to zero, so without this a factory throwing 100/min
+                         into a sink reads identically to one that produces exactly what it ships. -->
+                    <span
+                      v-if="(factory.parts[part.id].amountRequiredSink ?? 0) > 0"
+                      class="ml-2 text-awesome-sink"
+                    >({{ formatNumber(factory.parts[part.id].amountRequiredSink ?? 0) }}/min sunk)</span>
                   </v-chip>
                 </template>
                 <!-- Power generators produce as surely as products do, and a factory made only of
