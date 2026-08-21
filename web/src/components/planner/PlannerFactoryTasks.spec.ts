@@ -12,7 +12,7 @@ describe('Component: PlannerFactoryTasks', () => {
 
   const mountSubject = () =>
     mount(PlannerFactoryTasks, {
-      propsData: { factory, helpText: false },
+      propsData: { factory },
       global: { plugins: [vuetify] },
     })
 

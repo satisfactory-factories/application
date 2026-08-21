@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
-    <h4 class="text-h4">
-      <i class="fas fa-building" />
-      <span class="ml-3">Building Summary</span>
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><i class="fas fa-building section-icon" /></span>Building Summary
     </h4>
     <v-chip
       v-if="totalBuildingCount > 0"
@@ -22,10 +21,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows the amount buildings of each
-      type in all your factories, and which factories they stand in.
-    </p>
     <v-table v-if="totalBuildingsByType.length > 0" id="stats-buildings" class="stats-table" density="compact">
       <thead>
         <tr>
@@ -78,7 +73,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const totalBuildingsByType = computed(() => calculateTotalBuildingsByType(props.factories))
@@ -88,14 +82,19 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
-  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
-  const hidden = ref<boolean>(localStorage.getItem('statisticsBuildingSummaryHidden') === 'true')
+  // Section visibility, persisted. Hidden by default until explicitly shown.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsBuildingSummaryHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsBuildingSummaryHidden', value.toString())
   })
 </script>
 
 <style lang="scss" scoped>
+// Matches the `building` chip colour used below (and throughout the app for buildings).
+.section-icon {
+  color: var(--sf-building);
+}
+
 .stats-table {
   background-color: transparent;
 

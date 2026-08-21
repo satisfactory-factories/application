@@ -39,6 +39,7 @@ export const palette = {
   teal: '#26a69a',
   pink: '#ec407a',
   indigo: '#5c6bc0',
+  tan: '#d19249',
   lime: '#c0ca33',
   offWhite: '#eceff1',
   offWhiteBorder: '#8d9499',
@@ -66,7 +67,10 @@ export const sfColors = {
   product: { color: palette.blue, border: palette.blueBorder },
   byproduct: { color: palette.cyan, border: palette.cyanBorder },
   rawResource: { color: palette.beige, border: palette.beigeBorder },
-  building: { color: palette.orange, border: palette.orangeBorder },
+  // Tan, matching the colour the game paints its buildings. A blue was tried first, on the
+  // grounds that orange is this planner's busiest colour, but it read as unrelated to the
+  // building it labelled. Muted enough not to be mistaken for `statusWarning`'s brighter amber.
+  building: { color: palette.tan, border: palette.tan },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
   // A setting on a building group rather than something that flows through it: the node
@@ -77,7 +81,9 @@ export const sfColors = {
   // Power (these were the most inconsistent — the power table used bespoke hexes
   // that no chip matched). One definition each, now shared.
   powerConsumption: { color: '#e59344', border: '#e59344' },
-  powerGeneration: { color: '#9e9e9e', border: '#9e9e9e' },
+  // Sky blue, not the grey it used to be: grey on a dark card read as a disabled control, and
+  // the generator row sitting next to consumption's orange wanted a cool colour anyway.
+  powerGeneration: { color: palette.lightBlue, border: palette.lightBlue },
   circuitBoost: { color: '#9f6d9f', border: '#9f6d9f' },
   peakConsumption: { color: '#5cb0c5', border: '#5cb0c5' },
 

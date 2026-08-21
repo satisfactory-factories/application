@@ -293,11 +293,6 @@
           </v-col>
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
-            Hover over a chip for the full details.
-          </p>
-
           <!-- The counts in the header double as filters. Said out loud because a chip that is
                also a button looks exactly like a chip that is not. -->
           <p v-if="statusTally.length" class="filter-hint mb-4">
@@ -395,7 +390,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   /**
@@ -407,7 +401,7 @@
    * group's breakdown re-filtered the planner's section and closing it made that section rebuild
    * every row.
    */
-  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') === 'true')
+  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') !== 'false')
   const expanded = ref<boolean>(false)
   // Whether the fullscreen panel has finished animating in. Its rows wait for this.
   const dialogOpened = ref<boolean>(false)

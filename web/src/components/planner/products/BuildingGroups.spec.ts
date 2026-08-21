@@ -31,7 +31,6 @@ const mountComponent = (factory: Factory, component: any) => {
   return mount(component, {
     propsData: {
       factory,
-      helpText: false,
     },
     global: {
       plugins: [vuetify],

@@ -111,7 +111,11 @@
       @create-factory="createFactory"
     />
 
+    <!-- Off entirely where the pointer is coarse: the drag gesture is the scroll gesture on a
+         touchscreen, so every attempt to scroll the tray reordered the plan instead. The Arrange
+         dialog below is what does this there. -->
     <draggable
+      :disabled="!dragEnabled"
       :group="{ name: 'sidebar-groups' }"
       handle=".group-drag-handle"
       item-key="id"
@@ -132,6 +136,7 @@
   </div>
 
   <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-arrange-dialog v-model="arrangeOpen" />
   <factory-group-bulk-dialog v-model="bulkGroupOpen" />
   <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
 
@@ -163,6 +168,20 @@
             Group
           </v-btn>
         </tooltip>
+        <tooltip :text="factories.length === 0 ? 'Nothing to arrange yet — add a factory first.' : 'Reorder groups and factories, and move factories between groups, with buttons instead of dragging.'">
+          <v-btn
+            class="arrange-btn"
+            color="secondary"
+            :disabled="factories.length === 0"
+            prepend-icon="fas fa-sort"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="arrangeOpen = true"
+          >
+            Arrange
+          </v-btn>
+        </tooltip>
         <tooltip :text="factories.length === 0 ? 'Nothing to group yet — add a factory first.' : 'Rename, reorder and recolour every group at once, and move factories between them.'">
           <v-btn
             class="bulk-group-btn"
@@ -192,6 +211,7 @@
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
+  import FactoryArrangeDialog from '@/components/planner/groups/FactoryArrangeDialog.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
   import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
   import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
@@ -232,12 +252,13 @@
 
   // Held for the duration of a group drag so a sidebar that is only peeked out doesn't collapse
   // out from under the group being dragged. See Planner.vue's peekLocked.
-  const { draggingGroup } = useFactoryDrag()
+  const { draggingGroup, dragEnabled } = useFactoryDrag()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
 
   const createGroupOpen = ref(false)
+  const arrangeOpen = ref(false)
   const bulkGroupOpen = ref(false)
   const deleteGroupOpen = ref(false)
   const groupPendingDelete = ref<FactoryGroup | null>(null)
