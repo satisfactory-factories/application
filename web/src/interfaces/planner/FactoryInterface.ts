@@ -1,6 +1,7 @@
 // noinspection DuplicatedCode
 // Duplicated by backend
 import { NodePurity, PowerItem } from '@/interfaces/Recipes'
+import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
@@ -340,6 +341,10 @@ export interface FactoryTab {
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];
+  // The player's world, read from a .sav. Absent means the plan is being measured against the
+  // vanilla map with everything unlocked, which is what the planner assumed before this existed.
+  // Versioned: a snapshot from an older format is dropped rather than migrated.
+  world?: WorldSnapshot;
   // The planner version this plan has been reconciled with.
   //
   // It records that the user has ANSWERED for this plan, not that the plan is correct: it is

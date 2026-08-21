@@ -38,3 +38,4 @@
 - [Changelog: no word salad](changelog-no-word-salad.md) — release copy states the change and stops; reasons belong in commits, not the changelog
 - [Building group balance tolerance](building-group-balance-tolerance.md) — balanced is a percentage of the item's demand with a ceiling, and changing it has to force a recalc
 - [Input debounce window](input-debounce-window.md) — the timer does reset per keystroke; the 250ms window is just shorter than typing, and reverse-solving inputs compound partial values
+- [Game save format](game-save-format.md) — reading a 1.2 .sav; a save is a diff not a snapshot, and the ways a wrong parse stays silent

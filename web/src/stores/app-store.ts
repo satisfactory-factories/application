@@ -1,6 +1,7 @@
 // Utilities
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
+import { isCurrentSnapshot } from '@/utils/game-save/world-snapshot'
 import { ref, toRaw, watch } from 'vue'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -862,6 +863,9 @@ export const useAppStore = defineStore('app', () => {
         tab.powerTarget = data.powerTarget
         tab.groups = data.groups
         tab.plannerVersion = data.plannerVersion
+        // The world describes the plan, not this browser, so it travels with it. A snapshot
+        // written by an older format is dropped here rather than migrated.
+        tab.world = isCurrentSnapshot(data.world) ? data.world : undefined
       }
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
       // are the user's own and its ledger means what it says. A forced recalculation treats
@@ -888,6 +892,7 @@ export const useAppStore = defineStore('app', () => {
       factories = [],
       powerTarget,
       groups,
+      world,
     } = tab
 
     factoryTabs.value.push({
@@ -900,6 +905,8 @@ export const useAppStore = defineStore('app', () => {
       // And its memberless groups, which are the only ones no factory carries — a share link
       // that dropped them would arrive missing folders the sender could see.
       groups,
+      // And the world the plan was measured against, for the same reason.
+      world,
       // Same for the answer to the raw-resources change. `in` was meant to spot an imported plan
       // carrying no version, but it cannot: JSON.stringify drops an undefined key, so a genuine
       // pre-v0.6 plan arrives through a share link or the clipboard with the key simply absent

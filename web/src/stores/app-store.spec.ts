@@ -10,6 +10,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
+import { newWorldSnapshot } from '@/utils/game-save/world-snapshot'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 
@@ -768,6 +769,37 @@ describe('app-store', () => {
 
     // The name is part of the plan and travels with it; the id is local state this machine keys
     // its tabs by, so it stays put.
+    // The world is a fact about the plan, so it has to survive a restore. loadServerPlan copies
+    // tab-level fields one by one, and a field missed there is lost in silence.
+    it('restores the world the plan was measured against', () => {
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [],
+        world: { ...newWorldSnapshot(), saveName: 'My World' },
+      })
+
+      expect(appStore.getCurrentTab()?.world?.saveName).toBe('My World')
+    })
+
+    // Re-reading the save is cheap and always right; a half-understood snapshot is not.
+    it('drops a world written by an older snapshot format rather than migrating it', () => {
+      appStore.loadServerPlan({
+        id: 'from-the-server',
+        name: 'My Plan',
+        factories: [],
+        world: { ...newWorldSnapshot(), version: 0 },
+      })
+
+      expect(appStore.getCurrentTab()?.world).toBeUndefined()
+    })
+
+    it('leaves a plan saved without a world with none', () => {
+      appStore.loadServerPlan({ id: 'x', name: 'No world', factories: [] })
+
+      expect(appStore.getCurrentTab()?.world).toBeUndefined()
+    })
+
     it('restores the name the plan was saved under, keeping the local tab id', () => {
       const before = appStore.getCurrentTab()?.id
 
