@@ -39,6 +39,27 @@ So a snapshot is a **patch over the baseline node table**, never a replacement, 
 must be stored separately from the purity split (`NodeTally.total` vs `NodeTally.purity`).
 Folding them together drops every node whose purity the save left alone.
 
+**Purity is not recoverable from a vanilla save, and geyser purity never is.** Proven by
+comparing `vanilla.sav` with `vanilla-all-pure.sav`, which are the same map with every node
+forced pure: all 459 node actors are byte-identical in transform and in `mResourcesLeft`, and a
+vanilla node's whole data block is one `mResourcesLeft` property. The purity data is created by
+the override; without one there is nothing to read. Geysers go further - 31 on every map, zero
+properties, and `NPS_AllPure` rewrites all 577 nodes and satellites while leaving them alone. So
+vanilla purity and all geyser purity are baseline-table facts, permanently.
+
+**Randomisation presets redistribute well satellites, so a save cannot referee the vanilla well
+split.** `NRM_Strict` preserves all eleven solid node counts exactly (that half *is*
+save-verifiable) but still moves satellites between resources. Measured: vanilla is Water 55 /
+Nitrogen 45 / Oil 18, while Strict reads 55/42/21, fossil 58/41/19 and advanced 54/44/20. All
+sum to 118. Trusting a Strict save here would have "corrected" a table that was already right.
+
+The vanilla figures, confirmed against the community map and consistent with every save's object
+census: 459 solid nodes, 118 satellites (Water 7/12/36, Nitrogen 2/7/36, Oil 8/6/4) and 31
+geysers (9/13/9).
+
+**`BP_ResourceNodeGeyser` starts with `BP_ResourceNode`.** Match on the trailing dot or every
+geyser is counted as a solid node and the census reads 490 instead of 459.
+
 **Two name traps that fail silently:**
 
 - Schematics are not all called `Schematic_*`. MAM research is `Research_*` and sink-shop

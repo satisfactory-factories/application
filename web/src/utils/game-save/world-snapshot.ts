@@ -92,6 +92,13 @@ export interface WorldSnapshot {
   hasNodeOverrides: boolean
   progression: WorldProgression
   recipes: WorldRecipes
+  /**
+   * Geothermal geysers. There are 31 on every 1.2 map and the count is directly observable, but
+   * the game never writes their purity - not even under NPS_AllPure, which rewrites all 577 nodes
+   * and satellites and leaves geysers alone. So `purity` here stays empty and the baseline table
+   * is the only source for the split.
+   */
+  geysers: NodeTally
   // Building classes the available recipes can construct.
   buildings: string[]
   extractors: WorldExtractor[]
@@ -111,6 +118,7 @@ export const newWorldSnapshot = (): WorldSnapshot => ({
   hasNodeOverrides: false,
   progression: { milestones: [], tiers: [], schematicsByFolder: {}, gamePhase: null },
   recipes: { alternates: [], standard: [] },
+  geysers: { total: 0, purity: { impure: 0, normal: 0, pure: 0 } },
   buildings: [],
   extractors: [],
   objectCounts: {},

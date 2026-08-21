@@ -35,8 +35,9 @@ const NODE_REFERENCE = /PersistentLevel\.(BP_(?:ResourceNode|FrackingSatellite|F
 
 const SOLID_NODE = 'BP_ResourceNode'
 const WELL_SATELLITE = 'BP_FrackingSatellite'
+const GEYSER = 'BP_ResourceNodeGeyser'
 
-const CENSUS_CLASSES = [SOLID_NODE, WELL_SATELLITE, 'BP_FrackingCore', 'BP_ResourceNodeGeyser']
+const CENSUS_CLASSES = [SOLID_NODE, WELL_SATELLITE, 'BP_FrackingCore', GEYSER]
 
 /**
  * Build_X_C becomes x, matching the ids the parser writes into the game data. The two aliases and
@@ -65,10 +66,29 @@ export interface ExtractOptions {
 
 const classOf = (object: SaveObject): string => object.className.match(CLASS_NAME)?.[1] ?? object.className
 
+// `BP_ResourceNodeGeyser` starts with `BP_ResourceNode`, so the trailing dot is load-bearing:
+// without it every geyser is counted as a solid node and the census reads 490 instead of 459.
 const nodeKind = (object: SaveObject): 'nodes' | 'wells' | null => {
   if (object.className.includes(`${SOLID_NODE}.`)) return 'nodes'
   if (object.className.includes(`${WELL_SATELLITE}.`)) return 'wells'
   return null
+}
+
+/**
+ * Geysers, counted from the actors themselves. Purity is read in case a future game version ever
+ * starts writing it, but on 1.2 it never does, so this reads as a total with an empty split.
+ */
+const readGeysers = (objects: SaveObject[]): NodeTally => {
+  const tally = emptyTally()
+
+  for (const object of objects) {
+    if (!object.className.includes(`${GEYSER}.`)) continue
+    tally.total++
+    const purity = readPurityOverride(asText(object.data))
+    if (purity) tally.purity[purity]++
+  }
+
+  return tally
 }
 
 const emptyTally = (): NodeTally => ({ total: 0, purity: emptyPurityCounts() })
@@ -218,6 +238,7 @@ export const extractWorld = (parsed: ParsedSave, options: ExtractOptions = {}): 
     hasNodeOverrides: resourceOverrides > 0 || purityOverrides > 0,
     progression: readProgression(objects),
     recipes,
+    geysers: readGeysers(objects),
     buildings: buildings.sort(),
     extractors: readExtractors(objects),
     objectCounts: readCensus(objects),
