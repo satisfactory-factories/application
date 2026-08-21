@@ -108,13 +108,15 @@ describe('checklist', () => {
       product.amount = 99
       expect(isProductChecklistDesynced(product)).toBe(true)
 
-      // Unchecking hides the flag (nothing checked, nothing to desync) without touching the baseline.
+      // Clicking a desynced item re-baselines it in place: it stays ticked, not "unbuilt". A click
+      // here used to uncheck it, which read as unbuilding something the player already confirmed.
       toggleChecklistProduct(factory, product)
+      expect(product.completed).toBe(true)
       expect(isProductChecklistDesynced(product)).toBe(false)
 
-      // Re-checking re-baselines against the new amount — the "check and uncheck to acknowledge" path.
+      // Once it reads as in sync again, a click behaves like any other tick and genuinely unchecks it.
       toggleChecklistProduct(factory, product)
-      expect(isProductChecklistDesynced(product)).toBe(false)
+      expect(product.completed).toBe(false)
     })
 
     it('toggleChecklistInput and toggleChecklistPowerProducer follow the same rule', () => {
@@ -338,10 +340,63 @@ describe('checklist', () => {
       provider.products[0].amount = 250
       expect(checklistSummaryState(provider)).toBe('desynced')
 
-      toggleChecklistProduct(provider, provider.products[0])
+      // One click re-acknowledges a desynced item now, not the old check-and-uncheck dance.
       toggleChecklistProduct(provider, provider.products[0])
 
       expect(checklistSummaryState(provider)).toBe('complete')
+    })
+  })
+
+  // Re-acknowledging the last desynced checklist item is, in effect, the player reviewing the
+  // whole plan by hand — the same thing clicking the "Out of sync with game" chip does. This
+  // should only ever opt a factory back IN, never opt one in that never asked for game-sync
+  // tracking in the first place (inSync === null).
+  describe('re-acknowledging a desync reconciles game sync state', () => {
+    it('flips an out-of-sync factory back to in sync once its last checklist desync clears', () => {
+      const factory = newFactory('Provider', 0, 1)
+      factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+      toggleChecklistProduct(factory, factory.products[0])
+
+      factory.inSync = false
+      factory.products[0].amount = 150
+      expect(isProductChecklistDesynced(factory.products[0])).toBe(true)
+
+      toggleChecklistProduct(factory, factory.products[0])
+
+      expect(isProductChecklistDesynced(factory.products[0])).toBe(false)
+      expect(factory.inSync).toBe(true)
+    })
+
+    it('leaves a factory that never opted into game sync alone (inSync stays null)', () => {
+      const factory = newFactory('Provider', 0, 1)
+      factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+      toggleChecklistProduct(factory, factory.products[0])
+
+      factory.products[0].amount = 150
+      toggleChecklistProduct(factory, factory.products[0])
+
+      expect(factory.inSync).toBeNull()
+    })
+
+    it('does not flip an out-of-sync factory back while another item is still desynced', () => {
+      const factory = newFactory('Provider', 0, 1)
+      factory.products.push(
+        { id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true },
+        { id: 'IronRod', recipe: 'IronRod', amount: 50, displayOrder: 1, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true }
+      )
+      toggleChecklistProduct(factory, factory.products[0])
+      toggleChecklistProduct(factory, factory.products[1])
+
+      factory.inSync = false
+      factory.products[0].amount = 150
+      factory.products[1].amount = 60
+
+      // Acknowledge only the first: the second is still desynced, so game sync should stay off.
+      toggleChecklistProduct(factory, factory.products[0])
+
+      expect(isProductChecklistDesynced(factory.products[0])).toBe(false)
+      expect(isProductChecklistDesynced(factory.products[1])).toBe(true)
+      expect(factory.inSync).toBe(false)
     })
   })
 })

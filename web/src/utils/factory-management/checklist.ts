@@ -20,6 +20,7 @@
 // item-level toggles: it makes ticking without dirtying impossible to write by accident.
 import { Factory, FactoryInput, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
+import { setSyncState } from '@/utils/factory-management/syncState'
 import eventBus from '@/utils/eventBus'
 
 export const checklistExportKey = (requestingFactoryId: number | string, part: string): string =>
@@ -40,6 +41,15 @@ export const toggleChecklistExport = (
   amount: number
 ): void => {
   const key = checklistExportKey(requestingFactoryId, part)
+  // A desynced export is already ticked: a click here is the player re-confirming the new amount,
+  // not un-building the infrastructure. Un-ticking it entirely needs a second, deliberate click
+  // once it reads as in sync again — same rule as the other three item types below.
+  if (isChecklistExportDesynced(factory, requestingFactoryId, part, amount)) {
+    factory.checklistExportSyncedAmounts[key] = amount
+    reconcileFactoryInSyncWithGame(factory)
+    eventBus.emit('factoryUpdated', factory)
+    return
+  }
   const nowComplete = !factory.checklistExports[key]
   factory.checklistExports[key] = nowComplete
   if (nowComplete) {
@@ -49,27 +59,55 @@ export const toggleChecklistExport = (
 }
 
 export const toggleChecklistProduct = (factory: Factory, product: FactoryItem): void => {
-  product.completed = !product.completed
-  if (product.completed) {
+  // A desynced product is already ticked: acknowledge the new amount in place rather than
+  // unchecking it, which read as "unbuilding" something the player already confirmed.
+  if (isProductChecklistDesynced(product)) {
     product.checklistSyncedAmount = product.amount
+    reconcileFactoryInSyncWithGame(factory)
+  } else {
+    product.completed = !product.completed
+    if (product.completed) {
+      product.checklistSyncedAmount = product.amount
+    }
   }
   eventBus.emit('factoryUpdated', factory)
 }
 
 export const toggleChecklistInput = (factory: Factory, input: FactoryInput): void => {
-  input.completed = !input.completed
-  if (input.completed) {
+  if (isInputChecklistDesynced(input)) {
     input.checklistSyncedAmount = input.amount
+    reconcileFactoryInSyncWithGame(factory)
+  } else {
+    input.completed = !input.completed
+    if (input.completed) {
+      input.checklistSyncedAmount = input.amount
+    }
   }
   eventBus.emit('factoryUpdated', factory)
 }
 
 export const toggleChecklistPowerProducer = (factory: Factory, producer: FactoryPowerProducer): void => {
-  producer.completed = !producer.completed
-  if (producer.completed) {
+  if (isPowerProducerChecklistDesynced(producer)) {
     producer.checklistSyncedAmount = producer.buildingAmount
+    reconcileFactoryInSyncWithGame(factory)
+  } else {
+    producer.completed = !producer.completed
+    if (producer.completed) {
+      producer.checklistSyncedAmount = producer.buildingAmount
+    }
   }
   eventBus.emit('factoryUpdated', factory)
+}
+
+// Re-acknowledging the last desynced item is, in effect, the player reviewing the whole plan by
+// hand — the same thing the "Out of sync with game" chip's click does. Automate that one case
+// rather than leaving the chip stuck on a stale warning once checklist mode has nothing left to
+// flag. Scoped to factories already known out of sync (not `null`, which means the player never
+// opted into game-sync tracking at all) so this never opts a factory in on their behalf.
+const reconcileFactoryInSyncWithGame = (factory: Factory): void => {
+  if (factory.inSync === false && !hasChecklistDesync(factory)) {
+    setSyncState(factory)
+  }
 }
 
 export const setChecklistEnabled = (factory: Factory, enabled: boolean): void => {

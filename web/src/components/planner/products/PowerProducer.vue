@@ -46,7 +46,7 @@
           :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
           :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
           type="checkbox"
-          @change="toggleChecklistPowerProducer(factory, producer)"
+          @click.prevent="toggleChecklistPowerProducer(factory, producer)"
         >
       </div>
       <div class="input-row d-flex align-center">
@@ -546,26 +546,15 @@
     }
 
     // Desynced: still checked, but the plan's number for this item moved since it was ticked.
-    // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
-    // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+    // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+    // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+    // second symbol crammed into an 18px box read worse than the empty box does.
     &.desynced:checked {
       background-color: var(--sf-status-warning-border);
       border-color: var(--sf-status-warning-border);
 
-      // Centered via flex rather than line-height: the box is border-box (Vuetify's global reset),
-      // so its padding box is inset from the visible edge by the border width. A fixed width/height
-      // measured against the visible box overshoots that padding box and pushes the glyph toward
-      // the bottom-right corner instead of the center.
       &::after {
-        align-items: center;
-        border-width: 0;
-        content: '?';
-        display: flex;
-        font-size: 14px;
-        font-weight: bold;
-        inset: 0;
-        justify-content: center;
-        transform: none;
+        content: none;
       }
     }
   }

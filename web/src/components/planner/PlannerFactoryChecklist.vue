@@ -42,7 +42,7 @@
               :class="{ desynced: isProductChecklistDesynced(product) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistProduct(factory, product)"
+              @click.prevent="toggleChecklistProduct(factory, product)"
             >
             <game-asset
               v-if="product.id"
@@ -65,7 +65,7 @@
               :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistPowerProducer(factory, producer)"
+              @click.prevent="toggleChecklistPowerProducer(factory, producer)"
             >
             <game-asset
               v-if="producer.building"
@@ -88,7 +88,7 @@
               :class="{ desynced: isInputChecklistDesynced(input) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistInput(factory, input)"
+              @click.prevent="toggleChecklistInput(factory, input)"
             >
             <game-asset
               v-if="input.outputPart"
@@ -98,10 +98,24 @@
               type="item"
               width="24"
             />
-            <span class="ml-2">
-              {{ getPartDisplayName(input.outputPart ?? '') }}
-              <span v-if="input.factoryId" class="text-grey-lighten-1">from {{ findFactory(input.factoryId).name }}</span>
-            </span>
+            <span class="ml-2">{{ getPartDisplayName(input.outputPart ?? '') }}</span>
+            <v-chip
+              v-if="input.factoryId"
+              class="sf-chip sf-chip-clickable small factory"
+              @click="navigateToFactory(input.factoryId)"
+            >
+              <factory-icon-display :icon="findFactory(input.factoryId).icon" size="20" />
+              <span class="ml-2">{{ findFactory(input.factoryId).name }}</span>
+              <v-btn
+                class="chip-jump-btn ml-2"
+                color="primary"
+                icon="fas fa-eye"
+                size="x-small"
+                title="Jump to this factory"
+                variant="flat"
+                @click.stop="navigateToFactory(input.factoryId)"
+              />
+            </v-chip>
             <v-chip v-if="isInputChecklistDesynced(input)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
           </div>
         </div>
@@ -118,7 +132,7 @@
               :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
+              @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
             >
             <game-asset
               clickable
@@ -127,10 +141,23 @@
               type="item"
               width="24"
             />
-            <span class="ml-2">
-              {{ getPartDisplayName(request.part) }}
-              <span class="text-grey-lighten-1">to {{ findFactory(request.requestingFactoryId).name }}</span>
-            </span>
+            <span class="ml-2">{{ getPartDisplayName(request.part) }}</span>
+            <v-chip
+              class="sf-chip sf-chip-clickable small factory"
+              @click="navigateToFactory(request.requestingFactoryId)"
+            >
+              <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
+              <span class="ml-2">{{ findFactory(request.requestingFactoryId).name }}</span>
+              <v-btn
+                class="chip-jump-btn ml-2"
+                color="primary"
+                icon="fas fa-eye"
+                size="x-small"
+                title="Jump to this factory"
+                variant="flat"
+                @click.stop="navigateToFactory(request.requestingFactoryId)"
+              />
+            </v-chip>
             <v-chip
               v-if="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
               class="sf-chip x-small status-warning no-margin"
@@ -170,6 +197,11 @@
   }>()
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string,
+    fallback?: string,
+  ) => void
 
   const totalCount = computed(() => countChecklistTotal(props.factory))
   const completedCount = computed(() => countChecklistCompleted(props.factory))
@@ -195,6 +227,17 @@
   align-items: center;
   padding: 4px 0;
   gap: 8px;
+}
+
+// Sits inside the factory chip, so it has to shed the icon button's circle and claw back the
+// chip's right padding to avoid looking bolted on. Mirrors .chip-jump-btn in
+// PlannerFactorySatisfactionItems.vue, which the export chip here is styled after.
+.chip-jump-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 4px !important;
+  margin-right: -4px;
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
@@ -231,26 +274,15 @@
   }
 
   // Desynced: still checked, but the plan's number for this item moved since it was ticked.
-  // Amber rather than red — the tick stays applied, this only flags it may be stale — and the
-  // tick mark itself becomes a question mark so it reads at a glance without the row's text.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+  // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+  // second symbol crammed into an 18px box read worse than the empty box does.
   &.desynced:checked {
     background-color: var(--sf-status-warning-border);
     border-color: var(--sf-status-warning-border);
 
-    // Centered via flex rather than line-height: the box is border-box (Vuetify's global reset),
-    // so its padding box is inset from the visible edge by the border width. A fixed width/height
-    // measured against the visible box overshoots that padding box and pushes the glyph toward
-    // the bottom-right corner instead of the center.
     &::after {
-      align-items: center;
-      border-width: 0;
-      content: '?';
-      display: flex;
-      font-size: 14px;
-      font-weight: bold;
-      inset: 0;
-      justify-content: center;
-      transform: none;
+      content: none;
     }
   }
 }
