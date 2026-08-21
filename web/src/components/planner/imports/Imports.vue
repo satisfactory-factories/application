@@ -521,18 +521,20 @@
       background-color: var(--sf-status-warning-border);
       border-color: var(--sf-status-warning-border);
 
+      // Centered via flex rather than line-height: the box is border-box (Vuetify's global reset),
+      // so its padding box is inset from the visible edge by the border width. A fixed width/height
+      // measured against the visible box overshoots that padding box and pushes the glyph toward
+      // the bottom-right corner instead of the center.
       &::after {
+        align-items: center;
         border-width: 0;
         content: '?';
-        font-size: 13px;
+        display: flex;
+        font-size: 14px;
         font-weight: bold;
-        height: 18px;
-        left: 0;
-        line-height: 18px;
-        text-align: center;
-        top: 0;
+        inset: 0;
+        justify-content: center;
         transform: none;
-        width: 18px;
       }
     }
   }
