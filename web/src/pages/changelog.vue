@@ -23,6 +23,46 @@
           </ul>
         </nav>
         <v-divider />
+        <h1>Beta v0.7 <span class="release-date">In development</span></h1>
+        <p>Buildings that produce nothing — portals, stations, lights — can now be planned like everything else.</p>
+        <nav v-if="sectionsOf('Beta v0.7').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.7')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
+
+        <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
+        <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
+        <v-img
+          alt="Ten Main Portals added to a factory as a custom building"
+          max-width="1200"
+          src="/assets/changelog/beta7/custom-buildings.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>They count towards the factory's power draw and its list of buildings to place.</li>
+          <li><b>The Main Portal eats Singularity Cells</b>, two a minute each. That is a demand like any other: import it, or the factory reads as short.</li>
+          <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
+        </ul>
+
+        <h2>🆕 <i class="fas fa-cubes ml-1" /><span class="ml-2">Material Costs</span></h2>
+        <p>Power &amp; Buildings now has a Material Costs panel: what it would cost, in parts, to build every production building, power generator and custom building in the factory. Closed by default; toggle it open to see the breakdown.</p>
+        <ul class="ml-6 mt-2">
+          <li>Each part lists its total quantity, and a chip per building that needs it, showing that building's image and how many of them.</li>
+          <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-sort ml-1" /><span class="ml-2">Arrange the plan without dragging</span></h2>
+        <p>The sidebar could not be scrolled on a phone. Picking a factory or a group up is the same gesture as scrolling the list, so a touch meant to scroll dragged the row instead. Dragging is now offered only where the pointer is precise enough for it.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Arrange</b> opens a dialog for reordering the plan with buttons: groups against each other, factories within their group, and factories from one group into another.</li>
+          <li>Groups can still be dragged in that dialog, and in the sidebar, wherever there is a pointer to drag with.</li>
+        </ul>
+
+        <v-divider />
         <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
         <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
         <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
@@ -616,7 +656,7 @@
           </li>
           <li>👍🔧 <b>TRIM and SATISFY buttons now take into account other imports of the same part</b>. Before, it would only check the import being trimmed / satisfied against the factory shortage / overflow, now it takes all other imports and calculates the difference.</li>
           <li>🔧 Imports no longer consider a factory a candidate if the source factory imports a raw resource which the destination factory needs.</li>
-          <li>🆕 Redundant imports (where a singular import can handle the demands) are now highlighted with <v-chip class="sf-chip small orange ma-0">
+          <li>🆕 Redundant imports (where a singular import can handle the demands) are now highlighted with <v-chip class="sf-chip small status-warning-outlined ma-0">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">Redundant!</span>
           </v-chip>. This way this mostly works is to not require re-balancing of imports, and if one import can do the job the others are marked as redundant.

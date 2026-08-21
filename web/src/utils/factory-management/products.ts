@@ -255,7 +255,9 @@ export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory
   if (!factory.parts[product.id]) {
     return false
   }
-  return factory.parts[product.id].amountRequiredProduction > 0 || factory.parts[product.id].amountRequiredPower > 0
+  return factory.parts[product.id].amountRequiredProduction > 0 ||
+    factory.parts[product.id].amountRequiredPower > 0 ||
+    (factory.parts[product.id].amountRequiredBuildings ?? 0) > 0
 }
 
 // Delegates so the product row and the noDemand status can never disagree about what "no demand"

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import * as factoryUtils from '@/utils/factory-management/factory'
+import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
@@ -849,6 +850,27 @@ describe('inputs', () => {
 
         expect(ingotFac.parts.LiquidFuel.amountRequiredPower).toBe(20)
         expect(calculateImportCapacity(1, plateFac, ingotFac)).toBe(80)
+      })
+
+      // The same rule as the two above, for the ledger's third demand field: a provider running
+      // its own portals has that much less to ship, and offering it would trim the importer to a
+      // number that turns the provider red.
+      it("should exclude what the provider's own custom buildings consume", () => {
+        addProductToFactory(ingotFac, {
+          id: 'SingularityCell',
+          amount: 30,
+          recipe: 'SingularityCell',
+        })
+        addCustomBuildingToFactory(ingotFac, { building: 'portal', amount: 5 })
+        addInputToFactory(plateFac, {
+          factoryId: ingotFac.id,
+          outputPart: 'SingularityCell',
+          amount: 30,
+        })
+        calculateFactories(factories, gameData)
+
+        expect(ingotFac.parts.SingularityCell.amountRequiredBuildings).toBe(10)
+        expect(calculateImportCapacity(1, plateFac, ingotFac)).toBe(20)
       })
 
       it('should exclude what the provider has already promised to other factories', () => {

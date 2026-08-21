@@ -11241,5 +11241,854 @@
                 "power": 2500
             }
         }
-    ]
+    ],
+    "customBuildings": [
+        {
+            "name": "resourcesink",
+            "displayName": "AWESOME Sink",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "ceilinglight",
+            "displayName": "Ceiling Light",
+            "power": 2,
+            "ingredients": []
+        },
+        {
+            "name": "dronestation",
+            "displayName": "Drone Port",
+            "power": 100,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightpole",
+            "displayName": "Flood Light Tower",
+            "power": 6,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstationliquid",
+            "displayName": "Fluid Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "fluidtruckstation",
+            "displayName": "Fluid Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstation",
+            "displayName": "Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "pipehyperstart",
+            "displayName": "Hypertube Entrance",
+            "power": 10,
+            "ingredients": []
+        },
+        {
+            "name": "jumppadadjustable",
+            "displayName": "Jump Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "portal",
+            "displayName": "Main Portal",
+            "power": 250,
+            "ingredients": [
+                {
+                    "part": "SingularityCell",
+                    "perMin": 2
+                }
+            ]
+        },
+        {
+            "name": "elevator",
+            "displayName": "Personnel Elevator",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepump",
+            "displayName": "Pipeline Pump Mk.1",
+            "power": 4,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepumpmk2",
+            "displayName": "Pipeline Pump Mk.2",
+            "power": 8,
+            "ingredients": []
+        },
+        {
+            "name": "radartower",
+            "displayName": "Radar Tower",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "portalsatellite",
+            "displayName": "Satellite Portal",
+            "power": 250,
+            "ingredients": []
+        },
+        {
+            "name": "streetlight",
+            "displayName": "Street Light",
+            "power": 1,
+            "ingredients": []
+        },
+        {
+            "name": "trainstation",
+            "displayName": "Train Station",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "truckstation",
+            "displayName": "Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "landingpad",
+            "displayName": "U-Jelly Landing Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightwall",
+            "displayName": "Wall-Mounted Flood Light",
+            "power": 6,
+            "ingredients": []
+        }
+    ],
+    "buildingCosts": {
+        "generatorbiomass": [
+            {
+                "part": "IronPlate",
+                "amount": 15
+            },
+            {
+                "part": "IronRod",
+                "amount": 15
+            },
+            {
+                "part": "Wire",
+                "amount": 25
+            }
+        ],
+        "minermk1": [
+            {
+                "part": "IronPlate",
+                "amount": 10
+            },
+            {
+                "part": "Cement",
+                "amount": 10
+            }
+        ],
+        "constructormk1": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 2
+            },
+            {
+                "part": "Cable",
+                "amount": 8
+            }
+        ],
+        "smeltermk1": [
+            {
+                "part": "IronRod",
+                "amount": 5
+            },
+            {
+                "part": "Wire",
+                "amount": 8
+            }
+        ],
+        "foundrymk1": [
+            {
+                "part": "ModularFrame",
+                "amount": 10
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            },
+            {
+                "part": "Cement",
+                "amount": 20
+            }
+        ],
+        "oilrefinery": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 30
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 20
+            }
+        ],
+        "oilpump": [
+            {
+                "part": "Motor",
+                "amount": 15
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 20
+            },
+            {
+                "part": "Cable",
+                "amount": 60
+            }
+        ],
+        "pipehyperstart": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 4
+            },
+            {
+                "part": "Rotor",
+                "amount": 4
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 10
+            }
+        ],
+        "generatorcoal": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 20
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            },
+            {
+                "part": "Cable",
+                "amount": 30
+            }
+        ],
+        "pipelinepump": [
+            {
+                "part": "CopperSheet",
+                "amount": 2
+            },
+            {
+                "part": "Rotor",
+                "amount": 2
+            }
+        ],
+        "waterpump": [
+            {
+                "part": "CopperSheet",
+                "amount": 20
+            },
+            {
+                "part": "IronPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            }
+        ],
+        "resourcesink": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 15
+            },
+            {
+                "part": "Cable",
+                "amount": 30
+            },
+            {
+                "part": "Cement",
+                "amount": 45
+            }
+        ],
+        "streetlight": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 10
+            },
+            {
+                "part": "Wire",
+                "amount": 4
+            },
+            {
+                "part": "IronRod",
+                "amount": 4
+            }
+        ],
+        "ceilinglight": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 16
+            },
+            {
+                "part": "SteelPlate",
+                "amount": 6
+            }
+        ],
+        "minermk2": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 20
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 10
+            }
+        ],
+        "floodlightpole": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 4
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 8
+            }
+        ],
+        "floodlightwall": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 4
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 2
+            }
+        ],
+        "elevator": [
+            {
+                "part": "SteelPlate",
+                "amount": 1
+            },
+            {
+                "part": "Silica",
+                "amount": 1
+            }
+        ],
+        "pipelinepumpmk2": [
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 1
+            },
+            {
+                "part": "Motor",
+                "amount": 2
+            },
+            {
+                "part": "Plastic",
+                "amount": 10
+            }
+        ],
+        "hadroncollider": [
+            {
+                "part": "MotorLightweight",
+                "amount": 10
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameFused",
+                "amount": 25
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 50
+            },
+            {
+                "part": "HighSpeedWire",
+                "amount": 500
+            }
+        ],
+        "converter": [
+            {
+                "part": "ModularFrameFused",
+                "amount": 10
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 25
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 50
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 100
+            }
+        ],
+        "quantumencoder": [
+            {
+                "part": "MotorLightweight",
+                "amount": 20
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 20
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 50
+            },
+            {
+                "part": "TimeCrystal",
+                "amount": 50
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 100
+            }
+        ],
+        "frackingextractor": [
+            {
+                "part": "SteelPlate",
+                "amount": 10
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 10
+            }
+        ],
+        "frackingsmasher": [
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 25
+            },
+            {
+                "part": "Motor",
+                "amount": 50
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 50
+            },
+            {
+                "part": "Rubber",
+                "amount": 100
+            }
+        ],
+        "generatornuclear": [
+            {
+                "part": "ComputerSuper",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 25
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 100
+            },
+            {
+                "part": "Cable",
+                "amount": 200
+            },
+            {
+                "part": "Cement",
+                "amount": 250
+            }
+        ],
+        "minermk3": [
+            {
+                "part": "SteelPipe",
+                "amount": 50
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 5
+            },
+            {
+                "part": "ModularFrameFused",
+                "amount": 10
+            },
+            {
+                "part": "MotorLightweight",
+                "amount": 3
+            }
+        ],
+        "dronestation": [
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 20
+            },
+            {
+                "part": "HighSpeedConnector",
+                "amount": 20
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 50
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 50
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            }
+        ],
+        "packager": [
+            {
+                "part": "SteelPlate",
+                "amount": 20
+            },
+            {
+                "part": "Rubber",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 10
+            }
+        ],
+        "manufacturermk1": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 20
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            },
+            {
+                "part": "Cable",
+                "amount": 50
+            }
+        ],
+        "assemblermk1": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 8
+            },
+            {
+                "part": "Rotor",
+                "amount": 4
+            },
+            {
+                "part": "Cable",
+                "amount": 10
+            }
+        ],
+        "radartower": [
+            {
+                "part": "Computer",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 20
+            },
+            {
+                "part": "CrystalOscillator",
+                "amount": 25
+            },
+            {
+                "part": "Cable",
+                "amount": 100
+            }
+        ],
+        "geothermalgenerator": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 25
+            },
+            {
+                "part": "HighSpeedConnector",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 250
+            }
+        ],
+        "alienpoweraugmenter": [
+            {
+                "part": "WAT1",
+                "amount": 10
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 50
+            },
+            {
+                "part": "Cable",
+                "amount": 100
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 50
+            },
+            {
+                "part": "Motor",
+                "amount": 25
+            },
+            {
+                "part": "Computer",
+                "amount": 10
+            }
+        ],
+        "portal": [
+            {
+                "part": "MotorLightweight",
+                "amount": 5
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            },
+            {
+                "part": "QuantumOscillator",
+                "amount": 15
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 25
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 50
+            }
+        ],
+        "portalsatellite": [
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 5
+            },
+            {
+                "part": "QuantumOscillator",
+                "amount": 10
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 25
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 25
+            }
+        ],
+        "blender": [
+            {
+                "part": "Computer",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 10
+            },
+            {
+                "part": "Motor",
+                "amount": 20
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 50
+            }
+        ],
+        "trainstation": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 200
+            }
+        ],
+        "traindockingstation": [
+            {
+                "part": "Motor",
+                "amount": 5
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 25
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 100
+            }
+        ],
+        "traindockingstationliquid": [
+            {
+                "part": "Motor",
+                "amount": 5
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 25
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 100
+            }
+        ],
+        "fluidtruckstation": [
+            {
+                "part": "ModularFrame",
+                "amount": 15
+            },
+            {
+                "part": "Stator",
+                "amount": 20
+            },
+            {
+                "part": "Rubber",
+                "amount": 20
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            }
+        ],
+        "generatorfuel": [
+            {
+                "part": "Motor",
+                "amount": 15
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 15
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 30
+            },
+            {
+                "part": "Rubber",
+                "amount": 50
+            },
+            {
+                "part": "HighSpeedWire",
+                "amount": 50
+            }
+        ],
+        "truckstation": [
+            {
+                "part": "ModularFrame",
+                "amount": 15
+            },
+            {
+                "part": "Rotor",
+                "amount": 20
+            },
+            {
+                "part": "Cable",
+                "amount": 50
+            }
+        ],
+        "jumppadadjustable": [
+            {
+                "part": "Rotor",
+                "amount": 2
+            },
+            {
+                "part": "IronPlate",
+                "amount": 15
+            },
+            {
+                "part": "Cable",
+                "amount": 10
+            }
+        ],
+        "landingpad": [
+            {
+                "part": "Rotor",
+                "amount": 2
+            },
+            {
+                "part": "Cable",
+                "amount": 20
+            },
+            {
+                "part": "GenericBiomass",
+                "amount": 200
+            }
+        ]
+    }
 }

@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7
+
+_In development._
+
+### Custom buildings
+
+- **Add any building that makes nothing to a factory**, under Products and Power Generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights. Twenty buildings in all. They count towards the factory's power draw and its building list.
+- **The Main Portal's Singularity Cells are a real demand.** Two a minute per portal, satisfied by importing them like any other part, so a portal room short of cells reads as a shortage.
+- **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
+- Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
+
+### Material costs
+
+- **Power & Buildings now has a Material Costs panel**, showing what it would cost, in parts, to build every production building, power generator and custom building the factory needs. Closed by default; toggle it open to see the breakdown.
+- Each part lists its total quantity, and a chip per building that needs it — the building's image and how many of them.
+- **Use this as a guide only.** No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.
+
+### Sidebar: arrange the plan without dragging
+
+- **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
+- **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
+
+### Interface
+
+- **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
+- **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

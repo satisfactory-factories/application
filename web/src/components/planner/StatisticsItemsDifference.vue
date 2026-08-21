@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center">
-    <h4 class="text-h4">
-      <i class="fas fa-warehouse" />
-      <span class="ml-3">Item Production</span>
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><i class="fas fa-warehouse section-icon" /></span>Item Production
     </h4>
     <v-chip
       v-if="surplusCount > 0"
@@ -40,10 +39,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Every item your plan makes or consumes, and whether it has
-      any spare. Red needs producing more of, green can be stored or sunk.
-    </p>
     <div class="d-flex flex-wrap align-center ga-2 mt-3 mb-3">
       <!-- Each filter wears the colour it selects, so the buttons read as the same language as
            the rows. Unselected is the same colour outlined rather than a neutral grey, which
@@ -151,7 +146,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Every item the plan touches, balanced ones included — this section absorbed the old
@@ -205,14 +199,19 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
-  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
-  const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') === 'true')
+  // Section visibility, persisted. Hidden by default until explicitly shown.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsSurplusHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsSurplusHidden', value.toString())
   })
 </script>
 
 <style lang="scss" scoped>
+// Matches the `product` chip colour used throughout the app (items flowing through a factory).
+.section-icon {
+  color: var(--sf-product);
+}
+
 // Wide enough for an item name, and no wider — it shares the row with four filter buttons.
 .item-search {
   max-width: 260px;

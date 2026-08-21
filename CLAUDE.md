@@ -63,7 +63,7 @@ Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT),
 
 When game recipes/items change, regenerate data via the parser, then:
 1. Copy the parser output to `web/public/gameData_v<version>.json` with a **new** version name.
-2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-08`) — this triggers clients to re-download.
+2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-10`) — this triggers clients to re-download.
 3. Delete the old `web/public/gameData_*.json`.
 
 The version tracks the game's minor version. See `parsing/README.md` for the full parser workflow.

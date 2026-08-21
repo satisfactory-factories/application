@@ -133,4 +133,4 @@ function getPowerConsumptionForBuildings(data: any[], producingBuildings: string
     return sortedMap;
 }
 
-export { getProducingBuildings, getPowerConsumptionForBuildings, extractors };
+export { getProducingBuildings, getPowerConsumptionForBuildings, extractors, fuellessGenerators };

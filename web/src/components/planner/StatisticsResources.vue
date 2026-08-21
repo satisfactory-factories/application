@@ -1,8 +1,7 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2 mb-4">
-    <h4 class="text-h4" :class="{ 'text-red': problems.blockers > 0 }">
-      <i class="fas fa-globe" />
-      <span class="ml-3">Raw Resources</span>
+    <h4 class="text-h4 d-flex align-center" :class="{ 'text-red': problems.blockers > 0 }">
+      <span class="stats-heading-icon"><i class="fas fa-globe section-icon" /></span>Raw Resources
     </h4>
     <v-chip
       v-if="allFactoryRawResources.length > 0"
@@ -42,13 +41,6 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
-    <p v-show="helpText" class="mb-4">
-      <i class="fas fa-info-circle" /> Shows how much of the world your plan uses: everything your
-      factories mine, pump or extract, against what the map holds. <b>Extraction</b> is what you
-      take against the most the world can give — every node worked by its best extractor at the
-      250% clock cap. <b>Nodes</b> is how many extractors your plan places against how many nodes
-      exist to stand on.
-    </p>
     <v-alert
       v-if="problems.blockers > 0"
       id="stats-raw-resources-alert"
@@ -266,7 +258,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   interface ResourceStatus {
@@ -426,14 +417,19 @@
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
-  // Section visibility, persisted. Compare against the string — Boolean('false') is true.
-  const hidden = ref<boolean>(localStorage.getItem('statisticsRawResourcesHidden') === 'true')
+  // Section visibility, persisted. Hidden by default until explicitly shown.
+  const hidden = ref<boolean>(localStorage.getItem('statisticsRawResourcesHidden') !== 'false')
   watch(hidden, value => {
     localStorage.setItem('statisticsRawResourcesHidden', value.toString())
   })
 </script>
 
 <style lang="scss" scoped>
+// Matches the raw-resource chips below it (see sf-chip's .cyan/.raw-resource rule).
+.section-icon {
+  color: var(--sf-raw-resource);
+}
+
 .stats-table {
   background-color: transparent;
 

@@ -25,6 +25,9 @@ import planData from '@/utils/factory-setups/complex-demo-plan-data.json'
  *   - Alien Power is short 10/min of Alien Power Matrix across its two fueled augmenters.
  *   - Plutonium Processing is short of Silica, Nitric Acid and Sulfuric Acid: a half-built branch.
  *   - Oil Processing keeps a Heavy Oil Residue surplus, which would block the line untreated.
+ *   - Singularity Cells has no supplier for any of its four ingredients: another half-built branch.
+ *     Its output feeds the Portal Hub, whose ten Main Portals are custom buildings — 2.5 GW and
+ *     20 Singularity Cells a minute for a factory that produces nothing at all.
  */
 export const complexDemoPlan = (): TemplatePlan => {
   return {

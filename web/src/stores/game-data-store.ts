@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { DataInterface } from '@/interfaces/DataInterface'
+import { CustomBuilding, DataInterface } from '@/interfaces/DataInterface'
 import { config } from '@/config/config'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { loadLocalGameData } from './local-game-data-loader'
@@ -180,9 +180,25 @@ export const useGameDataStore = defineStore('game-data', () => {
     return recipes[0]
   }
 
+  // Buildings that make nothing but still cost power (portals, stations, lights), for the
+  // Custom Buildings section. Sorted by the parser, so the order here is the order shown.
+  const getCustomBuildings = (): CustomBuilding[] => {
+    return gameData.value?.customBuildings ?? []
+  }
+
+  const getCustomBuildingByName = (name: string): CustomBuilding | null => {
+    if (!name) {
+      return null
+    }
+
+    return getCustomBuildings().find(building => building.name === name) ?? null
+  }
+
   return {
     gameData,
     getGameData,
+    getCustomBuildings,
+    getCustomBuildingByName,
     loadGameData,
     getRecipeById,
     getPowerRecipeById,

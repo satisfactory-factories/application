@@ -266,7 +266,10 @@
     border-color: var(--sf-node-setting-border) !important;
   }
 
-  &.orange, &.building {
+  // No `.orange` alias: the token is blue now, and a class named for a colour it no longer wears
+  // is how the literal hexes crept back in last time. Chips that genuinely mean amber use
+  // `.status-warning-outlined`.
+  &.building, &.custom-building {
     color: var(--sf-building) !important;
     border-color: var(--sf-building-border) !important;
   }
@@ -627,6 +630,20 @@
 
 .text-h3, .text-h5 {
   letter-spacing: normal !important;
+}
+
+// Shared by the Statistics card's h4 section headings (Statistics.vue, StatisticsPower.vue,
+// StatisticsResources.vue, StatisticsItemsDifference.vue, StatisticsShardsSloops.vue,
+// StatisticsBuildings.vue): a fixed-width column for the leading icon so every heading's text
+// starts at the same x position, whatever the icon's own glyph width (fa-warehouse is
+// noticeably wider than fa-power-off or fa-globe). Sized to fit the widest of them with room
+// to spare, and margined the same as the mr-3/ml-3 gap it replaces.
+.stats-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  margin-right: 12px;
 }
 
 // Vuetify's default hover overlay (4%) is invisible on outlined buttons —
