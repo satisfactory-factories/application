@@ -15,6 +15,7 @@ import {
   getResourceCapacity,
   getResourceUtilisation,
   totalNodes,
+  WORLD_GEYSERS,
   WORLD_RESOURCE_NODES,
 } from '@/utils/world-resources'
 
@@ -41,9 +42,11 @@ describe('world-resources', async () => {
     // three 1.2 saves (vanilla, node-randomised and fossil-fuel-rich) each hold exactly 459
     // BP_ResourceNode and 118 BP_FrackingSatellite actors, whatever the world was generated with.
     it('holds as many nodes and satellites as the map has objects', () => {
+      // Water is counted here even though it is unlimited: its 55 satellites are real, and
+      // leaving them out meant this could only ever check 63 of the map's 118.
       const totals = Object.keys(WORLD_RESOURCE_NODES).reduce((sum, part) => {
         const capacity = getResourceCapacity(part)
-        return capacity && !capacity.unlimited
+        return capacity
           ? {
               nodes: sum.nodes + totalNodes(capacity.nodes),
               wells: sum.wells + totalNodes(capacity.wells),
@@ -52,8 +55,14 @@ describe('world-resources', async () => {
       }, { nodes: 0, wells: 0 })
 
       expect(totals.nodes).toBe(459)
-      // 63 of the map's 118 satellites; the other 55 are Water, which has no ceiling to track.
-      expect(totals.wells).toBe(63)
+      expect(totals.wells).toBe(118)
+    })
+
+    // Geysers are the one figure no save can check. The game writes a node's purity only where it
+    // differs from the level default, and leaves geysers alone even under NPS_AllPure — so only
+    // the total is verifiable, and this is what verifies it.
+    it('holds as many geysers as the map has objects', () => {
+      expect(totalNodes(WORLD_GEYSERS)).toBe(31)
     })
 
     it('reports crude oil across both nodes and wells', () => {

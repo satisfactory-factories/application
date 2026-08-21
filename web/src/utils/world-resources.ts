@@ -73,8 +73,26 @@ export const WORLD_RESOURCE_NODES: Record<string, WorldResourceNodes> = {
     wells: { impure: 8, normal: 6, pure: 4 },
   },
   NitrogenGas: { wells: { impure: 2, normal: 7, pure: 36 } },
-  Water: { unlimited: true },
+  // Water is drawn from any body of water, so nothing caps it and `unlimited` still stands. The
+  // 55 satellites are recorded anyway: they are the map's real well count, and a save that
+  // redistributes satellites (a resource-rich preset moves Water to 58) needs a baseline to
+  // patch over. Nothing reads them for a ceiling — `unlimited` short-circuits first.
+  Water: { wells: { impure: 7, normal: 12, pure: 36 }, unlimited: true },
 }
+
+/**
+ * Geothermal geysers, by purity.
+ *
+ * Not part of the table above: a geyser yields power rather than an item, so it has no part id
+ * to key on and no rate the satisfaction maths can compare against. It is held here because it
+ * is the same kind of map fact and comes from the same source.
+ *
+ * Unlike every other figure in this file these can never be checked against a save. The game
+ * writes a node's purity only where it differs from the level default, and geysers are left
+ * alone even by NPS_AllPure, which rewrites all 459 nodes and all 118 satellites. The total is
+ * the only part a save confirms, and it does: 31 geyser actors in every 1.2 world.
+ */
+export const WORLD_GEYSERS: NodeCounts = { impure: 9, normal: 13, pure: 9 }
 
 const PURITIES: NodePurity[] = ['impure', 'normal', 'pure']
 
