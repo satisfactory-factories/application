@@ -539,6 +539,20 @@ export const useAppStore = defineStore('app', () => {
         factory.notes = ''
       }
 
+      // Checklist mode: default the new per-factory fields for plans saved before it existed.
+      if (factory.checklistEnabled === undefined) {
+        factory.checklistEnabled = false
+      }
+      if (factory.checklistPanelHidden === undefined) {
+        factory.checklistPanelHidden = false
+      }
+      if (factory.checklistExports === undefined) {
+        factory.checklistExports = {}
+      }
+      if (factory.checklistExportSyncedAmounts === undefined) {
+        factory.checklistExportSyncedAmounts = {}
+      }
+
       // Patch for #180
       if (factory.powerProducers === undefined) {
         factory.powerProducers = []

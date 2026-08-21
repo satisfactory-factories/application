@@ -5,6 +5,7 @@
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
 
   <building-group-tutorial />
+  <checklist-tutorial />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -117,6 +118,7 @@
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useAppStore } from '@/stores/app-store'
   import { removeFactoryDependants } from '@/utils/factory-management/dependencies'
+  import { resetChecklistState } from '@/utils/factory-management/checklist'
   import {
     calculateFactories,
     calculateFactory,
@@ -134,6 +136,7 @@
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
+  import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import { groupColorVars } from '@/utils/colors'
   import { flashElement } from '@/utils/navigation-highlight'
@@ -545,6 +548,9 @@
     // the original — leaving them on renders as an export nobody asked for until the flush
     // tears them (and a recalculation of every affected factory) back down.
     newFactory.dependencies = { requests: {}, metrics: {} }
+
+    // Same reasoning as the Game Sync reset above: none of the clone's buildings exist yet.
+    resetChecklistState(newFactory)
 
     // The clone inherits the original's group (structuredClone carried it), so seat it directly
     // after the original. Appending and re-sorting would drop it at the end of that group.

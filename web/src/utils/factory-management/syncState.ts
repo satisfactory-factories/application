@@ -1,4 +1,6 @@
 import { Factory, FactoryCustomBuilding } from '@/interfaces/planner/FactoryInterface'
+import { checklistExportKey } from '@/utils/factory-management/checklist'
+import { getRequestsForFactory } from '@/utils/factory-management/exports'
 
 // A custom building's whole upkeep as one number, which is all the sync state needs: the parts
 // themselves are fixed by the building, so only the rate can move.
@@ -17,6 +19,9 @@ export const setSyncState = (factory: Factory) => {
       amount: product.amount,
       recipe: product.recipe,
     }
+    // Checklist mode: marking the whole factory in sync re-baselines every item's own desync
+    // check too, whether or not it is currently ticked — there is nothing left to flag as stale.
+    product.checklistSyncedAmount = product.amount
   })
 
   /**
@@ -36,6 +41,7 @@ export const setSyncState = (factory: Factory) => {
       ingredientAmount: powerProducer.fuelAmount,
       building: powerProducer.building,
     }
+    powerProducer.checklistSyncedAmount = powerProducer.buildingAmount
   })
 
   factory.customBuildings?.forEach(customBuilding => {
@@ -44,6 +50,15 @@ export const setSyncState = (factory: Factory) => {
       amount: customBuilding.amount,
       ingredientAmount: upkeepTotal(customBuilding),
     }
+  })
+
+  // Checklist mode has no game-sync equivalent for imports or exports (they aren't part of
+  // "in sync with the game" above), so their baselines are re-stamped here rather than skipped.
+  factory.inputs.forEach(input => {
+    input.checklistSyncedAmount = input.amount
+  })
+  getRequestsForFactory(factory).forEach(request => {
+    factory.checklistExportSyncedAmounts[checklistExportKey(request.requestingFactoryId, request.part)] = request.amount
   })
 
   factory.inSync = true
