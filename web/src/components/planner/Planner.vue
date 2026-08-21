@@ -118,6 +118,7 @@
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useAppStore } from '@/stores/app-store'
   import { removeFactoryDependants } from '@/utils/factory-management/dependencies'
+  import { resetChecklistState } from '@/utils/factory-management/checklist'
   import {
     calculateFactories,
     calculateFactory,
@@ -547,6 +548,9 @@
     // the original — leaving them on renders as an export nobody asked for until the flush
     // tears them (and a recalculation of every affected factory) back down.
     newFactory.dependencies = { requests: {}, metrics: {} }
+
+    // Same reasoning as the Game Sync reset above: none of the clone's buildings exist yet.
+    resetChecklistState(newFactory)
 
     // The clone inherits the original's group (structuredClone carried it), so seat it directly
     // after the original. Appending and re-sorting would drop it at the end of that group.

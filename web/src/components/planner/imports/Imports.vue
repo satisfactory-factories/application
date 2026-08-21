@@ -30,7 +30,7 @@
             :class="{ desynced: isInputChecklistDesynced(input) }"
             :title="isInputChecklistDesynced(input) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this import as built'"
             type="checkbox"
-            @change="toggleChecklistInput(input)"
+            @change="toggleChecklistInput(factory, input)"
           >
         </div>
         <div class="input-row d-flex align-center">

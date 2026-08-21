@@ -46,7 +46,7 @@
           :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
           :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
           type="checkbox"
-          @change="toggleChecklistPowerProducer(producer)"
+          @change="toggleChecklistPowerProducer(factory, producer)"
         >
       </div>
       <div class="input-row d-flex align-center">

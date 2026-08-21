@@ -5,8 +5,8 @@
         <div>
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
-        <v-chip class="sf-chip small no-margin" :class="isChecklistComplete(factory) ? 'green' : 'blue'">
-          {{ completedCount }}/{{ totalCount }} complete
+        <v-chip class="sf-chip small no-margin" :class="checklistChipClass(factory)">
+          {{ completedCount }}/{{ totalCount }} {{ hasChecklistDesync(factory) ? 'ticked, needs reconfirming' : 'complete' }}
         </v-chip>
       </v-col>
       <v-col class="text-right" cols="4">
@@ -15,7 +15,7 @@
           color="primary"
           prepend-icon="fas fa-eye-slash"
           variant="flat"
-          @click="factory.checklistPanelHidden = true"
+          @click="setChecklistPanelHidden(factory, true)"
         >Hide
         </v-btn>
         <v-btn
@@ -23,7 +23,7 @@
           color="primary"
           prepend-icon="fas fa-eye"
           variant="outlined"
-          @click="factory.checklistPanelHidden = false"
+          @click="setChecklistPanelHidden(factory, false)"
         >Show
         </v-btn>
       </v-col>
@@ -42,7 +42,7 @@
               :class="{ desynced: isProductChecklistDesynced(product) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistProduct(product)"
+              @change="toggleChecklistProduct(factory, product)"
             >
             <game-asset
               v-if="product.id"
@@ -65,7 +65,7 @@
               :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistPowerProducer(producer)"
+              @change="toggleChecklistPowerProducer(factory, producer)"
             >
             <game-asset
               v-if="producer.building"
@@ -88,7 +88,7 @@
               :class="{ desynced: isInputChecklistDesynced(input) }"
               title="Mark as built"
               type="checkbox"
-              @change="toggleChecklistInput(input)"
+              @change="toggleChecklistInput(factory, input)"
             >
             <game-asset
               v-if="input.outputPart"
@@ -149,14 +149,16 @@
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import {
+    checklistChipClass,
     countChecklistCompleted,
     countChecklistTotal,
-    isChecklistComplete,
+    hasChecklistDesync,
     isChecklistExportComplete,
     isChecklistExportDesynced,
     isInputChecklistDesynced,
     isPowerProducerChecklistDesynced,
     isProductChecklistDesynced,
+    setChecklistPanelHidden,
     toggleChecklistExport,
     toggleChecklistInput,
     toggleChecklistPowerProducer,

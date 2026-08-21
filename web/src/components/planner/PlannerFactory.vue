@@ -90,11 +90,12 @@
               <div v-if="factory.checklistEnabled">
                 <v-chip
                   class="sf-chip sf-chip-clickable small no-margin"
-                  :class="isChecklistComplete(factory) ? 'green' : 'blue'"
+                  :class="checklistChipClass(factory)"
                   @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
                 >
                   <i class="fas fa-check" />
                   <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+                  <span v-if="hasChecklistDesync(factory)" class="ml-2">(desynced)</span>
                 </v-chip>
               </div>
               <!-- power difference chip -->
@@ -449,7 +450,13 @@
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
-  import { countChecklistCompleted, countChecklistTotal, isChecklistComplete } from '@/utils/factory-management/checklist'
+  import {
+    checklistChipClass,
+    countChecklistCompleted,
+    countChecklistTotal,
+    hasChecklistDesync,
+    setChecklistEnabled,
+  } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
@@ -617,7 +624,7 @@
   // factory, explain what it does. Dismissing it (see ChecklistTutorial.vue) is what stops it
   // firing again, so this only ever checks the flag rather than setting it.
   const toggleChecklist = (enabled: boolean) => {
-    props.factory.checklistEnabled = enabled
+    setChecklistEnabled(props.factory, enabled)
     if (enabled && localStorage.getItem('dismissed-checklist-tutorial') !== 'true') {
       eventBus.emit('openChecklistTutorial')
     }
