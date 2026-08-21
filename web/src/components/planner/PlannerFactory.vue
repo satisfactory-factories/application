@@ -202,17 +202,28 @@
             />
             <!-- Checklist toggle sits directly under the action buttons above, rather than in the
                  chips bar on the left: it is a mode switch for the whole card, not a status. -->
-            <div class="d-flex justify-end mt-2">
-              <v-switch
-                :id="`${factory.id}-checklist-toggle`"
-                color="primary"
-                density="compact"
-                hide-details
-                label="Checklist"
-                :model-value="factory.checklistEnabled"
-                @update:model-value="value => toggleChecklist(!!value)"
-              />
-            </div>
+            <v-tooltip location="top" max-width="360">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex justify-end mt-2">
+                  <v-switch
+                    :id="`${factory.id}-checklist-toggle`"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    label="Checklist"
+                    :model-value="factory.checklistEnabled"
+                    @update:model-value="value => toggleChecklist(!!value)"
+                  />
+                </div>
+              </template>
+              <span>
+                Turn this on to get a checklist of everything this factory needs to build:
+                assemblers for each product, generators for power, a source for each import and
+                infrastructure for each export. Tick items off as you build them to track your own
+                progress. If a ticked item's numbers change later, it stays checked but is flagged
+                as desynced, so you can see exactly what changed.
+              </span>
+            </v-tooltip>
           </v-col>
         </v-row>
         <v-card-text v-if="!factory.hidden">
