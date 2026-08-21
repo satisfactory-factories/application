@@ -65,7 +65,7 @@
             />
             <span class="ml-2">{{ section.title }}</span>
           </h2>
-          <v-table v-if="section.entries.length > 0" class="usage-table" density="compact">
+          <v-table v-if="hasRows(section)" class="usage-table" density="compact">
             <thead>
               <tr>
                 <th>Factory</th>
@@ -279,6 +279,12 @@
       tooltip: 'Uploading from your own inventory. Optional, and nothing in a plan depends on it.',
     },
   ])
+
+  // A section with no factories in it can still owe Mercer Spheres, because the MAM research is a
+  // once-per-save cost the header chip counts either way. Hiding the table then leaves a total on
+  // screen with nothing to explain it, and no way to untick what is producing it.
+  const hasRows = (section: { entries: unknown[]; researchLines: ResearchLine[] }) =>
+    section.entries.length > 0 || section.researchLines.some(line => line.included)
 
   const sections = computed(() => {
     const shards = calculateFactoriesUsing(props.factories, getFactoryPowerShards)

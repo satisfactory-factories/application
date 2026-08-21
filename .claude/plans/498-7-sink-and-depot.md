@@ -130,6 +130,19 @@ plain number spinner: how many AWESOME Sinks, how many Dimensional Depot Uploade
    to unresearched mid-edit. The remount is skipped while focus stays inside the field, or a
    stepper click unmounts itself. User's call, 2026-08-20.
 
+   The setters mark the plan edited (`appStore.markPlanEdited()`, which emits `planUpdated` and
+   schedules a persist), because neither level touches a factory and both the local save and the
+   cloud dirty flag hang off factory events. Without it a level set here was correct in that
+   browser and never uploaded, so the same plan opened elsewhere quietly had the old research.
+   Only on a real change: writing the same level back would re-arm the flag the sync had just
+   cleared, and rendering the Depot selector against a plan with no level stored would mark every
+   legacy plan dirty on open. Codex build review, 2026-08-21.
+
+16. **A statistics section shows its research rows whenever they are counted, not whenever it has
+   factories.** The MAM research is a once-per-save cost that the header chip counts either way,
+   so guarding the table on the factory count alone left a total on screen that nothing explained
+   and nothing could untick. Codex build review, 2026-08-21.
+
 15. **The research tick boxes are the factory task list's, promoted to `.sf-tick` in
    `global.scss`.** They started hand-rolled in this component, then briefly became
    `v-checkbox-btn`, which still did not look like anything else in the app. The task list had

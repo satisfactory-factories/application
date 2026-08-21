@@ -135,9 +135,16 @@ export const useDepotResearch = () => {
     },
     set (value) {
       const tab = appStore.getCurrentTab()
-      if (tab) {
-        tab.depotUploadTier = clampTier(value)
-      }
+      if (!tab) return
+
+      const clamped = clampTier(value)
+      // Only when it actually moved: every write marks the account copy dirty, and a re-render
+      // writing the same level back would keep the plan permanently unsaved.
+      if (tab.depotUploadTier === clamped) return
+
+      tab.depotUploadTier = clamped
+      // This is tab-level state, so nothing else marks it for saving. See markPlanEdited.
+      appStore.markPlanEdited()
     },
   })
 
@@ -153,9 +160,13 @@ export const useDepotResearch = () => {
     },
     set (value) {
       const tab = appStore.getCurrentTab()
-      if (tab) {
-        tab.depotExpansionTier = clampTier(value)
-      }
+      if (!tab) return
+
+      const clamped = clampTier(value)
+      if (tab.depotExpansionTier === clamped) return
+
+      tab.depotExpansionTier = clamped
+      appStore.markPlanEdited()
     },
   })
 

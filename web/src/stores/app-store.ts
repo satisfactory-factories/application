@@ -127,10 +127,7 @@ export const useAppStore = defineStore('app', () => {
       tab.plannerVersion = config.plannerVersion
     }
     showRawBreakingNotice.value = false
-    // Tab-level state reaches neither the local save nor the cloud dirty flag on its own —
-    // both hang off factory events — so say so explicitly.
-    eventBus.emit('planUpdated')
-    schedulePersist()
+    markPlanEdited()
   }
 
   // Hand the notice over to something that is about to say the same thing better — the v0.6
@@ -243,6 +240,14 @@ export const useAppStore = defineStore('app', () => {
 
   eventBus.on('factoryUpdated', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
+
+  // Anything written straight onto the tab has to call this. Tab-level state reaches neither the
+  // local save nor the cloud dirty flag on its own — both hang off factory events — so an edit
+  // that never touches a factory looks right in this browser and never reaches the account.
+  const markPlanEdited = () => {
+    eventBus.emit('planUpdated')
+    schedulePersist()
+  }
 
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
     // All three wrapped: pagehide would otherwise hand its Event object in as `fromLoad`, which is
@@ -1030,6 +1035,7 @@ export const useAppStore = defineStore('app', () => {
     askRawBreakingNotice,
     dismissRawBreakingNotice,
     deferRawBreakingNotice,
+    markPlanEdited,
     loadServerPlan,
     rearmRawBreakingNotice,
     prepareLoader,
