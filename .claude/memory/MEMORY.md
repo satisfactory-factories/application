@@ -55,3 +55,4 @@
 - [Prometheus server config](prometheus-server-config.md) — 180d global retention (not per-target), the unit-file backslash trap, node_exporter, health dashboard; disk alerts are Zabbix
 - [Text sanity rules](text-sanity-rules.md) — one rulebook for names, notes and tasks in planner and server; links banned, old text repaired on load
 - [Plan deletion moves DB metrics](plan-deletion-moves-db-metrics.md) — a cliff in synced factories with edits falling too is deletion; deleted plans leave no trace but Prometheus
+- [Game save format](game-save-format.md) — reading a 1.2 .sav; a save is a diff not a snapshot, and the ways a wrong parse stays silent
