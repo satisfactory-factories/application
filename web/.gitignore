@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # Build artifacts
 package-lock.json
+
+# Scratch space for local tooling (e.g. tutorial GIF recording scripts)
+.gif-scratch/
