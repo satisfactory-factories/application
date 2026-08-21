@@ -2,7 +2,7 @@
   <v-dialog v-model="isOpen" max-width="600" persistent>
     <v-card>
       <v-card-title class="text-h6 py-4">
-        <i class="fas fa-sync mr-2" />
+        <i class="fas fa-arrow-up mr-2" />
         <span>An update has been released</span>
       </v-card-title>
       <v-divider />
@@ -22,7 +22,7 @@
       <v-card-actions>
         <v-spacer />
         <v-btn color="primary" variant="flat" @click="reload">
-          <i class="fas fa-sync mr-2" />Reload the page
+          <i class="fas fa-arrow-up mr-2" />Reload the page
         </v-btn>
       </v-card-actions>
     </v-card>

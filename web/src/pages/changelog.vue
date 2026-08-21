@@ -392,6 +392,7 @@
           <li>Tooltips and toasts now escape the text they are given, so nothing carried inside a plan can put markup onto the page.</li>
           <li>A building group no longer appears to accept more Somersloops than the building has slots for. Entries clamp as you type and the up arrow greys out once the slots are full. The calculation was always correct; only the number on screen disagreed.</li>
           <li>The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window.</li>
+          <li>You now get told when a new version of the planner is released, whether or not you are signed in. A message appears at the bottom of the page naming the version that is live, with a reload button. Dismiss it and keep planning, or reload when you reach a sensible point; your plan is kept either way.</li>
         </ul>
 
         <v-divider class="subsection" />
