@@ -6,6 +6,7 @@ import {
   bestAvailableMiner,
   isBuildingAvailable,
   isRecipeAvailable,
+  resolveGeysers,
   resolveNodeCounts,
 } from '@/utils/game-save/world-context'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
@@ -17,10 +18,12 @@ const played = progressed as unknown as WorldSnapshot
 
 let vanilla: WorldSnapshot
 let fossil: WorldSnapshot
+let allPure: WorldSnapshot
 
 beforeAll(async () => {
   vanilla = extractWorld(await parseSave(loadSaveFixture('vanilla')), { buildingIds })
   fossil = extractWorld(await parseSave(loadSaveFixture('fossil-fuel-rich')), { buildingIds })
+  allPure = extractWorld(await parseSave(loadSaveFixture('vanilla-all-pure')), { buildingIds })
 })
 
 describe('no world attached', () => {
@@ -94,6 +97,72 @@ describe('a fossil-fuel-rich world', () => {
     const baseline = { nodes: { impure: 4, normal: 4, pure: 4 } }
 
     expect(resolveNodeCounts(fossil, 'NotAResource', baseline).nodes).toEqual(baseline.nodes)
+  })
+})
+
+/**
+ * The vanilla map's own figures, confirmed against the community map. Held here rather than
+ * asserted from a save because no save contains them: the game writes purity only where it
+ * differs from the level default, and geysers it never writes at all.
+ *
+ * The totals are the part a save can referee, and they do: 55 + 45 + 18 = 118 satellites and
+ * 31 geysers are exactly what every 1.2 save reports.
+ */
+const VANILLA_WATER_WELLS = { impure: 7, normal: 12, pure: 36 }
+const VANILLA_NITROGEN_WELLS = { impure: 2, normal: 7, pure: 36 }
+const VANILLA_OIL_WELLS = { impure: 8, normal: 6, pure: 4 }
+const VANILLA_GEYSERS = { impure: 9, normal: 13, pure: 9 }
+
+const total = (c: { impure: number, normal: number, pure: number }) => c.impure + c.normal + c.pure
+
+describe('the vanilla baseline agrees with what every save counts', () => {
+  it('accounts for all 118 well satellites', () => {
+    expect(total(VANILLA_WATER_WELLS) + total(VANILLA_NITROGEN_WELLS) + total(VANILLA_OIL_WELLS)).toBe(118)
+  })
+
+  it('accounts for all 31 geysers', () => {
+    expect(total(VANILLA_GEYSERS)).toBe(31)
+  })
+
+  it('matches the satellite and geyser census a real vanilla save reports', () => {
+    expect(vanilla.objectCounts['BP_FrackingSatellite']).toBe(118)
+    expect(vanilla.geysers.total).toBe(31)
+  })
+})
+
+describe('geysers', () => {
+  it('always come from the baseline, because no save records their purity', () => {
+    const resolved = resolveGeysers(vanilla, VANILLA_GEYSERS)
+
+    expect(resolved.nodes).toEqual(VANILLA_GEYSERS)
+    expect(resolved.total).toBe(31)
+    expect(resolved.fromWorld).toBe(false)
+  })
+
+  it('keeps the baseline even on a world that forced every other node pure', () => {
+    // NPS_AllPure does not touch geysers, so treating its silence as "all pure" would be wrong.
+    expect(resolveGeysers(allPure, VANILLA_GEYSERS).nodes).toEqual(VANILLA_GEYSERS)
+  })
+
+  it('falls back to the baseline total with no world attached', () => {
+    expect(resolveGeysers(undefined, VANILLA_GEYSERS).total).toBe(31)
+  })
+})
+
+describe('water wells', () => {
+  it('stand on the baseline in a vanilla world, which records none of them', () => {
+    const resolved = resolveNodeCounts(vanilla, 'Water', { wells: VANILLA_WATER_WELLS })
+
+    expect(resolved.wells).toEqual(VANILLA_WATER_WELLS)
+    expect(resolved.fromWorld).toBe(false)
+  })
+
+  it('are replaced outright by a world that redistributed them', () => {
+    // The fossil preset moves satellites between resources, so its own figure wins.
+    const resolved = resolveNodeCounts(fossil, 'Water', { wells: VANILLA_WATER_WELLS })
+
+    expect(resolved.fromWorld).toBe(true)
+    expect(total(resolved.wells)).toBe(58)
   })
 })
 

@@ -89,6 +89,28 @@ const resolveTally = (baseline: PurityCounts | undefined, tally: NodeTally | und
  * baseline is returned untouched: a vanilla save carries no overrides at all, and treating its
  * silence as zero would tell the user the map holds nothing.
  */
+/**
+ * Geyser purity for this world.
+ *
+ * Always the baseline: no save has ever written geyser purity, not even one that rewrote every
+ * other node on the map. The count is save-derived and worth checking against the baseline's own
+ * total, because a mismatch means the baseline table is wrong rather than the world unusual.
+ */
+export const resolveGeysers = (
+  world: WorldSnapshot | undefined,
+  baseline: PurityCounts = zero(),
+): ResolvedNodeCounts & { total: number } => {
+  const tally = hasWorld(world) ? world.geysers : undefined
+  const purity = resolveTally(baseline, tally)
+
+  return {
+    nodes: purity,
+    wells: zero(),
+    fromWorld: false,
+    total: tally?.total ?? totalOf(baseline),
+  }
+}
+
 export const resolveNodeCounts = (
   world: WorldSnapshot | undefined,
   resource: string,

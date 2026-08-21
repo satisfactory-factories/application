@@ -164,6 +164,51 @@ describe('extractWorld', () => {
     })
   })
 
+  describe('geysers', () => {
+    // 31 on every map, and the count is directly observable in every save regardless of how the
+    // world was generated.
+    it.each(['vanilla', 'vanilla-all-pure', 'fossil-fuel-rich', 'advanced-rich', 'node-randomised'] as const)(
+      'counts 31 in the %s save',
+      name => {
+        expect(worlds[name].geysers.total).toBe(31)
+      },
+    )
+
+    it('never carries a purity, not even in a world that forced every node pure', () => {
+      // NPS_AllPure rewrites all 459 nodes and all 118 satellites and still leaves geysers alone,
+      // so geyser purity can only ever come from the baseline table.
+      expect(worlds['vanilla-all-pure'].nodes).toEqual({})
+      expect(worlds['vanilla-all-pure'].geysers.purity).toEqual({ impure: 0, normal: 0, pure: 0 })
+      expect(worlds['vanilla-all-pure'].geysers.total).toBe(31)
+    })
+
+    it('is not double-counted as a solid node', () => {
+      // BP_ResourceNodeGeyser starts with BP_ResourceNode, so a prefix match reads 490 nodes.
+      expect(worlds.vanilla.objectCounts['BP_ResourceNode']).toBe(459)
+      expect(worlds.vanilla.objectCounts['BP_ResourceNodeGeyser']).toBe(31)
+    })
+  })
+
+  describe('well satellites are redistributed by every randomisation preset', () => {
+    // This is why a randomised save cannot referee the vanilla well split: the vanilla map has
+    // Water 55 / Nitrogen 45 / Oil 18, and NRM_Strict preserves all eleven solid node counts
+    // exactly while still moving three satellites off Nitrogen.
+    const wells = (world: WorldSnapshot, resource: string) => world.nodes[resource]?.wells.total ?? 0
+
+    it.each([
+      ['node-randomised', 55, 42, 21],
+      ['fossil-fuel-rich', 58, 41, 19],
+      ['advanced-rich', 54, 44, 20],
+    ] as const)('%s splits its 118 satellites its own way', (name, water, nitrogen, oil) => {
+      const world = worlds[name]
+
+      expect(wells(world, 'Water')).toBe(water)
+      expect(wells(world, 'NitrogenGas')).toBe(nitrogen)
+      expect(wells(world, 'LiquidOil')).toBe(oil)
+      expect(water + nitrogen + oil).toBe(118)
+    })
+  })
+
   describe('extractors', () => {
     it('finds none on a world where nothing has been built', () => {
       expect(worlds.vanilla.extractors).toEqual([])

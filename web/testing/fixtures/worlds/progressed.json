@@ -876,6 +876,14 @@
       "ElevatorFloorStop"
     ]
   },
+  "geysers": {
+    "total": 31,
+    "purity": {
+      "impure": 0,
+      "normal": 0,
+      "pure": 0
+    }
+  },
   "buildings": [
     "alienpoweraugmenter",
     "assemblermk1",
