@@ -37,6 +37,7 @@
           <p class="checklist-group-title">Products</p>
           <div v-for="product in factory.products" :key="product.id" class="checklist-row">
             <input
+              :key="`${product.id}-${!!product.completed}`"
               :checked="!!product.completed"
               class="checklist-tick"
               :class="{ desynced: isProductChecklistDesynced(product) }"
@@ -60,6 +61,7 @@
           <p class="checklist-group-title">Power</p>
           <div v-for="(producer, producerIndex) in factory.powerProducers" :key="producerIndex" class="checklist-row">
             <input
+              :key="`${producerIndex}-${!!producer.completed}`"
               :checked="!!producer.completed"
               class="checklist-tick"
               :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
@@ -83,6 +85,7 @@
           <p class="checklist-group-title">Imports</p>
           <div v-for="(input, inputIndex) in factory.inputs" :key="inputIndex" class="checklist-row">
             <input
+              :key="`${inputIndex}-${!!input.completed}`"
               :checked="!!input.completed"
               class="checklist-tick"
               :class="{ desynced: isInputChecklistDesynced(input) }"
@@ -127,6 +130,7 @@
             class="checklist-row"
           >
             <input
+              :key="`${request.requestingFactoryId}-${request.part}-${isChecklistExportComplete(factory, request.requestingFactoryId, request.part)}`"
               :checked="isChecklistExportComplete(factory, request.requestingFactoryId, request.part)"
               class="checklist-tick"
               :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount) }"
