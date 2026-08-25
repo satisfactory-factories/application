@@ -441,6 +441,18 @@
     // Stay sticky on the previous entry rather than dropping the highlight.
   }
 
+  // Keeps the sidebar's own scroll position following the scroll-spy indicator: as the
+  // highlighted row changes, bring it back into the sidebar's view. `block: 'nearest'`
+  // moves only the sidebar's scroll container (its the only scrollable ancestor between
+  // the row and the page) and only as far as needed - a row already in view causes no
+  // motion at all, so this doesn't fight the user's own scrolling of the sidebar.
+  // `flush: 'post'` so the row's `.active-view` class has already been painted by the
+  // time this queries for it.
+  watch(activeFactoryId, () => {
+    document.querySelectorAll('.sidebar-content .factory-card.active-view, #navigationDrawer .factory-card.active-view')
+      .forEach(el => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }, { flush: 'post' })
+
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
