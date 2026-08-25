@@ -61,6 +61,15 @@ describe('game-data-store', () => {
       expect(gameDataStore.getDefaultRecipeForPart('OreIron')).toBe('Extract_OreIron')
     })
 
+    // https://github.com/satisfactory-factories/application/issues/594 — the other three Power
+    // Shard recipes consume Power Slugs, a one-off world pickup with no extractor. Defaulting
+    // there suggests an automatable choice that isn't one, so Synthetic Power Shard (built from
+    // ordinary, minable ingredients) wins even though it isn't named after the part and isn't the
+    // first non-alternate recipe in the list.
+    it('prefers Synthetic Power Shard for Power Shard over the Power Slug recipes', () => {
+      expect(gameDataStore.getDefaultRecipeForPart('CrystalShard')).toBe('SyntheticPowerShard')
+    })
+
     it('returns nothing only when nothing can make the part', () => {
       expect(gameDataStore.getDefaultRecipeForPart('NotAPartAtAll')).toBe('')
     })
