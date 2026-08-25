@@ -13,9 +13,15 @@
  *   becomes `!isFluid && sinkPoints > 0` — Docs.json confirms that encodes these exclusions, and
  *   the fuel rod exceptions, exactly. See `.claude/plans/awesome-sink-and-byproduct-routing.md`,
  *   which owns this rule; the sink feature itself will want this module.
- * - **Power Shards.** Not radioactive and not a fluid, but `Desc_CrystalShard_C.mResourceSinkPoints`
- *   is 0 in Docs.json — the game keeps a valuable item out of the sink on purpose so it cannot be
- *   thrown away by accident. https://github.com/satisfactory-factories/application/issues/594.
+ * - **A short, hand-verified list of ordinary solids.** Not radioactive, not a fluid, but the
+ *   AWESOME Sink still refuses them in game. `mResourceSinkPoints` in Docs.json is `0` for these
+ *   too, but 0 there is NOT sufficient on its own to prove a part is unsinkable — Alien DNA
+ *   Capsule is also 0 despite being sinkable (it pays out on a separate "coupon" counter rather
+ *   than ordinary sink points), so every entry below is cross-checked against
+ *   https://satisfactory.wiki.gg rather than trusted from the data field alone. Membership is
+ *   deliberately manual and narrow rather than "every part whose recipe output leaves it at 0
+ *   sink points", to avoid silently miscategorising the next Alien-DNA-Capsule-shaped exception.
+ *   https://github.com/satisfactory-factories/application/issues/594.
  */
 import { DataInterface } from '@/interfaces/DataInterface'
 
@@ -31,10 +37,10 @@ export const RADIOACTIVE_PARTS = new Set([
   'FicsoniumFuelRod',
 ])
 
-// Ordinary, non-radioactive solids the sink refuses anyway. Currently just the Power Shard
-// (`CrystalShard`) — see the module comment above.
+// See the module comment above for why this list is manual rather than derived from sink points.
 export const NON_SINKABLE_PARTS = new Set([
-  'CrystalShard',
+  'CrystalShard', // Power Shard.
+  'AlienProtein', // Reachable via the Hog/Spitter/Stinger/Hatcher Protein recipes.
 ])
 
 export const isSinkablePart = (partId: string, gameData: DataInterface): boolean => {

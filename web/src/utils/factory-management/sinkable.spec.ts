@@ -42,6 +42,23 @@ describe('sinkable', () => {
     expect(isSinkablePart('CrystalShard', gameData)).toBe(false)
   })
 
+  // Confirmed against the wiki rather than Docs.json alone: "Alien Protein cannot be sunk into
+  // the AWESOME Sink and will clog the input."
+  test('refuses Alien Protein, even though it is an ordinary non-radioactive solid', () => {
+    expect(gameData.items.parts.AlienProtein?.isFluid).toBe(false)
+    expect(RADIOACTIVE_PARTS.has('AlienProtein')).toBe(false)
+    expect(isSinkablePart('AlienProtein', gameData)).toBe(false)
+  })
+
+  // The case NON_SINKABLE_PARTS exists to guard against getting wrong: also 0 sink points in
+  // Docs.json, but the wiki confirms it is sinkable anyway — it pays out on its own "coupon"
+  // counter rather than ordinary sink points. Pinned so nobody "fixes" this one by pattern-
+  // matching on the Docs.json field alone.
+  test('still takes Alien DNA Capsules, the one part 0 sink points does not mean unsinkable for', () => {
+    expect(NON_SINKABLE_PARTS.has('AlienDNACapsule')).toBe(false)
+    expect(isSinkablePart('AlienDNACapsule', gameData)).toBe(true)
+  })
+
   test('every non-sinkable part named still exists in the game data', () => {
     for (const part of NON_SINKABLE_PARTS) {
       expect(gameData.items.parts[part]).toBeDefined()

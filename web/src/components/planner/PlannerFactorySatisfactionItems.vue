@@ -221,6 +221,7 @@
                   </v-chip>
                 </template>
                 <span v-if="isFluidPart(partId.toString())">The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.</span>
+                <span v-else-if="isNonSinkableSolidPart(partId.toString())">This part is not sinkable.<br>You can still upload this to the Dimensional Depot.</span>
                 <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot: doing so stops it irradiating you.</span>
               </v-tooltip>
               <v-chip
@@ -621,6 +622,7 @@
     SINK_POWER_MW,
   } from '@/utils/factory-management/disposal'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+  import { NON_SINKABLE_PARTS } from '@/utils/factory-management/sinkable'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
@@ -914,6 +916,11 @@
 
   // Only for the wording of the "cannot be sunk" chip — the guard itself is showDepotControl.
   const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
+
+  // A handful of ordinary solids the sink refuses for reasons that are neither "it's a fluid" nor
+  // "it's radioactive" (Power Shards, Alien Protein) — see sinkable.ts. Checked ahead of the
+  // radioactive wording below so those don't get told they're refused for being radioactive.
+  const isNonSinkableSolidPart = (partId: string) => NON_SINKABLE_PARTS.has(partId)
 
   const sinkTooltip = (partId: string) => {
     const count = getSinkCount(props.factory, partId)
