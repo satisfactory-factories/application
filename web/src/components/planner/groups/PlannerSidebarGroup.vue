@@ -6,20 +6,31 @@
       <!-- Deliberately the biggest thing in the sidebar after the plan itself: a group is the unit
            people navigate by, and at the old size its title sat below the factory names under it. -->
       <div class="group-title-row d-flex align-center ga-2 px-2 py-2">
-        <i
-          v-if="group"
-          class="fas fa-grip-lines group-drag-handle text-grey-darken-1"
-          title="Drag to reorder group"
-        />
+        <!-- data-hover-tooltip rather than `title` throughout this header, matching the expand
+             button below: a group's controls are drawn once per group, so they take the one
+             delegated tooltip at the app shell rather than a v-tooltip each. `aria-label` names
+             the icon-only buttons that the removed `title` used to. -->
+        <!-- The hint sits on a wrapper rather than the icon: FontAwesome replaces the <i> with
+             an <svg>, and HoverTooltip only accepts an HTMLElement, so on the icon itself it
+             never fires. (A native `title` never worked here either — SVG ignores the
+             attribute.) The drag handle class stays on the icon, which is what Sortable grabs. -->
+        <span
+          v-if="group && dragEnabled"
+          class="d-inline-flex align-center"
+          data-hover-tooltip="Drag to reorder group"
+        >
+          <i class="fas fa-grip-lines group-drag-handle text-grey-darken-1" />
+        </span>
         <!-- Two keyed icons rather than one with a bound class: Font Awesome replaces the <i> with
              an <svg> of its own, which Vue's patch then no longer owns, so flipping the class left
              the chevron pointing down forever. A keyed element forces a fresh node. -->
         <v-btn
+          :aria-label="collapsed ? 'Expand group' : 'Collapse group'"
           class="chevron"
+          :data-hover-tooltip="collapsed ? 'Expand group' : 'Collapse group'"
           density="compact"
           icon
           size="small"
-          :title="collapsed ? 'Expand group' : 'Collapse group'"
           variant="text"
           @click="toggle"
         >
@@ -47,14 +58,12 @@
 
         <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
           <i class="fas fa-industry" />
-          <span class="mx-2">{{ section.factories.length }}</span>
+          <span class="ml-2">{{ section.factories.length }}</span>
         </v-chip>
 
         <!-- Set apart from the readouts beside them: these two act, and a delete button flush
              against a count is a delete button someone reaches by accident. -->
         <div class="header-actions d-flex align-center ga-1">
-          <!-- HoverTooltip rather than `title`: a native tooltip alongside it would answer the
-               same hover twice. `aria-label` keeps the icon-only button named without one. -->
           <v-btn
             :aria-label="`Show the ${groupName} factories in the summary`"
             class="expand-group"
@@ -67,12 +76,13 @@
           />
           <v-btn
             v-if="group"
+            aria-label="Delete group"
             class="delete-group"
             color="red"
+            data-hover-tooltip="Delete this group. The factories in it are kept, and go back to being ungrouped."
             density="comfortable"
             icon="fas fa-trash"
             size="small"
-            title="Delete group"
             variant="text"
             @click.stop="requestDelete"
           />
@@ -177,6 +187,7 @@
     <draggable
       class="group-body"
       :class="{ collapsed }"
+      :disabled="!dragEnabled"
       :group="{ name: 'sidebar-factories' }"
       item-key="id"
       :model-value="rows"
@@ -198,6 +209,29 @@
         </div>
       </template>
     </draggable>
+
+    <!-- The tail of the tree, sat where the next factory in this group would appear — which is
+         where the button that makes one belongs. Outside the draggable deliberately: a button
+         inside a Sortable list is a row Sortable would try to reorder and drop factories after. -->
+    <div class="group-footer" :class="{ collapsed }">
+      <div class="add-factory">
+        <!-- The elbow's long arm: an element rather than a pseudo-element because it has to end
+             where the button begins, and the button is centred rather than a known width away.
+             It and the spacer opposite are what centre the button between them. -->
+        <span aria-hidden="true" class="branch-arm" />
+        <v-btn
+          class="add-factory-btn"
+          color="primary"
+          :data-hover-tooltip="addFactoryTooltip"
+          prepend-icon="fas fa-plus"
+          size="small"
+          @click="requestFactory"
+        >
+          Add factory
+        </v-btn>
+        <span aria-hidden="true" class="branch-spacer" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -238,10 +272,14 @@
 
   const emit = defineEmits<{
     (event: 'delete', group: NonNullable<FactoryGroupSection['group']>): void
+    // null is Ungrouped, which is a real destination: it means "make one belonging to nothing".
+    (event: 'createFactory', groupId: string | null): void
   }>()
 
   const { renameGroup, setGroupColor, moveFactoryToGroup } = useFactoryGroups()
-  const { draggingFactory } = useFactoryDrag()
+  // dragEnabled is off wherever the pointer is coarse: a row here has no drag handle, so on a
+  // touchscreen the whole row was a drag target and the sidebar could not be scrolled past one.
+  const { draggingFactory, dragEnabled } = useFactoryDrag()
   const { isCollapsed, isMounted, toggleCollapsed } = useGroupCollapse()
 
   const group = computed(() => props.section.group)
@@ -287,6 +325,14 @@
   const requestDelete = () => {
     if (group.value) emit('delete', group.value)
   }
+
+  // Asked for rather than done here: the planner owns factory creation (it also has to navigate to
+  // the new card), so this only says which group the click came from.
+  const requestFactory = () => emit('createFactory', group.value?.id ?? null)
+
+  const addFactoryTooltip = computed(() => group.value
+    ? `Add a new factory to ${group.value.name}`
+    : 'Add a new factory, in no group')
 
   // Must match the tile size and gap the template asks for, since the fit is arithmetic rather
   // than measurement: laying the icons out to find out how many fit would mean rendering the
@@ -473,10 +519,11 @@ $strip-border: 1px;
   }
 }
 
-// The icon and the count are set apart by an ml-2, which left the number looking wedged against
-// the right edge while the icon had room. `.sf-chip.small` sets its padding with !important.
+// Never shrinks: the header is a flex row, and once the group name filled it the chip was the
+// item that gave way — two digits then clipped against its own border. Padding is the chip's own
+// symmetric 10px, with a single ml-2 setting the number apart from the icon.
 .factory-count {
-  padding-right: 16px !important;
+  flex: 0 0 auto;
 }
 
 // The count sits close to the buttons; the separation that matters is between the two buttons, so
@@ -532,11 +579,6 @@ $strip-border: 1px;
     width: $tree-line;
   }
 
-  &:last-child::before {
-    bottom: auto;
-    height: calc(50% - #{$tree-gutter * 0.5} + #{$tree-line * 0.5});
-  }
-
   // Elbow, reaching from the trunk to the row's left edge. Level with the middle of the row, not
   // its first line — a row carrying status chips is two lines tall, and an elbow pinned to the top
   // one points at nothing in particular.
@@ -545,6 +587,63 @@ $strip-border: 1px;
     width: $tree-indent;
     height: $tree-line;
   }
+}
+
+// The tree's terminator, and the group's own Add Factory. It hangs off the trunk one slot below
+// the last row, so the tree ends on the button rather than on the last factory with a button
+// floating under it.
+.group-footer {
+  padding: 0 0 $tree-gutter $tree-indent;
+
+  // Collapsed, the rows are hidden and the header is the whole group; a lone "add a factory"
+  // hanging under a shut group would be the only thing left in the body.
+  &.collapsed {
+    display: none;
+  }
+}
+
+// The elbow reaches the button from the side, exactly as it reaches a factory row — the button is
+// simply further along, being centred. The trunk and the stub across the indent are drawn here;
+// the arm covering the rest of the distance has to be an element (see the template).
+.add-factory {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: -$tree-indent;
+    background-color: var(--sf-group, #616161);
+  }
+
+  // Trunk, ending at its own elbow: nothing follows it.
+  &::before {
+    top: 0;
+    height: calc(50% + #{$tree-line * 0.5});
+    width: $tree-line;
+  }
+
+  // The elbow's first stub, across the indent the rows are inset by. The arm carries on from
+  // where this ends, so the two read as one line.
+  &::after {
+    top: calc(50% - #{$tree-line * 0.5});
+    width: $tree-indent;
+    height: $tree-line;
+  }
+}
+
+.branch-arm {
+  flex: 1 1 0;
+  height: $tree-line;
+  background-color: var(--sf-group, #616161);
+}
+
+// Nothing but the arm's opposite number: equal flex either side is what holds the button in the
+// middle while the arm takes whatever room is left to the left of it.
+.branch-spacer {
+  flex: 1 1 0;
 }
 
 // The "overlay over the group you could be entering" — the element Sortable actually measures

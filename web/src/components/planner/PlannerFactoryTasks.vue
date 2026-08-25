@@ -13,6 +13,7 @@
         outlined
         placeholder="Add a task..."
         :rules="[newTaskRules.length]"
+        @blur="addTask"
         @keyup.enter="addTask"
       />
       <p v-if="factory.tasks.length >= 40" class="text-red">You are only allowed up to 50 tasks.</p>
@@ -33,12 +34,11 @@
                 />
               </td>
               <td class="toggle">
-                <!-- Box and tick are drawn in CSS on a native checkbox. Vuetify's selection
-                     controls point their icons at Font Awesome Regular, which this app doesn't
-                     ship, so the unticked box renders as nothing at all. -->
+                <!-- .sf-tick draws the box and the tick; see global.scss for why it is not a
+                     Vuetify selection control. `task-tick` is kept as the test's handle. -->
                 <input
                   :checked="task.completed"
-                  class="task-tick"
+                  class="task-tick sf-tick"
                   :title="task.completed ? 'Mark as not done' : 'Mark as done'"
                   type="checkbox"
                   @change="toggleTask(index)"
@@ -83,7 +83,6 @@
 
   const props = defineProps <{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const newTask = ref('')
@@ -117,21 +116,27 @@
     },
   }
 
+  // Called on enter and on blur, so typing something and clicking away adds the task rather
+  // than silently throwing it away. Both paths land here with the field already cleared by a
+  // previous add, hence the empty check comes before anything that can nag the user.
   const addTask = () => {
+    const title = newTask.value.trim()
+    if (title.length === 0) {
+      newTask.value = ''
+      return
+    }
     if (props.factory.tasks.length >= 50) {
       alert('You have reached the maximum number of tasks allowed (50).')
       return
     }
-    if (newTask.value.length === 0) return
-    // Only add a new task if there isn't already an empty one
-    props.factory.tasks.push({ title: newTask.value, completed: false })
 
     // Prevent people from adding a stupidly long task
-    if (newTask.value.length > 200) {
+    if (title.length > 200) {
       alert('Task is too long. Please keep it under 200 characters.')
       return
     }
 
+    props.factory.tasks.push({ title, completed: false })
     newTask.value = ''
   }
 
@@ -196,36 +201,6 @@
 }
 .task-drag-handle {
   cursor: grab;
-}
-.task-tick {
-  appearance: none;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-radius: 3px;
-  cursor: pointer;
-  display: block;
-  height: 18px;
-  margin: 0;
-  position: relative;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-  width: 18px;
-
-  &:checked {
-    background-color: var(--sf-success);
-    border-color: var(--sf-success);
-  }
-
-  // Two borders of a rotated box: the short arm and the long arm of a tick.
-  &:checked::after {
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    content: '';
-    height: 10px;
-    left: 4px;
-    position: absolute;
-    top: 0;
-    transform: rotate(45deg);
-    width: 5px;
-  }
 }
 .text-done {
   text-decoration: line-through;

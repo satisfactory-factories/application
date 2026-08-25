@@ -3,12 +3,14 @@ import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterf
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { getCustomBuildingData, getCustomBuildingPower } from '@/utils/factory-management/custom-buildings'
 import {
   getGroupExtractor,
   getGroupSatelliteCount,
   getWell,
   isExtractionRecipe,
 } from '@/utils/factory-management/building-groups/extraction'
+import { getFactorySinkPower } from '@/utils/factory-management/disposal'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -115,12 +117,37 @@ export const calculatePowerProducerBuildings = (factory: Factory, gameData: Data
   })
 }
 
+// Custom buildings make nothing, so nothing else in the engine would ever mention them. They
+// still have to be built and still draw power, which is the entire point of listing them.
+export const calculateCustomBuildingRequirements = (factory: Factory, gameData: DataInterface) => {
+  factory.customBuildings?.forEach(customBuilding => {
+    if (!getCustomBuildingData(customBuilding.building, gameData)) {
+      return // Not chosen yet, or no longer in the game data.
+    }
+
+    if (!factory.buildingRequirements[customBuilding.building]) {
+      factory.buildingRequirements[customBuilding.building] = {
+        name: customBuilding.building,
+        amount: 0,
+        powerConsumed: 0,
+      }
+    }
+
+    const buildingData = factory.buildingRequirements[customBuilding.building]
+    buildingData.amount += Math.ceil(customBuilding.amount)
+    buildingData.powerConsumed = formatNumberFully(
+      (buildingData.powerConsumed ?? 0) + customBuilding.powerConsumed, 3
+    )
+  })
+}
+
 // Sums up all building data to create an aggregate value of power and building requirements
 export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: DataInterface) => {
   factory.buildingRequirements = {}
   // First tot up all building and power requirements for products and power generators
   calculateProductBuildings(factory, gameData)
   calculatePowerProducerBuildings(factory, gameData)
+  calculateCustomBuildingRequirements(factory, gameData)
 }
 
 // This is called later on in the calculation process to get the final values using the building groups, which will be actually what the player needs to build.
@@ -152,6 +179,21 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       consumedMax += group.powerUsageMax ?? group.powerUsage
     })
   })
+
+  // AWESOME Sinks the user has placed on this factory's surpluses. A flat 30 MW each, counted
+  // into the swing figures identically: the sink has no clock, so it never runs at anything but
+  // its rated draw.
+  const sinkPower = getFactorySinkPower(factory)
+  consumed += sinkPower
+  consumedMin += sinkPower
+  consumedMax += sinkPower
+
+  // Custom buildings have no building groups to read a clock off — they cannot be overclocked,
+  // so their draw is flat and lands on all three figures alike.
+  const customBuildingPower = getCustomBuildingPower(factory)
+  consumed += customBuildingPower
+  consumedMin += customBuildingPower
+  consumedMax += customBuildingPower
 
   factory.power.consumed = formatNumberFully(consumed, 1)
   factory.power.consumedMin = formatNumberFully(consumedMin, 1)
@@ -226,6 +268,17 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
         }
       }
     })
+  })
+
+  // Custom buildings are not derived from groups at all: the count is what the user typed, so
+  // it is added straight back after the reset above.
+  factory.customBuildings?.forEach(customBuilding => {
+    const buildingData = factory.buildingRequirements[customBuilding.building]
+    if (!buildingData) {
+      return // Building not yet chosen, or gone from the game data.
+    }
+
+    buildingData.amount += Math.ceil(customBuilding.amount)
   })
 
   // And the power producers' buildings, which are also derived from their groups.

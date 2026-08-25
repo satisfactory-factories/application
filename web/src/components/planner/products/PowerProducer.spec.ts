@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import PowerProducer from './PowerProducer.vue'
+import TooltipInfo from '@/components/tooltip-info.vue'
 import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import {
@@ -10,8 +11,10 @@ import {
   Factory,
   FactoryPowerChangeType,
   FactoryPowerProducer,
+  ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 import { getBuildingDisplayName } from '@/utils/factory-management/common'
 
 const gameData = useGameDataStore().getGameData()
@@ -20,7 +23,6 @@ const mountSubject = (factory: Factory) => {
   return mount(PowerProducer, {
     propsData: {
       factory,
-      helpText: false,
     },
     global: {
       plugins: [vuetify],
@@ -41,7 +43,7 @@ let fuelQuantity: any
 let powerAmount: any
 let buildingCount: any
 let factory: Factory
-let subject: VueWrapper<{ factory: Factory, helpText: boolean }>
+let subject: VueWrapper<{ factory: Factory }>
 
 const updateElements = (powerProducer: FactoryPowerProducer) => {
   // Elements
@@ -235,6 +237,99 @@ describe('Component: PowerProducer', () => {
 
     it('should update the building group\'s building count', () => {
       buildingGroup.buildingCount = 10
+    })
+  })
+})
+
+// An Alien Power Augmenter split across groups cannot honour a building count typed on the
+// producer line: it has no clock, so a share of a building has nowhere to go, and nothing on the
+// row says which group should grow. The control is taken away — and has to say so, because a
+// greyed-out field on its own tells you only that it stopped working, never why.
+describe('Component: PowerProducer (augmenter building count)', () => {
+  let augmenterFactory: Factory
+  let augmenter: FactoryPowerProducer
+  let augmenterSubject: VueWrapper<{ factory: Factory }>
+
+  const countField = (): Element | null =>
+    augmenterSubject.element.querySelector(`[id="${augmenterFactory.id}-${augmenter.id}-building-count"]`)
+
+  const buildingChip = (): Element => {
+    const chip = [...augmenterSubject.element.querySelectorAll('.v-chip')]
+      .find(candidate => /Augmenter|Generator/.test(candidate.textContent ?? ''))
+    if (!chip) throw new Error('No building chip on the producer row')
+    return chip
+  }
+
+  const buildProducer = (building: string, recipe: string, groups: number) => {
+    setActivePinia(createPinia())
+    augmenterFactory = newFactory('Alien Power')
+    addPowerProducerToFactory(augmenterFactory, {
+      building,
+      buildingAmount: 3,
+      recipe,
+      updated: FactoryPowerChangeType.Building,
+    })
+    augmenter = augmenterFactory.powerProducers[0]
+
+    for (let added = 1; added < groups; added++) {
+      addBuildingGroup(augmenter, ItemType.Power, augmenterFactory)
+    }
+
+    calculateFactory(augmenterFactory, [augmenterFactory], gameData)
+    augmenterSubject = mountSubject(augmenterFactory)
+  }
+
+  describe('with a single group', () => {
+    beforeEach(() => buildProducer('alienpoweraugmenter', 'AlienPowerAugmenter', 1))
+
+    it('should let the count be edited', () => {
+      expect(countField()?.tagName).toBe('INPUT')
+      expect((countField() as HTMLInputElement).disabled).toBe(false)
+    })
+
+    it('should state the one-grid assumption the boost relies on', () => {
+      expect(augmenterSubject.text()).toContain('one power grid')
+    })
+  })
+
+  describe('with more than one group', () => {
+    beforeEach(() => buildProducer('alienpoweraugmenter', 'AlienPowerAugmenter', 2))
+
+    it('should hand the count to the groups rather than offer a field', () => {
+      // Not an input at all: there is nothing sensible for a typed figure to do.
+      expect(countField()?.tagName).toBe('SPAN')
+      // The figure itself stays readable — it is still what the factory builds.
+      expect(countField()?.textContent?.trim()).toBe('3')
+    })
+
+    it('should say it is disabled, and why', () => {
+      expect(buildingChip().textContent).toContain('Disabled')
+      expect(buildingChip().querySelector('.fa-info-circle')).not.toBeNull()
+    })
+
+    // House style: the planner's copy uses ordinary punctuation, not em dashes. The tooltip only
+    // mounts its content on hover, so the wording is read off the prop rather than the DOM.
+    it('should explain it without an em dash', () => {
+      const explanations = augmenterSubject.findAllComponents(TooltipInfo)
+        .map(tooltip => tooltip.props('text') as string)
+        .filter(text => text.includes('no way to give a group half a building'))
+
+      expect(explanations).toHaveLength(1)
+      expect(explanations[0]).not.toContain('\u2014')
+    })
+  })
+
+  describe('a generator that can overclock', () => {
+    beforeEach(() => buildProducer('generatorfuel', 'GeneratorFuel_LiquidFuel', 2))
+
+    it('should keep the count editable across multiple groups', () => {
+      // A fuel generator has a clock, so a fractional share has somewhere to go.
+      expect(countField()?.tagName).toBe('INPUT')
+      expect((countField() as HTMLInputElement).disabled).toBe(false)
+    })
+
+    it('should not claim anything about the power grid', () => {
+      expect(augmenterSubject.text()).not.toContain('one power grid')
     })
   })
 })

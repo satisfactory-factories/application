@@ -548,6 +548,10 @@
       plannerVersion: tab?.plannerVersion,
       // The only group state the factories don't carry themselves.
       groups: tab?.groups,
+      // The Depot research the plan was written against. Absent reads as fully researched, so a
+      // backup without these restores at 16x the upload speed the plan was sized for.
+      depotUploadTier: tab?.depotUploadTier,
+      depotExpansionTier: tab?.depotExpansionTier,
     })
     backedUp.value = true
     eventBus.emit('toast', { message: 'Plan downloaded. To restore it, copy the file\'s contents and press Paste plan.' })

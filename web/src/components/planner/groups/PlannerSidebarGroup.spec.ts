@@ -287,6 +287,47 @@ describe('PlannerSidebarGroup', () => {
     expect(container.querySelectorAll('.tree-item > .factory-card')).toHaveLength(2)
   })
 
+  describe('the add factory row', () => {
+    // The point of the button: the planner cannot tell which group a plain "new factory" click
+    // came from, so the group names itself.
+    it('asks for a factory in this group', async () => {
+      const { container, emitted } = renderGroup({
+        group: group(),
+        factories: [withProducts('Alpha', 1, [])],
+      })
+
+      await fireEvent.click(container.querySelector('.add-factory-btn')!)
+
+      expect(emitted().createFactory?.[0]).toEqual(['g1'])
+    })
+
+    // Ungrouped is a real destination, not the absence of one — the factory belongs to no group.
+    it('asks for an ungrouped factory from the synthesised section', async () => {
+      const { container, emitted } = renderGroup({ group: null, factories: [] })
+
+      await fireEvent.click(container.querySelector('.add-factory-btn')!)
+
+      expect(emitted().createFactory?.[0]).toEqual([null])
+    })
+
+    // An empty group is otherwise nothing but a header, and filling it by dragging a factory in
+    // is the only way it had of getting one.
+    it('is offered by an empty group', () => {
+      const { container } = renderGroup({ group: group(), factories: [] })
+
+      expect(container.querySelector('.add-factory-btn')).not.toBeNull()
+    })
+
+    it('is hidden while the group is collapsed, along with the rows it sits under', async () => {
+      const { container } = renderGroup({ group: group(), factories: [withProducts('Alpha', 1, [])] })
+      expect(container.querySelector('.group-footer.collapsed')).toBeNull()
+
+      await fireEvent.click(container.querySelector('.chevron')!)
+
+      expect(container.querySelector('.group-footer.collapsed')).not.toBeNull()
+    })
+  })
+
   it('asks the list to delete, rather than deleting behind its back', async () => {
     const target = group()
     const { container, emitted } = renderGroup({ group: target, factories: [] })

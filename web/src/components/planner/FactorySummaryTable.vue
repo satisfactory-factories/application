@@ -172,6 +172,25 @@
                 <b class="ml-2">{{ formatMw(producer.powerProduced) }}</b>
               </v-chip>
             </tooltip>
+            <!-- And custom buildings, for the same reason: a portal room produces nothing at
+                 all, so this cell was its only chance to say what is in it. -->
+            <tooltip
+              v-for="(customBuilding, customIndex) in factory.customBuildings"
+              :key="`${factory.id}-custom-${customIndex}`"
+              :text="customBuildingTooltip(customBuilding)"
+            >
+              <v-chip class="sf-chip summary-chip custom-building">
+                <game-asset
+                  v-if="customBuilding.building"
+                  clickable
+                  height="32"
+                  :subject="customBuilding.building"
+                  type="building"
+                  width="32"
+                />
+                <b class="ml-2">{{ formatNumber(Math.ceil(customBuilding.amount)) }}x</b>
+              </v-chip>
+            </tooltip>
           </div>
         </td>
         <td class="border-e-md">
@@ -257,15 +276,23 @@
 
 <script setup lang="ts">
   import { computed, nextTick, onMounted, ref, watch } from 'vue'
-  import { Factory, FactoryItem, FactoryPowerProducer, PartMetrics } from '@/interfaces/planner/FactoryInterface'
+  import {
+    Factory,
+    FactoryCustomBuilding,
+    FactoryItem,
+    FactoryPowerProducer,
+    PartMetrics,
+  } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName, hasMetricsForPart } from '@/utils/helpers'
   import { calculateExports, calculateImports, PartFlowSummary } from '@/utils/summary'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
-  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
+  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import {
     FactoryStatus,
     factoryStatusClass,
+    FactoryStatusSection,
     getSectionStatuses,
+    statusJumpTargets,
   } from '@/utils/factory-management/status'
 
   const props = withDefaults(defineProps<{
@@ -291,7 +318,7 @@
   const emit = defineEmits<{
     // A factory id, optionally with the element to land on and a fallback if that row is not in
     // the DOM yet. The parent owns navigation because only it knows whether a dialog must close.
-    (event: 'navigate', factoryId: number, subsection?: string, fallback?: string): void
+    (event: 'navigate', factoryId: number, subsection?: string | string[], fallback?: string): void
     (event: 'measured', height: number): void
   }>()
 
@@ -366,11 +393,11 @@
   const nonImportStatuses = (factory: Factory) =>
     statusesFor(factory).filter(status => status.section !== 'imports')
 
-  // Aims at the row the status names, with its section as the fallback for anything with no row of
-  // its own. The parent composes nothing: it only has to get us to the factory.
-  const goToStatus = (factoryId: number, target: { section: string, subject?: string }) => {
-    const section = `${factoryId}-${target.section}`
-    emit('navigate', factoryId, target.subject ? `${section}-item-${target.subject}` : section, section)
+  // Aims at every row the status names, with its section as the fallback for anything with no row
+  // of its own. The parent composes nothing: it only has to get us to the factory.
+  const goToStatus = (factoryId: number, target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(factoryId, target)
+    emit('navigate', factoryId, targets, fallback)
   }
 
   const unsatisfiedParts = (factory: Factory): [string, PartMetrics][] =>
@@ -399,6 +426,10 @@
   const producerTooltip = (producer: FactoryPowerProducer): string =>
     `<b>${getPowerProducerDisplayName(producer)}</b>: ${formatNumber(Math.ceil(producer.buildingAmount))}x` +
     `<br>${formatMw(producer.powerProduced)} to the grid`
+
+  const customBuildingTooltip = (customBuilding: FactoryCustomBuilding): string =>
+    `<b>${getBuildingDisplayName(customBuilding.building)}</b>: ${formatNumber(Math.ceil(customBuilding.amount))}x` +
+    `<br>${formatMw(customBuilding.powerConsumed)} drawn`
 
   const flowTooltip = (summary: PartFlowSummary, direction: 'from' | 'to'): string => {
     const lines = summary.factories.map(

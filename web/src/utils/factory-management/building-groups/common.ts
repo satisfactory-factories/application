@@ -476,6 +476,31 @@ export const calculateBuildingGroupProblems = (
 }
 
 // Takes the building groups and rebalances them based on the building count
+// Spreads a target across groups in whole buildings, as evenly as the count allows: each
+// group gets the floor of an equal share and the leftover buildings are handed out one at a
+// time. Used for buildings that cannot overclock, where a part-building share has nowhere
+// to go. A fractional target cannot be built at all, so what is left of one lands on the
+// last group rather than being spread as noise across every group.
+const distributeWholeBuildings = (groups: BuildingGroup[], targetBuildings: number) => {
+  const base = Math.floor(targetBuildings / groups.length)
+  let remainder = targetBuildings - base * groups.length
+
+  groups.forEach((group, index) => {
+    let count = base
+    if (remainder >= 1) {
+      count++
+      remainder--
+    }
+    if (index === groups.length - 1 && remainder > 0) {
+      count += remainder
+    }
+
+    group.buildingCount = formatNumberFully(count, 3)
+    group.overclockPercent = 100
+    group.clockSetByUser = false
+  })
+}
+
 export const syncBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
@@ -526,6 +551,18 @@ export const syncBuildingGroups = (
       ) {
         return
       }
+    }
+
+    // Buildings with no clock (Geothermal, Alien Power Augmenter) cannot absorb a
+    // fractional share by underclocking. The ceil-and-underclock below would hand EVERY
+    // group a whole extra building, and the clock is then forced back to 100% — so 3
+    // augmenters over 2 groups became 2 + 2, inventing a building the user never asked
+    // for and leaving the groups permanently disagreeing with the item. Split the target
+    // into whole buildings instead.
+    if (!canBuildingOverclock(building)) {
+      distributeWholeBuildings(groups, targetBuildings)
+      recalculateGroupMetrics(item, groupType, factory)
+      return
     }
 
     // Divide the target equally among groups. The target is in output-effective
@@ -825,6 +862,40 @@ export const solveGroupForRemainder = (
   const overclockPercent = formatNumberFully((physical / buildingCount) * 100, 4)
 
   return overclockPercent >= MIN_CLOCK_PERCENT ? { buildingCount, overclockPercent } : null
+}
+
+// The figure this group's Satisfy/Trim would land on, without applying it, so the buttons can name
+// it. In the item's headline units — parts/min of what a product makes, MW of what a generator
+// produces — because that is the number the group's own row shows.
+//
+// Derived from the item's gap rather than from the solution's clock: the button puts the WHOLE
+// gap on this group, and a group's output scales linearly with its effective building count, so
+// its new output is simply its current output plus that gap. Reading it off the solved clock
+// would mean re-deriving the recipe maths (sloops, extractor mark, node purity, well satellites)
+// that getGroupOutputMultiplier already folds into the effective count.
+//
+// Null when no setting of this group could absorb the gap, which is exactly when the button is
+// disabled anyway — a figure on a button that cannot be pressed would only mislead.
+export const solveGroupTargetOutput = (
+  item: FactoryItem | FactoryPowerProducer,
+  group: BuildingGroup,
+  groupType: ItemType,
+): number | null => {
+  if (!solveGroupForRemainder(item, group, groupType)) {
+    return null
+  }
+
+  const readGroup = (subject: BuildingGroup) => groupType === ItemType.Product
+    ? subject.parts[(item as FactoryItem).id] ?? 0
+    : subject.powerProduced ?? 0
+
+  const itemTotal = groupType === ItemType.Product
+    ? (item as FactoryItem).amount
+    : (item as FactoryPowerProducer).powerAmount
+
+  const groupsTotal = item.buildingGroups.reduce((acc, subject) => acc + readGroup(subject), 0)
+
+  return formatNumberFully(readGroup(group) + (itemTotal - groupsTotal), 4)
 }
 
 // Puts the item's whole remainder onto this one group. The counterpart to the remainder buttons,

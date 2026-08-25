@@ -1,2 +1,7 @@
 Thanks Greeny for collating all the images together! https://github.com/greeny/SatisfactoryTools/tree/master
 Saved me a ton of work!
+
+mercer-sphere_64.png / mercer-sphere_256.png came from the Satisfactory Wiki
+(https://satisfactory.wiki.gg/wiki/File:Mercer_Sphere.png) rather than the collation above,
+which has no Mercer Sphere: it is a collectable rather than a craftable part, so it never
+appeared in the item set the icons were pulled from.

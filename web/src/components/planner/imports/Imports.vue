@@ -10,12 +10,29 @@
   <template v-else>
     <v-card class="rounded sub-card border-md mb-2">
       <!-- Keyed by index: every half-configured row reads as "null-null", and duplicate
-           keys make Vue patch the wrong row's selectors. -->
+           keys make Vue patch the wrong row's selectors.
+
+           The space around a row is its own padding, not a margin: a margin belongs to nothing,
+           so the gap above the first row and the gaps between rows sat outside every row's box
+           and outside the jump highlight, which then read as a band floating between the
+           separators rather than the row itself. Same pixels either way — the 8px above a row
+           used to be its margin collapsing with the one below the row before it. -->
       <div
         v-for="(input, inputIndex) in factory.inputs"
+        :id="importRowId(factory.id, input.factoryId, input.outputPart) ?? undefined"
         :key="inputIndex"
-        class="selectors d-flex flex-column flex-md-row ga-3 px-4 pb-2 my-2 border-b-md no-bottom"
+        class="status-anchor selectors d-flex flex-column flex-md-row ga-3 px-4 py-2 border-b-md no-bottom"
       >
+        <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
+          <input
+            :checked="!!input.completed"
+            class="checklist-tick"
+            :class="{ desynced: isInputChecklistDesynced(input) }"
+            :title="isInputChecklistDesynced(input) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this import as built'"
+            type="checkbox"
+            @click.prevent="toggleChecklistInput(factory, input)"
+          >
+        </div>
         <div class="input-row d-flex align-center">
           <factory-icon-display
             class="mr-2"
@@ -75,34 +92,79 @@
           />
           <debounce-spinner :active="pendingRecalc === `${input.factoryId}-${input.outputPart}`" />
         </div>
-        <div class="input-row d-flex align-center">
+        <!-- Wraps rather than overflowing: a row can carry a Need button and a Capacity button at
+             once, and the pair plus View and delete is wider than the card on any screen. -->
+        <div class="input-row d-flex align-center flex-wrap ga-2">
+          <!-- Need and Capacity are the two questions an import row can be sized against: what this
+               factory wants, and what the supplier can actually give. Every button here names which
+               one it answers, because asking a supplier for more than it makes is a valid thing to
+               do deliberately and used to be the only thing Satisfy could do. -->
           <v-btn
             v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
-            class="rounded mr-2"
+            class="rounded"
             color="yellow"
             prepend-icon="fas fa-arrow-down"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Trim</v-btn>
+          >Trim to Need{{ satisfyTargetLabel(inputIndex) }}</v-btn>
           <v-btn
             v-show="input.outputPart && !requirementSatisfied(factory, input.outputPart)"
-            class="rounded mr-2"
+            class="rounded"
             color="green"
             prepend-icon="fas fa-arrow-up"
             size="default"
             @click="updateInputToSatisfy(inputIndex, factory)"
-          >Satisfy</v-btn>
+          >Satisfy to Need{{ satisfyTargetLabel(inputIndex) }}</v-btn>
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span v-show="canSatisfyToCapacity(inputIndex)">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="rounded"
+                  color="green"
+                  prepend-icon="fas fa-arrow-to-top"
+                  size="default"
+                  @click="satisfyInputToCapacity(inputIndex, factory)"
+                >Satisfy to Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
+              </span>
+            </template>
+            <span>
+              This factory needs more than {{ providerName(inputIndex) }} can supply. Take the
+              {{ formatNumber(importCapacity(inputIndex) ?? 0) }}/min it does have spare, rather
+              than asking for the full amount and having to trim it back afterwards.
+            </span>
+          </v-tooltip>
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span v-show="exceedsCapacity(inputIndex)">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="rounded"
+                  color="yellow"
+                  prepend-icon="fas fa-arrow-to-bottom"
+                  size="default"
+                  @click="trimInputToCapacity(inputIndex, factory)"
+                >Trim to Capacity{{ fixTargetSuffix(importCapacity(inputIndex)) }}</v-btn>
+              </span>
+            </template>
+            <span>
+              {{ providerName(inputIndex) }} can only spare
+              {{ formatNumber(importCapacity(inputIndex) ?? 0) }}/min of this item after its own
+              production and its other exports. Trim this import down to that.
+            </span>
+          </v-tooltip>
           <v-btn
             class="rounded"
             color="primary"
             :disabled="!input.factoryId"
             prepend-icon="fas fa-industry"
             size="default"
+            title="Jump to the product supplying this import"
             variant="outlined"
-            @click="navigateToFactory(input.factoryId)"
+            @click="navigateToSource(input)"
           >View</v-btn>
           <v-btn
-            class="rounded ml-2"
+            class="rounded"
             color="red"
             icon="fas fa-trash"
             size="small"
@@ -115,7 +177,7 @@
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">No amount set!</span>
           </v-chip>
-          <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small orange">
+          <v-chip v-if="isImportRedundant(inputIndex, factory)" class="sf-chip small status-warning-outlined">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">Redundant!</span>
           </v-chip>
@@ -145,21 +207,31 @@
     addInputToFactory,
     calculateAbleToImport,
     calculateImportCandidates,
+    calculateImportCapacity,
     calculatePossibleImports,
+    canSatisfyImportToCapacity,
     deleteInputPair,
+    importExceedsCapacity,
     importFactorySelections,
     importPartSelections,
+    importRowId,
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
+    satisfyImportTarget,
+    satisfyImportToCapacity,
+    trimImportToCapacity,
     validateInput,
   } from '@/utils/factory-management/inputs'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { useDisplay } from 'vuetify'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { fixTargetSuffix, formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
+  import { isInputChecklistDesynced, toggleChecklistInput } from '@/utils/factory-management/checklist'
+  import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const { getFactories } = useAppStore()
@@ -170,11 +242,29 @@
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const updateFactory = inject('updateFactory') as (factory: Factory, mode?: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: number | null) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: number | null,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
+
+  // The mirror of the export chips' jump: land on the product supplying this import rather than on
+  // the supplying factory's card, which only says "somewhere in here". A part supplied as a
+  // byproduct has no row of its own, and its marker sends the flash to the product that makes it.
+  // The Products section is the fallback for the rest — a factory can export a surplus of
+  // something it imports, which it produces nowhere.
+  const navigateToSource = (input: FactoryInput) => {
+    if (!input.factoryId) return
+
+    navigateToFactory(
+      input.factoryId,
+      input.outputPart ? productRowId(input.factoryId, input.outputPart) : undefined,
+      `${input.factoryId}-products`
+    )
+  }
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const validToDisplay = computed(() => {
@@ -305,6 +395,57 @@
     updateFactories(factory, factory.inputs[inputIndex])
   }
 
+  // The provider a row points at, or null while the row is still half-filled. findFac hands back
+  // an empty object rather than throwing when the id is unknown, so the id is what gets tested.
+  const providerFor = (inputIndex: number): Factory | null => {
+    const input = props.factory.inputs[inputIndex]
+    if (!input?.factoryId || !input.outputPart) {
+      return null
+    }
+    const provider = findFactory(input.factoryId)
+    return provider?.id ? provider : null
+  }
+
+  // What Satisfy/Trim would set the Qty to, appended to the button so the figure is visible
+  // before the press rather than only after it.
+  const satisfyTargetLabel = (inputIndex: number): string =>
+    fixTargetSuffix(satisfyImportTarget(inputIndex, props.factory))
+
+  const providerName = (inputIndex: number): string => providerFor(inputIndex)?.name ?? 'This factory'
+
+  const importCapacity = (inputIndex: number): number | null => {
+    const provider = providerFor(inputIndex)
+    return provider ? calculateImportCapacity(inputIndex, props.factory, provider) : null
+  }
+
+  const exceedsCapacity = (inputIndex: number): boolean => {
+    const provider = providerFor(inputIndex)
+    return provider ? importExceedsCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const canSatisfyToCapacity = (inputIndex: number): boolean => {
+    const provider = providerFor(inputIndex)
+    return provider ? canSatisfyImportToCapacity(inputIndex, props.factory, provider) : false
+  }
+
+  const satisfyInputToCapacity = (inputIndex: number, factory: Factory) => {
+    const provider = providerFor(inputIndex)
+    if (!provider) {
+      return
+    }
+    satisfyImportToCapacity(inputIndex, factory, provider)
+    updateFactories(factory, factory.inputs[inputIndex])
+  }
+
+  const trimInputToCapacity = (inputIndex: number, factory: Factory) => {
+    const provider = providerFor(inputIndex)
+    if (!provider) {
+      return
+    }
+    trimImportToCapacity(inputIndex, factory, provider)
+    updateFactories(factory, factory.inputs[inputIndex])
+  }
+
   const importCandidates = computed((): Factory[] => {
     return calculateImportCandidates(props.factory, possibleImports.value)
   })
@@ -338,6 +479,52 @@
   .selectors {
     &:last-of-type {
       border-bottom: none !important;
+    }
+  }
+
+  // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+  // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+  // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+  .checklist-tick {
+    appearance: none;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-radius: 3px;
+    cursor: pointer;
+    display: block;
+    height: 18px;
+    margin: 0;
+    position: relative;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    width: 18px;
+
+    &:checked {
+      background-color: var(--sf-success);
+      border-color: var(--sf-success);
+    }
+
+    &:checked::after {
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      content: '';
+      height: 10px;
+      left: 4px;
+      position: absolute;
+      top: 0;
+      transform: rotate(45deg);
+      width: 5px;
+    }
+
+    // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+    // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+    // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+    // second symbol crammed into an 18px box read worse than the empty box does.
+    &.desynced:checked {
+      background-color: var(--sf-status-warning-border);
+      border-color: var(--sf-status-warning-border);
+
+      &::after {
+        content: none;
+      }
     }
   }
 </style>

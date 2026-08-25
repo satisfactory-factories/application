@@ -19,7 +19,7 @@
     </div>
     <div>
       <v-chip
-        class="sf-chip orange input mx-1"
+        class="sf-chip building input mx-1"
         variant="tonal"
       >
         <tooltip :text="getBuildingDisplayName(groupBuilding)">
@@ -411,8 +411,10 @@
     </template>
     <!-- Puts the whole gap on this group, where the remainder buttons above pick the group for
          you. Absent when the item is balanced, and disabled when this group cannot hold the
-         change — a trim deeper than the group goes would need a clock below the game's 1%. -->
-    <div v-if="!isBalanced" class="ml-auto">
+         change — a trim deeper than the group goes would need a clock below the game's 1%.
+         Always-synced buildings never offer it: the group follows the item automatically, so
+         any gap here is the sync mid-flight rather than something for the user to close. -->
+    <div v-if="!isBalanced && !isAlwaysSynced" class="ml-auto">
       <!-- Same colours and arrows as the product's own Satisfy/Trim, which does the same job one
            level up. Two buttons rather than one with bound icon and colour: FontAwesome replaces
            the icon element and detaches it from Vue, so a swapped `prepend-icon` never lands. -->
@@ -426,7 +428,7 @@
         size="small"
         @click="balanceGroup"
       >
-        Trim
+        Trim{{ balanceTargetLabel }}
         <tooltip-info :is-caption="false" :text="balanceTooltip" />
       </v-btn>
       <v-btn
@@ -439,7 +441,7 @@
         size="small"
         @click="balanceGroup"
       >
-        Satisfy
+        Satisfy{{ balanceTargetLabel }}
         <tooltip-info :is-caption="false" :text="balanceTooltip" />
       </v-btn>
       <div class="underchip">&nbsp;</div>
@@ -459,8 +461,8 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { sfColors } from '@/utils/colors'
   import { useDisplay } from 'vuetify'
-  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
-  import { canBuildingOverclock, getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { canBuildingOverclock, getBuildingDisplayName, isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
   import {
     applyRemainderToGroup,
     calculateRemainingBuildingCount,
@@ -469,6 +471,7 @@
     getGroupPowerShards,
     getShardsPerBuilding,
     solveGroupForRemainder,
+    solveGroupTargetOutput,
     updateBuildingGroupViaPart,
   } from '@/utils/factory-management/building-groups/common'
   import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
@@ -544,9 +547,18 @@
 
   const isOverProducing = computed(() => buildingsRemaining.value < 0)
 
+  const isAlwaysSynced = computed(() => isAlwaysSyncedBuilding(props.building))
+
   // Null when there is no setting this group could take, which is what disables the button.
   const balanceSolution = computed(() =>
     solveGroupForRemainder(props.item, props.group, props.type))
+
+  // What Satisfy/Trim would leave this group producing, appended to the button so the figure is
+  // visible before the press rather than only after it. A power group's headline is its MW.
+  const balanceTargetLabel = computed(() => fixTargetSuffix(
+    solveGroupTargetOutput(props.item, props.group, props.type),
+    props.type === ItemType.Power ? 'mw' : undefined
+  ))
 
   const balanceTooltip = computed(() => {
     if (!balanceSolution.value) {

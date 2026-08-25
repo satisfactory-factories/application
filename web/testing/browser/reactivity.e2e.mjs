@@ -189,6 +189,69 @@ try {
     else fail(`reverse-solve round-trip: typed 1234, settled at "${settled}"`)
   }
 
+  // ---- TEST 2b: checklist panel checkbox reflects an untick after a desync re-ack ----
+  // Regression for a real bug: clicking a desynced checklist tick re-acknowledges it (stamps a
+  // fresh baseline, `completed` stays true) rather than unchecking it — so on that click the
+  // bound `checked` value never changes and Vue's vnode diff has nothing to patch. A second click
+  // that DOES flip `completed` (a genuine untick) then updated the model, the completed count and
+  // the product's own inline checkbox correctly, but the checklist panel's own checkbox stayed
+  // rendered as ticked until a hard refresh. Copper Basics ships with checklist mode on and Wire
+  // pre-ticked, so bumping its amount is enough to desync it without any UI setup.
+  // Only reproduces against a real browser: jsdom does not replicate the native checkbox
+  // click-then-cancelled-activation dance this depends on, so this cannot be a vitest unit test.
+  await page.evaluate(id => document.getElementById(id)?.scrollIntoView({ block: 'center' }), copperBasics.id)
+  await sleep(500)
+  const wireAmountSel = `[id="${copperBasics.id}-Wire-amount"]`
+  const wireAmountInput = await page.$(wireAmountSel)
+  if (!wireAmountInput) {
+    fail('checklist regression: Wire amount input not found on Copper Basics')
+  } else {
+    await wireAmountInput.click()
+    await page.keyboard.down('Control'); await page.keyboard.press('a'); await page.keyboard.up('Control')
+    await page.keyboard.type('399')
+    await sleep(1000) // debounce + recalc
+
+    const readWireChecklistCheckbox = facId => {
+      const panel = document.getElementById(`${facId}-checklist`)
+      const row = [...(panel?.querySelectorAll('.checklist-row') ?? [])].find(r => r.textContent.includes('Wire'))
+      const checkbox = row?.querySelector('input.checklist-tick')
+      return checkbox ? { exists: true, checked: checkbox.checked } : { exists: false }
+    }
+    // A programmatic `el.click()` IDL call does not reproduce this bug — only a real,
+    // CDP-simulated mouse click does, which is the whole reason this has to live here rather
+    // than in a jsdom-based unit test. Grabbed fresh each time via evaluateHandle rather than a
+    // cached ElementHandle: Vue may replace the node, and a stale handle throws "detached".
+    const clickWireChecklistCheckbox = async () => {
+      const handle = await page.evaluateHandle(facId => {
+        const panel = document.getElementById(`${facId}-checklist`)
+        const row = [...(panel?.querySelectorAll('.checklist-row') ?? [])].find(r => r.textContent.includes('Wire'))
+        return row?.querySelector('input.checklist-tick') ?? null
+      }, copperBasics.id)
+      const el = handle.asElement()
+      if (el) await el.click()
+    }
+
+    const beforeClicks = await page.evaluate(readWireChecklistCheckbox, copperBasics.id)
+    if (!beforeClicks.exists) {
+      fail('checklist regression: Wire row not found in the checklist panel')
+    } else {
+      // Click 1: re-acknowledge the desync. Stays ticked.
+      await clickWireChecklistCheckbox()
+      await sleep(500)
+      const afterResync = await page.evaluate(readWireChecklistCheckbox, copperBasics.id)
+      if (afterResync.checked) pass('checklist: re-acknowledging a desynced tick keeps the panel checkbox checked')
+      else fail(`checklist: re-acknowledging a desynced tick unchecked the panel checkbox (checked=${afterResync.checked})`)
+
+      // Click 2: a genuine untick now nothing is desynced. This is the click that used to update
+      // the model and count but leave the panel's own checkbox stuck rendered as ticked.
+      await clickWireChecklistCheckbox()
+      await sleep(500)
+      const afterUntick = await page.evaluate(readWireChecklistCheckbox, copperBasics.id)
+      if (afterUntick.checked === false) pass('checklist: unticking after a desync re-ack updates the panel checkbox')
+      else fail(`checklist: unticking after a desync re-ack left the panel checkbox stuck checked (checked=${afterUntick.checked})`)
+    }
+  }
+
   // ---- TEST 3: MegaPlan (large real plan) ----
   const tplClicked = await page.evaluate(() => {
     const btn = [...document.querySelectorAll('button')].find(b => /templates/i.test(b.innerText))

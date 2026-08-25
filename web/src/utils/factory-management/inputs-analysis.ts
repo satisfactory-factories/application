@@ -84,3 +84,18 @@ export const isDuplicateImport = (factory: Factory, inputIndex: number): boolean
     other.outputPart === input.outputPart
   )
 }
+
+// The DOM id of one import row, shared by the row itself and by everything that jumps to it —
+// notably the exporting factory's satisfaction table, which sends the user to the row consuming
+// its export rather than to the destination factory's card.
+//
+// Half-configured rows get no id: they would all read the same and collide with each other.
+export const importRowId = (
+  factoryId: number | string,
+  sourceFactoryId: number | string | null,
+  part: string | null
+): string | null => {
+  if (!sourceFactoryId || !part) return null
+
+  return `${factoryId}-import-${sourceFactoryId}-${part}`
+}
