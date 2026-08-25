@@ -24,7 +24,14 @@
         class="status-anchor selectors d-flex flex-column flex-md-row ga-3 px-4 py-2 border-b-md no-bottom"
       >
         <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
+          <!-- Keyed on the checked value itself (mirrors PlannerFactoryChecklist.vue and
+               PlannerFactorySatisfactionItems.vue's export tick, #592/#593): a `preventDefault()`-
+               cancelled checkbox click can lose a race against the browser's own revert-to-pre-
+               click step, leaving the tick visually stuck even though the underlying state did
+               flip. Keying on the value forces Vue to mount a fresh element at the new value
+               instead of patching the (possibly just-reverted) old one. -->
           <input
+            :key="`${input.factoryId}-${input.outputPart}-${!!input.completed}`"
             :checked="!!input.completed"
             class="checklist-tick"
             :class="{ desynced: isInputChecklistDesynced(input) }"

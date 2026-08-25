@@ -117,10 +117,14 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 
 ### Fixes
 
-- **Checklist mode: the tick on an export chip under Satisfaction is clickable again** (#592). It sat
-  inside the chip's own clickable area, so the chip's click handler and ripple layer could win the
-  click before it ever reached the checkbox; it's now a sibling of the chip instead, matching how
-  the Checklist card above it already builds the same control.
+- **Checklist mode: ticks on the Products, Imports and export-chip checkboxes are reliable again**
+  (#592, #593). The export tick sat inside the chip's own clickable area, so the chip's click
+  handler and ripple layer could win the click before it ever reached the checkbox; it's now a
+  sibling of the chip instead, matching how the Checklist card above it already builds the same
+  control. Separately, all three checkboxes could lose a race against the browser's own
+  "revert to pre-click state" step when a click was cancelled — the state change landed, but the
+  box itself (and anywhere else that same tick is drawn) could stay visually unticked. Every
+  checklist checkbox now keys its `<input>` on the checked value itself, which sidesteps that race.
 
 ## Beta v0.6 - The "Groundwork" Update
 
