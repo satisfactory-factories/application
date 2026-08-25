@@ -244,6 +244,33 @@ describe('disposal', () => {
       expect(oil.parts.LiquidFuel.amountRemaining).toBe(100)
     })
 
+    // https://github.com/satisfactory-factories/application/issues/594 — Power Shards are an
+    // ordinary non-radioactive solid, but the game keeps them out of the sink anyway (0 sink
+    // points in Docs.json), so a surplus of them has to keep reading as unhandled.
+    it('refuses a Power Shard even with a sink set', () => {
+      const shards = newFactory('Power Shards')
+      addProductToFactory(shards, { id: 'CrystalShard', amount: 25, recipe: 'SyntheticPowerShard' })
+      setSinkCount(shards, 'CrystalShard', 5)
+      calculateFactories([shards], gameData)
+
+      expect(shards.parts.CrystalShard.isSinkable).toBe(false)
+      expect(shards.parts.CrystalShard.amountRequiredSink).toBe(0)
+      expect(shards.parts.CrystalShard.amountRemaining).toBeGreaterThan(0)
+    })
+
+    // https://github.com/satisfactory-factories/application/issues/594 — confirmed against the
+    // wiki: Alien Protein clogs the sink despite being an ordinary non-radioactive solid.
+    it('refuses Alien Protein even with a sink set', () => {
+      const protein = newFactory('Alien Protein')
+      addProductToFactory(protein, { id: 'AlienProtein', amount: 10, recipe: 'Protein_Hog' })
+      setSinkCount(protein, 'AlienProtein', 5)
+      calculateFactories([protein], gameData)
+
+      expect(protein.parts.AlienProtein.isSinkable).toBe(false)
+      expect(protein.parts.AlienProtein.amountRequiredSink).toBe(0)
+      expect(protein.parts.AlienProtein.amountRemaining).toBeGreaterThan(0)
+    })
+
     it('refuses a radioactive item even with a sink set', () => {
       const nuclear = newFactory('Nuclear')
       addProductToFactory(nuclear, { id: 'NuclearFuelRod', amount: 1, recipe: 'NuclearFuelRod' })

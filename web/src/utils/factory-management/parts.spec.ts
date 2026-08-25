@@ -41,6 +41,23 @@ describe('parts', () => {
       expect(getHandGatheredParts(other).size).toBe(0)
       expect(getHandGatheredParts(gameData).size).toBe(11)
     })
+
+    // https://github.com/satisfactory-factories/application/issues/594 — a hand-gathered part's
+    // whole demand is taken as supplied above, so it must never also land in factory.rawResources:
+    // that map drives the "Raw Resources" card, which reads as a hard shortage ("Add an extractor
+    // ... or import them") that nobody can act on for something the game gives no extractor for.
+    it('takes a hand-gathered ingredient as supplied and keeps it off the raw resources list', () => {
+      const factory = newFactory('Protein')
+      // Protein_Hog: 1 Hog Remains (HogParts, hand-gathered) -> Alien Protein.
+      addProductToFactory(factory, { id: 'AlienProtein', amount: 10, recipe: 'Protein_Hog' })
+      calculateFactories([factory], gameData)
+
+      expect(factory.parts.HogParts.isRaw).toBe(true)
+      expect(factory.parts.HogParts.amountSuppliedViaRaw).toBeGreaterThan(0)
+      expect(factory.parts.HogParts.amountRemaining).toBe(0)
+      expect(factory.parts.HogParts.satisfied).toBe(true)
+      expect(factory.rawResources.HogParts).toBeUndefined()
+    })
   })
 
   describe('calculateParts', () => {
