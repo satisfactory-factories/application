@@ -23,6 +23,7 @@ _In development._
 
 - **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
 - **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
+- **The sidebar now follows the orange scroll-spy indicator.** Scroll the plan and the sidebar smoothly scrolls itself to keep the highlighted factory in view, instead of leaving it to drift off-screen. Closes #598.
 
 ### AWESOME Sinks and the Dimensional Depot
 
