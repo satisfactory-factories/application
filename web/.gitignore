@@ -29,3 +29,6 @@ package-lock.json
 
 # Scratch space for local tooling (e.g. tutorial GIF recording scripts)
 .gif-scratch/
+
+# Generated tutorial GIF frames (see testing/gifs)
+.gif-out/
