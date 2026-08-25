@@ -24,6 +24,92 @@ _In development._
 - **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
 - **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
 
+### AWESOME Sinks and the Dimensional Depot
+
+Closes #498 and the surplus half of #7. Every item under a factory's Satisfaction now has a
+**Storage** column, left of Satisfaction, holding two counts: how many AWESOME Sinks and how many
+Dimensional Depot Uploaders you have put on that item's surplus.
+
+- **An AWESOME Sink disposes of the surplus, so the planner treats it as gone.** Set one or more on
+  an item and its surplus reads `0/min surplus` with a gold **n/min sunk** chip beside it and the
+  pre-sink figure in brackets underneath — the number sinking removed is never hidden. The sink is a
+  priority splitter, not a consumer with an appetite of its own: internal use and exports are served
+  first and always win, so adding an export request later shrinks the sunk amount by itself. A fully
+  sunk item also stops being nagged with **Trim**, because a factory that deliberately overproduces
+  into a sink is doing exactly what it was built for.
+- **The first sink and the first Uploader each get a one-off explainer.** Per browser, shown once.
+  The sink one states the two assumptions behind a sunk item: Programmable Splitters sending the
+  excess to your sinks, and a belt of adequate speed feeding them. Break either and the numbers are
+  inaccurate. The Uploader one points at the plan-wide Dimensional Depot summary at the top of the
+  planner, and is clear that nothing is assumed about how much an Uploader takes off the belt, only
+  that it eventually backs up, and takes you straight to the summary. The Dimensional Depot
+  section returns the favour with a button to the Mercer Sphere statistics, since that is where its
+  costs are counted. The upload and expansion research levels can be set from either place, and
+  are the same setting: change one and the other follows.
+- **Sinks draw power.** 30 MW each, counted into the factory's consumption and so into the plan's,
+  matching `Build_ResourceSink_C` in the game's own data. The Depot Uploader draws nothing.
+- **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a
+  conveyor input only) or radioactive items, and a count left on one from an earlier edit stays
+  inert rather than quietly zeroing a surplus that in game would not move.
+- **Both controls are offered on every item**, whether the factory makes it, imports it, or is
+  short of it. They first shipped gated on a surplus, which hid them from the build the Depot is
+  most useful for: a logistics factory that imports a part precisely so it can upload it has
+  imports that balance exactly, so it had no surplus, so it was offered no Uploader. Nothing needed
+  the gate — a sink takes what is spare and nothing more, so one set on a part with nothing spare
+  is inert rather than forbidden, and starts working by itself when the part does have something
+  spare. What the buildings physically refuse (fluids, and radioactive items for the sink) is still
+  enforced.
+- **A Dimensional Depot Uploader deliberately changes no number.** The Depot is finite storage: it
+  fills, and then it backs up like any other container. Marking an item for the Depot records what
+  you are building and what it costs, and leaves the surplus exactly as it is.
+- **New "Will cause backlog" warning.** Any item left with a surplus nothing consumes, nothing
+  exports and no sink takes will fill the belt and stall the buildings making it — including the
+  case nothing could previously see, where a factory makes 200 Iron Plates, ships 100, and the other
+  100 quietly back up. It is an amber warning and marks the factory amber, because there is now a
+  control in the same row that fixes it; it can be switched off entirely under
+  **Options → Satisfaction** for a plan mid-build.
+- **New Dimensional Depot section**, its own card under the Statistics summary and only on plans
+  that use it. One row per item: what the plan has spare to upload, how many Uploaders are on it,
+  and a pill per factory carrying that factory's own count. Flags an item arriving faster than its
+  Uploaders can take it (240/min each, fully researched), so the remainder still backs up.
+- **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
+  Depot Uploader, read off the game's build recipe, and the MAM research the Depot costs is listed
+  under them with a tick-box each: upload research (the two unlock nodes plus every upload upgrade
+  up to the plan's tier), depot expansion, and the optional Manual Uploader. All three are off the
+  total by default, since they are paid once per save rather than once per plan. Ticked together at
+  full research they come to the 97 the wiki quotes for the whole chain, which a test now pins.
+  Mercer Spheres are counted in one place only, so the Depot section and its sidebar entry no
+  longer repeat the figure. The Mercer Sphere icon is new —
+  it is a collectable rather than a craftable part, so it was never in the icon set the planner
+  shipped with.
+- **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
+  doubles with each of the four upgrades to 240/min, and the rate is per Uploader — two on one item
+  fill at 480/min, though depot storage does not stack. The section carries a research selector and
+  reports each item's rate against what its own Uploaders can take (`40 / 480/min`), flagging any
+  that cannot keep up. Saved on the plan, so a shared plan carries the world it was written against.
+- **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
+  icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning
+  when it applies.
+- **The Dimensional Depot carries the expansion research too**, beside the upload tier: how many
+  stacks of each item the Depot holds, 1 to 5. It changes no calculation, because the planner tracks
+  rates rather than how full a container is, but it is the other half of what the MAM sells for the
+  Depot and it is what "the Depot is finite" actually means. Saved on the plan like the upload tier.
+- The Dimensional Depot's table gives its three number columns fixed widths and lets the factory
+  pills — the column that actually grows with the plan — take the rest. The item column is sized to
+  the longest name in the game, so nothing in it wraps.
+- Clicking a factory pill in the Dimensional Depot lands on that item's own row under the
+  factory's Satisfaction, unhiding the card and opening its group on the way, rather than dropping
+  you at the top of the factory and leaving you to find the item.
+- **The Demo plan uses the Depot**, so the section is visible on the first plan anyone opens:
+  two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic. Only the
+  Copper Ingot line has a steady surplus to give, so the other three read `0`, with a tooltip
+  explaining that an Uploader still fills off a splitter on a line that is fully spoken for.
+- The Uploader also takes a conveyor and nothing else, so fluids are excluded from it too. It has no
+  objection to radioactive items, though, unlike the sink: uploading one is how you stop it
+  irradiating you, so Uranium and Plutonium Waste can be depoted even though they cannot be sunk.
+- Three tooltips that promised sinking was "coming in a future update" now point at the control that
+  does it, and the **End product** chip no longer claims the planner assumes you sink it — you say so.
+
 ### Interface
 
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.

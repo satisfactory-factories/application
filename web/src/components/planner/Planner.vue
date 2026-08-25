@@ -5,6 +5,8 @@
   <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
 
   <building-group-tutorial />
+  <awesome-sink-tutorial />
+  <dimensional-depot-tutorial />
   <checklist-tutorial />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
@@ -56,7 +58,16 @@
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
-        <statistics-factory-summary v-if="getFactories().length !== 0" :factories="getFactories()" />
+        <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
+             is evenly spaced however many of them are showing. -->
+        <statistics-factory-summary
+          v-if="getFactories().length !== 0"
+          :class="{ 'mb-4': !usesDimensionalDepot }"
+          :factories="getFactories()"
+        />
+        <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
+             permanent advert for a feature the satisfaction table already offers in place. -->
+        <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
         <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
           <!-- A plan that has never used groups is one Ungrouped section, and a band over the
                whole plan says nothing — so it only appears once there is something to divide. -->
@@ -136,8 +147,11 @@
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
+  import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
+  import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
+  import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { groupColorVars } from '@/utils/colors'
   import { flashElement } from '@/utils/navigation-highlight'
 
@@ -166,6 +180,12 @@
   const toggleSection = (section: FactoryGroupSection) => toggleCollapsed(section.group?.id ?? null)
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
+
+  // Cheap: a key count on a map that is empty for every plan that does not use the feature, so
+  // this does not walk the parts of every factory on each render.
+  const usesDimensionalDepot = computed(() => getFactories().some(
+    factory => Object.values(factory.partDisposal ?? {}).some(disposal => disposal.depots > 0)
+  ))
 
   const planVisible = ref(false)
   const navigationReady = ref(false)
@@ -402,6 +422,7 @@
     const entries: (number | string)[] = [
       'statistics',
       'factory-summary',
+      ...(usesDimensionalDepot.value ? ['dimensional-depot'] : []),
       ...groupSections.value.flatMap(section => [
         `group-${section.group?.id ?? 'ungrouped'}`,
         ...(sectionCollapsed(section) ? [] : section.factories.map(factory => factory.id)),
@@ -706,7 +727,7 @@
     reorderFactory(factory, direction, getFactories())
   }
 
-  // Scroll to a non-factory section (Statistics, Factories Summary) by its element id.
+  // Scroll to a non-factory section (Statistics, Factories Summary, Dimensional Depot) by its id.
   // The section may be collapsed — tell it to show itself first (each listens for its own
   // id), give the reveal a beat to change the layout, then scroll. scrollToElement's
   // correction passes absorb any further shifts from content still materializing.
@@ -722,6 +743,9 @@
     }
     setTimeout(() => scrollToElement(sectionId), 50)
   }
+
+  // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
+  eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
 
   const forceSort = () => {
     // Forcefully regenerate the displayOrder counting upwards.
