@@ -5,6 +5,12 @@
         <th class="text-h6 text-left border-e-md" scope="row">
           <i class="fas fa-box" /><span class="ml-2">Item</span>
         </th>
+        <th class="text-h6 border-e-md text-center" scope="row">
+          <div class="d-flex align-center justify-center">
+            <i class="fas fa-inbox-in" /><span class="ml-2">Storage</span>
+            <tooltip-info text="Where this item's surplus goes.<br><b>AWESOME Sink</b>: the excess is destroyed, so the surplus reads as zero and the line never backs up. Each sink draws 30 MW.<br><b>Dimensional Depot Uploader</b>: the excess is uploaded to your Depot. Storage is finite, so this defers a backlog rather than preventing one, and the surplus is left as it is. Each uploader costs 1 Mercer Sphere." />
+          </div>
+        </th>
         <th class="d-flex text-h6 border-e-md align-center justify-center" scope="row">
           <i class="fas fa-balance-scale" /><span class="ml-2">Satisfaction</span>
           <tooltip-info text="Amount of the item that is available after internal production needs and other export requests are taken into account.<br>This amount is available for other factories to import." />
@@ -148,7 +154,7 @@
                         <i class="fas fa-exclamation-circle" /><span class="ml-1">CORRECT MANUALLY</span>
                       </div>
                     </template>
-                    <span>This item is a byproduct, currently the planner does not know how to scale byproducts correctly<br> as there could be a number of ways to do it that the user may not want.<br> Please scale it manually.</span>
+                    <span>This item can only be made as a byproduct of something else.<br> The planner does not know how to scale byproducts correctly, as there could be a number of ways to do it that you may not want.<br> Please scale it manually.</span>
                   </v-tooltip>
                 </v-btn>
                 <v-btn
@@ -179,6 +185,65 @@
                 </v-btn>
               </div>
             </div>
+          </td>
+          <td class="border-e-md storage" :class="satisfactionShading(part, partId.toString())">
+            <!-- Offered on every row, including one with nothing spare today. A sink there takes
+                 max(0, surplus), so it is inert until there IS a surplus rather than forbidden,
+                 and an Uploader on an imported part is the whole point of a logistics factory. -->
+            <div v-if="showDisposalControls(factory, partId.toString())" class="d-flex flex-column ga-1 align-center">
+              <v-chip
+                v-if="showSinkControl(factory, partId.toString())"
+                class="sf-chip input awesome-sink no-margin disposal-chip"
+                variant="tonal"
+              >
+                <tooltip :text="sinkTooltip(partId.toString())">
+                  <game-asset height="24" subject="awesome-sink" type="item_id" width="24" />
+                </tooltip>
+                <v-number-input
+                  :id="`${factory.id}-sink-count-${partId}`"
+                  class="inline-inputs ml-0 disposal-input"
+                  control-variant="stacked"
+                  density="compact"
+                  hide-details
+                  :min="0"
+                  :model-value="getSinkCount(factory, partId.toString())"
+                  @update:model-value="updateSinkCount(partId.toString(), $event)"
+                />
+              </v-chip>
+              <!-- An absent control the user cannot account for reads as a bug, so say why. The
+                   two exclusions differ: the sink refuses fluids AND radioactive items, while the
+                   Depot only refuses fluids — uploading a radioactive part is not just allowed, it
+                   is how you stop it irradiating you. -->
+              <v-tooltip v-else bottom>
+                <template #activator="{ props: activatorProps }">
+                  <v-chip v-bind="activatorProps" class="sf-chip status-note x-small">
+                    <i class="fas fa-ban mr-1" />Cannot be sunk
+                  </v-chip>
+                </template>
+                <span v-if="isFluidPart(partId.toString())">The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.</span>
+                <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot: doing so stops it irradiating you.</span>
+              </v-tooltip>
+              <v-chip
+                v-if="showDepotControl(factory, partId.toString(), getGameData())"
+                class="sf-chip input dimensional-depot no-margin disposal-chip"
+                variant="tonal"
+              >
+                <tooltip :text="depotTooltip(partId.toString())">
+                  <game-asset height="24" subject="dimensional-depot-uploader" type="item_id" width="24" />
+                </tooltip>
+                <v-number-input
+                  :id="`${factory.id}-depot-count-${partId}`"
+                  class="inline-inputs ml-0 disposal-input"
+                  control-variant="stacked"
+                  density="compact"
+                  hide-details
+                  :min="0"
+                  :model-value="getDepotCount(factory, partId.toString())"
+                  @update:model-value="updateDepotCount(partId.toString(), $event)"
+                />
+              </v-chip>
+            </div>
+            <p v-else class="text-center text-medium-emphasis">-</p>
           </td>
           <td class="border-e-md satisfaction" :class="satisfactionShading(part, partId.toString())">
             <div v-if="satisfactionBreakdowns">
@@ -218,6 +283,21 @@
                   -{{ formatNumber((part.amountRequiredProduction + part.amountRequiredPower)) }}/min
                 </span>
               </div>
+              <!-- Custom buildings only, and only when there are any: a portal room's Singularity
+                   Cells are consumed by the factory but by nothing it produces, so lumping them
+                   into Internal Consumption would read as a recipe eating them. -->
+              <div
+                v-if="(part.amountRequiredBuildings ?? 0) > 0"
+                class="text-orange d-flex justify-space-between align-center"
+              >
+                <span>Custom Buildings</span>
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-buildings`"
+                  class="align-self-end text-right"
+                >
+                  -{{ formatNumber(part.amountRequiredBuildings ?? 0) }}/min
+                </span>
+              </div>
               <div class="text-orange d-flex justify-space-between align-center">
                 <span>Exports</span>
                 <span
@@ -225,6 +305,15 @@
                   class="align-self-end text-right"
                 >
                   -{{ formatNumber(part.amountRequiredExports ) }}/min
+                </span>
+              </div>
+              <div v-if="part.amountRequiredSink" class="d-flex justify-space-between align-center text-awesome-sink">
+                <span>To AWESOME Sink</span>
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-sink`"
+                  class="align-self-end text-right"
+                >
+                  -{{ formatNumber(part.amountRequiredSink) }}/min
                 </span>
               </div>
               <v-divider class="my-2" color="#ccc" />
@@ -238,6 +327,29 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
+              <!-- The number sinking removed is never hidden. Without this the row would read a
+                   flat zero and there would be no way to tell a factory that produces exactly what
+                   it needs from one throwing 100/min into a sink. -->
+              <template v-if="isActivelySunk(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip awesome-sink small">
+                      <game-asset
+                        class="mr-2"
+                        height="18"
+                        subject="awesome-sink"
+                        type="item_id"
+                        width="18"
+                      />
+                      <b><span :id="`${factory.id}-satisfaction-${partId.toString()}-sunk`">{{ formatNumber(part.amountRequiredSink ?? 0) }}</span>/min sunk</b>
+                    </v-chip>
+                  </template>
+                  <span>{{ getSinkCount(factory, partId.toString()) }} AWESOME Sink{{ getSinkCount(factory, partId.toString()) === 1 ? '' : 's' }} take whatever is left after production and exports.<br>Exports and internal use are served first, so adding an export request here shrinks the sunk amount by itself.</span>
+                </v-tooltip>
+                <p class="text-caption text-medium-emphasis mb-0">
+                  ({{ formatNumber(part.amountRemainingPreSink ?? 0) }}/min surplus without sinking)
+                </p>
+              </template>
               <!-- Blue, and never alongside No demand: an item the game gives no consumer is
                    finished, not spare. -->
               <template v-if="isEndProduct(factory, partId.toString())">
@@ -247,7 +359,7 @@
                       <i class="fas fa-flag-checkered mr-2" /><span>End product</span>
                     </v-chip>
                   </template>
-                  <span>Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it.</span>
+                  <span>Nothing in the game consumes this item, so it is the end of its chain.<br>Deliver it to the Space Elevator, or set an AWESOME Sink on it in the Storage column.</span>
                 </v-tooltip>
               </template>
               <!-- The byproduct pair, exclusive by construction. Sinkable is the soft one: a way
@@ -259,7 +371,7 @@
                       <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
                     </v-chip>
                   </template>
-                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update.</span>
+                  <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Set an AWESOME Sink on it in the Storage column, blend it into a recipe that consumes it, or export it.</span>
                 </v-tooltip>
               </template>
               <template v-if="isUnhandledByproduct(factory, partId.toString())">
@@ -284,7 +396,21 @@
                       <i class="fas fa-question-circle mr-2" /><span>No demand</span>
                     </v-chip>
                   </template>
-                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking, so if you are sinking this, ignore it for now.</span>
+                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up.</span>
+                </v-tooltip>
+              </template>
+              <!-- Warning tier, so this colours the factory amber: with the Storage column beside
+                   it there is a one-click answer, which makes an unanswered surplus a real
+                   omission rather than an observation. Still switchable off entirely, for a plan
+                   mid-build where loose ends are everywhere. -->
+              <template v-if="showBacklogAdvisory(factory, partId.toString())">
+                <v-tooltip bottom>
+                  <template #activator="{ props: activatorProps }">
+                    <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
+                      <i class="fas fa-traffic-cone mr-2" /><span class="mr-2">Will cause backlog</span> <i class="fas fa-info-circle" />
+                    </v-chip>
+                  </template>
+                  <span>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this, because its storage is finite.</span>
                 </v-tooltip>
               </template>
               <!-- The balance only needs annotating where the number isn't earned, which is now
@@ -363,6 +489,15 @@
                   :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                   @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
                 >
+                  <input
+                    v-if="factory.checklistEnabled"
+                    :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
+                    class="checklist-tick"
+                    :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
+                    :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
+                    type="checkbox"
+                    @click.prevent.stop="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                  >
                   <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                   <span class="ml-2">
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
@@ -372,9 +507,9 @@
                     color="primary"
                     icon="fas fa-eye"
                     size="x-small"
-                    title="Jump to this factory"
+                    title="Jump to the import taking this export"
                     variant="flat"
-                    @click.stop="navigateToFactory(request.requestingFactoryId)"
+                    @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
                   />
                 </v-chip>
               </div>
@@ -417,7 +552,7 @@
         <tr
           v-if="openedCalculator === partId && getPartExportRequests(factory, partId.toString()).length > 0"
         >
-          <td class="calculator-row bg-grey-darken-3" colspan="5">
+          <td class="calculator-row bg-grey-darken-3" colspan="6">
             <div class="calculator-tray" :class="{ expanded: calculatorShow }">
               <export-calculator
                 :key="partId + factory.exportCalculator[partId].selected"
@@ -448,13 +583,23 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
-  import { hasNoDemand, isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import {
+    hasNoDemand,
+    isEndProduct,
+    isPotentialBlockage,
+    isUnhandledByproduct,
+    showBacklogAdvisory,
+  } from '@/utils/factory-management/status'
+  import { isChecklistExportComplete, isChecklistExportDesynced, toggleChecklistExport } from '@/utils/factory-management/checklist'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
     addShortageToFactory,
     convertWasteToGeneratorFuel,
+    isActivelySunk,
     showByProductChip,
+    showDepotControl,
+    showDisposalControls,
     showExportedChip,
     showImportedChip,
     showInternalChip,
@@ -462,9 +607,19 @@
     showProductChip,
     showRecycledChip,
     showSatisfactionItemButton,
+    showSinkControl,
     showUnpackagedChip,
   } from '@/utils/factory-management/satisfaction'
-  import { getInput } from '@/utils/factory-management/inputs'
+  import { getInput, importRowId } from '@/utils/factory-management/inputs'
+  import {
+    getDepotCount,
+    getSinkCount,
+    notifyDepotTutorial,
+    notifySinkTutorial,
+    setDepotCount,
+    setSinkCount,
+    SINK_POWER_MW,
+  } from '@/utils/factory-management/disposal'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
@@ -477,7 +632,23 @@
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string,
+    fallback?: string,
+  ) => void
+
+  // The export chips name where a part goes; the jump lands on the import row that asked for it,
+  // which is what the user is actually after — the destination factory's card only says "somewhere
+  // in here". The Imports section is the fallback for the odd case where the row has no id yet
+  // (a half-configured import still being filled in).
+  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
+    navigateToFactory(
+      requestingFactoryId,
+      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
+      `${requestingFactoryId}-imports`
+    )
+  }
 
   const appStore = useAppStore()
 
@@ -491,7 +662,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
     showSurplusOutputs?: boolean;
   }>()
 
@@ -688,7 +858,8 @@
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {
-    const product = getProduct(factory, partId) as FactoryItem
+    // productOnly: a byproduct has no amount of its own to scale, and fixProduct would write one.
+    const product = getProduct(factory, partId, true) as FactoryItem
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')
@@ -716,6 +887,44 @@
 
     generator.fuelAmount = convertWasteToGeneratorFuel(recipe, Math.abs(amount))
     updateFactory(factory)
+  }
+
+  /**
+   * Both counts persist but deliberately do NOT recalculate the same way.
+   *
+   * The depot changes nothing in the ledger, so it only needs saving. The sink DOES — it takes the
+   * whole surplus — so it has to go through updateFactory like any other engine input. Emitting
+   * `factoryUpdated` for the depot rather than calling updateFactory keeps a purely cosmetic flag
+   * off the critical path: a full recalculation blocks the main thread for seconds on a big plan.
+   */
+  const updateSinkCount = (partId: string, count: unknown) => {
+    setSinkCount(props.factory, partId, count)
+    // Read back rather than trusting the input: the field emits null when cleared and can step
+    // below zero, and only what actually landed counts as committing to a sink.
+    notifySinkTutorial(getSinkCount(props.factory, partId))
+    updateFactory(props.factory)
+  }
+
+  const updateDepotCount = (partId: string, count: unknown) => {
+    setDepotCount(props.factory, partId, count)
+    // Read back for the same reason the sink does: only a count that actually landed counts.
+    notifyDepotTutorial(getDepotCount(props.factory, partId))
+    eventBus.emit('factoryUpdated', props.factory)
+  }
+
+  // Only for the wording of the "cannot be sunk" chip — the guard itself is showDepotControl.
+  const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
+
+  const sinkTooltip = (partId: string) => {
+    const count = getSinkCount(props.factory, partId)
+    if (count === 0) return 'AWESOME Sink: destroys the whole surplus, so the line never backs up. Assumes a programmable splitter sending it only the excess. 30 MW each.'
+    return `${count} AWESOME Sink${count === 1 ? '' : 's'}: ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
+  }
+
+  const depotTooltip = (partId: string) => {
+    const count = getDepotCount(props.factory, partId)
+    if (count === 0) return 'Dimensional Depot Uploader: uploads the surplus to your Depot. 1 Mercer Sphere each.'
+    return `${count} Dimensional Depot Uploader${count === 1 ? '' : 's'}: ${count} Mercer Sphere${count === 1 ? '' : 's'}.`
   }
 
   // const getCalculatorSettings = (factory: Factory, part: string | null): ExportCalculatorSettings | undefined => {
@@ -779,8 +988,32 @@ table {
         &.satisfaction {
           width: 300px
         }
+
+        &.storage {
+          width: 170px;
+        }
       }
     }
+  }
+}
+
+// Icon and count in one chip, the way every other inline number field in the planner is built
+// (BuildingGroup.vue is the model). The chip carries the fill and its destination's colour — a
+// bare outlined input read as a hollow box nothing else in the app has, and the two rows are
+// otherwise identical, so the icon alone meant looking twice to tell sink from Uploader.
+.disposal-chip {
+  // Fixed so the two rows line up down the column whatever the counts are.
+  width: 106px;
+}
+
+// Narrower than the app's usual inline input: this counts buildings, realistically a single
+// digit, and two of them have to fit beside the Satisfaction column.
+.disposal-input {
+  width: 64px;
+  min-width: 64px;
+
+  :deep(input) {
+    font-weight: 700;
   }
 }
 
@@ -803,6 +1036,57 @@ table {
     /* Above any expected content height; scrolls if the user stacks up many belt groups */
     max-height: 800px;
     overflow-y: auto;
+  }
+}
+
+// Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+// nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+.checklist-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-block;
+  height: 18px;
+  // Baked in rather than an `mr-2` utility class: this scoped rule's [data-v-xxx] attribute
+  // selector outweighs Vuetify's plain `.mr-2` class (its spacing utilities carry no
+  // !important in Vuetify 3), so the utility class silently lost and the tick sat flush
+  // against the factory icon that follows it.
+  margin: 0 8px 0 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+  vertical-align: middle;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
+  }
+
+  // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+  // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+  // second symbol crammed into an 18px box read worse than the empty box does.
+  &.desynced:checked {
+    background-color: var(--sf-status-warning-border);
+    border-color: var(--sf-status-warning-border);
+
+    &::after {
+      content: none;
+    }
   }
 }
 </style>

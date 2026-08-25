@@ -38,7 +38,7 @@ Output lands at `parsing/gameData.json`.
 The parser output and the frontend's version pin have to move together, or clients keep their stale cached copy:
 
 1. Copy `parsing/gameData.json` to `web/public/gameData_v1.x-xx.json` under a **new** version name. The version tracks the game's minor version (unless a patch messes with a recipe, which is unlikely) — e.g. `gameData_v1.2-05.json` increments to `gameData_v1.2-06.json`.
-2. Bump `dataVersion` in `web/src/config/config.ts` to match (currently `1.2-05`).
+2. Bump `dataVersion` in `web/src/config/config.ts` to match (currently `1.2-08`).
 3. Delete the old `web/public/gameData_*.json` — there should only ever be one.
 
 Bumping the version is what instructs web clients to re-download the game data file on their next refresh and replace their locally stored copy.

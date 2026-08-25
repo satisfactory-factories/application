@@ -2,6 +2,119 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7
+
+_In development._
+
+### Custom buildings
+
+- **Add any building that makes nothing to a factory**, under Products and Power Generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights. Twenty buildings in all. They count towards the factory's power draw and its building list.
+- **The Main Portal's Singularity Cells are a real demand.** Two a minute per portal, satisfied by importing them like any other part, so a portal room short of cells reads as a shortage.
+- **The Demo plan has a Portal Hub**: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute imported from a new Singularity Cells factory.
+- Satisfaction breakdowns list custom building upkeep separately from what recipes consume.
+
+### Material costs
+
+- **Power & Buildings now has a Material Costs panel**, showing what it would cost, in parts, to build every production building, power generator and custom building the factory needs. Closed by default; toggle it open to see the breakdown.
+- Each part lists its total quantity, and a chip per building that needs it — the building's image and how many of them.
+- **Use this as a guide only.** No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.
+
+### Sidebar: arrange the plan without dragging
+
+- **The sidebar can be scrolled on a phone again.** Picking a factory or a group up is the same gesture as scrolling the list, so touching a row to scroll dragged it instead. Drag is now offered only where the pointer is precise enough for it; the new **Arrange** dialog does the same job with buttons.
+- **An "Arrange" button opens a dialog for reordering the plan.** Groups against each other, factories within their group, and factories from one group into another, all with buttons. Groups can still be dragged there too, where there is a pointer precise enough to drag with.
+
+### AWESOME Sinks and the Dimensional Depot
+
+Closes #498 and the surplus half of #7. Every item under a factory's Satisfaction now has a
+**Storage** column, left of Satisfaction, holding two counts: how many AWESOME Sinks and how many
+Dimensional Depot Uploaders you have put on that item's surplus.
+
+- **An AWESOME Sink disposes of the surplus, so the planner treats it as gone.** Set one or more on
+  an item and its surplus reads `0/min surplus` with a gold **n/min sunk** chip beside it and the
+  pre-sink figure in brackets underneath — the number sinking removed is never hidden. The sink is a
+  priority splitter, not a consumer with an appetite of its own: internal use and exports are served
+  first and always win, so adding an export request later shrinks the sunk amount by itself. A fully
+  sunk item also stops being nagged with **Trim**, because a factory that deliberately overproduces
+  into a sink is doing exactly what it was built for.
+- **The first sink and the first Uploader each get a one-off explainer.** Per browser, shown once.
+  The sink one states the two assumptions behind a sunk item: Programmable Splitters sending the
+  excess to your sinks, and a belt of adequate speed feeding them. Break either and the numbers are
+  inaccurate. The Uploader one points at the plan-wide Dimensional Depot summary at the top of the
+  planner, and is clear that nothing is assumed about how much an Uploader takes off the belt, only
+  that it eventually backs up, and takes you straight to the summary. The Dimensional Depot
+  section returns the favour with a button to the Mercer Sphere statistics, since that is where its
+  costs are counted. The upload and expansion research levels can be set from either place, and
+  are the same setting: change one and the other follows.
+- **Sinks draw power.** 30 MW each, counted into the factory's consumption and so into the plan's,
+  matching `Build_ResourceSink_C` in the game's own data. The Depot Uploader draws nothing.
+- **The sink refuses what the game refuses.** No control is offered for fluids (the sink has a
+  conveyor input only) or radioactive items, and a count left on one from an earlier edit stays
+  inert rather than quietly zeroing a surplus that in game would not move.
+- **Both controls are offered on every item**, whether the factory makes it, imports it, or is
+  short of it. They first shipped gated on a surplus, which hid them from the build the Depot is
+  most useful for: a logistics factory that imports a part precisely so it can upload it has
+  imports that balance exactly, so it had no surplus, so it was offered no Uploader. Nothing needed
+  the gate — a sink takes what is spare and nothing more, so one set on a part with nothing spare
+  is inert rather than forbidden, and starts working by itself when the part does have something
+  spare. What the buildings physically refuse (fluids, and radioactive items for the sink) is still
+  enforced.
+- **A Dimensional Depot Uploader deliberately changes no number.** The Depot is finite storage: it
+  fills, and then it backs up like any other container. Marking an item for the Depot records what
+  you are building and what it costs, and leaves the surplus exactly as it is.
+- **New "Will cause backlog" warning.** Any item left with a surplus nothing consumes, nothing
+  exports and no sink takes will fill the belt and stall the buildings making it — including the
+  case nothing could previously see, where a factory makes 200 Iron Plates, ships 100, and the other
+  100 quietly back up. It is an amber warning and marks the factory amber, because there is now a
+  control in the same row that fixes it; it can be switched off entirely under
+  **Options → Satisfaction** for a plan mid-build.
+- **New Dimensional Depot section**, its own card under the Statistics summary and only on plans
+  that use it. One row per item: what the plan has spare to upload, how many Uploaders are on it,
+  and a pill per factory carrying that factory's own count. Flags an item arriving faster than its
+  Uploaders can take it (240/min each, fully researched), so the remainder still backs up.
+- **Mercer Spheres join Power Shards and Somersloops** in the statistics, at one per Dimensional
+  Depot Uploader, read off the game's build recipe, and the MAM research the Depot costs is listed
+  under them with a tick-box each: upload research (the two unlock nodes plus every upload upgrade
+  up to the plan's tier), depot expansion, and the optional Manual Uploader. All three are off the
+  total by default, since they are paid once per save rather than once per plan. Ticked together at
+  full research they come to the 97 the wiki quotes for the whole chain, which a test now pins.
+  Mercer Spheres are counted in one place only, so the Depot section and its sidebar entry no
+  longer repeat the figure. The Mercer Sphere icon is new —
+  it is a collectable rather than a craftable part, so it was never in the icon set the planner
+  shipped with.
+- **The Depot's MAM upload research is part of the plan.** An Uploader moves 15/min unresearched and
+  doubles with each of the four upgrades to 240/min, and the rate is per Uploader — two on one item
+  fill at 480/min, though depot storage does not stack. The section carries a research selector and
+  reports each item's rate against what its own Uploaders can take (`40 / 480/min`), flagging any
+  that cannot keep up. Saved on the plan, so a shared plan carries the world it was written against.
+- **The Dimensional Depot has a sidebar entry**, beneath the Global Factories Summary, carrying
+  icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning
+  when it applies.
+- **The Dimensional Depot carries the expansion research too**, beside the upload tier: how many
+  stacks of each item the Depot holds, 1 to 5. It changes no calculation, because the planner tracks
+  rates rather than how full a container is, but it is the other half of what the MAM sells for the
+  Depot and it is what "the Depot is finite" actually means. Saved on the plan like the upload tier.
+- The Dimensional Depot's table gives its three number columns fixed widths and lets the factory
+  pills — the column that actually grows with the plan — take the rest. The item column is sized to
+  the longest name in the game, so nothing in it wraps.
+- Clicking a factory pill in the Dimensional Depot lands on that item's own row under the
+  factory's Satisfaction, unhiding the card and opening its group on the way, rather than dropping
+  you at the top of the factory and leaving you to find the item.
+- **The Demo plan uses the Depot**, so the section is visible on the first plan anyone opens:
+  two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic. Only the
+  Copper Ingot line has a steady surplus to give, so the other three read `0`, with a tooltip
+  explaining that an Uploader still fills off a splitter on a line that is fully spoken for.
+- The Uploader also takes a conveyor and nothing else, so fluids are excluded from it too. It has no
+  objection to radioactive items, though, unlike the sink: uploading one is how you stop it
+  irradiating you, so Uranium and Plutonium Waste can be depoted even though they cannot be sunk.
+- Three tooltips that promised sinking was "coming in a future update" now point at the control that
+  does it, and the **End product** chip no longer claims the planner assumes you sink it — you say so.
+
+### Interface
+
+- **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
+- **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
@@ -57,6 +170,7 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - **Collapsing a group is now instant.** It used to take seconds on a large group, because whether a group was open was stored on the group record, which is copied onto every member factory, so shutting a forty-factory group rewrote forty factory records, ran forty saves and forty metrics recalculations, and then tore down and rebuilt forty planner cards. Collapse is view state now: it lives on its own in local storage, touches nothing in the plan, and hides the cards rather than destroying them. A group that is already shut when a plan loads never renders its cards at all, so a plan kept mostly collapsed opens faster too. The trade-off is that collapse no longer travels with a shared plan or a cloud restore: it is per-browser, which is what it always should have been.
 - **In the planner**, cards sit under a collapsible heading band per group, Ungrouped first. Bands only appear once there is more than one section, so a plan that has never used groups looks exactly as it did.
 - **Colour.** Pick from a palette or any colour you like through the picker. Red and amber are deliberately not offered: they are the problem and warning tiers, and a group wearing one would read as a broken factory. A group's colour gives its cards a muted header and a bright left spine, **and a status still wins the border and the header**, so a factory short of copper stays red while its spine keeps saying which group it is in.
+- **Every group ends with its own Add Factory button**, sat where the next factory in that group would go. One click makes a factory and puts it straight into that group, rather than adding one at the bottom of the plan and dragging it back up to where you wanted it. It is what the group's tree now ends on, the elbow reaching it from the side exactly as it reaches a factory row, and it gives an empty group — otherwise a header over nothing — a first factory without a drag. Ungrouped has one too, since "in no group" is a real destination and it is a long way down to the plan-wide **Add Factory** from there. A collapsed group hides it along with the rows it belongs to.
 - **Assigning** is either a drag, or the new group chip on a factory's header, which lists the groups and can make a new one on the spot. It sits on the title line beside the factory icon, wearing the group's colour, deliberately not down among the status chips, because where a factory lives is not a thing that has gone wrong with it. A factory in no group says so: the chip reads *Ungrouped*.
 - **Multi-group edit** does the same thing to a selection. Organising an existing plan one chip at a time meant opening forty cards in turn, so there is now a button beside **+ Group** that lists every factory grouped by where it currently sits, with *Select these* on each section for the case it is nearly always going to be: everything already in one group, or everything not in a group yet. Assigning does not close the dialog: the list re-sections in place and a toast says what moved, so several groups can be filled in one visit.
 - **The multi-group dialog shows what each factory makes**, as item icons beside its name, and rolls the whole group up onto its header the way the sidebar does. Names alone are not enough to sort a plan by: "Copper Basics" and "Copper Ingots" are only distinguishable by what comes out of them. As many icons fit as the dialog is wide enough for, then a `+N` tile whose tooltip lists the rest, and every icon carries its item name on hover.
@@ -109,6 +223,26 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - The tolerance is stored per browser rather than with the plan, and is range-checked on restore: a stored zero or negative would paint every plan red with nothing on screen to explain it. Changing it forces a recalculation, since the problem flag is written by the engine and saved into the plan, so the tray, the sidebar and the factory status would otherwise keep the old verdict until some unrelated edit.
 - The Options dialog demonstrates the tolerance with a live building group rather than a paragraph. It is a real factory driven by the same engine calls the planner's own group row makes, so it cannot show behaviour the planner does not have.
 
+### Satisfy and Trim say what they will set
+
+- **Every Satisfy and Trim button now names the figure it would land on**, in brackets on the button itself: **Trim (480)**, **Satisfy (240)**. They used to be a leap of faith — you pressed one and read the result afterwards, and undoing it meant remembering what the number had been. All three levels carry it, and each names the number in its own units: a product's new Qty/min, an import's new quantity, and for a building group the output that group would be left producing (MW for a power generator's group). A button with no answer to give — a half-filled import row, or a building group no setting could balance, which is disabled anyway — simply reads as it always did rather than claiming a target of "(0)".
+
+### Imports: trim a request to what the supplier can spare
+
+- **An import that asks for more than its supplier makes now offers to trim itself to fit.** Nothing stopped a factory requesting 1,015 Dark Matter Residue from a plant that only produces 900: the request went in, and the 115 it could never deliver surfaced on the *supplier* as an unmet export request, a long way from the row that caused it. The import row now carries a **Trim to Capacity** button whenever it over-asks, naming the figure like every other Trim does.
+- **Capacity is what the supplier has left**, after what its own production lines and power generators consume, and after every promise it has already made to other factories. So a plant making 400 Diamonds and eating 96 of them itself can spare 304, and where two factories draw on the same item the row being trimmed takes what is left rather than what the other one already has. Its own other rows against the same supplier count too, since those are separate promises the supplier still has to keep.
+- **It only ever shrinks a request.** A row that already fits is left exactly as you set it, so the button is not a second Satisfy: Satisfy sizes an import against what the importing factory *needs*, and this sizes it against what the supplier can actually *give*. The two answer different questions and can both be on offer at once.
+- Trimming doesn't make the shortfall disappear, it moves it to where it belongs: the supplier goes green, and the importing factory shows the gap it has always really had, with the usual Satisfy and shortage controls to go and solve it.
+- The button hides itself when there is no capacity to trim to at all — a supplier with nothing spare leaves the row nothing to snap to, and a quantity of zero is not a valid import.
+
+### Imports: satisfy a request to what the supplier can spare
+
+- **A shortfall bigger than its supplier can cover now takes one press, not two.** A factory 5,000 Limestone short of a supplier with 2,600 spare had only **Satisfy**, which sized the row against the 5,000 it needed, immediately over-asked the supplier, and put a **Trim to Capacity** button on screen to take it straight back down to the 2,600 you could actually have had. **Satisfy to Capacity** lands on the 2,600 in one go.
+- **Every button on an import row now says which of the two questions it answers**: **Satisfy to Need** and **Trim to Need** size the row against what this factory wants, **Satisfy to Capacity** and **Trim to Capacity** size it against what the supplier can actually give. All four name the figure they would set, as before.
+- **Satisfy to Capacity only appears when it has something of its own to say**: it is hidden when the supplier can cover the whole need (Satisfy already lands within capacity), when the row already asks for more than the capacity (that is Trim to Capacity's job, and it is on screen saying the same figure), and when the supplier has nothing spare at all.
+- Taking the capacity doesn't pretend the shortfall is solved. The supplier goes fully committed and green, and the importing factory keeps the gap it always really had, with **Satisfy to Need** still on offer for when you find it a second supplier.
+- The buttons now wrap onto a second line rather than overflowing the row, so a row carrying both a Need button and a Capacity button no longer pushes **View** and the delete button off the edge of the card.
+
 ### Factory status indicators
 
 - A factory in the sidebar used to tell you exactly one thing: it was red, or it wasn't. `hasProblem` was a single boolean, so three unrelated failures collapsed into one red blob and anything short of outright broken had nowhere to appear. Factories now carry a **status list**: named, severity-tiered conditions rendered as chips under the factory name, so a 30-factory plan can be triaged without opening a single card.
@@ -129,9 +263,14 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - The summary's import and export chips name the other factory with **its own icon** rather than a generic arrow or truck, matching every other place a factory is referenced.
 - **Fixed:** a factory whose *power generator* building groups didn't add up never turned red. The check has always run for power producers, but the rollup only ever looked at products, so a power-only factory could be visibly broken and still read as healthy.
 
+### Planner: use the whole window
+
+- **A "Full width" button** in the sidebar's global actions, beside Hide all and Expand all, drops the margins the planner keeps on a wide screen and gives the plan the entire window. Those margins exist so a factory card doesn't stretch into an unreadable line on a big monitor, but on a 2560px screen they were costing roughly 500px — a quarter of the width — that a plan with wide satisfaction and summary tables would rather have. Which of the two you get is now your call: the button reads "Full width" while they're on and "Normal width" while they're off, and it fills in solid to show which state you're in. The setting is remembered per browser, like the other planner options, and below 2000px there are no margins to drop so it changes nothing.
+
 ### Sidebar: active factory indicator
 
 - The sidebar's factory list now shows which factory you're currently looking at: an orange bar (the same orange as the selected tab's underline) on the left edge of that factory's entry, following you as you scroll the plan or jump between factories. No more losing your place in a 30-factory plan. A factory counts as "in view" when its card spans an eye-line 10% down the planner pane (not the pane's very top edge), so a factory scrolled slightly past its header is still credited as the one being viewed rather than the tail end of the factory above it. The Statistics and Factories Summary jump-links get the same treatment when their sections are in view, and while the eye-line crosses the divider gap between two cards the indicator stays put on the last entry instead of blinking off. Works in both the desktop sidebar and the mobile navigation drawer.
+- **Every button in the sidebar now explains itself**, through the same tooltip the rest of the app uses. Some carried a native `title`, most carried nothing, and a native tooltip could never help where it was needed most: a browser shows none at all for a disabled control, so the five buttons that grey themselves out on an empty plan said nothing about why. Each now gives its own reason ("Nothing to copy yet — add a factory first") instead of just going grey. The group drag handle's hint worked nowhere at all before this: Font Awesome replaces its `<i>` with an `<svg>`, and an SVG element ignores the `title` attribute entirely.
 - The thick divider between factory cards in the main view swapped its blue for the app header's burnt orange (now a shared `--sf-header` token, so the header, its gold border and the divider draw from one definition in `colors.ts`).
 - In the Factories Summary sidebar row, the factory count chip and the fullscreen-summary expand control swapped places: the expand control now sits flush at the row's right edge, sized to the same 30px column as the factory rows' game-sync cells so the two line up down the sidebar.
 
@@ -146,13 +285,18 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 
 ### Satisfaction: jump to a requesting factory
 
-- Each export chip in the satisfaction table now carries a small blue eye button on its right-hand edge that jumps straight to the requesting factory. Clicking the chip itself still selects that destination in the Export Calculator, which was the only thing a chip click could do before. Reading a factory's name and having the calculator open instead of the factory was the wrong assumption often enough to be worth its own control.
+- Each export chip in the satisfaction table now carries a small blue eye button on its right-hand edge that jumps straight to **the import row taking that export**, rather than to the destination factory's card. Clicking the chip itself still selects that destination in the Export Calculator, which was the only thing a chip click could do before. Reading a factory's name and having the calculator open instead of the factory was the wrong assumption often enough to be worth its own control. Landing on the card was the right factory but still the wrong place: its Imports section is a list, and on a factory importing a dozen things you were left hunting for the row that named this export. The part chips under a collapsed factory's "Exporting:" list do the same, since they know the part as well as the destination; the factory chip they sit in still jumps to the factory itself. Where the row can't be found (a half-configured import with no factory or item chosen yet) the jump falls back to the destination's Imports section.
+- **An import's View button makes the same trip in reverse**, landing on the product that supplies the import rather than on the supplying factory's card. A part supplied as a byproduct has no row of its own, so the jump lands on the product that makes it; a factory exporting a surplus of something it imports produces it nowhere, and falls back to its Products section. Behind both directions, a jump that finds neither its row nor its section — a card that has yet to render — now falls back to the factory card itself rather than doing nothing at all.
+- **Every jump now says where it landed.** Whatever the planner scrolls you to — an import row, a factory card, a section, a satisfaction row from a status chip — pulses white for about a second on arrival, so the eye finds the thing that was jumped to instead of searching the screen for what changed. Cards and sections pulse their header rather than their whole body, which would wash half the screen. The pulse starts as the scroll lands rather than as it sets off, and it holds most of its brightness through the middle of the animation, so it is still going when you get there. Respects `prefers-reduced-motion`.
+- **A status chip lights every row it is about.** A chip reading "3 shortages" is about three rows, so the jump lands on the topmost of them and pulses all three rather than picking one and leaving the other two to be found by eye — the same for unmet exports, redundant imports and anything else a chip counts. Rows that have yet to render are picked up by the same correction passes that fix the scroll, so a card still materializing does not cost them their flash.
+- **The unhandled byproduct chip flashes what it lands on.** A byproduct has no row of its own, so the product row that makes it carries an empty, zero-height marker with the byproduct's id purely so the jump has somewhere to go. Flashing a box with no height lit nothing at all, and on the very same product row the No demand chip pulsed correctly, which made it look like the byproduct chip's jump was broken rather than invisible. The pulse now goes to whatever owns the marker, so both chips light the same row.
 - **An "Exported" chip** now sits beside Product and Imported on any item another factory has asked for, so what leaves a factory reads off the item's own row rather than only off the Exports column. White, to match the factory chips that column shows.
 
 ### Tasks: reorder by dragging
 
 - **Tasks can be dragged into any order**, by the grip handle on the left of each row, the same handle the sidebar's factory list uses. A task's position was fixed at the moment it was added, so the only way to reprioritise a list was to delete a task and retype it at the bottom. Completed tasks drag too.
 - **Done is now a checkbox** rather than a pair of buttons, and it has moved to the left of the task, next to the handle: an empty box while the task is open, filled green with a tick once it is done, matching the green struck-through title beside it. The old control was a blue button that turned into a grey one, which read as an action to take rather than a state to see at a glance.
+- **A typed task is added when you click away from the field**, not only when you press enter. Typing a task and then going back to the plan used to throw the text away silently, which is the one thing a notes field must never do. Enter still adds it, blank and whitespace-only entries are still ignored, and the title is trimmed.
 - Delete stays on the right and is now outlined rather than a solid red block, since it was the loudest thing in the card while being the action you least often want.
 
 ### Improved: Statistics say where a number came from
@@ -170,6 +314,11 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 
 ### Fixes
 
+- **A group's factory count no longer clips its own number.** The sidebar group header lays its parts out in a row, and when the sidebar got narrow the count chip was the one that gave way, so a two-digit total was cut off against the chip's border. The chip now holds its width, as do the expand and delete buttons beside it, leaving the group's name as the only thing that gives ground. Its padding is even again too: the number used to sit with 8px to its left and 24px to its right, which read as wedged against the icon.
+- **The X on Item Production's search box now clears it, and stays put while there is something to clear.** Font Awesome is loaded here as the SVG-replacing script, which swaps out each `<i class="fas fa-*">` for an `<svg>` of its own — including the one Vuetify renders for a field's clear button, and along with it the very DOM node Vue had attached the click handler to. The X drew perfectly and did nothing, in every `clearable` field in the app: Item Production, Parts & Recipes and the factory icon picker. Vuetify is now handed a component for that icon rather than a class name, which nests the glyph inside a wrapper Vue owns, so Font Awesome replaces only the inner element and the handler survives on the outer one (which is also what carries the button role and its label, so the fix reaches assistive technology as well as the mouse). Separately, the X used to fade in only while the box was focused or hovered — type a query, click a filter button, and the way back out of the query had vanished — so on the Item Production box it is now pinned for as long as there is text in it.
+- **"Correct Manually" no longer blocks the fix for a byproduct the game can make on purpose.** A shortage of an item this factory produces as a byproduct was always treated as a dead end: the planner said it could not scale byproducts for you and left it there. That is true of Dissolved Silica, which falls out of Quartz Purification and which nothing in the game makes deliberately, and of nothing else. Dark Matter Residue comes off every Quantum Encoder recipe *and* is made outright by a Converter, so a Phase 5 factory burning more of it than its encoders drop was told to sort it out by hand, while the buttons beside it happily offered to build it in a new or existing factory — every factory except the one that needed it. Being a byproduct here no longer counts against making it here: such an item gets the ordinary **+ Product** button, adding the Converter recipe at exactly the shortfall, and only a genuinely byproduct-only item keeps **Correct Manually**. The two buttons are now exclusive, so the row says either "you can fix this" or "only you can fix this", never both.
+- **A part with no recipe of its own no longer offers to have another factory make it.** "Add to factory" was shown for any shortage, but building a product needs a recipe, and Dissolved Silica and the three power slugs have none — the new factory came out with an empty product row and the import pointed at it supplied nothing. Those parts now show only the button that tells you the truth.
+- **"+ Product" picks a recipe that actually makes the part.** The default recipe was chosen from every recipe the part appears in, byproducts included, so Heavy Oil Residue defaulted to *Plastic* and Compacted Coal to *Ionized Fuel*. A product's amount is read against its recipe's primary output, so the row read "300 Heavy Oil Residue" while sizing the buildings for 300 Plastic. Only recipes that make the part outright are considered now (Alt: Heavy Oil Residue and Alt: Enriched Coal respectively), and unpackaging is picked last, since the packaged form has to come from the unpackaged one first.
 - **Tooltips and toasts now escape the text they are given.** Both build their contents from plan data (part ids, factory names, group names) and both rendered the result as raw HTML. A share link decides all three, and an item id the planner does not recognise is echoed back verbatim, so a crafted plan could put markup into a tooltip and have the browser run it on the page of whoever opened the link. The strings do genuinely need a little markup, since the tooltips use line breaks and bold throughout, so the text is now escaped and a fixed list of formatting tags is restored afterwards. Attributes are never restored, which is what makes a payload inert even on a tag that is on the list. The hover tooltip used for game assets already refused to render HTML for this reason and carries a comment saying so; the other three places did not get the same treatment at the time.
 - **A chip's shape now says whether you can press it.** Everything in a factory card header was squared off to match the buttons at its right edge, so the power, power shard and Somersloop readouts (which do nothing at all) looked exactly like the tasks, notes and sync chips, which do. Pressable chips keep the square corner; anything that only reports a number is a pill, everywhere in the app. Status chips on a section heading were the reverse case: they were drawn as buttons, and given a tab stop and a pointer cursor, but nothing was listening. Clicking one did nothing, because you are already in the section it would have jumped to. Those are now plain labels, while the same chips in the sidebar and on the card header still jump.
 - Status chips in a factory card header sat two pixels below the chips beside them. The chips grow onto their own line in the sidebar and carry a gutter to keep them off the factory name above; on a shared line that gutter pushed them down instead. It now applies only where they actually stack.
@@ -186,6 +335,7 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - Refreshing or deep-linking the Parts browser no longer 404s. The site is a single-page app, and only `index.html` exists on the server, so every route needs a rewrite in `web/vercel.json` pointing it back at the entrypoint. That was a hand-maintained list of routes, and `/parts` was never added to it when the page shipped; navigating there from inside the app worked, so only reloads and shared links broke (and the dev server serves every path from `index.html` anyway, which is why it never showed up locally). Rather than add the missing entry, the list is gone: a single catch-all now covers every route, so adding a page is once again a zero-config operation. The catch-all deliberately excludes `/_vercel/*`, which Vercel serves itself for Web Analytics and Speed Insights. Swallowing those would feed the browser HTML where it expects JavaScript and kill both, silently.
 - Unknown URLs now land on a proper "Page not found" page with links back to the planner and the parts browser, instead of the bare CDN 404. This is a consequence of the catch-all above: the app, not the CDN, is now what answers for a URL that matches nothing.
 - The hidden sidebar's hover tray no longer sticks open when the cursor leaves the window. Flinging the cursor onto a monitor to the left (or alt-tabbing to the game) used to trip the left-edge peek zone on the way out and leave the tray showing indefinitely. A peek triggered by the cursor exiting the window is now provisional (it closes after a second unless the cursor comes back in), and the tray always collapses when the window loses focus. Peeking by hovering the left edge inside the window behaves exactly as before.
+- Reordering a group (or dragging a factory between groups) from that same hover tray no longer collapses it mid-drag. Starting a drag fires a mouse-leave on the row underneath, and no mousemove arrives while a drag is in flight to peek the tray back out, so the sidebar slid shut the instant you picked a group up, taking every drop target with it. The tray is now held open for the duration of any drag started inside it, and hands itself back to the usual peek rules once the group is dropped — a sidebar hidden before the drag is hidden again as soon as the cursor leaves it.
 - **Every automatic correction the planner makes to your plan is now reported in one place.** The dialog that told you about micro-rounding repairs now covers everything the loader puts right, grouped by factory: broken import/export links, two factories that ended up sharing an internal ID, the same item imported twice from the same factory, an import of something that isn't made any more. Each line says what was wrong and what was done about it, in plain terms. The browser alert that used to fire for these ("check the browser console for more details") is gone. It appeared before the planner had drawn anything, said nothing useful, and sent you to the developer console. That detail is still logged for anyone debugging a shared plan.
 - The debug template behind "#485: Micro-rounding repair" is now "#485 + #499: Rounding & broken chain repair", and carries a broken import/export chain alongside the drifted quantities: a copied factory inheriting the original's exports, an export that no longer matches its import, an import the supplier has no record of, an export entry pointing nowhere, and two factories sharing an internal ID. Loading it raises one dialog listing both kinds of correction, with the Refinery and its copy each showing both under a single heading.
 - **Loading a plan now checks the whole import/export chain and repairs what it finds.** A plan whose figures look current is deliberately not recalculated on load, which is what makes switching tabs fast, so anything already wrong stayed wrong through every reload. The check runs on every load, fixes what it can, recalculates, and tells you what it changed.

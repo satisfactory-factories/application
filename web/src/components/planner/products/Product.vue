@@ -1,7 +1,7 @@
 <template>
   <div
     v-for="(product, productIndex) in factory.products"
-    :id="`${factory.id}-products-item-${product.id}`"
+    :id="productRowId(factory.id, product.id)"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
@@ -10,7 +10,7 @@
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
     <div
       v-for="byProduct in product.byProducts ?? []"
-      :id="`${factory.id}-products-item-${byProduct.id}`"
+      :id="productRowId(factory.id, byProduct.id)"
       :key="`anchor-${byProduct.id}`"
       class="status-anchor"
     />
@@ -41,6 +41,16 @@
       />
     </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
+      <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
+        <input
+          :checked="!!product.completed"
+          class="checklist-tick"
+          :class="{ desynced: isProductChecklistDesynced(product) }"
+          :title="isProductChecklistDesynced(product) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this product as built'"
+          type="checkbox"
+          @click.prevent="toggleChecklistProduct(factory, product)"
+        >
+      </div>
       <div class="input-row d-flex align-center">
         <span v-show="!product.id" class="mr-2">
           <i class="fas fa-cube" style="width: 32px; height: 32px" />
@@ -100,7 +110,7 @@
         color="green"
         prepend-icon="fas fa-arrow-up"
         @click="doFixProduct(product, factory)"
-      >Satisfy</v-btn>
+      >Satisfy{{ fixTargetLabel(product, factory) }}</v-btn>
       <v-btn
         v-show="shouldShowFix(product, factory) == 'surplus'"
         class="rounded align-self-center"
@@ -108,7 +118,7 @@
         prepend-icon="fas fa-arrow-down"
         size="default"
         @click="doFixProduct(product, factory)"
-      >Trim</v-btn>
+      >Trim{{ fixTargetLabel(product, factory) }}</v-btn>
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
         <i class="fas fa-industry mr-1" />Internal
       </v-chip>
@@ -197,7 +207,7 @@
           <v-chip
             v-for="extractor in extractorCounts(product)"
             :key="`${product.id}-${extractor.building}`"
-            class="sf-chip orange"
+            class="sf-chip building"
             variant="tonal"
           >
             <game-asset clickable :subject="extractor.building" type="building" />
@@ -208,7 +218,7 @@
         </template>
         <v-chip
           v-else
-          class="sf-chip orange input"
+          class="sf-chip building input"
           variant="tonal"
         >
           <game-asset :key="`${product.id}-${product.buildingRequirements.name}`" clickable :subject="product.buildingRequirements.name" type="building" />
@@ -224,7 +234,7 @@
             hide-spin-buttons
             :model-value="formatNumberFully(product.buildingRequirements.amount)"
             :product="product.id"
-            width="120px"
+            width="100px"
             @update:model-value="changeBuildingAmountInput(product, $event)"
           />
           <debounce-spinner :active="pendingRecalc === `${product.id}-buildings`" />
@@ -286,7 +296,9 @@
   import {
     byProductAsProductCheck,
     fixProduct,
+    fixProductTarget,
     increaseProductQtyViaBuilding,
+    productRowId,
     shouldShowFix,
     shouldShowInternal,
     shouldShowNotInDemand,
@@ -294,8 +306,9 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isProductChecklistDesynced, toggleChecklistProduct } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
@@ -326,7 +339,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   // Takes the whole row amber, so a warning chip halfway down a long product list is attached to
@@ -539,6 +551,11 @@
     updateFactory(factory)
   }
 
+  // What Satisfy/Trim would set the Qty to, appended to the button so the figure is visible
+  // before the press rather than only after it.
+  const fixTargetLabel = (product: FactoryItem, factory: Factory): string =>
+    fixTargetSuffix(fixProductTarget(product, factory))
+
   const autocompletePartItemsGenerator = () => {
     const gameDataParts = getGameData().items.parts
     const data = Object.keys(gameDataParts).map(part => {
@@ -583,3 +600,51 @@
     return range.max !== range.min
   }
 </script>
+
+<style lang="scss" scoped>
+// Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+// nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+.checklist-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: block;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
+  }
+
+  // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+  // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+  // second symbol crammed into an 18px box read worse than the empty box does.
+  &.desynced:checked {
+    background-color: var(--sf-status-warning-border);
+    border-color: var(--sf-status-warning-border);
+
+    &::after {
+      content: none;
+    }
+  }
+}
+</style>

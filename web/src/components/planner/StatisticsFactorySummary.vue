@@ -232,7 +232,7 @@
     </v-card>
   </v-dialog>
 
-  <v-row id="factory-summary" class="mb-4">
+  <v-row id="factory-summary">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
@@ -293,11 +293,6 @@
           </v-col>
         </v-row>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <p v-show="helpText" class="mb-4">
-            <i class="fas fa-info-circle" /> Showing an at-a-glance overview of each factory.
-            Hover over a chip for the full details.
-          </p>
-
           <!-- The counts in the header double as filters. Said out loud because a chip that is
                also a button looks exactly like a chip that is not. -->
           <p v-if="statusTally.length" class="filter-hint mb-4">
@@ -390,12 +385,11 @@
   }
 
   const navigateToFactory = inject('navigateToFactory') as (
-    id: string | number, subsection?: string, fallback?: string
+    id: string | number, subsection?: string | string[], fallback?: string
   ) => void
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   /**
@@ -407,7 +401,7 @@
    * group's breakdown re-filtered the planner's section and closing it made that section rebuild
    * every row.
    */
-  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') === 'true')
+  const hidden = ref<boolean>(localStorage.getItem('summaryHidden') !== 'false')
   const expanded = ref<boolean>(false)
   // Whether the fullscreen panel has finished animating in. Its rows wait for this.
   const dialogOpened = ref<boolean>(false)
@@ -530,7 +524,7 @@
   // Navigating from the fullscreen view has to dismiss it first, since the scroll target is in the
   // main content behind it. Wait out the close transition too: scrolling while the dialog's
   // scroll-lock is still active aims at a shifting layout.
-  const goToFactoryFromDialog = (factoryId: number, subsection?: string, fallback?: string) => {
+  const goToFactoryFromDialog = (factoryId: number, subsection?: string | string[], fallback?: string) => {
     expanded.value = false
     setTimeout(() => navigateToFactory(factoryId, subsection, fallback), 400)
   }

@@ -60,6 +60,8 @@
   const nameOverrides: Record<string, string> = {
     'overclock-production': 'Clock speed',
     'somersloop-trinket': 'Somersloop',
+    // A collectable rather than a part, so it is in neither the game data nor the icon registry.
+    'mercer-sphere': 'Mercer Sphere',
   }
 
   const displayName = computed(() => {

@@ -5,6 +5,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common'
 import { getEndProducts } from '@/utils/factory-management/end-products'
 import { isSinkablePart } from '@/utils/factory-management/sinkable'
+import { isSunk } from '@/utils/factory-management/disposal'
 
 // A building group solved against a target has to express its clock in the four decimal places
 // the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
@@ -45,8 +46,10 @@ export const isSurplusSignificant = (remaining: number, required: number): boole
 export const calculateParts = (factory: Factory, gameData: DataInterface) => {
   calculatePartMetrics(factory, gameData)
 
-  // If factory has no products there is nothing for us to do, so mark as satisfied.
-  if (factory.products.length === 0) {
+  // If factory has no products there is nothing for us to do, so mark as satisfied. Custom
+  // buildings count as something to do: a portal room makes nothing, but its upkeep is a real
+  // demand and forgiving it would leave the factory green while its portals sit dead.
+  if (factory.products.length === 0 && (factory.customBuildings?.length ?? 0) === 0) {
     factory.requirementsSatisfied = true
     return
   }
@@ -94,6 +97,23 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
     // reason isRaw does: every display site already has the part and none of them have game data.
     partData.isEndProduct = endProducts.has(part)
     partData.isSinkable = isSinkablePart(part, gameData)
+
+    // What is left once production, power and exports have had their share. Kept under its own
+    // name because a sunk part's amountRemaining is zero by construction, and the satisfaction row
+    // has to be able to say what sinking took away.
+    partData.amountRemainingPreSink = partData.amountSupplied - partData.amountRequired
+
+    // The AWESOME Sink is a priority splitter, not a consumer with an appetite of its own: it only
+    // ever takes what nothing else claimed. That is what makes the count a build quantity rather
+    // than a rate — and it means adding an export request later shrinks the sunk amount by itself
+    // on the next recalculation, with no iteration here.
+    //
+    // Deliberately after calculatePartRaw. Sinking an ore surplus must not grow the raw shortfall,
+    // which would have the planner ask the world for more ore purely to throw it away.
+    partData.amountRequiredSink = partData.isSinkable && isSunk(factory, part)
+      ? Math.max(0, partData.amountRemainingPreSink)
+      : 0
+    partData.amountRequired += partData.amountRequiredSink
 
     // Sum up remaining amount
     partData.amountRemaining = partData.amountSupplied - partData.amountRequired
@@ -144,6 +164,18 @@ export const calculatePartRequirements = (factory: Factory, gameData: DataInterf
     })
   })
 
+  // Get the amount required by custom buildings (e.g. a Portal's Singularity Cells)
+  factory.customBuildings?.forEach(customBuilding => {
+    customBuilding.ingredients?.forEach(ingredient => {
+      if (!ingredient.perMin) {
+        return // Most custom buildings only draw power, and have no upkeep at all.
+      }
+
+      createNewPart(factory, ingredient.part)
+      factory.parts[ingredient.part].amountRequiredBuildings += ingredient.perMin
+    })
+  })
+
   // Get requirements for export demands
   // Get the amount required by export dependencies
   const requests = getRequestsForFactory(factory)
@@ -159,6 +191,7 @@ export const calculatePartRequirements = (factory: Factory, gameData: DataInterf
     partData.amountRequired =
       partData.amountRequiredProduction +
       partData.amountRequiredPower +
+      partData.amountRequiredBuildings +
       partData.amountRequiredExports
   }
 }

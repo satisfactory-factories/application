@@ -40,7 +40,7 @@ describe('Complex Demo Plan', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(12)
+    expect(factories.length).toBe(14)
   })
   describe('Presentation', () => {
     it('should give every factory an icon the registry knows', () => {
@@ -82,6 +82,59 @@ describe('Complex Demo Plan', () => {
       factories.forEach((factory, index) => {
         expect(factory.displayOrder, factory.name).toBe(index)
       })
+    })
+  })
+  describe('Portal Hub', () => {
+    let portalFac: Factory
+    let cellsFac: Factory
+
+    beforeEach(() => {
+      portalFac = findFacByName('Portal Hub', factories)
+      cellsFac = findFacByName('Singularity Cells', factories)
+    })
+
+    it('should be a factory of nothing but custom buildings', () => {
+      expect(portalFac.products).toHaveLength(0)
+      expect(portalFac.powerProducers).toHaveLength(0)
+      expect(portalFac.customBuildings).toHaveLength(1)
+      expect(portalFac.customBuildings[0]).toMatchObject({
+        building: 'portal',
+        amount: 10,
+        powerConsumed: 2500,
+        ingredients: [{ part: 'SingularityCell', perMin: 20 }],
+      })
+    })
+
+    it('should draw the portals power and list them as buildings to build', () => {
+      expect(portalFac.power.consumed).toBe(2500)
+      expect(portalFac.buildingRequirements.portal).toEqual({
+        name: 'portal',
+        amount: 10,
+        powerConsumed: 2500,
+      })
+    })
+
+    it('should have its Singularity Cell upkeep met by the import', () => {
+      expect(portalFac.parts.SingularityCell.amountRequiredBuildings).toBe(20)
+      expect(portalFac.parts.SingularityCell.amountSuppliedViaInput).toBe(20)
+      expect(portalFac.parts.SingularityCell.satisfied).toBe(true)
+      expect(portalFac.hasProblem).toBe(false)
+    })
+
+    it('should make the demand reach its supplier as an export request', () => {
+      expect(getPartExportRequests(cellsFac, 'SingularityCell')).toHaveLength(1)
+      expect(cellsFac.dependencies.metrics.SingularityCell.request).toBe(20)
+      expect(cellsFac.dependencies.metrics.SingularityCell.isRequestSatisfied).toBe(true)
+    })
+
+    // Deliberate: the cell line is a half-built branch, like Plutonium Processing.
+    it('should leave the Singularity Cell factory short of its ingredients', () => {
+      expect(cellsFac.products[0].amount).toBe(20)
+      expect(cellsFac.parts.DarkMatter.satisfied).toBe(false)
+      expect(cellsFac.parts.IronPlate.satisfied).toBe(false)
+      expect(cellsFac.parts.Cement.satisfied).toBe(false)
+      expect(cellsFac.parts.SpaceElevatorPart_9.satisfied).toBe(false)
+      expect(cellsFac.hasProblem).toBe(true)
     })
   })
   describe('Oil Processing', () => {
@@ -146,12 +199,15 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 960,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 960,
         amountSuppliedViaInput: 0,
         // Supplied by the extractors, not topped up from nowhere.
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 960,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,
@@ -163,11 +219,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 40,
+        amountRequiredBuildings: 0,
         amountSupplied: 40,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 40,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -179,11 +238,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 60,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 320,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 320,
         amountSuppliedViaRaw: 0,
         amountRemaining: 260,
+        amountRemainingPreSink: 260,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -197,11 +259,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 640,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 640,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 640,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -289,7 +354,7 @@ describe('Complex Demo Plan', () => {
 
   describe('Copper Mine', () => {
     it('should mine its ore rather than assume it, and open with the groups showing', () => {
-      expect(copperMineFac.displayOrder).toBe(4) // Head of the Copper group, where the chain starts
+      expect(copperMineFac.displayOrder).toBe(6) // Head of the Copper group, where the chain starts
       // Its own extractors are what supply it, so what shows here is the gap between what it digs
       // and what it has promised away - a real shortfall to act on, not the old free ore.
       expect(copperMineFac.rawResources.OreCopper).toMatchObject({ id: 'OreCopper', amount: 160 })
@@ -440,11 +505,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 60,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 60,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 60,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -457,11 +525,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 180,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 180,
         amountSuppliedViaInput: 180,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,
@@ -473,11 +544,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 200,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 200,
         amountSuppliedViaRaw: 0,
         amountRemaining: 40,
+        amountRemainingPreSink: 40,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -489,11 +563,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 160,
         amountSuppliedViaInput: 160,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,
@@ -507,11 +584,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 2400,
+        amountRequiredBuildings: 0,
         amountSupplied: 2640,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 2640,
         amountSuppliedViaRaw: 0,
         amountRemaining: 80,
+        amountRemainingPreSink: 80,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,
@@ -523,11 +603,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 10,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 10,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -539,11 +622,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 15,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -15,
+        amountRemainingPreSink: -15,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -555,11 +641,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -571,11 +660,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 2,
+        amountRequiredBuildings: 0,
         amountSupplied: 2,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 2,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -587,11 +679,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 100,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -603,11 +698,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 6,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -6,
+        amountRemainingPreSink: -6,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -619,11 +717,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 200,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 240,
         amountSuppliedViaInput: 120,
         amountSuppliedViaProduction: 120,
         amountSuppliedViaRaw: 0,
         amountRemaining: 40,
+        amountRemainingPreSink: 40,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,
@@ -635,11 +736,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 100,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -675,11 +779,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 33.333,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 33.333,
         amountSuppliedViaRaw: 0,
         amountRemaining: 33.333,
+        amountRemainingPreSink: 33.333,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -691,11 +798,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 25,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 100,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: 75,
+        amountRemainingPreSink: 75,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
         isEndProduct: false,
@@ -707,11 +817,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 16.667,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -16.667,
+        amountRemainingPreSink: -16.667,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -723,11 +836,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -739,11 +855,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
         isEndProduct: false,
@@ -755,11 +874,14 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 10,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 10,
         amountRemaining: 10,
+        amountRemainingPreSink: 10,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
         isEndProduct: false,

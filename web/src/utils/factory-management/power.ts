@@ -36,6 +36,7 @@ export const addPowerProducerToFactory = (
     buildingGroupsHaveProblem: false,
     buildingGroupsTrayOpen: false,
     buildingGroupItemSync: true,
+    completed: false,
   })
 
   if (options.building) {

@@ -7,6 +7,7 @@ export interface PartMetrics {
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
   amountRequiredPower: number;
+  amountRequiredBuildings: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaRaw: number; // This is the amount supplied by the raw resources assumed to be handled by the user.
@@ -22,6 +23,12 @@ export interface BuildingRequirement {
   amount: number;
   powerConsumed?: number;
   powerProduced?: number;
+}
+
+// The material cost report behind Power & Buildings' "Material Costs" panel (#477), for one part.
+export interface BuildingMaterialCost {
+  amount: number;
+  buildings: { [building: string]: number };
 }
 
 export interface ByProductItem {
@@ -106,6 +113,13 @@ export interface FactoryPowerSyncState {
   ingredientAmount: number
 }
 
+// What a factory's custom buildings looked like when it was marked as built in-game.
+export interface FactoryCustomBuildingSyncState {
+  building: string
+  amount: number
+  ingredientAmount: number
+}
+
 export interface FactoryTask {
   title: string
   completed: boolean
@@ -125,6 +139,17 @@ export interface FactoryPowerProducer {
   updated: string | null; // Denotes what was just updated so we can recalculate the power generation based off ingredientAmount or powerAmount.
 }
 
+// A building the user placed that makes nothing: a portal, a train station, a radar tower. It
+// costs power, and a few of them cost parts to keep running.
+export interface FactoryCustomBuilding {
+  id: string;
+  building: string;
+  amount: number;
+  ingredients: { part: string, perMin: number }[];
+  powerConsumed: number;
+  displayOrder: number;
+}
+
 export interface FactoryPower {
   consumed: number;
   produced: number;
@@ -139,6 +164,11 @@ export interface FactoryGroup {
   order: number;
 }
 
+export interface FactoryPartDisposal {
+  sinks: number;
+  depots: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -147,10 +177,15 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
+  customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
+  buildingMaterialCosts: { [key: string]: BuildingMaterialCost };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
+  // Per-part disposal — the AWESOME Sinks and Dimensional Depot Uploaders placed on each part's
+  // surplus. Optional: plans saved before it have no map at all.
+  partDisposal?: { [partId: string]: FactoryPartDisposal };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
@@ -160,6 +195,7 @@ export interface Factory {
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   syncStatePower: { [key: string]: FactoryPowerSyncState };
+  syncStateCustomBuildings: { [key: string]: FactoryCustomBuildingSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string

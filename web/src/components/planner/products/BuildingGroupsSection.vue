@@ -6,13 +6,13 @@
       :id="`${idPrefix}-building-groups-toggle`"
       block
       :color="item.buildingGroupsHaveProblem ? 'red' : 'green'"
-      :disabled="disabled"
+      :disabled="disabled || forceOpen"
       size="default"
       variant="tonal"
       @click="toggleBuildingGroupTray(item)"
     >
-      <span class="mr-2">
-        <span v-if="item.buildingGroupsTrayOpen"><i class="fas fa-chevron-up" /></span>
+      <span v-if="!forceOpen" class="mr-2">
+        <span v-if="trayOpen"><i class="fas fa-chevron-up" /></span>
         <span v-else><i class="fas fa-chevron-down" /></span>
       </span>
       <i class="fas fa-layer-group" />
@@ -20,7 +20,7 @@
         <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
       </span>
       <span v-else class="ml-2">
-        {{ item.buildingGroupsTrayOpen ? 'Close' : 'Open' }} Building Groups ({{ item.buildingGroups.length }})
+        {{ forceOpen ? '' : (trayOpen ? 'Close ' : 'Open ') }}Building Groups ({{ item.buildingGroups.length }})
         <tooltip-info :is-caption="false" :text="introTooltip" />
       </span>
       <v-chip class="sf-chip yellow x-small ml-3" variant="tonal">
@@ -40,7 +40,7 @@
         <span :id="`${idPrefix}-somersloops-total`" class="ml-1">{{ getTotalSomersloops(item.buildingGroups, building) }}</span>
       </v-chip>
     </v-btn>
-    <div v-if="item.buildingGroupsTrayOpen" class="mt-2 buildingGroups" :class="item.buildingGroupsHaveProblem ? 'problem' : ''">
+    <div v-if="trayOpen" class="mt-2 buildingGroups" :class="item.buildingGroupsHaveProblem ? 'problem' : ''">
       <building-groups
         :building="building"
         :factory="factory"
@@ -64,7 +64,12 @@
     type: ItemType
     idPrefix: string
     disabled?: boolean
+    // Alien Power Augmenters keep their groups on show: the groups carry the matrix toggle
+    // and own the building count, so a collapsed tray hides the only controls that work.
+    forceOpen?: boolean
   }>()
+
+  const trayOpen = computed(() => props.forceOpen || props.item.buildingGroupsTrayOpen)
 
   const itemNoun = computed(() => props.type === ItemType.Product ? 'product' : 'producer')
 
@@ -75,8 +80,13 @@
     : "Total Somersloops used by this product's Building Groups",
   )
 
-  const introTooltip = computed(() => props.type === ItemType.Product
-    ? "Building Groups turn this product's abstract building count into the real machines you'd build in-game: sets of identical buildings, each group with its own building count, overclock % and Somersloops.<br>Use them to plan your exact layout and see true per-group part rates and power usage."
-    : "Building Groups turn this producer's abstract building count into the real generators you'd build in-game: sets of identical buildings, each group with its own building count and overclock %.<br>Use them to plan your exact layout and see true per-group fuel rates and power output.",
-  )
+  const introTooltip = computed(() => {
+    if (props.forceOpen) {
+      return 'Building Groups are where an Alien Power Augmenter is configured: each group holds a set of augmenters and decides whether they are supplied with Alien Power Matrixes.<br>They stay open because there is nothing to set on the producer line itself.'
+    }
+
+    return props.type === ItemType.Product
+      ? "Building Groups turn this product's abstract building count into the real machines you'd build in-game: sets of identical buildings, each group with its own building count, overclock % and Somersloops.<br>Use them to plan your exact layout and see true per-group part rates and power usage."
+      : "Building Groups turn this producer's abstract building count into the real generators you'd build in-game: sets of identical buildings, each group with its own building count and overclock %.<br>Use them to plan your exact layout and see true per-group fuel rates and power output."
+  })
 </script>

@@ -64,7 +64,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip sf-chip-clickable small orange no-margin sync-chip" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="setSyncState(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -84,6 +84,18 @@
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
+                </v-chip>
+              </div>
+              <!-- checklist progress chip -->
+              <div v-if="factory.checklistEnabled">
+                <v-chip
+                  class="sf-chip sf-chip-clickable small no-margin"
+                  :class="checklistChipClass(factory)"
+                  @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+                >
+                  <i class="fas fa-check" />
+                  <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+                  <span v-if="hasChecklistDesync(factory)" class="ml-2">(desynced)</span>
                 </v-chip>
               </div>
               <!-- power difference chip -->
@@ -188,27 +200,52 @@
               variant="outlined"
               @click="confirmDelete() && deleteFactory(factory)"
             />
+            <!-- Checklist toggle sits directly under the action buttons above, rather than in the
+                 chips bar on the left: it is a mode switch for the whole card, not a status. -->
+            <v-tooltip location="top" max-width="360">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex justify-end mt-2">
+                  <v-switch
+                    :id="`${factory.id}-checklist-toggle`"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    label="Checklist"
+                    :model-value="factory.checklistEnabled"
+                    @update:model-value="value => toggleChecklist(!!value)"
+                  />
+                </div>
+              </template>
+              <span>
+                Turn this on to get a checklist of everything this factory needs to build:
+                assemblers for each product, generators for power, a source for each import and
+                infrastructure for each export. Tick items off as you build them to track your own
+                progress. If a ticked item's numbers change later, it stays checked but is flagged
+                as desynced, so you can see exactly what changed.
+              </span>
+            </v-tooltip>
           </v-col>
         </v-row>
         <v-card-text v-if="!factory.hidden">
+          <template v-if="factory.checklistEnabled">
+            <planner-factory-checklist :id="`${factory.id}-checklist`" :factory="factory" />
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          </template>
           <products-and-power
             :id="`${factory.id}-products`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
             :id="`${factory.id}-imports`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
             :id="`${factory.id}-satisfaction`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
@@ -217,14 +254,12 @@
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
           </v-row>
@@ -324,6 +359,12 @@
                       :class="differenceClass(factory.parts[part.id].amountRemaining)"
                     >
                       (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                    <!-- A sunk part balances to zero, so without this a factory throwing 100/min
+                         into a sink reads identically to one that produces exactly what it ships. -->
+                    <span
+                      v-if="(factory.parts[part.id].amountRequiredSink ?? 0) > 0"
+                      class="ml-2 text-awesome-sink"
+                    >({{ formatNumber(factory.parts[part.id].amountRequiredSink ?? 0) }}/min sunk)</span>
                   </v-chip>
                 </template>
                 <!-- Power generators produce as surely as products do, and a factory made only of
@@ -350,6 +391,27 @@
                   </span>
                   <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
                 </v-chip>
+                <!-- Custom buildings produce nothing, so they are stated as what they cost. Same
+                     reasoning as the generators above: without them a portal room collapsed to
+                     "Empty factory!". -->
+                <v-chip
+                  v-for="(customBuilding, customIndex) in factory.customBuildings"
+                  :key="`${factory.id}-custom-${customIndex}`"
+                  class="sf-chip custom-building"
+                >
+                  <game-asset
+                    v-if="customBuilding.building"
+                    clickable
+                    height="32"
+                    :subject="customBuilding.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ getBuildingDisplayName(customBuilding.building) }}</b>: {{ formatNumber(Math.ceil(customBuilding.amount)) }}x
+                  </span>
+                  <span class="ml-2 text-orange">(-{{ formatMw(customBuilding.powerConsumed) }})</span>
+                </v-chip>
               </div>
             </template>
           </div>
@@ -369,10 +431,14 @@
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
+                <!-- The chip is more specific than the row it sits in: it knows which part goes
+                     where, so it jumps to the import row taking it rather than the factory. -->
                 <v-chip
                   v-for="part in factory.dependencies.requests[dependant]"
                   :key="part.part"
-                  class="sf-chip small product"
+                  class="sf-chip sf-chip-clickable small product"
+                  title="Jump to the import taking this export"
+                  @click.stop="navigateToImport(dependant, part.part)"
                 >
                   <game-asset
                     v-if="part.part"
@@ -399,38 +465,62 @@
   import { computed, inject, ref, watch } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
+  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
+  import {
+    checklistChipClass,
+    countChecklistCompleted,
+    countChecklistTotal,
+    hasChecklistDesync,
+    setChecklistEnabled,
+  } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
-  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import {
+    factoryStatusClass,
+    FactoryStatusSection,
+    getFactoryStatuses,
+    statusJumpTargets,
+  } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
+  import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
+  import { importRowId } from '@/utils/factory-management/inputs'
+  import eventBus from '@/utils/eventBus'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string, fallback?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
 
-  // Aim at the row the status names, with its section as the fallback for anything that has no
-  // row of its own.
-  const navigateToStatus = (target: { section: string, subject?: string }) => {
-    const section = `${props.factory.id}-${target.section}`
+  // Land on the import row consuming this factory's export, rather than on the destination
+  // factory's card which only says "somewhere in here". Falls back to its Imports section.
+  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
     navigateToFactory(
-      props.factory.id,
-      target.subject ? `${section}-item-${target.subject}` : section,
-      section
+      requestingFactoryId,
+      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
+      `${requestingFactoryId}-imports`
     )
+  }
+
+  // Aim at every row the status names, with its section as the fallback for anything that has no
+  // row of its own.
+  const navigateToStatus = (target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(props.factory.id, target)
+    navigateToFactory(props.factory.id, targets, fallback)
   }
 
   const props = defineProps<{
     factory: Factory
-    helpText: boolean
     totalFactories: number;
   }>()
 
@@ -489,7 +579,9 @@
   // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
   // Power generators alone are a perfectly good factory, and were being called empty.
   const hasOutput = computed(() =>
-    props.factory.products.length > 0 || props.factory.powerProducers.length > 0
+    props.factory.products.length > 0 ||
+    props.factory.powerProducers.length > 0 ||
+    (props.factory.customBuildings?.length ?? 0) > 0
   )
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
@@ -536,11 +628,23 @@
 
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
-      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
+      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
+      // A portal room makes nothing and generates nothing, and is still a thing you built.
+      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
   }
 
   const resetSyncState = (factory: Factory) => {
     factory.inSync = null
+  }
+
+  // The tutorial is opt-out, not opt-in: the first time anyone turns checklist mode on, in any
+  // factory, explain what it does. Dismissing it (see ChecklistTutorial.vue) is what stops it
+  // firing again, so this only ever checks the flag rather than setting it.
+  const toggleChecklist = (enabled: boolean) => {
+    setChecklistEnabled(props.factory, enabled)
+    if (enabled && localStorage.getItem('dismissed-checklist-tutorial') !== 'true') {
+      eventBus.emit('openChecklistTutorial')
+    }
   }
 </script>
 

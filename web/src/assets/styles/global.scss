@@ -266,7 +266,10 @@
     border-color: var(--sf-node-setting-border) !important;
   }
 
-  &.orange, &.building {
+  // No `.orange` alias: the token is blue now, and a class named for a colour it no longer wears
+  // is how the literal hexes crept back in last time. Chips that genuinely mean amber use
+  // `.status-warning-outlined`.
+  &.building, &.custom-building {
     color: var(--sf-building) !important;
     border-color: var(--sf-building-border) !important;
   }
@@ -284,6 +287,18 @@
   &.sloop, &.somersloop {
     color: var(--sf-somersloop) !important;
     border-color: var(--sf-somersloop-border) !important;
+  }
+
+  // The two surplus destinations. Kept next to each other because they are one control in the
+  // satisfaction table, and told apart by hue rather than by reading the label.
+  &.dimensional-depot {
+    color: var(--sf-dimensional-depot) !important;
+    border-color: var(--sf-dimensional-depot-border) !important;
+  }
+
+  &.awesome-sink {
+    color: var(--sf-awesome-sink) !important;
+    border-color: var(--sf-awesome-sink-border) !important;
   }
 
   // Power — generation / consumption / peak draw / Alien Power Augmenter boost.
@@ -338,6 +353,14 @@
       margin: 0 !important;
     }
 
+    // A read-only inline input (a group's Somersloop build cost, an augmenter group's
+    // matrix rate) must read as read-only. Vuetify's own disabled dimming does not
+    // survive inside a chip, so without this the field looks exactly like the editable
+    // ones beside it and only reveals itself when clicking does nothing.
+    .inline-inputs.v-input--disabled {
+      opacity: 0.5;
+    }
+
     // A text label directly followed by an input (e.g. "Oil Refinery" in the
     // Requires chip): the input brings its own left gutter, so the span's right
     // margin would double the gap between them.
@@ -375,9 +398,23 @@
     color: var(--sf-power-consumption) !important;
 }
 
+// The satisfaction breakdown's sink line. Its own colour rather than the orange the other demand
+// lines wear: the sink is demand the planner invented on the user's instruction, not demand the
+// recipes created, and it is the one line whose number is not a claim on the factory's output.
+.text-awesome-sink {
+    color: var(--sf-awesome-sink) !important;
+}
+
 // Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.
 .text-status-warning {
     color: var(--sf-status-warning) !important;
+}
+
+// The done/complete counterpart. Vuetify's own `.text-green` carries no !important, so it loses
+// to any scoped component rule that sets a colour (the sidebar's `.context-icon` grey does
+// exactly that); this wins wherever that one silently did nothing.
+.text-success {
+    color: var(--sf-success) !important;
 }
 
 // Plain-text item labels (building-group under-chip "x / building" lines) share
@@ -621,6 +658,20 @@
   letter-spacing: normal !important;
 }
 
+// Shared by the Statistics card's h4 section headings (Statistics.vue, StatisticsPower.vue,
+// StatisticsResources.vue, StatisticsItemsDifference.vue, StatisticsShardsSloops.vue,
+// StatisticsBuildings.vue): a fixed-width column for the leading icon so every heading's text
+// starts at the same x position, whatever the icon's own glyph width (fa-warehouse is
+// noticeably wider than fa-power-off or fa-globe). Sized to fit the widest of them with room
+// to spare, and margined the same as the mr-3/ml-3 gap it replaces.
+.stats-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  margin-right: 12px;
+}
+
 // Vuetify's default hover overlay (4%) is invisible on outlined buttons —
 // hovering one should visibly fill it with a tint of its own colour.
 // Doubled class: the button element also carries .v-theme--dark, whose own
@@ -654,12 +705,50 @@
   }
 }
 
-// Anything a status chip can jump to keeps a gap above it. Landing flush under the app chrome
+// Anything a jump can land on keeps a gap above it. Landing flush under the app chrome
 // puts the row directly beneath the "too many factories" banner, which sits over the top of it.
 .factory-item,
 .status-anchor,
 tr[id*="-satisfaction-item-"] {
   scroll-margin-top: 50px;
+}
+
+// The pulse a jump leaves on its target (see src/utils/navigation-highlight.ts). Global rather
+// than scoped: the targets are factory headers, section headings, import rows and satisfaction
+// rows, spread across a dozen components.
+// The pulse holds most of its brightness through the middle of the animation rather than spiking
+// and dropping: it starts as the smooth scroll sets off, so a quick blink would be over by the
+// time the target arrives on screen.
+@keyframes sf-nav-flash {
+  0% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0); }
+  12% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.55); }
+  55% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.45); }
+  100% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0); }
+}
+
+.sf-nav-flash {
+  // An inset shadow rather than a background: the targets bring backgrounds of their own (card
+  // headers, shaded satisfaction cells), and an overlay tints all of them the same way.
+  animation: sf-nav-flash 1.1s ease-out;
+}
+
+// A row paints no inset shadow of its own — the table hands the background to the cells, so they
+// carry the flash instead.
+tr.sf-nav-flash {
+  animation: none;
+
+  > td,
+  > th {
+    animation: sf-nav-flash 1.1s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-nav-flash,
+  tr.sf-nav-flash > td,
+  tr.sf-nav-flash > th {
+    animation: none;
+  }
 }
 
 .factory-item {
@@ -754,6 +843,41 @@ tr[id*="-satisfaction-item-"] {
 .v-checkbox-btn .v-selection-control__input::after {
   @extend %selection-mark;
   border-radius: 3px;
+}
+
+// A drawn tick box on a native checkbox, shared by the factory task list and the Mercer Sphere
+// research rows. Native rather than a v-checkbox because Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app does not ship, so the unticked box renders as
+// nothing at all — and global rather than scoped because two components draw the same one.
+.sf-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: block;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  // Two borders of a rotated box: the short arm and the long arm of a tick.
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
+  }
 }
 
 // A factory-coloured "chip" wrapping the part chips that belong to one factory — the collapsed

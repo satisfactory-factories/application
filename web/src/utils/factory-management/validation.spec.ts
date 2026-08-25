@@ -176,6 +176,68 @@ describe('validation', () => {
     expect(repairs.some(entry => entry.summary.includes('set to 1/min'))).toBe(true)
   })
 
+  // A share link is another player's JSON, so the disposal map arrives without ever having gone
+  // through the setters that sanitise it.
+  describe('partDisposal repair', () => {
+    const withParts = (disposal: unknown): Factory => {
+      const factory = newFactory('Storage')
+      addProductToFactory(factory, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      factory.parts.IronIngot = { amountRequired: 0, amountSupplied: 100 } as never
+      factory.partDisposal = disposal as never
+      return factory
+    }
+
+    it('drops a null record rather than letting the power total throw on it', () => {
+      const factory = withParts({ IronIngot: null })
+
+      const repairs = validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toEqual({})
+      expect(repairs.some(entry => entry.summary.includes('whole numbers'))).toBe(true)
+    })
+
+    it('floors a negative count so it cannot subtract from the grid', () => {
+      const factory = withParts({ IronIngot: { sinks: -4, depots: 2 } })
+
+      validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toEqual({ IronIngot: { sinks: 0, depots: 2 } })
+    })
+
+    it('coerces a string count rather than concatenating it into the total', () => {
+      const factory = withParts({ IronIngot: { sinks: '3', depots: 0 } })
+
+      validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toEqual({ IronIngot: { sinks: 3, depots: 0 } })
+    })
+
+    it('clears settings that are not an object at all', () => {
+      const factory = withParts('nonsense')
+
+      const repairs = validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toBeUndefined()
+      expect(repairs.some(entry => entry.summary.includes('unreadable'))).toBe(true)
+    })
+
+    it('leaves a count for a part the factory no longer makes, because the map is sticky', () => {
+      const factory = withParts({ CopperIngot: { sinks: 2, depots: 0 } })
+
+      const repairs = validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toEqual({ CopperIngot: { sinks: 2, depots: 0 } })
+      expect(repairs).toEqual([])
+    })
+
+    it('leaves a valid map untouched', () => {
+      const factory = withParts({ IronIngot: { sinks: 1, depots: 2 } })
+
+      expect(validateFactories([factory], gameData)).toEqual([])
+      expect(factory.partDisposal).toEqual({ IronIngot: { sinks: 1, depots: 2 } })
+    })
+  })
+
   it('should report nothing for a clean plan', () => {
     const supplier: Factory = newFactory('Some Factory')
     addProductToFactory(supplier, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })

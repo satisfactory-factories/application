@@ -23,6 +23,46 @@
           </ul>
         </nav>
         <v-divider />
+        <h1>Beta v0.7 <span class="release-date">In development</span></h1>
+        <p>Buildings that produce nothing — portals, stations, lights — can now be planned like everything else.</p>
+        <nav v-if="sectionsOf('Beta v0.7').length" class="toc">
+          <p class="mb-1"><b>In this update:</b></p>
+          <ul class="toc-list">
+            <li v-for="section in sectionsOf('Beta v0.7')" :key="section.id">
+              <a :href="`#${section.id}`" @click.prevent="jumpTo(section.id)">{{ section.title }}</a>
+            </li>
+          </ul>
+        </nav>
+
+        <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
+        <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
+        <v-img
+          alt="Ten Main Portals added to a factory as a custom building"
+          max-width="1200"
+          src="/assets/changelog/beta7/custom-buildings.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>They count towards the factory's power draw and its list of buildings to place.</li>
+          <li><b>The Main Portal eats Singularity Cells</b>, two a minute each. That is a demand like any other: import it, or the factory reads as short.</li>
+          <li><b>The Demo plan has a Portal Hub</b>: ten Main Portals, 2.5 GW, and 20 Singularity Cells a minute shipped in.</li>
+        </ul>
+
+        <h2>🆕 <i class="fas fa-cubes ml-1" /><span class="ml-2">Material Costs</span></h2>
+        <p>Power &amp; Buildings now has a Material Costs panel: what it would cost, in parts, to build every production building, power generator and custom building in the factory. Closed by default; toggle it open to see the breakdown.</p>
+        <ul class="ml-6 mt-2">
+          <li>Each part lists its total quantity, and a chip per building that needs it, showing that building's image and how many of them.</li>
+          <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-sort ml-1" /><span class="ml-2">Arrange the plan without dragging</span></h2>
+        <p>The sidebar could not be scrolled on a phone. Picking a factory or a group up is the same gesture as scrolling the list, so a touch meant to scroll dragged the row instead. Dragging is now offered only where the pointer is precise enough for it.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Arrange</b> opens a dialog for reordering the plan with buttons: groups against each other, factories within their group, and factories from one group into another.</li>
+          <li>Groups can still be dragged in that dialog, and in the sidebar, wherever there is a pointer to drag with.</li>
+        </ul>
+
+        <v-divider />
         <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
         <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
         <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
@@ -114,6 +154,7 @@
               src="/assets/changelog/beta6/multi-group-edit.png"
             />
           </li>
+          <li><b>Every group ends with its own Add Factory button</b>, which makes a factory and puts it straight into that group — no adding it at the bottom of the plan and dragging it back up.</li>
           <li><b>Group power</b> (generated, consumed and the balance) is optional, under <b>Options → Sidebar → Factory groups</b>. A <b>circuit boost</b> chip shows where Alien Power Augmenters are involved.</li>
           <li><b>Deleting a group never deletes a factory.</b> One that still holds factories asks where they should go first.</li>
         </ul>
@@ -200,6 +241,38 @@
 
         <v-divider class="subsection" />
 
+        <h2>👍 <i class="fas fa-arrow-to-bottom ml-1" /><span class="ml-2">Satisfy &amp; Trim say what they will set</span></h2>
+        <p>Every <b>Satisfy</b> and <b>Trim</b> now names the figure it would land on, right there on the button. No more pressing one to find out what it does, then trying to remember the old number to undo it.</p>
+        <v-img
+          alt="A product's Trim (480) button above an import's Trim to Capacity (360) button"
+          max-width="1200"
+          src="/assets/changelog/beta6/satisfy-trim-targets.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>Products, imports and building groups all carry it, each in its own units: a product's new Qty/min, an import's new quantity, and the output a building group would be left producing (MW for a power generator's group).</li>
+          <li><b>New: Trim to Capacity.</b> An import that asks a factory for more than it can make now offers to trim itself to fit. Nothing used to stop you requesting 1,015 of something from a factory producing 900 — and the 115 it could never deliver showed up on the <i>supplier</i>, a long way from the row that caused it.</li>
+          <li>Capacity is what the supplier has <b>spare</b>: what it makes, less what its own production and generators consume, less everything it has already promised to other factories.</li>
+          <li>It only ever shrinks a request. A row that already fits is left alone, so this is not a second <b>Satisfy</b>: Satisfy sizes an import against what <i>this</i> factory needs, Trim to Capacity sizes it against what the supplier can actually give.</li>
+          <li>The shortfall doesn't vanish, it moves to where it belongs: the supplier goes green, and this factory shows the gap it always really had.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-arrow-to-top ml-1" /><span class="ml-2">Satisfy an import to what the supplier can spare</span></h2>
+        <p>Being short of more than a supplier can make used to take two presses: <b>Satisfy</b> asked for the lot, over-asked the supplier, and put a <b>Trim to Capacity</b> button on screen to take it straight back down. <b>Satisfy to Capacity</b> lands on the right figure in one.</p>
+        <v-img
+          alt="An import row offering both Satisfy to Need (520) and Satisfy to Capacity (360)"
+          max-width="1200"
+          src="/assets/changelog/beta6/satisfy-to-capacity.png"
+        />
+        <ul class="ml-6 mt-2">
+          <li>Every button on an import row now says which question it answers: <b>Satisfy to Need</b> and <b>Trim to Need</b> size the row against what this factory wants, <b>Satisfy to Capacity</b> and <b>Trim to Capacity</b> against what the supplier can actually give.</li>
+          <li><b>Satisfy to Capacity</b> only turns up when it has something of its own to say — not when the supplier can cover the whole need, not when the row already over-asks (that's <b>Trim to Capacity</b>, already on screen saying the same figure), and not when the supplier has nothing spare.</li>
+          <li>It doesn't pretend the shortfall is solved: the supplier goes green and fully committed, and this factory keeps the gap it always really had, with <b>Satisfy to Need</b> still there for when you find it a second supplier.</li>
+        </ul>
+
+        <v-divider class="subsection" />
+
         <h2>👍 <i class="fas fa-list ml-1" /><span class="ml-2">Factories Summary</span></h2>
         <p>The summary now aggregates every issue in the plan, in its header and in its sidebar row, so you can see everything wrong at a glance and go from there.</p>
         <v-img
@@ -243,6 +316,7 @@
 
         <h2>👍 <i class="fas fa-tasks ml-1" /><span class="ml-2">Tasks</span></h2>
         <p><b>Tasks drag into any order</b>, by the grip handle on the left. Completed tasks drag too. The card has had a tidy-up while it was open.</p>
+        <p><b>A task you have typed is added when you click away</b>, not only when you press enter, so going back to the plan mid-thought no longer loses it.</p>
         <v-img
           alt="The factory tasks card with drag handles and checkboxes"
           max-width="1200"
@@ -277,7 +351,7 @@
               src="/assets/changelog/beta6/sidebar-active-factory.png"
             />
           </li>
-          <li><b>Jump to a requesting factory</b> from any export chip in the satisfaction table, via the small eye button on its edge. Clicking the chip itself still selects that destination in the Export Calculator.
+          <li><b>Jump straight to the import taking an export</b>, from any export chip in the satisfaction table via the small eye button on its edge, or from the part chips under a collapsed factory's "Exporting:" list. You land on the import row itself, not just on the destination factory. Clicking the chip itself still selects that destination in the Export Calculator. An import's <b>View</b> button makes the trip in reverse, landing on the product that supplies it.
             <v-img
               alt="An export chip with the eye button that jumps to the requesting factory"
               class="mt-2"
@@ -285,6 +359,9 @@
               src="/assets/changelog/beta6/export-chip-jump.png"
             />
           </li>
+          <li><b>Every jump pulses what it landed on</b> — the import row, the factory's header, the section's heading — so you can see where you have been taken rather than hunting the screen for what changed. A chip that counts several things lights all of them: "3 shortages" takes you to the first and pulses all three.</li>
+          <li><b>A "Full width" button</b> in the sidebar, beside Hide all and Expand all, lets the plan use the entire window on a wide screen instead of the margins the planner normally keeps. On a 2560px monitor that is around 500px of width handed back to the plan. Your choice is remembered.</li>
+          <li><b>Every button in the sidebar says what it does</b> on hover, including the greyed-out ones — which now tell you what they are waiting for rather than just sitting there.</li>
           <li>An <b>Exported</b> chip sits beside Product and Imported on any item another factory has asked for.</li>
           <li><b>Every game image has a tooltip.</b></li>
         </ul>
@@ -563,7 +640,7 @@
           </li>
           <li>👍🔧 <b>TRIM and SATISFY buttons now take into account other imports of the same part</b>. Before, it would only check the import being trimmed / satisfied against the factory shortage / overflow, now it takes all other imports and calculates the difference.</li>
           <li>🔧 Imports no longer consider a factory a candidate if the source factory imports a raw resource which the destination factory needs.</li>
-          <li>🆕 Redundant imports (where a singular import can handle the demands) are now highlighted with <v-chip class="sf-chip small orange ma-0">
+          <li>🆕 Redundant imports (where a singular import can handle the demands) are now highlighted with <v-chip class="sf-chip small status-warning-outlined ma-0">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">Redundant!</span>
           </v-chip>. This way this mostly works is to not require re-balancing of imports, and if one import can do the job the others are marked as redundant.
