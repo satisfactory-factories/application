@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { isSinkablePart, RADIOACTIVE_PARTS } from '@/utils/factory-management/sinkable'
+import { isSinkablePart, NON_SINKABLE_PARTS, RADIOACTIVE_PARTS } from '@/utils/factory-management/sinkable'
 import { gameData } from '@/utils/gameData'
 
 describe('sinkable', () => {
@@ -29,6 +29,21 @@ describe('sinkable', () => {
 
   test('every radioactive part named still exists in the game data', () => {
     for (const part of RADIOACTIVE_PARTS) {
+      expect(gameData.items.parts[part]).toBeDefined()
+    }
+  })
+
+  // https://github.com/satisfactory-factories/application/issues/594 — Power Shards are neither
+  // a fluid nor radioactive, but Docs.json still gives them 0 sink points: the game deliberately
+  // keeps a valuable item out of the sink.
+  test('refuses Power Shards, even though they are an ordinary non-radioactive solid', () => {
+    expect(gameData.items.parts.CrystalShard?.isFluid).toBe(false)
+    expect(RADIOACTIVE_PARTS.has('CrystalShard')).toBe(false)
+    expect(isSinkablePart('CrystalShard', gameData)).toBe(false)
+  })
+
+  test('every non-sinkable part named still exists in the game data', () => {
+    for (const part of NON_SINKABLE_PARTS) {
       expect(gameData.items.parts[part]).toBeDefined()
     }
   })
