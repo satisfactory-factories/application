@@ -21,13 +21,16 @@
       <!-- Mounted unconditionally: a client the API has refused needs telling even on a page
            that has errored. -->
       <update-required-dialog />
+      <update-available-toast />
     </v-main>
   </v-app>
 </template>
 
 <script setup lang="ts">
+  import { onMounted, onUnmounted } from 'vue'
   import { useRoute } from 'vue-router'
   import { useDisplay } from 'vuetify'
+  import { startVersionCheck } from '@/utils/version-check'
 
   const { smAndDown } = useDisplay()
   const authButtonColor = computed(() => smAndDown.value ? 'grey-darken-3' : undefined)
@@ -39,4 +42,11 @@
   const showTabNavigation = computed(() => {
     return route.path === '/' || route.path === '/graph'
   })
+
+  // Started here rather than as an import side effect, so it has somewhere to be stopped.
+  let stopVersionCheck: (() => void) | undefined
+  onMounted(() => {
+    stopVersionCheck = startVersionCheck()
+  })
+  onUnmounted(() => stopVersionCheck?.())
 </script>

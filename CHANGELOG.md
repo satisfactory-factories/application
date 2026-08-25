@@ -201,6 +201,13 @@ Raw resources are no longer assumed. Ore, water, oil and gas are dug up by build
 - The version itself now comes from one place (the repo root `package.json`, stamped into the build) rather than being a number nobody had been keeping up to date.
 - The backend has its first tests: the version comparison is a pure module with a Vitest suite covering ordering, prereleases, missing and unparseable versions, and a misconfigured minimum. `pnpm test` in `backend/` runs them, and CI runs them on every PR.
 
+### You get told when a new version of the planner is out
+
+- **A tab left open across a release now says so, and offers to reload.** A small message appears at the bottom of the page naming the version that is live. Dismiss it and carry on, or reload when you are at a sensible point. Nothing is blocked and nothing is lost either way: your plan is stored in this browser and reloading keeps it. Closes [#166](https://github.com/satisfactory-factories/application/issues/166).
+- This is separate from the update notice that blocks the page. That one only appears when the API refuses to save from a build too old to be trusted with your plan. This one is for every other release, where the build you are on still works perfectly well and there is simply a newer one.
+- **You do not need an account.** The check is a public `GET /version` on the API, so anyone with the planner open gets told, signed in or not.
+- The check runs once a minute, pauses while the tab is in the background, and asks again the moment you come back to it. It stops once it has told you, and a version it has already mentioned is never mentioned twice in the same tab. If the API cannot be reached, nothing is shown at all.
+
 ### Cloud sync: an emptied plan is still a plan
 
 - **Deleting your last factory now reaches your account.** Syncing refused to save a plan with no factories in it, so an emptied plan left the previous version sitting in the cloud and the next restore handed back the work you had deleted. The same rule blocked a plan holding nothing but groups you had made and not yet filled, which is real plan state now that groups travel on their own.
