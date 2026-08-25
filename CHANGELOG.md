@@ -117,6 +117,17 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
 - **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
 
+### Fixes
+
+- **Checklist mode: ticks on the Products, Imports and export-chip checkboxes are reliable again**
+  (#592, #593). The export tick sat inside the chip's own clickable area, so the chip's click
+  handler and ripple layer could win the click before it ever reached the checkbox; it's now a
+  sibling of the chip instead, matching how the Checklist card above it already builds the same
+  control. Separately, all three checkboxes could lose a race against the browser's own
+  "revert to pre-click state" step when a click was cancelled — the state change landed, but the
+  box itself (and anywhere else that same tick is drawn) could stay visually unticked. Every
+  checklist checkbox now keys its `<input>` on the checked value itself, which sidesteps that race.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
