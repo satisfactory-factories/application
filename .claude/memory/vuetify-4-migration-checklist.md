@@ -6,6 +6,8 @@ metadata:
   type: project
   originSessionId: 10734531-3141-4073-a0f3-a96bbbd7d690
   modified: 2026-07-28T17:42:10.465Z
+  volatility: durable
+  lastVerified: 2026-08-21
 ---
 
 Part of [[dependency-modernization-plan]]. **Done 2026-07-28** on branch `feat/vuetify-4` → PR #490, which supersedes Renovate's bare bump #484 (a feature branch because Vercel ignores `renovate/*`). Everything lives in `web/src/assets/styles/global.scss` (compat block at the top), `vuetify-settings.scss`, `plugins/vuetify.ts` and `index.html`.
@@ -22,6 +24,8 @@ What actually mattered, in order of how hard it was to find:
 4. **Grid**: v4 swapped negative-margin gutters for `gap`. Restored v3 geometry in `@layer vuetify-components` (zero the gap vars — doubled `.v-row.v-row` since component CSS imports after global.scss — plus `.v-col { padding: 12px }`, *not* scoped to `.v-row >`: v3 padded every column regardless of parent and the app has cols that aren't direct row children). `<v-row dense>` → `density="compact"`: v4's own deprecation message says `comfortable` and is **wrong** (16px; v3 dense was 8px = compact).
 5. Reset + VBtn: v3's `* { margin:0; padding:0 }` is gone (334 raw elements), restored in `@layer vuetify-core.reset`. **The form half of the reset went too** — v3 stripped native chrome off every `button/input/select/textarea`, v4 only inside its own `.v-field`, so the app's two bare inputs (factory name, tab rename) showed the browser's box and border unhovered. Same layer. VBtn lost uppercase *and* tracking — both restored in `@layer vuetify-components` (not a `defaults: { VBtn: { class } }`, which would beat `.text-none` on the factory tabs).
 6. Non-issues, verified: no elevation >5, no VForm slot props, no fill-height, no snackbar multi-line, no labs imports, select/autocomplete `item` slot unused, no `rgba(var(--v-theme-*))`, no `offset-*` classes. `defaultTheme: 'dark'` and `VNumberInput: { precision: null }` still correct.
+
+**The utility-collision class keeps recurring, and the detector only covers half of it.** The checklist feature (PR #578) hit it twice: `mr-2` on an export tickbox and `text-green` on a sidebar row, both silently doing nothing because a scoped SFC rule (`.checklist-tick`, `.context-icon`) compiles to a `[data-v-*]`-qualified selector and Vuetify's utilities carry no `!important`. Neither was caught by review or by tests — a wrong colour and a missing 8px both render fine. `utility-collisions.mjs` matches `^([mp])([trblxya])-n?\d+$` only, so **colour helpers like `text-green` are outside it**, and it only sees elements present in the views it samples. The repo's answer for colour is a semantic class in `global.scss` (`.text-success`, `.text-status-warning`), which carries `!important` and therefore wins; for spacing, bake the value into the scoped rule. Rule of thumb: **if a scoped block sets the same property, the utility class is decoration** — check the computed style in a browser rather than trusting the class list.
 
 **Method worth reusing**: puppeteer screenshot diff, two vite servers side by side, PIL pixel diff at >32/255. Always capture the baseline **twice against itself** first — it comes out at 0px, which is what makes a sub-1% residual trustworthy. And diff **production builds** (`vite preview` over `dist/`), not just dev: baseline dev-vs-prod is 0px, so when the migration showed 7% it exposed the layer-ordering bug.
 

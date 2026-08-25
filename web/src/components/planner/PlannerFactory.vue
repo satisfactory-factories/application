@@ -86,6 +86,18 @@
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
                 </v-chip>
               </div>
+              <!-- checklist progress chip -->
+              <div v-if="factory.checklistEnabled">
+                <v-chip
+                  class="sf-chip sf-chip-clickable small no-margin"
+                  :class="checklistChipClass(factory)"
+                  @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+                >
+                  <i class="fas fa-check" />
+                  <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+                  <span v-if="hasChecklistDesync(factory)" class="ml-2">(desynced)</span>
+                </v-chip>
+              </div>
               <!-- power difference chip -->
               <tooltip
                 v-if="factoryPowerDifference !== 0"
@@ -188,9 +200,37 @@
               variant="outlined"
               @click="confirmDelete() && deleteFactory(factory)"
             />
+            <!-- Checklist toggle sits directly under the action buttons above, rather than in the
+                 chips bar on the left: it is a mode switch for the whole card, not a status. -->
+            <v-tooltip location="top" max-width="360">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex justify-end mt-2">
+                  <v-switch
+                    :id="`${factory.id}-checklist-toggle`"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    label="Checklist"
+                    :model-value="factory.checklistEnabled"
+                    @update:model-value="value => toggleChecklist(!!value)"
+                  />
+                </div>
+              </template>
+              <span>
+                Turn this on to get a checklist of everything this factory needs to build:
+                assemblers for each product, generators for power, a source for each import and
+                infrastructure for each export. Tick items off as you build them to track your own
+                progress. If a ticked item's numbers change later, it stays checked but is flagged
+                as desynced, so you can see exactly what changed.
+              </span>
+            </v-tooltip>
           </v-col>
         </v-row>
         <v-card-text v-if="!factory.hidden">
+          <template v-if="factory.checklistEnabled">
+            <planner-factory-checklist :id="`${factory.id}-checklist`" :factory="factory" />
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          </template>
           <products-and-power
             :id="`${factory.id}-products`"
             :factory="factory"
@@ -319,6 +359,12 @@
                       :class="differenceClass(factory.parts[part.id].amountRemaining)"
                     >
                       (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                    <!-- A sunk part balances to zero, so without this a factory throwing 100/min
+                         into a sink reads identically to one that produces exactly what it ships. -->
+                    <span
+                      v-if="(factory.parts[part.id].amountRequiredSink ?? 0) > 0"
+                      class="ml-2 text-awesome-sink"
+                    >({{ formatNumber(factory.parts[part.id].amountRequiredSink ?? 0) }}/min sunk)</span>
                   </v-chip>
                 </template>
                 <!-- Power generators produce as surely as products do, and a factory made only of
@@ -421,6 +467,13 @@
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
+  import {
+    checklistChipClass,
+    countChecklistCompleted,
+    countChecklistTotal,
+    hasChecklistDesync,
+    setChecklistEnabled,
+  } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
@@ -434,8 +487,10 @@
   } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
+  import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
   import { importRowId } from '@/utils/factory-management/inputs'
+  import eventBus from '@/utils/eventBus'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
@@ -580,6 +635,16 @@
 
   const resetSyncState = (factory: Factory) => {
     factory.inSync = null
+  }
+
+  // The tutorial is opt-out, not opt-in: the first time anyone turns checklist mode on, in any
+  // factory, explain what it does. Dismissing it (see ChecklistTutorial.vue) is what stops it
+  // firing again, so this only ever checks the flag rather than setting it.
+  const toggleChecklist = (enabled: boolean) => {
+    setChecklistEnabled(props.factory, enabled)
+    if (enabled && localStorage.getItem('dismissed-checklist-tutorial') !== 'true') {
+      eventBus.emit('openChecklistTutorial')
+    }
   }
 </script>
 

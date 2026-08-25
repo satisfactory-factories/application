@@ -17,6 +17,10 @@ export interface PlanBlob {
   // Whether this plan has been answered for the raw-resources change. Absent means it predates
   // it, which is the correct reading of every backup taken before v0.6.
   plannerVersion?: string
+  // How far the plan's save has taken the MAM's Depot research. Absent means fully researched,
+  // so a blob that dropped these would silently hand a tier-0 plan 16x the upload speed.
+  depotUploadTier?: number
+  depotExpansionTier?: number
 }
 
 export const serializePlan = (blob: PlanBlob): string => JSON.stringify(blob)

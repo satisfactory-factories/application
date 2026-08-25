@@ -32,6 +32,16 @@ export const palette = {
   yellowBorder: '#ac9902',
   purple: '#bd67ff',
   purpleBorder: '#9a1df6',
+  // The muted mauve the Alien Power Augmenter's circuit boost wears.
+  mutedPurple: '#9f6d9f',
+  mutedPurpleBorder: '#7a4a7a',
+  // Sampled from the Mercer Sphere artwork itself (the mean of its brightest saturated pixels),
+  // so the Dimensional Depot wears the colour of the thing it is built from. Deliberately NOT
+  // mutedPurple, which it used to share with the circuit boost and was too close to read apart;
+  // and magenta-leaning rather than the Somersloop's blue-leaning violet, so a plan showing both
+  // alien trinkets tells them apart by hue rather than by icon alone.
+  mercerPurple: '#dc73e2',
+  mercerPurpleBorder: '#9e52a2',
   lightBlue: '#4fc3f7',
   lightBlueBorder: '#0288d1',
   grey: '#bdbdbd',
@@ -73,6 +83,22 @@ export const sfColors = {
   building: { color: palette.tan, border: palette.tan },
   import: { color: palette.grey, border: palette.greyBorder },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
+  // The Dimensional Depot and the Mercer Spheres its uploaders are built from. This is the ACCENT:
+  // chips, icons and the number inputs in the Storage column.
+  dimensionalDepot: { color: palette.mercerPurple, border: palette.mercerPurpleBorder },
+  // The SURFACE the Depot's section header and its sidebar jump-link wear. A deep violet, dark
+  // enough to sit UNDER the accent chips rather than compete with them, and saturated enough to
+  // read as purple rather than as the grey it started out: a desaturated mauve over a dark card
+  // is barely a colour at all, which was the complaint. Two roles, two tokens — a panel and the
+  // things on it do not want the same strength of the same colour.
+  //
+  // Opaque rather than the alpha fill this started as, for the reason `problem` gives below: it is
+  // used on two different surfaces (a card and the sidebar), and an alpha value composites to a
+  // different shade on each.
+  dimensionalDepotPanel: { color: palette.mercerPurple, border: '#a04fb5', background: '#3d1f4d' },
+  // The AWESOME Sink. Gold, as it is in game, and distinct from `warning`'s yellow: a sunk
+  // surplus is a resolved state, not a caution.
+  awesomeSink: { color: '#d9a441', border: '#a6761a' },
   // A setting on a building group rather than something that flows through it: the node
   // purity a miner stands on, and a resource well's satellite counts. Deliberately neutral —
   // these were reading as `rawResource` beige, which is the colour of the ore itself.

@@ -26,6 +26,7 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
+import { usePlannerOptions } from '@/composables/usePlannerOptions'
 
 export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
@@ -41,7 +42,8 @@ export type FactoryStatusType =
   'redundantImport' |
   'duplicateImport' |
   'noDemand' |
-  'potentialBlockage'
+  'potentialBlockage' |
+  'willBacklog'
 
 // `type` maps straight onto <game-asset>'s prop. A power producer's `id` is a random instance
 // number, NOT an item id, so building-group statuses carry its building instead.
@@ -148,6 +150,44 @@ export const hasNoDemand = (factory: Factory, partId: string): boolean =>
   factory.parts[partId]?.amountRequired === 0 &&
   factory.parts[partId]?.isEndProduct !== true &&
   factoryOutputs(factory).includes(partId)
+
+/**
+ * A surplus with nowhere to go, so it fills the belt and eventually stops the buildings feeding it.
+ *
+ * This is the case `hasNoDemand` cannot see. That one fires only on ZERO demand, so a factory
+ * making 200 Iron Plates and shipping 100 of them reads as perfectly healthy — and in game the
+ * other 100 back up until the constructors stall. Partial demand is still a backlog for the
+ * remainder, in exactly the way partial demand is still a blockage for a byproduct.
+ *
+ * No sink test is needed: the engine hands a sunk part's whole surplus to the sink bucket, so it
+ * lands at amountRemaining === 0 and the surplus test below already excludes it. A part the sink
+ * will NOT take (a fluid, a radioactive item) keeps its surplus even with a sink placed on it, and
+ * is correctly still flagged.
+ *
+ * A depot does not clear it either, and that is the point of the depot being a count of containers
+ * rather than a flag: the Dimensional Depot is finite, so it defers the backlog rather than
+ * preventing it.
+ */
+export const willBacklog = (factory: Factory, partId: string): boolean => {
+  const part = factory.parts[partId]
+  if (!part) return false
+
+  return isSurplusSignificant(part.amountRemaining ?? 0, part.amountRequired ?? 0)
+}
+
+/**
+ * Whether the row for this part should carry the backlog advisory — the option, the predicate and
+ * the suppressions in one place, so the chip on the row and the chip in the section header cannot
+ * come to different conclusions about the same part.
+ */
+export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =>
+  usePlannerOptions().value.showBacklogAdvisory &&
+  willBacklog(factory, partId) &&
+  // Said once. Each of these already names the part and says something more specific about the
+  // same surplus; three chips on one row is three ways of reading one fact.
+  !isPotentialBlockage(factory, partId) &&
+  !isUnhandledByproduct(factory, partId) &&
+  !hasNoDemand(factory, partId)
 
 const count = (list: FactoryStatusSubject[], one: string, many: string) =>
   list.length > 1 ? `${list.length} ${many}` : one
@@ -289,6 +329,31 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     label: list => count(list, 'Duplicate import', 'duplicate imports'),
   },
   {
+    type: 'willBacklog',
+    severity: 'warning',
+    // A road cone: work to route around, not a fire.
+    icon: 'fas fa-traffic-cone',
+    chip: true,
+    section: 'satisfaction',
+    detail: 'These items have a surplus that is not fully used up: not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking them. The belt fills up and the buildings making them stall. Add AWESOME Sinks in the Storage column to dispose of the excess.',
+    // A warning rather than a note, and the reason is that the planner can now DO something about
+    // it. While sinking could not be expressed, a dangling surplus was an observation the user had
+    // no way to answer, so colouring the factory for it would have been nagging about a state the
+    // app itself could not resolve — that is what the note tier is for. With the Storage column
+    // there is a one-click answer, which makes an unanswered surplus a real omission: the plan
+    // reads as balanced while the factory it describes would stall.
+    //
+    // Fits the module's tier rule too. Red is arithmetic, amber is judgement — and this is
+    // judgement, because a surplus is only wrong if the user has not decided what happens to it.
+    // A Dimensional Depot deliberately does not clear it: the depot fills and then backs up, so it
+    // defers the problem rather than answering it. Only a sink or real demand does.
+    detect: factory => nonEmpty(subjects(
+      Object.keys(factory.parts).filter(part => showBacklogAdvisory(factory, part))
+    )),
+    label: list => count(list, 'Will backlog', 'will backlog'),
+    detailLabel: list => count(list, 'Item will back up', 'items will back up'),
+  },
+  {
     type: 'noDemand',
     severity: 'note',
     icon: 'fas fa-question-circle',
@@ -312,7 +377,7 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     icon: 'fas fa-exclamation-triangle',
     chip: true,
     section: 'products',
-    detail: 'Nothing consumes these byproducts, so they will back up unless you sink them.',
+    detail: 'Nothing consumes these byproducts, so they will back up unless you sink them. Set an AWESOME Sink on them in the Storage column.',
     // The soft half of the byproduct case: sinking it is one control away, so this is a loose end
     // rather than a wall, and the factory stays green.
     detect: factory => nonEmpty(subjects(
@@ -493,6 +558,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-note',
     label: ['potential blockage', 'potential blockages'],
     sentence: ['factory makes a byproduct that needs sinking', 'factories make byproducts that need sinking'],
+  },
+  {
+    key: 'willBacklog',
+    types: ['willBacklog'],
+    icon: 'fas fa-traffic-cone',
+    class: 'status-warning',
+    label: ['will backlog', 'will backlog'],
+    sentence: ['factory has a surplus that will back up', 'factories have a surplus that will back up'],
   },
 ]
 

@@ -31,6 +31,15 @@ describe('plan-backup', () => {
     expect(parsed.groups).toEqual(groups)
   })
 
+  // Absent reads as fully researched, so a backup that dropped these restores the plan at
+  // sixteen times the upload speed it was written against.
+  it('carries the Depot research the plan was written against', () => {
+    const parsed = JSON.parse(serializePlan({ ...blob(), depotUploadTier: 0, depotExpansionTier: 2 }))
+
+    expect(parsed.depotUploadTier).toBe(0)
+    expect(parsed.depotExpansionTier).toBe(2)
+  })
+
   it('names the file after the plan and the day', () => {
     const link = document.createElement('a')
     const click = vi.spyOn(link, 'click').mockImplementation(() => {})

@@ -41,6 +41,16 @@
       />
     </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
+      <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
+        <input
+          :checked="!!product.completed"
+          class="checklist-tick"
+          :class="{ desynced: isProductChecklistDesynced(product) }"
+          :title="isProductChecklistDesynced(product) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this product as built'"
+          type="checkbox"
+          @click.prevent="toggleChecklistProduct(factory, product)"
+        >
+      </div>
       <div class="input-row d-flex align-center">
         <span v-show="!product.id" class="mr-2">
           <i class="fas fa-cube" style="width: 32px; height: 32px" />
@@ -296,6 +306,7 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isProductChecklistDesynced, toggleChecklistProduct } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
   import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
@@ -589,3 +600,51 @@
     return range.max !== range.min
   }
 </script>
+
+<style lang="scss" scoped>
+// Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+// nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+.checklist-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: block;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
+  }
+
+  // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+  // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+  // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+  // second symbol crammed into an 18px box read worse than the empty box does.
+  &.desynced:checked {
+    background-color: var(--sf-status-warning-border);
+    border-color: var(--sf-status-warning-border);
+
+    &::after {
+      content: none;
+    }
+  }
+}
+</style>
