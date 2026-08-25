@@ -152,45 +152,9 @@
       </v-card>
     </div>
   </div>
-  <div v-show="show" class="factory-list">
-    <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
-         not stored, so there is no group record to reorder. -->
-    <planner-sidebar-group
-      v-if="ungroupedSection"
-      :section="ungroupedSection"
-      :statuses="statuses"
-      @create-factory="createFactory"
-    />
-
-    <!-- Off entirely where the pointer is coarse: the drag gesture is the scroll gesture on a
-         touchscreen, so every attempt to scroll the tray reordered the plan instead. The Arrange
-         dialog below is what does this there. -->
-    <draggable
-      :disabled="!dragEnabled"
-      :group="{ name: 'sidebar-groups' }"
-      handle=".group-drag-handle"
-      item-key="id"
-      :model-value="groupSections"
-      @change="onGroupOrderChange"
-      @end="draggingGroup = false"
-      @start="draggingGroup = true"
-    >
-      <template #item="{ element }">
-        <planner-sidebar-group
-          :section="element"
-          :statuses="statuses"
-          @create-factory="createFactory"
-          @delete="requestGroupDelete"
-        />
-      </template>
-    </draggable>
-  </div>
-
-  <factory-group-create-dialog v-model="createGroupOpen" />
-  <factory-arrange-dialog v-model="arrangeOpen" />
-  <factory-group-bulk-dialog v-model="bulkGroupOpen" />
-  <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
-
+  <!-- Add Factory sits above the groups tray, not below it: with a plan full of groups this
+       button used to be a scroll away, even though clicking it adds the new factory up here
+       at the top of the list — moved to sit beside the factory it creates. -->
   <v-row class="pa-0 ma-0">
     <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
       <tooltip text="Add a new, empty factory to the plan, filed under no group.">
@@ -250,6 +214,45 @@
       </div>
     </v-col>
   </v-row>
+
+  <div v-show="show" class="factory-list">
+    <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
+         not stored, so there is no group record to reorder. -->
+    <planner-sidebar-group
+      v-if="ungroupedSection"
+      :section="ungroupedSection"
+      :statuses="statuses"
+      @create-factory="createFactory"
+    />
+
+    <!-- Off entirely where the pointer is coarse: the drag gesture is the scroll gesture on a
+         touchscreen, so every attempt to scroll the tray reordered the plan instead. The Arrange
+         dialog below is what does this there. -->
+    <draggable
+      :disabled="!dragEnabled"
+      :group="{ name: 'sidebar-groups' }"
+      handle=".group-drag-handle"
+      item-key="id"
+      :model-value="groupSections"
+      @change="onGroupOrderChange"
+      @end="draggingGroup = false"
+      @start="draggingGroup = true"
+    >
+      <template #item="{ element }">
+        <planner-sidebar-group
+          :section="element"
+          :statuses="statuses"
+          @create-factory="createFactory"
+          @delete="requestGroupDelete"
+        />
+      </template>
+    </draggable>
+  </div>
+
+  <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-arrange-dialog v-model="arrangeOpen" />
+  <factory-group-bulk-dialog v-model="bulkGroupOpen" />
+  <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
 </template>
 
 <script setup lang="ts">
