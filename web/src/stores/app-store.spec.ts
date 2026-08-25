@@ -812,6 +812,50 @@ describe('app-store', () => {
 
       expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
     })
+
+    // Absent means fully researched, so a restore that dropped these would hand a tier-0 plan
+    // sixteen times the upload speed it was sized against and silence every over-capacity row.
+    it('restores the Depot research the plan was saved with', () => {
+      appStore.loadServerPlan({
+        id: 'x',
+        name: 'Cloud',
+        factories: [newFactory('Foo')],
+        depotUploadTier: 0,
+        depotExpansionTier: 1,
+      } as never)
+
+      const tab = appStore.getCurrentTab()
+      expect(tab?.depotUploadTier).toBe(0)
+      expect(tab?.depotExpansionTier).toBe(1)
+    })
+
+    // A bare array predates the tiers by definition, so leaving the outgoing tab's in place
+    // would read somebody's pre-v0.6 plan at whatever research this tab last had.
+    it('clears the local tiers when restoring a bare factory array', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) {
+        tab.depotUploadTier = 0
+        tab.depotExpansionTier = 0
+      }
+
+      appStore.loadServerPlan([newFactory('Foo')])
+
+      expect(appStore.getCurrentTab()?.depotUploadTier).toBeUndefined()
+      expect(appStore.getCurrentTab()?.depotExpansionTier).toBeUndefined()
+    })
+
+    it('clears the local tiers when the saved plan predates them', () => {
+      const tab = appStore.getCurrentTab()
+      if (tab) {
+        tab.depotUploadTier = 0
+        tab.depotExpansionTier = 0
+      }
+
+      appStore.loadServerPlan({ id: 'x', name: 'Cloud', factories: [newFactory('Foo')] } as never)
+
+      expect(appStore.getCurrentTab()?.depotUploadTier).toBeUndefined()
+      expect(appStore.getCurrentTab()?.depotExpansionTier).toBeUndefined()
+    })
   })
 
   // JSON.stringify drops an undefined key, so a plan from before the change arrives through a
@@ -834,6 +878,21 @@ describe('app-store', () => {
       appStore.addTab({ name: 'Modern', factories: [newFactory('Foo')], plannerVersion: '0.6' })
 
       expect(appStore.getCurrentTab()?.plannerVersion).toBe('0.6')
+    })
+
+    // A share link builds its tab through here, so tiers dropped at this point arrive reading as
+    // fully researched and quietly resize the sender's plan against the recipient's save.
+    it('preserves the Depot research an imported plan carries', () => {
+      appStore.addTab({
+        name: 'Shared',
+        factories: [newFactory('Foo')],
+        depotUploadTier: 2,
+        depotExpansionTier: 3,
+      })
+
+      const tab = appStore.getCurrentTab()
+      expect(tab?.depotUploadTier).toBe(2)
+      expect(tab?.depotExpansionTier).toBe(3)
     })
   })
 

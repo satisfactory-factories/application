@@ -289,6 +289,18 @@
     border-color: var(--sf-somersloop-border) !important;
   }
 
+  // The two surplus destinations. Kept next to each other because they are one control in the
+  // satisfaction table, and told apart by hue rather than by reading the label.
+  &.dimensional-depot {
+    color: var(--sf-dimensional-depot) !important;
+    border-color: var(--sf-dimensional-depot-border) !important;
+  }
+
+  &.awesome-sink {
+    color: var(--sf-awesome-sink) !important;
+    border-color: var(--sf-awesome-sink-border) !important;
+  }
+
   // Power — generation / consumption / peak draw / Alien Power Augmenter boost.
   &.generation {
     color: var(--sf-power-generation) !important;
@@ -384,6 +396,13 @@
 // consumption chip colour.
 .text-power-consumption {
     color: var(--sf-power-consumption) !important;
+}
+
+// The satisfaction breakdown's sink line. Its own colour rather than the orange the other demand
+// lines wear: the sink is demand the planner invented on the user's instruction, not demand the
+// recipes created, and it is the one line whose number is not a claim on the factory's output.
+.text-awesome-sink {
+    color: var(--sf-awesome-sink) !important;
 }
 
 // Section headings whose worst status is a warning, mirroring how `text-red` marks a problem.
@@ -824,6 +843,41 @@ tr.sf-nav-flash {
 .v-checkbox-btn .v-selection-control__input::after {
   @extend %selection-mark;
   border-radius: 3px;
+}
+
+// A drawn tick box on a native checkbox, shared by the factory task list and the Mercer Sphere
+// research rows. Native rather than a v-checkbox because Vuetify's selection controls point their
+// icons at Font Awesome Regular, which this app does not ship, so the unticked box renders as
+// nothing at all — and global rather than scoped because two components draw the same one.
+.sf-tick {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  display: block;
+  height: 18px;
+  margin: 0;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 18px;
+
+  &:checked {
+    background-color: var(--sf-success);
+    border-color: var(--sf-success);
+  }
+
+  // Two borders of a rotated box: the short arm and the long arm of a tick.
+  &:checked::after {
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    content: '';
+    height: 10px;
+    left: 4px;
+    position: absolute;
+    top: 0;
+    transform: rotate(45deg);
+    width: 5px;
+  }
 }
 
 // A factory-coloured "chip" wrapping the part chips that belong to one factory — the collapsed

@@ -34,12 +34,11 @@
                 />
               </td>
               <td class="toggle">
-                <!-- Box and tick are drawn in CSS on a native checkbox. Vuetify's selection
-                     controls point their icons at Font Awesome Regular, which this app doesn't
-                     ship, so the unticked box renders as nothing at all. -->
+                <!-- .sf-tick draws the box and the tick; see global.scss for why it is not a
+                     Vuetify selection control. `task-tick` is kept as the test's handle. -->
                 <input
                   :checked="task.completed"
-                  class="task-tick"
+                  class="task-tick sf-tick"
                   :title="task.completed ? 'Mark as not done' : 'Mark as done'"
                   type="checkbox"
                   @change="toggleTask(index)"
@@ -202,36 +201,6 @@
 }
 .task-drag-handle {
   cursor: grab;
-}
-.task-tick {
-  appearance: none;
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-radius: 3px;
-  cursor: pointer;
-  display: block;
-  height: 18px;
-  margin: 0;
-  position: relative;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-  width: 18px;
-
-  &:checked {
-    background-color: var(--sf-success);
-    border-color: var(--sf-success);
-  }
-
-  // Two borders of a rotated box: the short arm and the long arm of a tick.
-  &:checked::after {
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    content: '';
-    height: 10px;
-    left: 4px;
-    position: absolute;
-    top: 0;
-    transform: rotate(45deg);
-    width: 5px;
-  }
 }
 .text-done {
   text-decoration: line-through;

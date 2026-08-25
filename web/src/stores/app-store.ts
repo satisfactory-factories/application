@@ -127,10 +127,7 @@ export const useAppStore = defineStore('app', () => {
       tab.plannerVersion = config.plannerVersion
     }
     showRawBreakingNotice.value = false
-    // Tab-level state reaches neither the local save nor the cloud dirty flag on its own —
-    // both hang off factory events — so say so explicitly.
-    eventBus.emit('planUpdated')
-    schedulePersist()
+    markPlanEdited()
   }
 
   // Hand the notice over to something that is about to say the same thing better — the v0.6
@@ -243,6 +240,14 @@ export const useAppStore = defineStore('app', () => {
 
   eventBus.on('factoryUpdated', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
+
+  // Anything written straight onto the tab has to call this. Tab-level state reaches neither the
+  // local save nor the cloud dirty flag on its own — both hang off factory events — so an edit
+  // that never touches a factory looks right in this browser and never reaches the account.
+  const markPlanEdited = () => {
+    eventBus.emit('planUpdated')
+    schedulePersist()
+  }
 
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
     // All three wrapped: pagehide would otherwise hand its Event object in as `fromLoad`, which is
@@ -530,6 +535,14 @@ export const useAppStore = defineStore('app', () => {
           needsCalculation = true
         }
       })
+
+      // Patch for #498 / #7. Deliberately does NOT set needsCalculation: an empty map means no
+      // part is sunk or depoted, which is exactly what every plan saved before this did, so
+      // nothing derived changes and a needless recalculation would block the main thread for
+      // seconds on a big plan.
+      if (factory.partDisposal === undefined) {
+        factory.partDisposal = {}
+      }
 
       // Patch for #250
       if (factory.tasks === undefined) {
@@ -856,6 +869,11 @@ export const useAppStore = defineStore('app', () => {
         const legacyTab = getCurrentTab()
         if (legacyTab) {
           legacyTab.plannerVersion = undefined
+          // Same reasoning, and the same treatment a legacy clipboard paste gets: a bare array
+          // predates the Depot tiers entirely, so anything still here belongs to the plan being
+          // replaced rather than the one arriving.
+          legacyTab.depotUploadTier = undefined
+          legacyTab.depotExpansionTier = undefined
         }
         // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
         // something different by it - raw resources were assumed supplied - so its stored ledger
@@ -876,6 +894,11 @@ export const useAppStore = defineStore('app', () => {
         tab.powerTarget = data.powerTarget
         tab.groups = data.groups
         tab.plannerVersion = data.plannerVersion
+        // Assigned even when the saved plan has none, for the same reason as groups: absent
+        // means fully researched, so keeping the local tab's tiers would size somebody else's
+        // plan against this browser's last save rather than their own.
+        tab.depotUploadTier = data.depotUploadTier
+        tab.depotExpansionTier = data.depotExpansionTier
       }
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
       // are the user's own and its ledger means what it says. A forced recalculation treats
@@ -902,6 +925,8 @@ export const useAppStore = defineStore('app', () => {
       factories = [],
       powerTarget,
       groups,
+      depotUploadTier,
+      depotExpansionTier,
     } = tab
 
     factoryTabs.value.push({
@@ -921,6 +946,11 @@ export const useAppStore = defineStore('app', () => {
       // warning it needs. Its factories are what tell the two apart, the same rule the default
       // tab uses: a tab conjured out of nothing has never assumed a raw resource in its life.
       plannerVersion: tab.plannerVersion ?? (factories.length > 0 ? undefined : config.plannerVersion),
+      // The Depot research the incoming plan was written against. A share link that dropped
+      // these would arrive reading as fully researched, quietly giving the recipient 16x the
+      // upload speed the sender planned for and hiding every over-capacity warning.
+      depotUploadTier,
+      depotExpansionTier,
     })
 
     currentFactoryTabIndex.value = factoryTabs.value.length - 1
@@ -1019,6 +1049,7 @@ export const useAppStore = defineStore('app', () => {
     askRawBreakingNotice,
     dismissRawBreakingNotice,
     deferRawBreakingNotice,
+    markPlanEdited,
     loadServerPlan,
     rearmRawBreakingNotice,
     prepareLoader,
