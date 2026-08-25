@@ -14,6 +14,7 @@ export const mockProduct = (id: string, overrides: Partial<FactoryItem> = {}): F
   buildingGroupsTrayOpen: false,
   buildingGroupsHaveProblem: false,
   buildingGroupItemSync: true,
+  completed: false,
   ...overrides,
 })
 
@@ -37,5 +38,6 @@ export const mockPowerProducer = (
   buildingGroupsTrayOpen: false,
   buildingGroupsHaveProblem: false,
   buildingGroupItemSync: true,
+  completed: false,
   ...overrides,
 })

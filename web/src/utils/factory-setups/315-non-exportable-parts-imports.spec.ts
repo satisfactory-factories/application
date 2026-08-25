@@ -36,11 +36,13 @@ describe('315 Scenario Plan', () => {
         factoryId: copperIngots.id,
         outputPart: 'CopperIngot',
         amount: 20,
+        completed: false,
       })
       expect(aluminiumPartsFac.inputs[1]).toEqual({
         factoryId: copperParts.id,
         outputPart: 'CopperSheet',
         amount: 30,
+        completed: false,
       })
     })
   })

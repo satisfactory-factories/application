@@ -62,6 +62,8 @@ export const createNewPart = (factory: Factory, part: string) => {
       amountSuppliedViaRaw: 0,
       amountSuppliedViaProduction: 0,
       amountRemaining: 0,
+      amountRemainingPreSink: 0,
+      amountRequiredSink: 0,
       satisfied: true,
       isRaw: false,
       exportable: false,
