@@ -57,7 +57,7 @@ importers:
         version: 9.0.3
       mongoose:
         specifier: ^9.0.0
-        version: 9.9.1
+        version: 9.9.2
       random-word-slugs:
         specifier: ^0.1.7
         version: 0.1.7
@@ -806,8 +806,8 @@ packages:
   '@mdi/font@7.4.47':
     resolution: {integrity: sha512-43MtGpd585SNzHZPcYowu/84Vz2a2g31TvPMTm9uTiCSWzaheQySUcSyUH/46fPnuPQWof2yd0pGBtzee/IQWw==}
 
-  '@mongodb-js/saslprep@1.4.13':
-    resolution: {integrity: sha512-E3Sv4eCYAlKYUTx8S3ioQcDUscOif+8zZ5OnW1IzJ+Tt+EO+ke8mn+Y3FX6N1H79picwbdOavVOb1jPi2EOyrg==}
+  '@mongodb-js/saslprep@1.5.0':
+    resolution: {integrity: sha512-Hk1SKJCMcCos38+vqDnZzlIo4XRj9yCGzYkjB4LcqpeXRIYfia1UWTz+VrueLxoU+uSRJzgkufxoRZg8gi52YA==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -3479,8 +3479,8 @@ packages:
       socks:
         optional: true
 
-  mongoose@9.9.1:
-    resolution: {integrity: sha512-hI00baDVPjV5VfYA3j+oLuPvLfmCQICWot9zJZgkuDMXnWEYhIx9xCPEOt2IC3lDJz6ajsz2bpgO24E+xsP6wg==}
+  mongoose@9.9.2:
+    resolution: {integrity: sha512-Nz8Rwu9jvADm0pyX0M3mEy8bx3wB5b/tRDI4XnjL7p6tZgmdyL9g0gE/EC9It6/XMIbcvniwYQDKYs91Qm+o+g==}
     engines: {node: '>=20.19.0'}
 
   mpath@0.9.0:
@@ -5483,7 +5483,7 @@ snapshots:
 
   '@mdi/font@7.4.47': {}
 
-  '@mongodb-js/saslprep@1.4.13':
+  '@mongodb-js/saslprep@1.5.0':
     dependencies:
       sparse-bitfield: 3.0.3
 
@@ -8672,11 +8672,11 @@ snapshots:
 
   mongodb@7.5.0:
     dependencies:
-      '@mongodb-js/saslprep': 1.4.13
+      '@mongodb-js/saslprep': 1.5.0
       bson: 7.3.2
       mongodb-connection-string-url: 7.0.2
 
-  mongoose@9.9.1:
+  mongoose@9.9.2:
     dependencies:
       '@standard-schema/spec': 1.1.0
       kareem: 3.3.0
