@@ -163,7 +163,7 @@ describe('raw wizard', async () => {
 
       // Both consumers import from it and are satisfied.
       result.filter(factory => factory.name.startsWith('Smelter')).forEach(smelter => {
-        expect(smelter.inputs).toEqual([{ factoryId: mines[0].id, outputPart: 'OreIron', amount: 100 }])
+        expect(smelter.inputs).toEqual([{ factoryId: mines[0].id, outputPart: 'OreIron', amount: 100, completed: false }])
         expect(smelter.parts.OreIron.satisfied).toBe(true)
       })
     })

@@ -410,6 +410,13 @@
     color: var(--sf-status-warning) !important;
 }
 
+// The done/complete counterpart. Vuetify's own `.text-green` carries no !important, so it loses
+// to any scoped component rule that sets a colour (the sidebar's `.context-icon` grey does
+// exactly that); this wins wherever that one silently did nothing.
+.text-success {
+    color: var(--sf-success) !important;
+}
+
 // Plain-text item labels (building-group under-chip "x / building" lines) share
 // their chip colours so text and chips always agree.
 .text-product {

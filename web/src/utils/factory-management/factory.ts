@@ -114,6 +114,10 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     displayOrder: order ?? -1, // this will get set by the planner
     tasks: [],
     notes: '',
+    checklistEnabled: false,
+    checklistPanelHidden: false,
+    checklistExports: {},
+    checklistExportSyncedAmounts: {},
     dataVersion: '2025-01-03',
   }
 }
