@@ -1,4 +1,67 @@
 <template>
+  <!-- Add Factory sits above everything else, including the jump-links: with a plan full of
+       groups this button used to be a scroll away, even though clicking it adds the new
+       factory up here at the top of the list — moved to sit beside the factory it creates. -->
+  <v-row class="pa-0 ma-0">
+    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
+      <tooltip text="Add a new, empty factory to the plan, filed under no group.">
+        <v-btn
+          color="primary"
+          prepend-icon="fas fa-plus"
+          ripple
+          @click="createFactory()"
+        >
+          Add Factory
+        </v-btn>
+      </tooltip>
+      <!-- Group management sits on its own line under it: neither button is the thing you reach
+           for most, and side by side they competed with Add Factory for the same glance. -->
+      <div class="d-flex justify-center flex-wrap ga-2">
+        <tooltip text="Create a new group: a folder to file factories under, so a big plan stays navigable.">
+          <v-btn
+            class="create-group-btn"
+            color="secondary"
+            prepend-icon="fas fa-folder-plus"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="createGroupOpen = true"
+          >
+            Group
+          </v-btn>
+        </tooltip>
+        <tooltip :text="factories.length === 0 ? 'Nothing to arrange yet — add a factory first.' : 'Reorder groups and factories, and move factories between groups, with buttons instead of dragging.'">
+          <v-btn
+            class="arrange-btn"
+            color="secondary"
+            :disabled="factories.length === 0"
+            prepend-icon="fas fa-sort"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="arrangeOpen = true"
+          >
+            Arrange
+          </v-btn>
+        </tooltip>
+        <tooltip :text="factories.length === 0 ? 'Nothing to group yet — add a factory first.' : 'Rename, reorder and recolour every group at once, and move factories between them.'">
+          <v-btn
+            class="bulk-group-btn"
+            color="secondary"
+            :disabled="factories.length === 0"
+            prepend-icon="fas fa-object-group"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="bulkGroupOpen = true"
+          >
+            Multi-Group Edit
+          </v-btn>
+        </tooltip>
+      </div>
+    </v-col>
+  </v-row>
+
   <div v-show="show && factories.length > 0" class="factory-list section-links">
     <!-- Statistics jump-link with an at-a-glance power summary. -->
     <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit, 'active-view': activeFactoryId === 'statistics' }">
@@ -152,68 +215,6 @@
       </v-card>
     </div>
   </div>
-  <!-- Add Factory sits above the groups tray, not below it: with a plan full of groups this
-       button used to be a scroll away, even though clicking it adds the new factory up here
-       at the top of the list — moved to sit beside the factory it creates. -->
-  <v-row class="pa-0 ma-0">
-    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
-      <tooltip text="Add a new, empty factory to the plan, filed under no group.">
-        <v-btn
-          color="primary"
-          prepend-icon="fas fa-plus"
-          ripple
-          @click="createFactory()"
-        >
-          Add Factory
-        </v-btn>
-      </tooltip>
-      <!-- Group management sits on its own line under it: neither button is the thing you reach
-           for most, and side by side they competed with Add Factory for the same glance. -->
-      <div class="d-flex justify-center flex-wrap ga-2">
-        <tooltip text="Create a new group: a folder to file factories under, so a big plan stays navigable.">
-          <v-btn
-            class="create-group-btn"
-            color="secondary"
-            prepend-icon="fas fa-folder-plus"
-            ripple
-            size="small"
-            variant="outlined"
-            @click="createGroupOpen = true"
-          >
-            Group
-          </v-btn>
-        </tooltip>
-        <tooltip :text="factories.length === 0 ? 'Nothing to arrange yet — add a factory first.' : 'Reorder groups and factories, and move factories between groups, with buttons instead of dragging.'">
-          <v-btn
-            class="arrange-btn"
-            color="secondary"
-            :disabled="factories.length === 0"
-            prepend-icon="fas fa-sort"
-            ripple
-            size="small"
-            variant="outlined"
-            @click="arrangeOpen = true"
-          >
-            Arrange
-          </v-btn>
-        </tooltip>
-        <tooltip :text="factories.length === 0 ? 'Nothing to group yet — add a factory first.' : 'Rename, reorder and recolour every group at once, and move factories between them.'">
-          <v-btn
-            class="bulk-group-btn"
-            color="secondary"
-            :disabled="factories.length === 0"
-            prepend-icon="fas fa-object-group"
-            ripple
-            size="small"
-            variant="outlined"
-            @click="bulkGroupOpen = true"
-          >
-            Multi-Group Edit
-          </v-btn>
-        </tooltip>
-      </div>
-    </v-col>
-  </v-row>
 
   <div v-show="show" class="factory-list">
     <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
