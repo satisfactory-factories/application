@@ -5,6 +5,12 @@ import {
 } from '@/utils/helpers'
 import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
+import {
+  getDepotCount,
+  getFactoryMercerSpheres,
+  MERCER_SPHERES_PER_DEPOT,
+} from '@/utils/factory-management/disposal'
+import { DEFAULT_DEPOT_TIER, depotRateForTier } from '@/composables/useDepotResearch'
 export interface BuildingTotal {
   name: string
   totalAmount: number
@@ -257,6 +263,107 @@ export const getFactorySomersloops = (factory: Factory): number => {
   }
   return total
 }
+
+/**
+ * One factory's contribution to a depoted item: how many Uploaders it has on the part, and how much
+ * of the part it actually has spare to feed them.
+ */
+export interface DimensionalDepotSource extends FactoryContribution {
+  containers: number
+}
+
+export interface DimensionalDepotEntry {
+  id: string
+  // Uploaders across the whole plan for this item.
+  totalContainers: number
+  // What the plan actually has spare to upload, items/min.
+  totalAmount: number
+  // What those Uploaders can carry between them at the plan's researched upload speed. Below
+  // totalAmount means the depot cannot keep up and the remainder still backs up.
+  uploadCapacity: number
+  sources: DimensionalDepotSource[]
+}
+
+/**
+ * What the plan sends to the Dimensional Depot, per item.
+ *
+ * Reads the surplus rather than production, for the same reason the toggle is offered on surplus:
+ * a logistics factory that imports everything and uploads the overflow is a real build, and asking
+ * "does this factory make the part" would exclude exactly that case.
+ *
+ * A contributor with nothing spare is KEPT rather than filtered out, and is NOT treated as a
+ * problem. An Uploader is fed off a splitter on the line, so it takes a share of whatever passes
+ * until it is full and then stops accepting — a buffer that fills once, not a consumer with a
+ * standing appetite. An item whose steady-state surplus is zero therefore still fills its depot;
+ * it just borrows from the export while doing so, and once full everything flows on as planned.
+ * The rate here is what is spare in steady state, which is the honest number, but a zero in it
+ * does not mean the depot stays empty.
+ */
+export const calculateDimensionalDepot = (
+  factories: Factory[],
+  // Items/min one Uploader can move at the plan's MAM research level. Passed in rather than read
+  // from the store so this stays a pure function of the plan, which is what its spec relies on.
+  uploadRatePerMin: number = depotRateForTier(DEFAULT_DEPOT_TIER),
+): DimensionalDepotEntry[] => {
+  const items: Record<string, DimensionalDepotEntry> = {}
+
+  factories.forEach(factory => {
+    Object.keys(factory.partDisposal ?? {}).forEach(partId => {
+      const containers = getDepotCount(factory, partId)
+      if (containers <= 0) return
+
+      // The disposal map is sticky, so it can name a part the factory no longer handles. A stale
+      // key is inert rather than an error: the user's intent is preserved if the part comes back.
+      const part = factory.parts[partId]
+      if (!part) return
+
+      const entry = items[partId] ??= {
+        id: partId,
+        totalContainers: 0,
+        totalAmount: 0,
+        uploadCapacity: 0,
+        sources: [],
+      }
+
+      // Sunk parts land at zero remaining, so the pre-sink figure is what the depot would see if
+      // the sink were not there. Falls back to amountRemaining for a plan saved before the field.
+      const spare = Math.max(0, part.amountRemainingPreSink ?? part.amountRemaining ?? 0)
+
+      // Deliberately NOT reduced when the part is also sunk, and the two figures are not meant
+      // to be added up. The sink takes the whole surplus because the planner assumes a
+      // programmable splitter routing the excess to it, and the depot is a finite buffer on the
+      // same line that fills and then backs up until the player spends it. Nothing can say when
+      // that happens, so what is spare is the only honest number to put against the Uploaders.
+
+      entry.totalContainers += containers
+      entry.totalAmount += spare
+      entry.sources.push({
+        id: factory.id,
+        name: factory.name,
+        icon: factory.icon,
+        amount: spare,
+        containers,
+      })
+    })
+  })
+
+  return Object.values(items)
+    .map(entry => ({
+      ...entry,
+      uploadCapacity: entry.totalContainers * uploadRatePerMin,
+    }))
+    .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))
+}
+
+// Mercer Spheres the plan's Dimensional Depot Uploaders cost to build, one apiece. The MAM research
+// is deliberately excluded — see DEPOT_RESEARCH_MERCER_SPHERES.
+export const getFactoryMercerSpheresUsed = (factory: Factory): number => getFactoryMercerSpheres(factory)
+
+export const calculateTotalMercerSpheres = (factories: Factory[]): number =>
+  factories.reduce((total, factory) => total + getFactoryMercerSpheres(factory), 0)
+
+// Re-exported so components reference one definition rather than restating "one per uploader".
+export { MERCER_SPHERES_PER_DEPOT }
 
 // Per-factory usage list for the statistics summary — only factories actually using any.
 export const calculateFactoriesUsing = (

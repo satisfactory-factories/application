@@ -232,7 +232,7 @@
     </v-card>
   </v-dialog>
 
-  <v-row id="factory-summary" class="mb-4">
+  <v-row id="factory-summary">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">

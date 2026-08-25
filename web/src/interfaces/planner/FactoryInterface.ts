@@ -23,6 +23,13 @@ export interface PartMetrics {
   // Whether the AWESOME Sink would take this part. Decides how serious an unwanted byproduct is:
   // a sinkable one has a way out, a fluid or radioactive one does not. Derived like isEndProduct.
   isSinkable?: boolean;
+  // What the AWESOME Sinks placed on this part take: everything left once production, power and
+  // exports have had their share. Zero unless the user placed a sink, and always zero for a part
+  // the sink will not accept. Derived every calculation, so optional for plans saved before it.
+  amountRequiredSink?: number;
+  // The surplus this part would carry if it were not being sunk. Kept so the satisfaction row can
+  // show the number sinking removed rather than silently reporting zero.
+  amountRemainingPreSink?: number;
   satisfied: boolean; // Use of use flag for templating.
   exportable: boolean // Whether the product should be a candidate for imports.
 }
@@ -105,6 +112,17 @@ export interface FactoryItem {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this product's buildings as built. Optional so every
+  // existing product literal (tests, saved plans, factory-setups) stays valid; absent reads as
+  // not-yet-built. Meaningless while factory.checklistEnabled is false, but kept regardless so
+  // re-enabling remembers progress.
+  completed?: boolean
+  // Checklist mode: `amount` at the moment this item was last ticked (or the whole factory was
+  // last marked in sync with the game). If `amount` has since moved away from this, the item is
+  // "desynced" — the player said it was built, but the plan asked for something different
+  // afterwards. Absent means no baseline was ever taken (never checked, or checked before this
+  // existed), which must read as "not desynced" rather than triggering on every old save.
+  checklistSyncedAmount?: number
 }
 
 export interface FactoryDependencyRequest {
@@ -159,6 +177,11 @@ export interface FactoryInput {
   factoryId: number | null;
   outputPart: string | null;
   amount: number
+  // Checklist mode: has the user marked this import's infrastructure as built. See
+  // FactoryItem.completed for why this is optional and kept regardless of checklist mode.
+  completed?: boolean
+  // Checklist mode: `amount` at last tick/factory-sync. See FactoryItem.checklistSyncedAmount.
+  checklistSyncedAmount?: number
 }
 
 export interface FactorySyncState {
@@ -223,6 +246,11 @@ export interface FactoryPowerProducer {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this generator as built. See FactoryItem.completed for
+  // why this is optional and kept regardless of checklist mode.
+  completed?: boolean
+  // Checklist mode: `buildingAmount` at last tick/factory-sync. See FactoryItem.checklistSyncedAmount.
+  checklistSyncedAmount?: number
 }
 
 /**
@@ -289,6 +317,22 @@ export interface FactoryGroup {
   // every member on each toggle cost a save and a recalculation per factory.
 }
 
+/**
+ * What the user has told the planner to do with a part's surplus.
+ *
+ * The two are one axis with very different consequences, which is why they sit in one record. A
+ * sink is disposal: the surplus is gone, and the ledger says so. A depot is storage: finite, so it
+ * defers a backlog rather than preventing one, and it changes no number at all.
+ */
+export interface FactoryPartDisposal {
+  // AWESOME Sink buildings on this part. Any positive number sinks the WHOLE surplus — the sink
+  // takes whatever the belt brings it, so the count says what to build and what it draws, not how
+  // much it will accept.
+  sinks: number;
+  // Dimensional Depot Uploaders on this part. One Mercer Sphere each.
+  depots: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -307,6 +351,12 @@ export interface Factory {
   buildingMaterialCosts: { [key: string]: BuildingMaterialCost };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
+  // Per-part disposal — the sinks and depot uploaders placed on each part's surplus. Its own map
+  // rather than a field on PartMetrics because parts.ts wipes and rebuilds factory.parts on every
+  // calculation. Sticky by design: a flag is never pruned when its part leaves the factory, so
+  // read-time filtering makes a stale key inert and bringing the part back restores the intent.
+  // Optional so plans saved before it load untouched; newFactory and initFactories set `{}`.
+  partDisposal?: { [partId: string]: FactoryPartDisposal };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
@@ -320,6 +370,19 @@ export interface Factory {
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  // Checklist mode: ticks off products, imports and exports as the player builds them in-game.
+  checklistEnabled: boolean
+  // Whether the checklist summary panel (shown above Products/Power when enabled) is collapsed.
+  checklistPanelHidden: boolean
+  // Export checklist ticks, keyed by `${requestingFactoryId}:${part}` (see checklistExportKey in
+  // utils/factory-management/checklist.ts). A dependency request is derived/recalculated data, so
+  // its completion state is kept separately here rather than on the request object itself, which
+  // could be rebuilt and silently drop it.
+  checklistExports: { [key: string]: boolean }
+  // Export checklist baselines, same keying as checklistExports: the request's `amount` at the
+  // moment that export was last ticked (or the whole factory was last marked in sync with the
+  // game). See FactoryItem.checklistSyncedAmount for what this is for.
+  checklistExportSyncedAmounts: { [key: string]: number }
   // ID from src/data/factory-icons.json. Absent (old plans, or "use default") shows the
   // generic industry glyph. Deliberately a bare ID: plans in localStorage, Mongo and share
   // links cannot be migrated, so nothing about how it is drawn belongs in the stored value.
@@ -337,6 +400,17 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+  // How far the MAM's Dimensional Depot upload-speed research has been taken, 0-4. Decides what
+  // one Uploader can actually move (15/min doubling to 240/min), so it decides whether the
+  // Uploaders in the plan can keep up with what is being sent to them. Per plan rather than per
+  // browser: it describes the world the plan is written against. Absent means fully researched.
+  depotUploadTier?: number;
+  // How far the MAM's Depot Expansion research has been taken, 0-4, deciding how many stacks of
+  // each item the Depot holds (1 to 5). The planner does not model that storage, so this changes
+  // no calculation; it is here because it is Mercer Spheres the save spends on the Depot, and the
+  // statistics count them. Same reasoning as depotUploadTier for living on the plan. Absent means
+  // fully researched.
+  depotExpansionTier?: number;
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];

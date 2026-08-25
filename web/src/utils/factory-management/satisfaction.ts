@@ -6,7 +6,9 @@ import { isExtractionRecipe } from '@/utils/factory-management/building-groups/e
 import { canPartBeProducedDirectly } from '@/utils/factory-management/common'
 import { fetchGameData } from '@/utils/gameDataService'
 import { PowerRecipe } from '@/interfaces/Recipes'
+import { DataInterface } from '@/interfaces/DataInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { isSunk } from '@/utils/factory-management/disposal'
 
 const gameData = await fetchGameData()
 
@@ -245,6 +247,51 @@ export const showInternalChip = (factory: Factory, partId: string) => {
   }
   return shouldShowInternal(product, factory)
 }
+
+/**
+ * Whether the Storage column offers this part a sink and a depot at all.
+ *
+ * Every part the factory handles, whether it makes it, imports it, or is short of it. This used to
+ * require a surplus, which was wrong in the case the Depot is most useful for: a logistics factory
+ * that imports a part precisely so it can upload it. Its imports balance exactly, so it had no
+ * surplus, so the planner offered it no Uploader, and the build the feature exists to support was
+ * the one build it forbade.
+ *
+ * Nothing needs a surplus gate to stay honest. The sink takes `max(0, surplus)`, so a sink on a
+ * part with nothing spare is inert by construction rather than by being hidden, and it starts
+ * working by itself the moment the part does have something spare. The Depot changes no number at
+ * all. So the gate only ever removed a choice; it never protected a calculation.
+ *
+ * The building exclusions still apply, in showSinkControl and showDepotControl below: those are
+ * about what the buildings physically accept, which is a fact about the game rather than a
+ * judgement about the plan.
+ */
+export const showDisposalControls = (factory: Factory, partId: string): boolean =>
+  Boolean(factory.parts[partId])
+
+// The sink has a conveyor input and nothing else, and it refuses radioactive items outright. Both
+// facts live in isSinkablePart, which the engine stamps onto the part every calculation.
+export const showSinkControl = (factory: Factory, partId: string): boolean =>
+  showDisposalControls(factory, partId) && factory.parts[partId]?.isSinkable !== false
+
+/**
+ * The Uploader also takes a conveyor and nothing else, so a fluid cannot go in it — but unlike the
+ * sink it has no objection to radioactive items. The wiki's Radiation page is explicit that
+ * uploading a radioactive part to the Depot stops its radiation entirely, so Uranium Waste and
+ * Plutonium Waste are legitimate here even though the sink refuses them.
+ *
+ * That is why this asks the game data rather than reusing `isSinkable`: the two exclusions only
+ * look alike. It also takes gameData rather than reading a stamped field, because nothing in the
+ * engine needs the answer — the Depot changes no number, so this is purely an affordance.
+ */
+export const showDepotControl = (factory: Factory, partId: string, gameData: DataInterface): boolean =>
+  showDisposalControls(factory, partId) && !gameData?.items?.parts?.[partId]?.isFluid
+
+// Only true when the sink is actually taking something. A sink placed on a part whose surplus has
+// since been exported away is still set, but it is not sinking anything, and saying "Sunk" over a
+// zero would be a lie.
+export const isActivelySunk = (factory: Factory, partId: string): boolean =>
+  isSunk(factory, partId) && (factory.parts[partId]?.amountRequiredSink ?? 0) > 0
 
 export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number) => {
   // In order to get the fuel amount to insert into the UI, we need to do some math.

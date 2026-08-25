@@ -55,6 +55,26 @@
         <v-tooltip right>
           <template #activator="{ props: activatorProps }">
             <v-col
+              v-if="factory.checklistEnabled"
+              class="context-icon align-content-center text-center py-0 px-1"
+              :class="checklistTextClass(factory)"
+              cols="auto"
+              v-bind="activatorProps"
+              @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+              @click.stop
+            >
+              <i class="d-inline fas fa-check mr-1" />
+              <span>{{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+            </v-col>
+          </template>
+          <span>
+            Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}
+            {{ hasChecklistDesync(factory) ? 'ticked, but some numbers have changed since' : 'complete' }}
+          </span>
+        </v-tooltip>
+        <v-tooltip right>
+          <template #activator="{ props: activatorProps }">
+            <v-col
               v-if="factory.notes"
               class="context-icon align-content-center text-center py-0 px-1"
               cols="auto"
@@ -111,6 +131,12 @@
     statusJumpTargets,
   } from '@/utils/factory-management/status'
   import { countActiveTasks } from '@/utils/factory-management/factory'
+  import {
+    checklistTextClass,
+    countChecklistCompleted,
+    countChecklistTotal,
+    hasChecklistDesync,
+  } from '@/utils/factory-management/checklist'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryIconDialog from '@/components/planner/FactoryIconDialog.vue'

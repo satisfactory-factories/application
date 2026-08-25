@@ -138,6 +138,56 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(payload.groups).toEqual([{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }])
   })
 
+  // The tiers describe the save the plan was written against, so they travel with it. Absent
+  // reads as fully researched, which is why paste assigns them even when the blob has none.
+  it('copy carries the Depot research the plan was written against', () => {
+    seedFactory()
+    appStore.getCurrentTab().depotUploadTier = 0
+    appStore.getCurrentTab().depotExpansionTier = 1
+
+    const subject = mountSubject()
+    clickButton(subject, 'Copy plan')
+
+    const payload = JSON.parse(writeText.mock.calls[0][0])
+    expect(payload.depotUploadTier).toBe(0)
+    expect(payload.depotExpansionTier).toBe(1)
+  })
+
+  it('paste replaces the destination tab\'s Depot research with the pasted plan\'s', async () => {
+    seedFactory()
+    appStore.getCurrentTab().depotUploadTier = 4
+    appStore.getCurrentTab().depotExpansionTier = 4
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({
+      factories: [newFactory('Pasted')],
+      powerTarget: 0,
+      depotUploadTier: 0,
+      depotExpansionTier: 2,
+    }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    expect(appStore.getCurrentTab().depotUploadTier).toBe(0)
+    expect(appStore.getCurrentTab().depotExpansionTier).toBe(2)
+  })
+
+  it('paste of a plan from before the tiers clears the outgoing tab\'s', async () => {
+    seedFactory()
+    appStore.getCurrentTab().depotUploadTier = 0
+    appStore.getCurrentTab().depotExpansionTier = 0
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    expect(appStore.getCurrentTab().depotUploadTier).toBeUndefined()
+    expect(appStore.getCurrentTab().depotExpansionTier).toBeUndefined()
+  })
+
   it('paste replaces the destination tab\'s memberless groups with the pasted plan\'s', async () => {
     seedFactory()
     appStore.getCurrentTab().groups = [{ id: 'old', name: 'Outgoing', color: '#4caf50', order: 0 }]

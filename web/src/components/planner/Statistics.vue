@@ -135,7 +135,9 @@
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless,
   // so reveal it before the scroll arrives.
   eventBus.on('openSection', sectionId => {
-    if (sectionId === 'statistics') {
+    // The Mercer Sphere block is inside this section, so a jump aimed at it has to unhide the
+    // whole card first or there is nothing on the page to scroll to.
+    if (sectionId === 'statistics' || sectionId === 'statistics-mercer-spheres') {
       hidden.value = false
     }
   })
