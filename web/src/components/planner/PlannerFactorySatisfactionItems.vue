@@ -481,37 +481,52 @@
             </p>
             <div v-else>
               <div>
-                <v-chip
+                <!-- The checkbox sits outside the v-chip rather than inside it: nested inside a
+                     clickable chip, its clicks were swallowed by the chip's own click handler and
+                     ripple/overlay layer before ever reaching the input (#592). Mirrors the
+                     sibling layout PlannerFactoryChecklist.vue uses for the same checkbox — that
+                     file's own per-value `:key` on the input is mirrored below too: without it,
+                     a `preventDefault()`-cancelled checkbox click can lose a race against the
+                     browser's own revert-to-pre-click-state step, leaving the tick visually
+                     unchanged even though the underlying state did flip. Keying the input on the
+                     checked value forces Vue to mount a fresh element at the new value instead of
+                     patching the (possibly just-reverted) old one. -->
+                <div
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="sf-chip sf-chip-clickable small factory"
-                  :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
-                  :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
-                  @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                  class="d-inline-flex align-center"
                 >
                   <input
                     v-if="factory.checklistEnabled"
+                    :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                     class="checklist-tick"
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
                     :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
                     type="checkbox"
-                    @click.prevent.stop="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                    @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                   >
-                  <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
-                  <span class="ml-2">
-                    <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
-                  </span>
-                  <v-btn
-                    class="chip-jump-btn ml-2"
-                    color="primary"
-                    icon="fas fa-eye"
-                    size="x-small"
-                    title="Jump to the import taking this export"
-                    variant="flat"
-                    @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
-                  />
-                </v-chip>
+                  <v-chip
+                    class="sf-chip sf-chip-clickable small factory"
+                    :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
+                    :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
+                    @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                  >
+                    <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
+                    <span class="ml-2">
+                      <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
+                    </span>
+                    <v-btn
+                      class="chip-jump-btn ml-2"
+                      color="primary"
+                      icon="fas fa-eye"
+                      size="x-small"
+                      title="Jump to the import taking this export"
+                      variant="flat"
+                      @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
+                    />
+                  </v-chip>
+                </div>
               </div>
             </div>
           </td>
