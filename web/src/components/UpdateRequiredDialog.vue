@@ -20,7 +20,6 @@
       is not an outage, and there is nothing to report.
     </p>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="reload">
         <i class="fas fa-arrow-up mr-2" />Reload the page
       </v-btn>

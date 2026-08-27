@@ -1,7 +1,7 @@
 <template>
   <app-dialog v-model="openTutorial" max-width="800" scrollable title="Dimensional Depot tutorial">
     <template #title>
-      <game-asset height="32" subject="dimensional-depot" type="item_id" width="32" />
+      <game-asset height="36" subject="dimensional-depot" type="item_id" width="36" />
       <span class="ml-3">Dimensional Depot tutorial</span>
     </template>
     <div class="verbage">
@@ -29,7 +29,6 @@
       </div>
     </div>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="openTutorial = false">Got it</v-btn>
     </template>
   </app-dialog>

@@ -9,7 +9,7 @@
     scrollable
   >
     <template #title>
-      <factory-icon-display class="mr-3" :icon="factory.icon" size="28" />
+      <factory-icon-display class="mr-3" :icon="factory.icon" size="36" />
       <span>Icon for "{{ factory.name }}"</span>
     </template>
 

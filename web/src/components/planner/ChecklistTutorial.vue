@@ -17,7 +17,6 @@
       <p>Ticks live next to each product, power producer, import and export, and are summarised in the Checklist panel at the top of the factory and the progress chip beside the game-sync chip.</p>
     </div>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="close">Got it</v-btn>
     </template>
   </app-dialog>

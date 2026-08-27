@@ -12,7 +12,6 @@
     <!-- https://satisfactory.wiki.gg/wiki/Save_files#Save_file_location -->
     <p class="mb-0">Can't find your worlds? Check out <a href="https://satisfactory.fandom.com/wiki/Save_files#Save_File_Location" target="_blank">Save File Location</a> in the Satisfactory Wiki.</p>
     <template #actions>
-      <v-spacer />
       <v-btn color="blue" variant="flat" @click="selectFile">
         <i class="fas fa-file-import" /><span class="ml-2">Select file (.sav)</span>
       </v-btn>

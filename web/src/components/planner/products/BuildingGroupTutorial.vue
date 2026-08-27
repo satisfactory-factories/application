@@ -40,7 +40,6 @@
       <p><span class="text-amber font-weight-bold">NOTE:</span> In some scenarios it is simply not possible to get effective buildings to be exactly zero, so we expect you to <i>slightly</i> overproduce. The tool will do it's best to balance things for you, should you request it.</p>
     </div>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="openTutorial = false">Close</v-btn>
     </template>
   </app-dialog>

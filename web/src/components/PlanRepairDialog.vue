@@ -36,7 +36,6 @@
       figures. If you had worked around any of this by hand, you can now undo that.
     </p>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="dismiss">Got it</v-btn>
     </template>
   </app-dialog>

@@ -4,9 +4,10 @@
      whatever size the author happened to pick.
 
      `OptionsDialog.vue` is the layout we settled on, and this is that layout made reusable: a
-     padded, vertically centred title row with the icon and label together, the way out in the
-     top-right corner where a dialog's way out is, and a `text-body-2` body. Adding a dialog means
-     reaching for this rather than re-deriving the spacing. -->
+     padded, vertically centred title row at `text-h4` with the icon and label together, the way
+     out in the top-right corner where a dialog's way out is, a `text-body-2` body, and an actions
+     row that puts its buttons on the right without being asked. Adding a dialog means reaching for
+     this rather than re-deriving the spacing. -->
 <template>
   <v-dialog
     v-model="isOpen"
@@ -15,7 +16,7 @@
     :scrollable="scrollable"
   >
     <v-card :class="cardClass">
-      <v-card-title class="app-dialog-title d-flex align-center py-4">
+      <v-card-title class="app-dialog-title text-h4 d-flex align-center py-4">
         <slot name="title">
           <i v-if="icon" :class="icon" />
           <span :class="icon ? 'ml-3' : ''">{{ title }}</span>
@@ -46,7 +47,9 @@
 
       <template v-if="$slots.actions">
         <v-divider />
-        <v-card-actions class="px-4 py-3">
+        <!-- Right by default, which is where a dialog's buttons go. A leading <v-spacer /> is
+             no longer needed for that; one is still how a caller pushes something to the left. -->
+        <v-card-actions class="px-4 py-3 justify-end">
           <slot name="actions" />
         </v-card-actions>
       </template>
@@ -105,9 +108,10 @@
 
 <style lang="scss" scoped>
 // `v-card-title` clips with an ellipsis by default, which eats titles that carry a factory or part
-// name on a narrow window. Dialog titles are allowed to wrap instead.
+// name on a narrow window. Dialog titles are allowed to wrap instead — and at `text-h4` they are
+// long enough to need to, so the line height comes down from the display-heading default.
 .app-dialog-title {
   white-space: normal;
-  line-height: 1.4;
+  line-height: 1.2 !important;
 }
 </style>

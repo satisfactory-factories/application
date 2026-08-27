@@ -9,7 +9,6 @@
     <p class="mb-4">Your session has expired, Pioneer. Please log in again!</p>
     <p>If this keeps happening repeatedly or much sooner than expected (30 days), please report it on <a href="https://discord.gg/vcFsjcWAFv" target="_blank">Discord</a>!</p>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="elevated" @click="closeSessionExpiredAlert">Ok</v-btn>
     </template>
   </app-dialog>

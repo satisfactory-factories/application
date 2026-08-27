@@ -64,7 +64,6 @@
     </p>
 
     <template #actions>
-      <v-spacer />
       <!-- A real button, but the muted grey the rest of the app uses for secondary actions:
            it has to be findable without competing with the wizard. -->
       <v-btn

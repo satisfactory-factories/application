@@ -31,7 +31,6 @@
       </v-radio>
     </v-radio-group>
     <template #actions>
-      <v-spacer />
       <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
       <v-btn color="red" variant="flat" @click="confirm">Delete group</v-btn>
     </template>

@@ -27,6 +27,7 @@ describe('AppDialog', () => {
 
     expect(title()?.classList.contains('py-4')).toBe(true)
     expect(title()?.classList.contains('align-center')).toBe(true)
+    expect(title()?.classList.contains('text-h4')).toBe(true)
     expect(title()?.querySelector('i')?.className).toContain('fa-wrench')
     expect(title()?.textContent).toContain('Options')
   })
@@ -71,6 +72,8 @@ describe('AppDialog', () => {
     open({}, { actions: () => h('button', 'Got it') })
     await nextTick()
     expect(document.querySelector('.v-card-actions')?.textContent).toContain('Got it')
+    // Right by default: a caller should not have to open its actions row with a spacer.
+    expect(document.querySelector('.v-card-actions')?.classList.contains('justify-end')).toBe(true)
   })
 
   // Markup titles (a game asset, a factory icon) replace the whole label; the corner close is not

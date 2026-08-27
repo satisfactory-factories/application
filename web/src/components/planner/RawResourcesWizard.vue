@@ -306,7 +306,6 @@
       </v-alert>
     </template>
     <template #actions>
-      <v-spacer />
       <v-btn v-if="pending" variant="text" @click="pending = null">Back</v-btn>
       <v-btn v-else variant="text" @click="close(false)">Cancel</v-btn>
       <v-btn

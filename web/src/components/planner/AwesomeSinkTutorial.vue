@@ -1,7 +1,7 @@
 <template>
   <app-dialog v-model="openTutorial" max-width="800" scrollable title="Sinking tutorial">
     <template #title>
-      <game-asset height="32" subject="awesome-sink" type="item_id" width="32" />
+      <game-asset height="36" subject="awesome-sink" type="item_id" width="36" />
       <span class="ml-3">Sinking tutorial</span>
     </template>
     <div class="verbage">
@@ -18,7 +18,6 @@
       </ol>
     </div>
     <template #actions>
-      <v-spacer />
       <v-btn color="primary" variant="flat" @click="openTutorial = false">Got it</v-btn>
     </template>
   </app-dialog>
