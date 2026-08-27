@@ -1,8 +1,13 @@
 # v7: Realtime sync, rooms, and the backend rewrite
 
-Status: revision 7. Drops `/hello`, targets version 0.7.0, makes the room document the
-single authoritative copy for collaborative tabs (memberships are references, never data),
-tightens member rights to content-only, and trims `helpText` from the preferences list.
+Status: revision 8. Reconciled with the built backend (2026-08-28): `POST /share` stays —
+snapshot links must remain creatable, so "read-only" applies to existing legacy rows, not
+the collection; a deleted room sends `room_deleted` and drops that room from the socket
+without closing it (one socket carries many tabs); the opId ring is 50; an unshared room's
+slug stays reserved so re-sharing restores the same link. Revision 7 dropped `/hello`,
+targeted version 0.7.0, made the room document the single authoritative copy for
+collaborative tabs (memberships are references, never data), tightened member rights to
+content-only, and trimmed `helpText` from the preferences list.
 Revision 6 added the local/synced tab choice, the two-link model (snapshot vs collaboration
 invite), optional invite passwords, owner-based revocation, and record-only activity
 logging. Survived three Codex plan reviews (`6cbaf4bd73c7`, `cc3deea30a04`,
@@ -177,16 +182,18 @@ persistent "new version available — refresh" prompt.
   v7** — the data is simply ready for the history feature later.
 - `User`: + `roomsRevision`, `legacyImportRoomId`. `UserPreferences`: `{ userId, prefs,
   revision }`.
-- Legacy `FactoryData` (keyed by username) and `Share` stay read-only forever. New data keys
-  on userId; the JWT carries both.
+- Legacy `FactoryData` (keyed by username) stays read-only forever. `Share` keeps accepting
+  new snapshot rows via `POST /share` (zod-validated, version-gated, 5-per-5-min throttled);
+  existing rows are never rewritten. New data keys on userId; the JWT carries both.
 
 **REST.** Auth (`/register`, `/login`, `/validate-token`, `/me/password`), rooms (list mine,
 create, rename, delete, leave, reorder, share/unshare, password set/rotate/remove,
 `GET /rooms/by-slug/:slug` — internal API only, users see `/room/<slug>` —
 `POST /rooms/:id/auth` exchanging a correct password for a visitor token,
 `POST /rooms/:roomId/join`, `POST /rooms/adopt`), preferences (GET/PUT), legacy
-(`GET /share/:id`; 410 on `/save`//`/load`), `/health` unchanged. `/hello` is dropped — it
-duplicates `/health` and should have gone when `/health` landed.
+(`GET /share/:id` and `POST /share` for creating snapshot links; 410 on `/save`//`/load`),
+`/health` unchanged. `/hello` is dropped — it duplicates `/health` and should have gone
+when `/health` landed.
 
 **Join and password rules.** Slug lookup resolves only shared, non-tombstoned tabs. Joining
 needs: a membership, **or** `shared` with no password, **or** `shared` plus a visitor token
@@ -284,7 +291,8 @@ exists today).
 **Adoption and legacy data.** Adoption is per-login, per-tab, and create-only. The legacy
 blob auto-imports as one room only for an account with zero rooms and a browser with zero
 local tabs, under a deterministic import id; otherwise "Recover server copy" imports it on
-demand. The blob and shares are never written again.
+demand. The blob is never written again; the shares collection only ever gains new snapshot
+rows.
 
 ## Infrastructure
 
