@@ -74,6 +74,10 @@ type Events = {
   openSummaryFullscreen: string | undefined;
   // Sidebar jump-links: unhide the target section (by element id) before scrolling to it.
   openSection: string;
+  // Search results: jump to a factory, landing on one of its rows where the result names one.
+  // The search box lives in the tab bar, which is outside the planner's provide() scope, so it
+  // has to ask over the bus rather than calling navigateToFactory itself.
+  jumpToFactory: { factoryId: number, targets?: string[], fallback?: string };
 }
 
 const eventBus = mitt<Events>()

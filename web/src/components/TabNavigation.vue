@@ -51,6 +51,7 @@
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
       <ShareButton />
       <v-btn
@@ -72,6 +73,7 @@
 <script setup lang="ts">
   import { useDisplay } from 'vuetify'
   import { useAppStore } from '@/stores/app-store'
+  import PlannerSearch from '@/components/planner/PlannerSearch.vue'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
 

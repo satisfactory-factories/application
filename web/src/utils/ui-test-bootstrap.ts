@@ -34,13 +34,21 @@ const vuetify = createVuetify({
 })
 
 /**
- * Custom render that includes the Vuetify plugin
+ * Custom render that includes the Vuetify plugin.
+ *
+ * `pinia` swaps the stubbed store the default testing Pinia installs. Pass a real one
+ * (`createTestingPinia({ stubActions: false })`) when the component under test reads something a
+ * store computes rather than holds — the game data behind every part name, most of all, which a
+ * stubbed action hands back as undefined. Anything else in `global` is merged, plugins included.
  */
-export function vuetifyRender (component: any, options = {}) {
+export function vuetifyRender (component: any, options: Record<string, any> = {}) {
+  const { global: globalOptions = {}, pinia, ...rest } = options
+
   return render(component, {
+    ...rest,
     global: {
-      plugins: [vuetify, createTestingPinia()],
+      ...globalOptions,
+      plugins: [vuetify, pinia ?? createTestingPinia(), ...(globalOptions.plugins ?? [])],
     },
-    ...options,
   })
 }

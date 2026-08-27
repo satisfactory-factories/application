@@ -759,6 +759,11 @@
   // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
   eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
 
+  // Same for the tab bar's search: it sits above the planner in the layout, so it cannot inject
+  // navigateToFactory and asks over the bus instead.
+  eventBus.on('jumpToFactory', ({ factoryId, targets, fallback }) =>
+    navigateToFactory(factoryId, targets, fallback))
+
   const forceSort = () => {
     // Forcefully regenerate the displayOrder counting upwards.
     getFactories().forEach((factory, index) => {
