@@ -144,12 +144,20 @@ export const calculateEffectiveBuildingCount = (
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
     const outputMultiplier = getGroupOutputMultiplier(group, building, recipeId)
-    // Remember it is a percentage so we need to divide by 100. Clocks support 4 decimal
-    // places, so keep the full precision here (e.g. 223.33% must stay 2.2333, not 2.233).
-    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100 * outputMultiplier, 4)
+    // Remember it is a percentage so we need to divide by 100.
+    //
+    // Deliberately NOT rounded per group. A clock carries 4 decimal places, but a group's
+    // contribution is count x clock, which needs more than 4 to state exactly: two buildings at
+    // 66.6667% is 1.333334, and rounding that to 1.3333 throws away real output. The error then
+    // leaks into anything deriving a remainder from this total — "Remainder to new group" sized
+    // the new group against 2.6666 instead of 2.666668 and clocked it 66.67% instead of
+    // 66.6666%, visibly out of step with the groups it was splitting from.
+    effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100 * outputMultiplier
   }
 
-  return formatNumberFully(effectiveBuildingCount, 4)
+  // Rounded only far enough to absorb floating-point residue (so a balanced set reads as exactly
+  // balanced rather than 3.9999999999999996), which is well beyond any precision the inputs have.
+  return formatNumberFully(effectiveBuildingCount, 10)
 }
 
 // Shards one building in this group needs. Each raises a building's max clock by 50%, so a clock

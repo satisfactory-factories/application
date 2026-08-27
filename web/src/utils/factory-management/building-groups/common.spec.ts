@@ -910,11 +910,14 @@ describe('buildingGroupsCommon', async () => {
 
       // Should be:
       // Group 1: 3 * 1.33 = 3.99
-      // Group 2: 2 * 0.56334 = 1.12668 (1.1267 rounded to 4dp)
-      // Group 3: 11 * 1.33678 = 14.70458 (14.7046 rounded to 4dp)
-      // Totalling 19.8213
+      // Group 2: 2 * 0.56334 = 1.12668
+      // Group 3: 11 * 1.33678 = 14.70458
+      // Totalling 19.82126
+      //
+      // Groups are summed at full precision. A clock has 4 decimal places, but count x clock
+      // needs more than 4 to state exactly, so rounding each group first discarded real output.
 
-      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.8213)
+      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.82126)
     })
   })
 
@@ -1214,12 +1217,13 @@ describe('powerProducer simplified cases', async () => {
 
     it('puts the whole shortfall on the group asked, keeping its building count', () => {
       // 5 impure Mk.1s at 133.3333% = 200/min, 3 normal at 84% = 151.2/min, so 8.8/min short.
-      // The second group has to reach 160/min: 160 / 60 / 3 = 88.8889%, landing on 88.89 because
-      // the remainder is measured against an effective building count rounded to 4dp.
+      // The second group has to reach 160/min: 160 / 60 / 3 = 88.8889%. It used to land on 88.89,
+      // because the remainder was measured against an effective building count that had been
+      // rounded per group to 4dp; the groups are now summed at full precision.
       applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
 
       expect(stone.buildingGroups[1].buildingCount).toBe(3)
-      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.8889)
       expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
     })
 
@@ -1230,7 +1234,7 @@ describe('powerProducer simplified cases', async () => {
       applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
 
       expect(stone.buildingGroups[1].buildingCount).toBe(3)
-      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.8889)
     })
 
     it('leaves the other groups exactly as they were', () => {
