@@ -65,6 +65,36 @@ describe('app-store', () => {
 
       expect(factory.powerProducers).toBeDefined()
     })
+    // #546: the backfill picked ids blind, so it could manufacture the very collision that makes
+    // a factory permanently unsyncable — producer ids key syncState.
+    it('#546: should backfill missing powerProducer IDs without colliding', () => {
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 3,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+      // A plan from before producers had ids at all.
+      factory.powerProducers.forEach(producer => {
+        // @ts-ignore
+        delete producer.id
+      })
+      // Every draw lands on the same number, which is the collision the backfill has to survive.
+      // Restored by hand: this file's beforeEach resets mocks rather than restoring them, so a
+      // stray Math.random stub would follow every test after this one.
+      const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      try {
+        appStore.initFactories(factories)
+      } finally {
+        random.mockRestore()
+      }
+
+      const ids = factory.powerProducers.map(producer => producer.id)
+      expect(ids).toHaveLength(2)
+      expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true)
+      expect(new Set(ids).size).toBe(2)
+    })
+
     it('#222: should initialize factories with missing sync data', () => {
       // @ts-ignore
       delete factory.inSync

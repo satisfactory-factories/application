@@ -149,6 +149,13 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   the open tab once, when the page loaded, and the button never remounts — so after switching tabs
   it went on sharing the plan that had been open at load, under that tab's name.
 
+- **Two power generators in one factory can no longer be issued the same ID** (#546). Generator IDs
+  were drawn at random with nothing checking whether the factory already held that number, and
+  those IDs key the Game Sync snapshots — so a collision (roughly one factory in 200 with ten
+  generators) made the factory drop out of sync the moment it was marked as built, permanently and
+  with nothing on screen explaining why. Both the generator itself and the ID backfill that runs on
+  plans from before generators had IDs now issue them against what the factory already holds.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

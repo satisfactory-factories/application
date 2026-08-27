@@ -1,11 +1,12 @@
 import { Factory, FactoryPowerChangeType, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
-import { getPowerRecipe, hasFractionalClock } from '@/utils/factory-management/common'
+import { generateFactoryItemId, getPowerRecipe, hasFractionalClock } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 
-// For internal testing use
+// The live path for adding a power generator — ProductsAndPower.vue and the satisfaction item's
+// "add a generator" shortcut both come through here, as do the plan fixtures.
 export const addPowerProducerToFactory = (
   factory: Factory,
   options: {
@@ -19,7 +20,9 @@ export const addPowerProducerToFactory = (
   },
 ) => {
   factory.powerProducers.push({
-    id: Math.floor(Math.random() * 10000).toString(),
+    // Issued against what the factory already holds: these ids key the game-sync snapshots and
+    // the card's element ids, so a collision makes the factory permanently unsyncable (#546).
+    id: generateFactoryItemId(factory),
     building: options.building ?? '',
     buildingAmount: options.buildingAmount ?? 0,
     buildingCount: options.buildingAmount ?? 0, // Calculated later
