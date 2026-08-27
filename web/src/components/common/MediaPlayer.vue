@@ -1,13 +1,13 @@
 <template>
-  <div class="media-player">
+  <div ref="root" class="media-player">
     <video
       ref="video"
       :aria-label="label"
-      autoplay
       loop
       muted
       playsinline
       :poster="poster"
+      preload="metadata"
       @click="toggle"
       @ended="playing = false"
       @loadedmetadata="onLoaded"
@@ -75,7 +75,11 @@
 
   const video = ref<HTMLVideoElement | null>(null)
   const track = ref<HTMLElement | null>(null)
-  const playing = ref(true)
+  const root = ref<HTMLElement | null>(null)
+  const playing = ref(false)
+  // A clip the reader paused on purpose stays paused when they scroll past and back. Only the
+  // observer's automatic starts are suppressed by this; the buttons always win.
+  const pausedByUser = ref(false)
   const progress = ref(0)
   const elapsed = ref(0)
   const duration = ref(0)
@@ -105,13 +109,19 @@
   const toggle = () => {
     const el = video.value
     if (!el) return
-    if (el.paused) el.play()
-    else el.pause()
+    if (el.paused) {
+      pausedByUser.value = false
+      el.play()
+    } else {
+      pausedByUser.value = true
+      el.pause()
+    }
   }
 
   const restart = () => {
     const el = video.value
     if (!el) return
+    pausedByUser.value = false
     el.currentTime = 0
     el.play()
     tick()
@@ -138,7 +148,35 @@
   }
   const clock = computed(() => `${asClock(elapsed.value)} / ${asClock(duration.value)}`)
 
-  onBeforeUnmount(() => cancelAnimationFrame(frame))
+  // Play only while on screen. Six clips all starting the moment the dialog opens meant the one
+  // the reader eventually scrolled to was already halfway through, and it decoded five videos
+  // nobody was looking at. IntersectionObserver against the viewport is enough even though the
+  // dialog scrolls in its own element, because the intersection is computed against every
+  // clipping ancestor, not just the root.
+  let observer: IntersectionObserver | null = null
+
+  onMounted(() => {
+    if (!root.value) return
+    observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        const el = video.value
+        if (!el) continue
+        if (entry.isIntersecting) {
+          if (!pausedByUser.value) el.play().catch(() => { /* autoplay refused, leave it paused */ })
+        } else {
+          el.pause()
+        }
+      }
+      // A third of the clip showing is enough to be worth starting, and keeps a player that is
+      // only just clipped by the dialog's edge from flapping between states.
+    }, { threshold: 0.34 })
+    observer.observe(root.value)
+  })
+
+  onBeforeUnmount(() => {
+    observer?.disconnect()
+    cancelAnimationFrame(frame)
+  })
 
   watch(() => props.src, () => {
     progress.value = 0
