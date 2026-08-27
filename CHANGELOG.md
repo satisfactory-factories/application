@@ -156,6 +156,12 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   with nothing on screen explaining why. Both the generator itself and the ID backfill that runs on
   plans from before generators had IDs now issue them against what the factory already holds.
 
+- **The Raw Resources Wizard's backup no longer zeroes an older power target** (#536). If you set a
+  power target before targets became per-plan, the backup recorded it as 0 — and since the backup
+  is the only undo for a migration that can't be reversed, and pasting it writes the target back
+  onto the plan, restoring stamped that 0 in for good. It now reads the target the same way Copy
+  plan and the rest of the planner do, legacy fallback included.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
