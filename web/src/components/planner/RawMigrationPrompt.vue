@@ -4,6 +4,7 @@
        plan. -->
   <app-dialog
     card-class="action-card"
+    centre-title
     close-title="Dismiss this notice"
     max-width="1000"
     :model-value="showRawBreakingNotice"
@@ -11,7 +12,7 @@
     @update:model-value="dismiss"
   >
     <template #title>
-      <span class="action-headline flex-grow-1 text-center">Action needed</span>
+      <span class="action-headline">Action needed</span>
     </template>
 
     <h3 class="text-h5 text-center text-medium-emphasis mb-4">

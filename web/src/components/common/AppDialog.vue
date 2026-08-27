@@ -16,18 +16,25 @@
     :scrollable="scrollable"
   >
     <v-card :class="cardClass">
-      <v-card-title class="app-dialog-title text-h4 d-flex align-center py-4">
+      <v-card-title
+        class="app-dialog-title text-h4 d-flex align-center py-4"
+        :class="{ 'title-centred': centreTitle }"
+      >
         <slot name="title">
           <i v-if="icon" :class="icon" />
           <span :class="icon ? 'ml-3' : ''">{{ title }}</span>
         </slot>
-        <v-spacer />
+        <!-- Absent when the title is centred: a spacer and a centred title both want the free
+             space, and splitting it between them lands the title a quarter of the way across
+             instead of in the middle. Centring takes the close button out of the flow instead. -->
+        <v-spacer v-if="!centreTitle" />
         <!-- The way out is the corner of the dialog. Withheld when the dialog is deliberately
              blocking (`persistent` with nothing to dismiss to), because an out that does nothing
              is worse than none. -->
         <v-btn
           v-if="closable"
           :id="closeId"
+          class="app-dialog-close"
           density="comfortable"
           icon="fas fa-times"
           :title="closeLabel"
@@ -74,6 +81,9 @@
     // Only worth setting where a test or a script needs to reach the close button by id.
     closeId?: string
     closeTitle?: string
+    // Centres the title across the whole row rather than starting it at the left. For the
+    // dialogs whose heading is the announcement itself, not a label on a form.
+    centreTitle?: boolean
     // A rule under the title. Wanted when the body is a flush list (`pa-0`), which would
     // otherwise run straight into the heading; unwanted when the body has its own padding.
     divider?: boolean
@@ -93,6 +103,7 @@
     closable: true,
     closeId: undefined,
     closeTitle: undefined,
+    centreTitle: false,
     divider: false,
     bodyClass: undefined,
     bodyMaxHeight: undefined,
@@ -113,5 +124,20 @@
 .app-dialog-title {
   white-space: normal;
   line-height: 1.2 !important;
+}
+
+// Centred on the dialog, not on the space the close button leaves behind — so the heading lines
+// up with the body under it however wide the button is.
+.title-centred {
+  justify-content: center;
+  position: relative;
+  text-align: center;
+
+  .app-dialog-close {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 }
 </style>

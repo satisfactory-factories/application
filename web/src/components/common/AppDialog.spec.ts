@@ -86,6 +86,25 @@ describe('AppDialog', () => {
     expect(closeButton()?.getAttribute('title')).toBe('Close icon picker')
   })
 
+  // The centred title used to share the row's free space with a spacer, which put it a quarter
+  // of the way across rather than in the middle.
+  it('should centre the title across the whole row when asked, close button and all', async () => {
+    open({ centreTitle: true })
+    await nextTick()
+
+    expect(title()?.classList.contains('title-centred')).toBe(true)
+    expect(title()?.querySelector('.v-spacer')).toBeFalsy()
+    expect(closeButton()?.classList.contains('app-dialog-close')).toBe(true)
+  })
+
+  it('should leave the title at the left, spacer and all, by default', async () => {
+    open()
+    await nextTick()
+
+    expect(title()?.classList.contains('title-centred')).toBe(false)
+    expect(title()?.querySelector('.v-spacer')).toBeTruthy()
+  })
+
   it('should cap the body height when asked, for the dialogs whose body is a long list', async () => {
     open({ bodyMaxHeight: '60vh' })
     await nextTick()
