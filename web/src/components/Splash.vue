@@ -1,12 +1,12 @@
 <template>
   <v-dialog v-model="showSplash" :max-width="currentSlide === 0 ? 1400 : 1000" scrollable>
     <v-card>
-      <v-card-title class="d-flex align-center pb-0">
+      <v-card-title class="d-flex align-center py-4">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.5</span>
         <v-btn
           density="comfortable"
           icon="fas fa-times"
-          size="small"
+          title="Close what's new"
           variant="text"
           @click="closeSplash"
         />

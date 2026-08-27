@@ -4,11 +4,17 @@
      plan for the first time meant opening every card in turn. This is the same operation done to a
      selection. -->
 <template>
-  <v-dialog v-model="isOpen" max-width="720" scrollable>
-    <v-card>
-      <v-card-title class="text-h6 py-4">Multi-group edit</v-card-title>
-      <v-divider />
-
+  <app-dialog
+    v-model="isOpen"
+    body-class="pa-0"
+    body-max-height="60vh"
+    divider
+    icon="fas fa-folder-tree"
+    max-width="720"
+    scrollable
+    title="Multi-group edit"
+  >
+    <template #header>
       <div class="px-4 py-3 d-flex align-center flex-wrap ga-2">
         <v-select
           v-model="target"
@@ -41,158 +47,153 @@
           Clear
         </v-btn>
       </div>
-
       <v-divider />
+    </template>
 
-      <v-card-text class="pa-0 factory-list">
-        <!-- The measured element is this inner div, not the scroll container: its content width is
-             what a row actually has, with the scrollbar already taken off. -->
-        <div ref="listEl">
-          <div
-            v-for="{ section, summary, rows } in decoratedSections"
-            :key="section.group?.id ?? 'ungrouped'"
-          >
-            <!-- Grouped by where each factory is now, because the useful selection is almost always
-                 "everything currently in X" or "everything not in a group yet". -->
-            <div class="section-head px-4 py-2" :style="sectionVars(section)">
-              <div class="d-flex align-center ga-2">
-                <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
-                <!-- Rename in place: the pencil is the affordance, the name itself is the bigger
-                     target. Ungrouped is not a group and has no name to change. -->
-                <input
-                  v-if="editingId && editingId === section.group?.id"
-                  ref="nameInput"
-                  v-model="draftName"
-                  class="group-name-input"
-                  @blur="commitName"
-                  @keydown.esc.stop="cancelName"
-                  @keyup.enter="commitName"
-                >
-                <template v-else>
-                  <span
-                    :class="section.group ? 'group-name' : 'ungrouped-label'"
-                    @click.stop="section.group && startRename(section.group)"
-                  >
-                    {{ section.group?.name ?? 'Ungrouped' }}
-                  </span>
-                  <v-btn
-                    v-if="section.group"
-                    density="compact"
-                    icon="fas fa-pencil"
-                    size="x-small"
-                    title="Rename group"
-                    variant="text"
-                    @click.stop="startRename(section.group)"
-                  />
-                </template>
-                <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
-                <v-spacer />
-                <v-btn size="x-small" variant="text" @click="selectSection(section)">
-                  {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
-                </v-btn>
-                <!-- Arrows rather than a drag: this list re-sections itself as factories move, so a
-                     drag would be aiming at rows that shift under it. Ungrouped has no arrows — it
-                     is pinned to the top and is not a group that can be ordered. -->
-                <template v-if="section.group">
-                  <v-btn
-                    density="compact"
-                    :disabled="groupIndex(section) === 0"
-                    icon="fas fa-chevron-up"
-                    size="x-small"
-                    title="Move group up"
-                    variant="text"
-                    @click="reorderGroup(section.group.id, 'up')"
-                  />
-                  <v-btn
-                    density="compact"
-                    :disabled="groupIndex(section) === groups.length - 1"
-                    icon="fas fa-chevron-down"
-                    size="x-small"
-                    title="Move group down"
-                    variant="text"
-                    @click="reorderGroup(section.group.id, 'down')"
-                  />
-                </template>
-              </div>
-
-              <!-- Everything the group makes, rolled up across its factories — the same summary the
-                   sidebar's group header carries. -->
-              <div v-if="summary.shown.length" class="d-flex align-center ga-1 mt-1">
-                <game-asset
-                  v-for="part in summary.shown"
-                  :key="part"
-                  height="24"
-                  :subject="part"
-                  type="item"
-                  width="24"
-                />
-                <v-tooltip v-if="summary.hidden.length" location="bottom">
-                  <template #activator="{ props: activatorProps }">
-                    <span class="overflow-count" v-bind="activatorProps">+{{ summary.hidden.length }}</span>
-                  </template>
-                  <span>{{ summary.hidden.map(getPartDisplayName).join(', ') }}</span>
-                </v-tooltip>
-              </div>
-            </div>
-
-            <v-list-item
-              v-for="{ factory, shown, hidden } in rows"
-              :key="factory.id"
-              class="factory-row"
-              density="compact"
-              @click="toggle(factory.id)"
+    <!-- The measured element is this inner div, not the scroll container: its content width is
+         what a row actually has, with the scrollbar already taken off. -->
+    <div ref="listEl">
+      <div
+        v-for="{ section, summary, rows } in decoratedSections"
+        :key="section.group?.id ?? 'ungrouped'"
+      >
+        <!-- Grouped by where each factory is now, because the useful selection is almost always
+             "everything currently in X" or "everything not in a group yet". -->
+        <div class="section-head px-4 py-2" :style="sectionVars(section)">
+          <div class="d-flex align-center ga-2">
+            <span class="dot" :style="{ backgroundColor: section.group?.color ?? '#9e9e9e' }" />
+            <!-- Rename in place: the pencil is the affordance, the name itself is the bigger
+                 target. Ungrouped is not a group and has no name to change. -->
+            <input
+              v-if="editingId && editingId === section.group?.id"
+              ref="nameInput"
+              v-model="draftName"
+              class="group-name-input"
+              @blur="commitName"
+              @keydown.esc.stop="cancelName"
+              @keyup.enter="commitName"
             >
-              <!-- Box and tick are both drawn in CSS, with no icon anywhere in it.
-                   <v-checkbox-btn> is out because Vuetify's FA aliases use `far fa-square` for the
-                   unchecked state and this app ships no Font Awesome regular family, so the empty
-                   box renders as nothing at all. A Font Awesome tick is out for the opposite
-                   reason: FA replaces the <i> with an <svg> Vue no longer owns, so v-if removed
-                   nothing and unticking left the tick behind. A class on a pseudo-element cannot
-                   fall out of step with the state that drives it. -->
-              <template #prepend>
-                <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
-              <div class="d-flex align-center ga-2 w-100">
-                <factory-icon-display :icon="factory.icon" size="20" />
-                <span class="text-truncate">{{ factory.name }}</span>
-                <v-spacer />
-                <!-- What the factory makes. Right-aligned rather than trailing the name so the
-                     strips line up in a column, and so a long name truncates instead of shoving
-                     them off the row. -->
-                <div v-if="shown.length" class="product-strip d-flex align-center ga-1">
-                  <game-asset
-                    v-for="part in shown"
-                    :key="part"
-                    height="20"
-                    :subject="part"
-                    type="item"
-                    width="20"
-                  />
-                  <v-tooltip v-if="hidden.length" location="bottom">
-                    <template #activator="{ props: activatorProps }">
-                      <span class="overflow-count" v-bind="activatorProps">+{{ hidden.length }}</span>
-                    </template>
-                    <span>{{ hidden.map(getPartDisplayName).join(', ') }}</span>
-                  </v-tooltip>
-                </div>
-              </div>
-            </v-list-item>
+            <template v-else>
+              <span
+                :class="section.group ? 'group-name' : 'ungrouped-label'"
+                @click.stop="section.group && startRename(section.group)"
+              >
+                {{ section.group?.name ?? 'Ungrouped' }}
+              </span>
+              <v-btn
+                v-if="section.group"
+                density="compact"
+                icon="fas fa-pencil"
+                size="x-small"
+                title="Rename group"
+                variant="text"
+                @click.stop="startRename(section.group)"
+              />
+            </template>
+            <span class="text-medium-emphasis text-caption">({{ section.factories.length }})</span>
+            <v-spacer />
+            <v-btn size="x-small" variant="text" @click="selectSection(section)">
+              {{ allSelectedIn(section) ? 'Deselect' : 'Select' }} these
+            </v-btn>
+            <!-- Arrows rather than a drag: this list re-sections itself as factories move, so a
+                 drag would be aiming at rows that shift under it. Ungrouped has no arrows — it
+                 is pinned to the top and is not a group that can be ordered. -->
+            <template v-if="section.group">
+              <v-btn
+                density="compact"
+                :disabled="groupIndex(section) === 0"
+                icon="fas fa-chevron-up"
+                size="x-small"
+                title="Move group up"
+                variant="text"
+                @click="reorderGroup(section.group.id, 'up')"
+              />
+              <v-btn
+                density="compact"
+                :disabled="groupIndex(section) === groups.length - 1"
+                icon="fas fa-chevron-down"
+                size="x-small"
+                title="Move group down"
+                variant="text"
+                @click="reorderGroup(section.group.id, 'down')"
+              />
+            </template>
+          </div>
+
+          <!-- Everything the group makes, rolled up across its factories — the same summary the
+               sidebar's group header carries. -->
+          <div v-if="summary.shown.length" class="d-flex align-center ga-1 mt-1">
+            <game-asset
+              v-for="part in summary.shown"
+              :key="part"
+              height="24"
+              :subject="part"
+              type="item"
+              width="24"
+            />
+            <v-tooltip v-if="summary.hidden.length" location="bottom">
+              <template #activator="{ props: activatorProps }">
+                <span class="overflow-count" v-bind="activatorProps">+{{ summary.hidden.length }}</span>
+              </template>
+              <span>{{ summary.hidden.map(getPartDisplayName).join(', ') }}</span>
+            </v-tooltip>
           </div>
         </div>
-      </v-card-text>
 
-      <v-divider />
-      <v-card-actions>
-        <span class="ml-2 text-body-2 text-medium-emphasis">
-          {{ selected.size }} selected
-        </span>
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
-        <v-btn color="primary" :disabled="!selected.size" variant="flat" @click="apply">
-          Move {{ selected.size || '' }} to {{ targetName }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        <v-list-item
+          v-for="{ factory, shown, hidden } in rows"
+          :key="factory.id"
+          class="factory-row"
+          density="compact"
+          @click="toggle(factory.id)"
+        >
+          <!-- Box and tick are both drawn in CSS, with no icon anywhere in it.
+               <v-checkbox-btn> is out because Vuetify's FA aliases use `far fa-square` for the
+               unchecked state and this app ships no Font Awesome regular family, so the empty
+               box renders as nothing at all. A Font Awesome tick is out for the opposite
+               reason: FA replaces the <i> with an <svg> Vue no longer owns, so v-if removed
+               nothing and unticking left the tick behind. A class on a pseudo-element cannot
+               fall out of step with the state that drives it. -->
+          <template #prepend>
+            <span class="tick mr-3" :class="{ on: selected.has(factory.id) }" /></template>
+          <div class="d-flex align-center ga-2 w-100">
+            <factory-icon-display :icon="factory.icon" size="20" />
+            <span class="text-truncate">{{ factory.name }}</span>
+            <v-spacer />
+            <!-- What the factory makes. Right-aligned rather than trailing the name so the
+                 strips line up in a column, and so a long name truncates instead of shoving
+                 them off the row. -->
+            <div v-if="shown.length" class="product-strip d-flex align-center ga-1">
+              <game-asset
+                v-for="part in shown"
+                :key="part"
+                height="20"
+                :subject="part"
+                type="item"
+                width="20"
+              />
+              <v-tooltip v-if="hidden.length" location="bottom">
+                <template #activator="{ props: activatorProps }">
+                  <span class="overflow-count" v-bind="activatorProps">+{{ hidden.length }}</span>
+                </template>
+                <span>{{ hidden.map(getPartDisplayName).join(', ') }}</span>
+              </v-tooltip>
+            </div>
+          </div>
+        </v-list-item>
+      </div>
+    </div>
+    <template #actions>
+      <span class="ml-2 text-medium-emphasis">
+        {{ selected.size }} selected
+      </span>
+      <v-spacer />
+      <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
+      <v-btn color="primary" :disabled="!selected.size" variant="flat" @click="apply">
+        Move {{ selected.size || '' }} to {{ targetName }}
+      </v-btn>
+    </template>
+  </app-dialog>
 
   <factory-group-create-dialog v-model="createOpen" @created="target = $event" />
 </template>
@@ -363,10 +364,6 @@
 </script>
 
 <style lang="scss" scoped>
-.factory-list {
-  max-height: 60vh;
-}
-
 .section-head {
   position: sticky;
   top: 0;

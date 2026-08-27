@@ -1,19 +1,18 @@
 <template>
-  <v-dialog
+  <app-dialog
     v-model="showSessionExpiredDialog"
+    card-class="border-md"
+    icon="fas fa-user-clock"
     max-width="600"
+    title="Session Expired!"
   >
-    <v-card class="border-md">
-      <v-card-title class="text-h5">Session Expired!</v-card-title>
-      <v-card-text>
-        <p class="mb-4">Your session has expired, Pioneer. Please log in again!</p>
-        <p>If this keeps happening repeatedly or much sooner than expected (30 days), please report it on <a href="https://discord.gg/vcFsjcWAFv" target="_blank">Discord</a>!</p>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="primary" variant="elevated" @click="closeSessionExpiredAlert">Ok</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <p class="mb-4">Your session has expired, Pioneer. Please log in again!</p>
+    <p>If this keeps happening repeatedly or much sooner than expected (30 days), please report it on <a href="https://discord.gg/vcFsjcWAFv" target="_blank">Discord</a>!</p>
+    <template #actions>
+      <v-spacer />
+      <v-btn color="primary" variant="elevated" @click="closeSessionExpiredAlert">Ok</v-btn>
+    </template>
+  </app-dialog>
   <v-btn :color="buttonColor" variant="flat">
     <div v-if="loggedInUser">
       <i class="fas fa-user mr-2" />

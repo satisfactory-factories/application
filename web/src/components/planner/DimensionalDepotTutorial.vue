@@ -1,39 +1,38 @@
 <template>
-  <v-dialog max-width="800" :model-value="openTutorial" scrollable>
-    <v-card>
-      <v-card-title class="d-flex align-center ga-3 py-4">
-        <game-asset height="40" subject="dimensional-depot" type="item_id" width="40" />
-        <h3 class="text-h3">Dimensional Depot tutorial</h3>
-      </v-card-title>
-      <v-card-text class="verbage">
-        <p>
-          A summary of every Dimensional Depot Uploader in your plan, and the items they are
-          tracking, sits at the top of the planner.
-        </p>
-        <p>
-          We make no assumptions about how much an Uploader takes off the belt. What we do assume is
-          that it eventually backs up, so your surplus numbers are accurate once that happens.
-        </p>
-        <!-- The summary is a scroll away and nothing on this dialog says where, so the dialog
-             takes them rather than describing the journey. -->
-        <div class="d-flex justify-center mt-4">
-          <v-btn class="sf-chip small dimensional-depot depot-jump" rounded="pill" variant="flat" @click="showDepot">
-            <game-asset
-              class="mr-2"
-              height="20"
-              subject="dimensional-depot"
-              type="item_id"
-              width="20"
-            />
-            Take me to the Dimensional Depot
-          </v-btn>
-        </div>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="primary" variant="flat" @click="openTutorial = false">Got it</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <app-dialog v-model="openTutorial" max-width="800" scrollable title="Dimensional Depot tutorial">
+    <template #title>
+      <game-asset height="32" subject="dimensional-depot" type="item_id" width="32" />
+      <span class="ml-3">Dimensional Depot tutorial</span>
+    </template>
+    <div class="verbage">
+      <p>
+        A summary of every Dimensional Depot Uploader in your plan, and the items they are
+        tracking, sits at the top of the planner.
+      </p>
+      <p>
+        We make no assumptions about how much an Uploader takes off the belt. What we do assume is
+        that it eventually backs up, so your surplus numbers are accurate once that happens.
+      </p>
+      <!-- The summary is a scroll away and nothing on this dialog says where, so the dialog
+           takes them rather than describing the journey. -->
+      <div class="d-flex justify-center mt-4">
+        <v-btn class="sf-chip small dimensional-depot depot-jump" rounded="pill" variant="flat" @click="showDepot">
+          <game-asset
+            class="mr-2"
+            height="20"
+            subject="dimensional-depot"
+            type="item_id"
+            width="20"
+          />
+          Take me to the Dimensional Depot
+        </v-btn>
+      </div>
+    </div>
+    <template #actions>
+      <v-spacer />
+      <v-btn color="primary" variant="flat" @click="openTutorial = false">Got it</v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script lang="ts" setup>

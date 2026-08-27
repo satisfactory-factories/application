@@ -1,87 +1,82 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="600">
-    <v-card>
-      <v-card-title class="text-h6 py-4">
-        Add "{{ recipe.displayName }}" to a factory
-      </v-card-title>
-      <v-divider />
-      <v-card-text class="pa-0">
-        <v-list v-if="factories.length">
-          <v-list-item
-            v-for="factory in factories"
-            :key="factory.id"
-            :active="factoryUsage(factory) !== null"
-            color="primary"
+  <app-dialog
+    v-model="isOpen"
+    body-class="pa-0"
+    divider
+    icon="fas fa-industry"
+    max-width="600"
+    :title="`Add &quot;${recipe.displayName}&quot; to a factory`"
+  >
+    <v-list v-if="factories.length">
+      <v-list-item
+        v-for="factory in factories"
+        :key="factory.id"
+        :active="factoryUsage(factory) !== null"
+        color="primary"
+      >
+        <template #prepend>
+          <i class="fas fa-industry mr-3" />
+        </template>
+        <v-list-item-title>
+          {{ factory.name }}
+          <v-chip
+            v-if="factoryUsage(factory) === 'produces'"
+            class="ml-2"
+            color="green"
+            size="small"
+            variant="tonal"
           >
-            <template #prepend>
-              <i class="fas fa-industry mr-3" />
-            </template>
-            <v-list-item-title>
-              {{ factory.name }}
-              <v-chip
-                v-if="factoryUsage(factory) === 'produces'"
-                class="ml-2"
-                color="green"
-                size="small"
-                variant="tonal"
-              >
-                Produces this
-              </v-chip>
-              <v-chip
-                v-else-if="factoryUsage(factory) === 'uses'"
-                class="ml-2"
-                color="blue"
-                size="small"
-                variant="tonal"
-              >
-                Uses this
-              </v-chip>
-            </v-list-item-title>
-            <template #append>
-              <v-btn
-                color="primary"
-                :disabled="adding !== null && adding !== factory.id"
-                icon="fas fa-plus"
-                :loading="adding === factory.id"
-                size="small"
-                :title="`Add to ${factory.name}`"
-                variant="tonal"
-                @click="addToFactory(factory)"
-              />
-            </template>
-          </v-list-item>
-        </v-list>
-        <p v-else class="text-body-2 text-medium-emphasis pa-4">
-          You don't have any factories yet. Create one below!
-        </p>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-btn
-          color="primary"
-          :disabled="adding !== null && adding !== 'new'"
-          :loading="adding === 'new'"
-          prepend-icon="fas fa-plus"
-          variant="tonal"
-          @click="addToNewFactory"
-        >
-          Add to new factory
-        </v-btn>
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">
-          Close
-        </v-btn>
-        <v-btn
-          color="green"
-          prepend-icon="fas fa-ruler-triangle"
-          variant="flat"
-          @click="goToPlanner"
-        >
-          Go to Planner
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+            Produces this
+          </v-chip>
+          <v-chip
+            v-else-if="factoryUsage(factory) === 'uses'"
+            class="ml-2"
+            color="blue"
+            size="small"
+            variant="tonal"
+          >
+            Uses this
+          </v-chip>
+        </v-list-item-title>
+        <template #append>
+          <v-btn
+            color="primary"
+            :disabled="adding !== null && adding !== factory.id"
+            icon="fas fa-plus"
+            :loading="adding === factory.id"
+            size="small"
+            :title="`Add to ${factory.name}`"
+            variant="tonal"
+            @click="addToFactory(factory)"
+          />
+        </template>
+      </v-list-item>
+    </v-list>
+    <p v-else class="text-body-2 text-medium-emphasis pa-4">
+      You don't have any factories yet. Create one below!
+    </p>
+    <template #actions>
+      <v-btn
+        color="primary"
+        :disabled="adding !== null && adding !== 'new'"
+        :loading="adding === 'new'"
+        prepend-icon="fas fa-plus"
+        variant="tonal"
+        @click="addToNewFactory"
+      >
+        Add to new factory
+      </v-btn>
+      <v-spacer />
+      <v-btn
+        color="green"
+        prepend-icon="fas fa-ruler-triangle"
+        variant="flat"
+        @click="goToPlanner"
+      >
+        Go to Planner
+      </v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

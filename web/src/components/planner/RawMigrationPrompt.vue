@@ -2,87 +2,92 @@
   <!-- Only raised for a plan that predates the change and is actually short, so it speaks about
        this plan rather than the release. Not persistent — dismissing it has to leave a usable
        plan. -->
-  <v-dialog max-width="1000" :model-value="showRawBreakingNotice" scrollable @update:model-value="dismiss">
-    <v-card class="action-card">
-      <v-card-title class="d-flex align-center pt-6 pb-0">
-        <span class="action-headline flex-grow-1 text-center">Action needed</span>
-      </v-card-title>
-      <v-card-text>
-        <h2 class="text-h5 text-center text-medium-emphasis mb-4">
-          Raw resource migration required
-        </h2>
+  <app-dialog
+    card-class="action-card"
+    close-title="Dismiss this notice"
+    max-width="1000"
+    :model-value="showRawBreakingNotice"
+    scrollable
+    @update:model-value="dismiss"
+  >
+    <template #title>
+      <span class="action-headline flex-grow-1 text-center">Action needed</span>
+    </template>
 
-        <p class="hero-blurb mb-4">
-          This plan has raw resources that are not being properly accounted for (extracted out of the ground) so its factories are
-          now showing red. Hit <b>Run the wizard</b> below to fix that and bring the plan up to date.
-        </p>
+    <h3 class="text-h5 text-center text-medium-emphasis mb-4">
+      Raw resource migration required
+    </h3>
 
-        <!-- Bound rather than a literal path: these live in public/, and a static src makes
-             vite try to resolve them at transform time. -->
-        <v-img
-          :alt="activeExample.alt"
-          class="mb-2 rounded"
-          max-width="1200"
-          :src="activeExample.image"
-        />
-        <div class="d-flex justify-center flex-wrap ga-2 mb-4">
-          <v-btn
-            v-for="example in examples"
-            :key="example.key"
-            :color="example.key === activeExampleKey ? 'primary' : undefined"
-            size="small"
-            :variant="example.key === activeExampleKey ? 'flat' : 'outlined'"
-            @click="activeExampleKey = example.key"
-          >
-            {{ example.label }}
-          </v-btn>
-        </div>
+    <p class="hero-blurb mb-4">
+      This plan has raw resources that are not being properly accounted for (extracted out of the ground) so its factories are
+      now showing red. Hit <b>Run the wizard</b> below to fix that and bring the plan up to date.
+    </p>
 
-        <p class="mb-2">
-          The planner used to assume you were supplying raw resources yourself. It doesn't any
-          more: anything a factory doesn't mine or import is a real shortage. Nothing in your plan
-          has been changed or lost, you just now need to fill the gaps that already existed.
-        </p>
+    <!-- Bound rather than a literal path: these live in public/, and a static src makes
+         vite try to resolve them at transform time. -->
+    <v-img
+      :alt="activeExample.alt"
+      class="mb-2 rounded"
+      max-width="1200"
+      :src="activeExample.image"
+    />
+    <div class="d-flex justify-center flex-wrap ga-2 mb-4">
+      <v-btn
+        v-for="example in examples"
+        :key="example.key"
+        :color="example.key === activeExampleKey ? 'primary' : undefined"
+        size="small"
+        :variant="example.key === activeExampleKey ? 'flat' : 'outlined'"
+        @click="activeExampleKey = example.key"
+      >
+        {{ example.label }}
+      </v-btn>
+    </div>
 
-        <p class="mb-2">
-          You can produce raw materials as a product inside the factory that needs them, or build a
-          dedicated mine factory and export to whatever needs feeding. Pick a raw resource as a
-          product e.g. "Iron Ore" and set each building group's miner mark and node purity,
-          or describe a resource well by its satellite nodes.
-        </p>
+    <p class="mb-2">
+      The planner used to assume you were supplying raw resources yourself. It doesn't any
+      more: anything a factory doesn't mine or import is a real shortage. Nothing in your plan
+      has been changed or lost, you just now need to fill the gaps that already existed.
+    </p>
 
-        <p class="mb-0">
-          The wizard lists every factory that is short and builds the mines, adds the extractors or
-          wires the imports for you. It lives in <b>Options</b> located top right of the
-          planner whenever you want it again.
-        </p>
-      </v-card-text>
-      <v-card-actions class="pa-4 pt-0">
-        <v-spacer />
-        <!-- A real button, but the muted grey the rest of the app uses for secondary actions:
-             it has to be findable without competing with the wizard. -->
-        <v-btn
-          id="raw-notice-dismiss"
-          color="grey-darken-1"
-          size="large"
-          variant="flat"
-          @click="dismiss"
-        >
-          I'll sort it myself
-        </v-btn>
-        <v-btn
-          id="raw-notice-wizard"
-          color="green"
-          prepend-icon="fas fa-shovel"
-          size="large"
-          variant="flat"
-          @click="dismissAndOpenWizard"
-        >
-          Run the wizard
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <p class="mb-2">
+      You can produce raw materials as a product inside the factory that needs them, or build a
+      dedicated mine factory and export to whatever needs feeding. Pick a raw resource as a
+      product e.g. "Iron Ore" and set each building group's miner mark and node purity,
+      or describe a resource well by its satellite nodes.
+    </p>
+
+    <p class="mb-0">
+      The wizard lists every factory that is short and builds the mines, adds the extractors or
+      wires the imports for you. It lives in <b>Options</b> located top right of the
+      planner whenever you want it again.
+    </p>
+
+    <template #actions>
+      <v-spacer />
+      <!-- A real button, but the muted grey the rest of the app uses for secondary actions:
+           it has to be findable without competing with the wizard. -->
+      <v-btn
+        id="raw-notice-dismiss"
+        color="grey-darken-1"
+        size="large"
+        variant="flat"
+        @click="dismiss"
+      >
+        I'll sort it myself
+      </v-btn>
+      <v-btn
+        id="raw-notice-wizard"
+        color="green"
+        prepend-icon="fas fa-shovel"
+        size="large"
+        variant="flat"
+        @click="dismissAndOpenWizard"
+      >
+        Run the wizard
+      </v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">
@@ -134,7 +139,9 @@
 <style lang="scss" scoped>
   // The plan is reporting shortages until this is answered, so the dialog is edged in the same
   // error colour its headline wears rather than sitting in the ordinary card border.
-  .action-card {
+  // `:deep`, because the card belongs to <app-dialog>'s template rather than this one, so the
+  // scope id lands on the overlay root above it and not on the card itself.
+  :deep(.action-card) {
     border: 2px solid var(--sf-error);
   }
 

@@ -114,6 +114,7 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 
 ### Interface
 
+- **Every dialog in the planner now has the same header and spacing.** Vuetify's stock card title sat the heading flush in the top-left corner with no breathing room, and each dialog had drifted its own way from there: some closed from a button at the bottom of the actions row, some had no way out but the scrim, and body text came in three different sizes. They now share one shell — a padded title row with the icon beside the heading, the close button in the top-right corner where a dialog's way out belongs, and body text at a single size. Dialogs that ask for a decision before they will go away (the out-of-sync prompt, the update-required notice) still have no corner close, deliberately.
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
 - **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
 

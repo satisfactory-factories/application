@@ -6,7 +6,7 @@
     scrollable
   >
     <v-card>
-      <v-card-title class="d-flex align-center pb-0">
+      <v-card-title class="d-flex align-center py-4">
         <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
         <!-- Off until the warning has been answered: it is not something to flick away from the
              corner of the eye. -->
@@ -14,7 +14,7 @@
           v-if="!awaitingAnswer"
           density="comfortable"
           icon="fas fa-times"
-          size="small"
+          title="Close what's new"
           variant="text"
           @click="closeSplash"
         />
