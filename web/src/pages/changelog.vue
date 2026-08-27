@@ -34,6 +34,17 @@
           </ul>
         </nav>
 
+        <h2>🆕 <i class="fas fa-search ml-1" /><span class="ml-2">Search the plan</span></h2>
+        <p>A search box now sits next to Options in the tab bar. Type a factory name to jump straight to it, or type a part to see every factory that touches it, with the results appearing under the box as you type.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Part results are grouped by what the factory does with the part</b>: Production first, then Byproduct, then Other usage — imports, exports and plain ingredient demand — each row saying which it is and how much per minute.</li>
+          <li><b>Clicking a result lands on the row it names</b>, not just the factory card: the product row for production and byproducts, the import row it came from for an import, and the part's satisfaction row for everything else.</li>
+          <li><b>Every result wears the factory chip</b> used everywhere else in the planner, and a factory filed under a group carries that group's colour on the chip's left edge.</li>
+          <li><b>Ctrl/Cmd+K</b> opens it from anywhere. The arrow keys walk the results and Enter opens one.</li>
+          <li>On a narrow screen, where the tab bar has no room for a box, it is a search button that opens the same panel.</li>
+        </ul>
+        <v-divider class="subsection" />
+
         <h2>🆕 <i class="fas fa-building ml-1" /><span class="ml-2">Custom Buildings</span></h2>
         <p>Buildings that make nothing can now be added to a factory, under the products and power generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights.</p>
         <v-img

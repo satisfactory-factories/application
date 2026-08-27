@@ -1,9 +1,11 @@
 <template>
   <div class="border-t-md d-flex tab-bar align-center justify-space-between w-100">
     <div class="d-flex align-center">
+      <!-- 40px rather than the v-btn default of 36, like every other control on this bar. -->
       <v-btn
         v-if="lgAndUp"
         class="mx-1 sidebar-toggle"
+        height="40"
         prepend-icon="fas fa-bars"
         variant="flat"
         @click="toggleSidebar()"
@@ -51,6 +53,7 @@
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
       <ShareButton />
       <v-btn
@@ -72,6 +75,7 @@
 <script setup lang="ts">
   import { useDisplay } from 'vuetify'
   import { useAppStore } from '@/stores/app-store'
+  import PlannerSearch from '@/components/planner/PlannerSearch.vue'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
 
@@ -137,6 +141,11 @@
   background-color: var(--sf-power-consumption);
 }
 
+// Every control on this bar stands 40px tall. The share and tab-delete buttons are icon buttons at
+// `small`, which Vuetify renders at 40, and the search box is a compact text field, also 40 — but a
+// plain v-btn defaults to 36, so the sidebar toggle and the Options button (in OptionsDialog.vue)
+// are each told. A button 4px shorter than the ones either side of it reads as a mistake rather
+// than as a size. Anything added here should match.
 .sidebar-toggle {
   background-color: var(--sf-power-consumption) !important;
   color: rgba(0, 0, 0, 0.87) !important;
