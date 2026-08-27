@@ -750,7 +750,18 @@ export const remainderToLast = (
   }
 
   const otherAmount = otherEffective * perMin
-  const lastTargetAmount = totalTargetAmount - otherAmount
+
+  // Snapped onto the same 4dp grid a clock is stored on, because that grid is where the
+  // difference comes from. The other groups' clocks are themselves rounded, so their combined
+  // output sits a fraction of a grid step away from the share they were solved for, and
+  // subtracting it hands that fraction to this group. Three groups splitting 60/min leave the
+  // last one 19.99998 rather than 20, which solves to 66.6666% sitting beside its siblings'
+  // 66.6667% — one step of the finest clock the game can express, and read as a bug.
+  //
+  // Snapping keeps a group solved from a remainder on the same footing as one solved directly
+  // from its own share. The largest correction it can make is half a grid step per group, far
+  // below anything the planner shows or the user can set.
+  const lastTargetAmount = formatNumberFully(totalTargetAmount - otherAmount, 4)
 
   bestEffortUpdateBuildingCount(item, lastGroup, lastTargetAmount, groupType)
 

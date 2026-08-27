@@ -1546,6 +1546,38 @@ describe('powerProducer simplified cases', async () => {
       expect(newGroup.parts.IronRod).toBe(40)
       expect(newGroup.parts.IronIngot).toBe(40)
     })
+
+    // A group solved from a remainder must land on the same clock as one solved directly from
+    // its own share. Three groups splitting 60/min are all doing the identical job, so reading
+    // 66.6666% beside 66.6667% is a bug however small the gap: the first two groups' clocks are
+    // themselves rounded onto the game's 4dp grid, and subtracting their output left the third
+    // solving for 19.99998/min rather than 20.
+    it('clocks a remainder-solved group the same as the groups it splits from', () => {
+      mockFactory = newFactory('Remainder Consistency')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      // Two groups of 20/min each, both solved directly from their own share.
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      const [group1, group2] = product.buildingGroups
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+      updateBuildingGroupViaPart(group2, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      // The third takes what is left, and must agree with them.
+      remainderToNewGroup(product, ItemType.Product, mockFactory)
+
+      const group3 = product.buildingGroups[2]
+      expect(product.buildingGroups).toHaveLength(3)
+      expect(group3.buildingCount).toBe(group1.buildingCount)
+      expect(group3.overclockPercent).toBe(group1.overclockPercent)
+      expect(group3.overclockPercent).toBe(group2.overclockPercent)
+      expect(group3.overclockPercent).toBe(66.6667)
+    })
   })
 
   // A group's stored type is data, and a plan exported from an older build can carry it wrong —
