@@ -789,6 +789,7 @@ const recordScenario = async (browser, name, base, maxGroups, actionFn) => {
 
   const paletteFile = `${frameDir}/palette.png`
   const gifOut = `${OUT}/${name}.gif`
+  const mp4Out = `${OUT}/${name}.mp4`
   const OUT_WIDTH = 1040
   // The reader-facing pace is still one captured beat per ~143ms; FPS is doubled and every
   // non-movement capture is written twice (HOLD_REPEAT) to hold that pace exactly. What the
@@ -801,6 +802,15 @@ const recordScenario = async (browser, name, base, maxGroups, actionFn) => {
   execSync(`ffmpeg -y -framerate ${FPS} -i "${frameDir}/frame_%04d.png" -i "${paletteFile}" -filter_complex "scale=${OUT_WIDTH}:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=none" -loop 0 "${gifOut}"`, { stdio: 'inherit' })
   const sizeKb = Math.round(fs.statSync(gifOut).size / 1024)
   console.log(`[${name}] gif written: ${gifOut} (${sizeKb} KB)`)
+
+  // MP4 is what the tutorial embeds. A GIF in an <img> cannot be paused, seeked or asked for
+  // its progress, so the player's controls need a real video element; h264 also lands around a
+  // third of the GIF's size, since the duplicated hold frames cost a video codec almost nothing.
+  // The GIF above is still written for anywhere a self-playing image is wanted.
+  // -pix_fmt yuv420p and an even height (scale -2) are what make it decodable everywhere.
+  execSync(`ffmpeg -y -framerate ${FPS} -i "${frameDir}/frame_%04d.png" -vf "scale=${OUT_WIDTH}:-2:flags=lanczos" -c:v libx264 -pix_fmt yuv420p -crf 26 -preset slow -movflags +faststart -an "${mp4Out}"`, { stdio: 'inherit' })
+  const mp4Kb = Math.round(fs.statSync(mp4Out).size / 1024)
+  console.log(`[${name}] mp4 written: ${mp4Out} (${mp4Kb} KB)`)
 }
 
 // ---- scenarios ----

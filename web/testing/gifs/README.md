@@ -14,7 +14,10 @@ node testing/gifs/record.mjs sync,overclock  # a subset
 node testing/gifs/analyze-stability.mjs ../.gif-out/frames-sync
 ```
 
-GIFs and frames land in `web/.gif-out/` (gitignored). Copy the ones you want into
+Each scenario writes both an `.mp4` and a `.gif` into `web/.gif-out/` (gitignored). The tutorial
+embeds the **mp4** — a GIF in an `<img>` cannot be paused, seeked or asked for its progress, so the
+player's controls need a real video element, and h264 is about a third of the GIF's size. The GIF is
+still written for anywhere a self-playing image is wanted. Copy what you need into
 `web/public/assets/tutorials/`. `GIF_OUT`, `PORT` and `CHROMIUM` override the defaults;
 `GIF_DEBUG_HIGHLIGHT=1` logs each highlight box against the rects it is framing.
 

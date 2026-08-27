@@ -28,4 +28,13 @@ not a class string: Vuetify's `VComponentIcon` wraps a component icon in a Vue-o
 `<i class="v-icon">` that keeps the handler, the `role="button"` and the aria-label, and only the
 inner `<i>` gets swapped for an `<svg>`. Don't "simplify" it back to the string the fa iconset ships.
 
+**The vendored build is Font Awesome 5.15.4, so v6/v7 icon names silently render a dashed
+placeholder.** `package.json` declares `@fortawesome/fontawesome-free: ^7.0.0`, but the file the
+page actually loads is `web/public/assets/js/fa.min.js`, which is 5.15.4 — the dependency is not
+what ships. A v6 rename therefore draws FA's "missing icon" circle instead of throwing: `rotate-left`,
+`arrow-rotate-left`, `arrows-rotate` and `clock-rotate-left` are all absent, while their v5 names
+`undo`, `sync` and `history` work. Checking for a rendered `<svg>` or a `data-icon` attribute does
+NOT catch this, because FA creates both for an unknown name; compare the `<path d>` against a
+deliberately bogus icon name to tell a real glyph from the placeholder. Use v5 names.
+
 **How to apply:** Toggle a wrapping element Vue owns, with static icon classes inside: `<span v-if="cond"><i class="fas fa-bullseye" /></span><span v-else><i class="fas fa-check-square" /></span>`. Removing the wrapper removes the nested svg; the freshly mounted one gets converted by FA's MutationObserver. Same pattern as the sync-state icons in `PlannerFactoryList.vue`. See also [[verify-tab-navigation]] for browser-driving; dismiss both modals first via localStorage `dismissed-introduction='true'` and `seenV51Splash='true'` or clicks land on the overlay.
