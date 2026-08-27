@@ -291,7 +291,12 @@ export const fixProductTarget = (product: FactoryItem, factory: Factory): number
 
   // The product's own contribution is already inside amountSuppliedViaProduction; re-adding it
   // keeps the answer an absolute target rather than a delta.
-  return diff + product.amount
+  //
+  // Floored at zero: when the rest of the supply covers the demand on its own — imports beyond
+  // what the factory needs, or another recipe dropping the part as a byproduct — the arithmetic
+  // runs past zero into a negative quantity, which is not a thing a product can be. Zero is the
+  // honest answer there: stop making it.
+  return Math.max(0, diff + product.amount)
 }
 
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {

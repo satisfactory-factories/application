@@ -664,6 +664,27 @@ describe('products', () => {
       expect(target).toBe(Math.abs(part.amountRemaining) + product.amount)
     })
 
+    it('should never ask for a negative quantity', () => {
+      // Imports well past what the factory needs: trimming the product away entirely still
+      // leaves a surplus, so the arithmetic runs negative. A product cannot be made -350 times.
+      const supplier = newFactory('Ingot Supplier')
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 2000, recipe: 'IngotIron' })
+
+      const consumer = newFactory('Plates')
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 100, recipe: 'IronPlate' })
+      addProductToFactory(consumer, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addInputToFactory(consumer, {
+        factoryId: supplier.id,
+        amount: 500,
+        outputPart: 'IronIngot',
+      })
+      calculateFactories([supplier, consumer], gameData)
+
+      // Trim is offered, so the figure it names has to be one the Qty field can hold.
+      expect(shouldShowFix(consumer.products[1], consumer)).toBe('surplus')
+      expect(fixProductTarget(consumer.products[1], consumer)).toBe(0)
+    })
+
     it('should agree with what fixProduct actually sets', () => {
       const factories = create321Scenario().getFactories()
       const byproductFac = factories[0]

@@ -131,7 +131,9 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - **Fix Product no longer ignores what the factory imports** (#595). The shortfall it wrote counted
   only what the factory produced itself, so a part with 1425/min imported against 2740/min needed
   was fixed to 2740 rather than 1315 — and the figure named on the Satisfy and Trim buttons was
-  wrong in the same way, since both read from the same calculation.
+  wrong in the same way, since both read from the same calculation. Trim can no longer name a
+  negative quantity either: where the imports cover the whole demand on their own, it now offers
+  0 — stop making it — rather than a number the Qty field can't hold.
 
 - **A factory that consumes its own output no longer reports a phantom surplus to export** (#540).
   Export supply was read gross, so a mine extracting 480 ore a minute and smelting every bit of it
