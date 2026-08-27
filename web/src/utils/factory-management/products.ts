@@ -280,8 +280,17 @@ export const fixProductTarget = (product: FactoryItem, factory: Factory): number
 
   // Byproducts are handled by reading the part ledger rather than the recipe: the ledger already
   // accounts for whatever else in the factory produces this part.
-  const diff = partData.amountRequired - partData.amountSuppliedViaProduction
+  //
+  // Imports count against the shortfall as much as production does — a factory importing 1425 of
+  // a part it needs 2740 of only has to make up the remaining 1315. Subtracted explicitly rather
+  // than by reading amountSupplied, which also folds in amountSuppliedViaRaw: for a hand-gathered
+  // raw that is set to the entire shortfall, which would make this a no-op.
+  const diff = partData.amountRequired -
+    partData.amountSuppliedViaProduction -
+    partData.amountSuppliedViaInput
 
+  // The product's own contribution is already inside amountSuppliedViaProduction; re-adding it
+  // keeps the answer an absolute target rather than a delta.
   return diff + product.amount
 }
 

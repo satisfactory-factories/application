@@ -637,6 +637,33 @@ describe('products', () => {
       expect(fixProductTarget(mockFactory.products[1], mockFactory)).toBe(123)
     })
 
+    it('should count imports against the shortfall', () => {
+      // A factory that both imports a part and makes some of it itself. #595: the shortfall
+      // ignored the import entirely, so Fix Product asked for the whole requirement again.
+      const supplier = newFactory('Ingot Supplier')
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 2000, recipe: 'IngotIron' })
+
+      const consumer = newFactory('Plates')
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 2000, recipe: 'IronPlate' })
+      addProductToFactory(consumer, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addInputToFactory(consumer, {
+        factoryId: supplier.id,
+        amount: 1425,
+        outputPart: 'IronIngot',
+      })
+      calculateFactories([supplier, consumer], gameData)
+
+      const product = consumer.products[1]
+      const part = consumer.parts.IronIngot
+      expect(part.amountSuppliedViaInput).toBe(1425)
+
+      const target = fixProductTarget(product, consumer)
+
+      expect(target).toBe(part.amountRequired - 1425)
+      // The "+ Product" path computes the same figure by a different route.
+      expect(target).toBe(Math.abs(part.amountRemaining) + product.amount)
+    })
+
     it('should agree with what fixProduct actually sets', () => {
       const factories = create321Scenario().getFactories()
       const byproductFac = factories[0]

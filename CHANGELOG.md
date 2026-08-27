@@ -128,6 +128,11 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   box itself (and anywhere else that same tick is drawn) could stay visually unticked. Every
   checklist checkbox now keys its `<input>` on the checked value itself, which sidesteps that race.
 
+- **Fix Product no longer ignores what the factory imports** (#595). The shortfall it wrote counted
+  only what the factory produced itself, so a part with 1425/min imported against 2740/min needed
+  was fixed to 2740 rather than 1315 — and the figure named on the Satisfy and Trim buttons was
+  wrong in the same way, since both read from the same calculation.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
