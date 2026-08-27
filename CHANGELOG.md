@@ -19,7 +19,7 @@ _In development._
   production and byproducts, the import row it comes from for an import, and the part's satisfaction
   row for everything else.
 - **Every result wears the factory chip** the rest of the planner uses, and a factory in a group
-  carries that group's colour down the left of its row.
+  carries that group's colour on the chip's left edge.
 - The plan is indexed once per change rather than re-scanned per keystroke, so a large plan stays
   responsive while typing.
 

@@ -98,16 +98,21 @@ describe('PlannerSearch', () => {
     })
   })
 
-  it('marks a grouped result with its group colour, and leaves an ungrouped one bare', async () => {
+  it('marks a grouped result\'s chip with its group colour, and leaves an ungrouped one bare', async () => {
     await search('iron ingot')
 
     const smelter = rows().find(row => row.textContent?.includes('Ingot Smelter'))!
     const plates = rows().find(row => row.textContent?.includes('Plate Works'))!
+    const chipOf = (row: HTMLElement) => row.querySelector<HTMLElement>('.row-chip')!
 
-    // rgb rather than hex: the style is read back off the element, not off the source.
-    expect(smelter.style.borderLeftColor).toBe('rgb(255, 152, 0)')
+    // The colour rides on the chip as a custom property — see groupStripe for why it cannot be
+    // the border directly.
+    expect(chipOf(smelter).style.getPropertyValue('--group-color')).toBe('#ff9800')
+    expect(chipOf(smelter).classList).toContain('grouped')
     expect(smelter.title).toBe('Group: Smelting')
-    expect(plates.style.borderLeftColor).toBe('')
+
+    expect(chipOf(plates).style.getPropertyValue('--group-color')).toBe('')
+    expect(chipOf(plates).classList).not.toContain('grouped')
     expect(plates.title).toBe('')
   })
 

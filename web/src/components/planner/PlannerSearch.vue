@@ -94,13 +94,16 @@
               :key="`factory-${match.factory.id}`"
               class="result-row"
               :class="{ active: activeIndex === indexOf(`factory-${match.factory.id}`) }"
-              :style="groupStripe(match.factory)"
               :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
               type="button"
               @click="goToFactory(match.factory.id)"
               @mousemove="activeIndex = indexOf(`factory-${match.factory.id}`)"
             >
-              <v-chip class="sf-chip sf-chip-clickable small factory no-margin row-chip">
+              <v-chip
+                class="sf-chip sf-chip-clickable small factory no-margin row-chip"
+                :class="{ grouped: !!match.factory.group }"
+                :style="groupStripe(match.factory)"
+              >
                 <factory-icon-display :icon="match.factory.icon" size="20" />
                 <b class="ml-2 row-name">{{ match.factory.name }}</b>
               </v-chip>
@@ -124,13 +127,16 @@
                 :key="`${part.partId}-${usage.factory.id}`"
                 class="result-row"
                 :class="{ active: activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
-                :style="groupStripe(usage.factory)"
                 :title="usage.factory.group ? `Group: ${usage.factory.group.name}` : undefined"
                 type="button"
                 @click="goToUsage(part.partId, usage)"
                 @mousemove="activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
               >
-                <v-chip class="sf-chip sf-chip-clickable small factory no-margin row-chip">
+                <v-chip
+                  class="sf-chip sf-chip-clickable small factory no-margin row-chip"
+                  :class="{ grouped: !!usage.factory.group }"
+                  :style="groupStripe(usage.factory)"
+                >
                   <factory-icon-display :icon="usage.factory.icon" size="20" />
                   <b class="ml-2 row-name">{{ usage.factory.name }}</b>
                 </v-chip>
@@ -300,11 +306,14 @@
     eventBus.emit('jumpToFactory', { factoryId, targets, fallback })
   }
 
-  // The group's colour down the left edge of the row, the way the sidebar and the group bands mark
-  // membership. Ungrouped factories get nothing rather than a grey stand-in: a colour that means
-  // "no group" still reads as a group at a glance.
+  // The group's colour, handed to the chip's own left edge as a custom property. A property rather
+  // than the border directly because `.sf-chip.factory` sets its border colour with `!important`,
+  // which a plain inline style loses to; the rule that reads this can carry its own.
+  //
+  // Ungrouped factories get nothing rather than a grey stand-in: a colour that means "no group"
+  // still reads as a group at a glance.
   const groupStripe = (factory: FactorySummary) =>
-    factory.group ? { borderLeftColor: factory.group.color } : undefined
+    factory.group ? { '--group-color': factory.group.color } : undefined
 
   const goToFactory = (factoryId: number) => jump(factoryId)
 
@@ -336,10 +345,12 @@
   align-items: center;
 }
 
-// The ring the box and its panel share while the search holds focus. The tab bar's own accent —
-// the selected tab, its slider and the sidebar toggle all wear it — so a focused search reads as
-// part of the bar it drops out of rather than as a stray blue browser outline.
-$focus-ring: 2px solid var(--sf-power-consumption);
+// The ring the box and its panel share while the search holds focus. Neutral grey rather than a
+// colour from the palette: every colour in here means something (orange is power draw, red a
+// problem), and a ring that only says "you are typing" should not borrow one of them. A hairline
+// in the same quiet grey the chips are bordered with — it only has to tie the panel to the box it
+// dropped out of, and anything heavier competes with the results for attention.
+$focus-ring: 1px solid var(--sf-grey-border);
 
 .search-field {
   width: 240px;
@@ -348,7 +359,7 @@ $focus-ring: 2px solid var(--sf-power-consumption);
   :deep(.v-field) {
     border-radius: 4px;
     // An outline rather than a border: the field is 40px in a 52px bar, and a border would grow it.
-    outline: 2px solid transparent;
+    outline: 1px solid transparent;
     transition: outline-color 0.15s;
   }
 }
@@ -363,7 +374,7 @@ $focus-ring: 2px solid var(--sf-power-consumption);
   // Lifts the panel off the plan it covers — without it the list reads as part of the page it is
   // floating over, which at this width is most of the first factory card.
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
-  outline: 2px solid transparent;
+  outline: 1px solid transparent;
   transition: outline-color 0.15s;
 
   &.focused {
@@ -411,14 +422,13 @@ $focus-ring: 2px solid var(--sf-power-consumption);
   display: flex;
   align-items: center;
   gap: 8px;
+  // Barely indented: the chip is already a bounded shape, so a deep indent under the heading only
+  // pushed it away from the left edge without grouping it with anything.
   width: 100%;
-  padding: 6px 12px 6px 16px;
+  padding: 6px 12px 6px 10px;
   text-align: left;
   background: none;
-  // Always reserved, so a grouped row and an ungrouped one line up rather than the text shifting
-  // 4px wherever a colour happens to land.
-  border: 0 solid transparent;
-  border-left-width: 4px;
+  border: 0;
   color: inherit;
   cursor: pointer;
   transition: background-color 0.15s;
@@ -435,6 +445,14 @@ $focus-ring: 2px solid var(--sf-power-consumption);
     flex: 0 1 auto;
     min-width: 0;
     max-width: 100%;
+
+    // The group's colour on the chip's own left edge rather than out at the row's, where it read
+    // as a bar floating beside the result instead of as something the factory carries. Both
+    // declarations need !important to get past `.sf-chip.factory`, which sets the border with it.
+    &.grouped {
+      border-left-color: var(--group-color) !important;
+      border-left-width: 5px !important;
+    }
 
     :deep(.v-chip__content) {
       min-width: 0;
@@ -459,7 +477,7 @@ $focus-ring: 2px solid var(--sf-power-consumption);
 
 .more {
   margin: 0;
-  padding: 4px 12px 8px 20px;
+  padding: 4px 12px 8px 10px;
   font-size: 0.72rem;
   color: #9e9e9e;
 }

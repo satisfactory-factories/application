@@ -1,9 +1,11 @@
 <template>
-  <!-- Default size, not `small`: it shares a bar with the sidebar toggle and the share
-       button, and at small it rendered 28px tall against their 36 and 40. -->
+  <!-- Height pinned to 40px rather than left at the default 36. It sits between the search box and
+       the share button, both of which are 40, and a button 4px shorter than the two either side of
+       it reads as a mistake rather than as a size. (At `small` it was worse still: 28px.) -->
   <v-btn
     id="options-button"
     color="grey-darken-1 rounded"
+    height="40"
     prepend-icon="fas fa-wrench"
     variant="flat"
     @click="showOptions = true"
