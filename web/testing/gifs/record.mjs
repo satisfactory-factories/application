@@ -49,7 +49,7 @@ const seedScript = seed => `
   localStorage.setItem('seenV6Splash', 'true')
   localStorage.setItem('seenV51Splash', 'true')
   localStorage.setItem('seenV5Splash', 'true')
-  localStorage.setItem('tutorialBuildingGroups2', 'true')
+  localStorage.setItem('tutorialBuildingGroups3', 'true')
   localStorage.setItem('currentFactoryTabIndex', '0')
   localStorage.setItem('factoryTabs', ${JSON.stringify(seed)})
 `

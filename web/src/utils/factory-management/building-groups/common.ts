@@ -946,14 +946,18 @@ export const applyRemainderToGroup = (
   recalculateGroupMetrics(item, groupType, factory)
 }
 
+// Bump this whenever the tutorial's content changes enough to be worth showing again: a pioneer
+// who dismissed an earlier version has no other way to be told there is something new in it.
+// "2" was the rework from a wall of text to recorded demonstrations; "3" is those demonstrations
+// becoming playable video with a contents list.
+const BUILDING_GROUP_TUTORIAL_KEY = 'tutorialBuildingGroups3'
+
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
-  // Bumped to "2" when the tutorial was reworked with GIFs, so pioneers who already
-  // dismissed the old text-only version see it pop up again.
-  const buildingGroupTutorialOpened = localStorage.getItem('tutorialBuildingGroups2')
+  const buildingGroupTutorialOpened = localStorage.getItem(BUILDING_GROUP_TUTORIAL_KEY)
 
   if (!buildingGroupTutorialOpened) {
     eventBus.emit('openBuildingGroupTutorial')
-    localStorage.setItem('tutorialBuildingGroups2', 'true')
+    localStorage.setItem(BUILDING_GROUP_TUTORIAL_KEY, 'true')
   }
 
   item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen
