@@ -6,6 +6,26 @@ import type { Factory, FactoryGroup } from './factory'
  */
 export const PROTOCOL_VERSION = '7.0'
 
+/**
+ * Header every REST call must carry, matched against `PROTOCOL_VERSION`. Only
+ * `GET /health` and `GET /share/:id` are exempt; everything else 426s without it.
+ */
+export const APP_VERSION_HEADER = 'X-App-Version'
+
+/** Body of a 426. The client keys the persistent refresh prompt off `code`. */
+export interface VersionMismatchBody {
+  code: 'version_mismatch'
+  message: string
+  requiredVersion: string
+  receivedVersion: string | null
+}
+
+/** Body of the 410 returned by the retired blob-sync routes. */
+export interface EndpointRemovedBody {
+  code: 'endpoint_removed'
+  message: string
+}
+
 /** Close codes that mean something beyond "the socket dropped". */
 export const CLOSE_CODES = {
   /** No usable token. The client stops reconnecting and signs the user out. */

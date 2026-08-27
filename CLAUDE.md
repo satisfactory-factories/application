@@ -32,7 +32,7 @@ Per-package (from inside `web/`, `backend/`, or `parsing/`):
 - Frontend tests: `cd web && pnpm test` (Vitest, runs with coverage).
 - **Single test file / pattern:** `cd web && pnpm exec vitest run <path-or-pattern>` (e.g. `pnpm exec vitest run factory-management/products`). Use `vitest` (no `run`) for watch mode.
 - Parser tests: `cd parsing && pnpm test` (Jest). The parser **must** stay near 100% coverage — it feeds all calculations.
-- Backend has **no tests**.
+- Backend tests: `cd backend && pnpm exec vitest run` (supertest + `mongodb-memory-server`; one mongod is started for the whole run).
 - `web` build runs `vue-tsc --noEmit` first, so a type error fails the build.
 
 Node **>= 24** (Node 26 works since jsonwebtoken 9.0.3 dropped its transitive `SlowBuffer` dependency). pnpm **>= 11.3**.
@@ -55,9 +55,11 @@ This is the core of the app. Everything else is UI around it.
 - **`auth-store.ts`** / **`sync-store.ts`** (+ `stores/sync/`) — talk to the backend for login and plan save/load/share.
 - Tests mock stores with `@pinia/testing`; update the `.spec.ts` when changing store shape.
 
-### Backend (`backend/backend.ts`)
+### Backend (`backend/src/`)
 
-Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT), `/save` + `/load` (authenticated plan sync), `/share` + `/share/:id` (shareable plans, rate-limited), `/hello` (liveness) and `/health` (liveness + a Mongo ping, 503 when the database is unreachable — this is what uptime monitoring points at). Mongoose models in `backend/models/`. API base URL is selected in `web/src/config/config.ts` by `VITE_ENV`.
+NestJS app, one module per concern. `auth/` — `/register`, `/login`, `/validate-token`, `/me/password` (JWT, HS256, `{ id, username }`, 30 days). `health/` — `/health`, a Mongo ping returning 503 when the database is unreachable; this is what uptime monitoring points at, so its response shape is load-bearing. `legacy/` — `GET /share/:id` (read-only), and 410 on `/save` and `/load`. Cross-cutting config in `src/config/`; the `X-App-Version` gate in `src/common/` 426s every route that has not been given `@SkipVersionGate()`. Mongoose schemas sit beside their module with the collection name pinned explicitly. API base URL is selected in `web/src/config/config.ts` by `VITE_ENV`.
+
+Backend tests: `cd backend && pnpm exec vitest run` (vitest + supertest + `mongodb-memory-server`). `pnpm build` compiles the `common` workspace package first — a bare `nest build` will not.
 
 ### Game data versioning (important, easy to get wrong)
 

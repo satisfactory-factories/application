@@ -1,10 +1,12 @@
 # `backend` — the sync API
 
-A single-file Express + Mongoose API (`backend.ts`) backing the login, plan syncing and plan sharing features.
+A NestJS + Mongoose API backing login, plan syncing and plan sharing. Source lives in `src/`, one module per concern (`auth/`, `health/`, `legacy/`), with cross-cutting config in `src/config/` and the version gate in `src/common/`.
 
 **It is optional for local development.** The planner works fine without it — you just lose accounts and syncing, and plans stay in `localStorage`.
 
 Prerequisites (Node, pnpm) and the one-time workspace install are covered in the [root README](../README.md#local-development). There is no separate install step for this component, but you do need Docker running, for Mongo. **pnpm is mandatory**; see [why](../README.md#pnpm-is-the-mandatory-package-manager) before reaching for npm or yarn.
+
+It depends on the `common` workspace package for the wire protocol, the canonical `Factory` types and the zod schemas. `pnpm build` compiles `common` first; a bare `nest build` will not.
 
 ## Running
 
@@ -14,7 +16,7 @@ With Docker running, from the repository root:
 pnpm dev:backend
 ```
 
-That brings up the Mongo container and then starts the API with nodemon, on http://localhost:3001.
+That brings up the Mongo container and then starts the API in watch mode, on http://localhost:3001.
 
 If you'd rather work from this directory, the two steps are separate scripts — `pnpm dev` on its own starts the API but *not* Mongo:
 
@@ -39,27 +41,40 @@ To tear the container back down, `pnpm db:down` from either the root or here.
 | `JWT_SECRET` | Signing secret for auth tokens |
 | `ENVIRONMENT` | `dev` locally |
 
+`JWT_SECRET` and `MONGODB_URI` are **asserted at boot**: the process exits rather than starting without them. There is no longer a fallback signing secret.
+
 `docker-compose.yml` is the local Mongo container. `docker-compose-server.yml` and `docker-compose-packaged.yml` are the deployed variants — see the deployment docs before touching those.
 
 ## Routes
 
+Every route except `GET /health` and `GET /share/:id` requires an `X-App-Version` header matching the protocol version exported by `common`. A mismatch, or a missing header, gets **426** with a `{ code: 'version_mismatch', ... }` body, which is how pre-v7 clients are cut off.
+
 | Route | Notes |
 | --- | --- |
-| `POST /register`, `POST /login` | Account creation and JWT issuing |
+| `POST /register`, `POST /login` | Account creation and JWT issuing (HS256, `{ id, username }`, 30 days) |
 | `POST /validate-token` | Token check |
-| `POST /save`, `GET /load` | Authenticated plan sync |
-| `POST /share`, `GET /share/:id` | Shareable plans, separately rate-limited |
-| `GET /hello` | Liveness only — 200 whenever the process is up. It never touches Mongo, so don't monitor it |
+| `POST /me/password` | Change password while logged in; verifies the current one first |
+| `GET /share/:id` | Reads a shared plan and bumps its view counter. Read-only: v7 never writes this collection |
+| `POST /save`, `GET /load` | **410 Gone.** Replaced by synced tabs |
 | `GET /health` | The one to monitor. Pings Mongo and returns **503** if it doesn't answer inside 3s. Rate limited to 10 requests a minute, in its own bucket |
 
-Mongoose models are in `models/`.
+`GET /hello` is gone — it duplicated `/health` and nothing should have been monitoring it.
+
+Everything else is rate limited to 200 requests per 5 minutes per client, in a single shared bucket that `/health` is exempt from.
+
+Mongoose schemas sit beside the module that owns them (`src/auth/user.schema.ts`, `src/legacy/*.schema.ts`). Collection names are pinned explicitly, because the documents predate the rewrite.
 
 ## Testing
 
-There are no tests for the backend project currently.
+```sh
+cd backend
+pnpm exec vitest run
+```
+
+Vitest, supertest and `mongodb-memory-server`. One mongod is started for the whole run and each test app gets its own database on it; the binary is downloaded and cached on first use, so the first run on a fresh clone is slow.
 
 ## Deployment
 
-Merges to `main` build a Docker image, publish it to Docker Hub, and a webhook pulls it onto the API box. See [docs/deployment.md](../docs/deployment.md) for the chain end to end — including how to tell whether a deploy actually landed, since a green Actions run does not prove it.
+Merges to `main` build a Docker image, publish it to Docker Hub, and a webhook pulls it onto the API box. The image now runs compiled `dist/` rather than `ts-node`. See [docs/deployment.md](../docs/deployment.md) for the chain end to end — including how to tell whether a deploy actually landed, since a green Actions run does not prove it.
 
 Note that two files on the server, its compose file and `update.sh`, are mirrored here but are **not** synced by any deploy; they have to be copied across by hand when they change.

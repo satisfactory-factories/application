@@ -43,11 +43,18 @@ jobs:
         run: corepack enable
 
       # --filter, or the shared lockfile makes this install web and parsing too.
+      # `common` is named explicitly: --filter backend links the workspace
+      # dependency but does not install the typescript that compiles it.
       - name: Install dependencies
-        run: pnpm install --filter backend
+        run: pnpm install --filter backend --filter common
 
       - name: Lint check
         run: pnpm lint-check
 
+      # Builds `common` first, then `nest build`. vue-tsc's equivalent on web:
+      # a type error fails the job rather than reaching the image.
       - name: Build Backend
         run: pnpm build
+
+      - name: Test Backend
+        run: pnpm exec vitest run

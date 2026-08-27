@@ -31,3 +31,8 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
   '@parcel/watcher': false
+  # Native binary, needed by the backend's vitest setup for decorator metadata.
+  '@swc/core': true
+  # Left unbuilt so a `pnpm install` never blocks on a mongod download; the
+  # backend test run fetches and caches the binary on first use instead.
+  mongodb-memory-server: false
