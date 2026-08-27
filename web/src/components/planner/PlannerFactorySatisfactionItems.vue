@@ -191,57 +191,58 @@
                  max(0, surplus), so it is inert until there IS a surplus rather than forbidden,
                  and an Uploader on an imported part is the whole point of a logistics factory. -->
             <div v-if="showDisposalControls(factory, partId.toString())" class="d-flex flex-column ga-1 align-center">
-              <v-chip
-                v-if="showSinkControl(factory, partId.toString())"
-                class="sf-chip input awesome-sink no-margin disposal-chip"
-                variant="tonal"
+              <!-- Always rendered, even where the building would refuse this part: an absent
+                   control reads as a bug, and a greyed-out one with a reason on hover reads as a
+                   fact about the game. Offered on every row, including one with nothing spare
+                   today — a sink there takes max(0, surplus), so it is inert until there IS a
+                   surplus rather than forbidden, and an Uploader on an imported part is the whole
+                   point of a logistics factory. -->
+              <tooltip
+                :text="showSinkControl(factory, partId.toString()) ? sinkTooltip(partId.toString()) : cannotSinkTooltip(partId.toString())"
               >
-                <tooltip :text="sinkTooltip(partId.toString())">
+                <v-chip
+                  class="sf-chip input awesome-sink no-margin disposal-chip"
+                  :disabled="!showSinkControl(factory, partId.toString())"
+                  variant="tonal"
+                >
                   <game-asset height="24" subject="awesome-sink" type="item_id" width="24" />
-                </tooltip>
-                <v-number-input
-                  :id="`${factory.id}-sink-count-${partId}`"
-                  class="inline-inputs ml-0 disposal-input"
-                  control-variant="stacked"
-                  density="compact"
-                  hide-details
-                  :min="0"
-                  :model-value="getSinkCount(factory, partId.toString())"
-                  @update:model-value="updateSinkCount(partId.toString(), $event)"
-                />
-              </v-chip>
-              <!-- An absent control the user cannot account for reads as a bug, so say why. The
-                   two exclusions differ: the sink refuses fluids AND radioactive items, while the
-                   Depot only refuses fluids — uploading a radioactive part is not just allowed, it
-                   is how you stop it irradiating you. -->
-              <v-tooltip v-else bottom>
-                <template #activator="{ props: activatorProps }">
-                  <v-chip v-bind="activatorProps" class="sf-chip status-note x-small">
-                    <i class="fas fa-ban mr-1" />Cannot be sunk
-                  </v-chip>
-                </template>
-                <span v-if="isFluidPart(partId.toString())">The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.</span>
-                <span v-else>The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot: doing so stops it irradiating you.</span>
-              </v-tooltip>
-              <v-chip
-                v-if="showDepotControl(factory, partId.toString(), getGameData())"
-                class="sf-chip input dimensional-depot no-margin disposal-chip"
-                variant="tonal"
+                  <v-number-input
+                    :id="`${factory.id}-sink-count-${partId}`"
+                    class="inline-inputs ml-0 disposal-input"
+                    control-variant="stacked"
+                    density="compact"
+                    :disabled="!showSinkControl(factory, partId.toString())"
+                    hide-details
+                    :min="0"
+                    :model-value="getSinkCount(factory, partId.toString())"
+                    @update:model-value="updateSinkCount(partId.toString(), $event)"
+                  />
+                </v-chip>
+              </tooltip>
+              <!-- The Depot's only exclusion is a fluid — it has no pipe input, but unlike the
+                   sink it has no objection to a radioactive item or to Power Shards/Alien Protein. -->
+              <tooltip
+                :text="showDepotControl(factory, partId.toString(), getGameData()) ? depotTooltip(partId.toString()) : cannotDepotTooltip"
               >
-                <tooltip :text="depotTooltip(partId.toString())">
+                <v-chip
+                  class="sf-chip input dimensional-depot no-margin disposal-chip"
+                  :disabled="!showDepotControl(factory, partId.toString(), getGameData())"
+                  variant="tonal"
+                >
                   <game-asset height="24" subject="dimensional-depot-uploader" type="item_id" width="24" />
-                </tooltip>
-                <v-number-input
-                  :id="`${factory.id}-depot-count-${partId}`"
-                  class="inline-inputs ml-0 disposal-input"
-                  control-variant="stacked"
-                  density="compact"
-                  hide-details
-                  :min="0"
-                  :model-value="getDepotCount(factory, partId.toString())"
-                  @update:model-value="updateDepotCount(partId.toString(), $event)"
-                />
-              </v-chip>
+                  <v-number-input
+                    :id="`${factory.id}-depot-count-${partId}`"
+                    class="inline-inputs ml-0 disposal-input"
+                    control-variant="stacked"
+                    density="compact"
+                    :disabled="!showDepotControl(factory, partId.toString(), getGameData())"
+                    hide-details
+                    :min="0"
+                    :model-value="getDepotCount(factory, partId.toString())"
+                    @update:model-value="updateDepotCount(partId.toString(), $event)"
+                  />
+                </v-chip>
+              </tooltip>
             </div>
             <p v-else class="text-center text-medium-emphasis">-</p>
           </td>
@@ -481,37 +482,52 @@
             </p>
             <div v-else>
               <div>
-                <v-chip
+                <!-- The checkbox sits outside the v-chip rather than inside it: nested inside a
+                     clickable chip, its clicks were swallowed by the chip's own click handler and
+                     ripple/overlay layer before ever reaching the input (#592). Mirrors the
+                     sibling layout PlannerFactoryChecklist.vue uses for the same checkbox — that
+                     file's own per-value `:key` on the input is mirrored below too: without it,
+                     a `preventDefault()`-cancelled checkbox click can lose a race against the
+                     browser's own revert-to-pre-click-state step, leaving the tick visually
+                     unchanged even though the underlying state did flip. Keying the input on the
+                     checked value forces Vue to mount a fresh element at the new value instead of
+                     patching the (possibly just-reverted) old one. -->
+                <div
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="sf-chip sf-chip-clickable small factory"
-                  :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
-                  :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
-                  @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                  class="d-inline-flex align-center"
                 >
                   <input
                     v-if="factory.checklistEnabled"
+                    :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                     class="checklist-tick"
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
                     :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
                     type="checkbox"
-                    @click.prevent.stop="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                    @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                   >
-                  <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
-                  <span class="ml-2">
-                    <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
-                  </span>
-                  <v-btn
-                    class="chip-jump-btn ml-2"
-                    color="primary"
-                    icon="fas fa-eye"
-                    size="x-small"
-                    title="Jump to the import taking this export"
-                    variant="flat"
-                    @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
-                  />
-                </v-chip>
+                  <v-chip
+                    class="sf-chip sf-chip-clickable small factory"
+                    :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
+                    :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
+                    @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                  >
+                    <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
+                    <span class="ml-2">
+                      <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
+                    </span>
+                    <v-btn
+                      class="chip-jump-btn ml-2"
+                      color="primary"
+                      icon="fas fa-eye"
+                      size="x-small"
+                      title="Jump to the import taking this export"
+                      variant="flat"
+                      @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
+                    />
+                  </v-chip>
+                </div>
               </div>
             </div>
           </td>
@@ -621,6 +637,7 @@
     SINK_POWER_MW,
   } from '@/utils/factory-management/disposal'
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+  import { NON_SINKABLE_PARTS } from '@/utils/factory-management/sinkable'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
@@ -912,14 +929,33 @@
     eventBus.emit('factoryUpdated', props.factory)
   }
 
-  // Only for the wording of the "cannot be sunk" chip — the guard itself is showDepotControl.
+  // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.
   const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
+
+  // A handful of ordinary solids the sink refuses for reasons that are neither "it's a fluid" nor
+  // "it's radioactive" (Power Shards, Alien Protein) — see sinkable.ts. Checked ahead of the
+  // radioactive wording below so those don't get told they're refused for being radioactive.
+  const isNonSinkableSolidPart = (partId: string) => NON_SINKABLE_PARTS.has(partId)
+
+  // Shown on the sink chip once showSinkControl is false, so a greyed-out control still says why
+  // rather than just looking broken. The three exclusions read differently: a fluid has no pipe
+  // input at all, an ordinary "special" solid like a Power Shard is refused for reasons the wiki
+  // has to explain per item, and a radioactive item's refusal is actually good news — the Depot
+  // removes the radiation the sink can't.
+  const cannotSinkTooltip = (partId: string): string => {
+    if (isFluidPart(partId)) return 'The AWESOME Sink and the Dimensional Depot Uploader both take a conveyor and nothing else, so neither accepts a fluid.<br>Package it first, or feed it to a recipe that consumes it.'
+    if (isNonSinkableSolidPart(partId)) return 'This part is not sinkable.<br>You can still upload this to the Dimensional Depot.'
+    return 'The AWESOME Sink refuses radioactive items.<br>You can still upload this to the Dimensional Depot: doing so stops it irradiating you.'
+  }
 
   const sinkTooltip = (partId: string) => {
     const count = getSinkCount(props.factory, partId)
-    if (count === 0) return 'AWESOME Sink: destroys the whole surplus, so the line never backs up. Assumes a programmable splitter sending it only the excess. 30 MW each.'
+    if (count === 0) return 'AWESOME Sink: destroys the whole surplus, so the line never backs up.<br>Assumes a programmable splitter sending it only the excess. 30 MW each.'
     return `${count} AWESOME Sink${count === 1 ? '' : 's'}: ${formatNumber(count * SINK_POWER_MW)} MW, counted in this factory's power.`
   }
+
+  // The Depot's only exclusion is a fluid, so unlike cannotSinkTooltip this needs no branching.
+  const cannotDepotTooltip = 'The Dimensional Depot Uploader takes a conveyor and nothing else, so it cannot accept a fluid.<br>Package it first, or feed it to a recipe that consumes it.'
 
   const depotTooltip = (partId: string) => {
     const count = getDepotCount(props.factory, partId)

@@ -6,42 +6,29 @@
     width="200px"
     @click="open = true"
   />
-  <v-dialog
+  <app-dialog
     v-model="open"
-    width="auto"
+    icon="fas fa-heart"
+    max-width="480"
+    title="Help support the project!"
   >
-    <v-card
-      prepend-icon="fas fa-heart"
-      title="Help support the project!"
-      width="400"
-    >
-      <template #append>
-        <v-btn
-          icon="fas fa-times"
-          size="small"
-          variant="text"
-          @click="open = false"
-        />
-      </template>
-      <div class="pa-4 text-body-1">
-        Thank you for considering a donation! Any amount of support is vastly
-        appreciated and helps keep the project running and improving. ❤️
-      </div>
-      <template #actions>
-        <v-btn
-          class="mx-auto mb-4"
-          color="blue"
-          href="https://ko-fi.com/maelstrome"
-          prepend-icon="fas fa-mug-hot"
-          rel="noopener noreferrer"
-          target="_blank"
-          text="Donate on Ko-fi"
-          variant="flat"
-          @click="open = false"
-        />
-      </template>
-    </v-card>
-  </v-dialog>
+    Thank you for considering a donation! Any amount of support is vastly
+    appreciated and helps keep the project running and improving. ❤️
+    <template #actions>
+      <v-spacer />
+      <v-btn
+        color="blue"
+        href="https://ko-fi.com/maelstrome"
+        prepend-icon="fas fa-mug-hot"
+        rel="noopener noreferrer"
+        target="_blank"
+        text="Donate on Ko-fi"
+        variant="flat"
+        @click="open = false"
+      />
+      <v-spacer />
+    </template>
+  </app-dialog>
 </template>
 <script setup lang="ts">
   const open = ref(false)

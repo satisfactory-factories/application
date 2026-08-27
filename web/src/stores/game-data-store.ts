@@ -128,6 +128,19 @@ export const useGameDataStore = defineStore('game-data', () => {
       }
     }
 
+    // Power Shard's other recipes (PowerCrystalShard_1/2/3) consume Power Slugs - a one-off world
+    // pickup with no extractor, not a renewable ingredient - so the generic "first non-alternate"
+    // rule below would default someone building steady-state production onto a recipe they can
+    // never sustain. Synthetic Power Shard is the only recipe built from ordinary, minable
+    // ingredients, so it is the sane default whenever it exists.
+    // https://github.com/satisfactory-factories/application/issues/594
+    if (part === 'CrystalShard') {
+      const synthetic = recipes.find(recipe => recipe.id === 'SyntheticPowerShard')
+      if (synthetic) {
+        return synthetic.id
+      }
+    }
+
     const exactRecipe = recipes.find(recipe => recipe.id === part)
     if (exactRecipe) {
       return exactRecipe.id
@@ -138,7 +151,8 @@ export const useGameDataStore = defineStore('game-data', () => {
     // with no ingredients and no buildings - so clicking "+ Product" on a shortage made that
     // shortage vanish out of thin air, and the factory read as solved. Seven parts reached it:
     // Alien Protein, Compacted Coal, Power Shard, Ficsite Ingot, Biomass, Heavy Oil Residue and
-    // Turbofuel, each of them having several recipes with no obvious winner among them.
+    // Turbofuel, each of them having several recipes with no obvious winner among them. Power
+    // Shard's case is handled above now; the rest still fall through to this generic rule.
     //
     // A non-alternate is the least surprising guess, and the selector is right there for anyone
     // who meant a different one. '' now means only what it says: nothing can make this part.

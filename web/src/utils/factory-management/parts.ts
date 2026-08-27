@@ -315,9 +315,12 @@ export const calculatePartRaw = (factory: Factory, gameData: DataInterface) => {
       partData.amountSuppliedViaProduction +
       partData.amountSuppliedViaRaw
 
-    // Fill the rawResources array with what the world has to provide either way — when the
-    // assumption is off this is what the factory is short of, which is worth showing.
-    if (shortfall > 0) {
+    // Fill the rawResources array with what the world still has to provide — but a hand-gathered
+    // resource is EXCLUDED, because amountSuppliedViaRaw above already took its whole shortfall
+    // as supplied. It has no extractor and nothing produces it as an export either, so unlike an
+    // unmet ore shortage there is no action the "Raw Resources" card's "extract or import"
+    // wording could ever point at. https://github.com/satisfactory-factories/application/issues/594
+    if (shortfall > 0 && !handGathered.has(part)) {
       if (!factory.rawResources[part]) {
         factory.rawResources[part] = {
           id: part,

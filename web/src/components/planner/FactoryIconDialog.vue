@@ -1,12 +1,19 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="760" scrollable>
-    <v-card>
-      <v-card-title class="text-h6 py-4 d-flex align-center">
-        <factory-icon-display class="mr-3" :icon="factory.icon" size="28" />
-        <span>Icon for "{{ factory.name }}"</span>
-      </v-card-title>
-      <v-divider />
+  <app-dialog
+    v-model="isOpen"
+    body-class="pt-2"
+    body-max-height="55vh"
+    close-title="Close icon picker"
+    divider
+    max-width="760"
+    scrollable
+  >
+    <template #title>
+      <factory-icon-display class="mr-3" :icon="factory.icon" size="36" />
+      <span>Icon for "{{ factory.name }}"</span>
+    </template>
 
+    <template #header>
       <div class="px-4 pt-4">
         <v-text-field
           v-model="searchTerm"
@@ -36,66 +43,61 @@
           {{ option.label }}
         </v-chip>
       </div>
+    </template>
 
-      <v-card-text class="pt-2" style="max-height: 55vh;">
-        <template v-if="isSearching">
-          <p class="text-body-2 text-medium-emphasis mb-3">
-            {{ searchResults.length }} {{ searchResults.length === 1 ? 'result' : 'results' }}
-            for "{{ query }}"
-          </p>
-          <p v-if="!searchResults.length" class="text-body-2 text-medium-emphasis">
-            No icons match your search.
-          </p>
-          <div class="icon-grid">
-            <button
-              v-for="entry in searchResults"
-              :key="entry.id"
-              class="icon-tile"
-              :class="{ selected: entry.id === factory.icon }"
-              :title="entry.name"
-              type="button"
-              @click="apply(entry.id)"
-            >
-              <factory-icon-display :icon="entry.id" size="32" />
-            </button>
-          </div>
-        </template>
+    <template v-if="isSearching">
+      <p class="text-body-2 text-medium-emphasis mb-3">
+        {{ searchResults.length }} {{ searchResults.length === 1 ? 'result' : 'results' }}
+        for "{{ query }}"
+      </p>
+      <p v-if="!searchResults.length" class="text-body-2 text-medium-emphasis">
+        No icons match your search.
+      </p>
+      <div class="icon-grid">
+        <button
+          v-for="entry in searchResults"
+          :key="entry.id"
+          class="icon-tile"
+          :class="{ selected: entry.id === factory.icon }"
+          :title="entry.name"
+          type="button"
+          @click="apply(entry.id)"
+        >
+          <factory-icon-display :icon="entry.id" size="32" />
+        </button>
+      </div>
+    </template>
 
-        <template v-else>
-          <div v-for="group in groupedTabEntries" :key="group.label" class="mb-4">
-            <!-- Only worth a heading when the tab holds more than one group: on the game tabs
-                 the single heading would just repeat the tab's own name. -->
-            <p v-if="groupedTabEntries.length > 1" class="text-body-2 text-medium-emphasis mb-2">{{ group.label }}</p>
-            <div class="icon-grid">
-              <button
-                v-for="entry in group.entries"
-                :key="entry.id"
-                class="icon-tile"
-                :class="{ selected: entry.id === factory.icon }"
-                :title="entry.name"
-                type="button"
-                @click="apply(entry.id)"
-              >
-                <factory-icon-display :icon="entry.id" size="32" />
-              </button>
-            </div>
-          </div>
-        </template>
-      </v-card-text>
-
-      <v-divider />
-      <v-card-actions>
-        <v-btn
-          :disabled="!factory.icon"
-          prepend-icon="fas fa-industry"
-          variant="text"
-          @click="apply(undefined)"
-        >Use default</v-btn>
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">Close</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <template v-else>
+      <div v-for="group in groupedTabEntries" :key="group.label" class="mb-4">
+        <!-- Only worth a heading when the tab holds more than one group: on the game tabs
+             the single heading would just repeat the tab's own name. -->
+        <p v-if="groupedTabEntries.length > 1" class="text-body-2 text-medium-emphasis mb-2">{{ group.label }}</p>
+        <div class="icon-grid">
+          <button
+            v-for="entry in group.entries"
+            :key="entry.id"
+            class="icon-tile"
+            :class="{ selected: entry.id === factory.icon }"
+            :title="entry.name"
+            type="button"
+            @click="apply(entry.id)"
+          >
+            <factory-icon-display :icon="entry.id" size="32" />
+          </button>
+        </div>
+      </div>
+    </template>
+    <template #actions>
+      <v-btn
+        :disabled="!factory.icon"
+        prepend-icon="fas fa-industry"
+        variant="text"
+        @click="apply(undefined)"
+      >Use default</v-btn>
+      <v-spacer />
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

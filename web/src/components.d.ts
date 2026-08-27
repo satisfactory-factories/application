@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AddShortageDialog: typeof import('./components/planner/satisfaction/AddShortageDialog.vue')['default']
     AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
+    AppDialog: typeof import('./components/common/AppDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
     AwesomeSinkTutorial: typeof import('./components/planner/AwesomeSinkTutorial.vue')['default']
@@ -106,6 +107,7 @@ declare module 'vue' {
     TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
     TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
+    UpdateAvailableToast: typeof import('./components/UpdateAvailableToast.vue')['default']
     UpdateRequiredDialog: typeof import('./components/UpdateRequiredDialog.vue')['default']
     WorldData: typeof import('./components/planner/WorldData.vue')['default']
     WorldImport: typeof import('./components/planner/WorldImport.vue')['default']

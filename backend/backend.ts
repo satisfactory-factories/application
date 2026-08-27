@@ -22,6 +22,7 @@ import {
   isClientTooOld,
   minimumClientVersion
 } from "./utils/client-version";
+import { appVersion } from "./utils/app-version";
 
 dotenv.config();
 
@@ -48,10 +49,11 @@ const DB_PING_TIMEOUT_MS = 3000;
 const apiRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 200,
-  // /health has its own limiter below; exempting it here keeps it in one bucket
-  // rather than two, so other traffic can never rate-limit the monitor into
-  // reporting a false outage.
-  skip: (req) => req.path === '/health'
+  // /health and /version have their own limiters below; exempting them here
+  // keeps each in one bucket rather than two. Otherwise a planner tab polling
+  // for a release would spend the same allowance its own saves and loads need,
+  // and enough tabs behind one address would 429 each other's real work.
+  skip: (req) => req.path === '/health' || req.path === '/version'
 });
 // Prevent people / bots from spamming the crap out of the button to 1 share a minute
 const shareRateLimit = rateLimit({
@@ -63,6 +65,13 @@ const shareRateLimit = rateLimit({
 const healthRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 10
+});
+// The planner polls /version once a minute per visible tab, and several tabs
+// can share one address. Generous enough for that, small enough to be worth
+// nothing to anyone scraping it.
+const versionRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30
 });
 
 const app: Express.Application = Express();
@@ -191,6 +200,18 @@ app.get('/hello', function (_req: Express.Request, res: Express.Response) {
     message: 'Hello, the server is running!',
     minimumClientVersion: minimumClientVersion()
   });
+});
+
+// What the site is currently running, so a planner tab can poll for a release and offer a
+// reload rather than finding out when a save is refused (issue #166). Public and unauthenticated
+// — most of the people who want telling do not have an account.
+//
+// Deliberately does not report the client minimum: /hello already does, and naming the same
+// value twice invites the two drifting apart.
+app.get('/version', versionRateLimit, function (_req: Express.Request, res: Express.Response) {
+  // A cached copy defeats the entire point of polling.
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({ version: appVersion() });
 });
 
 // Health Endpoint. 200 only if Mongo answers, 503 otherwise, so uptime
@@ -459,6 +480,10 @@ app.use(function (_req: Express.Request, res: Express.Response) {
 // Refuse to start on a MIN_CLIENT_VERSION that isn't a version. The container's healthcheck
 // gates `up --wait`, so this surfaces as a failed deploy rather than as a gate silently sitting
 // at the default minimum while everything looks green.
+// Resolved here rather than on first request so an unreadable package.json is visible in the
+// deploy log, instead of only in a /version response nobody is watching.
+console.log(`Serving version: ${appVersion()}`);
+
 try {
   console.log(`Minimum client version: ${minimumClientVersion()}`);
 } catch (error) {
