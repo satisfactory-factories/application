@@ -144,12 +144,20 @@ export const calculateEffectiveBuildingCount = (
   let effectiveBuildingCount = 0
   for (const group of buildingGroups) {
     const outputMultiplier = getGroupOutputMultiplier(group, building, recipeId)
-    // Remember it is a percentage so we need to divide by 100. Clocks support 4 decimal
-    // places, so keep the full precision here (e.g. 223.33% must stay 2.2333, not 2.233).
-    effectiveBuildingCount += formatNumberFully(group.buildingCount * group.overclockPercent / 100 * outputMultiplier, 4)
+    // Remember it is a percentage so we need to divide by 100.
+    //
+    // Deliberately NOT rounded per group. A clock carries 4 decimal places, but a group's
+    // contribution is count x clock, which needs more than 4 to state exactly: two buildings at
+    // 66.6667% is 1.333334, and rounding that to 1.3333 throws away real output. The error then
+    // leaks into anything deriving a remainder from this total — "Remainder to new group" sized
+    // the new group against 2.6666 instead of 2.666668 and clocked it 66.67% instead of
+    // 66.6666%, visibly out of step with the groups it was splitting from.
+    effectiveBuildingCount += group.buildingCount * group.overclockPercent / 100 * outputMultiplier
   }
 
-  return formatNumberFully(effectiveBuildingCount, 4)
+  // Rounded only far enough to absorb floating-point residue (so a balanced set reads as exactly
+  // balanced rather than 3.9999999999999996), which is well beyond any precision the inputs have.
+  return formatNumberFully(effectiveBuildingCount, 10)
 }
 
 // Shards one building in this group needs. Each raises a building's max clock by 50%, so a clock
@@ -453,9 +461,15 @@ export const calculateBuildingGroupParts = (
       const outputMultiplier = getGroupOutputMultiplier(group, building, item.recipe)
 
       // Now apply the overclock multiplier for all parts in the group
+      //
+      // A solver-derived clock (clockSetByUser false, meaning the Remainder buttons or a
+      // typed exact output) is rounded to the game's 4-decimal-place clock precision, and
+      // reconstructing the part total from that rounded clock routinely lands a hair off a
+      // whole number (e.g. 40.001 instead of 40). Snap it back: a hand-dialed clock
+      // (clockSetByUser true) must NOT snap, so a deliberate 223.333% still reads 535.999.
       for (const part in group.parts) {
         const outputMulti = outputParts.has(part) ? outputMultiplier : 1
-        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti * outputMulti, 3)
+        group.parts[part] = formatNumberFully(group.parts[part] * overclockMulti * outputMulti, 3, !group.clockSetByUser)
       }
     }
   }
@@ -736,7 +750,18 @@ export const remainderToLast = (
   }
 
   const otherAmount = otherEffective * perMin
-  const lastTargetAmount = totalTargetAmount - otherAmount
+
+  // Snapped onto the same 4dp grid a clock is stored on, because that grid is where the
+  // difference comes from. The other groups' clocks are themselves rounded, so their combined
+  // output sits a fraction of a grid step away from the share they were solved for, and
+  // subtracting it hands that fraction to this group. Three groups splitting 60/min leave the
+  // last one 19.99998 rather than 20, which solves to 66.6666% sitting beside its siblings'
+  // 66.6667% — one step of the finest clock the game can express, and read as a bug.
+  //
+  // Snapping keeps a group solved from a remainder on the same footing as one solved directly
+  // from its own share. The largest correction it can make is half a grid step per group, far
+  // below anything the planner shows or the user can set.
+  const lastTargetAmount = formatNumberFully(totalTargetAmount - otherAmount, 4)
 
   bestEffortUpdateBuildingCount(item, lastGroup, lastTargetAmount, groupType)
 
@@ -921,12 +946,19 @@ export const applyRemainderToGroup = (
   recalculateGroupMetrics(item, groupType, factory)
 }
 
+// Bump this whenever the tutorial's content changes enough to be worth showing again: a pioneer
+// who dismissed an earlier version has no other way to be told there is something new in it.
+// The shipped key is `buildingGroupTutorialOpened`, from the original wall-of-text tutorial;
+// moving off it re-shows the rework (playable demonstrations and a contents list) to everyone
+// who had already dismissed that.
+const BUILDING_GROUP_TUTORIAL_KEY = 'tutorialBuildingGroups2'
+
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
-  const buildingGroupTutorialOpened = localStorage.getItem('buildingGroupTutorialOpened')
+  const buildingGroupTutorialOpened = localStorage.getItem(BUILDING_GROUP_TUTORIAL_KEY)
 
   if (!buildingGroupTutorialOpened) {
     eventBus.emit('openBuildingGroupTutorial')
-    localStorage.setItem('buildingGroupTutorialOpened', 'true')
+    localStorage.setItem(BUILDING_GROUP_TUTORIAL_KEY, 'true')
   }
 
   item.buildingGroupsTrayOpen = !item.buildingGroupsTrayOpen

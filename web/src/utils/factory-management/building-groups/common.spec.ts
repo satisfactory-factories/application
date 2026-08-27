@@ -23,6 +23,8 @@ import {
   checkForItemUpdate,
   deleteBuildingGroup,
   getTotalPowerShards,
+  remainderToLast,
+  remainderToNewGroup,
   solveGroupForRemainder,
   solveGroupTargetOutput,
   syncBuildingGroups,
@@ -908,11 +910,14 @@ describe('buildingGroupsCommon', async () => {
 
       // Should be:
       // Group 1: 3 * 1.33 = 3.99
-      // Group 2: 2 * 0.56334 = 1.12668 (1.1267 rounded to 4dp)
-      // Group 3: 11 * 1.33678 = 14.70458 (14.7046 rounded to 4dp)
-      // Totalling 19.8213
+      // Group 2: 2 * 0.56334 = 1.12668
+      // Group 3: 11 * 1.33678 = 14.70458
+      // Totalling 19.82126
+      //
+      // Groups are summed at full precision. A clock has 4 decimal places, but count x clock
+      // needs more than 4 to state exactly, so rounding each group first discarded real output.
 
-      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.8213)
+      expect(calculateEffectiveBuildingCount(product.buildingGroups)).toBe(19.82126)
     })
   })
 
@@ -1212,12 +1217,13 @@ describe('powerProducer simplified cases', async () => {
 
     it('puts the whole shortfall on the group asked, keeping its building count', () => {
       // 5 impure Mk.1s at 133.3333% = 200/min, 3 normal at 84% = 151.2/min, so 8.8/min short.
-      // The second group has to reach 160/min: 160 / 60 / 3 = 88.8889%, landing on 88.89 because
-      // the remainder is measured against an effective building count rounded to 4dp.
+      // The second group has to reach 160/min: 160 / 60 / 3 = 88.8889%. It used to land on 88.89,
+      // because the remainder was measured against an effective building count that had been
+      // rounded per group to 4dp; the groups are now summed at full precision.
       applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
 
       expect(stone.buildingGroups[1].buildingCount).toBe(3)
-      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.8889)
       expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
     })
 
@@ -1228,7 +1234,7 @@ describe('powerProducer simplified cases', async () => {
       applyRemainderToGroup(stone, stone.buildingGroups[1], ItemType.Product, stoneFactory)
 
       expect(stone.buildingGroups[1].buildingCount).toBe(3)
-      expect(stone.buildingGroups[1].overclockPercent).toBe(88.89)
+      expect(stone.buildingGroups[1].overclockPercent).toBe(88.8889)
     })
 
     it('leaves the other groups exactly as they were', () => {
@@ -1489,6 +1495,88 @@ describe('powerProducer simplified cases', async () => {
         // Also check the power
         expect(group.powerProduced).toBe(25000)
       })
+    })
+  })
+
+  // Regression: a solver-derived clock is rounded to the game's 4-decimal-place precision, and
+  // reconstructing the group's part total from that rounded clock routinely landed a hair off a
+  // whole number (40.001 instead of 40), the 0.001 rounding bug, on a group the user never
+  // hand-dialed a clock for.
+  describe('remainderToLast', () => {
+    it('lands on a whole number rather than drifting by 0.001', () => {
+      mockFactory = newFactory('Remainder Rounding')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+      const [group1, group2] = product.buildingGroups
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      remainderToLast(product, ItemType.Product, mockFactory)
+
+      expect(group2.parts.IronRod).toBe(40)
+      expect(group2.parts.IronIngot).toBe(40)
+    })
+  })
+
+  describe('remainderToNewGroup', () => {
+    it('lands on a whole number rather than drifting by 0.001', () => {
+      mockFactory = newFactory('Remainder Rounding')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      const group1 = product.buildingGroups[0]
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      remainderToNewGroup(product, ItemType.Product, mockFactory)
+
+      const newGroup = product.buildingGroups[1]
+      expect(newGroup.parts.IronRod).toBe(40)
+      expect(newGroup.parts.IronIngot).toBe(40)
+    })
+
+    // A group solved from a remainder must land on the same clock as one solved directly from
+    // its own share. Three groups splitting 60/min are all doing the identical job, so reading
+    // 66.6666% beside 66.6667% is a bug however small the gap: the first two groups' clocks are
+    // themselves rounded onto the game's 4dp grid, and subtracting their output left the third
+    // solving for 19.99998/min rather than 20.
+    it('clocks a remainder-solved group the same as the groups it splits from', () => {
+      mockFactory = newFactory('Remainder Consistency')
+      addProductToFactory(mockFactory, {
+        id: 'IronRod',
+        amount: 60,
+        recipe: 'IronRod',
+      })
+      const product: FactoryItem = mockFactory.products[0]
+      calculateFactories([mockFactory], gameData)
+
+      // Two groups of 20/min each, both solved directly from their own share.
+      addBuildingGroup(product, ItemType.Product, mockFactory)
+      const [group1, group2] = product.buildingGroups
+      updateBuildingGroupViaPart(group1, product, ItemType.Product, mockFactory, 'IronRod', 20)
+      updateBuildingGroupViaPart(group2, product, ItemType.Product, mockFactory, 'IronRod', 20)
+
+      // The third takes what is left, and must agree with them.
+      remainderToNewGroup(product, ItemType.Product, mockFactory)
+
+      const group3 = product.buildingGroups[2]
+      expect(product.buildingGroups).toHaveLength(3)
+      expect(group3.buildingCount).toBe(group1.buildingCount)
+      expect(group3.overclockPercent).toBe(group1.overclockPercent)
+      expect(group3.overclockPercent).toBe(group2.overclockPercent)
+      expect(group3.overclockPercent).toBe(66.6667)
     })
   })
 
