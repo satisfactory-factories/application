@@ -5,15 +5,28 @@
       <v-card-text class="verbage">
         <p>Building Groups turn a product's abstract building count into the real sets of machines you'd build in-game, each with its own building count, clock speed and Somersloops.</p>
 
+        <nav aria-label="Tutorial contents" class="tutorial-toc">
+          <v-chip
+            v-for="section in sections"
+            :key="section.id"
+            link
+            size="small"
+            variant="tonal"
+            @click="scrollToSection(section.id)"
+          >
+            {{ section.label }}
+          </v-chip>
+        </nav>
+
         <v-divider />
 
-        <h4 class="text-h4">Split into groups</h4>
+        <h4 :id="`${TOC_PREFIX}-split`" class="text-h4">Split into groups</h4>
         <p>Add a group per real-world set of machines, then set each group's building count. Handy when a constraint (pipe throughput, space) means you need to build the same product as separate physical clusters.</p>
         <img alt="Adding building groups and setting each group's building count" class="tutorial-gif" src="/assets/tutorials/building-groups-split.gif">
 
         <v-divider />
 
-        <h4 class="text-h4">Sync</h4>
+        <h4 :id="`${TOC_PREFIX}-sync`" class="text-h4">Sync</h4>
         <v-alert class="mb-4" color="primary" icon="fas fa-bolt" variant="tonal">
           <b>Sync instantly updates the item's quantity to match its building groups.</b> Any change you make to a group (building count, clock) updates the item automatically, no extra step needed.
         </v-alert>
@@ -22,25 +35,25 @@
 
         <v-divider />
 
-        <h4 class="text-h4">Overclocking</h4>
+        <h4 :id="`${TOC_PREFIX}-overclocking`" class="text-h4">Overclocking</h4>
         <p>Clock a group up or down to change what it produces. <span class="text-amber">OC @ 100%</span> resets every group's clock in one click. Overclocking above 100% costs Power Shards (1 per building per 50% over), totalled on the Building Groups bar.</p>
         <img alt="Overclocking and underclocking a building group's clock speed" class="tutorial-gif" src="/assets/tutorials/building-groups-overclock.gif">
 
         <v-divider />
 
-        <h4 class="text-h4">Somersloops</h4>
+        <h4 :id="`${TOC_PREFIX}-somersloops`" class="text-h4">Somersloops</h4>
         <p><span class="text-purple">Somersloops</span> amplify a group's output, up to <b>double</b> per building, <b>without</b> using more ingredients, at the cost of a sharp rise in power usage. Slots per building depend on the building type (Constructors 1, Assemblers 2, Manufacturers 4).</p>
         <img alt="Adding Somersloops to a building group and watching power usage and output rise" class="tutorial-gif" src="/assets/tutorials/building-groups-somersloops.gif">
 
         <v-divider />
 
-        <h4 class="text-h4">Fine tuning, balancing &amp; remainders</h4>
+        <h4 :id="`${TOC_PREFIX}-fine-tuning`" class="text-h4">Fine tuning, balancing &amp; remainders</h4>
         <p>Type in the output on any group, and the building count and clock will adjust to match. This lets you precisely balance or distribute a product's production based on your circumstances. You can also evenly balance the groups, or send the remainder of one group to the last.</p>
         <img alt="Setting an exact group output, then rebalancing the remainder onto another group" class="tutorial-gif" src="/assets/tutorials/building-groups-fine-tuning.gif">
 
         <v-divider />
 
-        <h4 class="text-h4">How "Effective Buildings" works</h4>
+        <h4 :id="`${TOC_PREFIX}-effective-buildings`" class="text-h4">How "Effective Buildings" works</h4>
         <p>Effective Buildings is what all groups produce, expressed as buildings at 100% clock, so 5 buildings at 200% overclock count the same as 10 at 100%. It goes red the moment the groups don't add up to what the item needs; a 1% margin of error is allowed (configurable in Options) since some recipes can't hit exactly 100%.</p>
         <img alt="Trading building count for clock speed while Effective Buildings stays the same" class="tutorial-gif" src="/assets/tutorials/building-groups-effective-buildings.gif">
       </v-card-text>
@@ -53,6 +66,25 @@
 
 <script lang="ts" setup>
   import eventBus from '@/utils/eventBus'
+
+  // Ids are built from this so the headings and the contents list can never drift apart.
+  const TOC_PREFIX = 'building-group-tutorial'
+  const sections = [
+    { id: `${TOC_PREFIX}-split`, label: 'Split into groups' },
+    { id: `${TOC_PREFIX}-sync`, label: 'Sync' },
+    { id: `${TOC_PREFIX}-overclocking`, label: 'Overclocking' },
+    { id: `${TOC_PREFIX}-somersloops`, label: 'Somersloops' },
+    { id: `${TOC_PREFIX}-fine-tuning`, label: 'Fine tuning, balancing & remainders' },
+    { id: `${TOC_PREFIX}-effective-buildings`, label: 'How "Effective Buildings" works' },
+  ]
+
+  // scrollIntoView walks up to the nearest scrollable ancestor, which inside a
+  // `scrollable` v-dialog is the v-card-text, so this moves the modal's own scroll
+  // position rather than the page behind it. scroll-margin-top on the headings keeps
+  // the target off the very top edge.
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const openTutorial = ref(false)
 
@@ -71,6 +103,24 @@
   li {
     margin-bottom: 0 !important;
   }
+}
+
+.tutorial-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  // .verbage puts a 1rem bottom margin on every descendant, which would space the
+  // chips apart vertically on top of the flex gap.
+  * {
+    margin-bottom: 0;
+  }
+}
+
+// Headings are scroll targets; without this the one you jump to sits flush against
+// the top edge of the dialog's scroll area.
+h4[id^="building-group-tutorial-"] {
+  scroll-margin-top: 12px;
 }
 
 .tutorial-gif {
