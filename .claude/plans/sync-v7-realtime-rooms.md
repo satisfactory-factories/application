@@ -1,0 +1,359 @@
+# v7: Realtime sync, rooms, and the backend rewrite
+
+Status: revision 7. Drops `/hello`, targets version 0.7.0, makes the room document the
+single authoritative copy for collaborative tabs (memberships are references, never data),
+tightens member rights to content-only, and trims `helpText` from the preferences list.
+Revision 6 added the local/synced tab choice, the two-link model (snapshot vs collaboration
+invite), optional invite passwords, owner-based revocation, and record-only activity
+logging. Survived three Codex plan reviews (`6cbaf4bd73c7`, `cc3deea30a04`,
+`ec59f7788a68`); all objections folded in. Pending final approval.
+Branch: `claude/sync-mechanism-refactor-7b021b`. Date: 2026-08-27.
+
+## What this is
+
+The v7 headline feature. Today the planner saves one tab as a blob every 10 seconds and the
+last writer wins. We replace that with synced tabs: a tab the user chooses to sync lives on
+the server as a room, changes flow both ways over a WebSocket in real time, a synced tab can
+be opened to live collaboration by invite link (optionally password-protected), snapshot
+share links stay separate and read-only-in-time, preferences follow the account, offline use
+is a first-class mode, and the backend is rewritten in NestJS. The v7 changelog modal is a
+separate later session.
+
+## Tasks
+
+### Frontend
+
+- Rewrite `sync-store.ts`/`auth-store.ts` as real Pinia stores; kill the leaking closure factories
+- Build the room-sync store: native WebSocket, reducer over server messages, close-code-driven reconnect backoff
+- Build the two-set op builder (user-touched intent vs changed payload, one op in flight, ack from the sent snapshot)
+- Implement the shared rebase path (reject, reconnect, inbound-over-pending, disconnect-before-apply)
+- Build offline mode: manual airplane-mode toggle, offline-detection prompt, full backend silence while on, rebase-and-sync on exit
+- Persist per-tab sync metadata (`revision`, `appVersion`, user-touched ids) in a sidecar map; `localStorage.factoryTabs` keeps today's exact shape
+- Build the new-tab chooser on the plus button: Local tab (default, no account) vs Synced tab (account required, benefits pitched), plus the one-time discovery nudge dot
+- Model the tab lifecycle in `app-store`/`TabNavigation`: local / synced / joined, with per-tab state icons (desktop = local, single user = synced, multi-user = collaborative; FontAwesome — toggle a wrapper span, never `:class`-flip the `<i>`, per the FA dynamic-icon gotcha memory)
+- Add "Duplicate as local tab" and the revocation handler (membership lost or room deleted → the tab quietly becomes a local copy)
+- Add the `/room/:slug` page: resolve the slug, take the password when one is set, join (membership when logged in, visitor token when not), open the tab live
+- Build the share dialog with two clearly separated actions: "Copy snapshot link" (read-only copy, any tab, no account) and "Invite collaborators" (synced tabs; slug; optional password set/change/remove; copyable link)
+- Build login-time adoption as an offer per tab ("Sync this tab?" / "Keep my local plans too"), "(local)" suffixes, and the "Recover server copy" button
+- Gate the staggered loader behind "calculation actually happened"; instant render when revision + app version match
+- Build the preferences sync store (enumerated semantic keys, debounced PUT with `baseRevision`)
+- Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
+- Add the fetch wrapper sending `X-App-Version` and the persistent refresh prompt on 426/4426
+
+### Backend
+
+- Scaffold NestJS: Mongo via `@nestjs/mongoose`, config, `/health` byte-identical, SIGTERM graceful shutdown; `/hello` is dropped (it duplicates `/health`)
+- Port auth: `/register`, `/login`, `/validate-token`, new `/me/password`; JWT guard; boot assertion on `JWT_SECRET`
+- Build `Room` (revision, tombstone, opId ring, `passwordHash`, `passwordVersion`), `RoomMembership`, `UserPreferences`, and capped `RoomActivity` schemas
+- Build rooms REST as resume-aware ensure-steps: list, create, rename, tombstone-first delete, leave, reorder, share/unshare, slug lookup, `POST /rooms/:id/auth` (password → visitor token), join, create-only adopt, password set/rotate/remove
+- Build the WS gateway: hello/join → snapshot-or-up-to-date, serialized per-room apply with revision-guarded writes and opId dedup, live access re-checks (membership, shared flag, visitor-token `passwordVersion`), Origin check, heartbeat, throttles, `maxPayload`
+- Implement metadata fan-out: room changes bump every member's `roomsRevision` and notify every affected user channel
+- Record activity: stamp actor + timestamp + kind on every accepted op and meta mutation into `RoomActivity` (capped per room; no UI in v7)
+- Implement the hourly sweeper: tombstoned rooms (any state), membership-less non-shared rooms older than 24h, activity-log trim
+- Enforce the validation/caps table through the shared zod schemas; port today's truncation exactly
+- Keep `GET /share/:id` read-only on the existing collection; `/save` and `/load` return 410
+- Add the version gate (426 + typed body; exempt `/health` and `GET /share/:id`)
+- Fix CORS: real web origins, `X-App-Version` in allowed headers
+
+### Between them
+
+- Create the `common` workspace package: message unions, zod schemas, `PROTOCOL_VERSION`, canonical `Factory`/`FactoryTab` types
+- Write the complete zod `Factory`/`FactoryTab` schema with the caps table — the persistent-data boundary
+
+### Infrastructure and proof
+
+- Wire `common` into `pnpm-workspace.yaml`, the root lockfile, the Dockerfile manifest-copy layer, and the build order
+- Move the backend image to compiled `dist/`; same image name, port, healthcheck
+- Write the backend vitest suite (routes, gateway, concurrency, injected-failure ensure-steps, passwords + rotation, sweeper, fan-out, activity log, gate, CORS, caps)
+- Write the Playwright multi-client e2e suite (list at the bottom) and wire it into CI
+- Update Dockerfile, compose docs, `docs/deployment.md`; write the release runbook; manual box steps loud at the top of the PR
+- Update `CHANGELOG.md`; bump to 0.7.0
+
+## Locked decisions
+
+1. **Three tab types, and the user chooses.** **Local** — default, this browser only, no
+   account. **Synced** — your account only; a private room server-side. **Collaborative** —
+   a shared room, centralized on the server; others open it as consumers. Adoption at login
+   is an offer, never forced. **Iconography makes the type unmistakable**: a desktop/PC icon
+   = local, a single-user icon = synced, a multi-user icon = collaborative.
+2. **Two link types, never mixed.** Snapshot links (`/share/:id`, read-only copy, any tab,
+   no account) and collaboration invites (`satisfactory-factories.app/room/<three-words>`,
+   live).
+3. **The room document is the data; the owner is its admin.** One authoritative copy on the
+   server, exactly like albion-mapper. A collaborator's account stores only a reference
+   (membership = access + tab-bar position), never a second copy of the plan, so there is
+   nothing to desync. Joiners see the tab in their bar on every device; local mirrors are
+   render caches, never authoritative. The owner can do anything (delete, share, unshare,
+   slug, password, rename); everyone else can only write content.
+4. **Optional invite password.** Open link or password, owner's choice; rotation kicks
+   anonymous visitors; members are not re-prompted. Password gates new joins.
+5. **Revocation never destroys a collaborator's data.** Unshare (or delete) converts every
+   collaborator's tab into a local copy of the last state. Two levers: rotate password =
+   stop leaked links, keep members; unshare = make it fully private again, kick everyone.
+6. **Anonymous visitors stay local** except joining someone's shared tab.
+7. **NestJS + MongoDB/Mongoose, standalone mongod** (no transactions, no replica-set change).
+8. **Old clients are cut by the version gate**; v7+ clients get a refresh prompt.
+9. **Preferences sync = semantic keys only** (`showSatisfactionBreakdowns`,
+   `factoryGroupCustomColors`, `buildingGroupTutorialOpened`,
+   `dismissed-introduction`, `statistics*Hidden`, `summaryHidden`, `shortageJumpToFactory`).
+   Device-shaped values stay local.
+10. **Password work is change-while-logged-in only**; email reset (Mailgun) later.
+11. **Offline mode is first-class**: manual toggle plus graceful detection.
+12. **Activity is recorded, not rendered.** Who/when/what lands in a capped per-tab log now;
+    the history UI is a follow-up.
+13. **Playwright** for the live two-browser tests; one v7 headline release; `main` stays
+    shippable until the branch lands; `tab-sync-v2` is a design reference only.
+
+---
+
+## Frontend
+
+**Tab bar.** A tab is `local` (localStorage only), `synced` (a private room, your account
+only), `collaborative` (a shared room — yours as owner, or someone else's as member), or
+`joined` (an anonymous pointer into someone's shared tab). In every non-local case the room
+document on the server is the only authoritative copy; the browser holds a render cache. Badges make the state
+visible at a glance. The plus button opens a small chooser: **Local tab** — lives in this
+browser, no account; **Synced tab** — needs an account, syncs across your devices, supports
+live collaboration and invites. New visitors default to local; a one-time nudge dot on the
+plus button advertises the rest. A local tab's UUID becomes its room ID if it is ever
+synced, so identity never changes. Synced tabs still write full content to
+`localStorage.factoryTabs` in today's exact shape (the render mirror — and what makes a v6
+rollback land on readable data). Sync metadata (`revision`, `appVersion`, user-touched ids)
+lives in a sidecar map.
+
+**Sharing UI.** One dialog, two clearly separated actions:
+- **Copy snapshot link** — a frozen, read-only-in-time copy anyone can open. Works for any
+  tab, no account. This is today's `/share` and it stays.
+- **Invite collaborators** — synced tabs only. Shows the three-word slug (or a custom one,
+  checked live), the optional password controls (set, change, remove), and the copyable
+  `satisfactory-factories.app/room/<slug>` link.
+
+**Collaboration lifecycle.** A joiner who is logged in becomes a member: the tab appears in
+their bar on every device, live. A logged-out joiner gets a `joined` pointer in this browser.
+"Duplicate as local tab" gives anyone an independent copy at any time. If the owner unshares
+or deletes, every collaborator's tab quietly converts to a local copy with a small notice —
+data kept, live link dead.
+
+**Sync client.** One WebSocket when signed in or in a joined tab. A reducer applies server
+messages to the store. Close codes drive reconnection: `4401`/`4403` stop, `4426` prompts
+refresh, anything else backs off 1s → 30s and resyncs from a snapshot.
+
+**Offline mode.** Two ways in: the manual airplane-mode switch in the account tile (total
+backend silence — no WS, no REST, no retries), or detection — after a few failed reconnects
+or a browser offline signal, a friendly prompt: "You appear to be offline. Your data will
+sync when you're back online. Go into offline mode?" Accept → same silence. Decline → quiet
+retrying continues. Leaving offline mode is manual, like a phone. On exit: reconnect,
+snapshot, rebase kept edits, recalc, send. User-touched ids are persisted, so offline edits
+survive a browser restart. No blocking alerts anywhere; queued preference writes flush on
+exit.
+
+**Loading.** The staggered loader runs only when calculation actually happened. A tab switch
+where the revision matches the mirror and the mirror's app version is current renders
+instantly. Everything else goes through the full `initFactories` validation/migration path.
+Server data stops bypassing the loader funnel.
+
+**Account tile** (replaces `Auth.vue` + `Sync.vue`): username, change-password, logout, live
+connection state, the offline switch, the synced-tab list with share controls, "Recover
+server copy". The old OOS dialog and force-download button die.
+
+**Adoption on login.** Every login, every browser: local tabs the server does not know get a
+per-tab offer to sync ("Keep my local plans too"). Never forced, create-only, "(local)"
+suffix on name collisions, content never merged.
+
+**Version prompt.** A fetch wrapper adds `X-App-Version`; any 426 or WS 4426 shows a
+persistent "new version available — refresh" prompt.
+
+## Backend
+
+**Data model (Mongo).**
+- `Room`: `{ roomId (uuid, unique), slug (unique sparse), name, shared, deletedAt,
+  passwordHash: string|null, passwordVersion: number, factories, powerTarget, groups,
+  revision, appliedOps ring, createdBy, timestamps }`. Tab-level fields finally persist.
+- `RoomMembership`: `{ userId, roomId, role owner|member, order, joinedAt }`, unique on
+  `{userId, roomId}`. **Carries access and tab-bar position only — never plan data.** The
+  room document is the single source of truth for a synced tab's content.
+- `RoomActivity`: `{ roomId, at, actor (userId or 'anon'), kind, summary? }`, capped per
+  room (~200; the sweeper trims). Written on every accepted op and meta change. **No UI in
+  v7** — the data is simply ready for the history feature later.
+- `User`: + `roomsRevision`, `legacyImportRoomId`. `UserPreferences`: `{ userId, prefs,
+  revision }`.
+- Legacy `FactoryData` (keyed by username) and `Share` stay read-only forever. New data keys
+  on userId; the JWT carries both.
+
+**REST.** Auth (`/register`, `/login`, `/validate-token`, `/me/password`), rooms (list mine,
+create, rename, delete, leave, reorder, share/unshare, password set/rotate/remove,
+`GET /rooms/by-slug/:slug` — internal API only, users see `/room/<slug>` —
+`POST /rooms/:id/auth` exchanging a correct password for a visitor token,
+`POST /rooms/:roomId/join`, `POST /rooms/adopt`), preferences (GET/PUT), legacy
+(`GET /share/:id`; 410 on `/save`//`/load`), `/health` unchanged. `/hello` is dropped — it
+duplicates `/health` and should have gone when `/health` landed.
+
+**Join and password rules.** Slug lookup resolves only shared, non-tombstoned tabs. Joining
+needs: a membership, **or** `shared` with no password, **or** `shared` plus a visitor token
+whose `passwordVersion` is current. Logged-in joiners clear the password once, then hold a
+durable membership. Rotating the password bumps `passwordVersion`, which invalidates every
+visitor token and closes those sockets `4403`. Unshare removes all non-owner memberships,
+closes non-owner sockets `4403`, and deactivates the slug — the "make it private again"
+lever; clients turn their copy into a local tab.
+
+**Multi-document safety without transactions.** Every mutation is a chain of individually
+idempotent "ensure" steps; a retry resumes at the incomplete step instead of aborting on a
+duplicate key:
+- *Create/adopt*: ensure room (duplicate → mine-with-membership = done; mine-without =
+  resume; someone else's = client re-keys with a fresh UUID) → ensure membership → bump
+  `roomsRevision` (re-bumping is harmless).
+- *Delete is tombstone-first*: one owner-authorized write sets `deletedAt`; from that instant
+  the room is inert (joins refused, ops refused, slug 404, sockets told `room_deleted`).
+  Cleanup follows, authorized by the tombstone itself, so no partial failure can strand a
+  live shared room.
+- *Sweeper (hourly)*: tombstoned rooms regardless of state; membership-less non-shared rooms
+  older than 24h (adoption resumes at next login, well inside that); activity trim.
+- *Fan-out*: rename/share/unshare/delete/password changes bump **every** member's
+  `roomsRevision` and notify every affected user channel; joined sockets also get
+  `room_meta`/`room_deleted`. Clients refetch the tab list on every connect, so a lost
+  notification only delays freshness.
+
+**WS gateway.** Token (account JWT or visitor token) rides in the `hello`/`join` messages,
+never the URL, and access is re-verified on every mutating op. Origin checked at upgrade
+(anti-CSRF hygiene, not authorization). Server `ws` ping/pong heartbeat. Connection and
+message throttles, explicit `maxPayload`, snapshot sends serialized per client with a queue
+cap. A DB failure during handshake closes retryable, never `4401`.
+
+**Roles.** Owner: everything — delete, share, unshare, slug, password, rename. Member: edit
+content and leave, nothing else. Anonymous visitor: edit content only.
+
+**Validation and caps.** `Room.factories` is `Mixed`, so the shared zod schema is the real
+data boundary — full `Factory`/`FactoryTab` shape, unknown keys stripped, numbers finite:
+
+| Field | Rule |
+| --- | --- |
+| Room/tab, factory, group names | truncate 200 (today's behavior) |
+| Factory notes | truncate 1000 |
+| Task titles / count | truncate 200 / 50 |
+| Slug | reject unless `^[a-z0-9-]{1,100}$` after lowercasing |
+| Invite password | reject outside 1–100 chars (bcrypt-hashed at rest) |
+| Group color | reject over 32 chars |
+| Factories per room | reject over 300 |
+| Rooms per user (owned) | reject over 10 |
+| Memberships per user (owned + joined) | reject over 25 |
+| Any other string | reject over 10k |
+
+Truncation applies identically to ops, adoption, and blob import.
+
+## The mechanisms between them
+
+**The `common` package.** One workspace package both apps import: message unions, zod
+schemas, `PROTOCOL_VERSION`, canonical `Factory`/`FactoryTab` types. Retires the
+hand-duplicated backend interface file.
+
+**Wire protocol.**
+- Client → server: `hello {token?, protocolVersion}`, `join {roomId, lastRevision?,
+  visitorToken?}`, `op {roomId, opId, baseRevision, diff}`, `leave {roomId}`.
+- Server → client: `hello_ok`, `snapshot {room, revision}`, `up_to_date {revision}`,
+  `op_ack {opId, revision}`, `op_apply {revision, diff}`, `op_reject {opId, reason,
+  snapshot}`, `room_meta`, `room_deleted`, `rooms_changed {roomsRevision}`,
+  `presence {roomId, count}`, `error`.
+- `up_to_date` is the "nothing changed, skip the reload" primitive.
+
+**The consistency contract.** The build implements exactly this:
+- What you see is always: last acknowledged server state + all your unacknowledged edits +
+  a full local recalc.
+- Two client-side sets against the acknowledged state: **user-touched** (factories you
+  actually edited — intent, the only thing a rebase may overlay) and **changed** (everything
+  the recalc changed, ripples included — what an op sends).
+- One op in flight per room. Send clears nothing. An ack advances the baseline to the exact
+  sent snapshot and clears only intent matching it; edits after send stay.
+- The server accepts an op only at exact `baseRevision`, so every stored state was fully
+  calculated by some client, and receivers apply diffs byte-identically with no recalc.
+  Same-factory ties: last write wins. Different factories: both survive, via rebase.
+- One shared rebase path covers reject, reconnect, inbound-over-pending, offline exit, and
+  disconnect-before-apply: adopt server state, overlay user-touched, recalc, resend — or
+  send nothing if nothing differs (how "it applied before the drop" resolves).
+- Duplicate `opId`s in the ring return the original ack; the guarantee's honest scope is the
+  single in-flight retry window, the only op a client ever retries.
+
+**Offline, protocol-side.** Offline mode is purely a client stance; the backend needs
+nothing special. Coming back is the reconnect case of the rebase path. Stated honestly:
+others' edits to the same factories you edited while away lose to yours.
+
+**Version gate.** All API routes except `/health` and `GET /share/:id` require a
+valid `X-App-Version`; WS requires `protocolVersion`. Mismatch → 426 / close 4426 → the
+refresh prompt. Pre-v7 clients send nothing and are cut off (verified: no version gating
+exists today).
+
+**Adoption and legacy data.** Adoption is per-login, per-tab, and create-only. The legacy
+blob auto-imports as one room only for an account with zero rooms and a browser with zero
+local tabs, under a deterministic import id; otherwise "Recover server copy" imports it on
+demand. The blob and shares are never written again.
+
+## Infrastructure
+
+**Packaging.** `common` joins `pnpm-workspace.yaml`, the single root lockfile, and the
+Dockerfile's manifest-copy layer; it builds before the backend. The backend image moves from
+ts-node-at-boot to compiled `dist/` — same image name, same port 3001, same healthcheck
+contract, plus a SIGTERM handler that closes sockets cleanly.
+
+**CORS, fixed deliberately.** Today's allowlist contains the API's own origin instead of the
+web origin, and `X-App-Version` triggers preflights. The new config allows the production
+web origin + `localhost:3000`, and the header. Without this, v7 could not call a single
+gated endpoint in production.
+
+**Release runbook.**
+1. Merge; backend deploys first. Pre-v7 clients lose save/load/login; `/health` and share
+   links keep working.
+2. Verify from the production origin: a preflighted `X-App-Version` request succeeds, and a
+   WS upgrade completes through the Cloudflare tunnel.
+3. Web deploys to Vercel minutes later. Refreshes get v7.
+4. The breakage window is those minutes plus stale open tabs. Accepted, announced.
+5. Rollback: retag the previous backend image, revert the Vercel deploy. Legacy data was
+   never written and mirrors kept `factoryTabs` v6-readable, so both server and browser land
+   on usable state. Room edits made inside the window do not back-port.
+
+**Manual steps (loud at the top of the PR).** Verify the tunnel passes WebSocket upgrades;
+confirm `JWT_SECRET` is set in the box's env file (boot now refuses to start without it).
+
+**Accepted risks.** Deploys drop every socket (clients resync via snapshot). Single server
+process by design. Big-plan snapshots stay large, bounded by `maxPayload` and the per-client
+send queue.
+
+## How we prove it
+
+**Backend (vitest + supertest + mongodb-memory-server + `ws`).** Routes; handshake
+auth/version/DB-failure; snapshot vs `up_to_date`; interleaved two-client ops; duplicate
+`opId` replay; stale-base reject; password join (right, wrong, none-set), rotation
+invalidating visitor tokens mid-session; unshare removing memberships and closing sockets;
+tombstone delete with an injected failure after each write; ensure-step resumption from
+every partial state; adoption UUID disambiguation; sweeper (tombstones, orphans, sparing
+fresh adoptions, activity trim); fan-out reaching a second member; activity rows on ops and
+meta changes; caps and truncation vs rejection; gate exemptions; CORS preflight.
+
+**Web unit (vitest).** Reducer; two-set op builder; the rebase path including
+disconnect-before-apply with edits after send; offline-mode state machine (manual, detected,
+prompt, exit); new-tab chooser and tab lifecycle (local → synced, revocation → local copy);
+mirror shape stays v6-readable; preferences merge.
+
+**Playwright e2e (two browser contexts, real backend + WS).**
+- A edits, B sees it within 2s; deep-equal of both clients after quiesce.
+- Same-factory simultaneous edits converge on one winner; different factories both survive.
+- Tab create/rename/delete/reorder propagate to a second logged-in device; the owner's
+  rename reaches a member's device; a member's rename attempt is refused.
+- New-tab chooser: local by default, synced requires login.
+- Invite flow: share a tab, join by `/room/<slug>` logged-out and logged-in; joined tab
+  appears on the joiner's second device; snapshot link still imports a frozen copy.
+- Password: set one, wrong password refused, correct password joins, rotate kicks the
+  anonymous visitor, member stays.
+- Unshare: collaborator's tab converts to a local copy with the last state intact.
+- Manual offline mode: edits accumulate, zero network calls, exit syncs, B converges.
+- Detected offline: kill the network, prompt appears, accept, edit, restore, exit offline,
+  everything syncs — including an edit in flight at the kill.
+- Two browsers, different local tabs, same fresh account → both adopt, nothing stranded.
+- Version bump → refresh prompt. Preferences set in A appear on fresh login in B.
+
+CI gets a new job running the e2e suite headless.
+
+## Out of scope (v7 follow-ups)
+
+Email password reset (Mailgun), the v7 changelog modal, the activity/history UI (data is
+recorded from day one), on-select factory rendering rework, room read-only lock, presence
+cursors/avatars (bare occupancy count only if free), the Vue Flow graph rebuild
+(`graphPosition` is already optional in the payload schema), horizontal backend scaling.

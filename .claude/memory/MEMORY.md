@@ -6,7 +6,8 @@
 - [Backend deploy & prod drift](backend-deploy-and-prod-drift.md) — before assuming the API is deployable from `main`, or reading a green Actions run as a successful deploy
 - [Building groups](building-groups-branch-status.md) — how overclocking/somersloops work and their gotchas; shipped, the branch it was built on is dead
 - [Calc engine gotchas](calc-engine-gotchas.md) — double-pass recalc, load-bearing step order, migration patches, and other traps
-- [Tab sync v2 rework](project-tab-sync-v2.md) — in-flight multi-tab sync on branch `tab-sync-v2`; rendering rework deferred to its own plan
+- [Sync v7 realtime rooms](project-sync-v7-rooms.md) — approved plan in `.claude/plans/sync-v7-realtime-rooms.md`; build in flight on `claude/sync-mechanism-refactor-7b021b`; decisions locked, don't re-litigate
+- [Tab sync v2 rework](project-tab-sync-v2.md) — superseded by sync v7; `tab-sync-v2` branch is a design reference only
 - [Scope plans per session](feedback-scope-plans-per-session.md) — split big multi-part features into separate plans/branches/sessions
 - [Graph rebuild plan (parked)](project-graph-rebuild-plan.md) — Vue Flow graph-view rebuild plan saved to repo `.claude/plans/graph-view-vue-flow-rebuild.md`, decisions locked, M1–M6 not started
 - [AWESOME Sink plan (Beta v0.6)](project-awesome-sink-plan.md) — sink + byproduct routing plan approved, in `.claude/plans/awesome-sink-and-byproduct-routing.md`; do NOT implement during Beta v0.5
