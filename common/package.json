@@ -11,6 +11,12 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/fixtures.d.ts",
+      "import": "./dist/testing/fixtures.js",
+      "require": "./dist/testing/fixtures.js",
+      "default": "./dist/testing/fixtures.js"
     }
   },
   "files": [

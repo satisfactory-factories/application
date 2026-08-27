@@ -12,6 +12,8 @@ import { validateEnv } from './config/env'
 import { THROTTLER_OPTIONS } from './config/throttling'
 import { HealthModule } from './health/health.module'
 import { LegacyModule } from './legacy/legacy.module'
+import { PreferencesModule } from './preferences/preferences.module'
+import { RoomsModule } from './rooms/rooms.module'
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { LegacyModule } from './legacy/legacy.module'
     HealthModule,
     AuthModule,
     LegacyModule,
+    RoomsModule,
+    PreferencesModule,
   ],
   providers: [
     // Order matters: rate limiting ran as the first express middleware, ahead of

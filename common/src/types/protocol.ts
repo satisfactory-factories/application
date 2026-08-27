@@ -38,6 +38,37 @@ export const CLOSE_CODES = {
 
 export type CloseCode = typeof CLOSE_CODES[keyof typeof CLOSE_CODES]
 
+/** Owner can do anything; member can only write content. */
+export type RoomRole = 'owner' | 'member'
+
+/** One row of the tab bar: room metadata plus this user's place in it. */
+export interface RoomListEntry {
+  roomId: string
+  name: string
+  slug: string | null
+  shared: boolean
+  hasPassword: boolean
+  revision: number
+  role: RoomRole
+  order: number
+}
+
+/**
+ * `GET /rooms`. `roomsRevision` is the account-wide counter every meta mutation
+ * bumps, so a client can tell "my list changed" from "nothing changed".
+ */
+export interface RoomListResponse {
+  roomsRevision: number
+  rooms: RoomListEntry[]
+}
+
+/** `GET /rooms/by-slug/:slug`: enough to show the join prompt, no content. */
+export interface RoomSlugLookup {
+  roomId: string
+  name: string
+  hasPassword: boolean
+}
+
 /** A room as the server hands it out. Never carries `passwordHash`. */
 export interface RoomSnapshot {
   roomId: string

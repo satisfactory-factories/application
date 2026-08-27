@@ -12,6 +12,14 @@ export class User {
 
   @Prop({ type: Date, default: Date.now })
   registered!: Date
+
+  /** Bumped by every room meta mutation this user is affected by; drives `rooms_changed`. */
+  @Prop({ type: Number, default: 0 })
+  roomsRevision!: number
+
+  /** Set once, by the legacy blob import. Its presence is what makes the import idempotent. */
+  @Prop({ type: String, default: null })
+  legacyImportRoomId!: string | null
 }
 
 export type UserDocument = HydratedDocument<User>
