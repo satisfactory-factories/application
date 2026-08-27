@@ -362,7 +362,16 @@ export const calculateDependencyMetrics = (factory: Factory) => {
 export const calculateDependencyMetricsSupply = (factory: Factory) => {
   Object.keys(factory.dependencies.metrics).forEach(part => {
     const metrics = factory.dependencies.metrics[part]
-    metrics.supply = factory.parts[part].amountSupplied
+    const partData = factory.parts[part]
+
+    // What the factory can actually ship, not what it makes. amountSupplied is gross, so a mine
+    // that extracts 480 ore and consumes every bit of it itself still reported 480 available to
+    // export — a phantom surplus that let an over-committed factory read as satisfying its
+    // requests (#540). amountRemaining is what is left once production, power, buildings, exports
+    // and sinking have all taken their share, so adding the exports back gives the amount those
+    // exports actually have to draw on. For a genuine surplus factory this still equals
+    // amountSupplied; only the over-committed case changes.
+    metrics.supply = partData.amountRemaining + partData.amountRequiredExports
     metrics.difference = metrics.supply - metrics.request
     metrics.isRequestSatisfied = isAmountSatisfied(metrics.difference, metrics.request)
   })

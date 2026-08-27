@@ -133,6 +133,18 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   was fixed to 2740 rather than 1315 — and the figure named on the Satisfy and Trim buttons was
   wrong in the same way, since both read from the same calculation.
 
+- **A factory that consumes its own output no longer reports a phantom surplus to export** (#540).
+  Export supply was read gross, so a mine extracting 480 ore a minute and smelting every bit of it
+  on site still offered 240 of it to another factory and called the request satisfied. The figure
+  is now what the factory actually has spare once production, power, buildings and sinking have
+  taken their share, so an over-committed factory reads as short — and the plan-wide "produced
+  items difference" in Statistics no longer counts ore that was never really available.
+- **An over-committed mine can be given imports again** (#541). A mine shipping out more than it
+  extracts matched the "nothing here could ever import anything" shortcut — extraction takes no
+  ingredients, so its Add Import button was disabled — even with another mine in the plan able to
+  cover the difference. Export demand now counts, so the button is offered. Together with #540 the
+  two halves are coherent: the mine goes red and the fix for it is available in the same place.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

@@ -418,6 +418,27 @@ describe('inputs', () => {
 
         expect(calculateAbleToImport(mine, [ironIngotFac])).toBe('producesRawOnly')
       })
+      // #541: a mine on the hook for more ore than it extracts is genuinely short, and another
+      // mine in the plan can cover it — so the Add Import button has to stay.
+      it('should offer imports to a mine committed to exporting more than it extracts', () => {
+        const mine = newFactory('Copper Mine', 3, 4)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+
+        const consumer = newFactory('Copper Ingots', 4, 5)
+        addInputToFactory(consumer, {
+          factoryId: mine.id,
+          outputPart: 'OreCopper',
+          amount: 240,
+        })
+        calculateFactories([mine, consumer], gameData)
+
+        expect(mine.parts.OreCopper.amountRequiredExports).toBe(240)
+        expect(calculateAbleToImport(mine, [ironIngotFac])).toBe(true)
+      })
       // A factory whose demand is entirely raw used to be blocked from importing, because its
       // supply was assumed. Importing from a mine factory is now exactly what it should do.
       it('should offer imports to a factory that only consumes raw resources', () => {

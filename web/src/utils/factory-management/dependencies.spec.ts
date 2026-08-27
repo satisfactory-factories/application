@@ -247,6 +247,77 @@ describe('dependencies', () => {
         difference: -100,
       })
     })
+    it('should not count self-consumed supply as available to export', () => {
+      // #540: metrics.supply used to read amountSupplied, which is gross. A mine that extracts
+      // 480 ore and smelts all of it reported the whole 480 as available to export, so the
+      // request read as satisfied while the ore itself was genuinely short.
+      const mine = newFactory('Copper Mine', 0, 1)
+      addProductToFactory(mine, {
+        id: 'OreCopper',
+        amount: 480,
+        recipe: 'Extract_OreCopper',
+      })
+      addProductToFactory(mine, {
+        id: 'CopperIngot',
+        amount: 480, // 1:1 with the ore, so nothing is left over
+        recipe: 'IngotCopper',
+      })
+
+      const consumer = newFactory('Copper Sheets', 1, 2)
+      addInputToFactory(consumer, {
+        factoryId: mine.id,
+        outputPart: 'OreCopper',
+        amount: 240,
+      })
+
+      calculateFactories([mine, consumer], gameData)
+
+      expect(mine.parts.OreCopper.amountSupplied).toBe(480) // Gross, unchanged
+      expect(mine.parts.OreCopper.satisfied).toBe(false)
+      expect(mine.dependencies.metrics.OreCopper).toEqual({
+        part: 'OreCopper',
+        request: 240,
+        supply: 0,
+        isRequestSatisfied: false,
+        difference: -240,
+      })
+    })
+
+    it('should report the surplus a partly self-consuming factory can actually spare', () => {
+      // The other half of #540: netting off on-site use does not turn a real surplus into a
+      // shortage — the request is still satisfied, it just no longer claims the ore the mine
+      // smelts itself. A factory that consumes none of its own part is unaffected entirely; the
+      // two tests above it cover that.
+      const mine = newFactory('Copper Mine', 0, 1)
+      addProductToFactory(mine, {
+        id: 'OreCopper',
+        amount: 480,
+        recipe: 'Extract_OreCopper',
+      })
+      addProductToFactory(mine, {
+        id: 'CopperIngot',
+        amount: 120,
+        recipe: 'IngotCopper',
+      })
+
+      const consumer = newFactory('Copper Sheets', 1, 2)
+      addInputToFactory(consumer, {
+        factoryId: mine.id,
+        outputPart: 'OreCopper',
+        amount: 240,
+      })
+
+      calculateFactories([mine, consumer], gameData)
+
+      expect(mine.dependencies.metrics.OreCopper).toEqual({
+        part: 'OreCopper',
+        request: 240,
+        supply: 360, // 480 extracted less the 120 smelted on site
+        isRequestSatisfied: true,
+        difference: 120,
+      })
+    })
+
     it('should calculate the dependency metrics from multiple inputs from differing factories', () => {
       const mockDependantFactory2 = newFactory('Iron Rods', 2, 3)
       // Ensure the new factory is in the list

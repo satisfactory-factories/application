@@ -216,11 +216,18 @@ export const calculateAbleToImport = (factory: Factory, importCandidates: Factor
 
   // A mine consumes nothing to do its job — extraction takes no ingredients — so there is
   // nothing it could import, whatever the raw assumption says.
+  //
+  // Exports are demand like any other, though: a mine committed to shipping more than it
+  // extracts is genuinely short, and another mine in the plan can cover it, so it must keep its
+  // Add Import button (#541). Tested per-requirement rather than against amountRequired, which
+  // also carries amountRequiredSink — a plain mine whose surplus the user is sinking has nothing
+  // to import and must stay in this branch.
   const parts = Object.values(factory.parts)
   if (parts.length > 0 && parts.every(part =>
     part.isRaw &&
     part.amountRequiredProduction === 0 &&
     part.amountRequiredPower === 0 &&
+    part.amountRequiredExports === 0 &&
     (part.amountRequiredBuildings ?? 0) === 0
   )) {
     return 'producesRawOnly'
