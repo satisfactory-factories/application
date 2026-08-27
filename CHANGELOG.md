@@ -145,6 +145,10 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   cover the difference. Export demand now counts, so the button is offered. Together with #540 the
   two halves are coherent: the mine goes red and the fix for it is available in the same place.
 
+- **The Share button now shares the plan you are actually looking at** (#535). It took its copy of
+  the open tab once, when the page loaded, and the button never remounts — so after switching tabs
+  it went on sharing the plan that had been open at load, under that tab's name.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._
