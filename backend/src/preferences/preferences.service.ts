@@ -30,7 +30,7 @@ export class PreferencesService {
     const updated = await this.preferences.findOneAndUpdate(
       { userId, revision: baseRevision },
       { $set: { prefs }, $inc: { revision: 1 } },
-      { new: true },
+      { returnDocument: 'after' },
     ).lean()
     if (updated) return { prefs: updated.prefs, revision: updated.revision }
 

@@ -1,7 +1,8 @@
 name: Backend Checks
 
-# Lint and typecheck. Runs on PRs, and is called by "Backend: Deploy" as the gate
-# in front of the image build.
+# Lint, compile and test. Runs on PRs, and is called by "Backend: Deploy" as the
+# gate in front of the image build. The build step is the typecheck: `nest build`
+# fails on a type error, the same way vue-tsc does for web.
 #
 # There is no `push: main` trigger any more: on main this is called by
 # Backend Deploy instead, so keeping one would run the same checks twice on the

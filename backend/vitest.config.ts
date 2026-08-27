@@ -9,7 +9,7 @@ export default defineConfig({
     include: ['test/**/*.spec.ts', 'src/**/*.spec.ts'],
     globalSetup: ['test/utils/global-setup.ts'],
     // One mongod serves the whole run, and suites that hammer it in parallel see
-    // writes go missing. Serial is 13 files in ~35s, which is cheap enough.
+    // writes go missing. Serial is 18 files in ~55s, which is cheap enough.
     fileParallelism: false,
     // mongodb-memory-server downloads mongod on the first run of a fresh clone.
     hookTimeout: 300_000,

@@ -1,6 +1,6 @@
 # `backend` — the sync API
 
-A NestJS + Mongoose API backing login, plan syncing and plan sharing. Source lives in `src/`, one module per concern (`auth/`, `health/`, `legacy/`), with cross-cutting config in `src/config/` and the version gate in `src/common/`.
+A NestJS + Mongoose API backing login, plan syncing and plan sharing. Source lives in `src/`, one module per concern (`auth/`, `health/`, `legacy/`, `rooms/`, `realtime/`, `preferences/`), with cross-cutting config in `src/config/` and the version gate in `src/common/`.
 
 **It is optional for local development.** The planner works fine without it — you just lose accounts and syncing, and plans stay in `localStorage`.
 
@@ -54,13 +54,25 @@ Every route except `GET /health` and `GET /share/:id` requires an `X-App-Version
 | `POST /register`, `POST /login` | Account creation and JWT issuing (HS256, `{ id, username }`, 30 days) |
 | `POST /validate-token` | Token check |
 | `POST /me/password` | Change password while logged in; verifies the current one first |
-| `GET /share/:id` | Reads a shared plan and bumps its view counter. Read-only: v7 never writes this collection |
+| `GET /rooms`, `POST /rooms`, `POST /rooms/adopt` | The synced-tab list, and the create-only ensure chains behind it |
+| `PUT /rooms/order`, `PUT /rooms/:id/name`, `DELETE /rooms/:id` | Owner-only, except reorder, which is each member's own tab-bar position |
+| `POST /rooms/:id/share`, `POST /rooms/:id/unshare` | Allocates or retires the three-word invite slug. Unshare drops every non-owner membership |
+| `PUT /rooms/:id/password`, `DELETE /rooms/:id/password` | Set, rotate or remove the invite password. Every change bumps `passwordVersion`, which kills outstanding visitor tokens |
+| `GET /rooms/by-slug/:slug` | Resolves an invite link. Shared, non-tombstoned rooms only |
+| `POST /rooms/:id/auth` | Unauthenticated: exchanges the invite password for a visitor token. 10 attempts per 5 minutes, in its own bucket |
+| `POST /rooms/:id/join`, `POST /rooms/:id/leave` | Membership. The owner cannot leave their own room |
+| `POST /rooms/legacy/auto-import`, `POST /rooms/legacy/recover` | Imports the pre-v7 blob as one room, under a deterministic id |
+| `GET /preferences`, `PUT /preferences` | Account-following preferences, compare-and-set on `revision` |
+| `POST /share` | Creates a snapshot link (a frozen copy of one tab). Works signed out; 5 per 5 minutes, in its own bucket |
+| `GET /share/:id` | Reads a snapshot link and bumps its view counter |
 | `POST /save`, `GET /load` | **410 Gone.** Replaced by synced tabs |
 | `GET /health` | The one to monitor. Pings Mongo and returns **503** if it doesn't answer inside 3s. Rate limited to 10 requests a minute, in its own bucket |
 
 `GET /hello` is gone — it duplicated `/health` and nothing should have been monitoring it.
 
-Everything else is rate limited to 200 requests per 5 minutes per client, in a single shared bucket that `/health` is exempt from.
+Everything else is rate limited to 200 requests per 5 minutes per client, in a single shared bucket that `/health` is exempt from. The `/share` and `/rooms/:id/auth` buckets stack on top of that one rather than replacing it.
+
+Every request body carrying plan content is truncated and then schema-checked against `common`'s zod tree: names cut to 200 characters, notes to 1000, 50 tasks of 200 characters each, and a hard rejection past 300 factories, 10 owned rooms or 25 memberships.
 
 Mongoose schemas sit beside the module that owns them (`src/auth/user.schema.ts`, `src/legacy/*.schema.ts`). Collection names are pinned explicitly, because the documents predate the rewrite.
 
@@ -71,7 +83,8 @@ Mongoose schemas sit beside the module that owns them (`src/auth/user.schema.ts`
 - **Handshake.** The Origin is checked at upgrade against the CORS allowlist (a missing Origin is a non-browser client and is allowed). The first message must be `hello {protocolVersion, token?}` within 5s. A version mismatch closes **4426**; a token that does not verify closes **4401**. A database failure during the handshake closes **1011** so the client retries — never 4401.
 - **Join.** `join {roomId, lastRevision?, visitorToken?}` needs a membership, or the room shared with no password, or shared plus a visitor token whose `passwordVersion` is current. A tombstoned room is never joinable. The answer is a `snapshot`, or `up_to_date` when `lastRevision` already matches.
 - **Ops.** One apply at a time per room. The op is truncated then schema-checked, access is re-verified, a repeated `opId` replays its original ack, and the write only lands at the exact `baseRevision`. Anything else gets `op_reject` with a fresh snapshot. Accepted ops broadcast `op_apply` to the room's other sockets and record an activity row.
-- **Revocation.** Unsharing, rotating the invite password or deleting a room re-runs the access check for every socket in it and closes the ones that no longer qualify with **4403**.
+- **Content-only rights.** A member or a visitor may write factories, groups and the power target. `name` is the owner's; an op carrying it from anyone else is refused whole (`op_reject` `forbidden`, snapshot attached, socket left in the room). A merge that would take the room past 300 factories is refused the same way with `too_large`.
+- **Revocation.** Unsharing or rotating the invite password re-runs the access check for every socket in the room and closes the ones that no longer qualify with **4403**. Deleting sends `room_deleted` and drops that room from each socket without closing it — one connection carries every synced tab, and 4403 means "stop reconnecting".
 - **Limits.** 25MB `maxPayload`, 60 upgrades a minute per client address, 120 messages per 10s per socket, and a 30s server ping/pong that terminates a socket which misses two sweeps.
 
 ## Testing
