@@ -1,312 +1,304 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { APP_VERSION_HEADER, PROTOCOL_VERSION } from 'common'
 import { useAuthStore } from '@/stores/auth-store'
+import { resetApiTokenProvider } from '@/api/client'
 import { InvalidTokenError } from '@/errors/InvalidTokenError'
 import { BackendOutageError } from '@/errors/BackendOutageError'
+import { config } from '@/config/config'
+import eventBus from '@/utils/eventBus'
 
-const apiUrl = 'http://mock.com'
+const apiUrl = config.apiUrl
+
+const jsonResponse = (status: number, body: unknown = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: vi.fn().mockResolvedValue(body),
+})
 
 describe('auth-store', () => {
   let mockFetch: ReturnType<typeof vi.fn>
+  let emitSpy: ReturnType<typeof vi.spyOn>
   let authStore: ReturnType<typeof useAuthStore>
 
   beforeEach(() => {
-    // Reset mocks before each test
-    vi.resetAllMocks()
+    localStorage.clear()
+    setActivePinia(createPinia())
 
-    // Create a mock fetch function
     mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+    emitSpy = vi.spyOn(eventBus, 'emit')
 
-    vi.mock('@/config/config', () => ({
-      config: {
-        apiUrl: 'http://mock.com',
-        dataVersion: '1.0.0',
-      },
-    }))
-
-    // Initialize the auth store with the mocked fetch
-    authStore = useAuthStore(mockFetch as unknown as typeof fetch)
+    authStore = useAuthStore()
   })
 
-  describe('token getters/setters', () => {
-    it('should set and retrieve the token', async () => {
-      authStore.setToken('mock-token')
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ token: 'mock-token' }),
-      })
-      const token = await authStore.getToken()
-      expect(token).toBe('mock-token')
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    emitSpy.mockRestore()
+    resetApiTokenProvider()
+  })
+
+  describe('session state', () => {
+    it('hydrates from localStorage', () => {
+      localStorage.setItem('token', 'stored-token')
+      localStorage.setItem('loggedInUser', 'stored-user')
+      setActivePinia(createPinia())
+
+      const hydrated = useAuthStore()
+      expect(hydrated.getToken()).toBe('stored-token')
+      expect(hydrated.getLoggedInUser()).toBe('stored-user')
+      expect(hydrated.isLoggedIn).toBe(true)
     })
 
-    it('should clear the token when set to an empty string', () => {
-      authStore.setToken('')
-      expect(localStorage.getItem('token')).toBeNull()
-    })
-
-    it('should set the token properly', () => {
+    it('persists the token and clears it when set empty', () => {
       authStore.setToken('token-123')
       expect(localStorage.getItem('token')).toBe('token-123')
+
+      authStore.setToken('')
+      expect(localStorage.getItem('token')).toBeNull()
+      expect(authStore.getToken()).toBe('')
     })
 
-    it('should throw InvalidTokenError if the token is missing during retrieval', async () => {
-      authStore.setToken('')
-      await expect(authStore.getToken()).rejects.toThrow(new InvalidTokenError('No token provided'))
+    it('persists the username and clears it when set empty', () => {
+      authStore.setLoggedInUser('test-user')
+      expect(localStorage.getItem('loggedInUser')).toBe('test-user')
+
+      authStore.setLoggedInUser('')
+      expect(localStorage.getItem('loggedInUser')).toBeNull()
+    })
+
+    it('is not logged in with a token but no user', () => {
+      authStore.setToken('token-123')
+      expect(authStore.isLoggedIn).toBe(false)
+    })
+
+    it('reads the token without any network round-trip', () => {
+      authStore.setToken('token-123')
+      expect(authStore.getToken()).toBe('token-123')
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 
   describe('validateToken', () => {
-    it('should validate a valid token successfully', async () => {
-      // Mock fetch response for token validation
-      mockFetch.mockResolvedValueOnce({ ok: true })
+    it('validates a good token and sends the version header', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { valid: true, decoded: { id: '1', username: 'a' } }))
 
-      const result = await authStore.validateToken('mock-token')
-      expect(result).toBe(true)
-      expect(mockFetch).toHaveBeenCalledWith(`${apiUrl}/validate-token`, expect.any(Object))
+      await expect(authStore.validateToken('mock-token')).resolves.toBe(true)
+
+      const [url, init] = mockFetch.mock.calls[0]
+      expect(url).toBe(`${apiUrl}/validate-token`)
+      expect(init.method).toBe('POST')
+      expect(init.headers[APP_VERSION_HEADER]).toBe(PROTOCOL_VERSION)
+      expect(init.headers.Authorization).toBe('Bearer mock-token')
+      expect(JSON.parse(init.body)).toEqual({ token: 'mock-token' })
     })
 
-    it('should throw InvalidTokenError for invalid tokens during validation', async () => {
-      // Mock fetch response for invalid token
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
+    it('validates the stored token when given none', async () => {
+      authStore.setToken('stored')
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, {}))
 
-      await expect(authStore.validateToken('invalid-token')).rejects.toThrowError(InvalidTokenError)
+      await expect(authStore.validateToken()).resolves.toBe(true)
+      expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ token: 'stored' })
     })
 
-    it('should throw BackendOutageError for server errors during validation', async () => {
-      // Mock fetch response for server error
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+    it('throws InvalidTokenError when there is no token at all', async () => {
+      await expect(authStore.validateToken()).rejects.toThrow(new InvalidTokenError('No token provided'))
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('expires the session on a 401', async () => {
+      authStore.setToken('mock-token')
+      authStore.setLoggedInUser('test-user')
+      mockFetch.mockResolvedValueOnce(jsonResponse(401, { message: 'Invalid or expired token' }))
+
+      await expect(authStore.validateToken('mock-token')).rejects.toThrowError(InvalidTokenError)
+      expect(emitSpy).toHaveBeenCalledWith('sessionExpired')
+      expect(authStore.getToken()).toBe('')
+      expect(authStore.getLoggedInUser()).toBe('')
+    })
+
+    it('throws BackendOutageError on 5xx', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(500))
       await expect(authStore.validateToken('mock-token')).rejects.toThrowError(BackendOutageError)
 
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 502 })
+      mockFetch.mockResolvedValueOnce(jsonResponse(502))
       await expect(authStore.validateToken('mock-token')).rejects.toThrowError(BackendOutageError)
     })
 
-    it('should handle unknown errors during validation', async () => {
-      // Mock fetch to throw an error
-      mockFetch.mockImplementationOnce(() => {
-        throw new Error('Network error')
-      })
-
+    it('reports a network failure as unperformable', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'))
       await expect(authStore.validateToken('mock-token')).rejects.toThrowError(
         'validate-token could not be performed!'
       )
     })
-    it('should handle empty responses during validation', async () => {
-      // Mock fetch to throw an error
-      mockFetch.mockResolvedValue(undefined)
 
+    it('reports an unexpected status', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(418))
       await expect(authStore.validateToken('mock-token')).rejects.toThrowError(
-        'No response from server!'
-      )
-    })
-
-    it('should handle unknown responses during validation', async () => {
-      // Mock fetch to throw an error
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 1337 })
-
-      await expect(authStore.validateToken('mock-token')).rejects.toThrowError(
-        'validateToken: Unknown response during token validation'
+        'validateToken: Unknown response during token validation (418)'
       )
     })
   })
 
-  describe('handleLogin', () => {
-    it('should log in a user with valid credentials', async () => {
-      // Mock fetch response for login
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ token: 'mock-token' }),
-      })
+  describe('login', () => {
+    it('stores the session and announces it', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { token: 'mock-token' }))
 
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe(true)
+      await expect(authStore.login('test-user', 'password123')).resolves.toBe(true)
       expect(authStore.getLoggedInUser()).toBe('test-user')
+      expect(authStore.getToken()).toBe('mock-token')
       expect(localStorage.getItem('token')).toBe('mock-token')
+      expect(emitSpy).toHaveBeenCalledWith('loggedIn')
     })
 
-    it('should handle invalid credentials during login', async () => {
-      // Mock fetch response for invalid credentials
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: vi.fn().mockResolvedValue({}),
-      })
+    it('sends no Authorization header when logged out', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { token: 'mock-token' }))
+      await authStore.login('test-user', 'password123')
 
-      const result = await authStore.handleLogin('test-user', 'wrong-password')
-      expect(result).toBe('Credentials incorrect. Please try again.')
+      expect(mockFetch.mock.calls[0][1].headers.Authorization).toBeUndefined()
     })
 
-    it('should handle server errors during login', async () => {
-      // Mock fetch response for server error
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: vi.fn().mockResolvedValue({}),
-      })
-
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe('Backend server error! Please report this on Discord!')
+    it('reports bad credentials', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(400, { message: 'Invalid credentials' }))
+      await expect(authStore.login('test-user', 'wrong')).resolves.toBe('Credentials incorrect. Please try again.')
     })
 
-    it('should handle gateway errors during login', async () => {
-      // Mock fetch response for server error
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 502,
-        json: vi.fn().mockResolvedValue({}),
-      })
-
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe('Backend server offline! Please report this to Maelstrome on Discord!')
+    it('reports a server error', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(500))
+      await expect(authStore.login('test-user', 'p')).resolves.toBe('Backend server error! Please report this on Discord!')
     })
 
-    it('should handle unknown responses during login', async () => {
-      // Mock fetch response for server error
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 1337,
-        json: vi.fn().mockResolvedValue({}),
-      })
-
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe('Unknown response! Please report this on Discord!')
+    it('reports a gateway error', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(502))
+      await expect(authStore.login('test-user', 'p')).resolves.toBe('Backend server offline! Please report this to Maelstrome on Discord!')
     })
 
-    it('should handle request errors during login', async () => {
-      // Mock fetch to throw an error
-      mockFetch.mockImplementationOnce(() => {
-        throw new Error('Network error')
-      })
-
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe('Backend server offline! Please report this error on Discord: "Network error"')
+    it('reports an unknown status', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(418))
+      await expect(authStore.login('test-user', 'p')).resolves.toBe('Unknown response! Please report this on Discord!')
     })
 
-    it('should handle unknown errors', async () => {
-      // Mock fetch to throw an error
-      mockFetch.mockImplementationOnce(() => {
-        // eslint-disable-next-line no-throw-literal
-        throw 'Something went majorly bang'
-      })
+    it('reports the version gate', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(426, {
+        code: 'version_mismatch',
+        message: 'out of date',
+        requiredVersion: '7.0',
+        receivedVersion: '6.0',
+      }))
 
-      const result = await authStore.handleLogin('test-user', 'password123')
-      expect(result).toBe('An unknown login error occurred that could not be handled! Please report this on Discord!')
+      await expect(authStore.login('test-user', 'p')).resolves.toBe(
+        'This version of the planner is out of date. Please refresh the page.'
+      )
+      expect(emitSpy).toHaveBeenCalledWith('versionMismatch', expect.objectContaining({ source: 'rest' }))
+    })
+
+    it('reports a network failure', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'))
+      const result = await authStore.login('test-user', 'p')
+      expect(result).toContain('Backend server offline!')
+      expect(result).toContain('Network error')
+    })
+
+    it('leaves the session untouched when login fails', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(400, {}))
+      await authStore.login('test-user', 'wrong')
+
+      expect(authStore.getToken()).toBe('')
+      expect(authStore.getLoggedInUser()).toBe('')
+      expect(emitSpy).not.toHaveBeenCalledWith('loggedIn')
     })
   })
 
-  describe('handleLogout', () => {
-    it('should clear the logged-in user and token on logout', () => {
+  describe('logout', () => {
+    it('clears the session', () => {
       authStore.setLoggedInUser('test-user')
       authStore.setToken('mock-token')
 
-      authStore.handleLogout()
+      authStore.logout()
 
       expect(authStore.getLoggedInUser()).toBe('')
       expect(localStorage.getItem('loggedInUser')).toBeNull()
       expect(localStorage.getItem('token')).toBeNull()
+      expect(authStore.isLoggedIn).toBe(false)
     })
   })
 
-  describe('handleRegister', () => {
-    it('should register and log in a new user', async () => {
-      // Mock fetch response for registration
-      mockFetch.mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({}) })
+  describe('register', () => {
+    it('registers then logs the user straight in', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { message: 'User registered successfully!' }))
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { token: 'mock-token' }))
 
-      // Mock fetch response for login
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ token: 'mock-token' }),
-      })
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe(true)
+      await expect(authStore.register('new-user', 'password123')).resolves.toBe(true)
       expect(authStore.getLoggedInUser()).toBe('new-user')
-      expect(localStorage.getItem('token')).toBe('mock-token')
+      expect(authStore.getToken()).toBe('mock-token')
+      expect(mockFetch.mock.calls[0][0]).toBe(`${apiUrl}/register`)
+      expect(mockFetch.mock.calls[1][0]).toBe(`${apiUrl}/login`)
     })
 
-    it('should handle registration errors gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: vi.fn().mockResolvedValue({ message: 'Username already exists' }),
-      })
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('Registration failed. Username already exists')
+    it('surfaces the backend message on a 400', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(400, { message: 'User already exists.' }))
+      await expect(authStore.register('new-user', 'p')).resolves.toBe('User already exists.')
     })
 
-    it('should handle unexpected registration errors gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockImplementationOnce(() => {
-        throw new Error('Something went bang')
-      })
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe(`Backend server offline! Please report this error on Discord: "Something went bang"`)
-    })
-    it('should handle unexpected registration non instanced errors gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockImplementationOnce(() => {
-        // eslint-disable-next-line no-throw-literal
-        throw 'Something went majorly bang'
-      })
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe("Registration failed with an unknown error that wasn't caught!")
+    it('falls back when a 400 carries no message', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(400, {}))
+      await expect(authStore.register('new-user', 'p')).resolves.toBe('Registration failed.')
     })
 
-    it('should handle empty responses gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce(undefined)
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('Registration failed due to incorrect response from the server! Please report this on Discord!')
+    it('reports a server error', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(500))
+      await expect(authStore.register('new-user', 'p')).resolves.toBe('Backend server error! Please report this on Discord!')
     })
 
-    it('should handle already registered usernames', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce(mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: vi.fn().mockResolvedValue({ message: 'User new-user has already been registered.' }),
-      }))
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('User new-user has already been registered.')
+    it('reports a gateway error', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(502))
+      await expect(authStore.register('new-user', 'p')).resolves.toBe('Backend server offline! Please report this to Maelstrome on Discord!')
     })
 
-    it('should handle any 400 errors', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce(mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: vi.fn().mockResolvedValue({ message: 'This is an error from the backend' }),
-      }))
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('This is an error from the backend')
+    it('reports an unknown status', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(418, { message: 'teapot' }))
+      await expect(authStore.register('new-user', 'p')).resolves.toBe('Registration failed. teapot')
     })
 
-    it('should handle backend errors gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce(mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: vi.fn().mockResolvedValue({}),
-      }))
-
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('Backend server error! Please report this on Discord!')
+    it('reports a network failure', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Something went bang'))
+      const result = await authStore.register('new-user', 'p')
+      expect(result).toContain('Backend server offline!')
+      expect(result).toContain('Something went bang')
     })
-    it('should handle backend outages gracefully', async () => {
-      // Mock fetch response for registration error
-      mockFetch.mockResolvedValueOnce(mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 502,
-        json: vi.fn().mockResolvedValue({}),
-      }))
+  })
 
-      const result = await authStore.handleRegister('new-user', 'password123')
-      expect(result).toBe('Backend server offline! Please report this to Maelstrome on Discord!')
+  describe('changePassword', () => {
+    it('changes the password', async () => {
+      authStore.setToken('mock-token')
+      mockFetch.mockResolvedValueOnce(jsonResponse(200, { message: 'Password changed successfully!' }))
+
+      await expect(authStore.changePassword('old', 'new')).resolves.toBe(true)
+
+      const [url, init] = mockFetch.mock.calls[0]
+      expect(url).toBe(`${apiUrl}/me/password`)
+      expect(init.headers.Authorization).toBe('Bearer mock-token')
+      expect(JSON.parse(init.body)).toEqual({ currentPassword: 'old', newPassword: 'new' })
+    })
+
+    it('surfaces the backend message on a 400', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(400, { message: 'Invalid credentials' }))
+      await expect(authStore.changePassword('old', 'new')).resolves.toBe('Invalid credentials')
+    })
+
+    it('expires the session on a 401', async () => {
+      authStore.setToken('mock-token')
+      authStore.setLoggedInUser('test-user')
+      mockFetch.mockResolvedValueOnce(jsonResponse(401, { message: 'Unauthorized' }))
+
+      await expect(authStore.changePassword('old', 'new')).resolves.toBe('Your session expired. Please log in again.')
+      expect(emitSpy).toHaveBeenCalledWith('sessionExpired')
+      expect(authStore.getToken()).toBe('')
+    })
+
+    it('reports a server error', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(500))
+      await expect(authStore.changePassword('old', 'new')).resolves.toBe('Backend server error! Please report this on Discord!')
     })
   })
 })

@@ -1,10 +1,14 @@
 import mitt from 'mitt'
+import type { VersionMismatchBody } from 'common'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 type Events = {
   factoryUpdated: Factory;
   loggedIn: undefined;
   sessionExpired: undefined;
+  // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
+  // present on the REST side, where the server states what it wanted.
+  versionMismatch: { source: 'rest' | 'ws', body?: VersionMismatchBody };
   dataSynced: undefined;
   dataOutOfSync: undefined;
   toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };

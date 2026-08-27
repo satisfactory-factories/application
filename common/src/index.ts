@@ -1,5 +1,6 @@
 export * from './caps'
 export * from './truncate'
+export * from './types/api'
 export * from './types/factory'
 export * from './types/protocol'
 export * from './schemas/factory'

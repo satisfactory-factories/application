@@ -123,10 +123,13 @@
 
 <script setup lang="ts">
   import { ref } from 'vue'
+  import { storeToRefs } from 'pinia'
   import { useAuthStore } from '@/stores/auth-store'
   import Sync from '@/components/Sync.vue'
   import eventBus from '@/utils/eventBus'
   import { useAppStore } from '@/stores/app-store'
+  import { BackendOutageError } from '@/errors/BackendOutageError'
+  import { InvalidTokenError } from '@/errors/InvalidTokenError'
 
   defineProps<{
     buttonColor?: string
@@ -141,7 +144,8 @@
   const showLogin = ref(true)
   const showRegister = ref(false)
   const errorMessage = ref('')
-  const loggedInUser = ref(authStore.getLoggedInUser())
+  // The store owns the session now, so the button follows it without local copies.
+  const { loggedInUser } = storeToRefs(authStore)
 
   const showSessionExpiredDialog = ref(false)
 
@@ -152,29 +156,26 @@
     }
   })
 
-  // onMounted check if token is valid
+  // The one place a token gets validated on load; nothing else does it implicitly.
   onMounted(async () => {
     eventBus.on('sessionExpired', handleSessionExpiredEvent)
-    const token = ref<string>(localStorage.getItem('token') ?? '')
 
-    if (!token.value) {
+    if (!authStore.getToken()) {
       return
     }
 
-    switch (await authStore.validateToken(token.value)) {
-      case true:
-        loggedInUser.value = authStore.getLoggedInUser()
-        break
-      case 'invalid-token':
-        sessionHasExpired()
-        break
-      case 'backend-offline':
+    try {
+      await authStore.validateToken()
+    } catch (error) {
+      if (error instanceof InvalidTokenError) {
+        // The store already emitted sessionExpired, which opens the dialog.
+        return
+      }
+      if (error instanceof BackendOutageError) {
         errorMessage.value = 'The backend is currently offline. Please report this on Discord!'
-        break
-      case 'unexpected-response':
-      default:
-        errorMessage.value = 'An unexpected error occurred validating your token. Please report this on Discord!'
-        break
+        return
+      }
+      errorMessage.value = 'An unexpected error occurred validating your token. Please report this on Discord!'
     }
   })
 
@@ -197,11 +198,10 @@
   }
 
   const sessionHasExpired = () => {
-    handleLogout()
+    authStore.logout()
     showSessionExpiredDialog.value = true
     trayOpen.value = false
     showLogin.value = true
-    loggedInUser.value = authStore.getLoggedInUser() // Should be ''
   }
 
   const handleLoginForm = async () => {
@@ -211,10 +211,8 @@
       return
     }
 
-    const result = await authStore.handleLogin(username.value, password.value)
-    if (result === true) {
-      loggedInUser.value = authStore.getLoggedInUser()
-    } else {
+    const result = await authStore.login(username.value, password.value)
+    if (result !== true) {
       errorMessage.value = `Login failed: ${result}`
     }
   }
@@ -227,17 +225,14 @@
     }
 
     // Also logs them in
-    const result = await authStore.handleRegister(username.value, password.value)
-    if (result === true) {
-      loggedInUser.value = authStore.getLoggedInUser()
-    } else {
+    const result = await authStore.register(username.value, password.value)
+    if (result !== true) {
       errorMessage.value = `Registration failed: ${result}`
     }
   }
 
-  const handleLogout = async () => {
-    authStore.handleLogout()
-    loggedInUser.value = ''
+  const handleLogout = () => {
+    authStore.logout()
   }
 
   const handleSessionExpiredEvent = () => {
@@ -247,13 +242,13 @@
 
   // Debug feature to mangle the users' token and attempt a validation, which should trigger the session expired event
   const mangleToken = () => {
-    const token = localStorage.getItem('token') ?? null
-    if (token) {
-      const mangledToken = `mangled${token}`
-      localStorage.setItem('token', mangledToken)
-      console.log('Auth: Mangled token')
-      authStore.validateToken(mangledToken) // Disable this if you want to test without revalidation
-    }
+    const token = authStore.getToken()
+    if (!token) return
+
+    authStore.setToken(`mangled${token}`)
+    console.log('Auth: Mangled token')
+    // Disable this if you want to test without revalidation
+    authStore.validateToken().catch(() => {})
   }
 
 </script>

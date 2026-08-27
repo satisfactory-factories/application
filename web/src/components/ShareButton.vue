@@ -22,18 +22,14 @@
 </template>
 
 <script setup lang="ts">
-  import { config } from '@/config/config'
   import { useAppStore } from '@/stores/app-store'
-  import { useAuthStore } from '@/stores/auth-store'
+  import { ApiError, ApiNetworkError, createSnapshotShare } from '@/api/client'
   import { FactoryTab } from '@/interfaces/planner/FactoryInterface'
-  import { ShareDataCreationResponse } from '@/interfaces/ShareDataInterface'
   import eventBus from '@/utils/eventBus'
 
   // Get user auth stuff from the app store
   const { currentFactoryTab } = useAppStore()
-  const authStore = useAuthStore()
 
-  const apiUrl = config.apiUrl
   const creating = ref(false)
   const link = ref()
   const showCopyDialog = ref(false)
@@ -67,48 +63,40 @@
 
   const handleCreation = async (factoryTabData: FactoryTab) => {
     creating.value = true
-    let token: string
-    try {
-      token = await authStore.getToken()
-    } catch {
-      // Do nothing
-      token = ''
-    }
 
     try {
-      const response = await fetch(`${apiUrl}/share`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(factoryTabData),
-      })
-      if (response.ok) {
-        const data: ShareDataCreationResponse = await response.json()
-        return `${window.location.origin}/share/${data.shareId}`
-      } else if (response.status === 429) {
-        console.error('Share Error: Rate limited')
-        eventBus.emit('toast', { message: 'You are being rate limited. Stop spamming that button! Please wait some time before trying again.', type: 'error' })
-      } else if (response.status === 500) {
-        console.error('Share Error: Server error', response)
-        eventBus.emit('toast', { message: 'A server error has occurred trying to create the share link. Please report this on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
-      } else if (response.status === 502) {
-        console.error('Share Error: Gateway timeout', response)
-        eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>, ping @Maelstrome directly!', type: 'error' })
-      } else {
-        console.error('Share Error: Unknown response', response.body)
-        eventBus.emit('toast', { message: 'Failed to create share link. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
-      }
+      // The client attaches the bearer token and the X-App-Version header the
+      // version gate requires; without the latter every share request 426s.
+      const data = await createSnapshotShare(factoryTabData)
+      return `${window.location.origin}/share/${data.shareId}`
     } catch (error) {
-      if (error instanceof Error) {
-        console.error('Share Error (catchall):', error)
-        if (error.message.includes('NetworkError')) {
+      if (error instanceof ApiNetworkError) {
+        console.error('Share Error: Network', error)
+        eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>, ping @Maelstrome directly!', type: 'error' })
+        return
+      }
+      if (error instanceof ApiError) {
+        if (error.status === 429) {
+          console.error('Share Error: Rate limited')
+          eventBus.emit('toast', { message: 'You are being rate limited. Stop spamming that button! Please wait some time before trying again.', type: 'error' })
+          return
+        }
+        if (error.status === 500) {
+          console.error('Share Error: Server error', error)
+          eventBus.emit('toast', { message: 'A server error has occurred trying to create the share link. Please report this on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
+          return
+        }
+        if (error.status === 502) {
+          console.error('Share Error: Gateway timeout', error)
           eventBus.emit('toast', { message: 'The backend server is offline! Please report this with urgency on <a href="https://discord.gg/vcFsjcWAFv">Discord</a>, ping @Maelstrome directly!', type: 'error' })
           return
         }
-        eventBus.emit('toast', { message: 'Failed to create share link due to unknown error. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
+        console.error('Share Error: Unknown response', error)
+        eventBus.emit('toast', { message: 'Failed to create share link. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
+        return
       }
+      console.error('Share Error (catchall):', error)
+      eventBus.emit('toast', { message: 'Failed to create share link due to unknown error. Please report this error on our <a href="https://discord.gg/vcFsjcWAFv">Discord</a>!', type: 'error' })
     }
   }
 
