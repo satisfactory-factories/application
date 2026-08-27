@@ -10,379 +10,370 @@
   >
     Options
   </v-btn>
-  <v-dialog v-model="showOptions" max-width="820">
-    <v-card>
-      <v-card-title class="d-flex align-center py-4">
-        <i class="fas fa-wrench" /><span class="ml-3">Options</span>
-        <v-spacer />
-        <!-- The way out is the corner of the dialog, where a dialog's way out is. It used to be a
-             Close button at the bottom right, under the settings and out of the eyeline. -->
-        <v-btn
-          id="options-close"
-          density="comfortable"
-          icon="fas fa-times"
-          title="Close options"
-          variant="text"
-          @click="showOptions = false"
-        />
-      </v-card-title>
-      <v-card-text class="text-body-2">
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">Raw resources</h3>
-        <p class="mb-3 text-medium-emphasis">
-          Every raw resource has to be mined or imported. The wizard lists each factory that is
-          short of one and offers to build the mines, add the extractors, or wire the imports for
-          you.
-        </p>
-        <v-btn
-          id="run-raw-wizard"
-          color="primary"
-          prepend-icon="fas fa-shovel"
-          variant="flat"
-          @click="openWizard"
-        >
-          Run Raw Resources Wizard
-        </v-btn>
+  <!-- The layout this dialog established is now <app-dialog>, and this uses it like everything
+       else rather than keeping its own copy of it. -->
+  <app-dialog
+    v-model="showOptions"
+    close-id="options-close"
+    close-title="Close options"
+    icon="fas fa-wrench"
+    max-width="820"
+    title="Options"
+  >
+    <h3 class="text-subtitle-1 font-weight-bold mb-1">Raw resources</h3>
+    <p class="mb-3 text-medium-emphasis">
+      Every raw resource has to be mined or imported. The wizard lists each factory that is
+      short of one and offers to build the mines, add the extractors, or wire the imports for
+      you.
+    </p>
+    <v-btn
+      id="run-raw-wizard"
+      color="primary"
+      prepend-icon="fas fa-shovel"
+      variant="flat"
+      @click="openWizard"
+    >
+      Run Raw Resources Wizard
+    </v-btn>
 
-        <v-divider class="my-4" />
+    <v-divider class="my-4" />
 
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">Satisfaction</h3>
+    <h3 class="text-subtitle-1 font-weight-bold mb-1">Satisfaction</h3>
+    <div
+      :aria-checked="options.showBacklogAdvisory"
+      class="option-toggle d-flex align-center ga-3"
+      role="checkbox"
+      tabindex="0"
+      @click="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+      @keydown.enter.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+      @keydown.space.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+    >
+      <span class="tick" :class="{ on: options.showBacklogAdvisory }" />
+      <span>Warn about surpluses that will back up</span>
+      <tooltip-info
+        :is-caption="false"
+        text="A surplus nothing consumes fills the belt and stalls the buildings making it. This flags those items so you can sink the excess, and marks the factory amber until you do. Turn it off if a plan mid-build is showing you more of these than you want to read."
+        @click.stop
+      />
+    </div>
+
+    <v-divider class="my-4" />
+
+    <h3 class="text-subtitle-1 font-weight-bold mb-1">Sidebar</h3>
+    <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Factory groups</h4>
+
+    <v-row no-gutters>
+      <!-- What the settings do, rather than a paragraph saying it. Not the real component: it
+           would need a plan, and this has to show a group that has every row turned on. -->
+      <v-col class="pr-md-6 mb-4 mb-md-0" cols="12" md="5">
+        <div class="group-preview" :style="PREVIEW_COLOR_VARS">
+          <div class="preview-header">
+            <div class="d-flex align-center ga-2 px-2 py-2">
+              <i class="fas fa-grip-lines text-grey-darken-1" />
+              <span class="preview-chevron"><i class="fas fa-chevron-down" /></span>
+              <span class="preview-swatch" />
+              <span class="preview-name">Copper</span>
+              <v-spacer />
+              <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
+                <i class="fas fa-industry" /><span class="ml-2">3</span>
+              </v-chip>
+            </div>
+            <div v-if="options.showGroupPower" class="d-flex align-center ga-1 px-2 pb-1">
+              <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
+                <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" /><span class="ml-1">0 GW</span>
+              </v-chip>
+              <v-chip class="sf-chip x-small no-margin consumption" variant="tonal">
+                <i class="fas fa-bolt mr-1" /><i class="fas fa-minus" /><span class="ml-1">0.25 GW</span>
+              </v-chip>
+              <v-chip class="sf-chip x-small no-margin error" variant="tonal">
+                <i class="fas fa-balance-scale" /><span class="ml-1">-0.25 GW</span>
+              </v-chip>
+            </div>
+            <div v-if="options.showGroupProducts" class="d-flex align-start ga-1 px-2 pb-1">
+              <span
+                v-for="product in previewProducts"
+                :key="product.id"
+                class="preview-tile"
+              >
+                <group-product-icon
+                  :kind="options.showGroupProductKinds ? product.kind : undefined"
+                  :part-id="product.id"
+                  :tooltip="getPartDisplayName(product.id)"
+                />
+                <!-- Exactly balanced is grey in the real row, being neither good nor bad. -->
+                <span class="preview-net" :class="previewNetClass(product.net)">
+                  {{ product.net }}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div class="preview-body">
+            <div v-for="name in PREVIEW_FACTORIES" :key="name" class="preview-row">
+              <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
+              <span>{{ name }}</span>
+            </div>
+          </div>
+        </div>
+      </v-col>
+
+      <v-col cols="12" md="7">
+        <!-- The explanations are tooltips rather than paragraphs: three settings each carrying a
+             three-line blurb read as an essay with checkboxes in it, and the list of what you can
+             turn on was the part that got lost. Box and tick drawn in CSS, as in the multi-group
+             editor: Vuetify's FA aliases use `far fa-square` for the unchecked state and this app
+             ships no Font Awesome regular family, so a v-checkbox has nothing to draw until it is
+             ticked and reads as a stray filled square. -->
         <div
-          :aria-checked="options.showBacklogAdvisory"
+          :aria-checked="options.showGroupProducts"
           class="option-toggle d-flex align-center ga-3"
           role="checkbox"
           tabindex="0"
-          @click="options.showBacklogAdvisory = !options.showBacklogAdvisory"
-          @keydown.enter.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
-          @keydown.space.prevent="options.showBacklogAdvisory = !options.showBacklogAdvisory"
+          @click="options.showGroupProducts = !options.showGroupProducts"
+          @keydown.enter.prevent="options.showGroupProducts = !options.showGroupProducts"
+          @keydown.space.prevent="options.showGroupProducts = !options.showGroupProducts"
         >
-          <span class="tick" :class="{ on: options.showBacklogAdvisory }" />
-          <span>Warn about surpluses that will back up</span>
+          <span class="tick" :class="{ on: options.showGroupProducts }" />
+          <span>Show group products</span>
           <tooltip-info
             :is-caption="false"
-            text="A surplus nothing consumes fills the belt and stalls the buildings making it. This flags those items so you can sink the excess, and marks the factory amber until you do. Turn it off if a plan mid-build is showing you more of these than you want to read."
+            text="A group's product row lists what the group delivers to other factories, with its surplus or shortfall."
             @click.stop
           />
         </div>
 
-        <v-divider class="my-4" />
-
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">Sidebar</h3>
-        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Factory groups</h4>
-
-        <v-row no-gutters>
-          <!-- What the settings do, rather than a paragraph saying it. Not the real component: it
-               would need a plan, and this has to show a group that has every row turned on. -->
-          <v-col class="pr-md-6 mb-4 mb-md-0" cols="12" md="5">
-            <div class="group-preview" :style="PREVIEW_COLOR_VARS">
-              <div class="preview-header">
-                <div class="d-flex align-center ga-2 px-2 py-2">
-                  <i class="fas fa-grip-lines text-grey-darken-1" />
-                  <span class="preview-chevron"><i class="fas fa-chevron-down" /></span>
-                  <span class="preview-swatch" />
-                  <span class="preview-name">Copper</span>
-                  <v-spacer />
-                  <v-chip class="sf-chip small no-margin factory factory-count" variant="tonal">
-                    <i class="fas fa-industry" /><span class="ml-2">3</span>
-                  </v-chip>
-                </div>
-                <div v-if="options.showGroupPower" class="d-flex align-center ga-1 px-2 pb-1">
-                  <v-chip class="sf-chip x-small no-margin generation" variant="tonal">
-                    <i class="fas fa-bolt mr-1" /><i class="fas fa-plus" /><span class="ml-1">0 GW</span>
-                  </v-chip>
-                  <v-chip class="sf-chip x-small no-margin consumption" variant="tonal">
-                    <i class="fas fa-bolt mr-1" /><i class="fas fa-minus" /><span class="ml-1">0.25 GW</span>
-                  </v-chip>
-                  <v-chip class="sf-chip x-small no-margin error" variant="tonal">
-                    <i class="fas fa-balance-scale" /><span class="ml-1">-0.25 GW</span>
-                  </v-chip>
-                </div>
-                <div v-if="options.showGroupProducts" class="d-flex align-start ga-1 px-2 pb-1">
-                  <span
-                    v-for="product in previewProducts"
-                    :key="product.id"
-                    class="preview-tile"
-                  >
-                    <group-product-icon
-                      :kind="options.showGroupProductKinds ? product.kind : undefined"
-                      :part-id="product.id"
-                      :tooltip="getPartDisplayName(product.id)"
-                    />
-                    <!-- Exactly balanced is grey in the real row, being neither good nor bad. -->
-                    <span class="preview-net" :class="previewNetClass(product.net)">
-                      {{ product.net }}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div class="preview-body">
-                <div v-for="name in PREVIEW_FACTORIES" :key="name" class="preview-row">
-                  <i class="fas fa-grip-lines text-grey-darken-1 mr-2" />
-                  <span>{{ name }}</span>
-                </div>
-              </div>
-            </div>
-          </v-col>
-
-          <v-col cols="12" md="7">
-            <!-- The explanations are tooltips rather than paragraphs: three settings each carrying a
-                 three-line blurb read as an essay with checkboxes in it, and the list of what you can
-                 turn on was the part that got lost. Box and tick drawn in CSS, as in the multi-group
-                 editor: Vuetify's FA aliases use `far fa-square` for the unchecked state and this app
-                 ships no Font Awesome regular family, so a v-checkbox has nothing to draw until it is
-                 ticked and reads as a stray filled square. -->
-            <div
-              :aria-checked="options.showGroupProducts"
-              class="option-toggle d-flex align-center ga-3"
-              role="checkbox"
-              tabindex="0"
-              @click="options.showGroupProducts = !options.showGroupProducts"
-              @keydown.enter.prevent="options.showGroupProducts = !options.showGroupProducts"
-              @keydown.space.prevent="options.showGroupProducts = !options.showGroupProducts"
-            >
-              <span class="tick" :class="{ on: options.showGroupProducts }" />
-              <span>Show group products</span>
-              <tooltip-info
-                :is-caption="false"
-                text="A group's product row lists what the group delivers to other factories, with its surplus or shortfall."
-                @click.stop
-              />
-            </div>
-
-            <!-- Indented because it only qualifies the row above, and disabled with it: internal
-                 products of a row that isn't drawn is not a state worth being able to set. -->
-            <div
-              :aria-checked="options.showInternalGroupProducts"
-              :aria-disabled="!options.showGroupProducts"
-              class="option-toggle option-child d-flex align-center ga-3"
-              :class="{ disabled: !options.showGroupProducts }"
-              role="checkbox"
-              :tabindex="options.showGroupProducts ? 0 : -1"
-              @click="toggleInternalProducts"
-              @keydown.enter.prevent="toggleInternalProducts"
-              @keydown.space.prevent="toggleInternalProducts"
-            >
-              <span class="tick" :class="{ on: options.showInternalGroupProducts && options.showGroupProducts }" />
-              <span>Show group internal products</span>
-              <tooltip-info
-                :is-caption="false"
-                text="Parts a group makes and uses up entirely within itself. Off by default: the row is meant to say what the group delivers, and an intermediate that never leaves it crowds that out."
-                @click.stop
-              />
-            </div>
-
-            <!-- Also a child of the product row, and disabled with it for the same reason. -->
-            <div
-              :aria-checked="options.showGroupProductKinds"
-              :aria-disabled="!options.showGroupProducts"
-              class="option-toggle option-child d-flex align-center ga-3"
-              :class="{ disabled: !options.showGroupProducts }"
-              role="checkbox"
-              :tabindex="options.showGroupProducts ? 0 : -1"
-              @click="toggleProductKinds"
-              @keydown.enter.prevent="toggleProductKinds"
-              @keydown.space.prevent="toggleProductKinds"
-            >
-              <span class="tick" :class="{ on: options.showGroupProductKinds && options.showGroupProducts }" />
-              <span>Badge products with their role</span>
-              <tooltip-info
-                :is-caption="false"
-                text="A mark in the corner of each tile saying what the group does with the part: ships it to a factory outside the group, uses it up inside, or just makes it."
-                @click.stop
-              />
-            </div>
-
-            <div
-              :aria-checked="options.showGroupPower"
-              class="option-toggle d-flex align-center ga-3"
-              role="checkbox"
-              tabindex="0"
-              @click="options.showGroupPower = !options.showGroupPower"
-              @keydown.enter.prevent="options.showGroupPower = !options.showGroupPower"
-              @keydown.space.prevent="options.showGroupPower = !options.showGroupPower"
-            >
-              <span class="tick" :class="{ on: options.showGroupPower }" />
-              <span>Show group power</span>
-              <tooltip-info
-                :is-caption="false"
-                text="What each group generates, what it consumes and whether it pays for itself. The same figures the Statistics link above them wears."
-                @click.stop
-              />
-            </div>
-          </v-col>
-        </v-row>
-
-        <v-divider class="my-4" />
-
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">Building groups</h3>
-        <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Effective output tolerance</h4>
-        <p class="mb-3 text-medium-emphasis">
-          How far an item's building groups may sit from what it asks for before the planner calls
-          them imbalanced. Some recipes cannot be balanced exactly, so zero is not offered.
-        </p>
-
-        <div class="d-flex align-center flex-wrap ga-3 mb-4">
-          <!-- Deliberately not `mandatory`: a custom value belongs to neither preset, and
-               mandatory would drag the selection onto one. Deselecting emits undefined, which
-               applyTolerance rejects. -->
-          <v-btn-toggle
-            id="balance-tolerance"
-            color="primary"
-            density="comfortable"
-            :model-value="options.balanceTolerancePercent"
-            variant="outlined"
-            @update:model-value="applyTolerance"
-          >
-            <v-btn
-              v-for="percent in TOLERANCE_CHOICES"
-              :id="`balance-tolerance-${percent}`"
-              :key="percent"
-              :value="percent"
-            >
-              {{ percent }}%
-            </v-btn>
-          </v-btn-toggle>
-          <!-- Vuetify inputs are flex: 1 1 auto, so `width` alone loses to the row it sits in and
-               the field eats every pixel the preset buttons leave. -->
-          <v-number-input
-            id="balance-tolerance-custom"
-            class="flex-grow-0 flex-shrink-0"
-            control-variant="stacked"
-            density="compact"
-            hide-details
-            label="Custom"
-            :max="TOLERANCE_RANGE.max"
-            :min="TOLERANCE_RANGE.min"
-            :model-value="options.balanceTolerancePercent"
-            :step="0.1"
-            suffix="%"
-            variant="outlined"
-            width="130px"
-            @update:model-value="applyTolerance"
+        <!-- Indented because it only qualifies the row above, and disabled with it: internal
+             products of a row that isn't drawn is not a state worth being able to set. -->
+        <div
+          :aria-checked="options.showInternalGroupProducts"
+          :aria-disabled="!options.showGroupProducts"
+          class="option-toggle option-child d-flex align-center ga-3"
+          :class="{ disabled: !options.showGroupProducts }"
+          role="checkbox"
+          :tabindex="options.showGroupProducts ? 0 : -1"
+          @click="toggleInternalProducts"
+          @keydown.enter.prevent="toggleInternalProducts"
+          @keydown.space.prevent="toggleInternalProducts"
+        >
+          <span class="tick" :class="{ on: options.showInternalGroupProducts && options.showGroupProducts }" />
+          <span>Show group internal products</span>
+          <tooltip-info
+            :is-caption="false"
+            text="Parts a group makes and uses up entirely within itself. Off by default: the row is meant to say what the group delivers, and an intermediate that never leaves it crowds that out."
+            @click.stop
           />
         </div>
 
-        <!-- Same idea as the group preview above: show what the setting does rather than describe
-             it. This one is a real Factory underneath and every figure goes through the engine, so
-             a Mk.1 mine can be dialled in here and the verdict is the one the planner would give. -->
-        <div v-if="previewProduct" class="tolerance-preview pa-3">
-          <div class="d-flex align-center flex-wrap ga-2 mb-2">
-            <game-asset height="24" subject="Stone" type="item" width="24" />
-            <span class="font-weight-medium">Limestone</span>
-            <!-- Vuetify inputs are flex: 1 1 auto, so once the sentence beside it wraps to a
-                 second line this one grows into the space left on the first. -->
-            <v-number-input
-              id="balance-preview-amount"
-              v-model="previewAmount"
-              class="flex-grow-0 flex-shrink-0"
-              control-variant="stacked"
-              density="compact"
-              hide-details
-              hide-spin-buttons
-              :min="1"
-              suffix="/min"
-              variant="outlined"
-              width="138px"
-              @update:model-value="debouncePreviewAmount"
-            />
-            <debounce-spinner :active="pendingRecalc === 'preview-amount'" />
-          </div>
-          <!-- Its own line: beside the input it wrapped at most amounts anyway. -->
-          <div class="text-medium-emphasis">
-            Requires <b>{{ formatNumber(previewRequiredBuildings) }}</b> Miner Mk.1s at 100%.
-          </div>
-
-          <!-- Above the inputs, as in the planner: the verdict is the thing being demonstrated. -->
-          <div class="d-flex align-center flex-wrap ga-2 mb-2">
-            <span :class="previewBalanced ? 'text-green' : 'text-red'">
-              <i class="fas fa-cog" />
-              Effective Output: <b>{{ formatNumber(previewOutput) }}/min</b> |
-              {{ formatNumber(Math.abs(previewRemainingRate)) }}/min
-              {{ previewRemainingRate >= 0 ? 'short' : 'over' }}
-            </span>
-            <v-chip
-              id="balance-tolerance-preview-status"
-              class="sf-chip x-small no-margin"
-              :class="previewBalanced ? 'green' : 'red'"
-            >
-              <!-- Wrapped rather than :class-flipped: FontAwesome replaces the <i> with an <svg>
-                   and detaches it, so a flip never reaches the DOM and the tick sticks. -->
-              <span v-if="previewBalanced"><i class="fas fa-check" /></span>
-              <span v-else><i class="fas fa-exclamation-triangle" /></span>
-              <span class="ml-2">{{ previewStatus }}</span>
-            </v-chip>
-          </div>
-
-          <div class="d-flex align-center flex-wrap ga-1">
-            <v-chip class="sf-chip building input no-margin" variant="tonal">
-              <game-asset subject="minermk1" type="building" />
-              <v-number-input
-                id="balance-preview-buildings"
-                v-model="previewGroup.buildingCount"
-                class="inline-inputs ml-0"
-                control-variant="stacked"
-                density="compact"
-                hide-details
-                hide-spin-buttons
-                :min="0"
-                width="80px"
-                @update:model-value="debouncePreviewGroup('buildings')"
-              />
-              <debounce-spinner :active="pendingRecalc === 'preview-buildings'" />
-            </v-chip>
-            <span class="text-medium-emphasis mx-1">@</span>
-            <v-chip class="sf-chip yellow input unit no-margin" variant="tonal">
-              <game-asset subject="overclock-production" type="item_id" />
-              <v-number-input
-                id="balance-preview-clock"
-                v-model="previewGroup.overclockPercent"
-                class="inline-inputs ml-0"
-                control-variant="stacked"
-                density="compact"
-                hide-details
-                hide-spin-buttons
-                :max="250"
-                :min="0"
-                width="110px"
-                @update:model-value="debouncePreviewGroup('clock')"
-              />
-              <span class="clock-unit mx-2">%</span>
-              <debounce-spinner :active="pendingRecalc === 'preview-clock'" />
-            </v-chip>
-            <span class="text-medium-emphasis mx-1">=</span>
-            <v-chip class="sf-chip raw-resource input no-margin" variant="tonal">
-              <game-asset subject="Stone" type="item" />
-              <v-number-input
-                id="balance-preview-output"
-                v-model="previewOutputField"
-                class="inline-inputs ml-0"
-                control-variant="stacked"
-                density="compact"
-                hide-details
-                hide-spin-buttons
-                :min="0"
-                width="110px"
-                @update:model-value="debouncePreviewOutput"
-              />
-              <span class="mx-1">/min</span>
-              <debounce-spinner :active="pendingRecalc === 'preview-output'" />
-            </v-chip>
-          </div>
-
-          <div class="text-medium-emphasis mt-2">
-            At {{ options.balanceTolerancePercent }}%, anything outside that
-            <b>{{ formatNumber(previewToleranceRate) }}/min</b> either way goes red.
-          </div>
-          <!-- The tolerance as the two numbers it comes to, rather than a percentage the reader
-               has to apply themselves. -->
-          <div class="text-medium-emphasis">
-            Min: <b>{{ formatNumber(previewMinRate) }}/min</b>
-            <span class="mx-2">|</span>
-            Max: <b>{{ formatNumber(previewMaxRate) }}/min</b>
-          </div>
+        <!-- Also a child of the product row, and disabled with it for the same reason. -->
+        <div
+          :aria-checked="options.showGroupProductKinds"
+          :aria-disabled="!options.showGroupProducts"
+          class="option-toggle option-child d-flex align-center ga-3"
+          :class="{ disabled: !options.showGroupProducts }"
+          role="checkbox"
+          :tabindex="options.showGroupProducts ? 0 : -1"
+          @click="toggleProductKinds"
+          @keydown.enter.prevent="toggleProductKinds"
+          @keydown.space.prevent="toggleProductKinds"
+        >
+          <span class="tick" :class="{ on: options.showGroupProductKinds && options.showGroupProducts }" />
+          <span>Badge products with their role</span>
+          <tooltip-info
+            :is-caption="false"
+            text="A mark in the corner of each tile saying what the group does with the part: ships it to a factory outside the group, uses it up inside, or just makes it."
+            @click.stop
+          />
         </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+
+        <div
+          :aria-checked="options.showGroupPower"
+          class="option-toggle d-flex align-center ga-3"
+          role="checkbox"
+          tabindex="0"
+          @click="options.showGroupPower = !options.showGroupPower"
+          @keydown.enter.prevent="options.showGroupPower = !options.showGroupPower"
+          @keydown.space.prevent="options.showGroupPower = !options.showGroupPower"
+        >
+          <span class="tick" :class="{ on: options.showGroupPower }" />
+          <span>Show group power</span>
+          <tooltip-info
+            :is-caption="false"
+            text="What each group generates, what it consumes and whether it pays for itself. The same figures the Statistics link above them wears."
+            @click.stop
+          />
+        </div>
+      </v-col>
+    </v-row>
+
+    <v-divider class="my-4" />
+
+    <h3 class="text-subtitle-1 font-weight-bold mb-1">Building groups</h3>
+    <h4 class="text-body-2 font-weight-bold text-medium-emphasis mb-3">Effective output tolerance</h4>
+    <p class="mb-3 text-medium-emphasis">
+      How far an item's building groups may sit from what it asks for before the planner calls
+      them imbalanced. Some recipes cannot be balanced exactly, so zero is not offered.
+    </p>
+
+    <div class="d-flex align-center flex-wrap ga-3 mb-4">
+      <!-- Deliberately not `mandatory`: a custom value belongs to neither preset, and
+           mandatory would drag the selection onto one. Deselecting emits undefined, which
+           applyTolerance rejects. -->
+      <v-btn-toggle
+        id="balance-tolerance"
+        color="primary"
+        density="comfortable"
+        :model-value="options.balanceTolerancePercent"
+        variant="outlined"
+        @update:model-value="applyTolerance"
+      >
+        <v-btn
+          v-for="percent in TOLERANCE_CHOICES"
+          :id="`balance-tolerance-${percent}`"
+          :key="percent"
+          :value="percent"
+        >
+          {{ percent }}%
+        </v-btn>
+      </v-btn-toggle>
+      <!-- Vuetify inputs are flex: 1 1 auto, so `width` alone loses to the row it sits in and
+           the field eats every pixel the preset buttons leave. -->
+      <v-number-input
+        id="balance-tolerance-custom"
+        class="flex-grow-0 flex-shrink-0"
+        control-variant="stacked"
+        density="compact"
+        hide-details
+        label="Custom"
+        :max="TOLERANCE_RANGE.max"
+        :min="TOLERANCE_RANGE.min"
+        :model-value="options.balanceTolerancePercent"
+        :step="0.1"
+        suffix="%"
+        variant="outlined"
+        width="130px"
+        @update:model-value="applyTolerance"
+      />
+    </div>
+
+    <!-- Same idea as the group preview above: show what the setting does rather than describe
+         it. This one is a real Factory underneath and every figure goes through the engine, so
+         a Mk.1 mine can be dialled in here and the verdict is the one the planner would give. -->
+    <div v-if="previewProduct" class="tolerance-preview pa-3">
+      <div class="d-flex align-center flex-wrap ga-2 mb-2">
+        <game-asset height="24" subject="Stone" type="item" width="24" />
+        <span class="font-weight-medium">Limestone</span>
+        <!-- Vuetify inputs are flex: 1 1 auto, so once the sentence beside it wraps to a
+             second line this one grows into the space left on the first. -->
+        <v-number-input
+          id="balance-preview-amount"
+          v-model="previewAmount"
+          class="flex-grow-0 flex-shrink-0"
+          control-variant="stacked"
+          density="compact"
+          hide-details
+          hide-spin-buttons
+          :min="1"
+          suffix="/min"
+          variant="outlined"
+          width="138px"
+          @update:model-value="debouncePreviewAmount"
+        />
+        <debounce-spinner :active="pendingRecalc === 'preview-amount'" />
+      </div>
+      <!-- Its own line: beside the input it wrapped at most amounts anyway. -->
+      <div class="text-medium-emphasis">
+        Requires <b>{{ formatNumber(previewRequiredBuildings) }}</b> Miner Mk.1s at 100%.
+      </div>
+
+      <!-- Above the inputs, as in the planner: the verdict is the thing being demonstrated. -->
+      <div class="d-flex align-center flex-wrap ga-2 mb-2">
+        <span :class="previewBalanced ? 'text-green' : 'text-red'">
+          <i class="fas fa-cog" />
+          Effective Output: <b>{{ formatNumber(previewOutput) }}/min</b> |
+          {{ formatNumber(Math.abs(previewRemainingRate)) }}/min
+          {{ previewRemainingRate >= 0 ? 'short' : 'over' }}
+        </span>
+        <v-chip
+          id="balance-tolerance-preview-status"
+          class="sf-chip x-small no-margin"
+          :class="previewBalanced ? 'green' : 'red'"
+        >
+          <!-- Wrapped rather than :class-flipped: FontAwesome replaces the <i> with an <svg>
+               and detaches it, so a flip never reaches the DOM and the tick sticks. -->
+          <span v-if="previewBalanced"><i class="fas fa-check" /></span>
+          <span v-else><i class="fas fa-exclamation-triangle" /></span>
+          <span class="ml-2">{{ previewStatus }}</span>
+        </v-chip>
+      </div>
+
+      <div class="d-flex align-center flex-wrap ga-1">
+        <v-chip class="sf-chip building input no-margin" variant="tonal">
+          <game-asset subject="minermk1" type="building" />
+          <v-number-input
+            id="balance-preview-buildings"
+            v-model="previewGroup.buildingCount"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            width="80px"
+            @update:model-value="debouncePreviewGroup('buildings')"
+          />
+          <debounce-spinner :active="pendingRecalc === 'preview-buildings'" />
+        </v-chip>
+        <span class="text-medium-emphasis mx-1">@</span>
+        <v-chip class="sf-chip yellow input unit no-margin" variant="tonal">
+          <game-asset subject="overclock-production" type="item_id" />
+          <v-number-input
+            id="balance-preview-clock"
+            v-model="previewGroup.overclockPercent"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :max="250"
+            :min="0"
+            width="110px"
+            @update:model-value="debouncePreviewGroup('clock')"
+          />
+          <span class="clock-unit mx-2">%</span>
+          <debounce-spinner :active="pendingRecalc === 'preview-clock'" />
+        </v-chip>
+        <span class="text-medium-emphasis mx-1">=</span>
+        <v-chip class="sf-chip raw-resource input no-margin" variant="tonal">
+          <game-asset subject="Stone" type="item" />
+          <v-number-input
+            id="balance-preview-output"
+            v-model="previewOutputField"
+            class="inline-inputs ml-0"
+            control-variant="stacked"
+            density="compact"
+            hide-details
+            hide-spin-buttons
+            :min="0"
+            width="110px"
+            @update:model-value="debouncePreviewOutput"
+          />
+          <span class="mx-1">/min</span>
+          <debounce-spinner :active="pendingRecalc === 'preview-output'" />
+        </v-chip>
+      </div>
+
+      <div class="text-medium-emphasis mt-2">
+        At {{ options.balanceTolerancePercent }}%, anything outside that
+        <b>{{ formatNumber(previewToleranceRate) }}/min</b> either way goes red.
+      </div>
+      <!-- The tolerance as the two numbers it comes to, rather than a percentage the reader
+           has to apply themselves. -->
+      <div class="text-medium-emphasis">
+        Min: <b>{{ formatNumber(previewMinRate) }}/min</b>
+        <span class="mx-2">|</span>
+        Max: <b>{{ formatNumber(previewMaxRate) }}/min</b>
+      </div>
+    </div>
+  </app-dialog>
 
   <raw-resources-wizard v-model="showWizard" />
 </template>

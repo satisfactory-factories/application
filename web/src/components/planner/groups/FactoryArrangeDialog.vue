@@ -6,52 +6,54 @@
      switched off entirely (see useFactoryDrag). This is the same operation done with buttons, at a
      size that fits the whole plan on screen at once. -->
 <template>
-  <v-dialog v-model="isOpen" max-width="640" scrollable>
-    <v-card>
-      <v-card-title class="text-h6 py-4">Arrange plan</v-card-title>
-      <v-divider />
-
+  <app-dialog
+    v-model="isOpen"
+    body-class="pa-0"
+    body-max-height="60vh"
+    divider
+    icon="fas fa-sort"
+    max-width="640"
+    scrollable
+    title="Arrange plan"
+  >
+    <template #header>
       <div class="px-4 py-2 text-caption text-medium-emphasis">{{ hint }}</div>
-
       <v-divider />
+    </template>
 
-      <v-card-text class="pa-0 arrange-list">
-        <!-- Pinned above the groups and not itself draggable: Ungrouped is synthesised, not
-             stored, so there is no group record to reorder. -->
-        <factory-arrange-section v-if="ungroupedSection" :section="ungroupedSection" />
+    <!-- Pinned above the groups and not itself draggable: Ungrouped is synthesised, not
+         stored, so there is no group record to reorder. -->
+    <factory-arrange-section v-if="ungroupedSection" :section="ungroupedSection" />
 
-        <draggable
-          :disabled="!dragEnabled"
-          :group="{ name: 'arrange-groups' }"
-          handle=".group-drag-handle"
-          :item-key="sectionKey"
-          :model-value="groupSections"
-          @change="onGroupOrderChange"
-        >
-          <template #item="{ element, index }">
-            <factory-arrange-section
-              :position="index"
-              :section="element"
-              :total="groupSections.length"
-            />
-          </template>
-        </draggable>
-      </v-card-text>
+    <draggable
+      :disabled="!dragEnabled"
+      :group="{ name: 'arrange-groups' }"
+      handle=".group-drag-handle"
+      :item-key="sectionKey"
+      :model-value="groupSections"
+      @change="onGroupOrderChange"
+    >
+      <template #item="{ element, index }">
+        <factory-arrange-section
+          :position="index"
+          :section="element"
+          :total="groupSections.length"
+        />
+      </template>
+    </draggable>
 
-      <v-divider />
-      <v-card-actions>
-        <v-btn
-          class="ml-2"
-          prepend-icon="fas fa-folder-plus"
-          size="small"
-          variant="outlined"
-          @click="createOpen = true"
-        >New group</v-btn>
-        <v-spacer />
-        <v-btn color="primary" variant="flat" @click="isOpen = false">Done</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <template #actions>
+      <v-btn
+        class="ml-2"
+        prepend-icon="fas fa-folder-plus"
+        size="small"
+        variant="outlined"
+        @click="createOpen = true"
+      >New group</v-btn>
+      <v-spacer />
+      <v-btn color="primary" variant="flat" @click="isOpen = false">Done</v-btn>
+    </template>
+  </app-dialog>
 
   <factory-group-create-dialog v-model="createOpen" />
 </template>
@@ -92,9 +94,3 @@
     setGroupOrder(ordered)
   }
 </script>
-
-<style lang="scss" scoped>
-.arrange-list {
-  max-height: 60vh;
-}
-</style>

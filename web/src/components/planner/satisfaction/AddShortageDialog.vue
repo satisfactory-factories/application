@@ -1,72 +1,67 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="600">
-    <v-card>
-      <v-card-title class="text-h6 py-4">
-        Add "{{ getPartDisplayName(partId) }}" production to a factory
-      </v-card-title>
-      <v-divider />
-      <v-card-text class="pa-0">
-        <v-list v-if="selectableFactories.length">
-          <v-list-item
-            v-for="targetFactory in selectableFactories"
-            :key="targetFactory.id"
-            :active="producesPart(targetFactory)"
-            color="primary"
+  <app-dialog
+    v-model="isOpen"
+    body-class="pa-0"
+    divider
+    icon="fas fa-industry"
+    max-width="600"
+    :title="`Add &quot;${getPartDisplayName(partId)}&quot; production to a factory`"
+  >
+    <v-list v-if="selectableFactories.length">
+      <v-list-item
+        v-for="targetFactory in selectableFactories"
+        :key="targetFactory.id"
+        :active="producesPart(targetFactory)"
+        color="primary"
+      >
+        <template #prepend>
+          <i class="fas fa-industry mr-3" />
+        </template>
+        <v-list-item-title>
+          {{ targetFactory.name }}
+          <v-chip
+            v-if="producesPart(targetFactory)"
+            class="ml-2"
+            color="green"
+            size="small"
+            variant="tonal"
           >
-            <template #prepend>
-              <i class="fas fa-industry mr-3" />
+            Produces this
+          </v-chip>
+        </v-list-item-title>
+        <template #append>
+          <v-btn
+            color="primary"
+            :disabled="addingFactoryId !== null"
+            size="small"
+            :title="`Add to ${targetFactory.name}`"
+            variant="tonal"
+            @click="addToFactory(targetFactory)"
+          >
+            <template v-if="addingFactoryId === targetFactory.id">
+              <v-progress-circular class="mr-1" indeterminate size="14" width="2" />
+              <span>Adding...</span>
             </template>
-            <v-list-item-title>
-              {{ targetFactory.name }}
-              <v-chip
-                v-if="producesPart(targetFactory)"
-                class="ml-2"
-                color="green"
-                size="small"
-                variant="tonal"
-              >
-                Produces this
-              </v-chip>
-            </v-list-item-title>
-            <template #append>
-              <v-btn
-                color="primary"
-                :disabled="addingFactoryId !== null"
-                size="small"
-                :title="`Add to ${targetFactory.name}`"
-                variant="tonal"
-                @click="addToFactory(targetFactory)"
-              >
-                <template v-if="addingFactoryId === targetFactory.id">
-                  <v-progress-circular class="mr-1" indeterminate size="14" width="2" />
-                  <span>Adding...</span>
-                </template>
-                <template v-else>
-                  <i class="fas fa-plus" /><span class="ml-1">Add</span>
-                </template>
-              </v-btn>
+            <template v-else>
+              <i class="fas fa-plus" /><span class="ml-1">Add</span>
             </template>
-          </v-list-item>
-        </v-list>
-        <p v-else class="text-body-2 text-medium-emphasis pa-4">
-          You don't have any other factories to add this to. Use the "New Factory" button instead.
-        </p>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-checkbox
-          v-model="jumpToFactory"
-          density="compact"
-          hide-details
-          label="Jump to factory after adding"
-        />
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">
-          Close
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+          </v-btn>
+        </template>
+      </v-list-item>
+    </v-list>
+    <p v-else class="text-body-2 text-medium-emphasis pa-4">
+      You don't have any other factories to add this to. Use the "New Factory" button instead.
+    </p>
+    <template #actions>
+      <v-checkbox
+        v-model="jumpToFactory"
+        density="compact"
+        hide-details
+        label="Jump to factory after adding"
+      />
+      <v-spacer />
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

@@ -7,18 +7,18 @@
     variant="flat"
     @click="createShareLink"
   />
-  <v-dialog v-model="showCopyDialog" max-width="600">
-    <v-card>
-      <v-card-title>Copy the link below</v-card-title>
-      <v-card-text>
-        <p class="mb-4">Annoyingly your device / browser doesn't support copying to clipboard automatically. Please copy the link below manually.</p>
-        <v-text-field v-model="link" readonly />
-        <div class="text-center">
-          <v-btn color="green" variant="flat" @click="copyLink(link)"><i class="fas fa-copy mr-2" />Copy</v-btn>
-        </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+  <app-dialog
+    v-model="showCopyDialog"
+    icon="fas fa-share-alt"
+    max-width="600"
+    title="Copy the link below"
+  >
+    <p class="mb-4">Annoyingly your device / browser doesn't support copying to clipboard automatically. Please copy the link below manually.</p>
+    <v-text-field v-model="link" readonly />
+    <div class="text-center">
+      <v-btn color="green" variant="flat" @click="copyLink(link)"><i class="fas fa-copy mr-2" />Copy</v-btn>
+    </div>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AddShortageDialog: typeof import('./components/planner/satisfaction/AddShortageDialog.vue')['default']
     AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
+    AppDialog: typeof import('./components/common/AppDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
     AwesomeSinkTutorial: typeof import('./components/planner/AwesomeSinkTutorial.vue')['default']

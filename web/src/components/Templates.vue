@@ -8,45 +8,41 @@
       @click="dialog = true"
     >Templates</v-btn>
   </tooltip>
-  <v-dialog v-model="dialog" max-width="1200">
-    <v-card class="pa-2">
-      <v-card-title>
-        <h4 class="text-h4">Load a template plan</h4>
-      </v-card-title>
-      <v-card-text class="pa-4 pt-0">
-        <p>
-          Clicking on a button below will load a template plan into the planner. <span class="text-red font-weight-bold">This will overwrite any existing plan WITHOUT warning.</span> You may wish to save your plan first by creating a share link.
-        </p>
-        <v-table>
-          <thead>
-            <tr>
-              <th class="text-body-1 font-weight-bold text-center" scope="row">Name</th>
-              <th class="text-body-1 font-weight-bold" scope="row">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="template in sortedTemplates" :key="template.name">
-              <tr v-if="template.show">
-                <td class="text-center">
-                  <v-btn
-                    class="mr-2"
-                    :color="template.isDebug ? 'secondary' : 'green'"
-                    :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
-                    @click="loadTemplate(template)"
-                  >
-                    {{ template.name }}
-                  </v-btn></td>
-                <td class="py-1">{{ template.description }}</td>
-              </tr>
-            </template>
-          </tbody>
-        </v-table>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="blue darken-1" variant="elevated" @click="dialog = false">Close</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <app-dialog
+    v-model="dialog"
+    icon="fas fa-files-medical"
+    max-width="1200"
+    scrollable
+    title="Load a template plan"
+  >
+    <p class="mb-3">
+      Clicking on a button below will load a template plan into the planner. <span class="text-red font-weight-bold">This will overwrite any existing plan WITHOUT warning.</span> You may wish to save your plan first by creating a share link.
+    </p>
+    <v-table>
+      <thead>
+        <tr>
+          <th class="text-body-1 font-weight-bold text-center" scope="row">Name</th>
+          <th class="text-body-1 font-weight-bold" scope="row">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="template in sortedTemplates" :key="template.name">
+          <tr v-if="template.show">
+            <td class="text-center">
+              <v-btn
+                class="mr-2"
+                :color="template.isDebug ? 'secondary' : 'green'"
+                :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
+                @click="loadTemplate(template)"
+              >
+                {{ template.name }}
+              </v-btn></td>
+            <td class="py-1">{{ template.description }}</td>
+          </tr>
+        </template>
+      </tbody>
+    </v-table>
+  </app-dialog>
 </template>
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
