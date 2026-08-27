@@ -790,6 +790,7 @@ const recordScenario = async (browser, name, base, maxGroups, actionFn) => {
   const paletteFile = `${frameDir}/palette.png`
   const gifOut = `${OUT}/${name}.gif`
   const mp4Out = `${OUT}/${name}.mp4`
+  const webmOut = `${OUT}/${name}.webm`
   const OUT_WIDTH = 1040
   // The reader-facing pace is still one captured beat per ~143ms; FPS is doubled and every
   // non-movement capture is written twice (HOLD_REPEAT) to hold that pace exactly. What the
@@ -803,14 +804,33 @@ const recordScenario = async (browser, name, base, maxGroups, actionFn) => {
   const sizeKb = Math.round(fs.statSync(gifOut).size / 1024)
   console.log(`[${name}] gif written: ${gifOut} (${sizeKb} KB)`)
 
-  // MP4 is what the tutorial embeds. A GIF in an <img> cannot be paused, seeked or asked for
-  // its progress, so the player's controls need a real video element; h264 also lands around a
-  // third of the GIF's size, since the duplicated hold frames cost a video codec almost nothing.
-  // The GIF above is still written for anywhere a self-playing image is wanted.
-  // -pix_fmt yuv420p and an even height (scale -2) are what make it decodable everywhere.
-  execSync(`ffmpeg -y -framerate ${FPS} -i "${frameDir}/frame_%04d.png" -vf "scale=${OUT_WIDTH}:-2:flags=lanczos" -c:v libx264 -pix_fmt yuv420p -crf 26 -preset slow -movflags +faststart -an "${mp4Out}"`, { stdio: 'inherit' })
-  const mp4Kb = Math.round(fs.statSync(mp4Out).size / 1024)
-  console.log(`[${name}] mp4 written: ${mp4Out} (${mp4Kb} KB)`)
+  // Video is what the tutorial embeds: a GIF in an <img> cannot be paused, seeked or asked for
+  // its progress, so the player's controls need a real video element.
+  //
+  // Colour is the fiddly part, and both halves of it matter for a screen recording:
+  //
+  //  - TAGGING. A GIF stores RGB directly; video stores YUV, and the round trip is only correct
+  //    if encoder and decoder agree on the matrix and range. Untagged, ffmpeg converts with
+  //    bt601 below 720p while browsers assume bt709, and the greys come back visibly pale. Both
+  //    outputs are therefore converted AND tagged bt709/limited, explicitly, end to end.
+  //
+  //  - CHROMA. h264's 4:2:0 subsamples colour 2x2, which softens exactly what this content is
+  //    made of: one-pixel coloured borders and small coloured text. Measured against the source
+  //    frames, 4:2:0 leaves ~4% of channels off by more than 8 and peaks at a delta of 116, and
+  //    throwing bitrate at it barely helps (crf 10 is still 3.8%). VP9 at 4:4:4 drops that to
+  //    0.00% and a peak delta of 14. Browsers do not decode h264's own 4:4:4 profile, so VP9 is
+  //    the quality path and h264 the compatibility fallback; the player offers both.
+  const vp9Crf = 24
+  const h264Crf = 20
+  const colourIn = `scale=${OUT_WIDTH}:-2:flags=lanczos:in_range=full:out_range=tv:out_color_matrix=bt709`
+  const colourTags = '-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv'
+
+  execSync(`ffmpeg -y -framerate ${FPS} -i "${frameDir}/frame_%04d.png" -vf "${colourIn},format=yuv444p" -c:v libvpx-vp9 -crf ${vp9Crf} -b:v 0 -profile:v 1 -row-mt 1 -deadline good -cpu-used 2 ${colourTags} -an "${webmOut}"`, { stdio: 'inherit' })
+  console.log(`[${name}] webm written: ${webmOut} (${Math.round(fs.statSync(webmOut).size / 1024)} KB)`)
+
+  // -2 keeps the height even, which 4:2:0 requires.
+  execSync(`ffmpeg -y -framerate ${FPS} -i "${frameDir}/frame_%04d.png" -vf "${colourIn},format=yuv420p" -c:v libx264 -pix_fmt yuv420p -crf ${h264Crf} -preset veryslow -tune animation ${colourTags} -movflags +faststart -an "${mp4Out}"`, { stdio: 'inherit' })
+  console.log(`[${name}] mp4 written: ${mp4Out} (${Math.round(fs.statSync(mp4Out).size / 1024)} KB)`)
 }
 
 // ---- scenarios ----

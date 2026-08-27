@@ -8,13 +8,20 @@
       muted
       playsinline
       :poster="poster"
-      :src="src"
       @click="toggle"
       @ended="playing = false"
       @loadedmetadata="onLoaded"
       @pause="playing = false"
       @play="onPlay"
-    />
+    >
+      <!-- VP9 first: it carries 4:4:4 chroma, so the thin coloured borders and text in a screen
+           recording survive intact. h264 has to subsample chroma 2x2 (browsers do not decode its
+           4:4:4 profile), which visibly softens them, so it is the fallback rather than the
+           choice. Both are tagged bt709/tv end to end; untagged, a browser guesses the matrix and
+           the greys drift pale. -->
+      <source :src="`${src}.webm`" type="video/webm">
+      <source :src="`${src}.mp4`" type="video/mp4">
+    </video>
     <!-- Deliberately not the browser's own `controls`: those carry volume, fullscreen and a
          download menu that mean nothing for a silent looping clip, have no restart button, and
          render in each browser's own chrome rather than the app's. -->
@@ -60,6 +67,7 @@
 
 <script lang="ts" setup>
   const props = defineProps<{
+    /** Path without extension; `.webm` and `.mp4` are both offered to the browser. */
     src: string
     label: string
     poster?: string
@@ -143,6 +151,18 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   overflow: hidden;
+
+  // Vue's scoped transform anchors a descendant selector on the ancestor, so the tutorial's
+  // `.verbage * { margin-bottom: 1rem }` reaches inside this component. It landed on the bar and
+  // on the controls: a 1rem overhang below the bar, and buttons sitting a visible 8px above the
+  // track, because a bottom margin on a flex item in an `align-items: center` row shifts the
+  // item up by half of it. A blanket `.media-player *` reset only ties that rule on specificity
+  // and loses on source order; going a class deeper outranks it.
+  video,
+  .media-bar,
+  .media-bar * {
+    margin: 0;
+  }
 }
 
 video {
@@ -157,9 +177,13 @@ video {
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   background: rgba(0, 0, 0, 0.35);
+  line-height: 1;
 }
 
 .media-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   width: 1.75rem;
   height: 1.75rem;
@@ -171,6 +195,18 @@ video {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
   }
+}
+
+// Font Awesome swaps the <i> for an <svg> whose default inline baseline sits the glyph low;
+// centring the wrapper keeps it on the same line as the track.
+.media-btn span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-btn :deep(svg) {
+  display: block;
 }
 
 .media-track {

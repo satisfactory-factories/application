@@ -24,7 +24,7 @@
         <p>Add a group per real-world set of machines, then set each group's building count. Handy when a constraint (pipe throughput, space) means you need to build the same product as separate physical clusters.</p>
         <MediaPlayer
           label="Adding building groups and setting each group's building count"
-          src="/assets/tutorials/building-groups-split.mp4"
+          src="/assets/tutorials/building-groups-split"
         />
 
         <v-divider />
@@ -36,7 +36,7 @@
         <p>A product's first group starts with Sync enabled: editing the item rebalances its group, and editing the group updates the item's total, so a single-group product can be clocked from either end. <b>Adding a second group turns Sync off</b> so manual adjustments aren't overwritten (it stays off after deleting groups too); re-enable it any time.</p>
         <MediaPlayer
           label="Editing a building group and watching the item's quantity update automatically"
-          src="/assets/tutorials/building-groups-sync.mp4"
+          src="/assets/tutorials/building-groups-sync"
         />
 
         <v-divider />
@@ -45,7 +45,7 @@
         <p>Clock a group up or down to change what it produces. <span class="text-amber">OC @ 100%</span> resets every group's clock in one click. Overclocking above 100% costs Power Shards (1 per building per 50% over), totalled on the Building Groups bar.</p>
         <MediaPlayer
           label="Overclocking and underclocking a building group's clock speed"
-          src="/assets/tutorials/building-groups-overclock.mp4"
+          src="/assets/tutorials/building-groups-overclock"
         />
 
         <v-divider />
@@ -54,7 +54,7 @@
         <p><span class="text-purple">Somersloops</span> amplify a group's output, up to <b>double</b> per building, <b>without</b> using more ingredients, at the cost of a sharp rise in power usage. Slots per building depend on the building type (Constructors 1, Assemblers 2, Manufacturers 4).</p>
         <MediaPlayer
           label="Adding Somersloops to a building group and watching power usage and output rise"
-          src="/assets/tutorials/building-groups-somersloops.mp4"
+          src="/assets/tutorials/building-groups-somersloops"
         />
 
         <v-divider />
@@ -63,7 +63,7 @@
         <p>Type in the output on any group, and the building count and clock will adjust to match. This lets you precisely balance or distribute a product's production based on your circumstances. You can also evenly balance the groups, or send the remainder of one group to the last.</p>
         <MediaPlayer
           label="Setting an exact group output, then rebalancing the remainder onto another group"
-          src="/assets/tutorials/building-groups-fine-tuning.mp4"
+          src="/assets/tutorials/building-groups-fine-tuning"
         />
 
         <v-divider />
@@ -72,7 +72,7 @@
         <p>Effective Buildings is what all groups produce, expressed as buildings at 100% clock, so 5 buildings at 200% overclock count the same as 10 at 100%. It goes red the moment the groups don't add up to what the item needs; a 1% margin of error is allowed (configurable in Options) since some recipes can't hit exactly 100%.</p>
         <MediaPlayer
           label="Trading building count for clock speed while Effective Buildings stays the same"
-          src="/assets/tutorials/building-groups-effective-buildings.mp4"
+          src="/assets/tutorials/building-groups-effective-buildings"
         />
       </v-card-text>
       <v-card-actions>

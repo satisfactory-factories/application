@@ -14,11 +14,12 @@ node testing/gifs/record.mjs sync,overclock  # a subset
 node testing/gifs/analyze-stability.mjs ../.gif-out/frames-sync
 ```
 
-Each scenario writes both an `.mp4` and a `.gif` into `web/.gif-out/` (gitignored). The tutorial
-embeds the **mp4** — a GIF in an `<img>` cannot be paused, seeked or asked for its progress, so the
-player's controls need a real video element, and h264 is about a third of the GIF's size. The GIF is
-still written for anywhere a self-playing image is wanted. Copy what you need into
-`web/public/assets/tutorials/`. `GIF_OUT`, `PORT` and `CHROMIUM` override the defaults;
+Each scenario writes a `.webm`, an `.mp4` and a `.gif` into `web/.gif-out/` (gitignored). The
+tutorial embeds the **video**, because a GIF in an `<img>` cannot be paused, seeked or asked for its
+progress and the player's controls need a real video element. `MediaPlayer.vue` offers both: VP9 at
+4:4:4 for browsers that take it, h264 4:2:0 as the fallback. Colour is why — see the comment above
+the encode in `record.mjs`. The GIF is still written for anywhere a self-playing image is wanted.
+Copy what you need into `web/public/assets/tutorials/`. `GIF_OUT`, `PORT` and `CHROMIUM` override the defaults;
 `GIF_DEBUG_HIGHLIGHT=1` logs each highlight box against the rects it is framing.
 
 ## Layout
