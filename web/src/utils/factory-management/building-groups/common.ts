@@ -948,9 +948,10 @@ export const applyRemainderToGroup = (
 
 // Bump this whenever the tutorial's content changes enough to be worth showing again: a pioneer
 // who dismissed an earlier version has no other way to be told there is something new in it.
-// "2" was the rework from a wall of text to recorded demonstrations; "3" is those demonstrations
-// becoming playable video with a contents list.
-const BUILDING_GROUP_TUTORIAL_KEY = 'tutorialBuildingGroups3'
+// The shipped key is `buildingGroupTutorialOpened`, from the original wall-of-text tutorial;
+// moving off it re-shows the rework (playable demonstrations and a contents list) to everyone
+// who had already dismissed that.
+const BUILDING_GROUP_TUTORIAL_KEY = 'tutorialBuildingGroups2'
 
 export const toggleBuildingGroupTray = (item: FactoryItem | FactoryPowerProducer) => {
   const buildingGroupTutorialOpened = localStorage.getItem(BUILDING_GROUP_TUTORIAL_KEY)
