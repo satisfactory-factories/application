@@ -13,6 +13,7 @@ import { THROTTLER_OPTIONS } from './config/throttling'
 import { HealthModule } from './health/health.module'
 import { LegacyModule } from './legacy/legacy.module'
 import { PreferencesModule } from './preferences/preferences.module'
+import { RealtimeModule } from './realtime/realtime.module'
 import { RoomsModule } from './rooms/rooms.module'
 
 @Module({
@@ -49,6 +50,7 @@ import { RoomsModule } from './rooms/rooms.module'
     AuthModule,
     LegacyModule,
     RoomsModule,
+    RealtimeModule,
     PreferencesModule,
   ],
   providers: [

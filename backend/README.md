@@ -64,6 +64,16 @@ Everything else is rate limited to 200 requests per 5 minutes per client, in a s
 
 Mongoose schemas sit beside the module that owns them (`src/auth/user.schema.ts`, `src/legacy/*.schema.ts`). Collection names are pinned explicitly, because the documents predate the rewrite.
 
+## The realtime gateway
+
+`ws://<host>/ws`, sharing the same HTTP server and port as the routes above. The message unions and `PROTOCOL_VERSION` come from `common`; `src/realtime/` implements them.
+
+- **Handshake.** The Origin is checked at upgrade against the CORS allowlist (a missing Origin is a non-browser client and is allowed). The first message must be `hello {protocolVersion, token?}` within 5s. A version mismatch closes **4426**; a token that does not verify closes **4401**. A database failure during the handshake closes **1011** so the client retries — never 4401.
+- **Join.** `join {roomId, lastRevision?, visitorToken?}` needs a membership, or the room shared with no password, or shared plus a visitor token whose `passwordVersion` is current. A tombstoned room is never joinable. The answer is a `snapshot`, or `up_to_date` when `lastRevision` already matches.
+- **Ops.** One apply at a time per room. The op is truncated then schema-checked, access is re-verified, a repeated `opId` replays its original ack, and the write only lands at the exact `baseRevision`. Anything else gets `op_reject` with a fresh snapshot. Accepted ops broadcast `op_apply` to the room's other sockets and record an activity row.
+- **Revocation.** Unsharing, rotating the invite password or deleting a room re-runs the access check for every socket in it and closes the ones that no longer qualify with **4403**.
+- **Limits.** 25MB `maxPayload`, 60 upgrades a minute per client address, 120 messages per 10s per socket, and a 30s server ping/pong that terminates a socket which misses two sweeps.
+
 ## Testing
 
 ```sh

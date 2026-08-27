@@ -1,3 +1,4 @@
+import { WsAdapter } from '@nestjs/platform-ws'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 
 import { CORS_OPTIONS } from './config/cors'
@@ -9,5 +10,8 @@ export const configureApp = (app: NestExpressApplication): NestExpressApplicatio
   app.useBodyParser('json', { limit: '20mb' })
   app.useBodyParser('urlencoded', { limit: '20mb', extended: true })
   app.enableCors(CORS_OPTIONS)
+  // Must be set before init(): a gateway with no adapter falls back to socket.io,
+  // which is not installed. The raw server, so the ws server shares port 3001.
+  app.useWebSocketAdapter(new WsAdapter(app.getHttpServer()))
   return app
 }

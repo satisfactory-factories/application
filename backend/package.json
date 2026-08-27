@@ -22,12 +22,15 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/mongoose": "^11.0.4",
     "@nestjs/platform-express": "^11.2.3",
+    "@nestjs/platform-ws": "^11.2.3",
     "@nestjs/throttler": "^6.5.0",
+    "@nestjs/websockets": "^11.2.3",
     "bcryptjs": "^3.0.0",
     "common": "workspace:*",
     "mongoose": "^9.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "ws": "^8.21.3",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -40,6 +43,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.13.3",
     "@types/supertest": "^7.2.1",
+    "@types/ws": "^8.18.1",
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import-x": "catalog:",

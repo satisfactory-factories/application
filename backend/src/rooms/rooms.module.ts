@@ -36,6 +36,6 @@ import { RoomsService } from './rooms.service'
     { provide: CLOCK, useValue: systemClock },
   ],
   // Exported for the WS gateway, which reads rooms and listens for fan-out.
-  exports: [RoomsService, RoomActivityService, RoomEventsService, MongooseModule],
+  exports: [RoomsService, RoomActivityService, RoomEventsService, MongooseModule, CLOCK],
 })
 export class RoomsModule {}

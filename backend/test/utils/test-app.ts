@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { Server } from 'node:http'
 
 import { PROTOCOL_VERSION } from 'common'
 import { ThrottlerStorage } from '@nestjs/throttler'
@@ -11,6 +12,7 @@ import type { Connection } from 'mongoose'
 
 import { CLOCK, Clock } from '../../src/rooms/clock'
 import { EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
+import { WS_PATH } from '../../src/realtime/realtime.constants'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
@@ -19,6 +21,8 @@ export const VERSION_HEADERS = { 'X-App-Version': PROTOCOL_VERSION }
 
 export interface TestContext {
   app: INestApplication
+  /** Only set when the app was started with `listen`; the gateway needs a real port. */
+  wsUrl: string | null
 }
 
 export interface TestAppOptions {
@@ -30,6 +34,8 @@ export interface TestAppOptions {
    * 200-per-5-minutes global bucket. health.spec asserts the real thing.
    */
   unthrottled?: boolean
+  /** Binds an ephemeral port, which is what the WS upgrade needs to reach. */
+  listen?: boolean
 }
 
 const NEVER_THROTTLED: ThrottlerStorage = {
@@ -59,7 +65,13 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   // The connection is lazy; resolving it here keeps DB assertions stable.
   await awaitConnection(app)
 
-  return { app }
+  if (!options.listen) return { app, wsUrl: null }
+
+  await app.listen(0)
+  const address = (app.getHttpServer() as Server).address()
+  const port = typeof address === 'object' && address !== null ? address.port : 0
+
+  return { app, wsUrl: `ws://127.0.0.1:${port}${WS_PATH}` }
 }
 
 export const destroyTestApp = async ({ app }: TestContext): Promise<void> => {

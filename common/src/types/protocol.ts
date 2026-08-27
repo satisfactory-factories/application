@@ -191,8 +191,12 @@ export interface ServerOpRejectMessage {
   roomId: string
   opId: string
   reason: OpRejectReason
-  /** Always sent: the rebase path adopts this, overlays intent and resends. */
-  snapshot: RoomSnapshot
+  /**
+   * The rebase path adopts this, overlays intent and resends. Absent only when
+   * the room is no longer readable at all (`forbidden`, `room_deleted`), where
+   * there is nothing to rebase onto.
+   */
+  snapshot?: RoomSnapshot
 }
 
 export interface ServerRoomMetaMessage {
