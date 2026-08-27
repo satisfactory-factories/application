@@ -1,5 +1,11 @@
 // noinspection DuplicatedCode
 // Duplicated by backend
+// PowerItem is part of the stored plan shape (FactoryPowerProducer.ingredients), so
+// `common` owns it and this file re-exports it.
+import type { PowerItem } from 'common'
+
+export type { PowerItem }
+
 export interface RecipeItem {
   part: string;
   amount: number;
@@ -26,14 +32,6 @@ export interface Recipe {
 }
 
 // ===== POWER RECIPES =====
-export interface PowerItem {
-  part: string;
-  perMin: number;
-  amount?: number;
-  mwPerItem?: number;
-  supplementalRatio?: number;
-}
-
 export interface PowerRecipe {
   id: string;
   displayName: string;

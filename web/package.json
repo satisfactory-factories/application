@@ -24,6 +24,7 @@
     "@vue-flow/minimap": "^1.5.4",
     "@vue/devtools-api": "^8.1.5",
     "@vue/reactivity": "^3.5.40",
+    "common": "workspace:*",
     "core-js": "^3.49.0",
     "mitt": "^3.0.1",
     "pinia": "^4.0.2",

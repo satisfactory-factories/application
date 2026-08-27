@@ -6,7 +6,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Source rather than dist, so a web build never waits on `common` being compiled.
+      "common": ["../common/src/index.ts"]
     },
     "resolveJsonModule": true,
     "types": [

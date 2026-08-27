@@ -1,0 +1,74 @@
+import type { Factory, FactoryTab } from '../types/factory'
+import { ItemType } from '../types/factory'
+
+/** A minimal factory that satisfies every required field of the schema. */
+export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
+  id: 1,
+  name: 'Iron Works',
+  inputs: [],
+  previousInputs: [],
+  products: [{
+    id: 'IronIngot',
+    recipe: 'IngotIron',
+    amount: 30,
+    displayOrder: 0,
+    requirements: { OreIron: { amount: 30 } },
+    buildingRequirements: { name: 'smeltermk1', amount: 1 },
+    buildingGroups: [{
+      id: 0,
+      buildingCount: 1,
+      overclockPercent: 100,
+      parts: { OreIron: 30 },
+      powerUsage: 4,
+      powerProduced: 0,
+      type: ItemType.Product,
+    }],
+    buildingGroupsTrayOpen: false,
+    buildingGroupsHaveProblem: false,
+    buildingGroupItemSync: true,
+  }],
+  byProducts: [],
+  powerProducers: [],
+  parts: {
+    IronIngot: {
+      amountRequired: 0,
+      amountRequiredProduction: 0,
+      amountRequiredExports: 0,
+      amountRequiredPower: 0,
+      amountSupplied: 30,
+      amountSuppliedViaInput: 0,
+      amountSuppliedViaRaw: 0,
+      amountSuppliedViaProduction: 30,
+      amountRemaining: -30,
+      isRaw: false,
+      satisfied: true,
+      exportable: true,
+    },
+  },
+  buildingRequirements: { smeltermk1: { name: 'smeltermk1', amount: 1 } },
+  requirementsSatisfied: true,
+  exportCalculator: {
+    IronIngot: { selected: null, factorySettings: {} },
+  },
+  dependencies: { requests: {}, metrics: {} },
+  rawResources: {},
+  power: { consumed: 4, produced: 0, difference: -4 },
+  usingRawResourcesOnly: false,
+  hidden: false,
+  hasProblem: false,
+  inSync: null,
+  syncState: {},
+  syncStatePower: {},
+  displayOrder: 0,
+  tasks: [],
+  notes: '',
+  dataVersion: '1.2-05',
+  ...overrides,
+})
+
+export const makeFactoryTab = (overrides: Partial<FactoryTab> = {}): FactoryTab => ({
+  id: 'd0a2b0e2-0000-4000-8000-000000000000',
+  name: 'My Plan',
+  factories: [makeFactory()],
+  ...overrides,
+})

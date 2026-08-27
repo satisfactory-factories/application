@@ -78,6 +78,9 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Matches the tsconfig path: bundle `common` from source, so a web build (and
+      // Vercel's) never waits on that package having been compiled first.
+      common: fileURLToPath(new URL('../common/src/index.ts', import.meta.url)),
     },
     extensions: [
       '.js',
