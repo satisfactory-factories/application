@@ -6,15 +6,16 @@
     scrollable
   >
     <v-card>
-      <v-card-title class="d-flex align-center pb-0">
-        <span class="header-accent flex-grow-1 text-center">What's new in Beta v0.6</span>
+      <v-card-title class="deck-title d-flex align-center justify-center py-4">
+        <span class="header-accent">What's new in Beta v0.6</span>
         <!-- Off until the warning has been answered: it is not something to flick away from the
              corner of the eye. -->
         <v-btn
           v-if="!awaitingAnswer"
+          class="deck-close"
           density="comfortable"
           icon="fas fa-times"
-          size="small"
+          title="Close what's new"
           variant="text"
           @click="closeSplash"
         />
@@ -1017,6 +1018,19 @@
 
 .slide-counter {
   white-space: nowrap;
+}
+
+// Centred on the dialog, not on the space the close button leaves behind: the button comes out of
+// the flow so the header lines up with the slide under it.
+.deck-title {
+  position: relative;
+}
+
+.deck-close {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 // Vuetify's default card text (0.875rem) reads small in a dialog this size

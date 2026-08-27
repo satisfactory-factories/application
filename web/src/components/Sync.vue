@@ -1,20 +1,23 @@
 <template>
-  <v-dialog v-model="showOOSDecisionDialog" max-width="600" persistent>
-    <v-card>
-      <v-card-title class="text-h5">Data out of sync!</v-card-title>
-      <v-card-text>
-        <p class="mb-4">Your local data and saved server data are out of sync. Please decide how to resolve this issue:</p>
-        <v-btn class="mr-2" color="primary" @click="replaceRemoteData()">
-          Use local data*
-        </v-btn>
-        <v-btn color="secondary" @click="handleDataLoad(true)">
-          Use server data
-        </v-btn>
-        <p class="mt-4 text-body-2">*Recommended if you have made changes recently. Upon your next change to the plan, it will overwrite the server data.</p>
-      </v-card-text>
-
-    </v-card>
-  </v-dialog>
+  <!-- No corner close: the dialog exists to get an answer, and dismissing it would leave the
+       local and server plans still disagreeing with nothing to say so. -->
+  <app-dialog
+    v-model="showOOSDecisionDialog"
+    :closable="false"
+    icon="fas fa-sync"
+    max-width="600"
+    persistent
+    title="Data out of sync!"
+  >
+    <p class="mb-4">Your local data and saved server data are out of sync. Please decide how to resolve this issue:</p>
+    <v-btn class="mr-2" color="primary" @click="replaceRemoteData()">
+      Use local data*
+    </v-btn>
+    <v-btn color="secondary" @click="handleDataLoad(true)">
+      Use server data
+    </v-btn>
+    <p class="mt-4">*Recommended if you have made changes recently. Upon your next change to the plan, it will overwrite the server data.</p>
+  </app-dialog>
   <div class="my-4">
     <p v-if="!syncing">
       <i class="fas fa-save" /><span class="ml-2 font-weight-bold">Last synced:</span> {{ lastSavedDisplay }}
