@@ -446,6 +446,14 @@ $focus-ring: 1px solid var(--sf-grey-border);
     min-width: 0;
     max-width: 100%;
 
+    // The tonal fill is a child sitting inside the chip's border, but it takes the chip's own
+    // corner radius rather than the smaller one the border's inner edge actually has. Its corners
+    // therefore curve away from the border and leave a wedge of the panel showing through, which
+    // the group colour's wider left edge only makes plainer. Squared off, it meets the border.
+    :deep(.v-chip__underlay) {
+      border-radius: 0;
+    }
+
     // The group's colour on the chip's own left edge rather than out at the row's, where it read
     // as a bar floating beside the result instead of as something the factory carries. Both
     // declarations need !important to get past `.sf-chip.factory`, which sets the border with it.
