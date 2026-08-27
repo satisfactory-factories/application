@@ -31,8 +31,8 @@ describe('ws limits and heartbeat', () => {
   }
 
   beforeAll(async () => {
-    context = await createTestApp({ unthrottled: true, listen: true })
-    url = context.wsUrl as string
+    context = await createTestApp({ unthrottled: true })
+    url = context.wsUrl
     await buildIndexes(context.app)
   })
 

@@ -21,8 +21,8 @@ export const VERSION_HEADERS = { 'X-App-Version': PROTOCOL_VERSION }
 
 export interface TestContext {
   app: INestApplication
-  /** Only set when the app was started with `listen`; the gateway needs a real port. */
-  wsUrl: string | null
+  /** The gateway's URL on the app's own port; every app listens. */
+  wsUrl: string
 }
 
 export interface TestAppOptions {
@@ -34,8 +34,6 @@ export interface TestAppOptions {
    * 200-per-5-minutes global bucket. health.spec asserts the real thing.
    */
   unthrottled?: boolean
-  /** Binds an ephemeral port, which is what the WS upgrade needs to reach. */
-  listen?: boolean
 }
 
 const NEVER_THROTTLED: ThrottlerStorage = {
@@ -65,8 +63,9 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   // The connection is lazy; resolving it here keeps DB assertions stable.
   await awaitConnection(app)
 
-  if (!options.listen) return { app, wsUrl: null }
-
+  // Every app binds a port for the whole file. supertest otherwise listens and
+  // closes the server around each request, and that churn intermittently landed a
+  // reply on a torn-down socket ("Parse Error: Expected HTTP/") or timed out.
   await app.listen(0)
   const address = (app.getHttpServer() as Server).address()
   const port = typeof address === 'object' && address !== null ? address.port : 0

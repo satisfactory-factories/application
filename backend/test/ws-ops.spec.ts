@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { CAPS } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { makeFactory } from 'common/testing'
 import type { ClientOpMessage, Factory, RoomDiff } from 'common'
@@ -45,9 +46,9 @@ describe('ws ops: the consistency contract', () => {
   const named = (id: number, name: string): Factory => makeFactory({ id, name })
 
   beforeAll(async () => {
-    context = await createTestApp({ unthrottled: true, listen: true })
+    context = await createTestApp({ unthrottled: true })
     connection = await awaitConnection(context.app)
-    url = context.wsUrl as string
+    url = context.wsUrl
     await buildIndexes(context.app)
   })
 
@@ -115,6 +116,18 @@ describe('ws ops: the consistency contract', () => {
 
       const room = await readRoom()
       expect(room?.factories.map((factory: Factory) => factory.id)).toEqual([2, 3])
+    })
+
+    it('collapses a repeated id in one diff rather than storing it twice', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ factories: [named(3, 'First'), named(3, 'Second')] }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.id)).toEqual([1, 2, 3])
+      // Last write wins, the same rule that settles a same-factory collision.
+      expect(room?.factories[2].name).toBe('Second')
     })
 
     it('records an activity row and stamps lastActivityAt', async () => {
@@ -257,7 +270,71 @@ describe('ws ops: the consistency contract', () => {
     }, 30_000)
   })
 
+  describe('content-only rights', () => {
+    it('refuses a member renaming the room, and leaves them in it to rebase', async () => {
+      const b = await joined(member.token)
+
+      const sent = op({ name: 'Renamed by a member', powerTarget: 900 }, 0)
+      b.client.send(sent)
+
+      const rejected = await b.client.next('op_reject')
+      expect(rejected).toMatchObject({ roomId, opId: sent.opId, reason: 'forbidden' })
+      expect(rejected.snapshot?.name).toBe('Iron Line')
+
+      const room = await readRoom()
+      expect(room?.name).toBe('Iron Line')
+      expect(room?.revision).toBe(0)
+      expect(room?.powerTarget).toBe(0)
+
+      // Still joined: the same socket's content-only op goes straight through.
+      b.client.send(op({ powerTarget: 900 }, 0))
+      await expect(b.client.next('op_ack')).resolves.toMatchObject({ revision: 1 })
+    })
+
+    it('refuses an anonymous visitor renaming the room', async () => {
+      const v = await joined()
+
+      const sent = op({ name: 'Renamed by a visitor' }, 0)
+      v.client.send(sent)
+
+      await expect(v.client.next('op_reject')).resolves.toMatchObject({
+        opId: sent.opId,
+        reason: 'forbidden',
+      })
+      expect((await readRoom())?.name).toBe('Iron Line')
+    })
+
+    it('lets the owner rename through an op', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ name: 'Renamed by the owner' }, 0))
+      await a.client.next('op_ack')
+
+      expect((await readRoom())?.name).toBe('Renamed by the owner')
+    })
+  })
+
   describe('refusals', () => {
+    it('refuses an op that would push the room past the factory cap', async () => {
+      const a = await joined(owner.token)
+
+      // The room already holds two, so the cap has to be judged after the merge.
+      const additions = Array.from(
+        { length: CAPS.factoriesPerRoom - 1 },
+        (_unused, index) => named(index + 3, `Extra ${index}`),
+      )
+      const sent = op({ factories: additions }, 0)
+      a.client.send(sent)
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId: sent.opId, reason: 'too_large' })
+      expect(rejected.snapshot?.revision).toBe(0)
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(0)
+      expect(room?.factories).toHaveLength(2)
+    }, 30_000)
+
     it('errors on an op for a room this socket never joined', async () => {
       const client = await greet(owner.token)
 

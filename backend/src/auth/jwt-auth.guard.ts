@@ -26,10 +26,35 @@ export class JwtAuthGuard implements CanActivate {
   }
 }
 
+/** Attaches the user when a valid token is present, and lets anonymous through. */
+@Injectable()
+export class OptionalJwtAuthGuard implements CanActivate {
+  constructor (private readonly jwtService: JwtService) {}
+
+  canActivate (context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
+    const token = request.header('Authorization')?.replace('Bearer ', '')
+    if (!token) return true
+
+    try {
+      request.user = this.jwtService.verify<AuthTokenPayload>(token)
+    } catch {
+      // A bad token is treated as no token: this guard never rejects.
+    }
+
+    return true
+  }
+}
+
 export const CurrentUser = createParamDecorator(
   (_data: unknown, context: ExecutionContext): AuthTokenPayload => {
     const user = context.switchToHttp().getRequest<AuthenticatedRequest>().user
     if (!user) throw unauthorized()
     return user
   },
+)
+
+export const OptionalUser = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): AuthTokenPayload | null =>
+    context.switchToHttp().getRequest<AuthenticatedRequest>().user ?? null,
 )

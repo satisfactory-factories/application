@@ -28,8 +28,10 @@ export const mergeFactories = (current: Factory[], diff: RoomDiff): Factory[] =>
     .filter(factory => !removed.has(factory.id))
     .map(factory => incoming.get(factory.id) ?? factory)
 
+  // Appended from `incoming`, not from the raw array: a diff that repeats an id
+  // lands one record, and duplicate ids break the export/import chain outright.
   const present = new Set(merged.map(factory => factory.id))
-  for (const factory of diff.factories ?? []) {
+  for (const factory of incoming.values()) {
     if (!present.has(factory.id) && !removed.has(factory.id)) merged.push(factory)
   }
 

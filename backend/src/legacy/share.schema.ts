@@ -1,7 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument } from 'mongoose'
 
-/** Read-only from v7 on: shares are served and view-counted, never created here. */
+/**
+ * Snapshot links. New ones are still created (the plan keeps "Copy snapshot
+ * link"); existing rows are only ever read and view-counted, never rewritten.
+ */
 @Schema({ collection: 'shares' })
 export class Share {
   @Prop({ type: String, unique: true, required: true })

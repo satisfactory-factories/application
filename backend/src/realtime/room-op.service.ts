@@ -1,10 +1,12 @@
+import { CAPS } from 'common'
 import { Inject, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import type { ClientOpMessage, RoomDiff } from 'common'
+import type { ClientOpMessage, Factory, RoomDiff } from 'common'
 
 import { APPLIED_OPS_RING, Room } from '../rooms/schemas/room.schema'
 import { CLOCK, Clock } from '../rooms/clock'
+import { RoomAccessRole } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
 import { mergeFactories } from './room-snapshot'
 
@@ -13,11 +15,15 @@ export type OpOutcome =
   /** The op id is already in the ring: replay its original ack, change nothing. */
   | { status: 'duplicate', revision: number }
   | { status: 'stale', room: Room }
+  /** Renaming is an owner right, so a member's op carrying `name` is refused whole. */
+  | { status: 'not_owner', room: Room }
+  /** The merged room would exceed the factories-per-room cap. */
+  | { status: 'too_large', room: Room }
   | { status: 'forbidden' }
   | { status: 'gone' }
 
-/** Decides whether the sender may still write, against the room as just read. */
-export type OpAuthorizer = (room: Room) => Promise<boolean>
+/** Resolves the sender's role against the room as just read; null means no access. */
+export type OpAuthorizer = (room: Room) => Promise<RoomAccessRole | null>
 
 @Injectable()
 export class RoomOpService {
@@ -41,7 +47,9 @@ export class RoomOpService {
   ): Promise<OpOutcome> {
     const room = await this.rooms.findOne({ roomId: op.roomId }).lean()
     if (!room || room.deletedAt !== null) return { status: 'gone' }
-    if (!await authorize(room)) return { status: 'forbidden' }
+
+    const role = await authorize(room)
+    if (!role) return { status: 'forbidden' }
 
     // Dedup precedes the revision check: a retried op has a stale base by definition.
     const replayed = room.appliedOps.find(entry => entry.opId === op.opId)
@@ -49,12 +57,18 @@ export class RoomOpService {
 
     if (room.revision !== op.baseRevision) return { status: 'stale', room }
 
+    // Members and visitors write content only; the room's name is the owner's.
+    if (op.diff.name !== undefined && role !== 'owner') return { status: 'not_owner', room }
+
+    const factories = mergedFactories(room, op.diff)
+    if (factories && factories.length > CAPS.factoriesPerRoom) return { status: 'too_large', room }
+
     const revision = op.baseRevision + 1
     const updated = await this.rooms
       .findOneAndUpdate(
         { roomId: op.roomId, revision: op.baseRevision, deletedAt: null },
         {
-          $set: { ...contentUpdate(room, op.diff), lastActivityAt: this.clock.now() },
+          $set: { ...contentUpdate(op.diff, factories), lastActivityAt: this.clock.now() },
           $inc: { revision: 1 },
           $push: {
             appliedOps: { $each: [{ opId: op.opId, revision }], $slice: -APPLIED_OPS_RING },
@@ -89,15 +103,19 @@ export class RoomOpService {
   }
 }
 
-const contentUpdate = (room: Room, diff: RoomDiff): Record<string, unknown> => {
+/** The post-merge factory list, or null when the diff does not touch factories. */
+const mergedFactories = (room: Room, diff: RoomDiff): Factory[] | null =>
+  diff.factories === undefined && diff.removedFactoryIds === undefined
+    ? null
+    : mergeFactories(room.factories, diff)
+
+const contentUpdate = (diff: RoomDiff, factories: Factory[] | null): Record<string, unknown> => {
   const update: Record<string, unknown> = {}
 
   if (diff.name !== undefined) update.name = diff.name
   if (diff.powerTarget !== undefined) update.powerTarget = diff.powerTarget
   if (diff.groups !== undefined) update.groups = diff.groups
-  if (diff.factories !== undefined || diff.removedFactoryIds !== undefined) {
-    update.factories = mergeFactories(room.factories, diff)
-  }
+  if (factories !== null) update.factories = factories
 
   return update
 }

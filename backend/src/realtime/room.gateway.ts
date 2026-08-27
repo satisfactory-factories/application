@@ -281,11 +281,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     const actor = connection.userId ?? ANONYMOUS_ACTOR
-    const outcome = await this.ops.apply(message, actor, async room =>
-      await this.access.resolve(room, {
+    const outcome = await this.ops.apply(message, actor, room =>
+      this.access.resolve(room, {
         userId: connection.userId,
         visitorToken: session.visitorToken,
-      }) !== null)
+      }))
 
     switch (outcome.status) {
       case 'applied':
@@ -314,6 +314,28 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
           roomId: message.roomId,
           opId: message.opId,
           reason: 'stale_base',
+          snapshot: toRoomSnapshot(outcome.room),
+        })
+        break
+
+      // Both refuse this op but leave the socket in the room: the sender still has
+      // access, so the shared rebase path resolves it from the snapshot.
+      case 'not_owner':
+        connection.send({
+          type: 'op_reject',
+          roomId: message.roomId,
+          opId: message.opId,
+          reason: 'forbidden',
+          snapshot: toRoomSnapshot(outcome.room),
+        })
+        break
+
+      case 'too_large':
+        connection.send({
+          type: 'op_reject',
+          roomId: message.roomId,
+          opId: message.opId,
+          reason: 'too_large',
           snapshot: toRoomSnapshot(outcome.room),
         })
         break
@@ -389,10 +411,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.logger.error('Failed to fan out room_meta', cause))
   }
 
+  /**
+   * The room is dropped from each socket, never the socket itself: one connection
+   * multiplexes every synced tab, and 4403 tells the client to stop reconnecting
+   * altogether — which would take the user's other tabs offline with this one.
+   */
   private readonly onRoomDeleted = ({ roomId }: { roomId: string }): void => {
     for (const connection of this.registry.roomConnections(roomId)) {
       connection.send({ type: 'room_deleted', roomId })
-      connection.close(CLOSE_CODES.forbidden, 'room deleted')
+      this.registry.leaveRoom(connection, roomId)
     }
   }
 

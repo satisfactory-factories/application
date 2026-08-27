@@ -38,8 +38,8 @@ describe('ws live access revocation and fan-out', () => {
     (await post(`/rooms/${roomId}/auth`).send({ password })).body.visitorToken
 
   beforeAll(async () => {
-    context = await createTestApp({ unthrottled: true, listen: true })
-    url = context.wsUrl as string
+    context = await createTestApp({ unthrottled: true })
+    url = context.wsUrl
     await buildIndexes(context.app)
   })
 
@@ -118,15 +118,30 @@ describe('ws live access revocation and fan-out', () => {
   })
 
   describe('delete', () => {
-    it('tells every socket in the room and then closes it', async () => {
+    it('tells every socket in the room and drops the room, not the socket', async () => {
       const memberClient = await joined(member.token)
 
       await del(`/rooms/${roomId}`, owner)
 
       await expect(memberClient.next('room_deleted')).resolves.toMatchObject({ roomId })
-      await expect(memberClient.waitForClose()).resolves.toMatchObject({
-        code: CLOSE_CODES.forbidden,
+      // One socket carries every synced tab, and 4403 means "stop reconnecting" —
+      // closing here would take the user's other tabs down with this one.
+      expect(memberClient.socket.readyState).toBe(1)
+      await expect(memberClient.next('rooms_changed')).resolves.toMatchObject({
+        type: 'rooms_changed',
       })
+    })
+
+    it('leaves the socket usable for another room', async () => {
+      const other = randomUUID()
+      await post('/rooms', member).send({ roomId: other, name: 'Copper Line' })
+
+      const memberClient = await joined(member.token)
+      await del(`/rooms/${roomId}`, owner)
+      await memberClient.next('room_deleted')
+
+      memberClient.send({ type: 'join', roomId: other })
+      await expect(memberClient.next('snapshot')).resolves.toMatchObject({ roomId: other })
     })
   })
 

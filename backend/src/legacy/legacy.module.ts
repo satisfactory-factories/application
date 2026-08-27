@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 
+import { AuthModule } from '../auth/auth.module'
 import { FactoryData, FactoryDataSchema } from './factory-data.schema'
 import { LegacyController } from './legacy.controller'
 import { Share, ShareSchema } from './share.schema'
@@ -13,6 +14,7 @@ import { Share, ShareSchema } from './share.schema'
       { name: Share.name, schema: ShareSchema },
       { name: FactoryData.name, schema: FactoryDataSchema },
     ]),
+    AuthModule, // OptionalJwtAuthGuard: a snapshot link records its author when signed in.
   ],
   controllers: [LegacyController],
   exports: [MongooseModule],
