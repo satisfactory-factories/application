@@ -6,8 +6,7 @@
     v-model="open"
     :close-on-content-click="false"
     location="bottom end"
-    max-width="520"
-    min-width="340"
+    :max-width="menuWidth"
     offset="6"
     :open-on-click="false"
   >
@@ -50,7 +49,9 @@
       />
     </template>
 
-    <v-card class="search-results">
+    <!-- The width is set here rather than on the menu: the connected overlay overrides `min-width`
+         with the activator's own width, so a menu-level minimum is quietly ignored. -->
+    <v-card class="search-results" :style="{ width: `${menuWidth}px` }">
       <!-- Caught on the way down for the same reason as the desktop bar above. -->
       <div v-if="!mdAndUp" class="pa-2" @keydown.capture="onKeydown">
         <v-text-field
@@ -89,8 +90,10 @@
               @click="goToFactory(match.factory.id)"
               @mousemove="activeIndex = indexOf(`factory-${match.factory.id}`)"
             >
-              <factory-icon-display :icon="match.factory.icon" size="20" />
-              <span class="row-name">{{ match.factory.name }}</span>
+              <v-chip class="sf-chip sf-chip-clickable small factory no-margin row-chip">
+                <factory-icon-display :icon="match.factory.icon" size="20" />
+                <b class="ml-2 row-name">{{ match.factory.name }}</b>
+              </v-chip>
             </button>
             <p v-if="results.hiddenFactories" class="more">
               +{{ results.hiddenFactories }} more factory name{{ results.hiddenFactories === 1 ? '' : 's' }}
@@ -115,8 +118,10 @@
                 @click="goToUsage(part.partId, usage)"
                 @mousemove="activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
               >
-                <factory-icon-display :icon="usage.factory.icon" size="20" />
-                <span class="row-name">{{ usage.factory.name }}</span>
+                <v-chip class="sf-chip sf-chip-clickable small factory no-margin row-chip">
+                  <factory-icon-display :icon="usage.factory.icon" size="20" />
+                  <b class="ml-2 row-name">{{ usage.factory.name }}</b>
+                </v-chip>
                 <span class="row-usage">
                   {{ USAGE_LABEL[usage.kind] }} {{ formatNumber(usage.amount) }}/min
                 </span>
@@ -154,7 +159,12 @@
 
   const props = defineProps<{ factories: Factory[] }>()
 
-  const { mdAndUp } = useDisplay()
+  const { mdAndUp, width } = useDisplay()
+
+  // Fixed rather than sized to its contents: wide enough for the factory chips, whose names run
+  // long, and stable, so the panel does not jump about under the cursor as the results change
+  // between keystrokes. Clamped to the window, which the connected overlay would happily overhang.
+  const menuWidth = computed(() => Math.min(640, Math.max(280, width.value - 24)))
   const route = useRoute()
   const router = useRouter()
 
@@ -354,9 +364,21 @@
     background-color: rgba(255, 255, 255, 0.10);
   }
 
-  .row-name {
-    flex: 1 1 auto;
+  // The factory chip is the same one the summary rows, import links and export requests wear, so a
+  // result reads as a factory before it is read at all. It gives up width before the rate on its
+  // right does: a long name truncating is a smaller loss than the number it is being listed for.
+  .row-chip {
+    flex: 0 1 auto;
     min-width: 0;
+    max-width: 100%;
+
+    :deep(.v-chip__content) {
+      min-width: 0;
+      overflow: hidden;
+    }
+  }
+
+  .row-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -364,6 +386,7 @@
 
   .row-usage {
     flex: 0 0 auto;
+    margin-left: auto;
     font-size: 0.75rem;
     color: #bdbdbd;
     white-space: nowrap;

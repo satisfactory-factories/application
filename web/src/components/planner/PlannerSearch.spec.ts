@@ -85,6 +85,16 @@ describe('PlannerSearch', () => {
     expect(body().textContent).toContain('Type a factory name')
   })
 
+  it('names every factory in the factory chip the rest of the planner uses', async () => {
+    await search('iron ingot')
+
+    const chips = rows().map(row => row.querySelector('.v-chip'))
+    expect(chips).not.toContain(null)
+    chips.forEach(chip => {
+      expect([...chip!.classList]).toEqual(expect.arrayContaining(['sf-chip', 'factory']))
+    })
+  })
+
   it('finds a factory by name', async () => {
     await search('plate wo')
 
