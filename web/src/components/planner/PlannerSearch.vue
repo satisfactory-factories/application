@@ -21,6 +21,8 @@
         v-if="mdAndUp"
         v-bind="activatorProps"
         class="search-activator"
+        @focusin.capture="onFocusIn"
+        @focusout.capture="onFocusOut"
         @keydown.capture="onKeydown"
       >
         <v-text-field
@@ -51,7 +53,13 @@
 
     <!-- The width is set here rather than on the menu: the connected overlay overrides `min-width`
          with the activator's own width, so a menu-level minimum is quietly ignored. -->
-    <v-card class="search-results" :style="{ width: `${menuWidth}px` }">
+    <v-card
+      class="search-results"
+      :class="{ focused }"
+      :style="{ width: `${menuWidth}px` }"
+      @focusin.capture="onFocusIn"
+      @focusout.capture="onFocusOut"
+    >
       <!-- Caught on the way down for the same reason as the desktop bar above. -->
       <div v-if="!mdAndUp" class="pa-2" @keydown.capture="onKeydown">
         <v-text-field
@@ -86,6 +94,8 @@
               :key="`factory-${match.factory.id}`"
               class="result-row"
               :class="{ active: activeIndex === indexOf(`factory-${match.factory.id}`) }"
+              :style="groupStripe(match.factory)"
+              :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
               type="button"
               @click="goToFactory(match.factory.id)"
               @mousemove="activeIndex = indexOf(`factory-${match.factory.id}`)"
@@ -114,6 +124,8 @@
                 :key="`${part.partId}-${usage.factory.id}`"
                 class="result-row"
                 :class="{ active: activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
+                :style="groupStripe(usage.factory)"
+                :title="usage.factory.group ? `Group: ${usage.factory.group.name}` : undefined"
                 type="button"
                 @click="goToUsage(part.partId, usage)"
                 @mousemove="activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
@@ -146,6 +158,7 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import {
     buildPlanSearchIndex,
+    FactorySummary,
     hasResults,
     PartUsageEntry,
     PlanSearchIndex,
@@ -164,7 +177,26 @@
   // Fixed rather than sized to its contents: wide enough for the factory chips, whose names run
   // long, and stable, so the panel does not jump about under the cursor as the results change
   // between keystrokes. Clamped to the window, which the connected overlay would happily overhang.
-  const menuWidth = computed(() => Math.min(640, Math.max(280, width.value - 24)))
+  const menuWidth = computed(() => Math.min(560, Math.max(280, width.value - 24)))
+
+  // Whether the search holds focus — the box or anything in the panel below it. Drives the ring
+  // that ties the two together: the panel is teleported out to the overlay, so it is nowhere near
+  // the box in the DOM and cannot be reached by the box's own :focus-within.
+  const focused = ref(false)
+  // focusout fires before the focusin that follows it, so moving from the box into the panel
+  // reads as a blur for one frame. Deferring the drop and cancelling it on the next focusin keeps
+  // the ring steady across that hop.
+  let blurTimer: ReturnType<typeof setTimeout> | undefined
+  const onFocusIn = () => {
+    clearTimeout(blurTimer)
+    focused.value = true
+  }
+  const onFocusOut = () => {
+    clearTimeout(blurTimer)
+    blurTimer = setTimeout(() => {
+      focused.value = false
+    })
+  }
   const route = useRoute()
   const router = useRouter()
 
@@ -227,20 +259,29 @@
 
   const onKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      // Stopped like the rest below: left to travel on, it reaches the menu, which closes itself
+      // AND hands focus back to the activator, undoing the caret position the user was typing at.
+      event.stopPropagation()
       open.value = false
       return
     }
     if (!open.value && event.key.length === 1) open.value = true
     if (!rows.value.length) return
+    if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return
+
+    // Caught on the way down and stopped here. VMenu answers ArrowDown on its activator by moving
+    // focus into the panel and onto the first row — which is a reasonable thing for a menu to do
+    // and exactly wrong for a search box: the caret leaves the box the user is still typing in,
+    // and every keystroke after the first arrow lands on a button instead. Only these three keys
+    // are stopped; everything else has to reach the input, which is the whole point of the box.
+    event.preventDefault()
+    event.stopPropagation()
 
     if (event.key === 'ArrowDown') {
-      event.preventDefault()
       activeIndex.value = (activeIndex.value + 1) % rows.value.length
     } else if (event.key === 'ArrowUp') {
-      event.preventDefault()
       activeIndex.value = (activeIndex.value - 1 + rows.value.length) % rows.value.length
-    } else if (event.key === 'Enter') {
-      event.preventDefault()
+    } else {
       rows.value[activeIndex.value]?.activate()
     }
   }
@@ -258,6 +299,12 @@
 
     eventBus.emit('jumpToFactory', { factoryId, targets, fallback })
   }
+
+  // The group's colour down the left edge of the row, the way the sidebar and the group bands mark
+  // membership. Ungrouped factories get nothing rather than a grey stand-in: a colour that means
+  // "no group" still reads as a group at a glance.
+  const groupStripe = (factory: FactorySummary) =>
+    factory.group ? { borderLeftColor: factory.group.color } : undefined
 
   const goToFactory = (factoryId: number) => jump(factoryId)
 
@@ -279,6 +326,7 @@
   onUnmounted(() => {
     window.removeEventListener('keydown', onShortcut)
     clearTimeout(debounceTimer)
+    clearTimeout(blurTimer)
   })
 </script>
 
@@ -288,18 +336,39 @@
   align-items: center;
 }
 
+// The ring the box and its panel share while the search holds focus. The tab bar's own accent —
+// the selected tab, its slider and the sidebar toggle all wear it — so a focused search reads as
+// part of the bar it drops out of rather than as a stray blue browser outline.
+$focus-ring: 2px solid var(--sf-power-consumption);
+
 .search-field {
   width: 240px;
   // The bar shares a 52px tab bar with buttons that are 36-40px tall; compact density lands it
   // in the middle of them rather than stretching the bar.
   :deep(.v-field) {
     border-radius: 4px;
+    // An outline rather than a border: the field is 40px in a 52px bar, and a border would grow it.
+    outline: 2px solid transparent;
+    transition: outline-color 0.15s;
   }
+}
+
+.search-activator:focus-within .search-field :deep(.v-field) {
+  outline: $focus-ring;
 }
 
 .search-results {
   // The panel is a list of clickable rows, so it must not read as a card of prose.
   background-color: #2a2a2a;
+  // Lifts the panel off the plan it covers — without it the list reads as part of the page it is
+  // floating over, which at this width is most of the first factory card.
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  outline: 2px solid transparent;
+  transition: outline-color 0.15s;
+
+  &.focused {
+    outline: $focus-ring;
+  }
 }
 
 .results-scroll {
@@ -307,33 +376,25 @@
   overflow-y: auto;
 }
 
+// One style for every section heading. "Factories" and "Copper Ore" name the same tier of thing —
+// what the rows under them are about — so they are set the same: the parts used to be a size
+// larger and in mixed case while "Factories" was small caps, and the two read as unrelated.
 .group-heading {
   display: flex;
   align-items: center;
   padding: 8px 12px;
   background-color: #1f1f1f;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: #e0e0e0;
   position: sticky;
   top: 0;
   z-index: 1;
-}
-
-// Parts wear their own name at full size — it is the thing that was searched for, and shouting
-// it in the same small caps as "Factories" made the list read as one long heading.
-.part-heading {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 0.9rem;
 
   .count {
     font-size: 0.7rem;
     font-weight: 400;
     color: #9e9e9e;
-    text-transform: none;
   }
 }
 
@@ -351,10 +412,13 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 12px 6px 20px;
+  padding: 6px 12px 6px 16px;
   text-align: left;
   background: none;
-  border: 0;
+  // Always reserved, so a grouped row and an ungrouped one line up rather than the text shifting
+  // 4px wherever a colour happens to land.
+  border: 0 solid transparent;
+  border-left-width: 4px;
   color: inherit;
   cursor: pointer;
   transition: background-color 0.15s;

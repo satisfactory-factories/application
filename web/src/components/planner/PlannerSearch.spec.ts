@@ -19,9 +19,12 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push }),
 }))
 
+const SMELTING_GROUP = { id: 'smelting', name: 'Smelting', color: '#ff9800', order: 0 }
+
 const buildPlan = (): Factory[] => {
   const smelter = newFactory('Ingot Smelter', 0, 1)
   addProductToFactory(smelter, { id: 'IronIngot', amount: 240, recipe: 'IngotIron' })
+  smelter.group = SMELTING_GROUP
 
   const plates = newFactory('Plate Works', 1, 2)
   addProductToFactory(plates, { id: 'IronPlate', amount: 120, recipe: 'IronPlate' })
@@ -93,6 +96,19 @@ describe('PlannerSearch', () => {
     chips.forEach(chip => {
       expect([...chip!.classList]).toEqual(expect.arrayContaining(['sf-chip', 'factory']))
     })
+  })
+
+  it('marks a grouped result with its group colour, and leaves an ungrouped one bare', async () => {
+    await search('iron ingot')
+
+    const smelter = rows().find(row => row.textContent?.includes('Ingot Smelter'))!
+    const plates = rows().find(row => row.textContent?.includes('Plate Works'))!
+
+    // rgb rather than hex: the style is read back off the element, not off the source.
+    expect(smelter.style.borderLeftColor).toBe('rgb(255, 152, 0)')
+    expect(smelter.title).toBe('Group: Smelting')
+    expect(plates.style.borderLeftColor).toBe('')
+    expect(plates.title).toBe('')
   })
 
   it('finds a factory by name', async () => {

@@ -14,7 +14,7 @@
 // hundreds — before looking their factories up in the map. Typing is O(distinct parts), and the
 // index is rebuilt only when the plan does.
 
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
 import { fuzzyScore } from '@/utils/fuzzySearch'
 import { getPartDisplayName } from '@/utils/helpers'
 import { productRowId } from '@/utils/factory-management/products'
@@ -82,6 +82,8 @@ export interface FactorySummary {
   name: string
   icon?: string
   displayOrder: number
+  // The group the factory is filed under, so a result can wear its colour. Absent for Ungrouped.
+  group?: FactoryGroup
 }
 
 export interface PartUsageEntry {
@@ -150,6 +152,7 @@ const summarise = (factory: Factory): FactorySummary => ({
   name: factory.name,
   icon: factory.icon,
   displayOrder: factory.displayOrder,
+  group: factory.group,
 })
 
 /**
