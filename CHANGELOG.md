@@ -6,6 +6,23 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 _In development._
 
+### Search the plan
+
+- **A search box sits next to Options in the tab bar.** Type a factory name to jump straight to it,
+  or type a part to see every factory that touches it. Results appear under the box as you type.
+  Ctrl/Cmd+K opens it from anywhere; the arrow keys walk the results and Enter opens one. On a
+  narrow screen the box is a search button that opens the same panel. Closes #611.
+- **Part results are grouped by what the factory does with the part**: Production first, then
+  Byproduct, then Other usage — imports, exports and plain ingredient demand, each row saying which
+  it is and how much per minute.
+- **Clicking a result lands on the row it names**, not just the factory card: the product row for
+  production and byproducts, the import row it comes from for an import, and the part's satisfaction
+  row for everything else.
+- **Every result wears the factory chip** the rest of the planner uses, and a factory in a group
+  carries that group's colour on the chip's left edge.
+- The plan is indexed once per change rather than re-scanned per keystroke, so a large plan stays
+  responsive while typing.
+
 ### Custom buildings
 
 - **Add any building that makes nothing to a factory**, under Products and Power Generators: portals, train stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink, hypertube entrances, jump pads, pipeline pumps and lights. Twenty buildings in all. They count towards the factory's power draw and its building list.
