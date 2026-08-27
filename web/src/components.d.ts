@@ -54,6 +54,7 @@ declare module 'vue' {
     JoinDiscord: typeof import('./components/JoinDiscord.vue')['default']
     KoFi: typeof import('./components/ko-fi.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
+    MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     OptionsDialog: typeof import('./components/OptionsDialog.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
