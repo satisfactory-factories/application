@@ -30,11 +30,8 @@
   import eventBus from '@/utils/eventBus'
   import { announceClientOutdated, apiHeaders, clientTooOldError, isClientTooOldResponse } from '@/utils/api'
 
-  // Get user auth stuff from the app store.
-  //
-  // Held as the store rather than destructured: switching tabs reassigns currentFactoryTab, and
-  // this button lives in app chrome that never remounts — a destructured copy would go on sharing
-  // whichever tab happened to be open when the page loaded, under the wrong name (#535).
+  // Held as the store, not destructured. A tab switch reassigns currentFactoryTab, and this button
+  // never remounts, so a destructured copy would go on sharing the tab open at page load (#535).
   const appStore = useAppStore()
   const authStore = useAuthStore()
 

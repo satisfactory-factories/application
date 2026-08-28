@@ -73,7 +73,7 @@ describe('common', () => {
       expect(generateFactoryItemId(mockFactory)).toBe('6000')
     })
 
-    test('should widen the id space rather than spin when every draw collides', () => {
+    test('should widen the id range when every draw collides', () => {
       mockFactory.powerProducers = [{ id: '5000' } as any]
       vi.spyOn(Math, 'random').mockReturnValue(0.5)
 

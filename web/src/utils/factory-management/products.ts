@@ -278,24 +278,16 @@ export const fixProductTarget = (product: FactoryItem, factory: Factory): number
 
   const partData = factory.parts[product.id]
 
-  // Byproducts are handled by reading the part ledger rather than the recipe: the ledger already
-  // accounts for whatever else in the factory produces this part.
-  //
-  // Imports count against the shortfall as much as production does — a factory importing 1425 of
-  // a part it needs 2740 of only has to make up the remaining 1315. Subtracted explicitly rather
-  // than by reading amountSupplied, which also folds in amountSuppliedViaRaw: for a hand-gathered
-  // raw that is set to the entire shortfall, which would make this a no-op.
+  // What is left to make once every other source is counted. #595: imports are one of them —
+  // import 1425 of a part you need 2740 of and only 1315 is left to make. Not amountSupplied,
+  // which folds in amountSuppliedViaRaw: for a hand-gathered raw that is the whole shortfall.
   const diff = partData.amountRequired -
     partData.amountSuppliedViaProduction -
     partData.amountSuppliedViaInput
 
-  // The product's own contribution is already inside amountSuppliedViaProduction; re-adding it
-  // keeps the answer an absolute target rather than a delta.
-  //
-  // Floored at zero: when the rest of the supply covers the demand on its own — imports beyond
-  // what the factory needs, or another recipe dropping the part as a byproduct — the arithmetic
-  // runs past zero into a negative quantity, which is not a thing a product can be. Zero is the
-  // honest answer there: stop making it.
+  // + product.amount because this product's own output sits inside amountSuppliedViaProduction,
+  // making the result a quantity to set rather than one to add. Floored at zero: with enough
+  // imported or dropped as a byproduct the sum goes negative, and zero means stop making it.
   return Math.max(0, diff + product.amount)
 }
 
