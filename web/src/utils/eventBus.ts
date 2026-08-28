@@ -1,12 +1,16 @@
 import mitt from 'mitt'
 import type { VersionMismatchBody } from 'common'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
+import type { TabField } from '@/sync/room-state'
 
 type Events = {
   factoryUpdated: Factory;
   // The factory the user acted on, as opposed to the ones a recalculation
   // rippled into. Sync treats this as intent and factoryUpdated as payload.
   factoryEdited: Factory;
+  // The same statement for a field the tab owns rather than a factory, so a
+  // power target or a group list edited on its own still saves and still syncs.
+  tabEdited: TabField;
   loggedIn: undefined;
   sessionExpired: undefined;
   // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only

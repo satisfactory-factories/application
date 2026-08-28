@@ -54,6 +54,7 @@
                   rows="1"
                   variant="plain"
                   @change="validateTaskLength(task)"
+                  @update:model-value="taskEdited"
                 />
                 <p v-if="task.completed" class="text-done">{{ task.title }}</p>
               </td>
@@ -80,6 +81,7 @@
   import { ref } from 'vue'
   import draggable from 'vuedraggable'
   import { Factory, FactoryTask } from '@/interfaces/planner/FactoryInterface'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps <{
     factory: Factory;
@@ -87,6 +89,14 @@
   }>()
 
   const newTask = ref('')
+
+  /**
+   * Tasks are persisted and synced, and nothing recalculates when one changes, so every
+   * handler below has to announce itself: payload so the plan saves and flushes, intent so
+   * a rebase carries the change over instead of taking the server's list. Declared from the
+   * handlers rather than a watcher on `factory.tasks`, which also fires on inbound ops.
+   */
+  const taskEdited = () => markFactoryEdited(props.factory)
 
   // Tasks are persisted as bare {title, completed} and carry no id, so key the rows by object
   // identity — an index key reuses the wrong row after a drop, and titles can be duplicated.
@@ -105,6 +115,7 @@
     if (!event.moved) return
     const [task] = props.factory.tasks.splice(event.moved.oldIndex, 1)
     props.factory.tasks.splice(event.moved.newIndex, 0, task)
+    taskEdited()
   }
 
   const newTaskRules = {
@@ -125,6 +136,7 @@
     if (newTask.value.length === 0) return
     // Only add a new task if there isn't already an empty one
     props.factory.tasks.push({ title: newTask.value, completed: false })
+    taskEdited()
 
     // Prevent people from adding a stupidly long task
     if (newTask.value.length > 200) {
@@ -137,16 +149,19 @@
 
   const toggleTask = (index: number) => {
     props.factory.tasks[index].completed = !props.factory.tasks[index].completed
+    taskEdited()
   }
 
   const removeTask = (index: number) => {
     props.factory.tasks.splice(index, 1)
+    taskEdited()
   }
 
   const validateTaskLength = (task: { title: string }) => {
     if (task.title.length > 200) {
       alert('Max character limit (200) reached. Condense your thoughts pioneer!')
       task.title = task.title.slice(0, 200)
+      taskEdited()
     }
   }
 </script>

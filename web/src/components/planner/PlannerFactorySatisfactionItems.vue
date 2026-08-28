@@ -397,6 +397,7 @@
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
   import AddShortageDialog from '@/components/planner/satisfaction/AddShortageDialog.vue'
   import {
@@ -591,6 +592,9 @@
     console.log('changeCalculatorSelection: requestFacId', requestFacId)
 
     factory.exportCalculator[part].selected = requestFacId ?? null
+    // The calculator's settings live on the factory record and travel with the plan, so
+    // opening one or picking a destination is an edit the rebase has to carry over.
+    markFactoryEdited(factory)
   }
 
   const isRequestSelected = (factory: Factory, factoryId: string, part: string) => {

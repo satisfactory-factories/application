@@ -1,7 +1,8 @@
 import vuetify from '@/plugins/vuetify'
+import { reactive } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Product from './Product.vue'
 import PowerProducer from './PowerProducer.vue'
 import { calculateFactories, calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
@@ -16,6 +17,7 @@ import {
 import { fetchGameData } from '@/utils/gameDataService'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { formatMw } from '@/utils/numberFormatter'
+import eventBus from '@/utils/eventBus'
 
 const gameData = await fetchGameData()
 
@@ -319,6 +321,69 @@ describe('Component: BuildingGroups', () => {
         // The per building counts stay the same as the overclock is 100%
         expect(chipOreIron.text()).toBe('30 / building')
         expect(chipIronIngot.text()).toBe('30 / building')
+      })
+
+      /**
+       * None of this row recalculates the factory, so these handlers are the only thing that
+       * announces the change. `factoryEdited` is intent, and a rebase carries over only the
+       * factories the user is recorded as having touched.
+       */
+      describe('sync intent', () => {
+        const edited = () => expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
+
+        beforeEach(() => {
+          vi.spyOn(eventBus, 'emit').mockClear()
+        })
+
+        it('records adding a group', async () => {
+          await addGroupButton.trigger('click')
+
+          edited()
+        })
+
+        it('records the sync toggle', async () => {
+          await toggleSyncButton.trigger('click')
+
+          expect(product.buildingGroupItemSync).toBe(false)
+          edited()
+        })
+
+        // Both buttons below are disabled until the groups are off 100% / uneven, and the
+        // mounted props are a plain object, so arrange first and remount to get that state.
+        it('records resetting the clocks', async () => {
+          buildingGroup.overclockPercent = 250
+          subject = mountProduct(factory)
+          vi.mocked(eventBus.emit).mockClear()
+
+          await subject.find(`[id="${factory.id}-${product.id}-reset-clocks"]`).trigger('click')
+
+          expect(buildingGroup.overclockPercent).toBe(100)
+          edited()
+        })
+
+        it('records an even rebalance', async () => {
+          await addGroupButton.trigger('click')
+          product.buildingGroups[1].buildingCount = 7
+          subject = mountProduct(factory)
+          vi.mocked(eventBus.emit).mockClear()
+
+          await subject.find(`[id="${factory.id}-${product.id}-evenly-balance"]`).trigger('click')
+
+          edited()
+        })
+
+        // The list is rewritten underneath us, exactly as a collaborator's op does it.
+        // Claiming that as intent would pin this client's copy over the peer's edits.
+        it('claims nothing when the groups are rewritten from outside', async () => {
+          const live = reactive(factory)
+          subject = mountProduct(live)
+          vi.mocked(eventBus.emit).mockClear()
+
+          live.products[0].buildingGroups = [{ ...buildingGroup, buildingCount: 9 }]
+          await subject.vm.$nextTick()
+
+          expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', live)
+        })
       })
 
       describe('group<->product sync', () => {

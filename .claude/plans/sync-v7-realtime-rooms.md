@@ -32,6 +32,7 @@ separate later session.
 - Build the room-sync store: native WebSocket, reducer over server messages, close-code-driven reconnect backoff
 - Build the two-set op builder (user-touched intent vs changed payload, one op in flight, ack from the sent snapshot)
 - Implement the shared rebase path (reject, reconnect, inbound-over-pending, disconnect-before-apply)
+- Route every user mutation of synced content through `sync-intent.ts` so it declares intent, never from a watcher; keep the enumeration current when a new stored field gets an editor
 - Build offline mode: manual airplane-mode toggle, offline-detection prompt, full backend silence while on, rebase-and-sync on exit
 - Persist per-tab sync metadata (`revision`, `appVersion`, user-touched ids) in a sidecar map; `localStorage.factoryTabs` keeps today's exact shape
 - Build the new-tab chooser on the plus button: Local tab (default, no account) vs Synced tab (account required, benefits pitched), plus the one-time discovery nudge dot
@@ -293,6 +294,24 @@ hand-duplicated backend interface file.
   send nothing if nothing differs (how "it applied before the drop" resolves).
 - Duplicate `opId`s in the ring return the original ack; the guarantee's honest scope is the
   single in-flight retry window, the only op a client ever retries.
+
+**Who declares intent.** Adds, deletes and tab-field divergence are inferred from the diff
+(`markStructuralIntent`); everything else has to be declared, because a factory that already
+exists on both sides carries no structural signal. The rule, and it is not negotiable:
+
+- Every user mutation of persisted factory or tab content calls `markFactoryEdited` /
+  `markTabEdited` (`web/src/utils/sync-intent.ts`). Payload alone (`factoryUpdated`) saves the
+  plan and schedules the flush but is *not* intent, so a rebase discards it.
+- **Only from a user event handler.** Never from a `watch` on the data, which also fires when an
+  inbound op rewrites it — that marks a factory this client never edited, nothing clears intent
+  no diff can satisfy, and the client overlays its copy over that peer's edits for ever.
+- Calculation entry points are the exception that needs no call: `calculateFactory()` emits
+  `factoryEdited` for the one factory the user acted on, and payload for the ripples.
+- A reindex counts. A move, a copy, a delete or a regroup rewrites `displayOrder` across the
+  whole plan, so `captureOrder` before and `markReorderedFactories` after declare every record
+  that actually moved, not only the one clicked.
+- The room *name* is deliberately outside this: the server owns it (`ownsRoom` strips it from a
+  member's diff, `room_meta` overwrites it), so no UI declares name intent.
 
 **Offline, protocol-side.** Offline mode is purely a client stance; the backend needs
 nothing special. Coming back is the reconnect case of the rebase path. Stated honestly:

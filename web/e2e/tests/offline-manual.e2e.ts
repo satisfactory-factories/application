@@ -4,9 +4,11 @@ import { installWsGate, watchApiRequests } from '../helpers/network'
 import type { WsGate } from '../helpers/network'
 import {
   addFactory,
+  addTask,
   createSyncedTab,
   expectQuiesced,
   factoryNames,
+  mirroredTasks,
   openPlanner,
   selectTab,
 } from '../helpers/planner'
@@ -54,5 +56,38 @@ test('offline mode is silent, and the edits made in it sync on the way back', as
 
   await expect(second.locator('input.factory-name').nth(1))
     .toHaveValue('Offline addition', { timeout: 20_000 })
+  await expectQuiesced([first, second], roomId)
+})
+
+/**
+ * A task list changes no calculation and adds no factory, so the way out of offline mode
+ * keeps it only because the tasks card recorded the edit as intent. The other device moves
+ * the room on meanwhile, so the exit is a rebase onto server state rather than a replay.
+ */
+test('a task added in offline mode survives the way back out', async ({ client, request }) => {
+  const user = await registerUser(request)
+
+  const first = await openPlanner(await client({ user }))
+  const roomId = await createSyncedTab(first)
+  await addFactory(first, { name: 'Smelters', note: 'made while online' })
+
+  const second = await openPlanner(await client({ user }))
+  await selectTab(second, roomId)
+  await expect(second.locator('input.factory-name')).toHaveValue('Smelters')
+
+  await setOfflineMode(first, user, true)
+  await addTask(first, 0, 'Build the smelters')
+
+  await addFactory(second, { name: 'Constructors', note: 'added while the first was silent' })
+  await expect.poll(() => factoryNames(second)).toEqual(['Smelters', 'Constructors'])
+
+  await setOfflineMode(first, user, false)
+
+  for (const page of [first, second]) {
+    await expect.poll(() => mirroredTasks(page, roomId, 'Smelters'), {
+      timeout: 30_000,
+      message: 'the task written offline never survived the exit',
+    }).toEqual(['Build the smelters'])
+  }
   await expectQuiesced([first, second], roomId)
 })

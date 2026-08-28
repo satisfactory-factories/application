@@ -1,11 +1,13 @@
 import vuetify from '@/plugins/vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, reactive } from 'vue'
 import draggable from 'vuedraggable'
 import PlannerFactoryTasks from './PlannerFactoryTasks.vue'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
+import eventBus from '@/utils/eventBus'
 
 describe('Component: PlannerFactoryTasks', () => {
   let factory: Factory
@@ -23,12 +25,14 @@ describe('Component: PlannerFactoryTasks', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia())
-    factory = newFactory('Test')
+    // Reactive like the store's copy, so an inbound rewrite reaches the rendered rows.
+    factory = reactive(newFactory('Test'))
     factory.tasks = [
       { title: 'Alpha', completed: false },
       { title: 'Bravo', completed: false },
       { title: 'Charlie', completed: false },
     ]
+    vi.spyOn(eventBus, 'emit').mockClear()
   })
 
   it('moves a task down the list', () => {
@@ -88,5 +92,65 @@ describe('Component: PlannerFactoryTasks', () => {
     await subject.findAll('tbody tr')[1].find('td.toggle input').setValue(false)
 
     expect(factory.tasks.map(task => task.completed)).toEqual([false, false, false])
+  })
+
+  /**
+   * Nothing recalculates when a task changes, so these handlers are the only thing that
+   * announces it. `factoryEdited` is intent and a rebase carries over only what the user
+   * touched: without it the list is silently replaced by the server's on any recovery.
+   */
+  describe('sync intent', () => {
+    const edited = () => expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
+
+    it('records a reorder', () => {
+      drag(mountSubject(), 0, 2)
+
+      edited()
+    })
+
+    it('records a new task', async () => {
+      const subject = mountSubject()
+      await subject.find('.v-text-field input').setValue('Delta')
+      await subject.find('.v-text-field input').trigger('keyup.enter')
+
+      expect(factory.tasks.map(task => task.title)).toContain('Delta')
+      edited()
+    })
+
+    it('records an edited title', async () => {
+      const subject = mountSubject()
+      await subject.findAll('tbody tr')[1].find('textarea').setValue('Bravo edited')
+
+      expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', factory)
+      edited()
+    })
+
+    it('records a tick', async () => {
+      const subject = mountSubject()
+      await subject.findAll('tbody tr')[1].find('td.toggle input').setValue(true)
+
+      edited()
+    })
+
+    it('records a delete', async () => {
+      const subject = mountSubject()
+      await subject.findAll('tbody tr')[1].find('td.actions button').trigger('click')
+
+      expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Charlie'])
+      edited()
+    })
+
+    // A collaborator's op rewrites the list underneath us. Claiming that as intent would
+    // make this client overlay its copy of the factory over that peer's edits for ever.
+    it('claims nothing when the list is rewritten from outside', async () => {
+      const subject = mountSubject()
+      vi.mocked(eventBus.emit).mockClear()
+
+      factory.tasks = [{ title: 'Arrived over the wire', completed: false }]
+      await nextTick()
+
+      expect(subject.findAll('tbody tr')).toHaveLength(1)
+      expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', factory)
+    })
   })
 })

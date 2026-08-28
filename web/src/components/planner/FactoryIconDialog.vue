@@ -109,7 +109,7 @@
   } from '@/utils/factory-icons'
   import { fuzzySearch } from '@/utils/fuzzySearch'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
-  import eventBus from '@/utils/eventBus'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{ factory: Factory }>()
 
@@ -149,11 +149,9 @@
 
   const apply = (id: string | undefined) => {
     props.factory.icon = id
-    // Drives both the local save and the sync flush, same route PlannerFactoryNotes
-    // uses for the notes field. `factoryEdited` marks it as intent, so a rebase
-    // carries the new icon over instead of discarding it.
-    eventBus.emit('factoryUpdated', props.factory)
-    eventBus.emit('factoryEdited', props.factory)
+    // Payload drives the local save and the sync flush; intent is what makes a rebase
+    // carry the new icon over instead of discarding it.
+    markFactoryEdited(props.factory)
     isOpen.value = false
   }
 </script>

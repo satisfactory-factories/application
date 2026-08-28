@@ -7,7 +7,7 @@
       :disabled="disabled"
       size="small"
       variant="tonal"
-      @click="toggleBuildingGroupTray(item)"
+      @click="toggleTray"
     >
       <span class="mr-2">
         <span v-if="item.buildingGroupsTrayOpen"><i class="fas fa-chevron-up" /></span>
@@ -50,6 +50,7 @@
   import { Factory, FactoryItem, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
   import { getSomersloopBuildCost, getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{
     factory: Factory
@@ -59,6 +60,13 @@
     idPrefix: string
     disabled?: boolean
   }>()
+
+  // The open/shut flag is stored on the product and travels with the plan, so the toggle is
+  // an edit like any other rather than local view state.
+  const toggleTray = () => {
+    toggleBuildingGroupTray(props.item)
+    markFactoryEdited(props.factory)
+  }
 
   const itemNoun = computed(() => props.type === ItemType.Product ? 'product' : 'producer')
 

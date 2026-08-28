@@ -156,6 +156,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const { getFactories } = useAppStore()
   // Qty edits mutate the input instantly; only the recalculation is debounced.
@@ -193,12 +194,15 @@
     return getExportableFactories(getFactories())
   })
 
+  // The blank row is stored on the factory, and nothing recalculates until it is filled in,
+  // so without this a rebase in between drops the row the user just added.
   const addEmptyInput = (factory: Factory) => {
     addInputToFactory(factory, {
       factoryId: null,
       outputPart: null,
       amount: 0,
     })
+    markFactoryEdited(factory)
   }
 
   const deleteInput = (inputIndex: number, factory: Factory) => {

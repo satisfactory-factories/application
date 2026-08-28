@@ -7,6 +7,8 @@ import type { WebSocketLike } from '@/sync/ws-client'
 import { OP_DEBOUNCE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { addProductToFactory } from '@/utils/factory-management/products'
+import { setSyncState } from '@/utils/factory-management/syncState'
 import { gameData } from '@/utils/gameData'
 import { mergeFactories } from '@/sync/room-state'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
@@ -783,6 +785,295 @@ describe('room-sync-store', () => {
 
       expect(names(tab)).toEqual(['Offline edit', 'Theirs'])
       expect(lastOp().baseRevision).toBe(6)
+    })
+  })
+
+  /**
+   * The class of edit no calculation announces: a user changes a stored field, nothing
+   * recalculates, and only the UI saying `factoryEdited` makes it intent. Each case emits
+   * exactly the pair its handler now emits and is then put through the two recovery paths
+   * the rebase serves — a divergent snapshot, and a refused op.
+   */
+  describe('content edits that only the UI can declare', () => {
+    interface ContentEdit {
+      what: string
+      edit: (factory: Factory) => void
+      read: (factory: Factory) => unknown
+      expected: unknown
+    }
+
+    const edits: ContentEdit[] = [
+      {
+        what: 'a rename',
+        edit: factory => { factory.name = 'Renamed here' },
+        read: factory => factory.name,
+        expected: 'Renamed here',
+      },
+      {
+        what: 'a task',
+        edit: factory => factory.tasks.push({ title: 'Build the smelters', completed: false }),
+        read: factory => factory.tasks,
+        expected: [{ title: 'Build the smelters', completed: false }],
+      },
+      {
+        what: 'a collapsed card',
+        edit: factory => { factory.hidden = true },
+        read: factory => factory.hidden,
+        expected: true,
+      },
+      {
+        what: 'a game sync mark',
+        edit: factory => setSyncState(factory),
+        read: factory => factory.inSync,
+        expected: true,
+      },
+      {
+        what: 'an opened building group tray',
+        edit: factory => { factory.products[0].buildingGroupsTrayOpen = true },
+        read: factory => factory.products[0].buildingGroupsTrayOpen,
+        expected: true,
+      },
+      {
+        what: 'an export calculator setting',
+        edit: factory => {
+          factory.exportCalculator.IronIngot = { selected: '2', factorySettings: {} }
+        },
+        read: factory => factory.exportCalculator.IronIngot?.selected,
+        expected: '2',
+      },
+      {
+        what: 'a building group sync toggle',
+        edit: factory => { factory.products[0].buildingGroupItemSync = false },
+        read: factory => factory.products[0].buildingGroupItemSync,
+        expected: false,
+      },
+      {
+        what: 'a clock set across the groups',
+        edit: factory => factory.products[0].buildingGroups.forEach(group => {
+          group.overclockPercent = 250
+          group.clockSetByUser = false
+        }),
+        read: factory => factory.products[0].buildingGroups.map(group => group.overclockPercent),
+        expected: [250],
+      },
+      {
+        what: 'a blank product row',
+        edit: factory => addProductToFactory(factory, { id: '', amount: 1 }),
+        read: factory => factory.products.length,
+        expected: 2,
+      },
+      {
+        what: 'a blank import row',
+        edit: factory => factory.inputs.push({ factoryId: null, outputPart: null, amount: 0 }),
+        read: factory => factory.inputs.length,
+        expected: 1,
+      },
+    ]
+
+    /** Alpha produces something, so a game sync mark and a tray have somewhere to live. */
+    let producing: Factory[]
+
+    beforeEach(() => {
+      producing = [newFactory('Alpha', 0, 1), newFactory('Beta', 1, 2)]
+      addProductToFactory(producing[0], { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      calculateFactories(producing, gameData, { origin: 'recalculate' })
+      producing = wire(producing)
+    })
+
+    const apply = (tab: FactoryTab, edit: ContentEdit) => {
+      edit.edit(tab.factories[0])
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      eventBus.emit('factoryEdited', tab.factories[0])
+    }
+
+    /** What the server did while this client was busy: a different factory, so no true conflict. */
+    const moved = (revision: number) => {
+      const server = wire(producing)
+      server[1].name = 'Theirs'
+      return snapshotOf(server, revision)
+    }
+
+    const sentBack = (edit: ContentEdit) => {
+      const sent = lastOp().diff.factories as Factory[]
+      return edit.read(sent.find(entry => entry.id === 1) as Factory)
+    }
+
+    it.each(edits)('keeps $what made offline across the reconnect', edit => {
+      vi.useFakeTimers()
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+
+      apply(tab, edit)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: moved(6), revision: 6 })
+
+      expect(edit.read(tab.factories[0])).toEqual(edit.expected)
+      expect(names(tab)[1]).toBe('Theirs')
+      expect(sentBack(edit)).toEqual(edit.expected)
+    })
+
+    it.each(edits)('keeps $what through a refused op', edit => {
+      vi.useFakeTimers()
+      const tab = syncAt(producing, 4)
+
+      apply(tab, edit)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+      const refused = lastOp().opId
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: refused,
+        reason: 'stale_base',
+        snapshot: moved(5),
+      })
+
+      expect(edit.read(tab.factories[0])).toEqual(edit.expected)
+      expect(names(tab)[1]).toBe('Theirs')
+      expect(lastOp().baseRevision).toBe(5)
+      expect(sentBack(edit)).toEqual(edit.expected)
+    })
+
+    // The other half of the contract: an inbound op is not this client's intent, so the
+    // factory it rewrites must not become one this client overlays from then on.
+    it('claims no intent for a factory an inbound op rewrote', () => {
+      const tab = syncAt(producing, 4)
+
+      const theirs = wire(producing[0])
+      theirs.name = 'Renamed by a peer'
+      receive({ type: 'op_apply', roomId: ROOM, diff: { factories: [theirs] }, revision: 5 })
+
+      expect(tab.factories[0].name).toBe('Renamed by a peer')
+      expect(store.hasLocalEdits(ROOM)).toBe(false)
+      expect(readTabMirrorMeta()[ROOM]?.userTouchedIds).toEqual([])
+    })
+  })
+
+  /**
+   * A move, a copy or a delete reindexes `displayOrder` across the whole plan, so the records
+   * that changed are not only the one the user clicked. Marking only that one leaves the rest
+   * on the server's old indexes, which is a plan that renders in an order nobody chose.
+   */
+  describe('a reorder, which changes records the user never clicked', () => {
+    const swapOrder = (tab: FactoryTab) => {
+      const [first, second] = tab.factories
+      const order = first.displayOrder
+      first.displayOrder = second.displayOrder
+      second.displayOrder = order
+      // What Planner.vue's moveFactory now emits: one pair per record the reindex moved.
+      for (const factory of [first, second]) {
+        eventBus.emit('factoryUpdated', factory)
+        eventBus.emit('factoryEdited', factory)
+      }
+    }
+
+    const orders = (tab: FactoryTab) => tab.factories.map(entry => entry.displayOrder)
+
+    it('carries every moved record over a divergent snapshot', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      swapOrder(tab)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
+
+      expect(orders(tab)).toEqual([1, 0])
+      const sent = lastOp().diff.factories as Factory[]
+      expect(sent.map(entry => entry.displayOrder)).toEqual([1, 0])
+    })
+
+    // Without the second factory's own emit the overlay keeps only the clicked one, and the
+    // untouched half comes back off the server on its old index.
+    it('loses the record whose move was never declared', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      const [first, second] = tab.factories
+      first.displayOrder = 1
+      second.displayOrder = 0
+      eventBus.emit('factoryUpdated', first)
+      eventBus.emit('factoryEdited', first)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
+
+      expect(orders(tab)).toEqual([1, 1])
+    })
+  })
+
+  describe('a tab field the user set on its own', () => {
+    it('survives the reconnect, and is re-sent', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      tab.powerTarget = 2400
+      eventBus.emit('tabEdited', 'powerTarget')
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(fixture, 6, { powerTarget: 900 }),
+        revision: 6,
+      })
+
+      expect(tab.powerTarget).toBe(2400)
+      expect(lastOp().diff.powerTarget).toBe(2400)
+    })
+
+    // The group list is the other tab-owned field, and creating or renaming one recalculates
+    // nothing at all — useFactoryGroups saying so is the only signal the engine ever gets.
+    it('keeps a group list made offline, and re-sends it', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      tab.groups = [{ id: 'g-1', name: 'Smelting', color: '#ff0000', order: 0 }]
+      eventBus.emit('tabEdited', 'groups')
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(fixture, 6, {
+          groups: [{ id: 'g-2', name: 'Theirs', color: '#00ff00', order: 0 }],
+        }),
+        revision: 6,
+      })
+
+      expect(tab.groups?.map(group => group.name)).toEqual(['Smelting'])
+      expect((lastOp().diff.groups as { name: string }[]).map(group => group.name)).toEqual(['Smelting'])
+    })
+
+    // Without the emit nothing schedules a flush, so an inbound op lands first and the
+    // engine — holding no record of an edit — simply takes the server's number.
+    it('is taken by the server when the UI never said anything', () => {
+      const tab = syncAt(fixture, 4)
+
+      tab.powerTarget = 2400
+      receive({ type: 'op_apply', roomId: ROOM, diff: { powerTarget: 900 }, revision: 5 })
+
+      expect(tab.powerTarget).toBe(900)
     })
   })
 

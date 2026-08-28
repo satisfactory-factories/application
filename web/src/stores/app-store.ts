@@ -162,6 +162,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   eventBus.on('factoryUpdated', schedulePersist)
+  eventBus.on('tabEdited', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
 
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {

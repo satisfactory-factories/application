@@ -860,6 +860,17 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   /**
+   * The tab-level equivalent. `markStructuralIntent` would infer the same thing from the
+   * diff, but only once something schedules a flush — a power target or a group list
+   * changed on its own schedules nothing, so an inbound op arriving first replaces it.
+   */
+  const onTabEdited = (field: TabField) => {
+    const tab = appStore.getCurrentTab()
+    if (tab && engines.has(tab.id)) markTabTouched(tab.id, field)
+    scheduleFlush()
+  }
+
+  /**
    * The mirror is a whole plan again, so this is both the flush the load blocked
    * and the moment a provisional baseline can be read off it.
    */
@@ -869,6 +880,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   eventBus.on('factoryEdited', onFactoryEdited)
+  eventBus.on('tabEdited', onTabEdited)
   eventBus.on('factoryUpdated', scheduleFlush)
   eventBus.on('calculationsCompleted', scheduleFlush)
   eventBus.on('loadingCompleted', onLoadingCompleted)
@@ -877,6 +889,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const dispose = () => {
     eventBus.off('factoryEdited', onFactoryEdited)
+    eventBus.off('tabEdited', onTabEdited)
     eventBus.off('factoryUpdated', scheduleFlush)
     eventBus.off('calculationsCompleted', scheduleFlush)
     eventBus.off('loadingCompleted', onLoadingCompleted)

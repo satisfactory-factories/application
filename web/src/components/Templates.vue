@@ -65,6 +65,7 @@
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
+  import { markTabEdited } from '@/utils/sync-intent'
 
   const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
 
@@ -226,6 +227,7 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
+      markTabEdited('powerTarget')
     }
 
     prepareLoader(factories, true)

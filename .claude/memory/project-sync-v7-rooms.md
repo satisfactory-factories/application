@@ -4,7 +4,7 @@ description: v7 realtime rooms sync — built and green on branch claude/sync-me
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-08-28
+  lastVerified: 2026-08-29
 ---
 
 The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -14,8 +14,8 @@ The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, rep
 **Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
 deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
-reset, the v7 changelog modal). Green as of 2026-08-28: backend 236 vitest tests, common 68,
-web 1694 unit tests, 22 Playwright e2e tests, `vue-tsc` clean, root `lint-check` clean, root
+reset, the v7 changelog modal). Green as of 2026-08-29: backend 236 vitest tests, common 68,
+web 1744 unit tests, 24 Playwright e2e tests, `vue-tsc` clean, root `lint-check` clean, root
 `build` clean. The e2e job in CI has never actually run — it is validated locally only, so
 the first PR is where it gets proved.
 
@@ -25,6 +25,7 @@ the first PR is where it gets proved.
 | --- | --- |
 | Wire protocol, zod data boundary, caps table | `common/src/` (`types/protocol.ts`, `schemas/`, `caps.ts`) |
 | Sync engine, two-set op builder, rebase, offline state machine | `web/src/stores/room-sync-store.ts` |
+| The one door the UI declares an edit through (payload + intent) | `web/src/utils/sync-intent.ts` |
 | Tab list, adoption, share/unshare, join | `web/src/stores/rooms-store.ts` |
 | Socket, close-code policy, backoff | `web/src/sync/ws-client.ts` |
 | Sidecar sync metadata (`localStorage.factoryTabs` keeps its v6 shape) | `web/src/sync/tab-mirror-meta.ts`, `tab-sync-state.ts` |
@@ -112,18 +113,34 @@ Keep these: the shapes recur, and the second one bites twice.
   and two clients never disagree about a factory's bytes.
 - **`factoryEdited` is intent, and only a user action may emit it.** The sync engine treats
   `factoryUpdated` as payload and `factoryEdited` as intent, and a rebase overlays *only*
-  touched factories — so a notes-only or icon-only edit that never declared intent was
-  discarded by every recovery path, offline exit included. `PlannerFactoryNotes.vue`,
-  `FactoryIconDialog.vue` and `useFactoryGroups.ts` (a regrouping writes `factory.group`, same
-  shape) now all declare it.
+  touched factories — so any content edit that never declared intent was discarded by every
+  recovery path, offline exit included.
 
   **The trap, which cost a full e2e run to find: the emit must not come from a Vue watcher on
   the data.** A `watch(() => props.factory.notes)` also fires when an inbound op rewrites that
   note, so the client marks a factory it never edited as touched — and nothing clears intent
   that no diff can satisfy, so it overlays its copy over that peer's edits from then on. The
   notes card therefore emits payload from the watcher and intent from `@update:model-value`
-  and the Clear button; the other two emit from click handlers, which were always safe. Adds
-  and deletes need none of this: `markStructuralIntent` infers them from the diff.
+  and the Clear button; everything else emits from click/input handlers, which are always safe.
+
+  **`web/src/utils/sync-intent.ts` is now the one door.** `markFactoryEdited` emits payload and
+  intent together, `markTabEdited(field)` does the tab-owned half (`powerTarget`, `groups`), and
+  `captureOrder` + `markReorderedFactories` cover the reindex ripple — a move, copy, delete or
+  regroup rewrites `displayOrder` across the whole plan, so the records that changed are never
+  only the one clicked. Everything that edits stored content calls one of those: the name field
+  and hidden/game-sync chips (`PlannerFactory.vue`), tasks, notes, icon, groups
+  (`useFactoryGroups.ts`), show/hide-all and the reorder family (`Planner.vue`), the building
+  groups row (`BuildingGroups.vue`, `BuildingGroupsSection.vue`), all five export calculators,
+  blank product/generator/import rows, and `usePowerTarget`. Calculation entry points need no
+  call — `calculateFactory()` already emits intent for the factory the user acted on — and adds
+  and deletes need none either, because `markStructuralIntent` infers them from the diff.
+
+  Two deliberate exclusions, both load-bearing: the **room name** is server-authoritative
+  (`ownsRoom` strips it from a member's diff and `room_meta` overwrites it), so no UI declares
+  name intent; and **navigating to a factory** un-hides its card as payload only, because a
+  jump restored from session storage on load must not claim the user's authorship. Separately,
+  `DroneCalculator.vue` holds `droneTime` in a detached `ref` and never writes it back to the
+  factory at all — a pre-existing persistence bug, not a sync one, and untouched here.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See

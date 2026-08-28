@@ -19,7 +19,7 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToLast(item, type, factory)"
+      @click="applyRemainderToLast"
     >
       <i class="fas fa-balance-scale-right" />
       <span class="ml-2">Remainder to last <tooltip-info :is-caption="false" text="Attempts to apply the Effective Buildings remainder to the last group.<br>This is useful if you cannot change existing groups and want to make a new one and fulfil changes in demands." /></span>
@@ -30,19 +30,20 @@
       :disabled="correct || over"
       size="small"
       :variant="correct || over ? 'outlined' : 'flat'"
-      @click="remainderToNewGroup(item, type, factory)"
+      @click="applyRemainderToNewGroup"
     >
       <i class="fas fa-stream" />
       <span class="ml-2">Remainder to new group <tooltip-info :is-caption="false" text="Creates a new group and automatically applies the Effective Buildings remainder to it." /></span>
     </v-btn>
     <v-btn
+      :id="`${factory.id}-${item.id}-reset-clocks`"
       class="ml-2"
       color="amber"
       :disabled="areAllClocks100(item.buildingGroups)"
       size="small"
       :variant="areAllClocks100(item.buildingGroups) ? 'outlined' : 'flat'"
 
-      @click="resetClocks(item.buildingGroups)"
+      @click="resetClocks"
     >
       <i class="fas fa-history" />
       <span class="ml-2">OC @ 100% <tooltip-info :is-caption="false" text="Sets all clocks in all groups to 100%." /></span>
@@ -97,7 +98,7 @@
         :color="item.buildingGroupItemSync ? 'green' : 'amber'"
         size="small"
         variant="flat"
-        @click="item.buildingGroupItemSync = !item.buildingGroupItemSync"
+        @click="toggleItemSync"
       >
         {{ item.buildingGroupItemSync ? 'Enabled' : 'Disabled' }}
       </v-btn>
@@ -124,7 +125,7 @@
     <v-btn
       :id="`${factory.id}-add-building-group`"
       color="primary"
-      @click="addBuildingGroup(item, type, factory)"
+      @click="addGroup"
     >
       <i class="fas fa-plus" />
       <span class="ml-2">Add Building Group</span>
@@ -152,6 +153,7 @@
     syncBuildingGroups,
   } from '@/utils/factory-management/building-groups/common'
   import BuildingGroupComponent from '@/components/planner/products/BuildingGroup.vue'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{
     factory: Factory
@@ -197,6 +199,10 @@
     return buildingsRemaining.value > 0.1
   })
 
+  // Every button in this row rewrites building groups, which are stored on the factory and
+  // travel with the plan. Nothing else announces them, so each declares payload and intent.
+  const edited = () => markFactoryEdited(props.factory)
+
   const rebalance = () => {
     syncBuildingGroups(
       props.item,
@@ -204,13 +210,35 @@
       props.factory,
       { forceRebalance: true }
     )
+    edited()
   }
 
-  const resetClocks = (buildingGroups: BuildingGroup[]) => {
-    buildingGroups.forEach(group => {
+  const applyRemainderToLast = () => {
+    remainderToLast(props.item, props.type, props.factory)
+    edited()
+  }
+
+  const applyRemainderToNewGroup = () => {
+    remainderToNewGroup(props.item, props.type, props.factory)
+    edited()
+  }
+
+  const addGroup = () => {
+    addBuildingGroup(props.item, props.type, props.factory)
+    edited()
+  }
+
+  const toggleItemSync = () => {
+    props.item.buildingGroupItemSync = !props.item.buildingGroupItemSync
+    edited()
+  }
+
+  const resetClocks = () => {
+    props.item.buildingGroups.forEach(group => {
       group.overclockPercent = 100
       group.clockSetByUser = false
     })
+    edited()
   }
 
   const areAllClocks100 = (buildingGroups: BuildingGroup[]) => {

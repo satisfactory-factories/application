@@ -12,10 +12,13 @@
                 @click="iconDialogOpen = true"
               />
               <factory-group-tray :factory="factory" />
+              <!-- v-model still owns the write (it is what handles IME composition); the
+                   listener beside it only declares that the write was the user's. -->
               <input
                 v-model="factory.name"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
+                @input="renameFactory"
               >
             </div>
             <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
@@ -45,7 +48,7 @@
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip small green no-margin" @click="markInSync(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -61,7 +64,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="setSyncState(factory)">
+                <v-chip class="sf-chip small orange no-margin" @click="markInSync(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -77,7 +80,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
+                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="markInSync(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -143,7 +146,7 @@
               size="small"
               title="Collapse Factory"
               variant="outlined"
-              @click="factory.hidden = true"
+              @click="setHidden(true)"
             />
             <v-btn
               v-show="factory.hidden"
@@ -153,7 +156,7 @@
               size="small"
               title="Expand Factory"
               variant="outlined"
-              @click="factory.hidden = false"
+              @click="setHidden(false)"
             />
             <v-btn
               class="mr-2"
@@ -365,6 +368,7 @@
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
@@ -456,8 +460,23 @@
       (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
   }
 
+  // Every handler below writes a field the plan persists and the room syncs, so each one
+  // declares intent as well as payload — a rebase carries over only what the user touched.
+  const renameFactory = () => markFactoryEdited(props.factory)
+
+  const setHidden = (hidden: boolean) => {
+    props.factory.hidden = hidden
+    markFactoryEdited(props.factory)
+  }
+
+  const markInSync = (factory: Factory) => {
+    setSyncState(factory)
+    markFactoryEdited(factory)
+  }
+
   const resetSyncState = (factory: Factory) => {
     factory.inSync = null
+    markFactoryEdited(factory)
   }
 </script>
 

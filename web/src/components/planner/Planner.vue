@@ -131,6 +131,7 @@
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
+  import { captureOrder, markFactoryEdited, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
 
@@ -504,6 +505,7 @@
 
   const copyFactory = (originalFactory: Factory) => {
     // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
+    const before = captureOrder(getFactories())
     const newId = generateFactoryId(getFactories())
     const newFactory: Factory = {
       ...structuredClone(toRaw(originalFactory)),
@@ -533,6 +535,10 @@
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
+    // The clone itself is structural, so the engine infers it. Everything the reindex above
+    // pushed down is not, and would be taken back off the server without this.
+    markReorderedFactories(before, getFactories())
+
     navigateToFactory(newId)
   }
 
@@ -541,6 +547,7 @@
     const index = getFactories().findIndex(fac => fac.id === factory.id)
 
     if (index !== -1) {
+      const before = captureOrder(getFactories())
       removeFactoryDependants(factory, getFactories())
 
       getFactories().splice(index, 1) // Remove the factory at the found index
@@ -551,6 +558,8 @@
 
       // Regenerate the sort orders
       regenerateSortOrders(getFactories())
+      // The removal is structural; the records the reindex shifted up are not.
+      markReorderedFactories(before, getFactories())
     } else {
       console.error('Factory not found to delete?!')
     }
@@ -570,8 +579,13 @@
     updateWorldRawResources(gameData)
   }
 
+  // Every factory is marked, deliberately: collapsing the plan is something the user did to
+  // all of them, and a rebase that carried none of it over would silently expand them again.
   const showHideAll = (mode: 'show' | 'hide') => {
-    getFactories().forEach(factory => factory.hidden = mode === 'hide')
+    getFactories().forEach(factory => {
+      factory.hidden = mode === 'hide'
+      markFactoryEdited(factory)
+    })
   }
 
   const toggleHelp = () => {
@@ -586,7 +600,12 @@
       return
     }
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
-    factory.hidden = false
+    // Payload, never intent: jumping to a card is moving around the app rather than editing it,
+    // and a navigation restored from session storage on load must not claim the user's authorship.
+    if (factory.hidden) {
+      factory.hidden = false
+      eventBus.emit('factoryUpdated', factory)
+    }
 
     // Same reasoning one step out: a card inside a collapsed group is hidden and has nothing to
     // scroll to, so every jump into one — a status chip, a pending session navigation, a link from
@@ -620,7 +639,10 @@
   }
 
   const moveFactory = (factory: Factory, direction: string) => {
+    // The reindex runs over the whole plan; mark exactly the records whose order moved.
+    const before = captureOrder(getFactories())
     reorderFactory(factory, direction, getFactories())
+    markReorderedFactories(before, getFactories())
   }
 
   // Scroll to a non-factory section (Statistics, Factories Summary) by its element id.

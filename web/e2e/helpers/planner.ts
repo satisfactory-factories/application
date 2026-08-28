@@ -225,6 +225,7 @@ export interface MirroredFactory {
   id: number
   name: string
   notes: string
+  tasks: { title: string, completed: boolean }[]
 }
 
 export const mirroredNote = async (
@@ -316,8 +317,8 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   await expect(name).toBeVisible()
   await name.fill(edit.name)
 
-  // The notes card is the one thing on a factory whose edit announces itself to
-  // the sync engine without needing a recalculation first.
+  // A note needs no recalculation to reach the sync engine, so it is the cheapest
+  // per-factory payload a test can give a new card.
   await notesField(page).last().fill(edit.note)
 }
 
@@ -335,3 +336,31 @@ export const setFactoryNote = async (
 export const factoryNames = (page: Page): Promise<string[]> =>
   page.locator('input.factory-name')
     .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))
+
+/** Renames a factory in place, addressed by its position in the plan. */
+export const renameFactory = async (
+  page: Page,
+  index: number,
+  name: string,
+): Promise<void> => {
+  const field = page.locator('input.factory-name').nth(index)
+  await expect(field).toBeVisible()
+  await field.fill(name)
+}
+
+/** The tasks card's "New Task" field; Enter is what commits it. */
+export const addTask = async (page: Page, index: number, title: string): Promise<void> => {
+  const field = page.locator('[id$="-tasks"]').nth(index).locator('input[type="text"]')
+  await expect(field).toBeVisible()
+  await field.fill(title)
+  await field.press('Enter')
+  await expect(field).toHaveValue('')
+}
+
+export const mirroredTasks = async (
+  page: Page,
+  tabId: string,
+  factoryName: string,
+): Promise<string[]> =>
+  ((await mirroredFactories(page, tabId)).find(factory => factory.name === factoryName)?.tasks ?? [])
+    .map(task => task.title)

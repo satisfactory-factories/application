@@ -45,6 +45,7 @@
   import { addPowerProducerToFactory } from '@/utils/factory-management/power'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import { FactoryStatus, getSectionStatuses } from '@/utils/factory-management/status'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{
     factory: Factory;
@@ -55,11 +56,14 @@
   // Only buildingGroupMismatch anchors here, and it is always a problem — hence no severity switch.
   const sectionStatuses = computed(() => getSectionStatuses(props.statuses ?? [], 'products'))
 
+  // A blank row is already part of the stored record, and no calculation runs to announce it,
+  // so a rebase would take the server's list back and drop the row the user just asked for.
   const addEmptyProduct = (factory: Factory) => {
     addProductToFactory(factory, {
       id: '',
       amount: 1,
     })
+    markFactoryEdited(factory)
   }
 
   const addEmptyPowerProducer = (factory: Factory) => {
@@ -67,6 +71,7 @@
       recipe: '',
       updated: FactoryPowerChangeType.Power,
     })
+    markFactoryEdited(factory)
   }
 
   const updateOrder = (list: any[], direction: 'up' | 'down', item: any) => {
@@ -87,6 +92,7 @@
     otherItem.displayOrder = tempOrder
 
     list.sort((a, b) => a.displayOrder - b.displayOrder)
+    markFactoryEdited(props.factory)
   }
 
   provide('updateOrder', updateOrder)

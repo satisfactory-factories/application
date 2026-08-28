@@ -67,6 +67,7 @@
   import eventBus from '@/utils/eventBus'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useAppStore } from '@/stores/app-store'
+  import { markTabEdited } from '@/utils/sync-intent'
   const { getFactories, prepareLoader, getCurrentTab } = useAppStore()
 
   defineProps<{ source: 'planner' | 'changelog' }>()
@@ -117,6 +118,7 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = demoPlan.powerTarget
+      markTabEdited('powerTarget')
     }
     prepareLoader(demoPlan.getFactories(), true)
   }
