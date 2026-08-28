@@ -24,9 +24,11 @@ The harness refuses to start if either port is taken rather than picking another
 | File | What it proves |
 | --- | --- |
 | `two-devices` | An edit reaches the account's other device inside 2s; both mirrors end deep-equal. |
-| `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive. |
+| `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive, whether the edit is an add or a note. |
 | `tab-lifecycle` | Create, rename, delete and drag-reorder all reach a second device; a member is offered no rename. |
-| `invite` | An anonymous visitor joins by link and edits back. |
+| `new-tab-chooser` | Local is offered to anyone, synced only to an account, and the chooser says why. |
+| `invite` | An anonymous visitor joins by link and edits back; a signed-in joiner's tab follows their account to a second device. |
+| `snapshot-link` | `/share/:id` still imports a frozen local copy, and the owner's later edits do not reach it. |
 | `invite-password` | A wrong password is refused inline, the right one joins, and a rotation kicks the visitor while the member stays. |
 | `unshare` | The collaborator keeps a local copy of the last state and loses the live link. |
 | `offline-manual` | The airplane switch makes zero requests, and the edits made behind it sync on the way back. |
@@ -69,6 +71,14 @@ per address.
   nothing was sent, and it is named as such. `retries` is 0 on purpose.
 - `expectQuiesced` is the strongest "it settled" check there is: every client has no
   unsent intent left and they all hold the same bytes at the same revision.
+
+## In CI
+
+`.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest`, path-filtered
+to `web/`, `backend/`, `common/` and the workspace files. It caches the Chromium download and
+the mongod binary, and uploads `web/test-results/` (traces and screenshots) when the job
+fails. Unlike the three sibling check workflows it is free to path-filter because it is not a
+required status check; making it required means dropping the filter first.
 
 ## Environment switches
 
