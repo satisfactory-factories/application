@@ -2,6 +2,68 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Beta v0.5 (the 0.1.x–0.2.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7: Realtime sync, rooms and offline mode
+
+Cloud saving is gone and live plans have taken its place. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
+
+### Every tab is now local, synced or shared
+
+- The old model saved one tab as a blob every ten seconds and the last writer won, so two devices could quietly overwrite each other and the only fix was a manual force download. That is replaced by **three kinds of tab, and you pick**. A **local** tab lives in this browser and needs no account, exactly like every tab did before. A **synced** tab lives on your account and appears on every device you sign in on. A **shared** tab is a synced tab you have invited other people into, and everyone edits the same plan live.
+- The **+ button now opens a chooser** rather than silently making a local tab. It explains what each kind is, and a one-time dot on the button points it out the first time. Local stays the default, so nothing changes for anyone who never signs in.
+- **Each tab wears its kind in the tab bar**: a monitor for local, a single person for synced, a group of people for shared. A shared tab also shows how many people are in it right now.
+- **A local tab keeps its identity when you sync it.** Its ID becomes the plan's ID on the server, so nothing about it is recreated or renamed.
+- Synced tabs still write their full contents to this browser exactly as before. That copy is what draws the screen, and it is what you would be left holding if the server were unreachable.
+
+### Sharing: two links that are never mixed up
+
+- The share dialog now offers two clearly separated things. **Copy snapshot link** is what `/share` has always been: a frozen copy of the plan as it is right now, which whoever opens it keeps as their own. It works on any tab and needs no account.
+- **Invite collaborators** is new. A synced tab gets a link of the form `satisfactory-factories.app/room/three-word-slug`, and anyone who opens it is editing *your* plan with you. You can set your own words for the link, and the dialog tells you live whether they are free.
+- **An invite can carry a password.** Set one and anyone new is asked for it once. Change it and anyone who joined anonymously is dropped while people signed in keep their access. Remove it and the link is open again.
+- **Stop sharing puts the plan back to private.** Everyone else is removed and keeps their own copy of the last state they saw, and the tab in their bar quietly becomes a local one with a note saying why. Sharing again restores the same link.
+- Deleting a shared plan does the same thing to everyone in it. Nobody ever loses data because of something the owner did.
+- **Duplicate as a local tab** is available on any synced or shared tab, at any time, for an independent copy that answers to nobody.
+
+### Editing together
+
+- Changes flow both ways over a single connection and land on the other side in about as long as the network takes. You can both work in the same plan at once.
+- **Edits to different factories both survive.** Edits to the same factory settle on one of them rather than merging into something neither of you asked for.
+- What you see is always your last acknowledged state from the server, plus everything you have changed since, fully recalculated. A change of yours is never dropped in favour of an incoming one, and nothing is ever half-applied.
+- The owner can rename, share, unshare, set the link, set a password and delete. Everyone else can edit the plan and leave. Renames reach every device.
+
+### Offline mode
+
+- **A switch in the account panel puts the planner into offline mode**, which means exactly no contact with the server: no connection, no requests, no retries. Keep planning; everything is kept on this device.
+- If the connection drops on its own, a small bar asks whether you want to go offline rather than deciding for you. Say no and it keeps quietly retrying.
+- **Coming back online is manual, like a phone.** When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.
+- Nothing about this blocks the planner. There are no popups to dismiss and no dialog in the way of your plan.
+
+### Your settings follow your account
+
+- Preferences that are about *you* rather than about this computer now travel with your account: satisfaction breakdowns, the group colours you have used, the tutorial and introduction you have already dismissed, the statistics panels you keep hidden and the summary you keep collapsed. Sign in on a new machine and the planner is set up the way you left it.
+- Settings this browser has that your account has never seen are kept and uploaded rather than overwritten, so signing in for the first time on a machine never wipes what was already there.
+
+### Account panel
+
+- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, the list of your synced plans with a share button on each, and **Change password**.
+- **Recover server copy** brings back the single plan older versions of the planner saved to your account, on demand. If you sign in with an account that has one saved plan and this browser has nothing in it, it is brought back automatically.
+- Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Say no and they stay exactly as they are. Names that would collide get a "(local)" suffix rather than being merged.
+- The out-of-sync dialog and the force download button are gone. Neither has anything to do now.
+
+### Loading
+
+- The staggered load only runs when something was actually calculated. Switching to a tab the server has already confirmed is current renders it immediately.
+- Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.
+
+### Under the hood
+
+- **The backend is a new application.** It has been rewritten in NestJS with a real module structure, typed configuration, graceful shutdown, and a test suite covering the routes, the live connection, concurrent edits, passwords, revocation, deletion and the hourly cleanup.
+- A new shared package holds the message formats, the plan schema and the protocol version that the planner and the server both build against, so the two can no longer drift apart.
+- Every plan that reaches the server is validated against one schema with explicit limits: 300 factories per plan, 10 plans of your own, 25 plans in your tab bar, and the same name and note truncation the planner has always applied.
+- Multi-step changes are built as steps that can each be repeated safely, so a request that fails halfway leaves nothing stranded and simply resumes. Deleting a plan marks it dead first, which makes it inert instantly, and clears up afterwards.
+- Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.
+- Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.
+- `/save` and `/load` are retired. `/hello` is gone, since `/health` had already replaced it.
+
 ## [Unreleased]
 
 ### Factory icons
