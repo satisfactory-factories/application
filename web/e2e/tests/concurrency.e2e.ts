@@ -61,11 +61,8 @@ test('two clients editing the same factory converge on one winner', async ({
 })
 
 /**
- * Each client creates a record of its own, which is the one per-factory edit the
- * engine records as *intent* — the only thing a rebase is allowed to overlay. A
- * notes edit does not qualify (`PlannerFactoryNotes.vue` emits `factoryUpdated`,
- * never `factoryEdited`), so a client whose note collides with an inbound op has
- * it dropped rather than rebased. See the report on that defect.
+ * An add is structural, so the engine infers the intent from the diff itself. This
+ * is the case that needs no UI to declare anything.
  */
 test('two clients adding a factory each keep both of them', async ({ client, request }) => {
   const pair = await syncedPair(client, request)
@@ -86,5 +83,29 @@ test('two clients adding a factory each keep both of them', async ({ client, req
     }).toEqual(['Alpha', 'Bravo'])
     expect(await mirroredNote(page, roomId, 'Alpha')).toBe('added on the first device')
     expect(await mirroredNote(page, roomId, 'Bravo')).toBe('added on the second device')
+  }
+})
+
+/**
+ * The content edit that carries no structural signal: only the notes card saying
+ * so makes it intent. Without that, the loser's note is dropped by the rebase
+ * rather than carried onto the snapshot, and one of the two is simply lost.
+ */
+test('two clients annotating different factories keep both notes', async ({ client, request }) => {
+  const pair = await syncedPair(client, request, ['Smelters', 'Constructors'])
+  const { roomId, first, second } = pair
+  const base = await mirrorRevision(first, roomId) as number
+
+  await Promise.all([
+    setFactoryNote(first, 0, 'the first device wrote this'),
+    setFactoryNote(second, 1, 'the second device wrote this'),
+  ])
+
+  // Different records again, so neither op may be swallowed.
+  await raceResolved(pair, base, 2)
+
+  for (const page of [first, second]) {
+    expect(await mirroredNote(page, roomId, 'Smelters')).toBe('the first device wrote this')
+    expect(await mirroredNote(page, roomId, 'Constructors')).toBe('the second device wrote this')
   }
 })

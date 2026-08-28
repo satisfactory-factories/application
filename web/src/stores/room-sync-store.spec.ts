@@ -736,6 +736,34 @@ describe('room-sync-store', () => {
       expect(lastOp().diff.removedFactoryIds).toEqual([2])
     })
 
+    // The notes field emits exactly this pair. It used to emit only `factoryUpdated`,
+    // which is payload rather than intent, so the rebase below dropped the note.
+    it('keeps a notes-only edit made offline across the reconnect', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      tab.factories[0].notes = 'Written while offline'
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      eventBus.emit('factoryEdited', tab.factories[0])
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+
+      // The server moved on while we were away, so the note only survives if the
+      // rebase treats that factory as one the user touched.
+      const server = wire(fixture)
+      server[1].name = 'Theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+
+      expect(tab.factories[0].notes).toBe('Written while offline')
+      expect(names(tab)).toEqual(['Alpha', 'Theirs'])
+      const sent = lastOp().diff.factories as Factory[]
+      expect(sent.find(entry => entry.id === 1)?.notes).toBe('Written while offline')
+    })
+
     it('rebases every room on the way out of offline mode', () => {
       const tab = syncAt(fixture, 4)
       store.enterOffline()

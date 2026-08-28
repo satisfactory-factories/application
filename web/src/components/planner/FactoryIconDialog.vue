@@ -150,8 +150,10 @@
   const apply = (id: string | undefined) => {
     props.factory.icon = id
     // Drives both the local save and the sync flush, same route PlannerFactoryNotes
-    // uses for the notes field.
+    // uses for the notes field. `factoryEdited` marks it as intent, so a rebase
+    // carries the new icon over instead of discarding it.
     eventBus.emit('factoryUpdated', props.factory)
+    eventBus.emit('factoryEdited', props.factory)
     isOpen.value = false
   }
 </script>

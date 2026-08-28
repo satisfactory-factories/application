@@ -39,9 +39,15 @@ export const useFactoryGroups = () => {
   // Announce every factory whose stored record changed. Emitting per factory rather than once
   // matches what the rest of the app does and keeps the sync store's change detection honest.
   const announce = (touched: Factory[]) => {
-    touched.forEach(factory => eventBus.emit('factoryUpdated', factory))
+    touched.forEach(factory => {
+      eventBus.emit('factoryUpdated', factory)
+      // Intent as well as payload: a rebase only carries over factories the user
+      // touched, so without this a regrouping lost to a reject is never re-sent.
+      eventBus.emit('factoryEdited', factory)
+    })
     // A mutation that touched no factory — renaming an empty group, reordering — still changed
-    // the plan, so announce it against any factory to schedule the save.
+    // the plan, so announce it against any factory to schedule the save. Payload only: that
+    // factory was not edited, and claiming it was would overlay it over a peer's edit.
     if (!touched.length && factories().length) {
       eventBus.emit('factoryUpdated', factories()[0])
     }

@@ -13,8 +13,9 @@
         placeholder="Add some notes!"
         rows="1"
         :rules="[rules.length]"
+        @update:model-value="noteEdited"
       />
-      <v-btn v-if="factory.notes.length > 0" class="mt-1" color="primary" @click="factory.notes = ''">Clear Notes</v-btn>
+      <v-btn v-if="factory.notes.length > 0" class="mt-1" color="primary" @click="clearNotes">Clear Notes</v-btn>
     </v-card-text>
   </v-card>
 </template>
@@ -45,4 +46,17 @@
   watch(() => props.factory.notes, () => {
     eventBus.emit('factoryUpdated', props.factory) // Tell sync there's something changed
   })
+
+  /**
+   * Intent, separate from the watcher above on purpose. A rebase only carries over
+   * factories the user touched, so an unsent note needs this or it is discarded —
+   * but the watcher also fires when an inbound op rewrites the note, and claiming
+   * that as intent would make this client overlay a peer's edit for ever.
+   */
+  const noteEdited = () => eventBus.emit('factoryEdited', props.factory)
+
+  const clearNotes = () => {
+    props.factory.notes = ''
+    noteEdited()
+  }
 </script>
