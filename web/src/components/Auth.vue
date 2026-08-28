@@ -96,25 +96,7 @@
         </v-card-text>
 
         <v-card-text v-if="loggedInUser" class="text-left text-body-1">
-          <v-btn
-            class="mr-2"
-            color="primary"
-            @click="handleLogout"
-          >
-            <i class="fas fa-sign-out mr-2" />Logout
-          </v-btn>
-          <v-btn
-            v-if="isDebugMode"
-            class="mr-2"
-            color="secondary"
-            @click="mangleToken"
-          >
-            <i class="fas fa-bug mr-2" />Mangle token
-          </v-btn>
-          <p class="mt-4">
-            You are signed in. Synced plans save to your account as you edit them and follow you to every device.
-          </p>
-          <sync />
+          <account-panel />
         </v-card-text>
       </v-card>
     </v-overlay>
@@ -125,9 +107,9 @@
   import { ref } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useAuthStore } from '@/stores/auth-store'
-  import Sync from '@/components/Sync.vue'
+  import AccountPanel from '@/components/sync/AccountPanel.vue'
   import eventBus from '@/utils/eventBus'
-  import { useAppStore } from '@/stores/app-store'
+  import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
   import { BackendOutageError } from '@/errors/BackendOutageError'
   import { InvalidTokenError } from '@/errors/InvalidTokenError'
@@ -138,7 +120,7 @@
 
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
-  const { isDebugMode } = useAppStore()
+  const preferencesStore = usePreferencesStore()
 
   const trayOpen = ref(false)
   const username = ref('')
@@ -171,6 +153,7 @@
       // The session is known good: connect the socket and pull the tab list, which
       // is what decides which tabs are rooms and what adoption offers.
       await roomsStore.begin()
+      await preferencesStore.begin()
     } catch (error) {
       if (error instanceof InvalidTokenError) {
         // The store already emitted sessionExpired, which opens the dialog.
@@ -236,26 +219,8 @@
     }
   }
 
-  const handleLogout = () => {
-    // Plans are never destroyed by signing out; they just stop being rooms here.
-    roomsStore.signOut()
-    authStore.logout()
-  }
-
   const handleSessionExpiredEvent = () => {
     console.log('Auth: Received sessionExpired event')
     sessionHasExpired()
   }
-
-  // Debug feature to mangle the users' token and attempt a validation, which should trigger the session expired event
-  const mangleToken = () => {
-    const token = authStore.getToken()
-    if (!token) return
-
-    authStore.setToken(`mangled${token}`)
-    console.log('Auth: Mangled token')
-    // Disable this if you want to test without revalidation
-    authStore.validateToken().catch(() => {})
-  }
-
 </script>

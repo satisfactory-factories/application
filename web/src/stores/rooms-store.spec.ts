@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
 import { newFactory } from '@/utils/factory-management/factory'
 import eventBus from '@/utils/eventBus'
 
@@ -19,6 +20,11 @@ vi.mock('@/api/client', async importOriginal => {
     ...actual,
     listRooms: vi.fn(),
     createRoom: vi.fn(),
+    shareRoom: vi.fn(),
+    unshareRoom: vi.fn(),
+    setRoomPassword: vi.fn(),
+    removeRoomPassword: vi.fn(),
+    joinRoom: vi.fn(),
     adoptRoom: vi.fn(),
     renameRoom: vi.fn(),
     deleteRoom: vi.fn(),
@@ -460,6 +466,141 @@ describe('rooms-store', () => {
       const created = appStore.getCurrentTab()
       expect(created.name).toBe('Fresh')
       expect(appStore.getTabState(created.id).kind).toBe('synced')
+    })
+  })
+
+  describe('sharing controls', () => {
+    it('records the room as shared once the server says so', async () => {
+      const tab = localTab('Plan')
+      listReturns([entry({ roomId: tab.id })])
+      await store.refresh()
+      vi.mocked(api.shareRoom).mockResolvedValue({
+        room: entry({ roomId: tab.id, shared: true, slug: 'a-b-c' }),
+      })
+
+      expect(await store.shareTab(tab.id)).toBe(true)
+
+      expect(store.entries[tab.id].slug).toBe('a-b-c')
+      expect(appStore.getTabState(tab.id).shared).toBe(true)
+    })
+
+    it('passes a custom slug straight through', async () => {
+      const tab = localTab('Plan')
+      vi.mocked(api.shareRoom).mockResolvedValue({ room: entry({ roomId: tab.id, shared: true, slug: 'mine' }) })
+
+      await store.shareTab(tab.id, 'mine')
+
+      expect(api.shareRoom).toHaveBeenCalledWith(tab.id, 'mine')
+    })
+
+    it('returns what the server refused with, rather than throwing', async () => {
+      const tab = localTab('Plan')
+      vi.mocked(api.shareRoom).mockRejectedValue(new ApiError(409, 'That invite link is already taken.'))
+
+      expect(await store.shareTab(tab.id, 'taken')).toBe('That invite link is already taken.')
+    })
+
+    it('drops the shared flag on unshare', async () => {
+      const tab = localTab('Plan')
+      listReturns([entry({ roomId: tab.id, shared: true, slug: 'a-b-c' })])
+      await store.refresh()
+      vi.mocked(api.unshareRoom).mockResolvedValue({ room: entry({ roomId: tab.id, shared: false, slug: null }) })
+
+      expect(await store.unshareTab(tab.id)).toBe(true)
+
+      expect(appStore.getTabState(tab.id).shared).toBe(false)
+    })
+
+    it('marks the room password-protected without refetching the list', async () => {
+      const tab = localTab('Plan')
+      listReturns([entry({ roomId: tab.id, shared: true })])
+      await store.refresh()
+      vi.mocked(api.listRooms).mockClear()
+      vi.mocked(api.setRoomPassword).mockResolvedValue({ passwordVersion: 1 })
+
+      expect(await store.setTabPassword(tab.id, 'hunter2')).toBe(true)
+
+      expect(store.entries[tab.id].hasPassword).toBe(true)
+      expect(api.listRooms).not.toHaveBeenCalled()
+    })
+
+    it('clears the flag again when the password is removed', async () => {
+      const tab = localTab('Plan')
+      listReturns([entry({ roomId: tab.id, shared: true, hasPassword: true })])
+      await store.refresh()
+      vi.mocked(api.removeRoomPassword).mockResolvedValue({ passwordVersion: 2 })
+
+      expect(await store.removeTabPassword(tab.id)).toBe(true)
+
+      expect(store.entries[tab.id].hasPassword).toBe(false)
+    })
+  })
+
+  describe('joining someone else\'s room', () => {
+    it('adds the room as a synced tab and brings it to the front', async () => {
+      localTab('Mine')
+      vi.mocked(api.joinRoom).mockResolvedValue({
+        status: 'joined',
+        room: entry({ roomId: 'their-room', name: 'Their plan', shared: true, role: 'member' }),
+      })
+
+      expect(await store.joinSharedRoom('their-room')).toEqual({ ok: true })
+
+      expect(appStore.getTab('their-room')?.name).toBe('Their plan')
+      expect(appStore.getTabState('their-room').role).toBe('member')
+      expect(appStore.getCurrentTab().id).toBe('their-room')
+    })
+
+    it('reports the server code so the caller can ask for a password', async () => {
+      vi.mocked(api.joinRoom).mockRejectedValue(
+        new ApiError(401, 'This room needs its invite password.', { code: 'password_required' })
+      )
+
+      expect(await store.joinSharedRoom('their-room')).toEqual({
+        ok: false,
+        code: 'password_required',
+        message: 'This room needs its invite password.',
+      })
+    })
+
+    it('makes a logged-out joiner an anonymous pointer, not a member', () => {
+      store.trackJoinedRoom('their-room', { name: 'Their plan', visitorToken: 'jwt' })
+
+      expect(appStore.getTabState('their-room').kind).toBe('joined')
+      expect(api.joinRoom).not.toHaveBeenCalled()
+    })
+
+    it('reconnects joined tabs after a reload, which no room list would', () => {
+      const tab = localTab('Visiting')
+      appStore.setTabState(tab.id, { kind: 'joined', shared: true, role: 'member', revision: null })
+      setVisitorToken(tab.id, 'stored-jwt')
+      const track = vi.spyOn(roomSync, 'trackRoom')
+
+      store.restoreJoinedTabs()
+
+      expect(track).toHaveBeenCalledWith(tab.id, { visitorToken: 'stored-jwt' })
+    })
+
+    it('forgets the visitor token when access is revoked', async () => {
+      const tab = localTab('Visiting')
+      listReturns([entry({ roomId: tab.id, shared: true })])
+      await store.refresh()
+      setVisitorToken(tab.id, 'stored-jwt')
+
+      // The room list no longer carries it: the tab becomes a local copy.
+      listReturns([])
+      await store.refresh()
+
+      expect(readVisitorToken(tab.id)).toBeUndefined()
+    })
+
+    it('leaves local and synced tabs out of that sweep', () => {
+      const tab = localTab('Mine')
+      const track = vi.spyOn(roomSync, 'trackRoom')
+
+      store.restoreJoinedTabs()
+
+      expect(track).not.toHaveBeenCalledWith(tab.id, expect.anything())
     })
   })
 

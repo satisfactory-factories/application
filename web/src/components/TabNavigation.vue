@@ -65,6 +65,17 @@
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <!-- Persistent while offline, and never in the way: the planner keeps working. -->
+      <v-chip
+        v-if="offlineHint"
+        color="orange"
+        data-testid="tab-bar-offline"
+        size="small"
+        :title="offlineHint.title"
+        variant="flat"
+      >
+        <i class="fas fa-plane mr-2" />{{ offlineHint.label }}
+      </v-chip>
       <v-btn
         v-if="kindOf(currentTabId) !== 'local'"
         color="grey-darken-1 rounded"
@@ -95,6 +106,7 @@
   import { useDisplay } from 'vuetify'
   import NewTabDialog from '@/components/sync/NewTabDialog.vue'
   import { useAppStore } from '@/stores/app-store'
+  import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { useRoomsStore } from '@/stores/rooms-store'
   import { isCollaborative } from '@/sync/tab-sync-state'
   import { confirmDialog } from '@/utils/helpers'
@@ -105,6 +117,13 @@
 
   const appStore = useAppStore()
   const roomsStore = useRoomsStore()
+  const roomSync = useRoomSyncStore()
+
+  const offlineHint = computed(() => {
+    if (roomSync.isOffline) return { label: 'Offline mode', title: 'No contact with the server. Your edits are kept and sent when you go back online.' }
+    if (roomSync.mode === 'offlinePrompt') return { label: 'Offline', title: 'The server cannot be reached right now. Edits are kept and sent when it can.' }
+    return null
+  })
 
   const isEditingName = ref(false)
   const currentTabName = ref(appStore.currentFactoryTab.name)

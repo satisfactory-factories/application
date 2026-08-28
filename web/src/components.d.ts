@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountPanel: typeof import('./components/sync/AccountPanel.vue')['default']
     AddShortageDialog: typeof import('./components/planner/satisfaction/AddShortageDialog.vue')['default']
     AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
     AdoptionDialog: typeof import('./components/sync/AdoptionDialog.vue')['default']
@@ -47,6 +48,7 @@ declare module 'vue' {
     Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
+    OfflinePrompt: typeof import('./components/sync/OfflinePrompt.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
     PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']
@@ -75,6 +77,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SaveLoader: typeof import('./components/SaveLoader.vue')['default']
     ShareButton: typeof import('./components/ShareButton.vue')['default']
+    ShareDialog: typeof import('./components/sync/ShareDialog.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
     StatisticsBuildings: typeof import('./components/planner/StatisticsBuildings.vue')['default']
@@ -84,7 +87,6 @@ declare module 'vue' {
     StatisticsPower: typeof import('./components/planner/StatisticsPower.vue')['default']
     StatisticsResources: typeof import('./components/planner/StatisticsResources.vue')['default']
     StatisticsShardsSloops: typeof import('./components/planner/StatisticsShardsSloops.vue')['default']
-    Sync: typeof import('./components/Sync.vue')['default']
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
@@ -94,6 +96,7 @@ declare module 'vue' {
     TractorCalculator: typeof import('./components/planner/satisfaction/calculator/TractorCalculator.vue')['default']
     TrainCalculator: typeof import('./components/planner/satisfaction/calculator/TrainCalculator.vue')['default']
     TruckCalculator: typeof import('./components/planner/satisfaction/calculator/TruckCalculator.vue')['default']
+    VersionPrompt: typeof import('./components/sync/VersionPrompt.vue')['default']
     WorldData: typeof import('./components/planner/WorldData.vue')['default']
     WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
     YoutubeEmbed: typeof import('./components/YoutubeEmbed.vue')['default']

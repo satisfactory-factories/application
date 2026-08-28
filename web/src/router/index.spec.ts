@@ -46,6 +46,14 @@ describe('router', () => {
       expect(resolved.params).toEqual({ id: 'some-share-id' })
     })
 
+    it('resolves the collaboration invite route with its slug param', () => {
+      // Vercel rewrites everything to the SPA, so this is the only thing that
+      // makes a pasted /room/<slug> link land anywhere.
+      const resolved = router.resolve('/room/iron-plate-hub')
+      expect(resolved.matched.length).toBeGreaterThan(0)
+      expect(resolved.params).toEqual({ slug: 'iron-plate-hub' })
+    })
+
     it('resolves an unknown path to the not-found page', () => {
       // Vercel rewrites every unmatched URL to the SPA, so the router — not the
       // CDN — is what tells the user the page does not exist. Without this

@@ -758,6 +758,14 @@ export const useAppStore = defineStore('app', () => {
     return id
   }
 
+  /** Brings a tab to the front by id; the index watcher runs the load. */
+  const activateTab = (tabId: string): boolean => {
+    const index = factoryTabs.value.findIndex(tab => tab.id === tabId)
+    if (index === -1) return false
+    currentFactoryTabIndex.value = index
+    return true
+  }
+
   const removeCurrentTab = async () => {
     if (factoryTabs.value.length === 1) return
 
@@ -914,6 +922,7 @@ export const useAppStore = defineStore('app', () => {
     clearFactories,
     getTabs,
     addTab,
+    activateTab,
     removeCurrentTab,
     renameTab,
     duplicateTab,

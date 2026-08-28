@@ -80,6 +80,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/room/[slug]': RouteRecordInfo<
+      '/room/[slug]',
+      '/room/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
     '/share/[id]': RouteRecordInfo<
       '/share/[id]',
       '/share/:id',
@@ -155,6 +162,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/room/[slug].vue': {
+      routes:
+        | '/room/[slug]'
+      views:
+        | never
+      pathParamNames:
+        | 'slug'
     }
     'src/pages/share/[id].vue': {
       routes:

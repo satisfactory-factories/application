@@ -7,10 +7,14 @@ import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { removeTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import { readVisitorTokens, removeVisitorToken } from '@/sync/visitor-tokens'
 import eventBus from '@/utils/eventBus'
 
 /** How long a revocation or adoption notice sits on screen. Never blocking. */
 const NOTICE_MS = 8000
+
+/** A failed join carries the server's code, so the caller can ask for a password. */
+export type JoinOutcome = { ok: true } | { ok: false, code: string | null, message: string }
 
 const describe = (error: unknown): string => {
   if (error instanceof VersionMismatchError) return 'This version of the planner is out of date. Please refresh.'
@@ -102,6 +106,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     const tab = appStore.getTab(roomId)
     appStore.markTabLocal(roomId)
     roomSync.untrackRoom(roomId)
+    removeVisitorToken(roomId)
     delete entries.value[roomId]
     if (!tab) return
 
@@ -324,11 +329,102 @@ export const useRoomsStore = defineStore('rooms', () => {
 
     delete entries.value[tabId]
     roomSync.untrackRoom(tabId)
+    removeVisitorToken(tabId)
     appStore.markTabLocal(tabId)
     return true
   }
 
-  /** The `/room/:slug` page's entry point: an anonymous pointer into someone's room. */
+  // ===== Sharing =====
+
+  /** Every share control returns `true` or the message to show; entries stay authoritative. */
+  const applyEntry = (entry: RoomListEntry): true => {
+    entries.value[entry.roomId] = entry
+    appStore.setTabState(entry.roomId, {
+      kind: 'synced',
+      shared: entry.shared,
+      role: entry.role,
+      revision: entry.revision,
+    })
+    return true
+  }
+
+  const shareTab = async (tabId: string, slug?: string): Promise<true | string> => {
+    try {
+      const { room } = await api.shareRoom(tabId, slug)
+      return applyEntry(room)
+    } catch (error) {
+      lastError.value = describe(error)
+      return describe(error)
+    }
+  }
+
+  /** Makes the plan private again: memberships go, and so does the live link. */
+  const unshareTab = async (tabId: string): Promise<true | string> => {
+    try {
+      const { room } = await api.unshareRoom(tabId)
+      return applyEntry(room)
+    } catch (error) {
+      lastError.value = describe(error)
+      return describe(error)
+    }
+  }
+
+  const setTabPassword = async (tabId: string, password: string): Promise<true | string> => {
+    try {
+      await api.setRoomPassword(tabId, password)
+      const entry = entries.value[tabId]
+      if (entry) entries.value[tabId] = { ...entry, hasPassword: true }
+      return true
+    } catch (error) {
+      lastError.value = describe(error)
+      return describe(error)
+    }
+  }
+
+  const removeTabPassword = async (tabId: string): Promise<true | string> => {
+    try {
+      await api.removeRoomPassword(tabId)
+      const entry = entries.value[tabId]
+      if (entry) entries.value[tabId] = { ...entry, hasPassword: false }
+      return true
+    } catch (error) {
+      lastError.value = describe(error)
+      return describe(error)
+    }
+  }
+
+  // ===== Joining someone else's room =====
+
+  /**
+   * The `/room/:slug` page's logged-in path: a durable membership on every device.
+   * Reports the server's `code` because the page has to tell "wrong password" from
+   * "gone" without reading the message text.
+   */
+  const joinSharedRoom = async (
+    roomId: string,
+    { name = 'Shared plan', visitorToken }: { name?: string, visitorToken?: string } = {},
+  ): Promise<JoinOutcome> => {
+    try {
+      const { room } = await api.joinRoom(roomId, visitorToken)
+      if (!appStore.getTab(roomId)) {
+        appStore.addTab({ id: roomId, name: room.name || name, factories: [] })
+      }
+      applyEntry(room)
+      roomSync.trackRoom(roomId, { visitorToken })
+      appStore.activateTab(roomId)
+      return { ok: true }
+    } catch (error) {
+      const message = describe(error)
+      lastError.value = message
+      return {
+        ok: false,
+        code: error instanceof ApiError ? error.code : null,
+        message,
+      }
+    }
+  }
+
+  /** The logged-out path: an anonymous pointer into someone's room, this browser only. */
   const trackJoinedRoom = (
     roomId: string,
     { name = 'Shared plan', visitorToken }: { name?: string, visitorToken?: string } = {},
@@ -336,6 +432,25 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!appStore.getTab(roomId)) appStore.addTab({ id: roomId, name, factories: [] })
     appStore.setTabState(roomId, { kind: 'joined', shared: true, role: 'member', revision: null })
     roomSync.trackRoom(roomId, { visitorToken })
+    appStore.activateTab(roomId)
+    if (!useAuthStore().isLoggedIn) roomSync.start()
+  }
+
+  /**
+   * Nothing else brings a joined tab back after a reload: it has no membership on
+   * the server, so `GET /rooms` will never mention it.
+   */
+  const restoreJoinedTabs = () => {
+    const tokens = readVisitorTokens()
+    let restored = false
+
+    for (const tab of appStore.getTabs()) {
+      if (appStore.getTabState(tab.id).kind !== 'joined') continue
+      roomSync.trackRoom(tab.id, { visitorToken: tokens[tab.id] })
+      restored = true
+    }
+
+    if (restored && !useAuthStore().isLoggedIn) roomSync.start()
   }
 
   // ===== Session =====
@@ -413,7 +528,17 @@ export const useRoomsStore = defineStore('rooms', () => {
     renameTab,
     duplicateAsLocal,
     removeTab,
+
+    // Sharing
+    shareTab,
+    unshareTab,
+    setTabPassword,
+    removeTabPassword,
+
+    // Joining
+    joinSharedRoom,
     trackJoinedRoom,
+    restoreJoinedTabs,
 
     // Driven by the engine, and directly by tests
     reconcileRooms,
