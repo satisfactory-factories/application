@@ -1,23 +1,21 @@
 <template>
   <v-app>
-    <template v-if="!hasError">
-      <navigation>
-        <template #append>
-          <auth :button-color="authButtonColor" />
-        </template>
-      </navigation>
+    <navigation>
+      <template #append>
+        <auth :button-color="authButtonColor" />
+      </template>
+    </navigation>
 
-      <tab-navigation v-if="showTabNavigation" />
-      <splash />
-    </template>
+    <tab-navigation v-if="showTabNavigation" />
+    <splash />
     <v-main>
       <router-view />
       <toast />
       <hover-tooltip />
-      <plan-repair-dialog v-if="!hasError" />
-      <adoption-dialog v-if="!hasError" />
-      <offline-prompt v-if="!hasError" />
-      <version-prompt v-if="!hasError" />
+      <plan-repair-dialog />
+      <adoption-dialog />
+      <offline-prompt />
+      <version-prompt />
     </v-main>
   </v-app>
 </template>
@@ -29,14 +27,17 @@
   import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
+  import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
 
   const { smAndDown } = useDisplay()
   const authButtonColor = computed(() => smAndDown.value ? 'grey-darken-3' : undefined)
 
-  // Disable auth and other elements if an error is present as they will likely error themselves.
-  const hasError = localStorage.getItem('error') ?? null
   const route = useRoute()
+
+  // Instantiated here rather than by the account tile: its listeners are what start
+  // preference sync, and they must not depend on which buttons happen to be rendered.
+  usePreferencesStore()
 
   const showTabNavigation = computed(() => {
     return route.path === '/' || route.path === '/graph'
@@ -45,6 +46,6 @@
   // An anonymous joined tab has no membership on the server, so nothing in the
   // room list ever brings it back; this is the only thing that reconnects it.
   onMounted(() => {
-    if (!hasError) useRoomsStore().restoreJoinedTabs()
+    useRoomsStore().restoreJoinedTabs()
   })
 </script>

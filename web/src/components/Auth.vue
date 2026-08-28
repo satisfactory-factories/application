@@ -223,4 +223,8 @@
     console.log('Auth: Received sessionExpired event')
     sessionHasExpired()
   }
+
+  onBeforeUnmount(() => {
+    eventBus.off('sessionExpired', handleSessionExpiredEvent)
+  })
 </script>

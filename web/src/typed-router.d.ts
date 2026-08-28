@@ -52,13 +52,6 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/error': RouteRecordInfo<
-      '/error',
-      '/error',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
     '/graph': RouteRecordInfo<
       '/graph',
       '/graph',
@@ -126,14 +119,6 @@ declare module 'vue-router/auto-routes' {
     'src/pages/changelog.vue': {
       routes:
         | '/changelog'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'src/pages/error.vue': {
-      routes:
-        | '/error'
       views:
         | never
       pathParamNames:

@@ -59,7 +59,7 @@ export const useAppStore = defineStore('app', () => {
     }
     currentFactoryTabIndex.value = 0
     localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
-    alert('Your planner has been reverted to SAFE MODE. This is because your factory tab data was heavily corrupted. You are recommended to log into your account and force download the previously saved tabs. If you have not done this, the data has been lost, unless you have copied it to a file.')
+    alert('Your planner has been reverted to SAFE MODE, because your factory tab data was heavily corrupted. Sign in to bring back any plans synced to your account. Anything that only lived in this browser is lost, unless you copied it to a file.')
   }
 
   const currentFactoryTab = ref(factoryTabs.value[currentFactoryTabIndex.value])
@@ -87,7 +87,6 @@ export const useAppStore = defineStore('app', () => {
     },
   })
 
-  const lastSave = ref<Date>(new Date(localStorage.getItem('lastSave') ?? ''))
   const lastEdit = ref<Date>(new Date(localStorage.getItem('lastEdit') ?? ''))
   const isDebugMode = ref<boolean>(false)
   const isLoaded = ref<boolean>(false)
@@ -223,10 +222,6 @@ export const useAppStore = defineStore('app', () => {
   const setLastEdit = () => {
     lastEdit.value = new Date()
     localStorage.setItem('lastEdit', lastEdit.value.toISOString())
-  }
-  const setLastSave = () => {
-    lastSave.value = new Date()
-    localStorage.setItem('lastSave', lastSave.value.toISOString())
   }
 
   // The pauses in the load sequence pace the browser: they give Vue a chance to flush
@@ -905,14 +900,12 @@ export const useAppStore = defineStore('app', () => {
     currentFactoryTabIndex,
     factoryTabs,
     factories,
-    lastSave,
     lastEdit,
     isDebugMode,
     isLoaded,
     planRepairs,
     dismissPlanRepairs,
     getLastEdit,
-    setLastSave,
     setLastEdit,
     getFactories,
     setFactories,

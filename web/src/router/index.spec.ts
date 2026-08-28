@@ -34,7 +34,6 @@ describe('router', () => {
       '/recipes',
       '/changelog',
       '/graph',
-      '/error',
     ])('resolves the file-based route %s', path => {
       const resolved = router.resolve(path)
       expect(resolved.matched.length).toBeGreaterThan(0)

@@ -28,6 +28,10 @@
               <span v-if="kindOf(item.id) === 'local'"><i class="fas fa-desktop" /></span>
               <span v-else-if="kindOf(item.id) === 'collaborative'"><i class="fas fa-users" /></span>
               <span v-else><i class="fas fa-user" /></span>
+              <!-- The server already sends the occupancy count; showing it costs nothing. -->
+              <span v-if="othersOn(item.id) > 0" class="ml-1" data-testid="tab-presence">
+                {{ othersOn(item.id) + 1 }}
+              </span>
             </span>
             <input
               v-if="isCurrentTab(index) && isEditingName"
@@ -141,10 +145,16 @@
     return isCollaborative(state) ? 'collaborative' : 'synced'
   }
 
+  /** Everyone else in the room; zero for a tab nobody is sharing right now. */
+  const othersOn = (tabId: string) => Math.max(0, (roomSync.rooms[tabId]?.presence ?? 0) - 1)
+
   const stateLabel = (tabId: string) => {
+    const others = othersOn(tabId)
     switch (kindOf(tabId)) {
       case 'local': return 'Local tab: this browser only'
-      case 'collaborative': return 'Collaborative tab: shared and live'
+      case 'collaborative': return others > 0
+        ? `Collaborative tab: shared and live, ${others} other person(s) here`
+        : 'Collaborative tab: shared and live'
       default: return 'Synced tab: saved to your account'
     }
   }
