@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Server } from 'node:http'
 
-import { PROTOCOL_VERSION } from 'common'
+import { PROTOCOL_VERSION, WS_PATH } from 'common'
 import { ThrottlerStorage } from '@nestjs/throttler'
 import { inject } from 'vitest'
 import { getConnectionToken } from '@nestjs/mongoose'
@@ -12,7 +12,6 @@ import type { Connection } from 'mongoose'
 
 import { CLOCK, Clock } from '../../src/rooms/clock'
 import { EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
-import { WS_PATH } from '../../src/realtime/realtime.constants'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 

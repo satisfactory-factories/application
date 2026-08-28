@@ -244,7 +244,7 @@ describe('ShareDialog', () => {
 
     it('creates the frozen link for a plan with factories in it', async () => {
       appStore.getCurrentTab().factories.push(newFactory('Iron Ingots'))
-      vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'ok', shareId: 'abc123' })
+      vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'success', shareId: 'abc123' })
       await open({ kind: 'local' })
 
       await click('create-snapshot')

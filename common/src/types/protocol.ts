@@ -12,6 +12,9 @@ export const PROTOCOL_VERSION = '7.0'
  */
 export const APP_VERSION_HEADER = 'X-App-Version'
 
+/** The gateway shares the API's HTTP server; this is the only path it answers on. */
+export const WS_PATH = '/ws'
+
 /** Body of a 426. The client keys the persistent refresh prompt off `code`. */
 export interface VersionMismatchBody {
   code: 'version_mismatch'

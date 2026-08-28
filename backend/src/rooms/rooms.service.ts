@@ -6,7 +6,17 @@ import { InjectModel } from '@nestjs/mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { Model, Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
-import type { RoomListEntry, RoomListResponse, RoomMeta, RoomRole, RoomSlugLookup } from 'common'
+import type {
+  CreateRoomBody,
+  EnsureRoomResult,
+  EnsureRoomStatus,
+  JoinRoomResult,
+  RoomListEntry,
+  RoomListResponse,
+  RoomMeta,
+  RoomRole,
+  RoomSlugLookup,
+} from 'common'
 
 import { ANONYMOUS_ACTOR, RoomActivityService } from './room-activity.service'
 import { CLOCK, Clock } from './clock'
@@ -19,30 +29,12 @@ import { User } from '../auth/user.schema'
 import { VISITOR_TOKEN_TTL, VisitorTokenPayload, isVisitorTokenPayload } from './visitor-token'
 import { forbidden, isDuplicateKey, notFound, roomError } from './room-errors'
 import { generateSlug } from './slug'
-import type { RoomContentInput } from './rooms.dto'
 
 /** Invite-password hashing cost. Higher than the account cost: a room password is short. */
 export const INVITE_BCRYPT_ROUNDS = 12
 
 /** How many slugs to try before giving up on allocating an invite link. */
 const SLUG_ATTEMPTS = 5
-
-export type EnsureRoomStatus = 'created' | 'resumed' | 'already_exists'
-
-export interface EnsureRoomResult {
-  status: EnsureRoomStatus
-  room: RoomListEntry
-}
-
-export interface JoinResult {
-  status: 'joined' | 'already_member'
-  room: RoomListEntry
-}
-
-export interface EnsureRoomInput extends RoomContentInput {
-  roomId?: string
-  name: string
-}
 
 @Injectable()
 export class RoomsService {
@@ -92,7 +84,7 @@ export class RoomsService {
    */
   async ensureRoom (
     userId: string,
-    input: EnsureRoomInput,
+    input: CreateRoomBody,
     kind: Extract<RoomActivityKind, 'created' | 'adopted' | 'imported'>,
   ): Promise<EnsureRoomResult> {
     const roomId = input.roomId ?? randomUUID()
@@ -263,7 +255,7 @@ export class RoomsService {
     this.events.emit('rooms_changed', { userIds: [userId] })
   }
 
-  async join (userId: string, roomId: string, visitorToken?: string): Promise<JoinResult> {
+  async join (userId: string, roomId: string, visitorToken?: string): Promise<JoinRoomResult> {
     const room = await this.requireRoom(roomId)
     if (!room.shared) throw roomError('not_shared', 'This room is not shared.', HttpStatus.FORBIDDEN)
 
@@ -363,7 +355,7 @@ export class RoomsService {
   private async insertRoomIfAbsent (
     userId: string,
     roomId: string,
-    input: EnsureRoomInput,
+    input: CreateRoomBody,
   ): Promise<{ room: Room, created: boolean }> {
     const existing = await this.rooms.findOne({ roomId }).lean()
     if (existing) return { room: this.disambiguate(existing, userId), created: false }

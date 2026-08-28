@@ -1,6 +1,3 @@
-/** The gateway shares the API's HTTP server; this is the only path it answers on. */
-export const WS_PATH = '/ws'
-
 /**
  * A whole-plan snapshot is the largest thing on the wire and the REST body limit
  * is 20mb, so the socket is given a little more headroom than the JSON parser.

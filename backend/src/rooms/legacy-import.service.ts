@@ -4,7 +4,7 @@ import { CAPS, truncateFactory } from 'common'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import type { Factory, RoomListEntry } from 'common'
+import type { Factory, LegacyImportResult } from 'common'
 
 import { EnsureStepRunner } from './ensure-step.runner'
 import { FactoryData } from '../legacy/factory-data.schema'
@@ -13,14 +13,6 @@ import { RoomsService } from './rooms.service'
 import { User } from '../auth/user.schema'
 
 export const LEGACY_ROOM_NAME = 'Recovered plan'
-
-export type ImportSkipReason = 'already_imported' | 'not_eligible' | 'no_legacy_data'
-
-export interface ImportResult {
-  imported: boolean
-  reason?: ImportSkipReason
-  room?: RoomListEntry
-}
 
 /**
  * A v5 UUID over the account id, so the import lands on the same room even if the
@@ -49,7 +41,7 @@ export class LegacyImportService {
    * other shape gets the "Recover server copy" button instead, so nothing is
    * imported behind the user's back.
    */
-  async autoImport (userId: string, username: string, localTabCount: number): Promise<ImportResult> {
+  async autoImport (userId: string, username: string, localTabCount: number): Promise<LegacyImportResult> {
     if (localTabCount !== 0) return { imported: false, reason: 'not_eligible' }
     if (await this.rooms.countDocuments({ createdBy: userId, deletedAt: null }) > 0) {
       return { imported: false, reason: 'not_eligible' }
@@ -57,7 +49,7 @@ export class LegacyImportService {
     return this.recover(userId, username)
   }
 
-  async recover (userId: string, username: string): Promise<ImportResult> {
+  async recover (userId: string, username: string): Promise<LegacyImportResult> {
     const user = Types.ObjectId.isValid(userId) ? await this.users.findById(userId).lean() : null
     if (user?.legacyImportRoomId) {
       return { imported: false, reason: 'already_imported' }

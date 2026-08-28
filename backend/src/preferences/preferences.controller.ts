@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common'
 import { preferencesSchema } from 'common'
 import { z } from 'zod'
+import type { PreferencesState } from 'common'
 
 import { AuthTokenPayload } from '../auth/auth-token'
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { PreferencesService, PreferencesState } from './preferences.service'
+import { PreferencesService } from './preferences.service'
 import { parseBody } from '../rooms/rooms.dto'
 
 const putPreferencesSchema = z.object({

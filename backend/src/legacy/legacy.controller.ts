@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Param, Post
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { factoryTabSchema } from 'common'
-import type { EndpointRemovedBody, FactoryTab } from 'common'
+import type { EndpointRemovedBody, FactoryTab, ShareCreatedResponse, ShareResponse } from 'common'
 
 import { AuthTokenPayload } from '../auth/auth-token'
 import { OptionalJwtAuthGuard, OptionalUser } from '../auth/jwt-auth.guard'
@@ -21,11 +21,6 @@ export const ENDPOINT_REMOVED: EndpointRemovedBody = {
 const SHARE_ID_ATTEMPTS = 5
 
 export const ANONYMOUS_SHARE_AUTHOR = 'Anonymous'
-
-export interface ShareCreatedResponse {
-  status: 'success'
-  shareId: string
-}
 
 @Controller()
 export class LegacyController {
@@ -68,7 +63,7 @@ export class LegacyController {
   // client of any age must still be able to open one.
   @Get('share/:id')
   @SkipVersionGate()
-  async getShare (@Param('id') id: string): Promise<{ data: unknown }> {
+  async getShare (@Param('id') id: string): Promise<ShareResponse> {
     try {
       // One atomic update rather than read-mutate-save: concurrent views of a
       // popular link used to overwrite each other's count.

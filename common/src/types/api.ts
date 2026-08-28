@@ -127,7 +127,7 @@ export interface PreferencesState {
 // ===== Snapshot share links =====
 
 export interface ShareCreatedResponse {
-  status: string
+  status: 'success'
   shareId: string
 }
 

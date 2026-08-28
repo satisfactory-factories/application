@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common'
 import { CAPS, factoryGroupSchema, factorySchema, invitePasswordSchema, slugSchema, truncateFactoryTab } from 'common'
 import { z } from 'zod'
-import type { Factory, FactoryGroup, FactoryTab } from 'common'
+import type { FactoryTab } from 'common'
 
 import { roomError } from './room-errors'
 
@@ -24,12 +24,6 @@ export const setPasswordSchema = z.object({ password: invitePasswordSchema })
 export const authRoomSchema = z.object({ password: z.string().max(CAPS.string) })
 export const joinRoomSchema = z.object({ visitorToken: z.string().max(CAPS.string).optional() })
 export const autoImportSchema = z.object({ localTabCount: z.number().int().min(0) })
-
-export interface RoomContentInput {
-  factories?: Factory[]
-  powerTarget?: number
-  groups?: FactoryGroup[]
-}
 
 const invalid = (issues: z.ZodIssue[]): never => {
   throw roomError('invalid_payload', 'Invalid request payload.', HttpStatus.BAD_REQUEST, {

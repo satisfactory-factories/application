@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpException, HttpStatus, Post, UseGuards } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
+import type { LoginResponse, MessageResponse, ValidateTokenResponse } from 'common'
 
 import { AuthTokenPayload } from './auth-token'
 import { AuthService } from './auth.service'
@@ -21,7 +22,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register (@Body() body: CredentialsBody): Promise<{ message: string }> {
+  async register (@Body() body: CredentialsBody): Promise<MessageResponse> {
     try {
       const { username, password } = body ?? {}
       return await this.authService.register(username as string, password as string)
@@ -33,7 +34,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login (@Body() body: CredentialsBody): Promise<{ token: string }> {
+  async login (@Body() body: CredentialsBody): Promise<LoginResponse> {
     try {
       const { username, password } = body ?? {}
       return await this.authService.login(username as string, password as string)
@@ -45,7 +46,7 @@ export class AuthController {
 
   @Post('validate-token')
   @HttpCode(HttpStatus.OK)
-  validateToken (@Body() body: TokenBody): { valid: true, decoded: AuthTokenPayload } {
+  validateToken (@Body() body: TokenBody): ValidateTokenResponse {
     const token = body?.token
     if (!token) throw new HttpException({ message: 'Token is required' }, HttpStatus.BAD_REQUEST)
 
@@ -65,7 +66,7 @@ export class AuthController {
   async changePassword (
     @CurrentUser() user: AuthTokenPayload,
     @Body() body: PasswordChangeBody,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponse> {
     try {
       const { currentPassword, newPassword } = body ?? {}
       return await this.authService.changePassword(

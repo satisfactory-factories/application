@@ -1,15 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import type { SyncedPreferences } from 'common'
+import type { PreferencesState, SyncedPreferences } from 'common'
 
 import { UserPreferences } from './user-preferences.schema'
 import { isDuplicateKey, roomError } from '../rooms/room-errors'
-
-export interface PreferencesState extends Record<string, unknown> {
-  prefs: SyncedPreferences
-  revision: number
-}
 
 @Injectable()
 export class PreferencesService {
@@ -44,11 +39,13 @@ export class PreferencesService {
     }
 
     const current = await this.get(userId)
+    // Spread because `extra` wants an index signature and an interface has none.
+    // The 409 body still carries the current state alongside `code`.
     throw roomError(
       'revision_mismatch',
       'Preferences changed elsewhere; reload before saving again.',
       HttpStatus.CONFLICT,
-      current,
+      { ...current },
     )
   }
 }

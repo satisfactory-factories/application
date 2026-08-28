@@ -1,29 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common'
-
-/**
- * Every failure the rooms API can return. The client switches on `code`, so
- * these strings are wire contract, not log text.
- */
-export type RoomErrorCode =
-  | 'room_not_found'
-  | 'room_id_taken'
-  | 'forbidden'
-  | 'not_shared'
-  | 'slug_taken'
-  | 'invalid_slug'
-  | 'invalid_password'
-  | 'password_required'
-  | 'no_password_set'
-  | 'owner_cannot_leave'
-  | 'too_many_rooms'
-  | 'too_many_memberships'
-  | 'invalid_payload'
-  | 'revision_mismatch'
-
-export interface RoomErrorBody {
-  code: RoomErrorCode
-  message: string
-}
+import type { RoomErrorCode } from 'common'
 
 export const roomError = (
   code: RoomErrorCode,

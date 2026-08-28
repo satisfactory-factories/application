@@ -1,10 +1,21 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, UseGuards } from '@nestjs/common'
-import type { RoomListEntry, RoomListResponse, RoomSlugLookup } from 'common'
+import type {
+  DeleteRoomResult,
+  EnsureRoomResult,
+  JoinRoomResult,
+  LeaveRoomResult,
+  LegacyImportResult,
+  RoomAuthResult,
+  RoomEnvelope,
+  RoomListResponse,
+  RoomPasswordResult,
+  RoomSlugLookup,
+} from 'common'
 
 import { AuthTokenPayload } from '../auth/auth-token'
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { EnsureRoomResult, JoinResult, RoomsService } from './rooms.service'
-import { ImportResult, LegacyImportService } from './legacy-import.service'
+import { LegacyImportService } from './legacy-import.service'
+import { RoomsService } from './rooms.service'
 import {
   adoptRoomSchema,
   authRoomSchema,
@@ -63,7 +74,7 @@ export class RoomsController {
   @Post('legacy/auto-import')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  autoImport (@CurrentUser() user: AuthTokenPayload, @Body() body: unknown): Promise<ImportResult> {
+  autoImport (@CurrentUser() user: AuthTokenPayload, @Body() body: unknown): Promise<LegacyImportResult> {
     const { localTabCount } = parseBody(autoImportSchema, body)
     return this.legacy.autoImport(user.id, user.username, localTabCount)
   }
@@ -71,7 +82,7 @@ export class RoomsController {
   @Post('legacy/recover')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  recover (@CurrentUser() user: AuthTokenPayload): Promise<ImportResult> {
+  recover (@CurrentUser() user: AuthTokenPayload): Promise<LegacyImportResult> {
     return this.legacy.recover(user.id, user.username)
   }
 
@@ -87,7 +98,7 @@ export class RoomsController {
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
     @Body() body: unknown,
-  ): Promise<{ room: RoomListEntry }> {
+  ): Promise<RoomEnvelope> {
     const { name } = parseContentBody(renameRoomSchema, body)
     return { room: await this.rooms.rename(user.id, roomId, name) }
   }
@@ -99,7 +110,7 @@ export class RoomsController {
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
     @Body() body: unknown,
-  ): Promise<{ room: RoomListEntry }> {
+  ): Promise<RoomEnvelope> {
     const { slug } = parseBody(shareRoomSchema, body)
     return { room: await this.rooms.share(user.id, roomId, slug) }
   }
@@ -110,7 +121,7 @@ export class RoomsController {
   async unshare (
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
-  ): Promise<{ room: RoomListEntry }> {
+  ): Promise<RoomEnvelope> {
     return { room: await this.rooms.unshare(user.id, roomId) }
   }
 
@@ -120,7 +131,7 @@ export class RoomsController {
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
     @Body() body: unknown,
-  ): Promise<{ passwordVersion: number }> {
+  ): Promise<RoomPasswordResult> {
     const { password } = parseBody(setPasswordSchema, body)
     return { passwordVersion: await this.rooms.setPassword(user.id, roomId, password) }
   }
@@ -130,7 +141,7 @@ export class RoomsController {
   async removePassword (
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
-  ): Promise<{ passwordVersion: number }> {
+  ): Promise<RoomPasswordResult> {
     return { passwordVersion: await this.rooms.removePassword(user.id, roomId) }
   }
 
@@ -140,7 +151,7 @@ export class RoomsController {
   async authenticate (
     @Param('roomId') roomId: string,
     @Body() body: unknown,
-  ): Promise<{ visitorToken: string }> {
+  ): Promise<RoomAuthResult> {
     const { password } = parseBody(authRoomSchema, body)
     return { visitorToken: await this.rooms.authenticate(roomId, password) }
   }
@@ -152,7 +163,7 @@ export class RoomsController {
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
     @Body() body: unknown,
-  ): Promise<JoinResult> {
+  ): Promise<JoinRoomResult> {
     const { visitorToken } = parseBody(joinRoomSchema, body)
     return this.rooms.join(user.id, roomId, visitorToken)
   }
@@ -163,7 +174,7 @@ export class RoomsController {
   async leave (
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
-  ): Promise<{ status: 'left' }> {
+  ): Promise<LeaveRoomResult> {
     await this.rooms.leave(user.id, roomId)
     return { status: 'left' }
   }
@@ -173,7 +184,7 @@ export class RoomsController {
   async remove (
     @CurrentUser() user: AuthTokenPayload,
     @Param('roomId') roomId: string,
-  ): Promise<{ status: 'deleted' }> {
+  ): Promise<DeleteRoomResult> {
     await this.rooms.deleteRoom(user.id, roomId)
     return { status: 'deleted' }
   }

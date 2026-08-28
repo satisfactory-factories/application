@@ -1,10 +1,7 @@
-import { CLOSE_CODES, PROTOCOL_VERSION } from 'common'
+import { CLOSE_CODES, PROTOCOL_VERSION, WS_PATH } from 'common'
 import type { ClientHelloMessage, ClientMessage, RoomDiff, ServerMessage } from 'common'
 import { config } from '@/config/config'
 import eventBus from '@/utils/eventBus'
-
-/** The gateway shares the API's port and answers on this path only. */
-export const WS_PATH = '/ws'
 
 /** Normal closure: what we send when we are the ones hanging up. */
 const NORMAL_CLOSURE = 1000

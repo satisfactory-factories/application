@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { Model } from 'mongoose'
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway } from '@nestjs/websockets'
-import { CLOSE_CODES, PROTOCOL_VERSION, parseClientMessage } from 'common'
+import { CLOSE_CODES, PROTOCOL_VERSION, WS_PATH, parseClientMessage } from 'common'
 import type WebSocket from 'ws'
 import type { ClientJoinMessage, ClientOpMessage, ServerMessage } from 'common'
 
@@ -25,7 +25,6 @@ import {
   WS_HELLO_TIMEOUT_MS,
   WS_INTERNAL_ERROR,
   WS_MAX_PAYLOAD_BYTES,
-  WS_PATH,
   WS_POLICY_VIOLATION,
 } from './realtime.constants'
 
