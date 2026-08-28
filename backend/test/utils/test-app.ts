@@ -12,6 +12,7 @@ import type { Connection } from 'mongoose'
 
 import { CLOCK, Clock } from '../../src/rooms/clock'
 import { EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
+import { RoomActivityService } from '../../src/rooms/room-activity.service'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
@@ -27,6 +28,8 @@ export interface TestContext {
 export interface TestAppOptions {
   /** Replaces the ensure-step seam, so a chain can be failed at a named step. */
   stepRunner?: EnsureStepRunner
+  /** Replaces the activity log, so a post-commit write can be made to fail. */
+  activity?: Pick<RoomActivityService, 'record' | 'recordOnce'>
   clock?: Clock
   /**
    * Suites that make hundreds of calls from one address would otherwise trip the
@@ -52,6 +55,7 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
 
   const builder = Test.createTestingModule({ imports: [AppModule] })
   if (options.stepRunner) builder.overrideProvider(EnsureStepRunner).useValue(options.stepRunner)
+  if (options.activity) builder.overrideProvider(RoomActivityService).useValue(options.activity)
   if (options.clock) builder.overrideProvider(CLOCK).useValue(options.clock)
   if (options.unthrottled) builder.overrideProvider(ThrottlerStorage).useValue(NEVER_THROTTLED)
 

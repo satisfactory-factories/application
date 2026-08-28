@@ -1,5 +1,5 @@
 import { CAPS } from 'common'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import type { ClientOpMessage, Factory, RoomDiff } from 'common'
@@ -27,6 +27,7 @@ export type OpAuthorizer = (room: Room) => Promise<RoomAccessRole | null>
 
 @Injectable()
 export class RoomOpService {
+  private readonly logger = new Logger(RoomOpService.name)
   /** One in-flight apply per room, in arrival order. */
   private readonly queues = new Map<string, Promise<void>>()
 
@@ -84,7 +85,13 @@ export class RoomOpService {
       return fresh && fresh.deletedAt === null ? { status: 'stale', room: fresh } : { status: 'gone' }
     }
 
-    await this.activity.record(op.roomId, actor, 'op')
+    // Past this line the content is committed, so nothing may deny the sender its
+    // ack or the peers their broadcast: a wedged client is worse than a lost row.
+    try {
+      await this.activity.record(op.roomId, actor, 'op')
+    } catch (cause) {
+      this.logger.error(`Failed to record op activity for room ${op.roomId}`, cause)
+    }
 
     return { status: 'applied', revision: updated.revision }
   }

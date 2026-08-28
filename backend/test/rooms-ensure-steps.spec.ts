@@ -149,7 +149,7 @@ describe('ensure-step resumption', () => {
       runner.reset()
     })
 
-    it.each(['update-room-meta', 'bump-rooms-revision', 'remove-memberships', 'record-activity'])(
+    it.each(['update-room-meta', 'bump-rooms-revision', 'remove-memberships'])(
       'resumes an unshare interrupted at %s',
       async step => {
         runner.failAt = step as EnsureStep
@@ -164,6 +164,21 @@ describe('ensure-step resumption', () => {
         expect((await connection.collection('room_memberships').findOne({ roomId }))?.role).toBe('owner')
       },
     )
+
+    // The revocation has fully landed by this point; a 500 would report the room
+    // as still shared and invite the owner to retry something already done.
+    it('succeeds when only the activity row fails to write', async () => {
+      runner.failAt = 'record-activity'
+
+      const response = await post(`/rooms/${roomId}/unshare`, owner).send({})
+
+      expect(response.status).toBe(200)
+      expect(response.body.room.shared).toBe(false)
+      expect((await connection.collection('rooms').findOne({ roomId }))?.shared).toBe(false)
+      expect(await connection.collection('room_memberships').countDocuments({ roomId })).toBe(1)
+      expect(await connection.collection('room_activity')
+        .countDocuments({ roomId, kind: 'unshared' })).toBe(0)
+    })
   })
 
   describe('tombstone-first delete', () => {

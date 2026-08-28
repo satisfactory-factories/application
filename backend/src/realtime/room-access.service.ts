@@ -6,6 +6,7 @@ import type { RoomRole } from 'common'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
 import { RoomsService } from '../rooms/rooms.service'
+import { membershipGrantsAccess } from '../rooms/membership-epoch'
 
 /** An anonymous holder of a valid invite password can write content, nothing else. */
 export type RoomAccessRole = RoomRole | 'visitor'
@@ -34,8 +35,9 @@ export class RoomAccessService {
       const membership = await this.memberships
         .findOne({ userId: credentials.userId, roomId: room.roomId })
         .lean()
-      // A membership outranks the password: a member is never re-prompted.
-      if (membership) return membership.role
+      // A membership outranks the password: a member is never re-prompted. A row
+      // an unshare voided grants nothing, however long it survives the cleanup.
+      if (membership && membershipGrantsAccess(membership, room)) return membership.role
     }
 
     if (!room.shared) return null

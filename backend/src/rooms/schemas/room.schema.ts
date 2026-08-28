@@ -49,6 +49,13 @@ export class Room {
   @Prop({ type: Number, default: 0 })
   passwordVersion!: number
 
+  /**
+   * Bumped by unshare's first write, which is what makes revocation complete before
+   * any cleanup runs: a non-owner membership granted below this is void.
+   */
+  @Prop({ type: Number, default: 0 })
+  membershipEpoch!: number
+
   @Prop({ type: MongooseSchema.Types.Mixed, default: () => [] })
   factories!: Factory[]
 

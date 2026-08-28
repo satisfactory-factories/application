@@ -20,6 +20,10 @@ export class RoomMembership {
   @Prop({ type: Number, default: 0 })
   order!: number
 
+  /** The room's `membershipEpoch` when this row was granted; below it, it grants nothing. */
+  @Prop({ type: Number, default: 0 })
+  epoch!: number
+
   @Prop({ type: Date, default: Date.now })
   joinedAt!: Date
 }

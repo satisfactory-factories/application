@@ -6,7 +6,7 @@ import type { Model } from 'mongoose'
 
 import { EnsureStep, EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
 import { Room } from '../../src/rooms/schemas/room.schema'
-import { RoomActivity } from '../../src/rooms/schemas/room-activity.schema'
+import { RoomActivity, RoomActivityKind } from '../../src/rooms/schemas/room-activity.schema'
 import { RoomMembership } from '../../src/rooms/schemas/room-membership.schema'
 import { User } from '../../src/auth/user.schema'
 import { UserPreferences } from '../../src/preferences/user-preferences.schema'
@@ -81,6 +81,29 @@ export class FailingStepRunner extends EnsureStepRunner {
     this.failAt = null
     this.skip = 0
     this.ran.length = 0
+  }
+}
+
+/**
+ * The activity log as a seam. It is written after the content commits, so a
+ * failure here must never reach the caller — this is what proves it.
+ */
+export class FlakyActivityService {
+  failing = false
+  /** Proves the injection actually fired rather than the test passing by luck. */
+  failures = 0
+  readonly recorded: RoomActivityKind[] = []
+
+  async record (_roomId: string, _actor: string, kind: RoomActivityKind): Promise<void> {
+    if (this.failing) {
+      this.failures += 1
+      throw new Error(`injected activity failure recording ${kind}`)
+    }
+    this.recorded.push(kind)
+  }
+
+  async recordOnce (roomId: string, actor: string, kind: RoomActivityKind): Promise<void> {
+    await this.record(roomId, actor, kind)
   }
 }
 

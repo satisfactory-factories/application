@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { CAPS } from 'common'
-import { HttpStatus, Inject, Injectable } from '@nestjs/common'
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { Model, Types } from 'mongoose'
@@ -29,6 +29,7 @@ import { User } from '../auth/user.schema'
 import { VISITOR_TOKEN_TTL, VisitorTokenPayload, isVisitorTokenPayload } from './visitor-token'
 import { forbidden, isDuplicateKey, notFound, roomError } from './room-errors'
 import { generateSlug } from './slug'
+import { membershipGrantsAccess, roomEpoch } from './membership-epoch'
 
 /** Invite-password hashing cost. Higher than the account cost: a room password is short. */
 export const INVITE_BCRYPT_ROUNDS = 12
@@ -38,6 +39,8 @@ const SLUG_ATTEMPTS = 5
 
 @Injectable()
 export class RoomsService {
+  private readonly logger = new Logger(RoomsService.name)
+
   constructor (
     @InjectModel(Room.name) private readonly rooms: Model<Room>,
     @InjectModel(RoomMembership.name) private readonly memberships: Model<RoomMembership>,
@@ -62,10 +65,13 @@ export class RoomsService {
     return {
       roomsRevision: await this.roomsRevisionOf(userId),
       // Tombstoned rooms are simply absent: the membership row outlives the
-      // tombstone until the sweeper runs, and must not show a dead tab.
-      rooms: memberships
-        .filter(membership => byId.has(membership.roomId))
-        .map(membership => toListEntry(byId.get(membership.roomId) as Room, membership.role, membership.order)),
+      // tombstone until the sweeper runs, and must not show a dead tab. A row
+      // an unshare voided is dropped here for the same reason.
+      rooms: memberships.flatMap(membership => {
+        const room = byId.get(membership.roomId)
+        if (!room || !membershipGrantsAccess(membership, room)) return []
+        return [toListEntry(room, membership.role, membership.order)]
+      }),
     }
   }
 
@@ -96,7 +102,7 @@ export class RoomsService {
     if (!hadMembership) {
       await this.assertMembershipCapacity(userId)
       await this.steps.run('ensure-membership', () =>
-        this.insertMembershipIfAbsent(userId, roomId, 'owner'))
+        this.grantMembership(userId, roomId, 'owner', roomEpoch(room)))
     }
 
     // Both tails run unconditionally: a retry after a failure between them is the
@@ -135,18 +141,21 @@ export class RoomsService {
   async unshare (userId: string, roomId: string): Promise<RoomListEntry> {
     await this.requireOwner(userId, roomId)
 
+    // Revocation is complete in this one write: clearing `shared` closes the
+    // password door and the epoch bump voids every non-owner membership, so no
+    // failure below can leave a collaborator writing to a room reported private.
     await this.steps.run('update-room-meta', async () => {
-      await this.rooms.updateOne({ roomId }, { $set: { shared: false } })
+      await this.rooms.updateOne({ roomId }, { $set: { shared: false }, $inc: { membershipEpoch: 1 } })
     })
 
-    // Bump before the removal so a failure between the two only costs a repeat
-    // bump on retry, never a member left with a stale list and no notification.
+    // Everything from here is recoverable cleanup: a voided row grants nothing
+    // while it lingers, and a retry or the sweeper finishes the removal.
     const affected = await this.memberIds(roomId)
     await this.steps.run('bump-rooms-revision', () => this.bumpRoomsRevision(affected))
     await this.steps.run('remove-memberships', async () => {
       await this.memberships.deleteMany({ roomId, role: 'member' })
     })
-    await this.steps.run('record-activity', () => this.activity.record(roomId, userId, 'unshared'))
+    await this.recordActivitySafely(roomId, userId, 'unshared')
 
     this.events.emit('room_meta', { roomId })
     this.events.emit('access_revoked', { roomId, scope: 'non-owners' })
@@ -259,8 +268,10 @@ export class RoomsService {
     const room = await this.requireRoom(roomId)
     if (!room.shared) throw roomError('not_shared', 'This room is not shared.', HttpStatus.FORBIDDEN)
 
+    // A row an earlier unshare voided is not a membership: re-joining is the only
+    // way back in, which is what stops a re-share resurrecting the old collaborators.
     const existing = await this.memberships.findOne({ userId, roomId }).lean()
-    if (existing) {
+    if (existing && membershipGrantsAccess(existing, room)) {
       return { status: 'already_member', room: toListEntry(room, existing.role, existing.order) }
     }
 
@@ -268,13 +279,14 @@ export class RoomsService {
     // afterwards, so a later rotation does not lock them out.
     if (room.passwordHash !== null) this.assertVisitorToken(room, visitorToken)
 
-    await this.assertMembershipCapacity(userId)
+    // Re-stamping a voided row costs no capacity: it is already held.
+    if (!existing) await this.assertMembershipCapacity(userId)
     // Same reasoning as leave, inverted: the membership row is written last, so
     // its absence is what tells a retry the join is unfinished.
     await this.steps.run('bump-rooms-revision', () => this.bumpRoomsRevision([userId]))
     await this.steps.run('record-activity', () => this.activity.record(roomId, userId, 'joined'))
     await this.steps.run('ensure-membership', () =>
-      this.insertMembershipIfAbsent(userId, roomId, 'member'))
+      this.grantMembership(userId, roomId, 'member', roomEpoch(room)))
 
     this.events.emit('rooms_changed', { userIds: [userId] })
 
@@ -401,19 +413,26 @@ export class RoomsService {
     return room
   }
 
-  private async insertMembershipIfAbsent (
+  /**
+   * Create-or-restamp. The upsert is what re-grants a row a previous unshare
+   * voided; `userId`/`roomId` come from the filter, so naming them again would
+   * conflict on insert.
+   */
+  private async grantMembership (
     userId: string,
     roomId: string,
     role: RoomRole,
+    epoch: number,
   ): Promise<void> {
     try {
-      await this.memberships.create({
-        userId,
-        roomId,
-        role,
-        order: await this.nextOrder(userId),
-        joinedAt: this.clock.now(),
-      })
+      await this.memberships.updateOne(
+        { userId, roomId },
+        {
+          $setOnInsert: { role, order: await this.nextOrder(userId), joinedAt: this.clock.now() },
+          $set: { epoch },
+        },
+        { upsert: true },
+      )
     } catch (error) {
       if (!isDuplicateKey(error)) throw error
     }
@@ -486,6 +505,23 @@ export class RoomsService {
     }
   }
 
+  /**
+   * The activity row is an audit trail with no reader in v7, and by the time it is
+   * written the mutation has committed. Failing the request would report a change
+   * that did happen — a revocation, in unshare's case — as one that did not.
+   */
+  private async recordActivitySafely (
+    roomId: string,
+    userId: string,
+    kind: RoomActivityKind,
+  ): Promise<void> {
+    try {
+      await this.steps.run('record-activity', () => this.activity.record(roomId, userId, kind))
+    } catch (cause) {
+      this.logger.error(`Failed to record "${kind}" activity for room ${roomId}`, cause)
+    }
+  }
+
   /** The tail every owner-only meta mutation shares: fan out, log, re-read. */
   private async finishMetaMutation (
     userId: string,
@@ -494,7 +530,7 @@ export class RoomsService {
   ): Promise<RoomListEntry> {
     const affected = await this.memberIds(roomId)
     await this.steps.run('bump-rooms-revision', () => this.bumpRoomsRevision(affected))
-    await this.steps.run('record-activity', () => this.activity.record(roomId, userId, kind))
+    await this.recordActivitySafely(roomId, userId, kind)
 
     this.events.emit('room_meta', { roomId })
     this.events.emit('rooms_changed', { userIds: affected })

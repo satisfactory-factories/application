@@ -172,11 +172,13 @@ persistent "new version available — refresh" prompt.
 
 **Data model (Mongo).**
 - `Room`: `{ roomId (uuid, unique), slug (unique sparse), name, shared, deletedAt,
-  passwordHash: string|null, passwordVersion: number, factories, powerTarget, groups,
-  revision, appliedOps ring, createdBy, timestamps }`. Tab-level fields finally persist.
-- `RoomMembership`: `{ userId, roomId, role owner|member, order, joinedAt }`, unique on
+  passwordHash: string|null, passwordVersion: number, membershipEpoch: number, factories,
+  powerTarget, groups, revision, appliedOps ring, createdBy, timestamps }`. Tab-level fields
+  finally persist.
+- `RoomMembership`: `{ userId, roomId, role owner|member, order, epoch, joinedAt }`, unique on
   `{userId, roomId}`. **Carries access and tab-bar position only — never plan data.** The
-  room document is the single source of truth for a synced tab's content.
+  room document is the single source of truth for a synced tab's content. `epoch` is the
+  room's `membershipEpoch` at the moment the row was granted; below it the row is void.
 - `RoomActivity`: `{ roomId, at, actor (userId or 'anon'), kind, summary? }`, capped per
   room (~200; the sweeper trims). Written on every accepted op and meta change. **No UI in
   v7** — the data is simply ready for the history feature later.
@@ -203,6 +205,15 @@ visitor token and closes those sockets `4403`. Unshare removes all non-owner mem
 closes non-owner sockets `4403`, and deactivates the slug — the "make it private again"
 lever; clients turn their copy into a local tab.
 
+**Unshare revokes in one write.** Clearing `shared` and bumping `membershipEpoch` are the
+same document update, so from that instant every non-owner membership is void whether or not
+the row still exists: access resolution (REST list, WS join, every mutating op) treats a
+non-owner row below the room's epoch as absent, and the owner's own row is exempt. Membership
+deletion, the `roomsRevision` bumps and the socket kicks are recoverable cleanup after it — a
+retry or the sweeper finishes them, and a row that lingers grants nothing. **Re-sharing does
+not restore the old collaborators**: the epoch is never lowered, so a former member gets back
+in only by joining again, which re-stamps their row at the current epoch.
+
 **Multi-document safety without transactions.** Every mutation is a chain of individually
 idempotent "ensure" steps; a retry resumes at the incomplete step instead of aborting on a
 duplicate key:
@@ -224,7 +235,11 @@ duplicate key:
 never the URL, and access is re-verified on every mutating op. Origin checked at upgrade
 (anti-CSRF hygiene, not authorization). Server `ws` ping/pong heartbeat. Connection and
 message throttles, explicit `maxPayload`, snapshot sends serialized per client with a queue
-cap. A DB failure during handshake closes retryable, never `4401`.
+cap. A DB failure during handshake closes retryable, never `4401`. **Once the room write has
+committed, nothing may stand between it and the ack**: the activity row and every socket send
+are best-effort and logged, because a client that loses its ack never clears its one in-flight
+slot and stops editing entirely. The same holds for the REST meta mutations — a committed
+unshare or rename is never reported as a 500 because its audit row failed.
 
 **Roles.** Owner: everything — delete, share, unshare, slug, password, rename. Member: edit
 content and leave, nothing else. Anonymous visitor: edit content only.

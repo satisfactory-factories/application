@@ -14,7 +14,7 @@ The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, rep
 **Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
 deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
-reset, the v7 changelog modal). Green as of 2026-08-28: backend 230 vitest tests, common 68,
+reset, the v7 changelog modal). Green as of 2026-08-28: backend 236 vitest tests, common 68,
 web 1694 unit tests, 22 Playwright e2e tests, `vue-tsc` clean, root `lint-check` clean, root
 `build` clean. The e2e job in CI has never actually run — it is validated locally only, so
 the first PR is where it gets proved.
@@ -58,6 +58,15 @@ Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localh
 - Offline mode is first-class (manual airplane switch + detection prompt).
 - Caps: 10 owned rooms, 25 memberships per user. Activity is recorded (who/when per op) but
   has no UI in v7.
+- **Revocation is a single write, not a chain.** Unshare clears `shared` and bumps the room's
+  `membershipEpoch` in one update; a `RoomMembership` whose `epoch` is below it grants nothing
+  anywhere (REST list, WS join, every op), owner rows exempt. The deletions, revision bumps
+  and socket kicks after it are cleanup that a retry or the sweeper finishes. Re-sharing never
+  lowers the epoch, so a former member must join again — the row is re-stamped, not resurrected.
+- **Nothing after a committed write may block the ack.** Activity rows and socket sends on the
+  op path are best-effort and logged; a client that loses its ack never clears its one
+  in-flight slot and stops editing altogether. Same rule for the REST meta mutations: a
+  committed unshare or rename is never reported as a 500 because its audit row failed.
 
 ## Flagged follow-ups, none of them blocking
 
@@ -67,6 +76,13 @@ Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localh
   the connection `4403`, and 4403 tells the client to stop reconnecting, so losing access to
   one shared tab takes the user's other synced tabs offline until a reload. A `room_revoked`
   frame mirroring `room_deleted` would be the cheap fix.
+- **A partial unshare leaves a socket receiving broadcasts it can no longer earn.** The epoch
+  denies that socket every read it asks for and every op it sends, but the kick rides on
+  `access_revoked`, which is emitted only once the whole chain finishes — so until the owner
+  retries, or that peer sends its own op (rejected `forbidden`, which drops it from the room),
+  it still receives `op_apply` fan-out. Emitting `access_revoked` straight after the first
+  write would close it; it was left as prescribed cleanup deliberately, so the lingering-row
+  case stays reproducible in `backend/test/rooms-unshare-revocation.spec.ts`.
 - **Adoption and joined-tab upgrade are sequential by necessity.** `adoptTabs` and
   `upgradeJoinedTabs` in `rooms-store.ts` walk their tabs one at a time, because each server
   call is a chain of non-transactional ensure-steps and there is no transaction to make a

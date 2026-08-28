@@ -288,7 +288,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     switch (outcome.status) {
       case 'applied':
-        connection.send({
+        // The write has committed. Both sends are best-effort from here: an
+        // exception would reach the sender as `internal_error` with no ack, and
+        // its one-in-flight slot would never clear.
+        this.deliver(connection, {
           type: 'op_ack',
           roomId: message.roomId,
           opId: message.opId,
@@ -387,14 +390,23 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   private broadcastOp (sender: Connection, message: ClientOpMessage, revision: number): void {
     for (const peer of this.registry.roomConnections(message.roomId)) {
       if (peer === sender) continue
-      peer.send({ type: 'op_apply', roomId: message.roomId, revision, diff: message.diff })
+      this.deliver(peer, { type: 'op_apply', roomId: message.roomId, revision, diff: message.diff })
     }
   }
 
   private broadcastPresence (roomId: string): void {
     const count = this.registry.presence(roomId)
     for (const peer of this.registry.roomConnections(roomId)) {
-      peer.send({ type: 'presence', roomId, count })
+      this.deliver(peer, { type: 'presence', roomId, count })
+    }
+  }
+
+  /** One unwritable socket must not cost the others their message, or the sender its ack. */
+  private deliver (connection: Connection, message: ServerMessage): void {
+    try {
+      connection.send(message)
+    } catch (cause) {
+      this.logger.error('Failed to deliver a message to a socket', cause)
     }
   }
 
