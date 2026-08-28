@@ -4,7 +4,7 @@ import { PROTOCOL_VERSION } from 'common'
 import type { Factory, FactoryTab, RoomSnapshot, ServerMessage } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
 import type { WebSocketLike } from '@/sync/ws-client'
-import { useRoomSyncStore } from '@/stores/room-sync-store'
+import { OP_DEBOUNCE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
@@ -305,6 +305,18 @@ describe('room-sync-store', () => {
       expect(opsOf()).toHaveLength(1)
     })
 
+    it('never puts the room name in a member\'s op, which the server refuses whole', () => {
+      const tab = syncAt(fixture, 4)
+      appStore.setTabState(ROOM, { kind: 'synced', shared: true, role: 'member', revision: 4 })
+
+      tab.name = 'Renamed by a member'
+      tab.factories[0].name = 'Alpha renamed'
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+      expect(lastOp().diff.name).toBeUndefined()
+      expect(lastOp().diff.factories).toHaveLength(1)
+    })
+
     it('takes factoryEdited as intent for the current tab', () => {
       const tab = syncAt(fixture, 4)
       expect(store.hasLocalEdits(ROOM)).toBe(false)
@@ -588,6 +600,41 @@ describe('room-sync-store', () => {
       expect(tab.name).toBe('Mine')
     })
 
+    it('drops only the revoked room and reconnects the socket for the rest', () => {
+      const tab = syncAt(fixture, 4)
+      appStore.addTab({ id: 'room-2', name: 'Other', factories: [] }, { activate: false })
+      store.trackRoom('room-2')
+      const socket = latest()
+
+      // The gateway names the room, then takes the whole socket down with it.
+      receive({ type: 'error', roomId: ROOM, code: 'forbidden', message: 'Access revoked.' })
+      socket.serverClose(4403)
+
+      expect(store.rooms[ROOM].status).toBe('revoked')
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      expect(store.rooms['room-2'].status).not.toBe('revoked')
+      expect(sockets).toHaveLength(2)
+    })
+
+    it('stays down when the revoked room was the only one', () => {
+      syncAt(fixture, 4)
+
+      receive({ type: 'error', roomId: ROOM, code: 'forbidden', message: 'Access revoked.' })
+      latest().serverClose(4403)
+
+      expect(sockets).toHaveLength(1)
+    })
+
+    it('signs the session out when the handshake is rejected 4401', () => {
+      const emit = vi.spyOn(eventBus, 'emit')
+      syncAt(fixture, 4)
+
+      latest().serverClose(4401)
+
+      expect(emit.mock.calls.some(call => call[0] === 'sessionExpired')).toBe(true)
+      emit.mockRestore()
+    })
+
     it('records presence, the rooms revision and errors', () => {
       syncAt(fixture, 4)
 
@@ -648,6 +695,45 @@ describe('room-sync-store', () => {
 
       expect(store.mode).toBe('reconnecting')
       expect(store.failedReconnects).toBe(0)
+    })
+
+    it('remembers a factory added while offline and sends it after the reconnect', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      const added = newFactory('Gamma', 2, 3)
+      tab.factories.push(added)
+      eventBus.emit('factoryUpdated', added)
+      // Nothing can be sent, but the add still has to be recorded as intent.
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+      expect(store.hasLocalEdits(ROOM)).toBe(true)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta', 'Gamma'])
+      expect(lastOp().diff.factories.some((entry: Factory) => entry.name === 'Gamma')).toBe(true)
+    })
+
+    it('reports a deletion made offline before a restart', () => {
+      // The baseline died with the browser session; the mirror and the intent did not.
+      const tab = setTab(wire(fixture))
+      tab.factories.splice(1, 1)
+      setTabMirrorMeta(ROOM, {
+        revision: 9,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: [2],
+        userTouchedFields: [],
+      })
+
+      store.trackRoom(ROOM)
+      connect()
+      receive({ type: 'up_to_date', roomId: ROOM, revision: 9 })
+
+      expect(lastOp().diff.removedFactoryIds).toEqual([2])
     })
 
     it('rebases every room on the way out of offline mode', () => {

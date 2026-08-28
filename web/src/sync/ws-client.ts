@@ -133,6 +133,9 @@ export class SyncSocket {
     this.attempt = 0
     this.clearRetry()
     this.closeSocket(NORMAL_CLOSURE, 'client stopped')
+    // We hung up: there is no close code explaining it, and leaving the previous
+    // one in place would have the owner react to a revocation twice.
+    this.lastCloseCode = null
     this.setStatus('stopped')
   }
 
