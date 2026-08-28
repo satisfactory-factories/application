@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AddShortageDialog: typeof import('./components/planner/satisfaction/AddShortageDialog.vue')['default']
     AddToPlannerDialog: typeof import('./components/parts/AddToPlannerDialog.vue')['default']
+    AdoptionDialog: typeof import('./components/sync/AdoptionDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
     BeltPipeCalculator: typeof import('./components/planner/satisfaction/calculator/BeltPipeCalculator.vue')['default']
@@ -45,6 +46,7 @@ declare module 'vue' {
     KoFi: typeof import('./components/ko-fi.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
+    NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
     PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']

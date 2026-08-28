@@ -15,6 +15,7 @@
       <toast />
       <hover-tooltip />
       <plan-repair-dialog v-if="!hasError" />
+      <adoption-dialog v-if="!hasError" />
     </v-main>
   </v-app>
 </template>
@@ -22,6 +23,7 @@
 <script setup lang="ts">
   import { useRoute } from 'vue-router'
   import { useDisplay } from 'vuetify'
+  import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
 
   const { smAndDown } = useDisplay()
   const authButtonColor = computed(() => smAndDown.value ? 'grey-darken-3' : undefined)

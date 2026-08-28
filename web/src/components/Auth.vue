@@ -128,6 +128,7 @@
   import Sync from '@/components/Sync.vue'
   import eventBus from '@/utils/eventBus'
   import { useAppStore } from '@/stores/app-store'
+  import { useRoomsStore } from '@/stores/rooms-store'
   import { BackendOutageError } from '@/errors/BackendOutageError'
   import { InvalidTokenError } from '@/errors/InvalidTokenError'
 
@@ -136,6 +137,7 @@
   }>()
 
   const authStore = useAuthStore()
+  const roomsStore = useRoomsStore()
   const { isDebugMode } = useAppStore()
 
   const trayOpen = ref(false)
@@ -166,6 +168,9 @@
 
     try {
       await authStore.validateToken()
+      // The session is known good: connect the socket and pull the tab list, which
+      // is what decides which tabs are rooms and what adoption offers.
+      await roomsStore.begin()
     } catch (error) {
       if (error instanceof InvalidTokenError) {
         // The store already emitted sessionExpired, which opens the dialog.
@@ -232,6 +237,8 @@
   }
 
   const handleLogout = () => {
+    // Plans are never destroyed by signing out; they just stop being rooms here.
+    roomsStore.signOut()
     authStore.logout()
   }
 

@@ -126,6 +126,9 @@ describe('room-sync-store', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     appStore = useAppStore()
+    // The engine refuses to send while a load is in flight, because a half-filled
+    // mirror diffs as "delete everything". These specs are about a settled plan.
+    appStore.isLoaded = true
 
     // Pre-calculated, so a rebase's recalculation is a no-op and the assertions
     // are about sync rather than about the calculation engine.
@@ -181,6 +184,31 @@ describe('room-sync-store', () => {
       expect(store.rooms[ROOM].status).toBe('synced')
       expect(store.rooms[ROOM].revision).toBe(4)
       expect(opsOf()).toHaveLength(0)
+    })
+
+    it('sends a snapshot through the loader funnel rather than in behind it', () => {
+      const reload = vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+      setTab([])
+      store.trackRoom(ROOM)
+      connect()
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
+
+      expect(reload).toHaveBeenCalledWith(ROOM)
+    })
+
+    it('does not send while a load is in flight, and flushes once it completes', () => {
+      const tab = syncAt(fixture, 4)
+      appStore.isLoaded = false
+      tab.name = 'Renamed mid-load'
+
+      store.flushRoom(ROOM)
+      expect(opsOf()).toHaveLength(0)
+
+      appStore.isLoaded = true
+      store.flushRoom(ROOM)
+
+      expect(lastOp().diff.name).toBe('Renamed mid-load')
     })
 
     it('marks the room current on up_to_date without touching the factories', () => {

@@ -8,7 +8,7 @@
         variant="flat"
         @click="toggleSidebar()"
       >{{ sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar' }}</v-btn>
-      <div class="d-flex align-center" style="min-width: 0">
+      <div class="d-flex align-center tab-strip" style="min-width: 0">
         <v-tabs
           v-model="appStore.currentFactoryTabIndex"
         >
@@ -20,6 +20,15 @@
             :slim="isCurrentTab(index)"
             :value="index"
           >
+            <!--
+              FontAwesome swaps each <i> for an <svg> and detaches the element Vue
+              patches, so the icon has to be swapped by toggling a wrapper Vue owns.
+            -->
+            <span class="tab-state mr-2" :title="stateLabel(item.id)">
+              <span v-if="kindOf(item.id) === 'local'"><i class="fas fa-desktop" /></span>
+              <span v-else-if="kindOf(item.id) === 'collaborative'"><i class="fas fa-users" /></span>
+              <span v-else><i class="fas fa-user" /></span>
+            </span>
             <input
               v-if="isCurrentTab(index) && isEditingName"
               v-model="currentTabName"
@@ -30,57 +39,113 @@
               {{ item.name }}
             </span>
             <v-btn
-              v-if="isCurrentTab(index)"
+              v-if="isCurrentTab(index) && canRename"
               :key="`${isEditingName}`"
               class="ml-2 tab-action"
               :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
+              :loading="renaming"
               size="x-small"
               variant="text"
               @click="onClickEditTabName"
             />
           </v-tab>
         </v-tabs>
+        <!-- Kept a direct child of the strip: browser checks find it as `:scope > button.v-btn--icon`. -->
         <v-btn
           class="tab-action"
+          data-testid="add-tab"
           icon="fas fa-plus"
           size="x-small"
           variant="text"
-          @click="appStore.addTab()"
+          @click="openNewTabChooser"
         />
+        <!-- Advertises the local/synced choice exactly once per browser. -->
+        <span v-if="showNudge" class="nudge-dot" data-testid="new-tab-nudge" />
       </div>
     </div>
 
     <div class="d-flex align-center h-100 ga-2 mr-1">
+      <v-btn
+        v-if="kindOf(currentTabId) !== 'local'"
+        color="grey-darken-1 rounded"
+        icon="fas fa-copy"
+        size="small"
+        title="Duplicate as a local tab"
+        variant="flat"
+        @click="onClickDuplicate"
+      />
       <ShareButton />
       <v-btn
         v-if="appStore.factoryTabs.length > 1"
         color="red rounded"
         icon="fas fa-trash"
+        :loading="deleting"
         size="small"
         variant="flat"
-        @click="confirmDelete() && appStore.removeCurrentTab()"
+        @click="onClickDelete"
       />
     </div>
   </div>
+
+  <new-tab-dialog v-model="newTabChooserOpen" />
 </template>
 
 <script setup lang="ts">
+  import { computed, ref, watch } from 'vue'
   import { useDisplay } from 'vuetify'
+  import NewTabDialog from '@/components/sync/NewTabDialog.vue'
   import { useAppStore } from '@/stores/app-store'
+  import { useRoomsStore } from '@/stores/rooms-store'
+  import { isCollaborative } from '@/sync/tab-sync-state'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
 
+  /** Device-shaped, deliberately not synced: it is about this browser's user. */
+  const NUDGE_KEY = 'newTabChooserSeen'
+
   const appStore = useAppStore()
+  const roomsStore = useRoomsStore()
 
   const isEditingName = ref(false)
   const currentTabName = ref(appStore.currentFactoryTab.name)
+  const renaming = ref(false)
+  const deleting = ref(false)
+  const newTabChooserOpen = ref(false)
+  const showNudge = ref(localStorage.getItem(NUDGE_KEY) !== 'true')
 
-  const isCurrentTab = (index:number) => index === appStore.currentFactoryTabIndex
+  const isCurrentTab = (index: number) => index === appStore.currentFactoryTabIndex
+  const currentTabId = computed(() => appStore.currentFactoryTab?.id ?? '')
 
-  const onClickEditTabName = () => {
-    isEditingName.value = !isEditingName.value
+  const kindOf = (tabId: string): 'local' | 'synced' | 'collaborative' => {
+    const state = appStore.getTabState(tabId)
+    if (state.kind === 'local') return 'local'
+    return isCollaborative(state) ? 'collaborative' : 'synced'
+  }
+
+  const stateLabel = (tabId: string) => {
+    switch (kindOf(tabId)) {
+      case 'local': return 'Local tab: this browser only'
+      case 'collaborative': return 'Collaborative tab: shared and live'
+      default: return 'Synced tab: saved to your account'
+    }
+  }
+
+  const canRename = computed(() => roomsStore.canRename(currentTabId.value))
+
+  const onClickEditTabName = async () => {
     if (!isEditingName.value) {
-      appStore.currentFactoryTab.name = currentTabName.value
+      isEditingName.value = true
+      return
+    }
+
+    renaming.value = true
+    const result = await roomsStore.renameTab(currentTabId.value, currentTabName.value)
+    renaming.value = false
+    isEditingName.value = false
+
+    if (result !== true) {
+      currentTabName.value = appStore.currentFactoryTab.name
+      eventBus.emit('toast', { message: `Rename failed: ${result}`, type: 'error' })
     }
   }
 
@@ -89,11 +154,51 @@
     currentTabName.value = appStore.currentFactoryTab.name
   })
 
-  const confirmDelete = () => {
-    if (appStore.getFactories().length > 0) {
-      return confirmDialog('Are you sure you wish to delete this tab? This action is irreversible!')
+  // A room rename from another device lands on the tab, so the edit field follows it.
+  watch(() => appStore.currentFactoryTab?.name, name => {
+    if (!isEditingName.value && name) currentTabName.value = name
+  })
+
+  const openNewTabChooser = () => {
+    newTabChooserOpen.value = true
+    if (!showNudge.value) return
+    showNudge.value = false
+    localStorage.setItem(NUDGE_KEY, 'true')
+  }
+
+  const onClickDuplicate = () => {
+    if (roomsStore.duplicateAsLocal(currentTabId.value)) {
+      eventBus.emit('toast', { message: 'Duplicated as a local tab.', type: 'success' })
     }
-    return true
+  }
+
+  const deleteWarning = () => {
+    const state = appStore.getTabState(currentTabId.value)
+    if (state.kind === 'synced' && state.role === 'owner') {
+      return state.shared
+        ? 'This deletes the plan for everyone you shared it with. This action is irreversible!'
+        : 'This deletes the plan from your account on every device. This action is irreversible!'
+    }
+    if (state.kind !== 'local') {
+      return 'This removes the shared plan from your tabs. The owner keeps theirs.'
+    }
+    return 'Are you sure you wish to delete this tab? This action is irreversible!'
+  }
+
+  const onClickDelete = async () => {
+    if (appStore.getFactories().length > 0 || kindOf(currentTabId.value) !== 'local') {
+      if (!confirmDialog(deleteWarning())) return
+    }
+
+    deleting.value = true
+    const result = await roomsStore.removeTab(currentTabId.value)
+    deleting.value = false
+
+    if (result !== true) {
+      eventBus.emit('toast', { message: `Could not delete this tab: ${result}`, type: 'error' })
+      return
+    }
+    await appStore.removeCurrentTab()
   }
 
   const sidebarOpen = ref(localStorage.getItem('sidebarOpen') !== 'false')
@@ -144,5 +249,27 @@
 // the colour ties them to the consumption orange the selected tab uses.
 .tab-action {
   color: var(--sf-power-consumption);
+}
+
+.tab-state {
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
+.tab-strip {
+  position: relative;
+}
+
+// The add button is the strip's last child, so its top-right corner is the
+// strip's — which keeps the dot on the button without wrapping it in anything.
+.nudge-dot {
+  background-color: var(--sf-power-consumption);
+  border-radius: 50%;
+  height: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 4px;
+  width: 8px;
 }
 </style>

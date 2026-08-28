@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PROTOCOL_VERSION } from 'common'
 import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { setTabMirrorMeta, TAB_MIRROR_META_KEY } from '@/sync/tab-mirror-meta'
+import { TAB_SYNC_STATE_KEY } from '@/sync/tab-sync-state'
+import type { TabSyncState } from '@/sync/tab-sync-state'
 import * as FactoryManager from '@/utils/factory-management/factory'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
@@ -376,8 +380,8 @@ describe('app-store', () => {
     })
 
     describe('prepareLoader', () => {
-      it('set the isLoaded value to false', async () => {
-        await appStore.prepareLoader()
+      it('should leave isLoaded false while a staggered load is still pending', async () => {
+        await appStore.prepareLoader([newFactory('Foo')], true)
         expect(appStore.isLoaded).toBe(false)
       })
 
@@ -409,11 +413,77 @@ describe('app-store', () => {
         const factory2 = newFactory('Foo2')
         factory2.hidden = true
 
-        await appStore.prepareLoader([factory, factory2])
+        await appStore.prepareLoader([factory, factory2], true)
 
         expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
           count: 2,
           shown: 1,
+        })
+      })
+
+      // The stagger paces the render of a whole plan and is only worth its cost when
+      // something was calculated. An already-calculated plan renders straight through.
+      describe('loader gating', () => {
+        let factories: Factory[]
+
+        beforeEach(() => {
+          factories = [newFactory('Foo'), newFactory('Foo2')]
+          vi.mocked(eventBus.emit).mockClear()
+        })
+
+        it('should not open the loader when nothing was calculated', async () => {
+          await appStore.prepareLoader(factories)
+
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          expect(appStore.isLoaded).toBe(true)
+          expect(appStore.getFactories()).toEqual(factories)
+        })
+
+        it('should open the loader when a recalculation was forced', async () => {
+          await appStore.prepareLoader(factories, true)
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+        })
+
+        it('should open the loader when a data migration had to calculate', async () => {
+          const migrated = newFactory('Migrated')
+          // #180's backfill: a missing powerProducers array forces a recalculation.
+          // @ts-ignore
+          delete migrated.powerProducers
+
+          await appStore.prepareLoader([migrated])
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 1, shown: 1 })
+        })
+
+        it('should take the full path when a previous load was interrupted', async () => {
+          localStorage.setItem('preLoadFactories', JSON.stringify([newFactory('Recovered')]))
+
+          await appStore.prepareLoader(factories)
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+          localStorage.removeItem('preLoadFactories')
+        })
+
+        // Completing synchronously is the proof: the staggered path is async, so it
+        // could not have finished by the time the call returns.
+        it('should render straight through when the loader asks and nothing was calculated', async () => {
+          await appStore.prepareLoader(factories)
+          appStore.isLoaded = false
+
+          appStore.startQueuedLoad()
+
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        it('should stagger when the loader asks and a recalculation was forced', async () => {
+          await appStore.prepareLoader(factories, true)
+          appStore.isLoaded = false
+
+          appStore.startQueuedLoad()
+
+          expect(appStore.isLoaded).toBe(false)
         })
       })
 
@@ -425,7 +495,8 @@ describe('app-store', () => {
           const factory = newFactory('Foo')
           const factory2 = newFactory('Foo2')
           factories = [factory, factory2]
-          await appStore.prepareLoader(factories)
+          // Forced, so the loader gate lets the staggered path run.
+          await appStore.prepareLoader(factories, true)
         })
 
         it('should load another list of factories if preLoadFactories contains them', async () => {
@@ -517,9 +588,11 @@ describe('app-store', () => {
 
           await appStore.beginLoading(factories)
 
-          // Fresh factories need no migration, so no recalc fires. The 7 events are:
-          // plannerShow(false), prepareForLoad ×2, incrementLoad ×2 (one per factory),
-          // the render increment, and loadingCompleted. Annoyingly we can't check the payload.
+          // Fresh factories need no migration, so prepareLoader's gate renders straight
+          // through. The 7 events are: plannerShow(false) and loadingCompleted from
+          // prepareLoader, then prepareForLoad, incrementLoad ×2 (one per factory), the
+          // render increment and loadingCompleted from the explicit beginLoading.
+          // Annoyingly we can't check the payload.
           expect(eventBus.emit).toHaveBeenCalledTimes(7)
           expect(eventBus.emit).toHaveBeenCalledWith('incrementLoad', {
             step: 'increment',
@@ -763,6 +836,175 @@ describe('app-store', () => {
         expect(appStore.getTab('12345')).toBeUndefined()
         // Expect the old tab to still exist
         expect(appStore.getCurrentTab()).toEqual(originalTab)
+      })
+    })
+  })
+
+  describe('tab lifecycle', () => {
+    beforeEach(() => {
+      localStorage.removeItem(TAB_SYNC_STATE_KEY)
+      localStorage.removeItem(TAB_MIRROR_META_KEY)
+      resetAppStore()
+    })
+
+    const syncedState = (revision: number, overrides: Partial<TabSyncState> = {}) => ({
+      kind: 'synced' as const,
+      shared: false,
+      role: 'owner' as const,
+      revision,
+      ...overrides,
+    })
+
+    it('should treat an unknown tab as local', () => {
+      expect(appStore.getTabState('nope')).toEqual({
+        kind: 'local',
+        shared: false,
+        role: 'owner',
+        revision: null,
+      })
+    })
+
+    it('should move a tab from local to synced and persist it outside factoryTabs', () => {
+      const tab = appStore.getCurrentTab()
+
+      appStore.setTabState(tab.id, syncedState(3))
+
+      expect(appStore.getTabState(tab.id).kind).toBe('synced')
+      expect(JSON.parse(localStorage.getItem(TAB_SYNC_STATE_KEY) ?? '{}')[tab.id].revision).toBe(3)
+      // The mirror keeps today's exact shape — nothing about sync leaks into what
+      // persistPlan writes, which is what makes a v6 rollback land on readable data.
+      expect(Object.keys(JSON.parse(JSON.stringify(tab)))).toEqual(['id', 'name', 'factories'])
+    })
+
+    it('should convert a revoked tab back to local without touching its content', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Kept'))
+      appStore.setTabState(tab.id, syncedState(3, { shared: true }))
+
+      appStore.markTabLocal(tab.id)
+
+      expect(appStore.getTabState(tab.id).kind).toBe('local')
+      expect(appStore.getTab(tab.id)?.factories.map(f => f.name)).toEqual(['Kept'])
+    })
+
+    it('should carry the sync state across a re-key', () => {
+      const tab = appStore.getCurrentTab()
+      const originalId = tab.id
+      appStore.setTabState(originalId, syncedState(7))
+
+      expect(appStore.rekeyTab(originalId, 'fresh-id')).toBe(true)
+
+      expect(appStore.getTab('fresh-id')).toBeDefined()
+      expect(appStore.getTabState('fresh-id').revision).toBe(7)
+      expect(appStore.getTabState(originalId).kind).toBe('local')
+    })
+
+    it('should refuse to re-key onto an id another tab already holds', () => {
+      const tab = appStore.getCurrentTab()
+      appStore.addTab({ id: 'taken', name: 'Other', factories: [] })
+
+      expect(appStore.rekeyTab(tab.id, 'taken')).toBe(false)
+    })
+
+    it('should not switch to a tab the room list brought in', () => {
+      const before = appStore.currentFactoryTabIndex
+
+      appStore.addTab({ id: 'remote', name: 'Remote', factories: [] }, { activate: false })
+
+      expect(appStore.currentFactoryTabIndex).toBe(before)
+      expect(appStore.getTab('remote')).toBeDefined()
+    })
+
+    it('should duplicate a tab as an independent local copy', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Original'))
+      appStore.setTabState(tab.id, syncedState(2, { shared: true }))
+
+      const copyId = appStore.duplicateTab(tab.id) as string
+      appStore.getTab(copyId)!.factories[0].name = 'Changed'
+
+      expect(appStore.getTab(copyId)?.name).toBe(`${tab.name} (local)`)
+      expect(appStore.getTabState(copyId).kind).toBe('local')
+      expect(tab.factories[0].name).toBe('Original')
+    })
+
+    it('should drop state for tabs the bar no longer holds', () => {
+      appStore.setTabState('ghost', syncedState(1))
+
+      appStore.pruneTabStates()
+
+      expect(appStore.getTabState('ghost').kind).toBe('local')
+    })
+
+    describe('instant render gating', () => {
+      const mirrorAt = (tabId: string, revision: number, appVersion = PROTOCOL_VERSION) => {
+        setTabMirrorMeta(tabId, { revision, appVersion, userTouchedIds: [], userTouchedFields: [] })
+      }
+
+      it('should render instantly when the mirror matches the server revision', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(true)
+      })
+
+      it('should not render instantly when the mirror is behind the server', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(5))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should not render instantly when the mirror was written by another app version', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4, '6.9')
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should never render a local tab instantly', () => {
+        const tab = appStore.getCurrentTab()
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should not render instantly when a previous load was interrupted', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+        localStorage.setItem('preLoadFactories', JSON.stringify([newFactory('Recovered')]))
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+
+        localStorage.removeItem('preLoadFactories')
+      })
+    })
+
+    describe('reloadTabFromMirror', () => {
+      it('should push server-applied data through the loader funnel', async () => {
+        const tab = appStore.getCurrentTab()
+        appStore.getFactories()
+        vi.spyOn(eventBus, 'emit')
+        // Whole records arriving from the server, exactly as a snapshot leaves them.
+        tab.factories = [newFactory('From the server')]
+
+        await appStore.reloadTabFromMirror(tab.id)
+
+        expect(eventBus.emit).toHaveBeenCalledWith('plannerShow', false)
+        expect(appStore.getFactories().map(f => f.name)).toEqual(['From the server'])
+      })
+
+      it('should leave a background tab alone until it is selected', async () => {
+        appStore.addTab({ id: 'background', name: 'Background', factories: [] }, { activate: false })
+        vi.spyOn(eventBus, 'emit')
+
+        await appStore.reloadTabFromMirror('background')
+
+        expect(eventBus.emit).not.toHaveBeenCalledWith('plannerShow', false)
       })
     })
   })

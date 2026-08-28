@@ -237,6 +237,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const engine = engines.get(roomId)
     if (!room || !engine) return false
     if (isSuppressed.value || room.status !== 'synced' || engine.pending) return false
+    // Mid-load the mirror is a half-filled array, and a diff built from it would
+    // read as "delete everything". The load's completion re-schedules the flush.
+    if (!appStore.isLoaded) return false
 
     const tab = getTab(roomId)
     if (!tab) return false
@@ -436,6 +439,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
     if (!rooms.value[roomId]) return
     rebase(roomId, contentFromSnapshot(snapshot), revision)
+    // A snapshot is a whole-plan replace, so it takes the same validation and
+    // loader path a plan load does rather than being written in behind it.
+    void appStore.reloadTabFromMirror(roomId)
   }
 
   const onUpToDate = (roomId: string, revision: number) => {
@@ -748,6 +754,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   eventBus.on('factoryEdited', onFactoryEdited)
   eventBus.on('factoryUpdated', scheduleFlush)
   eventBus.on('calculationsCompleted', scheduleFlush)
+  // The flush the load blocked; by now the mirror is a whole plan again.
+  eventBus.on('loadingCompleted', scheduleFlush)
 
   if (typeof window !== 'undefined') window.addEventListener('offline', onBrowserOffline)
 
@@ -755,6 +763,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     eventBus.off('factoryEdited', onFactoryEdited)
     eventBus.off('factoryUpdated', scheduleFlush)
     eventBus.off('calculationsCompleted', scheduleFlush)
+    eventBus.off('loadingCompleted', scheduleFlush)
     if (typeof window !== 'undefined') window.removeEventListener('offline', onBrowserOffline)
     clearTimeout(debounceTimer)
     unsubscribeMessage?.()

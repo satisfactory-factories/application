@@ -2,9 +2,17 @@
 import { defineStore } from 'pinia'
 import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
+import { PROTOCOL_VERSION } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
+import { readTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import {
+  LOCAL_TAB_STATE,
+  readTabSyncStates,
+  writeTabSyncStates,
+} from '@/sync/tab-sync-state'
+import type { TabSyncState, TabSyncStateMap } from '@/sync/tab-sync-state'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
@@ -55,6 +63,11 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const currentFactoryTab = ref(factoryTabs.value[currentFactoryTabIndex.value])
+
+  // What each tab *is* — local, synced or joined. Cached across reloads so the tab
+  // bar doesn't flash every plan as local until `GET /rooms` answers; the room list
+  // is still the authority and overwrites this on every refresh.
+  const tabSyncStates = ref<TabSyncStateMap>(readTabSyncStates())
 
   const factories = computed({
     get () {
@@ -108,6 +121,11 @@ export const useAppStore = defineStore('app', () => {
 
       // Update localstorage with the tab index
       localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
+
+      if (canRenderInstantly(currentFactoryTab.value.id)) {
+        renderMirrorInstantly()
+        return
+      }
 
       prepareLoader(currentFactoryTab.value.factories)
     })
@@ -221,6 +239,49 @@ export const useAppStore = defineStore('app', () => {
   const loadPause = (ms: number) =>
     new Promise(resolve => setTimeout(resolve, import.meta.env.MODE === 'test' ? 0 : ms))
 
+  // ==== LOADER GATING
+  // The 75ms-per-factory stagger is not cosmetic: it paces the synchronous render
+  // of the whole list so a big plan doesn't freeze the tab. It only earns that cost
+  // when a calculation actually happened. A plan that is already calculated renders
+  // straight through, and a tab whose mirror the sync engine has proven current
+  // skips even the validation pass.
+  let lastLoadCalculated = false
+
+  // A previous load died mid-way and beginLoading holds the recovery copy, so the
+  // full path has to run whatever the gate says.
+  const hasInterruptedLoad = (): boolean => {
+    const stored = localStorage.getItem('preLoadFactories')
+    return stored !== null && stored !== '[]'
+  }
+
+  const shouldStagger = (): boolean => lastLoadCalculated || hasInterruptedLoad()
+
+  /** True when the mirror is provably the server's current state, written by this app version. */
+  const canRenderInstantly = (tabId: string): boolean => {
+    const state = tabSyncStates.value[tabId]
+    if (!state || state.kind === 'local' || state.revision === null) return false
+    if (hasInterruptedLoad()) return false
+
+    const meta = readTabMirrorMeta()[tabId]
+    return meta !== undefined &&
+      meta.revision === state.revision &&
+      meta.appVersion === PROTOCOL_VERSION
+  }
+
+  /** No validation, no migration, no calculation, no overlay: the mirror is already right. */
+  const renderMirrorInstantly = () => {
+    console.log('appStore: renderMirrorInstantly: mirror matches the server revision, rendering straight through.')
+    const tab = currentFactoryTab.value
+    // Aliasing the live array would make "previous" track "current" and corrupt
+    // the in-place diff commit in calculateFactories.
+    tab.factories.forEach(factory => {
+      factory.previousInputs = factory.inputs.map(input => ({ ...input }))
+    })
+    inited.value = true
+    lastLoadCalculated = false
+    loadingCompleted()
+  }
+
   const prepareLoader = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
     const factoriesToLoad = newFactories ?? factories.value
@@ -235,6 +296,12 @@ export const useAppStore = defineStore('app', () => {
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)
 
+    if (!shouldStagger()) {
+      console.log('appStore: prepareLoader: Nothing was calculated, rendering straight through.')
+      loadingCompleted()
+      return
+    }
+
     // Tell loader to prepare for load
     console.log('appStore: prepareLoader: Factories set, starting load process.')
     eventBus.emit('prepareForLoad', {
@@ -243,12 +310,34 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
-  // When the loader is ready, we will receive an event saying to initiate the load.
-  eventBus.on('readyForData', () => {
+  /**
+   * Server-applied whole-plan data (a join snapshot, an offline-exit rebase) is a
+   * load like any other, so it goes through the same funnel instead of bypassing
+   * it. Background tabs re-render when they are next selected.
+   */
+  const reloadTabFromMirror = async (tabId: string) => {
+    if (currentFactoryTab.value?.id !== tabId) return
+    await prepareLoader(currentFactoryTab.value.factories)
+  }
+
+  /** The loader overlay is up and asking for data; the gate decides what it gets. */
+  const startQueuedLoad = () => {
     console.log('appStore: Received readyForData event, triggering load.')
 
-    beginLoading(factories.value, true)
-  })
+    // Reading the getter inits the plan on the first load, which is what decides
+    // whether the stagger is owed.
+    const plan = factories.value
+    if (!shouldStagger()) {
+      console.log('appStore: readyForData: Nothing was calculated, rendering straight through.')
+      loadingCompleted()
+      return
+    }
+
+    beginLoading(plan, true)
+  }
+
+  // When the loader is ready, we will receive an event saying to initiate the load.
+  eventBus.on('readyForData', startQueuedLoad)
 
   const beginLoading = async (newFactories: Factory[], loadMode = false) => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
@@ -525,6 +614,9 @@ export const useAppStore = defineStore('app', () => {
       calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
     }
 
+    // What the loader gate reads: the stagger paces a render that followed work.
+    lastLoadCalculated = needsCalculation
+
     console.log('appStore: initFactories - completed')
 
     inited.value = true
@@ -571,6 +663,7 @@ export const useAppStore = defineStore('app', () => {
     if (forceRecalc) {
       // Trigger calculations
       calculateFactories(newFactories, gameData, { origin: 'recalculate' })
+      lastLoadCalculated = true
     }
 
     // For each factory, snapshot the current inputs as the previous inputs. Must be a
@@ -648,23 +741,28 @@ export const useAppStore = defineStore('app', () => {
     name = 'New Tab',
     factories = [],
     powerTarget,
-  } = {} as Partial<FactoryTab>) => {
+    groups,
+  } = {} as Partial<FactoryTab>, { activate = true }: { activate?: boolean } = {}) => {
     factoryTabs.value.push({
       id,
       name,
       factories,
       // Preserve the plan's power target when importing a tab (e.g. from a share link).
       powerTarget,
+      groups,
     })
 
-    currentFactoryTabIndex.value = factoryTabs.value.length - 1
+    // A tab the room list brought in shouldn't yank the user off what they were doing.
+    if (activate) currentFactoryTabIndex.value = factoryTabs.value.length - 1
     schedulePersist()
+    return id
   }
 
   const removeCurrentTab = async () => {
     if (factoryTabs.value.length === 1) return
 
-    factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
+    const [removed] = factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
+    if (removed) markTabLocal(removed.id)
     currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
     schedulePersist()
 
@@ -672,7 +770,78 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: removeCurrentTab: Tab removed, preparing loader.')
     prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
   }
+
+  const renameTab = (tabId: string, name: string) => {
+    const tab = getTab(tabId)
+    if (!tab || name === '') return false
+    tab.name = name
+    schedulePersist()
+    return true
+  }
+
+  /** An independent local copy of a tab, whatever the original's state. */
+  const duplicateTab = (tabId: string): string | null => {
+    const tab = getTab(tabId)
+    if (!tab) return null
+
+    const copy = JSON.parse(JSON.stringify(toRaw(tab))) as FactoryTab
+    return addTab({
+      name: `${tab.name} (local)`,
+      factories: copy.factories,
+      powerTarget: copy.powerTarget,
+      groups: copy.groups,
+    })
+  }
+
+  /**
+   * A tab's UUID is its room id, so adoption re-keys it when the server says that
+   * id belongs to someone else. Nothing else about the tab changes.
+   */
+  const rekeyTab = (tabId: string, newTabId: string): boolean => {
+    const tab = getTab(tabId)
+    if (!tab || getTab(newTabId)) return false
+
+    tab.id = newTabId
+    const state = tabSyncStates.value[tabId]
+    if (state) {
+      tabSyncStates.value[newTabId] = state
+      delete tabSyncStates.value[tabId]
+      persistTabSyncStates()
+    }
+    schedulePersist()
+    return true
+  }
   // ==== END TAB MANAGEMENT
+
+  // ==== TAB LIFECYCLE
+  const persistTabSyncStates = () => writeTabSyncStates(tabSyncStates.value)
+
+  const getTabState = (tabId: string): TabSyncState => tabSyncStates.value[tabId] ?? LOCAL_TAB_STATE
+
+  const setTabState = (tabId: string, patch: Partial<TabSyncState>) => {
+    tabSyncStates.value[tabId] = { ...getTabState(tabId), ...patch }
+    persistTabSyncStates()
+  }
+
+  /** Revocation, logout and deletion all land here: the content stays, the link dies. */
+  const markTabLocal = (tabId: string) => {
+    if (!(tabId in tabSyncStates.value)) return
+    delete tabSyncStates.value[tabId]
+    persistTabSyncStates()
+  }
+
+  /** Drops state for tabs the bar no longer holds, so the map cannot grow forever. */
+  const pruneTabStates = () => {
+    const known = new Set(factoryTabs.value.map(tab => tab.id))
+    let dropped = false
+    for (const tabId of Object.keys(tabSyncStates.value)) {
+      if (known.has(tabId)) continue
+      delete tabSyncStates.value[tabId]
+      dropped = true
+    }
+    if (dropped) persistTabSyncStates()
+  }
+  // ==== END TAB LIFECYCLE
 
   const getSatisfactionBreakdowns = () => {
     return showSatisfactionBreakdowns
@@ -746,17 +915,30 @@ export const useAppStore = defineStore('app', () => {
     getTabs,
     addTab,
     removeCurrentTab,
+    renameTab,
+    duplicateTab,
+    rekeyTab,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
     prepareLoader,
+    reloadTabFromMirror,
+    canRenderInstantly,
     forceCalculation,
     // Sync writes into the mirror directly, so it has to ask for the save itself.
     schedulePersist,
+
+    // Tab lifecycle
+    tabSyncStates,
+    getTabState,
+    setTabState,
+    markTabLocal,
+    pruneTabStates,
 
     // Testing
     getTab,
     getCurrentTab,
     beginLoading,
+    startQueuedLoad,
     inited,
   }
 })
