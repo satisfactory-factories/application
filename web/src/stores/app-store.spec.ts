@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { PROTOCOL_VERSION } from 'common'
 import { Factory, FactoryPowerChangeType, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { setTabMirrorMeta, TAB_MIRROR_META_KEY } from '@/sync/tab-mirror-meta'
@@ -808,6 +809,71 @@ describe('app-store', () => {
         expect(appStore.getCurrentTab().powerTarget).toBe(5000)
       })
     })
+    describe('reorderTabs', () => {
+      const threeTabs = () => {
+        appStore.addTab({ id: 'b', name: 'B', factories: [] }, { activate: false })
+        appStore.addTab({ id: 'c', name: 'C', factories: [] }, { activate: false })
+        return [appStore.getTabs()[0].id, 'b', 'c']
+      }
+
+      it('should lay the bar out in the order given', () => {
+        const [first] = threeTabs()
+
+        expect(appStore.reorderTabs(['c', first, 'b'])).toBe(true)
+        expect(appStore.getTabs().map(tab => tab.id)).toEqual(['c', first, 'b'])
+      })
+
+      it('should keep the tab on screen on screen, at its new index', () => {
+        const [first] = threeTabs()
+        appStore.activateTab('b')
+
+        appStore.reorderTabs(['b', 'c', first])
+
+        expect(appStore.currentFactoryTabIndex).toBe(0)
+        expect(appStore.getCurrentTab().id).toBe('b')
+      })
+
+      it('should persist the new order to the plan mirror', () => {
+        const [first] = threeTabs()
+        vi.useFakeTimers()
+
+        appStore.reorderTabs(['c', 'b', first])
+        vi.runAllTimers()
+        vi.useRealTimers()
+
+        const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+        expect(stored.map(tab => tab.id)).toEqual(['c', 'b', first])
+      })
+
+      // The index watcher drives the loader, and a reorder moves the index without
+      // changing what is rendered.
+      it('should not reload the plan the moved tab is already showing', async () => {
+        threeTabs()
+        appStore.activateTab('b')
+        await nextTick()
+
+        // eventBus may already be spied by an earlier test, and spyOn hands back that
+        // same mock: only a clear separates the switch's emits from the reorder's.
+        const emit = vi.spyOn(eventBus, 'emit')
+        emit.mockClear()
+
+        appStore.reorderTabs(['b', 'c', appStore.getTabs()[0].id])
+        await nextTick()
+
+        expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
+      })
+
+      it('should refuse a partial, padded or duplicated order and change nothing', () => {
+        const [first] = threeTabs()
+        const before = appStore.getTabs().map(tab => tab.id)
+
+        expect(appStore.reorderTabs(['c', 'b'])).toBe(false)
+        expect(appStore.reorderTabs(['c', 'b', first, 'ghost'])).toBe(false)
+        expect(appStore.reorderTabs(['b', 'b', 'c'])).toBe(false)
+        expect(appStore.getTabs().map(tab => tab.id)).toEqual(before)
+      })
+    })
+
     describe('removeCurrentTab', () => {
       beforeEach(() => {
         // Reset the app store each time

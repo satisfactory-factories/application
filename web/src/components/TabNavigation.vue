@@ -12,47 +12,68 @@
         <v-tabs
           v-model="appStore.currentFactoryTabIndex"
         >
-          <v-tab
-            v-for="(item, index) in appStore.getTabs()"
-            :key="item.id"
-            class="text-none"
-            :ripple="!isCurrentTab(index)"
-            :slim="isCurrentTab(index)"
-            :value="index"
+          <!--
+            A plain wrapper inside the slide group's flex row, so the tabs stay its
+            flex items and Vuetify's layout is untouched. Sortable only ever matches
+            [data-draggable], which vuedraggable stamps on each item's root element,
+            so the item here has to stay a single-root component (v-tab is one).
+            `title` is not in vuedraggable's html-attribute allowlist and would be
+            eaten as a Sortable option, hence component-data.
+          -->
+          <draggable
+            :animation="150"
+            class="d-flex h-100 tab-drag"
+            :class="{ 'drag-enabled': !dragDisabled }"
+            :component-data="{ title: orderIsFrozen ? DRAG_OFFLINE_HINT : undefined }"
+            :disabled="dragDisabled"
+            ghost-class="tab-ghost"
+            item-key="id"
+            :model-value="appStore.getTabs()"
+            @change="onTabOrderChange"
           >
-            <!--
-              FontAwesome swaps each <i> for an <svg> and detaches the element Vue
-              patches, so the icon has to be swapped by toggling a wrapper Vue owns.
-            -->
-            <span class="tab-state mr-2" :title="stateLabel(item.id)">
-              <span v-if="kindOf(item.id) === 'local'"><i class="fas fa-desktop" /></span>
-              <span v-else-if="kindOf(item.id) === 'collaborative'"><i class="fas fa-users" /></span>
-              <span v-else><i class="fas fa-user" /></span>
-              <!-- The server already sends the occupancy count; showing it costs nothing. -->
-              <span v-if="othersOn(item.id) > 0" class="ml-1" data-testid="tab-presence">
-                {{ othersOn(item.id) + 1 }}
-              </span>
-            </span>
-            <input
-              v-if="isCurrentTab(index) && isEditingName"
-              v-model="currentTabName"
-              class="pa-1 rounded border bg-grey-darken-2"
-              @keyup.enter="onClickEditTabName"
-            >
-            <span v-else>
-              {{ item.name }}
-            </span>
-            <v-btn
-              v-if="isCurrentTab(index) && canRename"
-              :key="`${isEditingName}`"
-              class="ml-2 tab-action"
-              :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
-              :loading="renaming"
-              size="x-small"
-              variant="text"
-              @click="onClickEditTabName"
-            />
-          </v-tab>
+            <template #item="{ element: item, index }">
+              <v-tab
+                class="text-none"
+                data-testid="factory-tab"
+                :ripple="!isCurrentTab(index)"
+                :slim="isCurrentTab(index)"
+                :value="index"
+              >
+                <!--
+                  FontAwesome swaps each <i> for an <svg> and detaches the element Vue
+                  patches, so the icon has to be swapped by toggling a wrapper Vue owns.
+                -->
+                <span class="tab-state mr-2" :title="stateLabel(item.id)">
+                  <span v-if="kindOf(item.id) === 'local'"><i class="fas fa-desktop" /></span>
+                  <span v-else-if="kindOf(item.id) === 'collaborative'"><i class="fas fa-users" /></span>
+                  <span v-else><i class="fas fa-user" /></span>
+                  <!-- The server already sends the occupancy count; showing it costs nothing. -->
+                  <span v-if="othersOn(item.id) > 0" class="ml-1" data-testid="tab-presence">
+                    {{ othersOn(item.id) + 1 }}
+                  </span>
+                </span>
+                <input
+                  v-if="isCurrentTab(index) && isEditingName"
+                  v-model="currentTabName"
+                  class="pa-1 rounded border bg-grey-darken-2"
+                  @keyup.enter="onClickEditTabName"
+                >
+                <span v-else>
+                  {{ item.name }}
+                </span>
+                <v-btn
+                  v-if="isCurrentTab(index) && canRename"
+                  :key="`${isEditingName}`"
+                  class="ml-2 tab-action"
+                  :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
+                  :loading="renaming"
+                  size="x-small"
+                  variant="text"
+                  @click="onClickEditTabName"
+                />
+              </v-tab>
+            </template>
+          </draggable>
         </v-tabs>
         <!-- Kept a direct child of the strip: browser checks find it as `:scope > button.v-btn--icon`. -->
         <v-btn
@@ -108,6 +129,7 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import { useDisplay } from 'vuetify'
+  import draggable from 'vuedraggable'
   import NewTabDialog from '@/components/sync/NewTabDialog.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
@@ -118,6 +140,13 @@
 
   /** Device-shaped, deliberately not synced: it is about this browser's user. */
   const NUDGE_KEY = 'newTabChooserSeen'
+
+  /**
+   * Offline mode makes no requests at all, and the room list is authoritative for
+   * the synced tabs' order — so an order dragged offline would be silently undone
+   * by the first refresh after coming back. Refusing the drag is the honest half.
+   */
+  const DRAG_OFFLINE_HINT = 'Tab order cannot be changed in offline mode.'
 
   const appStore = useAppStore()
   const roomsStore = useRoomsStore()
@@ -160,6 +189,27 @@
   }
 
   const canRename = computed(() => roomsStore.canRename(currentTabId.value))
+
+  const syncedTabCount = computed(() =>
+    appStore.getTabs().filter(tab => appStore.getTabState(tab.id).kind === 'synced').length)
+
+  // Offline blocks exactly what offline would lose: a drag that changes the synced
+  // tabs' order relative to each other. Everything else survives a refresh untouched.
+  const orderIsFrozen = computed(() => roomSync.isSuppressed && syncedTabCount.value > 1)
+  const dragDisabled = computed(() => appStore.getTabs().length < 2 || orderIsFrozen.value)
+
+  const onTabOrderChange = async (event: { moved?: { newIndex: number, oldIndex: number } }) => {
+    if (!event.moved) return
+
+    const orderedIds = appStore.getTabs().map(tab => tab.id)
+    const [tabId] = orderedIds.splice(event.moved.oldIndex, 1)
+    orderedIds.splice(event.moved.newIndex, 0, tabId)
+
+    const result = await roomsStore.reorderTabs(orderedIds)
+    if (result !== true) {
+      eventBus.emit('toast', { message: `Could not save the tab order: ${result}`, type: 'error' })
+    }
+  }
 
   const onClickEditTabName = async () => {
     if (!isEditingName.value) {
@@ -283,6 +333,17 @@
 .tab-state {
   font-size: 0.8em;
   opacity: 0.75;
+}
+
+// The whole tab is the drag handle, so it is the tab that shows the affordance.
+.tab-drag.drag-enabled :deep(.v-tab) {
+  cursor: grab;
+}
+
+// Where the tab would land: dimmed rather than coloured, so the bar stays readable.
+.tab-drag :deep(.tab-ghost) {
+  background-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.5;
 }
 
 .tab-strip {

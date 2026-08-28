@@ -29,6 +29,7 @@ vi.mock('@/api/client', async importOriginal => {
     renameRoom: vi.fn(),
     deleteRoom: vi.fn(),
     leaveRoom: vi.fn(),
+    reorderRooms: vi.fn(),
     legacyAutoImport: vi.fn(),
   }
 })
@@ -392,6 +393,92 @@ describe('rooms-store', () => {
     })
   })
 
+  describe('tab order', () => {
+    /** A bar of "local, synced A, synced B", which is the interesting shape. */
+    const mixedBar = async () => {
+      const local = localTab('Local')
+      appStore.addTab({ id: 'room-a', name: 'A', factories: [] }, { activate: false })
+      appStore.addTab({ id: 'room-b', name: 'B', factories: [] }, { activate: false })
+      listReturns([
+        entry({ roomId: 'room-a', name: 'A', order: 0 }),
+        entry({ roomId: 'room-b', name: 'B', order: 1 }),
+      ])
+      await store.refresh()
+      return local.id
+    }
+
+    const barIds = () => appStore.getTabs().map(tab => tab.id)
+
+    it('pushes only the synced tabs, in the sequence they are shown', async () => {
+      const localId = await mixedBar()
+      vi.mocked(api.reorderRooms).mockResolvedValue({
+        roomsRevision: 2,
+        rooms: [entry({ roomId: 'room-b', name: 'B', order: 0 }), entry({ roomId: 'room-a', name: 'A', order: 1 })],
+      })
+
+      expect(await store.reorderTabs([localId, 'room-b', 'room-a'])).toBe(true)
+
+      expect(api.reorderRooms).toHaveBeenCalledWith(['room-b', 'room-a'])
+      expect(barIds()).toEqual([localId, 'room-b', 'room-a'])
+      expect(store.roomsRevision).toBe(2)
+    })
+
+    it('leaves a local tab where the drag put it, whatever the server says', async () => {
+      const localId = await mixedBar()
+      vi.mocked(api.reorderRooms).mockResolvedValue({
+        roomsRevision: 2,
+        rooms: [entry({ roomId: 'room-b', name: 'B', order: 0 }), entry({ roomId: 'room-a', name: 'A', order: 1 })],
+      })
+
+      await store.reorderTabs(['room-b', localId, 'room-a'])
+
+      // The response is re-applied through the same interleave, so the local tab
+      // must come back out of it in the slot the drag gave it.
+      expect(barIds()).toEqual(['room-b', localId, 'room-a'])
+    })
+
+    it('says nothing to the server when the drag moved only local tabs', async () => {
+      const localId = await mixedBar()
+
+      expect(await store.reorderTabs(['room-a', localId, 'room-b'])).toBe(true)
+
+      expect(api.reorderRooms).not.toHaveBeenCalled()
+      expect(barIds()).toEqual(['room-a', localId, 'room-b'])
+    })
+
+    it('refuses an order that is not the bar it can see', async () => {
+      await mixedBar()
+      const before = barIds()
+
+      expect(await store.reorderTabs(['room-b', 'room-a'])).toBe('That order does not match the tabs on screen.')
+
+      expect(api.reorderRooms).not.toHaveBeenCalled()
+      expect(barIds()).toEqual(before)
+    })
+
+    it('puts the bar back when the push fails', async () => {
+      const localId = await mixedBar()
+      const before = barIds()
+      vi.mocked(api.reorderRooms).mockRejectedValue(new ApiError(404, 'No such room'))
+
+      expect(await store.reorderTabs([localId, 'room-b', 'room-a'])).toBe('No such room')
+
+      expect(barIds()).toEqual(before)
+    })
+
+    it('takes the order another device set, without moving a local tab', async () => {
+      const localId = await mixedBar()
+
+      listReturns([
+        entry({ roomId: 'room-b', name: 'B', order: 0 }),
+        entry({ roomId: 'room-a', name: 'A', order: 1 }),
+      ], 3)
+      await store.refresh()
+
+      expect(barIds()).toEqual([localId, 'room-b', 'room-a'])
+    })
+  })
+
   describe('removing a tab', () => {
     it('deletes the room when the user owns it', async () => {
       const tab = localTab('Mine')
@@ -645,6 +732,33 @@ describe('rooms-store', () => {
         api.unshareRoom, api.setRoomPassword, api.removeRoomPassword, api.joinRoom]) {
         expect(call).not.toHaveBeenCalled()
       }
+    })
+
+    // The room list is authoritative for synced order and is refetched on the way
+    // out of offline mode, so an order dragged here would be undone seconds later.
+    it('refuses a reorder of the synced tabs and puts the bar back', async () => {
+      const tab = localTab('Mine')
+      appStore.addTab({ id: 'room-a', name: 'A', factories: [] }, { activate: false })
+      appStore.addTab({ id: 'room-b', name: 'B', factories: [] }, { activate: false })
+      store.entries['room-a'] = entry({ roomId: 'room-a', order: 0 })
+      store.entries['room-b'] = entry({ roomId: 'room-b', order: 1 })
+
+      expect(await store.reorderTabs([tab.id, 'room-b', 'room-a'])).toBe(OFFLINE_MESSAGE)
+
+      expect(api.reorderRooms).not.toHaveBeenCalled()
+      expect(appStore.getTabs().map(t => t.id)).toEqual([tab.id, 'room-a', 'room-b'])
+    })
+
+    // Nothing the server tracks changed, so nothing can undo it on the way back.
+    it('still moves a local tab about, which the server order cannot clobber', async () => {
+      const tab = localTab('Mine')
+      appStore.addTab({ id: 'room-a', name: 'A', factories: [] }, { activate: false })
+      store.entries['room-a'] = entry({ roomId: 'room-a', order: 0 })
+
+      expect(await store.reorderTabs(['room-a', tab.id])).toBe(true)
+
+      expect(api.reorderRooms).not.toHaveBeenCalled()
+      expect(appStore.getTabs().map(t => t.id)).toEqual(['room-a', tab.id])
     })
 
     it('still renames a local tab, which needs nothing from the server', async () => {

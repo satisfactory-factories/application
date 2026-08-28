@@ -1,0 +1,158 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import draggable from 'vuedraggable'
+import type { RoomListEntry } from 'common'
+import TabNavigation from './TabNavigation.vue'
+import vuetify from '@/plugins/vuetify'
+import * as api from '@/api/client'
+import { ApiError } from '@/api/client'
+import { useAppStore } from '@/stores/app-store'
+import { useAuthStore } from '@/stores/auth-store'
+import { useRoomSyncStore } from '@/stores/room-sync-store'
+import { useRoomsStore } from '@/stores/rooms-store'
+import eventBus from '@/utils/eventBus'
+
+vi.mock('@/api/client', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/api/client')>()
+  return { ...actual, listRooms: vi.fn(), reorderRooms: vi.fn() }
+})
+
+const entry = (roomId: string, name: string, order: number): RoomListEntry => ({
+  roomId,
+  name,
+  slug: null,
+  shared: false,
+  hasPassword: false,
+  revision: 1,
+  role: 'owner',
+  order,
+})
+
+describe('Component: TabNavigation', () => {
+  let appStore: ReturnType<typeof useAppStore>
+  let roomsStore: ReturnType<typeof useRoomsStore>
+  let roomSync: ReturnType<typeof useRoomSyncStore>
+
+  /** The bar the specs drag on: one local tab, then two synced rooms. */
+  const mixedBar = async () => {
+    const local = appStore.getCurrentTab()
+    local.name = 'Local'
+    appStore.addTab({ id: 'room-a', name: 'A', factories: [] }, { activate: false })
+    appStore.addTab({ id: 'room-b', name: 'B', factories: [] }, { activate: false })
+    vi.mocked(api.listRooms).mockResolvedValue({
+      roomsRevision: 1,
+      rooms: [entry('room-a', 'A', 0), entry('room-b', 'B', 1)],
+    })
+    await roomsStore.refresh()
+    return local.id
+  }
+
+  // Sortable has already moved the DOM by the time it reports; the component's job
+  // is to make the model and the server agree with it.
+  const drag = (wrapper: VueWrapper, oldIndex: number, newIndex: number) =>
+    wrapper.findComponent(draggable).vm.$emit('change', { moved: { oldIndex, newIndex } })
+
+  const render = () => mount(TabNavigation, { global: { plugins: [vuetify] } })
+
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+
+    appStore = useAppStore()
+    appStore.isLoaded = true
+    roomSync = useRoomSyncStore()
+    roomsStore = useRoomsStore()
+
+    const authStore = useAuthStore()
+    authStore.setToken('token')
+    authStore.setLoggedInUser('pioneer')
+
+    vi.mocked(api.listRooms).mockResolvedValue({ roomsRevision: 1, rooms: [] })
+  })
+
+  afterEach(() => {
+    roomsStore.dispose()
+    roomSync.dispose()
+  })
+
+  it('renders one tab per tab in the bar', async () => {
+    await mixedBar()
+    const wrapper = render()
+
+    expect(wrapper.findAll('[data-testid="factory-tab"]').map(tab => tab.text()))
+      .toEqual(['Local', 'A', 'B'])
+  })
+
+  // Sortable is configured to match [data-draggable] only, and vuedraggable stamps
+  // that on the item's root element — which a multi-root item would silently drop.
+  it('marks every tab as a Sortable item', async () => {
+    await mixedBar()
+    const wrapper = render()
+
+    expect(wrapper.findAll('.tab-drag > [data-draggable]')).toHaveLength(3)
+  })
+
+  it('reorders the bar and pushes the new synced order to the server', async () => {
+    const localId = await mixedBar()
+    vi.mocked(api.reorderRooms).mockResolvedValue({
+      roomsRevision: 2,
+      rooms: [entry('room-b', 'B', 0), entry('room-a', 'A', 1)],
+    })
+    const wrapper = render()
+
+    drag(wrapper, 2, 1)
+    await flushPromises()
+
+    expect(api.reorderRooms).toHaveBeenCalledWith(['room-b', 'room-a'])
+    expect(appStore.getTabs().map(tab => tab.id)).toEqual([localId, 'room-b', 'room-a'])
+  })
+
+  it('leaves the bar alone for a drag that moved nothing', async () => {
+    await mixedBar()
+    const wrapper = render()
+
+    wrapper.findComponent(draggable).vm.$emit('change', {})
+    await flushPromises()
+
+    expect(api.reorderRooms).not.toHaveBeenCalled()
+  })
+
+  it('puts the bar back and says so when the push fails', async () => {
+    const localId = await mixedBar()
+    vi.mocked(api.reorderRooms).mockRejectedValue(new ApiError(500, 'Server exploded'))
+    const emit = vi.spyOn(eventBus, 'emit')
+    emit.mockClear()
+    const wrapper = render()
+
+    drag(wrapper, 2, 1)
+    await flushPromises()
+
+    expect(appStore.getTabs().map(tab => tab.id)).toEqual([localId, 'room-a', 'room-b'])
+    expect(emit).toHaveBeenCalledWith('toast', {
+      message: 'Could not save the tab order: Server exploded',
+      type: 'error',
+    })
+  })
+
+  it('refuses the drag in offline mode, and says why', async () => {
+    await mixedBar()
+    roomSync.enterOffline()
+    const wrapper = render()
+
+    const strip = wrapper.find('.tab-drag')
+    expect(strip.classes()).not.toContain('drag-enabled')
+    expect(strip.attributes('title')).toBe('Tab order cannot be changed in offline mode.')
+  })
+
+  it('allows the drag offline when there is nothing on the server to fight over', async () => {
+    appStore.addTab({ id: 'second', name: 'Second', factories: [] }, { activate: false })
+    roomSync.enterOffline()
+    const wrapper = render()
+
+    const strip = wrapper.find('.tab-drag')
+    expect(strip.classes()).toContain('drag-enabled')
+    expect(strip.attributes('title')).toBeUndefined()
+  })
+})

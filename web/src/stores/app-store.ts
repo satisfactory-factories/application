@@ -116,10 +116,15 @@ export const useAppStore = defineStore('app', () => {
   watch(currentFactoryTabIndex, () => {
     afterPaint(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
+      const sameTab = factoryTabs.value[currentFactoryTabIndex.value]?.id === currentFactoryTab.value?.id
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
 
       // Update localstorage with the tab index
       localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
+
+      // A reorder changes the index without changing which tab is on screen, and
+      // reloading the plan already rendered would only flash the loader over it.
+      if (sameTab) return
 
       if (canRenderInstantly(currentFactoryTab.value.id)) {
         renderMirrorInstantly()
@@ -797,6 +802,32 @@ export const useAppStore = defineStore('app', () => {
   }
 
   /**
+   * Lays the bar out in `orderedIds`, which must be a permutation of the tabs it
+   * already holds — a partial or unknown order is refused rather than applied to
+   * half the bar. The tab on screen stays on screen; only its index moves.
+   */
+  const reorderTabs = (orderedIds: string[]): boolean => {
+    const byId = new Map(factoryTabs.value.map(tab => [tab.id, tab]))
+    if (orderedIds.length !== byId.size || new Set(orderedIds).size !== orderedIds.length) return false
+
+    const ordered = orderedIds
+      .map(tabId => byId.get(tabId))
+      .filter((tab): tab is FactoryTab => tab !== undefined)
+    if (ordered.length !== byId.size) return false
+
+    // The index is what the tab bar selects on, and `currentFactoryTab` lags it by
+    // a tick during a switch, so the selection is the thing to keep pinned.
+    const selectedId = factoryTabs.value[currentFactoryTabIndex.value]?.id
+    // Spliced rather than reassigned: the array's identity is watched elsewhere.
+    factoryTabs.value.splice(0, factoryTabs.value.length, ...ordered)
+
+    const index = ordered.findIndex(tab => tab.id === selectedId)
+    if (index !== -1) currentFactoryTabIndex.value = index
+    schedulePersist()
+    return true
+  }
+
+  /**
    * A tab's UUID is its room id, so adoption re-keys it when the server says that
    * id belongs to someone else. Nothing else about the tab changes.
    */
@@ -920,6 +951,7 @@ export const useAppStore = defineStore('app', () => {
     renameTab,
     duplicateTab,
     rekeyTab,
+    reorderTabs,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
     prepareLoader,

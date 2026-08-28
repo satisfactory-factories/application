@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { removeTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import { interleaveTabOrder, sameOrder, syncedTabOrder } from '@/sync/tab-order'
 import { readVisitorTokens, removeVisitorToken } from '@/sync/visitor-tokens'
 import eventBus from '@/utils/eventBus'
 
@@ -99,10 +100,21 @@ export const useRoomsStore = defineStore('rooms', () => {
       roomSync.trackRoom(entry.roomId)
     }
 
+    applyServerOrder(list)
+
     // Both per-tab sidecars are swept against the live tab list here; nothing else
     // runs regularly enough to stop them growing for the lifetime of the browser.
     appStore.pruneTabStates()
     roomSync.pruneMirrorMeta()
+  }
+
+  /** Membership order is per user, so it reaches this device with the room list. */
+  const applyServerOrder = (list: RoomListEntry[]) => {
+    const known = new Set(list.map(entry => entry.roomId))
+    const serverOrder = [...list].sort((a, b) => a.order - b.order).map(entry => entry.roomId)
+    const tabIds = appStore.getTabs().map(tab => tab.id)
+
+    appStore.reorderTabs(interleaveTabOrder(tabIds, serverOrder, tabId => known.has(tabId)))
   }
 
   // ===== Revocation =====
@@ -327,6 +339,42 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   const duplicateAsLocal = (tabId: string): string | null => appStore.duplicateTab(tabId)
+
+  /**
+   * Lays the bar out as dragged, then pushes the synced half to the account so the
+   * user's other devices pick it up. Local tabs have no row on the server to hold
+   * an index, so they are simply left out of the push; `tab-order.ts` states how
+   * the two halves meet again when a server order comes back.
+   */
+  const reorderTabs = async (orderedIds: string[]): Promise<true | string> => {
+    const previous = appStore.getTabs().map(tab => tab.id)
+    if (!appStore.reorderTabs(orderedIds)) return 'That order does not match the tabs on screen.'
+
+    const synced = syncedTabOrder(orderedIds, tabId => tabId in entries.value)
+    const stored = Object.values(entries.value)
+      .sort((a, b) => a.order - b.order)
+      .map(entry => entry.roomId)
+    // Dragging local tabs about changes nothing the server tracks, and a pointless
+    // bump would make every other device refetch its list.
+    if (sameOrder(synced, stored)) return true
+
+    const offline = blocked()
+    if (offline) {
+      appStore.reorderTabs(previous)
+      return offline
+    }
+
+    try {
+      const response = await api.reorderRooms(synced)
+      roomsRevision.value = response.roomsRevision
+      applyRoomList(response.rooms)
+      return true
+    } catch (error) {
+      appStore.reorderTabs(previous)
+      lastError.value = describe(error)
+      return describe(error)
+    }
+  }
 
   /** Owner deletes the room for everyone; a member only drops their own membership. */
   const removeTab = async (tabId: string): Promise<true | string> => {
@@ -578,6 +626,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     canRename,
     renameTab,
     duplicateAsLocal,
+    reorderTabs,
     removeTab,
 
     // Sharing
