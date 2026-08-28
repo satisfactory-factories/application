@@ -56,6 +56,19 @@ export const createInviteLink = async (page: Page): Promise<string> => {
   return link
 }
 
+/** The other half of the dialog: a frozen copy of the current tab, for anyone. */
+export const createSnapshotLink = async (page: Page): Promise<string> => {
+  await openShareDialog(page)
+  await page.getByTestId('create-snapshot').click()
+
+  const field = page.getByTestId('snapshot-link').locator('input')
+  await expect(field).not.toHaveValue('')
+  const link = await field.inputValue()
+
+  await closeShareDialog(page)
+  return link
+}
+
 /** Sets or rotates the invite password. Both are the same control and the same write. */
 export const setInvitePassword = async (page: Page, password: string): Promise<void> => {
   await openShareDialog(page)
