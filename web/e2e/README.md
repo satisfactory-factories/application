@@ -19,6 +19,36 @@ CORS allowlist and the WebSocket upgrade's Origin check accept, and it names
 `http://localhost:3000`; a client built with `VITE_ENV=dev` calls `http://localhost:3001`.
 The harness refuses to start if either port is taken rather than picking another one.
 
+## What the suite covers
+
+| File | What it proves |
+| --- | --- |
+| `two-devices` | An edit reaches the account's other device inside 2s; both mirrors end deep-equal. |
+| `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive. |
+| `tab-lifecycle` | Create, rename, delete and drag-reorder all reach a second device; a member is offered no rename. |
+| `invite` | An anonymous visitor joins by link and edits back. |
+| `invite-password` | A wrong password is refused inline, the right one joins, and a rotation kicks the visitor while the member stays. |
+| `unshare` | The collaborator keeps a local copy of the last state and loses the live link. |
+| `offline-manual` | The airplane switch makes zero requests, and the edits made behind it sync on the way back. |
+| `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive. |
+| `adoption` | Two browsers with different local plans adopt into one account and converge on the union. |
+| `preferences` | A synced preference set on one device is there on the next device's first login. |
+| `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
+
+## Rate limits, and the address each device claims
+
+The API allows **200 requests per 5 minutes per client address**, and a whole run is well
+over that from one address. Every browser context and every API-side registration
+therefore claims an address of its own out of the RFC 5737 documentation range, which is
+what the deployed topology delivers anyway: the API sits behind one trusted hop
+(`trust proxy = 1`) and reads the client from `X-Forwarded-For`.
+
+The browser cannot send that header itself — it is not in the CORS allowlist, and
+correctly so — so `helpers/accounts.ts` injects it in a Playwright route instead, after
+the browser has made its preflight decision. A test that opens many devices is spending
+real allowance: `POST /share` is 5 per 5 minutes and `POST /rooms/:id/auth` is 10, both
+per address.
+
 ## Writing tests
 
 - Files are `e2e/tests/*.e2e.ts`. The `.spec.ts` name belongs to Vitest, and the unit
@@ -26,12 +56,19 @@ The harness refuses to start if either port is taken rather than picking another
 - `helpers/fixtures.ts` gives every test a `client()` fixture: one browser context is one
   device, with its own storage and its own socket. Everything it opens is closed for you.
 - `helpers/accounts.ts` registers a fresh account over the API and seeds the session
-  through storage state, along with the two flags that keep the welcome dialog and the
+  through storage state, along with the flags that keep the welcome dialog and the
   release splash from covering the page.
 - `helpers/planner.ts` drives the planner: create a synced tab, select one by room id,
-  read the tab bar, wait for a revision, add a factory, read the mirror.
-- **No fixed sleeps.** Wait on a condition: an element, a stored revision, a poll that
-  compares the two mirrors. `retries` is 0 on purpose, so a flake has to be fixed.
+  read the tab bar, drag a tab, wait for a revision, add a factory, read the mirror.
+- `helpers/rooms.ts` sets up the two-device and shared-room cases and drives the share
+  dialog; `helpers/session.ts` drives the sign-in tray and the account panel.
+- `helpers/network.ts` counts REST traffic, and puts a gate on one client's WebSocket so
+  a test can hold an op in flight or kill the connection at an exact moment.
+- **No fixed sleeps** — wait on a condition: an element, a stored revision, a poll over
+  the two mirrors. The one exception is the quiet period the offline test needs to claim
+  nothing was sent, and it is named as such. `retries` is 0 on purpose.
+- `expectQuiesced` is the strongest "it settled" check there is: every client has no
+  unsent intent left and they all hold the same bytes at the same revision.
 
 ## Environment switches
 

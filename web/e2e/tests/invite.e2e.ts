@@ -1,51 +1,14 @@
-import type { APIRequestContext, BrowserContext, Page } from '@playwright/test'
-
 import { expect, test } from '../helpers/fixtures'
-import { registerUser, type TestUser, unique } from '../helpers/accounts'
+import { unique } from '../helpers/accounts'
 import {
   addFactory,
-  createSyncedTab,
   factoryNames,
   notesField,
   openPlanner,
   readTabBar,
   waitForRevision,
 } from '../helpers/planner'
-
-type ClientFactory = (options?: { user?: TestUser }) => Promise<BrowserContext>
-
-/** Turns the current tab into a collaborative one and hands back the invite link. */
-const createInviteLink = async (page: Page): Promise<string> => {
-  await page.getByTestId('share-button').click()
-  await expect(page.getByTestId('share-dialog')).toBeVisible()
-  await page.getByTestId('create-invite').click()
-
-  const field = page.getByTestId('invite-link').locator('input')
-  await expect(field).not.toHaveValue('')
-  const link = await field.inputValue()
-
-  await page.getByRole('button', { name: 'Close' }).click()
-  await expect(page.getByTestId('share-dialog')).toBeHidden()
-  return link
-}
-
-interface SharedRoom {
-  roomId: string
-  owner: Page
-  invitePath: string
-}
-
-const shareARoom = async (
-  client: ClientFactory,
-  request: APIRequestContext,
-): Promise<SharedRoom> => {
-  const user = await registerUser(request)
-  const owner = await openPlanner(await client({ user }))
-  const roomId = await createSyncedTab(owner)
-  const link = await createInviteLink(owner)
-
-  return { roomId, owner, invitePath: new URL(link).pathname }
-}
+import { shareARoom } from '../helpers/rooms'
 
 test('a logged-out visitor joining the invite link gets the owner\'s plan', async ({
   client,

@@ -1,41 +1,16 @@
 import { isDeepStrictEqual } from 'node:util'
 
-import type { APIRequestContext, BrowserContext, Page } from '@playwright/test'
-
 import { expect, test } from '../helpers/fixtures'
-import { registerUser, type TestUser, unique } from '../helpers/accounts'
+import { unique } from '../helpers/accounts'
 import {
   addFactory,
-  createSyncedTab,
   mirroredFactories,
   mirrorRevision,
   notesField,
-  openPlanner,
   readTabBar,
-  selectTab,
   waitForRevision,
 } from '../helpers/planner'
-
-type ClientFactory = (options?: { user?: TestUser }) => Promise<BrowserContext>
-
-interface Pair {
-  roomId: string
-  first: Page
-  second: Page
-}
-
-/** One account, one synced tab, two devices both looking at it. */
-const syncedPair = async (client: ClientFactory, request: APIRequestContext): Promise<Pair> => {
-  const user = await registerUser(request)
-
-  const first = await openPlanner(await client({ user }))
-  const roomId = await createSyncedTab(first)
-
-  const second = await openPlanner(await client({ user }))
-  await selectTab(second, roomId)
-
-  return { roomId, first, second }
-}
+import { syncedPair } from '../helpers/rooms'
 
 test('an edit on one device reaches the account\'s other device within 2s', async ({
   client,

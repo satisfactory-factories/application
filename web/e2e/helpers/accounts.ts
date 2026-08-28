@@ -16,7 +16,23 @@ const uniqueSuffix = (): string => randomBytes(5).toString('hex')
 
 export const unique = (prefix: string): string => `${prefix}-${uniqueSuffix()}`
 
-const headers = { [APP_VERSION_HEADER]: PROTOCOL_VERSION }
+/**
+ * The API sits behind one trusted hop (`trust proxy = 1`) and reads the client's
+ * address from `X-Forwarded-For`, so each simulated device announces one of its
+ * own — which is what production actually delivers. Sharing the loopback address
+ * would instead put the whole suite in one 200-per-5-minutes bucket, and the last
+ * third of it would be refused before it started. RFC 5737 documentation range.
+ */
+let devices = 0
+const nextClientAddress = (): string => `203.0.113.${(devices++ % 254) + 1}`
+
+const versionHeader = { [APP_VERSION_HEADER]: PROTOCOL_VERSION }
+
+const apiHeaders = (address: string, token?: string): Record<string, string> => ({
+  ...versionHeader,
+  'X-Forwarded-For': address,
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+})
 
 /**
  * Registration goes over the API rather than through the sign-in tray: these
@@ -26,6 +42,7 @@ const headers = { [APP_VERSION_HEADER]: PROTOCOL_VERSION }
 export const registerUser = async (request: APIRequestContext): Promise<TestUser> => {
   const username = unique('e2e')
   const password = `pw-${uniqueSuffix()}`
+  const headers = apiHeaders(nextClientAddress())
 
   const registered = await request.post(`${API_URL}/register`, {
     headers,
@@ -45,6 +62,26 @@ export const registerUser = async (request: APIRequestContext): Promise<TestUser
 
   const { token } = await loggedIn.json() as { token: string }
   return { username, password, token }
+}
+
+/**
+ * What the account actually holds, read straight from the API. Asking the server
+ * is the only way to know a preference has been pushed before the next device
+ * signs in and fetches it once.
+ */
+export const readServerPreferences = async (
+  request: APIRequestContext,
+  user: TestUser,
+): Promise<Record<string, unknown>> => {
+  const response = await request.get(`${API_URL}/preferences`, {
+    headers: apiHeaders(nextClientAddress(), user.token),
+  })
+  if (!response.ok()) {
+    throw new Error(`GET /preferences failed (${response.status()}): ${await response.text()}`)
+  }
+
+  const { prefs } = await response.json() as { prefs: Record<string, unknown> }
+  return prefs
 }
 
 interface ClientOptions {
@@ -73,7 +110,17 @@ export const newClient = async (
     storage.push({ name: 'token', value: user.token }, { name: 'loggedInUser', value: user.username })
   }
 
-  return browser.newContext({
+  const context = await browser.newContext({
     storageState: { cookies: [], origins: [{ origin: WEB_URL, localStorage: storage }] },
   })
+
+  // Injected in the route rather than through extraHTTPHeaders: the browser would
+  // preflight an unknown header, and the API's CORS allowlist would refuse it —
+  // correctly, since in production the hop in front of it is what sets this.
+  const address = nextClientAddress()
+  await context.route(`${API_URL}/**`, route => route.continue({
+    headers: { ...route.request().headers(), 'x-forwarded-for': address },
+  }))
+
+  return context
 }
