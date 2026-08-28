@@ -361,6 +361,21 @@ describe('ws ops: the consistency contract', () => {
       expect((await readRoom())?.revision).toBe(0)
     })
 
+    // The first op after "Add Factory" carries `power: {}`, because nothing
+    // recalculates on add. It used to be refused, costing a round trip every time.
+    it('accepts a factory that was never calculated, filling its power totals', async () => {
+      const a = await joined(owner.token)
+      const uncalculated = makeFactory({ id: 3, name: 'Just added', power: {} as never })
+
+      const sent = op({ factories: [uncalculated] }, 0)
+      a.client.send(sent)
+
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ opId: sent.opId, revision: 1 })
+      const stored = (await readRoom())?.factories as { id: number, power: unknown }[]
+      expect(stored.find(factory => factory.id === 3)?.power)
+        .toEqual({ consumed: 0, produced: 0, difference: 0 })
+    })
+
     it('rejects an op on a room tombstoned under it', async () => {
       const a = await joined(owner.token)
       // Written straight to the collection: the REST delete would fan out and

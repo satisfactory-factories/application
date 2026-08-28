@@ -1,9 +1,9 @@
+import { emptyFactoryPower } from 'common'
 import {
   BuildingRequirement,
   Factory,
   FactoryDependency,
   FactoryItem,
-  FactoryPower,
   FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
@@ -95,7 +95,9 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     } as FactoryDependency,
     exportCalculator: {},
     rawResources: {},
-    power: {} as FactoryPower,
+    // Zeroed rather than `{}`: nothing recalculates on add, and an empty power object
+    // is not a valid factory on the wire, so the tab's first sync op was refused.
+    power: emptyFactoryPower(),
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
     hidden: false,

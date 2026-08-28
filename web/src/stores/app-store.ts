@@ -1,8 +1,8 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
-import { PROTOCOL_VERSION } from 'common'
+import { emptyFactoryPower, PROTOCOL_VERSION } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -489,8 +489,11 @@ export const useAppStore = defineStore('app', () => {
         factory.powerProducers = []
         needsCalculation = true
       }
-      if (factory.power === undefined) {
-        factory.power = {} as FactoryPower
+      // A factory added but never calculated was persisted with `power: {}`, which the
+      // sync schema fills rather than rejects — zero it here too so the mirror, the op
+      // and the server copy agree, and recalculate to replace the zeroes with real ones.
+      if (factory.power?.consumed === undefined) {
+        factory.power = { ...emptyFactoryPower(), ...factory.power }
         needsCalculation = true
       }
       if (factory.previousInputs === undefined) {

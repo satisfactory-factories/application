@@ -332,23 +332,6 @@ export const setFactoryNote = async (
   await field.fill(note)
 }
 
-/**
- * A factory that has only ever been added is stored with `power: {}`, and the
- * load path only recalculates when a migration fired — so the shared schema
- * refuses it. The op path hides that behind a reject and a resend; adoption has
- * no retry, so a plan destined for `POST /rooms/adopt` is calculated first.
- */
-export const forceRecalculate = async (page: Page): Promise<void> => {
-  page.once('dialog', dialog => void dialog.accept())
-  await page.getByRole('main').getByRole('button', { name: 'Recalculate' }).click()
-
-  await expect.poll(() => page.evaluate(() => {
-    const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as
-      { factories: { power?: { consumed?: unknown } }[] }[]
-    return tabs.every(tab => tab.factories.every(f => typeof f.power?.consumed === 'number'))
-  }), { message: 'the plan was still uncalculated' }).toBe(true)
-}
-
 export const factoryNames = (page: Page): Promise<string[]> =>
   page.locator('input.factory-name')
     .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))

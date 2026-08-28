@@ -6,7 +6,6 @@ import type { TestUser } from '../helpers/accounts'
 import {
   addFactory,
   expectTabKind,
-  forceRecalculate,
   mirroredFactories,
   openPlanner,
   readTabBar,
@@ -44,15 +43,14 @@ test('two browsers with different local plans both adopt into one account', asyn
 }) => {
   const user = await registerUser(request)
 
-  // Two devices, each with a plan of its own and no account behind it.
+  // Two devices, each with a plan of its own and no account behind it. Neither plan
+  // is ever calculated, which is the shape adoption used to refuse outright.
   const first = await openPlanner(await client())
   await addFactory(first, { name: 'Alpha plan', note: 'made on the first device' })
-  await forceRecalculate(first)
   const firstTab = await localTabId(first)
 
   const second = await openPlanner(await client())
   await addFactory(second, { name: 'Beta plan', note: 'made on the second device' })
-  await forceRecalculate(second)
   const secondTab = await localTabId(second)
 
   await adoptOn(first, user)

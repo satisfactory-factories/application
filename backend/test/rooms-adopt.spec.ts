@@ -140,6 +140,21 @@ describe('POST /rooms/adopt', () => {
     expect(loser?.body.code).toBe('room_id_taken')
   })
 
+  // A factory the user added but never calculated carries `power: {}`, and plans in
+  // that shape are already in browsers. Refusing one made the whole tab un-adoptable.
+  it('adopts a plan holding a factory that was never calculated', async () => {
+    const roomId = randomUUID()
+    const uncalculated = makeFactory({ name: 'Never calculated', power: {} as never })
+
+    const response = await adopt(mine, { ...localTab(roomId), factories: [uncalculated] })
+
+    expect(response.status).toBe(200)
+
+    const stored = await connection.collection('rooms').findOne({ roomId })
+    expect((stored?.factories as { power: unknown }[])[0].power)
+      .toEqual({ consumed: 0, produced: 0, difference: 0 })
+  })
+
   it('requires a room id, unlike create', async () => {
     const response = await adopt(mine, { name: 'No id' })
 

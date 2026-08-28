@@ -169,19 +169,25 @@ export const factoryPowerProducerSchema = z.object({
   buildingGroupItemSync: z.boolean(),
 })
 
+// The three totals default rather than reject: a factory the user added but never
+// calculated persists `power` as `{}`, and plans in that shape are already in the wild.
+// Refusing them cost an op per added factory and made adoption fail outright.
 export const factoryPowerSchema = z.object({
-  consumed: num,
+  consumed: num.default(0),
   consumedMin: num.optional(),
   consumedMax: num.optional(),
-  produced: num,
+  produced: num.default(0),
   producedMin: num.optional(),
   producedMax: num.optional(),
   boostPercent: num.optional(),
   boostMw: num.optional(),
   boostFueledBuildings: num.optional(),
   boostUnfueledBuildings: num.optional(),
-  difference: num,
+  difference: num.default(0),
 })
+
+/** The zeroed shape an uncalculated factory gets, here and in `newFactory()`. */
+export const emptyFactoryPower = () => ({ consumed: 0, produced: 0, difference: 0 })
 
 export const factoryGroupSchema = z.object({
   id,
@@ -204,7 +210,7 @@ export const factorySchema = z.object({
   exportCalculator: z.record(key, exportCalculatorSettingsSchema),
   dependencies: factoryDependencySchema,
   rawResources: z.record(key, worldRawResourceSchema),
-  power: factoryPowerSchema,
+  power: factoryPowerSchema.default(emptyFactoryPower),
   usingRawResourcesOnly: z.boolean(),
   hidden: z.boolean(),
   hasProblem: z.boolean(),

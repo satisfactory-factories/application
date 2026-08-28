@@ -76,6 +76,39 @@ describe('factorySchema', () => {
     delete factory.group
     expect(factorySchema.safeParse(factory).success).toBe(true)
   })
+
+  // A factory the user added but never calculated is persisted with `power: {}`, and
+  // plans in that shape are already in browsers. Rejecting one cost an op per added
+  // factory and made adoption fail outright, so the totals are filled instead.
+  describe('an uncalculated factory', () => {
+    it('accepts an empty power object and zeroes the totals', () => {
+      const parsed = factorySchema.parse(makeFactory({ power: {} as Factory['power'] }))
+      expect(parsed.power).toEqual({ consumed: 0, produced: 0, difference: 0 })
+    })
+
+    it('accepts a missing power object entirely', () => {
+      const factory = makeFactory() as Partial<Factory>
+      delete factory.power
+      const parsed = factorySchema.parse(factory)
+      expect(parsed.power).toEqual({ consumed: 0, produced: 0, difference: 0 })
+    })
+
+    it('leaves the totals of a calculated factory alone', () => {
+      expect(factorySchema.parse(makeFactory()).power)
+        .toEqual({ consumed: 4, produced: 0, difference: -4 })
+    })
+
+    it('still rejects a non-numeric total', () => {
+      const power = { consumed: 'lots' } as unknown as Factory['power']
+      expect(factorySchema.safeParse(makeFactory({ power })).success).toBe(false)
+    })
+
+    it('parses inside a tab, so adoption and snapshot links take it too', () => {
+      const factories = [makeFactory({ power: {} as Factory['power'] })]
+      const parsed = factoryTabSchema.parse(makeFactoryTab({ factories }))
+      expect(parsed.factories[0].power).toEqual({ consumed: 0, produced: 0, difference: 0 })
+    })
+  })
 })
 
 describe('factoryTabSchema', () => {

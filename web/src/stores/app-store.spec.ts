@@ -166,6 +166,21 @@ describe('app-store', () => {
       expect(factory.power).toBeDefined()
     })
 
+    // A factory added but never calculated was persisted with `power: {}`. The sync
+    // schema now fills those totals rather than rejecting the factory, and the mirror
+    // has to agree with what the server stores, so init zeroes them too.
+    it('should backfill the power totals of a factory that was never calculated', () => {
+      factory.power = {} as typeof factory.power
+      const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+
+      appStore.initFactories(factories)
+
+      expect(factory.power.consumed).toBeDefined()
+      expect(factory.power.produced).toBeDefined()
+      expect(factory.power.difference).toBeDefined()
+      expect(spy).toHaveBeenCalled()
+    })
+
     it('should initialize factories with missing previous inputs data', () => {
       // @ts-ignore
       delete factory.previousInputs
