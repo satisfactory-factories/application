@@ -9,8 +9,13 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Utilities
-import { defineConfig } from 'vitest/config'
+import { configDefaults, coverageConfigDefaults, defineConfig } from 'vitest/config'
 import { fileURLToPath, URL } from 'node:url'
+
+// e2e/ is Playwright's, and it must stay out of Vitest entirely: its files import
+// @playwright/test, which cannot run under jsdom. The *.e2e.ts naming already
+// misses Vitest's include, so these two are belt and braces.
+const PLAYWRIGHT_FILES = ['e2e/**', 'playwright.config.ts']
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -101,6 +106,10 @@ export default defineConfig(() => ({
     pool: 'forks',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
+    exclude: [...configDefaults.exclude, ...PLAYWRIGHT_FILES],
+    coverage: {
+      exclude: [...coverageConfigDefaults.exclude, ...PLAYWRIGHT_FILES],
+    },
     css: true,
     server: {
       deps: {

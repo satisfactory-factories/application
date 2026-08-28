@@ -31,6 +31,7 @@ Per-package (from inside `web/`, `backend/`, or `parsing/`):
 
 - Frontend tests: `cd web && pnpm test` (Vitest, runs with coverage).
 - **Single test file / pattern:** `cd web && pnpm exec vitest run <path-or-pattern>` (e.g. `pnpm exec vitest run factory-management/products`). Use `vitest` (no `run`) for watch mode.
+- End-to-end: `cd web && pnpm test:e2e` (Playwright, chromium only). Builds and boots the real stack — the compiled API against `mongodb-memory-server` plus `vite preview` — on the fixed ports 3000/3001, which the API's CORS and WS origin allowlist require. See `web/e2e/README.md`. Not part of `pnpm test`.
 - Parser tests: `cd parsing && pnpm test` (Jest). The parser **must** stay near 100% coverage — it feeds all calculations.
 - Backend tests: `cd backend && pnpm exec vitest run` (supertest + `mongodb-memory-server`; one mongod is started for the whole run).
 - `web` build runs `vue-tsc --noEmit` first, so a type error fails the build.

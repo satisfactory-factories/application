@@ -11,7 +11,8 @@
     "lint": "eslint . --fix",
     "lint-check": "eslint .",
     "test": "vitest run --silent --coverage",
-    "test:browser": "node testing/browser/reactivity.e2e.mjs"
+    "test:browser": "node testing/browser/reactivity.e2e.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
@@ -38,6 +39,7 @@
     "@fortawesome/fontawesome-free": "^7.0.0",
     "@babel/types": "^8.0.0",
     "@pinia/testing": "^2.0.1",
+    "@playwright/test": "catalog:",
     "@stylistic/eslint-plugin": "5.10.0",
     "@testing-library/vue": "^8.1.0",
     "@types/node": "^24.13.3",
@@ -48,6 +50,7 @@
     "eslint": "catalog:",
     "eslint-plugin-vue": "^10.9.2",
     "jsdom": "^29.1.1",
+    "mongodb-memory-server": "catalog:",
     "neostandard": "^0.13.0",
     "puppeteer-core": "^25.3.0",
     "sass": "1.102.0",

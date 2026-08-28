@@ -95,6 +95,7 @@
         <div class="mt-4 text-center">
           <v-btn
             color="primary"
+            data-testid="add-factory"
             prepend-icon="fas fa-plus"
             size="large"
             @click="createFactory()"

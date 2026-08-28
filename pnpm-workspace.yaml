@@ -15,6 +15,10 @@ catalog:
   eslint-plugin-import-x: 4.17.1
   typescript-eslint: 8.65.0
   zod: 4.4.3
+  '@playwright/test': 1.62.1
+  # Both the backend suite and web's Playwright harness boot one; a version skew
+  # between them would mean two mongod downloads for no reason.
+  mongodb-memory-server: 11.2.0
 
 # Must stay true. Renovate only ever commits the workspace-root lockfile, so
 # with per-package lockfiles every `catalog:` bump shipped as a one-file diff
