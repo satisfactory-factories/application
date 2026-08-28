@@ -27,8 +27,24 @@ export const shareCapabilities = (
   state: TabSyncState,
   entry: RoomListEntry | undefined,
   origin: string,
+  /** Offline mode is total backend silence, so nothing here may reach the server. */
+  offline = false,
 ): ShareCapabilities => {
-  const base = { canSnapshot: true, hasPassword: entry?.hasPassword ?? false }
+  const base = { canSnapshot: !offline, hasPassword: entry?.hasPassword ?? false }
+
+  if (offline) {
+    const shared = entry?.shared ?? state.shared
+    const slug = entry?.slug ?? null
+    return {
+      ...base,
+      isRoom: state.kind !== 'local',
+      canManageInvite: false,
+      isShared: shared,
+      // The existing link is still worth copying: it needs nothing from us.
+      inviteLink: shared && slug ? roomLink(slug, origin) : null,
+      blockedReason: 'You are in offline mode. Turn it off to change how this plan is shared.',
+    }
+  }
 
   if (state.kind === 'local') {
     return {

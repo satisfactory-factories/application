@@ -16,6 +16,9 @@ const NOTICE_MS = 8000
 /** A failed join carries the server's code, so the caller can ask for a password. */
 export type JoinOutcome = { ok: true } | { ok: false, code: string | null, message: string }
 
+/** Offline mode is total backend silence, so every REST action refuses rather than queues. */
+export const OFFLINE_MESSAGE = 'You are in offline mode. Turn it off to change what is on the server.'
+
 const describe = (error: unknown): string => {
   if (error instanceof VersionMismatchError) return 'This version of the planner is out of date. Please refresh.'
   if (error instanceof ApiNetworkError) return 'The server could not be reached.'
@@ -42,6 +45,9 @@ export const useRoomsStore = defineStore('rooms', () => {
   const adoptionCandidates = ref<string[]>([])
   const adoptionOpen = ref(false)
   const adopting = ref(false)
+
+  /** The one gate every room mutation passes through; offline means no request at all. */
+  const blocked = (): string | null => roomSync.isSuppressed ? OFFLINE_MESSAGE : null
 
   // ===== Room list =====
 
@@ -167,6 +173,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   /** Only an account with no rooms in a browser with no plans; anything else asks. */
   const autoImportLegacy = async (localTabCount: number) => {
+    if (blocked()) return
     try {
       // Sent rather than hardcoded so the server's own eligibility gate is real.
       const result = await api.legacyAutoImport(localTabCount)
@@ -183,6 +190,12 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   const adoptTabs = async (tabIds: string[]): Promise<void> => {
+    if (blocked()) {
+      lastError.value = OFFLINE_MESSAGE
+      declineAdoption()
+      return
+    }
+
     adopting.value = true
     const taken = new Set(Object.values(entries.value).map(entry => entry.name))
 
@@ -254,6 +267,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   const createSyncedTab = async (name = 'New Tab'): Promise<true | string> => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) return 'Sign in first to create a synced tab.'
+    const offline = blocked()
+    if (offline) return offline
 
     const roomId = crypto.randomUUID()
     try {
@@ -295,6 +310,8 @@ export const useRoomsStore = defineStore('rooms', () => {
       return true
     }
     if (state.role !== 'owner') return 'Only the owner can rename this plan.'
+    const offline = blocked()
+    if (offline) return offline
 
     const previous = appStore.getTab(tabId)?.name ?? trimmed
     appStore.renameTab(tabId, trimmed)
@@ -316,6 +333,8 @@ export const useRoomsStore = defineStore('rooms', () => {
     const state = appStore.getTabState(tabId)
 
     if (state.kind === 'synced') {
+      const offline = blocked()
+      if (offline) return offline
       try {
         await (state.role === 'owner' ? api.deleteRoom(tabId) : api.leaveRoom(tabId))
       } catch (error) {
@@ -348,50 +367,44 @@ export const useRoomsStore = defineStore('rooms', () => {
     return true
   }
 
-  const shareTab = async (tabId: string, slug?: string): Promise<true | string> => {
+  /** One shape for every owner-only control: silent while offline, message on failure. */
+  const roomAction = async (act: () => Promise<void>): Promise<true | string> => {
+    const offline = blocked()
+    if (offline) return offline
+
     try {
-      const { room } = await api.shareRoom(tabId, slug)
-      return applyEntry(room)
+      await act()
+      return true
     } catch (error) {
       lastError.value = describe(error)
       return describe(error)
     }
   }
+
+  const shareTab = (tabId: string, slug?: string): Promise<true | string> =>
+    roomAction(async () => {
+      applyEntry((await api.shareRoom(tabId, slug)).room)
+    })
 
   /** Makes the plan private again: memberships go, and so does the live link. */
-  const unshareTab = async (tabId: string): Promise<true | string> => {
-    try {
-      const { room } = await api.unshareRoom(tabId)
-      return applyEntry(room)
-    } catch (error) {
-      lastError.value = describe(error)
-      return describe(error)
-    }
-  }
+  const unshareTab = (tabId: string): Promise<true | string> =>
+    roomAction(async () => {
+      applyEntry((await api.unshareRoom(tabId)).room)
+    })
 
-  const setTabPassword = async (tabId: string, password: string): Promise<true | string> => {
-    try {
+  const setTabPassword = (tabId: string, password: string): Promise<true | string> =>
+    roomAction(async () => {
       await api.setRoomPassword(tabId, password)
       const entry = entries.value[tabId]
       if (entry) entries.value[tabId] = { ...entry, hasPassword: true }
-      return true
-    } catch (error) {
-      lastError.value = describe(error)
-      return describe(error)
-    }
-  }
+    })
 
-  const removeTabPassword = async (tabId: string): Promise<true | string> => {
-    try {
+  const removeTabPassword = (tabId: string): Promise<true | string> =>
+    roomAction(async () => {
       await api.removeRoomPassword(tabId)
       const entry = entries.value[tabId]
       if (entry) entries.value[tabId] = { ...entry, hasPassword: false }
-      return true
-    } catch (error) {
-      lastError.value = describe(error)
-      return describe(error)
-    }
-  }
+    })
 
   // ===== Joining someone else's room =====
 
@@ -402,8 +415,16 @@ export const useRoomsStore = defineStore('rooms', () => {
    */
   const joinSharedRoom = async (
     roomId: string,
-    { name = 'Shared plan', visitorToken }: { name?: string, visitorToken?: string } = {},
+    { name = 'Shared plan', visitorToken, activate = true }: {
+      name?: string
+      visitorToken?: string
+      /** False when upgrading a joined tab in the background: never yank the user's view. */
+      activate?: boolean
+    } = {},
   ): Promise<JoinOutcome> => {
+    const offline = blocked()
+    if (offline) return { ok: false, code: 'offline', message: offline }
+
     try {
       const { room } = await api.joinRoom(roomId, visitorToken)
       if (!appStore.getTab(roomId)) {
@@ -411,7 +432,7 @@ export const useRoomsStore = defineStore('rooms', () => {
       }
       applyEntry(room)
       roomSync.trackRoom(roomId, { visitorToken })
-      appStore.activateTab(roomId)
+      if (activate) appStore.activateTab(roomId)
       return { ok: true }
     } catch (error) {
       const message = describe(error)
@@ -460,7 +481,26 @@ export const useRoomsStore = defineStore('rooms', () => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) return
     roomSync.start()
+    await upgradeJoinedTabs()
     await refresh({ offerAdoption: true })
+  }
+
+  /**
+   * A tab joined anonymously and then signed into becomes a real membership, so it
+   * follows the account to every device instead of living in this browser only.
+   */
+  const upgradeJoinedTabs = async (): Promise<void> => {
+    if (blocked()) return
+    const tokens = readVisitorTokens()
+
+    for (const tab of appStore.getTabs()) {
+      if (appStore.getTabState(tab.id).kind !== 'joined') continue
+      await joinSharedRoom(tab.id, {
+        name: tab.name,
+        visitorToken: tokens[tab.id],
+        activate: false,
+      })
+    }
   }
 
   /** Signing out keeps every plan; they simply stop being rooms in this browser. */
@@ -473,6 +513,8 @@ export const useRoomsStore = defineStore('rooms', () => {
     roomsRevision.value = null
     declineAdoption()
     roomSync.stop()
+    // Anonymous joined tabs are nobody's account, so they keep their live link.
+    restoreJoinedTabs()
   }
 
   const onLoggedIn = () => {
@@ -482,9 +524,18 @@ export const useRoomsStore = defineStore('rooms', () => {
   eventBus.on('loggedIn', onLoggedIn)
   eventBus.on('sessionExpired', signOut)
 
-  const stopStale = watch(() => roomSync.roomsListStale, stale => {
-    if (stale) void refresh()
-  })
+  /**
+   * `hello_ok` carries the account-wide counter, so every connect re-checks the tab
+   * list without a blind refetch: a notification lost while the socket was down
+   * shows up as a revision this client has not seen.
+   */
+  const stopStale = watch(
+    () => [roomSync.roomsListStale, roomSync.roomsRevision, roomSync.isSuppressed] as const,
+    ([stale, revision, suppressed]) => {
+      if (suppressed) return
+      if (stale || (revision !== null && revision !== roomsRevision.value)) void refresh()
+    }
+  )
 
   const stopRooms = watch(
     // `shared` is in the key so an owner's second device flips the tab icon the
@@ -539,6 +590,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     joinSharedRoom,
     trackJoinedRoom,
     restoreJoinedTabs,
+    upgradeJoinedTabs,
 
     // Driven by the engine, and directly by tests
     reconcileRooms,

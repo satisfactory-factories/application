@@ -14,6 +14,7 @@
           <v-btn
             color="blue"
             data-testid="create-snapshot"
+            :disabled="!capabilities.canSnapshot"
             :loading="creatingSnapshot"
             variant="flat"
             @click="createSnapshot"
@@ -180,17 +181,17 @@
   import { ApiError, ApiNetworkError, createSnapshotShare } from '@/api/client'
   import { useSlugAvailability } from '@/composables/useSlugAvailability'
   import { useAppStore } from '@/stores/app-store'
-  import { useRoomsStore } from '@/stores/rooms-store'
+  import { useRoomSyncStore } from '@/stores/room-sync-store'
+  import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
   import { shareCapabilities } from '@/sync/share-capabilities'
   import eventBus from '@/utils/eventBus'
-
-  const DISCORD = '<a href="https://discord.gg/vcFsjcWAFv">Discord</a>'
 
   const props = defineProps<{ tabId: string }>()
   const open = defineModel<boolean>({ default: false })
 
   const appStore = useAppStore()
   const roomsStore = useRoomsStore()
+  const roomSync = useRoomSyncStore()
 
   const creatingSnapshot = ref(false)
   const snapshotLink = ref('')
@@ -214,17 +215,19 @@
     appStore.getTabState(props.tabId),
     roomsStore.entries[props.tabId],
     window.location.origin,
+    roomSync.isSuppressed,
   ))
 
   // ===== Snapshot half =====
 
+  // Plain text: this is rendered as text, and an anchor tag would be shown verbatim.
   const snapshotFailure = (error: unknown): string => {
-    if (error instanceof ApiNetworkError) return `The backend server is offline. Please report this on ${DISCORD}.`
+    if (error instanceof ApiNetworkError) return 'The backend server is offline. Please report this on Discord.'
     if (error instanceof ApiError) {
       if (error.status === 429) return 'You are being rate limited. Please wait a little before trying again.'
-      return `Failed to create the snapshot link. Please report this on ${DISCORD}.`
+      return 'Failed to create the snapshot link. Please report this on Discord.'
     }
-    return `Failed to create the snapshot link for an unknown reason. Please report this on ${DISCORD}.`
+    return 'Failed to create the snapshot link for an unknown reason. Please report this on Discord.'
   }
 
   const createSnapshot = async () => {
@@ -234,6 +237,10 @@
 
     if (!tab || tab.factories.length === 0) {
       snapshotError.value = 'There is nothing in this plan to share yet.'
+      return
+    }
+    if (roomSync.isSuppressed) {
+      snapshotError.value = OFFLINE_MESSAGE
       return
     }
 

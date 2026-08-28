@@ -107,6 +107,25 @@ describe('shareCapabilities', () => {
     })
   })
 
+  describe('offline mode', () => {
+    const offline = () => shareCapabilities(
+      state(),
+      entry({ shared: true, slug: 'a-b-c' }),
+      ORIGIN,
+      true,
+    )
+
+    it('offers nothing that would reach the server', () => {
+      expect(offline().canSnapshot).toBe(false)
+      expect(offline().canManageInvite).toBe(false)
+      expect(offline().blockedReason).toContain('offline mode')
+    })
+
+    it('still hands over the link the room already has', () => {
+      expect(offline().inviteLink).toBe('https://satisfactory-factories.app/room/a-b-c')
+    })
+  })
+
   it('builds the room link against whatever origin it is given', () => {
     expect(roomLink('a-b-c', 'http://localhost:3000')).toBe('http://localhost:3000/room/a-b-c')
   })

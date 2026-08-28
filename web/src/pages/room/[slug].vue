@@ -61,7 +61,8 @@
   import { useRoute, useRouter } from 'vue-router'
   import { ApiError, ApiNetworkError, authenticateRoom, lookupRoomBySlug } from '@/api/client'
   import { useAuthStore } from '@/stores/auth-store'
-  import { useRoomsStore } from '@/stores/rooms-store'
+  import { useRoomSyncStore } from '@/stores/room-sync-store'
+  import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
   import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
 
   type Phase = 'loading' | 'notFound' | 'password' | 'failed'
@@ -70,6 +71,7 @@
   const router = useRouter()
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
+  const roomSync = useRoomSyncStore()
 
   const phase = ref<Phase>('loading')
   const roomId = ref('')
@@ -91,6 +93,13 @@
     const slug = String((route.params as { slug?: string }).slug ?? '')
     if (!slug) {
       phase.value = 'notFound'
+      return
+    }
+    // Opening an invite is the one thing offline mode cannot do quietly: it needs
+    // the server before the tab can exist at all.
+    if (roomSync.isSuppressed) {
+      phase.value = 'failed'
+      error.value = OFFLINE_MESSAGE
       return
     }
 

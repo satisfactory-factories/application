@@ -8,7 +8,7 @@ import { ApiError } from '@/api/client'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
-import { useRoomsStore } from '@/stores/rooms-store'
+import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
 import { newFactory } from '@/utils/factory-management/factory'
@@ -594,6 +594,21 @@ describe('rooms-store', () => {
       expect(readVisitorToken(tab.id)).toBeUndefined()
     })
 
+    it('turns an anonymous joined tab into a membership once the user signs in', async () => {
+      const tab = localTab('Visiting')
+      appStore.setTabState(tab.id, { kind: 'joined', shared: true, role: 'member', revision: null })
+      setVisitorToken(tab.id, 'stored-jwt')
+      const room = entry({ roomId: tab.id, shared: true, role: 'member' })
+      vi.mocked(api.joinRoom).mockResolvedValue({ status: 'joined', room })
+      // The membership exists by the time the list is read, so the refresh keeps it.
+      listReturns([room])
+
+      await store.begin()
+
+      expect(api.joinRoom).toHaveBeenCalledWith(tab.id, 'stored-jwt')
+      expect(appStore.getTabState(tab.id).kind).toBe('synced')
+    })
+
     it('leaves local and synced tabs out of that sweep', () => {
       const tab = localTab('Mine')
       const track = vi.spyOn(roomSync, 'trackRoom')
@@ -601,6 +616,73 @@ describe('rooms-store', () => {
       store.restoreJoinedTabs()
 
       expect(track).not.toHaveBeenCalledWith(tab.id, expect.anything())
+    })
+  })
+
+  describe('offline mode', () => {
+    beforeEach(() => {
+      roomSync.enterOffline()
+    })
+
+    it('refuses every room mutation without issuing a request', async () => {
+      const tab = localTab('Mine')
+      appStore.setTabState(tab.id, { kind: 'synced', shared: true, role: 'owner', revision: 1 })
+
+      expect(await store.createSyncedTab('New')).toBe(OFFLINE_MESSAGE)
+      expect(await store.renameTab(tab.id, 'Renamed')).toBe(OFFLINE_MESSAGE)
+      expect(await store.removeTab(tab.id)).toBe(OFFLINE_MESSAGE)
+      expect(await store.shareTab(tab.id)).toBe(OFFLINE_MESSAGE)
+      expect(await store.unshareTab(tab.id)).toBe(OFFLINE_MESSAGE)
+      expect(await store.setTabPassword(tab.id, 'hunter2')).toBe(OFFLINE_MESSAGE)
+      expect(await store.removeTabPassword(tab.id)).toBe(OFFLINE_MESSAGE)
+      expect(await store.joinSharedRoom('their-room')).toEqual({
+        ok: false,
+        code: 'offline',
+        message: OFFLINE_MESSAGE,
+      })
+
+      for (const call of [api.createRoom, api.renameRoom, api.deleteRoom, api.shareRoom,
+        api.unshareRoom, api.setRoomPassword, api.removeRoomPassword, api.joinRoom]) {
+        expect(call).not.toHaveBeenCalled()
+      }
+    })
+
+    it('still renames a local tab, which needs nothing from the server', async () => {
+      const tab = localTab('Mine')
+
+      expect(await store.renameTab(tab.id, 'Renamed')).toBe(true)
+      expect(appStore.getTab(tab.id)?.name).toBe('Renamed')
+    })
+
+    it('does not fetch the room list', async () => {
+      expect(await store.refresh()).toBe(false)
+      expect(api.listRooms).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('staying in step with the socket', () => {
+    it('refetches the list when the handshake reports a revision it has not seen', async () => {
+      listReturns([], 4)
+      await store.refresh()
+      vi.mocked(api.listRooms).mockClear()
+
+      // hello_ok on a reconnect: a rooms_changed lost while the socket was down
+      // shows up as a counter this client never saw.
+      roomSync.roomsRevision = 7
+      await nextTick()
+
+      expect(api.listRooms).toHaveBeenCalled()
+    })
+
+    it('does not refetch when the socket reports the revision it already holds', async () => {
+      listReturns([], 4)
+      await store.refresh()
+      vi.mocked(api.listRooms).mockClear()
+
+      roomSync.roomsRevision = 4
+      await nextTick()
+
+      expect(api.listRooms).not.toHaveBeenCalled()
     })
   })
 

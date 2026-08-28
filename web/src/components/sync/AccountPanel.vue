@@ -132,7 +132,7 @@
   import { ApiError, ApiNetworkError, legacyRecover } from '@/api/client'
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
-  import { useRoomsStore } from '@/stores/rooms-store'
+  import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
 
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
@@ -184,6 +184,11 @@
   }
 
   const recover = async () => {
+    if (roomSync.isSuppressed) {
+      recoverMessage.value = OFFLINE_MESSAGE
+      return
+    }
+
     recovering.value = true
     recoverMessage.value = ''
     try {
@@ -225,6 +230,10 @@
       passwordError.value = 'The new passwords do not match.'
       return
     }
+    if (roomSync.isSuppressed) {
+      passwordError.value = OFFLINE_MESSAGE
+      return
+    }
 
     changing.value = true
     const result = await authStore.changePassword(currentPassword.value, newPassword.value)
@@ -242,7 +251,8 @@
 
   const logout = () => {
     // Plans are never destroyed by signing out; they stop being rooms in this browser.
-    roomsStore.signOut()
+    // The account goes first so a tab joined anonymously can reconnect without a token.
     authStore.logout()
+    roomsStore.signOut()
   }
 </script>
