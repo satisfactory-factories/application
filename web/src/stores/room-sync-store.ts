@@ -1,0 +1,810 @@
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { PROTOCOL_VERSION } from 'common'
+import type {
+  Factory,
+  FactoryTab,
+  RoomDiff,
+  RoomMeta,
+  RoomSnapshot,
+  ServerMessage,
+} from 'common'
+import { SyncSocket } from '@/sync/ws-client'
+import type { SyncSocketStatus } from '@/sync/ws-client'
+import {
+  ackedFromContent,
+  applyDiffToAcked,
+  applyDiffToContent,
+  buildDiff,
+  contentFromAcked,
+  contentFromSnapshot,
+  contentOfTab,
+  emptyAcked,
+  stableStringify,
+  TAB_FIELDS,
+  UNKNOWN_CONTENT,
+} from '@/sync/room-state'
+import type { AckedState, RoomContent, TabField } from '@/sync/room-state'
+import {
+  pruneTabMirrorMeta,
+  readTabMirrorMeta,
+  removeTabMirrorMeta,
+  setTabMirrorMeta,
+} from '@/sync/tab-mirror-meta'
+import { useAppStore } from '@/stores/app-store'
+import { useAuthStore } from '@/stores/auth-store'
+import { useGameDataStore } from '@/stores/game-data-store'
+import { calculateFactories } from '@/utils/factory-management/factory'
+import eventBus from '@/utils/eventBus'
+
+/** Trailing debounce on plan changes: one op per burst of edits, never one per keystroke. */
+export const OP_DEBOUNCE_MS = 400
+
+/** Failed reconnects before the "you appear to be offline" prompt. */
+export const OFFLINE_PROMPT_AFTER = 3
+
+/** Consecutive rejects before a room stops resending, so a refused op cannot hot-loop. */
+export const REJECT_PAUSE_AFTER = 3
+
+export type OfflineMode = 'online' | 'reconnecting' | 'offlinePrompt' | 'offline'
+
+/**
+ * `paused`: refused too many times running, so edits stay local until resumed.
+ * `revoked`/`deleted`: access or the room itself is gone and the tab becomes a
+ * local copy, content intact.
+ */
+export type RoomStatus = 'idle' | 'joining' | 'synced' | 'paused' | 'revoked' | 'deleted'
+
+/** The reactive, display-sized half of a room. */
+export interface RoomState {
+  roomId: string
+  status: RoomStatus
+  revision: number
+  presence: number
+  meta: RoomMeta | null
+  lastError: string | null
+  rejectStreak: number
+  hasPendingOp: boolean
+}
+
+interface PendingOp {
+  opId: string
+  baseRevision: number
+  diff: RoomDiff
+  /** The exact baseline this op becomes on ack. Never recomputed from live state. */
+  sent: AckedState
+}
+
+/**
+ * The engine half. Deliberately outside Vue's reactivity: it holds a serialized
+ * copy of every factory, and a deep traversal of that on each reactive flush is
+ * the known way to make large plans crawl.
+ */
+interface RoomEngine {
+  acked: AckedState
+  /** False until a snapshot, ack or apply has established a real baseline. */
+  seeded: boolean
+  pending: PendingOp | null
+  touchedFactories: Set<number>
+  touchedFields: Set<TabField>
+  visitorToken?: string
+}
+
+export interface TrackRoomOptions {
+  /** Re-sent on every join of that room; a visitor has no other credential. */
+  visitorToken?: string
+}
+
+export interface ConfigureOptions {
+  socket?: SyncSocket
+}
+
+const newRoomState = (roomId: string): RoomState => ({
+  roomId,
+  status: 'idle',
+  revision: 0,
+  presence: 0,
+  meta: null,
+  lastError: null,
+  rejectStreak: 0,
+  hasPendingOp: false,
+})
+
+const newEngine = (options: TrackRoomOptions): RoomEngine => ({
+  acked: emptyAcked(),
+  seeded: false,
+  pending: null,
+  touchedFactories: new Set(),
+  touchedFields: new Set(),
+  visitorToken: options.visitorToken,
+})
+
+export const useRoomSyncStore = defineStore('roomSync', () => {
+  const appStore = useAppStore()
+  const gameDataStore = useGameDataStore()
+
+  const rooms = ref<Record<string, RoomState>>({})
+  const mode = ref<OfflineMode>('online')
+  const connection = ref<SyncSocketStatus>('idle')
+  const failedReconnects = ref(0)
+  const userId = ref<string | null>(null)
+  const roomsRevision = ref<number | null>(null)
+  /** A `rooms_changed` landed: the tab list wants refetching. */
+  const roomsListStale = ref(false)
+  const lastError = ref<string | null>(null)
+
+  /** No socket, no REST, no retries. Preferences and adoption gate on this too. */
+  const isOffline = computed(() => mode.value === 'offline')
+  const isSuppressed = computed(() => mode.value === 'offline')
+  const isConnected = computed(() => connection.value === 'connected')
+
+  const engines = new Map<string, RoomEngine>()
+
+  let socket: SyncSocket | null = null
+  let unsubscribeMessage: (() => void) | null = null
+  let unsubscribeStatus: (() => void) | null = null
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+  const getTab = (roomId: string): FactoryTab | undefined => appStore.getTab(roomId)
+
+  // ===== Intent =====
+
+  const markUserTouched = (roomId: string, factoryId: number) => {
+    const engine = engines.get(roomId)
+    if (!engine || engine.touchedFactories.has(factoryId)) return
+    engine.touchedFactories.add(factoryId)
+    persistMeta(roomId)
+  }
+
+  const markTabTouched = (roomId: string, field: TabField) => {
+    const engine = engines.get(roomId)
+    if (!engine || engine.touchedFields.has(field)) return
+    engine.touchedFields.add(field)
+    persistMeta(roomId)
+  }
+
+  const hasLocalEdits = (roomId: string): boolean => {
+    const engine = engines.get(roomId)
+    if (!engine) return false
+    return engine.pending !== null || engine.touchedFactories.size > 0 || engine.touchedFields.size > 0
+  }
+
+  const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
+    if (field === 'name') return local.name !== acked.name
+    if (field === 'powerTarget') return local.powerTarget !== acked.powerTarget
+    return stableStringify(local.groups) !== acked.groups
+  }
+
+  /**
+   * Adds and deletes are always intent — nothing in the recalculation creates or
+   * removes a factory, so the diff itself is the signal and no UI has to say so.
+   * Tab-level fields are intent by the same argument.
+   */
+  const markStructuralIntent = (engine: RoomEngine, local: RoomContent) => {
+    const localIds = new Set(local.factories.map(factory => factory.id))
+    for (const id of localIds) {
+      if (!engine.acked.factories.has(id)) engine.touchedFactories.add(id)
+    }
+    for (const id of engine.acked.factories.keys()) {
+      if (!localIds.has(id)) engine.touchedFactories.add(id)
+    }
+    for (const field of TAB_FIELDS) {
+      if (fieldDiffers(engine.acked, local, field)) engine.touchedFields.add(field)
+    }
+  }
+
+  /** Everything an ack (or an adopted baseline) proved is no longer unsent intent. */
+  const clearSatisfiedIntent = (roomId: string, baseline: AckedState) => {
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!engine || !tab) return
+
+    const local = contentOfTab(tab)
+    const localById = new Map(local.factories.map(factory => [factory.id, factory]))
+
+    for (const id of [...engine.touchedFactories]) {
+      const mine = localById.get(id)
+      const current = mine ? stableStringify(mine) : undefined
+      if (current === baseline.factories.get(id)) engine.touchedFactories.delete(id)
+    }
+    for (const field of [...engine.touchedFields]) {
+      if (!fieldDiffers(baseline, local, field)) engine.touchedFields.delete(field)
+    }
+  }
+
+  // ===== Persistence =====
+
+  const persistMeta = (roomId: string) => {
+    const engine = engines.get(roomId)
+    if (!engine) return
+
+    setTabMirrorMeta(roomId, {
+      revision: engine.acked.revision,
+      appVersion: PROTOCOL_VERSION,
+      userTouchedIds: [...engine.touchedFactories],
+      userTouchedFields: [...engine.touchedFields],
+    })
+  }
+
+  const pruneMirrorMeta = () => {
+    pruneTabMirrorMeta(appStore.getTabs().map(tab => tab.id))
+  }
+
+  // ===== Op builder =====
+
+  const flushRoom = (roomId: string): boolean => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return false
+    if (isSuppressed.value || room.status !== 'synced' || engine.pending) return false
+
+    const tab = getTab(roomId)
+    if (!tab) return false
+
+    const local = contentOfTab(tab)
+    markStructuralIntent(engine, local)
+
+    const result = buildDiff(engine.acked, local)
+    if (!result) return false
+
+    const opId = crypto.randomUUID()
+    const sent = ensureSocket().sendOp({
+      roomId,
+      opId,
+      baseRevision: engine.acked.revision,
+      diff: result.diff,
+    })
+    if (!sent) return false
+
+    // Send clears nothing: the baseline only moves when the server acks it.
+    engine.pending = { opId, baseRevision: engine.acked.revision, diff: result.diff, sent: result.sent }
+    room.hasPendingOp = true
+    persistMeta(roomId)
+    return true
+  }
+
+  const flushAll = () => {
+    for (const roomId of Object.keys(rooms.value)) flushRoom(roomId)
+  }
+
+  const scheduleFlush = () => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(flushAll, OP_DEBOUNCE_MS)
+  }
+
+  // ===== The one rebase path =====
+
+  interface Overlay {
+    content: RoomContent
+    /** False when local state was already the server's, so no recalculation is owed. */
+    overlaid: boolean
+  }
+
+  const overlayIntent = (engine: RoomEngine, server: RoomContent, tab: FactoryTab): Overlay => {
+    const local = contentOfTab(tab)
+    const localById = new Map(local.factories.map(factory => [factory.id, factory]))
+    const serverPrints = engine.acked.factories
+    let overlaid = false
+
+    const factories: Factory[] = []
+    for (const factory of server.factories) {
+      if (!engine.touchedFactories.has(factory.id)) {
+        factories.push(factory)
+        continue
+      }
+      const mine = localById.get(factory.id)
+      if (!mine) {
+        // Touched and gone from local state: this client deleted it.
+        overlaid = true
+        continue
+      }
+      const serialized = stableStringify(mine)
+      if (serialized !== serverPrints.get(factory.id)) overlaid = true
+      factories.push(JSON.parse(serialized) as Factory)
+    }
+
+    // Touched records the server has never seen: created here since the baseline.
+    for (const factory of local.factories) {
+      if (serverPrints.has(factory.id) || !engine.touchedFactories.has(factory.id)) continue
+      overlaid = true
+      factories.push(JSON.parse(stableStringify(factory)) as Factory)
+    }
+
+    for (const field of TAB_FIELDS) {
+      if (engine.touchedFields.has(field) && fieldDiffers(engine.acked, local, field)) overlaid = true
+    }
+
+    return {
+      content: {
+        name: engine.touchedFields.has('name') ? local.name : server.name,
+        powerTarget: engine.touchedFields.has('powerTarget') ? local.powerTarget : server.powerTarget,
+        groups: engine.touchedFields.has('groups') ? local.groups : server.groups,
+        factories,
+      },
+      overlaid,
+    }
+  }
+
+  const recalculate = (tab: FactoryTab) => {
+    const data = gameDataStore.getGameData()
+    if (!data) {
+      console.error('roomSyncStore: recalculate: no game data, leaving the plan as adopted')
+      return
+    }
+    // Building groups stay sacrosanct, exactly as a plan load treats them.
+    calculateFactories(tab.factories, data, { origin: 'recalculate' })
+  }
+
+  const writeContentToTab = (tab: FactoryTab, content: RoomContent) => {
+    tab.name = content.name
+    tab.powerTarget = content.powerTarget
+    tab.groups = content.groups
+    tab.factories = content.factories
+  }
+
+  /**
+   * Adopt server state, overlay user-touched records from live local state,
+   * recalculate, then send whatever still differs — or nothing. Every recovery
+   * runs through here: reject, reconnect snapshot, inbound over a pending op,
+   * offline exit and disconnect-before-apply.
+   */
+  const rebase = (roomId: string, server: RoomContent, revision: number, send = true) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+
+    engine.acked = ackedFromContent(server, revision)
+    engine.seeded = true
+    engine.pending = null
+    room.hasPendingOp = false
+    room.revision = revision
+    if (room.status !== 'paused') room.status = 'synced'
+
+    const tab = getTab(roomId)
+    if (tab) {
+      const overlaid = overlayIntent(engine, server, tab)
+      writeContentToTab(tab, overlaid.content)
+      if (overlaid.overlaid) recalculate(tab)
+      appStore.schedulePersist()
+      // Whatever the overlay left identical to the adopted state is not divergence.
+      clearSatisfiedIntent(roomId, engine.acked)
+    }
+
+    persistMeta(roomId)
+    if (send) flushRoom(roomId)
+  }
+
+  // ===== Reducer =====
+
+  const handleMessage = (message: ServerMessage) => {
+    switch (message.type) {
+      case 'hello_ok':
+        userId.value = message.userId
+        roomsRevision.value = message.roomsRevision
+        // The transport holds no room state, so re-joining is ours to do.
+        for (const roomId of Object.keys(rooms.value)) join(roomId)
+        break
+
+      case 'snapshot':
+        onSnapshot(message.roomId, message.room, message.revision)
+        break
+
+      case 'up_to_date':
+        onUpToDate(message.roomId, message.revision)
+        break
+
+      case 'op_ack':
+        onOpAck(message.roomId, message.opId, message.revision)
+        break
+
+      case 'op_apply':
+        onOpApply(message.roomId, message.diff, message.revision)
+        break
+
+      case 'op_reject':
+        onOpReject(message.roomId, message.opId, message.reason, message.snapshot)
+        break
+
+      case 'room_meta':
+        onRoomMeta(message.roomId, message.meta)
+        break
+
+      case 'room_deleted':
+        markRoomGone(message.roomId, 'deleted')
+        break
+
+      case 'rooms_changed':
+        roomsRevision.value = message.roomsRevision
+        roomsListStale.value = true
+        break
+
+      case 'presence': {
+        const room = rooms.value[message.roomId]
+        if (room) room.presence = message.count
+        break
+      }
+
+      case 'error': {
+        const room = message.roomId ? rooms.value[message.roomId] : undefined
+        if (room) room.lastError = message.code
+        else lastError.value = message.code
+        break
+      }
+    }
+  }
+
+  const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
+    if (!rooms.value[roomId]) return
+    rebase(roomId, contentFromSnapshot(snapshot), revision)
+  }
+
+  const onUpToDate = (roomId: string, revision: number) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+
+    room.status = 'synced'
+    room.revision = revision
+
+    // Nothing changed server-side, so the mirror is the acked state — except for
+    // whatever this client touched while it was away, which is unknown to us.
+    if (!engine.seeded) seedFromMirror(roomId, revision)
+    engine.acked.revision = revision
+    engine.seeded = true
+
+    persistMeta(roomId)
+    flushRoom(roomId)
+  }
+
+  /**
+   * After a restart the baseline is gone but the mirror is not, and `up_to_date`
+   * proves the mirror's revision is still the server's. Untouched records are
+   * therefore the baseline; touched ones are marked unknown rather than claimed.
+   */
+  const seedFromMirror = (roomId: string, revision: number) => {
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!engine || !tab) return
+
+    engine.acked = ackedFromContent(contentOfTab(tab), revision)
+    for (const id of engine.touchedFactories) {
+      if (engine.acked.factories.has(id)) engine.acked.factories.set(id, UNKNOWN_CONTENT)
+    }
+    if (engine.touchedFields.has('name')) engine.acked.name = UNKNOWN_CONTENT
+    if (engine.touchedFields.has('powerTarget')) engine.acked.powerTarget = Number.NaN
+    if (engine.touchedFields.has('groups')) engine.acked.groups = UNKNOWN_CONTENT
+  }
+
+  const onOpAck = (roomId: string, opId: string, revision: number) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine || engine.pending?.opId !== opId) return
+
+    const sent = { ...engine.pending.sent, revision }
+    engine.acked = sent
+    engine.seeded = true
+    engine.pending = null
+    room.hasPendingOp = false
+    room.revision = revision
+    room.rejectStreak = 0
+
+    clearSatisfiedIntent(roomId, sent)
+    persistMeta(roomId)
+    // Edits made after the send are still unsent; they go out as the next op.
+    flushRoom(roomId)
+  }
+
+  const onOpApply = (roomId: string, diff: RoomDiff, revision: number) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+
+    if (!hasLocalEdits(roomId)) {
+      applyRemote(roomId, diff, revision)
+      return
+    }
+
+    // The diff carries whole records, so the server's new state is reconstructible
+    // from the baseline — as long as this is the very next revision.
+    const base = revision === engine.acked.revision + 1 ? contentFromAcked(engine.acked) : null
+    if (base) rebase(roomId, applyDiffToContent(base, diff), revision)
+    else requestSnapshot(roomId)
+  }
+
+  /** No local edits: replace by id and take the revision. No recalculation, by design. */
+  const applyRemote = (roomId: string, diff: RoomDiff, revision: number) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+
+    engine.acked = applyDiffToAcked(engine.acked, diff, revision)
+    engine.seeded = true
+    room.revision = revision
+
+    const tab = getTab(roomId)
+    if (tab) {
+      writeContentToTab(tab, applyDiffToContent(contentOfTab(tab), diff))
+      appStore.schedulePersist()
+    }
+    persistMeta(roomId)
+  }
+
+  const onOpReject = (
+    roomId: string,
+    opId: string,
+    reason: string,
+    snapshot: RoomSnapshot | undefined,
+  ) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+    if (engine.pending && engine.pending.opId !== opId) return
+
+    engine.pending = null
+    room.hasPendingOp = false
+    room.rejectStreak += 1
+    room.lastError = reason
+
+    if (!snapshot) {
+      // Nothing to rebase onto: the room is gone or this client is no longer in it.
+      markRoomGone(roomId, reason === 'room_deleted' ? 'deleted' : 'revoked')
+      return
+    }
+
+    const paused = room.rejectStreak >= REJECT_PAUSE_AFTER
+    rebase(roomId, contentFromSnapshot(snapshot), snapshot.revision, !paused)
+    if (paused) room.status = 'paused'
+  }
+
+  /** Clears the pause a refused op caused; the next flush tries again. */
+  const resumeRoom = (roomId: string) => {
+    const room = rooms.value[roomId]
+    if (!room || room.status !== 'paused') return
+    room.status = 'synced'
+    room.rejectStreak = 0
+    flushRoom(roomId)
+  }
+
+  const onRoomMeta = (roomId: string, meta: RoomMeta) => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine) return
+
+    room.meta = meta
+    // Meta changes carry no revision, so the baseline's name simply follows —
+    // unless this client has an unsent rename of its own.
+    if (engine.touchedFields.has('name')) return
+    engine.acked.name = meta.name
+
+    const tab = getTab(roomId)
+    if (tab) {
+      tab.name = meta.name
+      appStore.schedulePersist()
+    }
+  }
+
+  /** The tab keeps its content and quietly becomes a local copy. */
+  const markRoomGone = (roomId: string, status: 'deleted' | 'revoked') => {
+    const room = rooms.value[roomId]
+    if (!room) return
+    room.status = status
+    room.hasPendingOp = false
+    engines.delete(roomId)
+    removeTabMirrorMeta(roomId)
+  }
+
+  // ===== Connection =====
+
+  const handleStatus = (status: SyncSocketStatus) => {
+    const wasConnected = connection.value === 'connected'
+    connection.value = status
+
+    if (status === 'connected') {
+      failedReconnects.value = 0
+      if (mode.value !== 'offline') mode.value = 'online'
+      return
+    }
+
+    // An unacknowledged op died with the socket. Dropping it is what makes the
+    // reconnect a plain rebase rather than a second, duplicated send.
+    if (wasConnected) abandonPendingOps()
+
+    if (mode.value === 'offline' || status !== 'reconnecting') return
+
+    failedReconnects.value += 1
+    if (mode.value !== 'offlinePrompt') mode.value = 'reconnecting'
+    if (failedReconnects.value >= OFFLINE_PROMPT_AFTER || browserIsOffline()) mode.value = 'offlinePrompt'
+  }
+
+  const abandonPendingOps = () => {
+    for (const [roomId, engine] of engines) {
+      engine.pending = null
+      const room = rooms.value[roomId]
+      if (!room) continue
+      room.hasPendingOp = false
+      if (room.status === 'synced' || room.status === 'joining') room.status = 'idle'
+    }
+  }
+
+  const browserIsOffline = (): boolean =>
+    typeof navigator !== 'undefined' && navigator.onLine === false
+
+  const onBrowserOffline = () => {
+    if (mode.value === 'offline') return
+    mode.value = 'offlinePrompt'
+  }
+
+  // ===== Wiring =====
+
+  /** The socket is injectable so the engine's contract can be driven by hand. */
+  const configure = (options: ConfigureOptions = {}) => {
+    if (options.socket && options.socket !== socket) {
+      unsubscribeMessage?.()
+      unsubscribeStatus?.()
+      socket = options.socket
+      unsubscribeMessage = socket.onMessage(handleMessage)
+      unsubscribeStatus = socket.onStatus(handleStatus)
+    }
+    return socket
+  }
+
+  const ensureSocket = (): SyncSocket => {
+    if (!socket) configure({ socket: new SyncSocket() })
+    return socket as SyncSocket
+  }
+
+  // ===== Lifecycle =====
+
+  const start = () => {
+    if (isSuppressed.value) return
+    const token = useAuthStore().getToken()
+    ensureSocket().connect(token || undefined)
+  }
+
+  const stop = () => {
+    socket?.stop()
+  }
+
+  const trackRoom = (roomId: string, options: TrackRoomOptions = {}) => {
+    if (!rooms.value[roomId]) rooms.value[roomId] = newRoomState(roomId)
+
+    let engine = engines.get(roomId)
+    if (!engine) {
+      engine = newEngine(options)
+      engines.set(roomId, engine)
+
+      // Intent is the only thing that survives a restart; the baseline is not.
+      const stored = readTabMirrorMeta()[roomId]
+      for (const id of stored?.userTouchedIds ?? []) engine.touchedFactories.add(id)
+      for (const field of stored?.userTouchedFields ?? []) engine.touchedFields.add(field)
+    } else if (options.visitorToken) {
+      engine.visitorToken = options.visitorToken
+    }
+
+    if (isConnected.value) join(roomId)
+  }
+
+  const untrackRoom = (roomId: string) => {
+    if (rooms.value[roomId]) socket?.leave(roomId)
+    delete rooms.value[roomId]
+    engines.delete(roomId)
+    removeTabMirrorMeta(roomId)
+  }
+
+  const join = (roomId: string): boolean => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine || isSuppressed.value) return false
+
+    const stored = readTabMirrorMeta()[roomId]
+    const lastRevision = engine.seeded ? engine.acked.revision : stored?.revision
+    room.status = 'joining'
+    return ensureSocket().join(roomId, { lastRevision, visitorToken: engine.visitorToken })
+  }
+
+  /** Forces a fresh snapshot: a join with no revision can never answer `up_to_date`. */
+  const requestSnapshot = (roomId: string): boolean => {
+    const engine = engines.get(roomId)
+    if (!engine || isSuppressed.value) return false
+    return ensureSocket().join(roomId, { visitorToken: engine.visitorToken })
+  }
+
+  // ===== Offline mode =====
+
+  /** Airplane mode: total backend silence, not quieter retrying. */
+  const enterOffline = () => {
+    mode.value = 'offline'
+    failedReconnects.value = 0
+    clearTimeout(debounceTimer)
+    socket?.stop()
+  }
+
+  const dismissOfflinePrompt = () => {
+    if (mode.value !== 'offlinePrompt') return
+    mode.value = 'reconnecting'
+    failedReconnects.value = 0
+  }
+
+  /** Leaving is manual, like a phone. Each room rebases off its join snapshot. */
+  const exitOffline = () => {
+    if (mode.value !== 'offline') return
+    mode.value = 'reconnecting'
+    failedReconnects.value = 0
+    start()
+  }
+
+  // ===== Event wiring =====
+
+  /**
+   * `factoryEdited` is the user's own action; `factoryUpdated` also fires for
+   * every factory the recalculation rippled into, which is payload, not intent.
+   */
+  const onFactoryEdited = (factory: Factory) => {
+    const tab = appStore.getCurrentTab()
+    if (tab && engines.has(tab.id)) markUserTouched(tab.id, factory.id)
+    scheduleFlush()
+  }
+
+  eventBus.on('factoryEdited', onFactoryEdited)
+  eventBus.on('factoryUpdated', scheduleFlush)
+  eventBus.on('calculationsCompleted', scheduleFlush)
+
+  if (typeof window !== 'undefined') window.addEventListener('offline', onBrowserOffline)
+
+  const dispose = () => {
+    eventBus.off('factoryEdited', onFactoryEdited)
+    eventBus.off('factoryUpdated', scheduleFlush)
+    eventBus.off('calculationsCompleted', scheduleFlush)
+    if (typeof window !== 'undefined') window.removeEventListener('offline', onBrowserOffline)
+    clearTimeout(debounceTimer)
+    unsubscribeMessage?.()
+    unsubscribeStatus?.()
+    unsubscribeMessage = null
+    unsubscribeStatus = null
+    socket = null
+  }
+
+  return {
+    // State
+    rooms,
+    mode,
+    connection,
+    failedReconnects,
+    userId,
+    roomsRevision,
+    roomsListStale,
+    lastError,
+    isOffline,
+    isSuppressed,
+    isConnected,
+
+    // Lifecycle
+    configure,
+    start,
+    stop,
+    dispose,
+    trackRoom,
+    untrackRoom,
+    join,
+    requestSnapshot,
+
+    // Intent and ops
+    markUserTouched,
+    markTabTouched,
+    hasLocalEdits,
+    flushRoom,
+    flushAll,
+    resumeRoom,
+
+    // Offline
+    enterOffline,
+    dismissOfflinePrompt,
+    exitOffline,
+
+    // Persistence
+    pruneMirrorMeta,
+
+    // Reducer, driven by the socket and directly by tests
+    handleMessage,
+  }
+})

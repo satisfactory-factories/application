@@ -230,7 +230,10 @@ export class SyncSocket {
     this.clearRetry()
     const delay = reconnectDelay(this.attempt)
     this.attempt++
-    this.setStatus('reconnecting')
+    // Announced every time, not just on the first: each failure is what the
+    // offline detector counts, and the status string stops changing after one.
+    this.statusValue = 'reconnecting'
+    this.notify('reconnecting')
 
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null
@@ -263,6 +266,10 @@ export class SyncSocket {
   private setStatus (status: SyncSocketStatus): void {
     if (this.statusValue === status) return
     this.statusValue = status
+    this.notify(status)
+  }
+
+  private notify (status: SyncSocketStatus): void {
     for (const handler of [...this.statusHandlers]) handler(status)
   }
 }

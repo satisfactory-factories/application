@@ -112,7 +112,7 @@
             <i class="fas fa-bug mr-2" />Mangle token
           </v-btn>
           <p class="mt-4">
-            You are signed in. Your factory data will automatically saved every 10s upon a change. Should you wish to transfer the data to another device, ensure you're signed in then click the "Force Download" button.
+            You are signed in. Synced plans save to your account as you edit them and follow you to every device.
           </p>
           <sync />
         </v-card-text>

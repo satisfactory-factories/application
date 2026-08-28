@@ -4,13 +4,14 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 type Events = {
   factoryUpdated: Factory;
+  // The factory the user acted on, as opposed to the ones a recalculation
+  // rippled into. Sync treats this as intent and factoryUpdated as payload.
+  factoryEdited: Factory;
   loggedIn: undefined;
   sessionExpired: undefined;
   // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
   // present on the REST side, where the server states what it wanted.
   versionMismatch: { source: 'rest' | 'ws', body?: VersionMismatchBody };
-  dataSynced: undefined;
-  dataOutOfSync: undefined;
   toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
   // Initial factory loading dialog
   loadingCompleted: undefined;

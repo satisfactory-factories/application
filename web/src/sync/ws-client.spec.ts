@@ -267,6 +267,20 @@ describe('SyncSocket', () => {
       }
     })
 
+    it('announces every failure, not just the first', () => {
+      const seen: string[] = []
+      handshake()
+      client.onStatus(status => seen.push(status))
+
+      for (const delay of [1_000, 2_000, 4_000]) {
+        latest().serverClose(1011)
+        vi.advanceTimersByTime(delay)
+      }
+
+      // The offline detector counts these, and the status string stops changing.
+      expect(seen).toEqual(['reconnecting', 'reconnecting', 'reconnecting'])
+    })
+
     it('resets the backoff once a handshake completes again', () => {
       handshake()
 

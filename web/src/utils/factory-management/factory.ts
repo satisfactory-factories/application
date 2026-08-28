@@ -370,6 +370,10 @@ export const calculateFactory = (
     eventBus.emit('factoryUpdated', factory)
   }
 
+  // This entry point is only reached from a user action on one factory, so it is
+  // the only place that can tell sync which change was intent and which was ripple.
+  eventBus.emit('factoryEdited', factory)
+
   return factory
 }
 

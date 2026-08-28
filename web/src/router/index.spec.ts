@@ -8,12 +8,11 @@ import { fetchGameData } from '@/utils/gameDataService'
 // @ts-ignore // this is fine, it works, stop moaning
 const gameData = await fetchGameData()
 
-// The navigation guard loads game data and starts the sync tick before every
-// route; both stores are mocked so tests exercise the routing behaviour only.
-// getGameData is stubbed with the real fixture data because navigating loads
-// the page components, whose imports read from the store.
+// The navigation guard loads game data before every route; the store is mocked
+// so tests exercise the routing behaviour only. getGameData is stubbed with the
+// real fixture data because navigating loads the page components, whose imports
+// read from the store.
 const loadGameData = vi.fn(async () => {})
-const setupTick = vi.fn()
 
 vi.mock('@/stores/game-data-store', () => ({
   useGameDataStore: () => ({
@@ -21,15 +20,11 @@ vi.mock('@/stores/game-data-store', () => ({
     getGameData: () => gameData,
   }),
 }))
-vi.mock('@/stores/sync-store', () => ({
-  useSyncStore: () => ({ setupTick }),
-}))
 
 describe('router', () => {
   beforeEach(() => {
     loadGameData.mockClear()
     loadGameData.mockImplementation(async () => {})
-    setupTick.mockClear()
   })
 
   describe('generated route table', () => {
@@ -73,11 +68,10 @@ describe('router', () => {
   })
 
   describe('navigation guard', () => {
-    it('loads game data and starts the sync tick, then completes navigation', async () => {
+    it('loads game data, then completes navigation', async () => {
       await router.push('/parts')
 
       expect(loadGameData).toHaveBeenCalled()
-      expect(setupTick).toHaveBeenCalled()
       expect(router.currentRoute.value.path).toBe('/parts')
     })
 

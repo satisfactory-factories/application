@@ -149,8 +149,8 @@
 
   const apply = (id: string | undefined) => {
     props.factory.icon = id
-    // Drives both the local save (app-store schedulePersist) and the cloud sync dirty flag
-    // (sync-store detectedChange) — same route PlannerFactoryNotes uses for the notes field.
+    // Drives both the local save and the sync flush, same route PlannerFactoryNotes
+    // uses for the notes field.
     eventBus.emit('factoryUpdated', props.factory)
     isOpen.value = false
   }

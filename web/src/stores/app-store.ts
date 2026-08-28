@@ -750,6 +750,8 @@ export const useAppStore = defineStore('app', () => {
     changeSatisfactoryBreakdowns,
     prepareLoader,
     forceCalculation,
+    // Sync writes into the mirror directly, so it has to ask for the save itself.
+    schedulePersist,
 
     // Testing
     getTab,
