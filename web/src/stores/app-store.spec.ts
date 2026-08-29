@@ -742,6 +742,39 @@ describe('app-store', () => {
         expect(factories[0].displayOrder).toEqual(0)
         expect(factories[1].displayOrder).toEqual(1)
       })
+
+      // A reindex counts as an edit. The insert lands above the grouped block, so every
+      // record below it gets a new displayOrder while declaring nothing of its own — and a
+      // rebase carries over only declared records, so the server's old order would win.
+      it('declares intent for the records the insert reindexed', () => {
+        const grouped = newFactory('Grouped')
+        grouped.group = { id: 'group-1', name: 'Group 1', color: '#ffffff', order: 0 }
+        appStore.addFactory(grouped)
+
+        vi.spyOn(eventBus, 'emit')
+        // emit is already a spy from an earlier test, so the setup add above is on its
+        // record. Only the calls this mutation makes are the subject.
+        vi.mocked(eventBus.emit).mockClear()
+        const added = newFactory('Ungrouped')
+        appStore.addFactory(added)
+
+        expect(appStore.getFactories().map(entry => entry.name)).toEqual(['Ungrouped', 'Grouped'])
+        expect(grouped.displayOrder).toEqual(1)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', grouped)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', added)
+      })
+
+      it('leaves a record the insert did not move undeclared', () => {
+        const first = newFactory('First')
+        appStore.addFactory(first)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.addFactory(newFactory('Second'))
+
+        expect(first.displayOrder).toEqual(0)
+        expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', first)
+      })
     })
 
     describe('removeFactory', () => {
@@ -779,6 +812,25 @@ describe('app-store', () => {
         const factories = appStore.getFactories()
         expect(factories[0].displayOrder).toEqual(0)
         expect(factories[1].displayOrder).toEqual(1)
+      })
+
+      // Same reindex rule as addFactory, inverted: the removal itself is structural and the
+      // engine infers it, but the records that shifted up to close the gap are not.
+      it('declares intent for the records the removal reindexed', () => {
+        const first = newFactory('First', 123)
+        const middle = newFactory('Middle', 256)
+        const last = newFactory('Last', 678)
+        appStore.addFactory(first)
+        appStore.addFactory(middle)
+        appStore.addFactory(last)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.removeFactory(middle.id)
+
+        expect(last.displayOrder).toEqual(1)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', last)
+        expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', first)
       })
     })
 

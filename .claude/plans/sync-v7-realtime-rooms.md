@@ -307,9 +307,11 @@ exists on both sides carries no structural signal. The rule, and it is not negot
   no diff can satisfy, and the client overlays its copy over that peer's edits for ever.
 - Calculation entry points are the exception that needs no call: `calculateFactory()` emits
   `factoryEdited` for the one factory the user acted on, and payload for the ripples.
-- A reindex counts. A move, a copy, a delete or a regroup rewrites `displayOrder` across the
-  whole plan, so `captureOrder` before and `markReorderedFactories` after declare every record
-  that actually moved, not only the one clicked.
+- A reindex counts, and an add or a delete reindexes too. A move, a copy, a regroup, and
+  `addFactory`/`removeFactory` in `app-store.ts` all rewrite `displayOrder` across the whole
+  plan, so `captureOrder` before and `markReorderedFactories` after declare every record that
+  actually moved. The new or removed record is structural and inferred; the ones it pushed
+  along are not, and marking only the one clicked leaves them on the server's old index.
 - The room *name* is deliberately outside this: the server owns it (`ownsRoom` strips it from a
   member's diff, `room_meta` overwrites it), so no UI declares name intent.
 

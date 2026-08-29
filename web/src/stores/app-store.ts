@@ -19,6 +19,7 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
+import { captureOrder, markReorderedFactories } from '@/utils/sync-intent'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -695,6 +696,8 @@ export const useAppStore = defineStore('app', () => {
       console.warn(`appStore: addFactory: Factory ID ${oldId} was already taken, reassigned to ${factory.id}`)
     }
 
+    const before = captureOrder(factories.value)
+
     // A new factory is ungrouped, and ungrouped sorts to the top of the plan — so append it to
     // the end of the Ungrouped block rather than the end of the array, or the grouping sort
     // would immediately move it somewhere the user did not put it.
@@ -709,10 +712,14 @@ export const useAppStore = defineStore('app', () => {
     // explicitly — otherwise the new factory isn't saved (or seen by sync) until the
     // periodic safety net catches it.
     eventBus.emit('factoryUpdated', factory)
+    // Inserting above the grouped block reindexes everything below it. Those records
+    // declare nothing of their own, so a rebase would take the server's order back.
+    markReorderedFactories(before, factories.value)
     schedulePersist()
   }
 
   const removeFactory = (id: number) => {
+    const before = captureOrder(factories.value)
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
       const [removed] = factories.value.splice(index, 1)
@@ -721,6 +728,7 @@ export const useAppStore = defineStore('app', () => {
     }
 
     regenerateSortOrders(getFactories())
+    markReorderedFactories(before, factories.value)
   }
 
   const clearFactories = () => {
