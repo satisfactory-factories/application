@@ -14,10 +14,12 @@ The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, rep
 **Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
 deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
-reset, the v7 changelog modal). Green as of 2026-08-29: backend 236 vitest tests, common 68,
-web 1744 unit tests, 24 Playwright e2e tests, `vue-tsc` clean, root `lint-check` clean, root
-`build` clean. The e2e job in CI has never actually run — it is validated locally only, so
-the first PR is where it gets proved.
+reset, the v7 changelog modal). An adversarial Codex review of the finished diff raised three
+findings; all three are fixed, and the section below is what they were. Green as of
+2026-08-29, on the committed tree: backend 236 vitest tests, common 68, web 1747 unit tests,
+24 Playwright e2e tests run three consecutive times, `vue-tsc` clean, root `lint-check` clean
+(44 pre-existing warnings in `parsing/`, 0 errors), root `build` clean. The e2e job in CI has
+never actually run — it is validated locally only, so the first PR is where it gets proved.
 
 ## Where things live
 
@@ -69,27 +71,84 @@ Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localh
   in-flight slot and stops editing altogether. Same rule for the REST meta mutations: a
   committed unshare or rename is never reported as a 500 because its audit row failed.
 
+## The three Codex build-review findings, and how each was closed
+
+**Revocation is one write, because a chain cannot be trusted to finish.** Unshare used to be a
+sequence — clear `shared`, bump revisions, delete the member rows, kick the sockets — with no
+transaction behind it, so a failure part-way left a collaborator holding a live membership to a
+room its owner had been told was private. The first write is now decisive: it sets
+`shared: false` and `$inc`s `Room.membershipEpoch` together, and `membershipGrantsAccess` in
+`backend/src/rooms/membership-epoch.ts` treats any non-owner `RoomMembership` whose `epoch` is
+below the room's as granting nothing — on the WS join, on every op, and in the REST room list.
+Owner rows are exempt. Everything after that write is cleanup a retry or the sweeper finishes.
+Rows written before the field existed read as epoch 0 and stay valid until the first unshare.
+
+**Nothing after a committed write may block the ack.** A client holds exactly one op in flight
+and only an ack releases it, so an exception thrown *after* the room document was updated does
+not lose a row — it wedges that client into never editing again. Everything the op path does
+past the commit is now best-effort and logged: the activity row in `room-op.service.ts`, and
+the `op_ack` plus the peer fan-out, which go through the gateway's `deliver()` so one
+unwritable socket cannot cost the sender its ack or the other peers their broadcast. The same
+argument applies to the REST meta mutations, where a committed unshare or rename must never be
+reported as a 500 because its audit row failed. It deliberately does **not** apply to
+`ensureRoom`, `join`, `leave` or `deleteRoom`: there real work still follows the log, and the
+500 is the documented signal to retry the chain.
+
+**Every user mutation of synced content declares intent.** A rebase carries over only the
+factories the user is recorded as having touched, so any edit that announced payload alone was
+silently discarded by every recovery path. The fix routes all of them through
+`web/src/utils/sync-intent.ts`; the long version is in the `factoryEdited` section below,
+including the watcher trap and the two deliberate exclusions. A later verification pass found
+one more instance of the same class: `addFactory`/`removeFactory` in `app-store.ts` reindex
+`displayOrder` across the whole plan, and only the added or removed record was announced, so a
+rebase put every record they shifted back on the server's old index. Both now bracket the
+reindex with `captureOrder`/`markReorderedFactories`.
+
 ## Flagged follow-ups, none of them blocking
 
-- **`revokeAccess` closes the whole socket, not just the room.** `room.gateway.ts` drops a
-  *deleted* room from each connection and leaves the socket alive, which is right — one
-  socket multiplexes every synced tab. Revocation (unshare, password rotation) instead closes
-  the connection `4403`, and 4403 tells the client to stop reconnecting, so losing access to
-  one shared tab takes the user's other synced tabs offline until a reload. A `room_revoked`
-  frame mirroring `room_deleted` would be the cheap fix.
+- **`revokeAccess` closes the whole socket, not just the room.** Still true after the epoch
+  fix: `room.gateway.ts` drops a *deleted* room from each connection and leaves the socket
+  alive, which is right — one socket multiplexes every synced tab — but revocation (unshare,
+  password rotation) closes the connection `4403`, which the transport reads as "stop
+  reconnecting". Milder than it sounds, because the client works around it: `onSocketStopped`
+  in `room-sync-store.ts` drops the named room and calls `start()` again, so the cost is a full
+  teardown, reconnect and re-join of every other room rather than being offline until a reload.
+  A `room_revoked` frame mirroring `room_deleted` is still the cheap fix. What the epoch *did*
+  change is that the re-check now kicks correctly mid-chain: it no longer depends on the
+  membership rows having already been deleted.
 - **A partial unshare leaves a socket receiving broadcasts it can no longer earn.** The epoch
   denies that socket every read it asks for and every op it sends, but the kick rides on
   `access_revoked`, which is emitted only once the whole chain finishes — so until the owner
   retries, or that peer sends its own op (rejected `forbidden`, which drops it from the room),
   it still receives `op_apply` fan-out. Emitting `access_revoked` straight after the first
   write would close it; it was left as prescribed cleanup deliberately, so the lingering-row
-  case stays reproducible in `backend/test/rooms-unshare-revocation.spec.ts`.
+  case stays reproducible in `backend/test/rooms-unshare-revocation.spec.ts`. Two channels
+  reach that socket, and a fix has to close both: `broadcastOp`, and `rejectUnparsable` in
+  `room.gateway.ts`, which answers a malformed frame with a full snapshot on the strength of
+  `connection.rooms` alone — no access re-check, unlike the parsed op path. The same pair is
+  why a member who leaves through `POST /rooms/:id/leave` keeps receiving that room on an
+  already-joined socket: `leave()` emits `rooms_changed`, never `access_revoked`.
 - **Adoption and joined-tab upgrade are sequential by necessity.** `adoptTabs` and
   `upgradeJoinedTabs` in `rooms-store.ts` walk their tabs one at a time, because each server
   call is a chain of non-transactional ensure-steps and there is no transaction to make a
   batch atomic. A failure part-way leaves some tabs adopted and the rest local; they are
   simply re-offered at the next login. Parallelising or batching this is a replica-set
   conversation, not a client one.
+- **A rebase does not re-establish the group-contiguity invariant.** `overlayIntent` rebuilds
+  the plan as the server's order plus every locally-created factory appended, so a factory
+  added here and then rebased lands at the end of the array rather than in its group's block —
+  the invariant `factory-groups.ts` opens by declaring. Marking the reindex ripple (above)
+  keeps the `displayOrder` values consistent, so a later `regenerateSortOrders` puts it back,
+  but nothing in the rebase path calls `sortFactoriesByGroup`. Doing so after the overlay looks
+  like the fix; it was out of scope for a review-fix pass.
+- **Two writes still announce nothing at all**, both pre-existing and neither a sync bug in
+  itself: `DroneCalculator.vue` (see below) and `updateProductSelection` in `Product.vue`,
+  whose Uranium/Plutonium-waste branch clears the product and returns before `updateFactory`,
+  so the clear is not even persisted until the next action.
+- **Small backend residuals, both deliberate.** The `duplicate` op-ack replay is the one
+  post-commit send that does not go through `deliver()` — harmless, since a client that ignores
+  a thrown `internal_error` and a client that receives nothing are equally wedged. And a voided
+  membership row still counts toward the 25-membership cap until the cleanup deletes it.
 - **`web/src/pages/share/[id].vue` still uses three blocking `alert()`s** for a bad or
   unparseable snapshot link. Everything built for v7 uses the toast bus; these predate it and
   were left alone deliberately, but they are the last blocking dialogs on a sync path.
@@ -125,15 +184,18 @@ Keep these: the shapes recur, and the second one bites twice.
 
   **`web/src/utils/sync-intent.ts` is now the one door.** `markFactoryEdited` emits payload and
   intent together, `markTabEdited(field)` does the tab-owned half (`powerTarget`, `groups`), and
-  `captureOrder` + `markReorderedFactories` cover the reindex ripple — a move, copy, delete or
-  regroup rewrites `displayOrder` across the whole plan, so the records that changed are never
-  only the one clicked. Everything that edits stored content calls one of those: the name field
-  and hidden/game-sync chips (`PlannerFactory.vue`), tasks, notes, icon, groups
+  `captureOrder` + `markReorderedFactories` cover the reindex ripple — a move, copy, regroup,
+  add or delete rewrites `displayOrder` across the whole plan, so the records that changed are
+  never only the one clicked. Everything that edits stored content calls one of those: the name
+  field and hidden/game-sync chips (`PlannerFactory.vue`), tasks, notes, icon, groups
   (`useFactoryGroups.ts`), show/hide-all and the reorder family (`Planner.vue`), the building
   groups row (`BuildingGroups.vue`, `BuildingGroupsSection.vue`), all five export calculators,
-  blank product/generator/import rows, and `usePowerTarget`. Calculation entry points need no
-  call — `calculateFactory()` already emits intent for the factory the user acted on — and adds
-  and deletes need none either, because `markStructuralIntent` infers them from the diff.
+  blank product/generator/import rows, `usePowerTarget`, and `addFactory`/`removeFactory` in
+  `app-store.ts` for their own reindex. Calculation entry points need no call —
+  `calculateFactory()` already emits intent for the factory the user acted on — and the added
+  or removed record itself needs none, because `markStructuralIntent` infers it from the diff.
+  Only the record is inferred, though, never the reindex it caused: that distinction is the
+  one this rule keeps getting caught out on.
 
   Two deliberate exclusions, both load-bearing: the **room name** is server-authoritative
   (`ownsRoom` strips it from a member's diff and `room_meta` overwrites it), so no UI declares
