@@ -67,7 +67,7 @@
   import eventBus from '@/utils/eventBus'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useAppStore } from '@/stores/app-store'
-  import { markTabEdited } from '@/utils/sync-intent'
+  import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
   const { getFactories, prepareLoader, getCurrentTab } = useAppStore()
 
   defineProps<{ source: 'planner' | 'changelog' }>()
@@ -120,7 +120,14 @@
       tab.powerTarget = demoPlan.powerTarget
       markTabEdited('powerTarget')
     }
-    prepareLoader(demoPlan.getFactories(), true)
+
+    // Same bulk replacement as the template loader, and the same reason it has to be
+    // declared: the demo's ids are fixed, so one landing on an id the plan already
+    // holds is the ordinary case, and structural inference cannot see it as a change.
+    const factories = demoPlan.getFactories()
+    markPlanReplaced(getFactories(), factories)
+
+    prepareLoader(factories, true)
   }
 
   if (introShow.value) {
