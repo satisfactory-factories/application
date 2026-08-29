@@ -1014,6 +1014,85 @@ describe('room-sync-store', () => {
     })
   })
 
+  /**
+   * "Clear all" replaced both arrays and announced nothing — no intent, no payload —
+   * so the removals were never flushed and the next rebase brought the whole plan
+   * back off the server.
+   */
+  describe('clearing the whole plan', () => {
+    /** Points the store's own tab pointer at the room, as a real tab switch would. */
+    const clearThroughTheStore = (tab: FactoryTab) => {
+      appStore.currentFactoryTab = tab
+      appStore.inited = true
+      appStore.clearFactories()
+    }
+
+    // Nothing was announced at all, so no flush was ever scheduled: the removals sat
+    // in the browser until some later, unrelated edit happened to carry them.
+    it('schedules an op of its own carrying every removal', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+
+      clearThroughTheStore(tab)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(opsOf()).toHaveLength(1)
+      expect(lastOp().diff.removedFactoryIds).toEqual([1, 2])
+      expect(lastOp().diff.factories).toBeUndefined()
+    })
+
+    // Intent has to land at the clear, not at the flush: an inbound op arriving first
+    // is applied straight into the tab when this client is holding nothing.
+    it('is not resurrected by an inbound op that lands before the flush', () => {
+      const tab = syncAt(fixture, 4)
+      clearThroughTheStore(tab)
+
+      const theirs = wire(fixture[1])
+      theirs.name = 'Beta, theirs'
+      receive({ type: 'op_apply', roomId: ROOM, revision: 5, diff: { factories: [theirs] } })
+
+      expect(tab.factories).toEqual([])
+    })
+
+    it('stays cleared over a snapshot the other side moved on', () => {
+      const tab = syncAt(fixture, 4)
+      clearThroughTheStore(tab)
+      store.flushRoom(ROOM)
+
+      // The peer edited while the clear was in flight, so it comes back rejected.
+      const theirs = wire(fixture)
+      theirs[0].name = 'Alpha, theirs'
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: lastOp().opId,
+        reason: 'stale_base',
+        snapshot: snapshotOf(theirs, 5),
+      })
+
+      expect(tab.factories).toEqual([])
+      expect(lastOp().baseRevision).toBe(5)
+      expect(lastOp().diff.removedFactoryIds).toEqual([1, 2])
+    })
+
+    it('holds the removals through an offline restart', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      clearThroughTheStore(tab)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
+
+      expect(tab.factories).toEqual([])
+      expect(lastOp().diff.removedFactoryIds).toEqual([1, 2])
+    })
+  })
+
   describe('a tab field the user set on its own', () => {
     it('survives the reconnect, and is re-sent', () => {
       vi.useFakeTimers()

@@ -38,3 +38,18 @@ export const reorderedFactories = (before: Map<number, string>, factories: Facto
 export const markReorderedFactories = (before: Map<number, string>, factories: Factory[]) => {
   reorderedFactories(before, factories).forEach(factory => markFactoryEdited(factory))
 }
+
+/**
+ * A bulk replacement of the whole plan — a clear, a template, a pasted plan. Every
+ * record that arrived and every record that went is the user's own edit, and each has
+ * to be declared: `markStructuralIntent` infers only ids that appeared or vanished, so
+ * a replacement landing on an id it overwrites would carry no intent at all, and a
+ * replacement that announces nothing is never even flushed.
+ */
+export const markPlanReplaced = (before: Factory[], after: Factory[]) => {
+  const arriving = new Set(after.map(factory => factory.id))
+  after.forEach(factory => markFactoryEdited(factory))
+  before.forEach(factory => {
+    if (!arriving.has(factory.id)) markFactoryEdited(factory)
+  })
+}

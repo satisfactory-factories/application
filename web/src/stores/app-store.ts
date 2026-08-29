@@ -19,7 +19,7 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
-import { captureOrder, markReorderedFactories } from '@/utils/sync-intent'
+import { captureOrder, markPlanReplaced, markReorderedFactories } from '@/utils/sync-intent'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -732,8 +732,14 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const clearFactories = () => {
+    // Emptying the plan is the user deleting every record in it, and every one of
+    // them has to be declared: announcing nothing left the removals unsent and
+    // unsaved, so the next rebase took the whole plan back off the server.
+    const cleared = [...factories.value]
     factories.value.length = 0
     factories.value = []
+    markPlanReplaced(cleared, [])
+    schedulePersist()
   }
   // ==== END FACTORY MANAGEMENT
 

@@ -16,6 +16,7 @@ import { ConnectionRegistry } from './connection-registry'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomAccessService } from './room-access.service'
 import { RoomEventsService } from '../rooms/room-events.service'
+import type { RoomEventMap } from '../rooms/room-events.service'
 import { RoomOpService } from './room-op.service'
 import { RoomsService } from '../rooms/rooms.service'
 import { toRoomSnapshot } from './room-snapshot'
@@ -301,8 +302,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         break
 
       case 'duplicate':
-        // The single in-flight retry window: replay the ack, apply nothing.
-        connection.send({
+        // The single in-flight retry window: replay the ack, apply nothing. Past a
+        // commit here too — the original op's — so the replay is best-effort like
+        // the ack it repeats, and an unwritable socket must not raise an exception
+        // on the one path a client takes when its ack went missing.
+        this.deliver(connection, {
           type: 'op_ack',
           roomId: message.roomId,
           opId: message.opId,
@@ -372,18 +376,39 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    */
   private async rejectUnparsable (connection: Connection, raw: unknown): Promise<void> {
     const envelope = asOpEnvelope(raw)
-    if (!envelope || !connection.rooms.has(envelope.roomId)) {
+    const session = envelope ? connection.rooms.get(envelope.roomId) : undefined
+    if (!envelope || !session) {
       connection.send(error('invalid_message', 'Message did not match the protocol.'))
       return
     }
 
-    const room = await this.roomModel.findOne({ roomId: envelope.roomId, deletedAt: null }).lean()
+    // The reply carries the whole room, so membership of `connection.rooms` is not
+    // enough: it is set at join time and outlives a revocation until the kick lands.
+    // Re-run the same check the parsed op path runs before handing the snapshot over.
+    const room = await this.roomModel.findOne({ roomId: envelope.roomId }).lean()
+    const role = room
+      ? await this.access.resolve(room, {
+        userId: connection.userId,
+        visitorToken: session.visitorToken,
+      })
+      : null
+
+    if (!room || !role) {
+      // A tombstone is told apart from a revocation, exactly as `join` and the parsed
+      // op path do: the client turns its copy local either way, for different reasons.
+      connection.send(room?.deletedAt
+        ? { type: 'room_deleted', roomId: envelope.roomId }
+        : error('forbidden', 'You do not have access to this room.', envelope.roomId))
+      this.handleLeave(connection, envelope.roomId)
+      return
+    }
+
     connection.send({
       type: 'op_reject',
       roomId: envelope.roomId,
       opId: envelope.opId,
       reason: 'invalid',
-      snapshot: room ? toRoomSnapshot(room) : undefined,
+      snapshot: toRoomSnapshot(room),
     })
   }
 
@@ -429,13 +454,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    */
   private readonly onRoomDeleted = ({ roomId }: { roomId: string }): void => {
     for (const connection of this.registry.roomConnections(roomId)) {
-      connection.send({ type: 'room_deleted', roomId })
+      this.deliver(connection, { type: 'room_deleted', roomId })
       this.registry.leaveRoom(connection, roomId)
     }
   }
 
-  private readonly onAccessRevoked = ({ roomId }: { roomId: string }): void => {
-    void this.revokeAccess(roomId).catch(cause =>
+  private readonly onAccessRevoked = (event: RoomEventMap['access_revoked']): void => {
+    void this.revokeAccess(event).catch(cause =>
       this.logger.error('Failed to re-check room access', cause))
   }
 
@@ -446,7 +471,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       const roomsRevision = await this.rooms.roomsRevisionOf(userId)
       for (const connection of connections) {
-        connection.send({ type: 'rooms_changed', roomsRevision })
+        this.deliver(connection, { type: 'rooms_changed', roomsRevision })
       }
     }
   }
@@ -464,17 +489,31 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       shared: room.shared,
       hasPassword: room.passwordHash !== null,
     }
-    for (const connection of connections) connection.send({ type: 'room_meta', roomId, meta })
+    for (const connection of connections) {
+      this.deliver(connection, { type: 'room_meta', roomId, meta })
+    }
   }
 
   /**
-   * Scope is only a hint: re-running the real access check against the room as it
-   * now stands kicks exactly the right sockets for both levers — a rotation
-   * invalidates visitor tokens, an unshare has already removed the memberships.
+   * Re-running the real access check against the room as it now stands kicks
+   * exactly the right sockets for both revocation levers: a rotation invalidates
+   * visitor tokens, an unshare has voided the memberships at the epoch write.
+   * `userId` narrows the sweep to one account.
    */
-  private async revokeAccess (roomId: string): Promise<void> {
+  private async revokeAccess (
+    { roomId, scope, userId }: RoomEventMap['access_revoked'],
+  ): Promise<void> {
     const connections = this.registry.roomConnections(roomId)
+      .filter(connection => userId === undefined || connection.userId === userId)
     if (connections.length === 0) return
+
+    // Leaving withdraws nothing the room itself grants — a shared room still lets
+    // that account back in as a visitor — so the room is dropped from their sockets
+    // rather than re-checked, and their other tabs stay on the same connection.
+    if (scope === 'departed-member') {
+      for (const connection of connections) this.handleLeave(connection, roomId)
+      return
+    }
 
     const room = await this.roomModel.findOne({ roomId }).lean()
     for (const connection of connections) {
@@ -487,7 +526,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         : null
       if (role) continue
 
-      connection.send(error('forbidden', 'Your access to this room was revoked.', roomId))
+      this.deliver(connection, error('forbidden', 'Your access to this room was revoked.', roomId))
       connection.close(CLOSE_CODES.forbidden, 'access revoked')
     }
   }

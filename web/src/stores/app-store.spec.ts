@@ -843,6 +843,23 @@ describe('app-store', () => {
 
         expect(appStore.getFactories()).toEqual([])
       })
+
+      // Emptying the plan used to announce nothing at all, so the removals were never
+      // flushed and the next rebase pulled every factory back off the server.
+      it('declares every removed factory as intent', () => {
+        const first = newFactory('Kept nowhere')
+        const second = newFactory('Also gone')
+        appStore.addFactory(first)
+        appStore.addFactory(second)
+        vi.mocked(eventBus.emit).mockClear()
+
+        appStore.clearFactories()
+
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', first)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', second)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', first)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', second)
+      })
     })
   })
 

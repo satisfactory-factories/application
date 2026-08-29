@@ -333,6 +333,16 @@ export const setFactoryNote = async (
   await field.fill(note)
 }
 
+/**
+ * The sidebar's "Clear", through the confirmation it insists on. Scoped to the docked
+ * sidebar: the mobile drawer renders the same component, so the id matches twice.
+ */
+export const clearPlan = async (page: Page): Promise<void> => {
+  page.once('dialog', dialog => void dialog.accept())
+  await page.locator('.sidebar-content').getByTestId('clear-plan').click()
+  await expect(page.locator('input.factory-name')).toHaveCount(0)
+}
+
 export const factoryNames = (page: Page): Promise<string[]> =>
   page.locator('input.factory-name')
     .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))

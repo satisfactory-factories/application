@@ -31,6 +31,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `snapshot-link` | `/share/:id` still imports a frozen local copy, and the owner's later edits do not reach it. |
 | `invite-password` | A wrong password is refused inline, the right one joins, and a rotation kicks the visitor while the member stays. |
 | `unshare` | The collaborator keeps a local copy of the last state and loses the live link. |
+| `bulk-clear` | "Clear all" on one device empties the other, with nothing left unsent on either. |
 | `offline-manual` | The airplane switch makes zero requests, the edits made behind it sync on the way back, and a task written offline survives a rebase onto a room that moved on. |
 | `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive, and so does a rename left unsent by the drop. |
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union. |

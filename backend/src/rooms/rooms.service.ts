@@ -148,6 +148,11 @@ export class RoomsService {
       await this.rooms.updateOne({ roomId }, { $set: { shared: false }, $inc: { membershipEpoch: 1 } })
     })
 
+    // The kick rides on that write rather than on the cleanup below. Emitted at the
+    // end of the chain instead, a failure part-way would leave a collaborator's
+    // already-joined socket taking op fan-out it can no longer earn.
+    this.events.emit('access_revoked', { roomId, scope: 'non-owners' })
+
     // Everything from here is recoverable cleanup: a voided row grants nothing
     // while it lingers, and a retry or the sweeper finishes the removal.
     const affected = await this.memberIds(roomId)
@@ -158,6 +163,8 @@ export class RoomsService {
     await this.recordActivitySafely(roomId, userId, 'unshared')
 
     this.events.emit('room_meta', { roomId })
+    // Repeated deliberately: the sweep is idempotent, and a socket that connected
+    // between the first emit and here still has to be re-checked.
     this.events.emit('access_revoked', { roomId, scope: 'non-owners' })
     this.events.emit('rooms_changed', { userIds: affected })
 
@@ -261,6 +268,9 @@ export class RoomsService {
       await this.memberships.deleteOne({ userId, roomId })
     })
 
+    // The row is gone, so this account's sockets stop carrying the room. Without
+    // it, a socket that joined before the leave keeps taking the op fan-out.
+    this.events.emit('access_revoked', { roomId, scope: 'departed-member', userId })
     this.events.emit('rooms_changed', { userIds: [userId] })
   }
 

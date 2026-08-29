@@ -65,9 +65,9 @@
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
-  import { markTabEdited } from '@/utils/sync-intent'
+  import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
 
-  const { prepareLoader, isDebugMode, getCurrentTab } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, getFactories } = useAppStore()
 
   const dialog = ref(false)
 
@@ -229,6 +229,11 @@
       tab.powerTarget = powerTarget ?? 0
       markTabEdited('powerTarget')
     }
+
+    // The template overwrites the whole plan, so declare all of it: the records it
+    // drops, and the ones it brings — including any landing on an id it reuses, which
+    // the structural inference cannot see as a change at all.
+    markPlanReplaced(getFactories(), factories)
 
     prepareLoader(factories, true)
     dialog.value = false

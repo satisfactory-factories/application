@@ -55,6 +55,7 @@
       <v-btn
         class="ma-1"
         color="red"
+        data-testid="clear-plan"
         :disabled="getFactories().length === 0"
         prepend-icon="fas fa-trash"
         variant="tonal"

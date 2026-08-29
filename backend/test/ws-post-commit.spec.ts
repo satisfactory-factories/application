@@ -5,6 +5,7 @@ import { makeFactory } from 'common/testing'
 import type { ClientOpMessage, RoomDiff } from 'common'
 import type { Connection } from 'mongoose'
 
+import { ConnectionRegistry } from '../src/realtime/connection-registry'
 import { FlakyActivityService, TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
@@ -40,6 +41,24 @@ describe('ws ops: nothing after the commit may block the ack', () => {
   const op = (name: string, baseRevision: number): ClientOpMessage => {
     const diff: RoomDiff = { factories: [makeFactory({ id: 1, name })] }
     return { type: 'op', roomId, opId: randomUUID(), baseRevision, diff }
+  }
+
+  /**
+   * The socket-write seam. Exactly one write fails, so anything the server tries to
+   * say *instead* of the message it dropped still reaches the client and can be
+   * asserted on.
+   */
+  const failNextSendTo = (userId: string) => {
+    const [target] = context.app.get(ConnectionRegistry).userConnections(userId)
+    const original = target.send.bind(target)
+    const state = { thrown: 0 }
+
+    target.send = message => {
+      if (state.thrown > 0) return original(message)
+      state.thrown += 1
+      throw new Error('injected socket write failure')
+    }
+    return state
   }
 
   beforeAll(async () => {
@@ -96,5 +115,41 @@ describe('ws ops: nothing after the commit may block the ack', () => {
     expect(peer.closeInfo).toBeNull()
     expect(activity.failures).toBe(2)
     expect((await connection.collection('rooms').findOne({ roomId }))?.revision).toBe(2)
+  })
+
+  /**
+   * The lost-ack recovery path, and the only op a client ever retries. The replay is
+   * past a commit too — the original op's — so a write failure here must not surface
+   * as `internal_error` with no ack behind it: that is precisely the state a client
+   * holding one in-flight slot cannot get out of.
+   */
+  it('recovers a client whose ack replay could not be written to its socket', async () => {
+    const sender = await joined(owner.token)
+    const peer = await joined(member.token)
+
+    const first = op('Ingot Smelters', 0)
+    sender.send(first)
+    await expect(sender.next('op_ack')).resolves.toMatchObject({ opId: first.opId, revision: 1 })
+    await expect(peer.next('op_apply')).resolves.toMatchObject({ roomId, revision: 1 })
+
+    // Pretend that ack never arrived: the client retries the same opId, and the
+    // replay cannot be written to it. Nothing may reach the client in its place —
+    // an `internal_error` here is the shape that used to escape the outer handler.
+    const failing = failNextSendTo(owner.userId)
+    sender.send(first)
+
+    await sender.expectSilence('op_ack')
+    await sender.expectSilence('error')
+    expect(failing.thrown).toBe(1)
+    expect(sender.closeInfo).toBeNull()
+
+    // The next retry gets through, which is all the client needs; a reconnect would
+    // have done just as well.
+    sender.send(first)
+    await expect(sender.next('op_ack')).resolves.toMatchObject({ opId: first.opId, revision: 1 })
+
+    // Replayed, never re-applied: one revision, and the peer saw one broadcast.
+    expect((await connection.collection('rooms').findOne({ roomId }))?.revision).toBe(1)
+    await peer.expectSilence('op_apply')
   })
 })

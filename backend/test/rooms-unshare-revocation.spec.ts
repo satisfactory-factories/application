@@ -96,14 +96,19 @@ describe('unshare revocation survives a partial chain', () => {
       expect(room?.shared).toBe(false)
       expect(room?.membershipEpoch).toBe(1)
 
-      // No snapshot: the join is refused rather than answered with the room.
-      memberClient.send({ type: 'join', roomId })
+      // The kick rides on the epoch write rather than on the cleanup, so the socket
+      // that was already in the room is gone before the owner can retry the chain.
       await expect(memberClient.next('error')).resolves.toMatchObject({ code: 'forbidden', roomId })
+      await expect(memberClient.waitForClose()).resolves.toMatchObject({
+        code: CLOSE_CODES.forbidden,
+      })
       await memberClient.expectSilence('snapshot')
 
-      // No write either, on the socket that was already in the room.
-      memberClient.send(op({ factories: [makeFactory({ id: 2, name: 'Sneaked in' })] }))
-      await expect(memberClient.next('op_reject')).resolves.toMatchObject({ reason: 'forbidden' })
+      // And a fresh socket is refused the join outright.
+      const reconnected = await greet(member.token)
+      reconnected.send({ type: 'join', roomId })
+      await expect(reconnected.next('error')).resolves.toMatchObject({ code: 'forbidden', roomId })
+      await reconnected.expectSilence('snapshot')
 
       expect((await get('/rooms', member)).body.rooms).toEqual([])
 

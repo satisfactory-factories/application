@@ -2,8 +2,11 @@ import { EventEmitter } from 'node:events'
 
 import { Injectable } from '@nestjs/common'
 
-/** Who an access change kicks: password holders, or everyone but the owner. */
-export type RoomAccessScope = 'visitors' | 'non-owners'
+/**
+ * Who an access change kicks: password holders, everyone but the owner, or one
+ * account that walked out of its own accord.
+ */
+export type RoomAccessScope = 'visitors' | 'non-owners' | 'departed-member'
 
 export interface RoomEventMap {
   /** These users' room lists changed; their `roomsRevision` has already been bumped. */
@@ -12,8 +15,11 @@ export interface RoomEventMap {
   room_meta: { roomId: string }
   /** The room is tombstoned; everyone holding it turns their copy local. */
   room_deleted: { roomId: string }
-  /** Sockets in this scope must be re-checked and closed 4403 if they no longer qualify. */
-  access_revoked: { roomId: string, scope: RoomAccessScope }
+  /**
+   * Sockets in this scope must be re-checked and closed 4403 if they no longer
+   * qualify. `userId` narrows the sweep to one account's sockets.
+   */
+  access_revoked: { roomId: string, scope: RoomAccessScope, userId?: string }
 }
 
 export type RoomEventName = keyof RoomEventMap
