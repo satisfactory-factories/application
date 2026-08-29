@@ -15,11 +15,13 @@ The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, rep
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
 deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
 reset, the v7 changelog modal). Two adversarial Codex reviews of the finished diff raised
-three findings each; all six are fixed, and the sections below are what they were. Green as of
-2026-08-29, on the committed tree: backend 243 vitest tests, common 68, web 1754 unit tests,
-25 Playwright e2e tests, `vue-tsc` clean, root `lint-check` clean
-(44 pre-existing warnings in `parsing/`, 0 errors), root `build` clean. The e2e job in CI has
-never actually run — it is validated locally only, so the first PR is where it gets proved.
+three findings each; all six are fixed, and the sections below are what they were. A
+verification pass over those fixes then found a seventh instance of the bulk-replacement class
+and fixed it (the demo-plan button, below). Green as of 2026-08-29, on the committed tree:
+backend 244 vitest tests, common 68, web 1756 unit tests, 25 Playwright e2e tests (run twice
+back to back, no flakes), `vue-tsc` clean, root `lint-check` clean (44 pre-existing warnings in
+`parsing/`, 0 errors), root `build` clean. The e2e job in CI has never actually run — it is
+validated locally only, so the first PR is where it gets proved.
 
 ## Where things live
 
@@ -119,14 +121,23 @@ when it fails. `leave()` emits `access_revoked` scoped `departed-member` with th
 leaving withdraws nothing the room itself grants (a shared room would still admit them as a
 visitor), so a re-check would not kick them, and one socket carries every other tab.
 
-**Every bulk clear of the plan declares itself.** `clearFactories` in `app-store.ts` replaced
-both arrays and emitted nothing — no payload, no intent — so no flush was ever scheduled and the
-next rebase brought the whole plan back off the server. It now routes through
+**Every bulk replacement of the plan declares itself.** `clearFactories` in `app-store.ts`
+replaced both arrays and emitted nothing — no payload, no intent — so no flush was ever scheduled
+and the next rebase brought the whole plan back off the server. It now routes through
 `markPlanReplaced(before, after)` in `sync-intent.ts`, which declares every arriving record and
 every departing one. `Templates.vue` uses the same call: a template load *is* announced (through
 `calculateFactories`), but structural inference only sees ids that appeared or vanished, so a
 template landing on an id it overwrites carried no intent at all. Paste-from-clipboard is covered
 because it emits `clear-all` first.
+
+The verification pass found the same hole in a third place, and this one is the easiest of the
+three to hit: **"Start with a demo plan" in `Introduction.vue`**, the button every new visitor is
+offered. It swaps the whole plan out and declared nothing for a single factory. The demo's ids are
+hard-coded 1-9 (`newFactory(name, order, id)`), and the built-in template is generated from the
+same fixture, so "load the template, then the demo" collides on all nine — the op still ships, but
+any later rebase drops every colliding record back to the server's copy and leaves a hybrid plan.
+It now calls `markPlanReplaced` exactly as the template loader does. The bar for this class is not
+"does the id collide by chance" but "can this path put a record on an id the plan already holds".
 
 **The duplicate-op ack replay goes through `deliver()`.** It was the one post-commit send still
 calling `connection.send` directly, on exactly the path a client takes when its ack went missing:
@@ -135,6 +146,32 @@ of an ack, and its one in-flight slot never cleared. The audit that came with it
 `onRoomDeleted`, `fanOutRoomsChanged`, `fanOutRoomMeta` and `revokeAccess` onto `deliver()` too —
 each loops over sockets after a committed REST mutation, and one unwritable socket used to abort
 the loop and leave the rest unnotified.
+
+## What the verification pass actually checked, so it need not be re-derived
+
+Three enumerations, run against the code rather than the tests. Redo them whenever a new sender,
+a new revocation lever or a new bulk path lands.
+
+- **Every WS sender of room content is access-checked, or is only reachable from one that is.**
+  The senders are: the join snapshot (`resolve` before it), the four snapshot-carrying `op_reject`
+  outcomes (`stale`, `not_owner`, `too_large`, and the lost-guard re-read — `applyNow` authorises
+  before any of them can be returned), `rejectUnparsable` (re-checks since the round-two fix), and
+  the two fan-outs, `broadcastOp` and `fanOutRoomMeta`. The fan-outs are the only ones that go on
+  registry membership alone, and that is sound because `connection.rooms` is written in exactly one
+  place — `handleJoin`, after `resolve` — and every one of the four levers that withdraws access
+  (unshare, password set/rotate, delete, leave) emits an event that drops or closes those sockets.
+  `ConnectionRegistry.leaveRoom` clears both indexes, so a dropped room leaves nothing behind.
+- **No raw `connection.send` survives on a post-commit path.** The remaining direct calls are all
+  single-client replies made *before* any write — the rate-limit and parse errors, `hello_ok`, the
+  join replies, and the five reject outcomes — where an exception reaching the outer handler and
+  becoming `internal_error` is the correct signal. Everything past a committed write goes through
+  `deliver()`.
+- **The bulk content-replacement paths.** Live and declaring: `clearFactories`, the template
+  loader, `Introduction.vue`'s demo button, and paste (via `clear-all`). Correctly silent:
+  `setFactories`/`initFactories`/`beginLoading` (the load funnel, which is also how an inbound
+  snapshot lands — declaring there would claim authorship of a peer's plan) and
+  `pages/share/[id].vue` (it calls `addTab`, so nothing is replaced). Not applicable:
+  `WorldImport.vue` never writes the plan at all.
 
 ## Flagged follow-ups, none of them blocking
 
@@ -164,6 +201,17 @@ the loop and leave the rest unnotified.
   itself: `DroneCalculator.vue` (see below) and `updateProductSelection` in `Product.vue`,
   whose Uranium/Plutonium-waste branch clears the product and returns before `updateFactory`,
   so the clear is not even persisted until the next action.
+- **The `?setupDemo=true` demo path must stay silent, unlike the button.** `app-store.ts` loads the
+  same demo when that query string is present, and it deliberately declares nothing. It runs during
+  store construction, before `room-sync-store` exists to hear an emit, and on a synced tab the join
+  snapshot then overwrites the demo — which fails in the safe direction. Adding `markPlanReplaced`
+  there would invert that: the demo would claim authorship and overwrite the account's real plan on
+  the next rebase. The changelog dialog's "Open Demo" button uses this path (`href="/?setupDemo=true"`),
+  so it is user-reachable, not dev-only as an earlier note had it.
+- **`updateFactories` is dead wiring.** `PlannerFactoryList.vue` and `PlannerSidebarContent.vue`
+  both declare the emit and neither ever fires it, so `Planner.vue`'s `updateFactoriesList` — a bare
+  `setFactories` with no declaration — is unreachable. Worth deleting; if anything ever wires it up
+  instead, it needs `markPlanReplaced` first.
 - **A voided membership row still counts toward the 25-membership cap** until the cleanup
   deletes it. Deliberate: re-stamping a row the user already holds costs no capacity, and the
   sweeper reclaims it.
@@ -205,7 +253,8 @@ Keep these: the shapes recur, and the second one bites twice.
   `captureOrder` + `markReorderedFactories` cover the reindex ripple — a move, copy, regroup,
   add or delete rewrites `displayOrder` across the whole plan, so the records that changed are
   never only the one clicked. `markPlanReplaced(before, after)` is the bulk form, for anything
-  that swaps the whole plan out: `clearFactories` in `app-store.ts` and the template loader.
+  that swaps the whole plan out: `clearFactories` in `app-store.ts`, the template loader, and the
+  demo-plan button in `Introduction.vue`.
   Everything that edits stored content calls one of those: the name
   field and hidden/game-sync chips (`PlannerFactory.vue`), tasks, notes, icon, groups
   (`useFactoryGroups.ts`), show/hide-all and the reorder family (`Planner.vue`), the building
