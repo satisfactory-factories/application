@@ -14,7 +14,7 @@ import { AuthTokenPayload } from '../auth/auth-token'
 import { Connection } from './connection'
 import { ConnectionRegistry } from './connection-registry'
 import { Room } from '../rooms/schemas/room.schema'
-import { RoomAccessService } from './room-access.service'
+import { RoomAccess, RoomAccessService } from './room-access.service'
 import { RoomEventsService } from '../rooms/room-events.service'
 import type { RoomEventMap } from '../rooms/room-events.service'
 import { RoomOpService } from './room-op.service'
@@ -229,25 +229,19 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // ===== join / leave =====
 
   private async handleJoin (connection: Connection, message: ClientJoinMessage): Promise<void> {
-    const room = await this.roomModel.findOne({ roomId: message.roomId }).lean()
-    if (!room) {
-      connection.send(error('room_not_found', 'That room does not exist.', message.roomId))
-      return
-    }
-    if (room.deletedAt !== null) {
-      connection.send({ type: 'room_deleted', roomId: room.roomId })
-      return
-    }
-
-    const role = await this.access.resolve(room, {
+    const access = await this.access.authorize(message.roomId, {
       userId: connection.userId,
       visitorToken: message.visitorToken,
     })
-    if (!role) {
-      connection.send(error('forbidden', 'You do not have access to this room.', room.roomId))
+
+    if (access.status !== 'granted') {
+      connection.send(joinRefusal(access.status, message.roomId))
       return
     }
 
+    // The snapshot below is built from this copy and no other: it is the one the
+    // access check was made against, re-read and confirmed unmoved.
+    const { room } = access
     connection.rooms.set(room.roomId, { roomId: room.roomId, visitorToken: message.visitorToken })
     this.registry.joinRoom(connection, room.roomId)
 
@@ -281,8 +275,8 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     const actor = connection.userId ?? ANONYMOUS_ACTOR
-    const outcome = await this.ops.apply(message, actor, room =>
-      this.access.resolve(room, {
+    const outcome = await this.ops.apply(message, actor, () =>
+      this.access.authorize(message.roomId, {
         userId: connection.userId,
         visitorToken: session.visitorToken,
       }))
@@ -385,18 +379,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     // The reply carries the whole room, so membership of `connection.rooms` is not
     // enough: it is set at join time and outlives a revocation until the kick lands.
     // Re-run the same check the parsed op path runs before handing the snapshot over.
-    const room = await this.roomModel.findOne({ roomId: envelope.roomId }).lean()
-    const role = room
-      ? await this.access.resolve(room, {
-        userId: connection.userId,
-        visitorToken: session.visitorToken,
-      })
-      : null
+    const access = await this.access.authorize(envelope.roomId, {
+      userId: connection.userId,
+      visitorToken: session.visitorToken,
+    })
 
-    if (!room || !role) {
+    if (access.status !== 'granted') {
       // A tombstone is told apart from a revocation, exactly as `join` and the parsed
       // op path do: the client turns its copy local either way, for different reasons.
-      connection.send(room?.deletedAt
+      connection.send(access.status === 'deleted'
         ? { type: 'room_deleted', roomId: envelope.roomId }
         : error('forbidden', 'You do not have access to this room.', envelope.roomId))
       this.handleLeave(connection, envelope.roomId)
@@ -408,7 +399,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       roomId: envelope.roomId,
       opId: envelope.opId,
       reason: 'invalid',
-      snapshot: toRoomSnapshot(room),
+      snapshot: toRoomSnapshot(access.room),
     })
   }
 
@@ -515,16 +506,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return
     }
 
-    const room = await this.roomModel.findOne({ roomId }).lean()
     for (const connection of connections) {
       const session = connection.rooms.get(roomId)
-      const role = room
-        ? await this.access.resolve(room, {
-          userId: connection.userId,
-          visitorToken: session?.visitorToken,
-        })
-        : null
-      if (role) continue
+      const access = await this.access.authorize(roomId, {
+        userId: connection.userId,
+        visitorToken: session?.visitorToken,
+      })
+      // Anything short of a clean grant kicks. A room that would refuse this socket
+      // a join must not keep answering the one it already holds.
+      if (access.status === 'granted') continue
 
       this.deliver(connection, error('forbidden', 'Your access to this room was revoked.', roomId))
       connection.close(CLOSE_CODES.forbidden, 'access revoked')
@@ -534,6 +524,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
 const error = (code: string, message: string, roomId?: string): ServerMessage =>
   ({ type: 'error', code, message, roomId })
+
+/** A room that moved under the check is answered as a refusal, never as a snapshot. */
+const joinRefusal = (status: RoomAccess['status'], roomId: string): ServerMessage => {
+  if (status === 'missing') return error('room_not_found', 'That room does not exist.', roomId)
+  if (status === 'deleted') return { type: 'room_deleted', roomId }
+  return error('forbidden', 'You do not have access to this room.', roomId)
+}
 
 const asOpEnvelope = (raw: unknown): OpEnvelope | null => {
   if (typeof raw !== 'object' || raw === null) return null

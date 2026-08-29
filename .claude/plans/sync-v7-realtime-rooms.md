@@ -215,6 +215,18 @@ retry or the sweeper finishes them, and a row that lingers grants nothing. **Re-
 not restore the old collaborators**: the epoch is never lowered, so a former member gets back
 in only by joining again, which re-stamps their row at the current epoch.
 
+**An authorization and the room it authorizes are one operation.** The room read and the
+membership read are two operations and an unshare fits between them, so a voided row can agree
+with a room copy from before the revocation and authorize a snapshot of a room that is already
+private. `RoomAccessService.authorize` reads the room, resolves, re-reads, and retries (bounded,
+then refuses) unless `membershipEpoch`, `passwordVersion`, `shared` and `deletedAt` are unmoved;
+it returns the room copy the decision is true of, and **a snapshot may be built from that copy
+and no other**. The op write carries the same fingerprint into its filter for non-owners —
+`membershipEpoch`, plus `passwordVersion` for a visitor — because neither revocation lever
+touches `revision`, so the revision guard alone would let a just-revoked op commit. Owners are
+exempt everywhere: they never lose their own room, and guarding them would refuse the op an
+owner had in flight across their own share or password change.
+
 **Multi-document safety without transactions.** Every mutation is a chain of individually
 idempotent "ensure" steps; a retry resumes at the incomplete step instead of aborting on a
 duplicate key:

@@ -4,7 +4,7 @@ description: v7 realtime rooms sync — built and green on branch claude/sync-me
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-08-29
+  lastVerified: 2026-08-30
 ---
 
 The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -14,14 +14,14 @@ The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, rep
 **Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
 deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
-reset, the v7 changelog modal). Two adversarial Codex reviews of the finished diff raised
-three findings each; all six are fixed, and the sections below are what they were. A
-verification pass over those fixes then found a seventh instance of the bulk-replacement class
-and fixed it (the demo-plan button, below). Green as of 2026-08-29, on the committed tree:
-backend 244 vitest tests, common 68, web 1756 unit tests, 25 Playwright e2e tests (run twice
-back to back, no flakes), `vue-tsc` clean, root `lint-check` clean (44 pre-existing warnings in
-`parsing/`, 0 errors), root `build` clean. The e2e job in CI has never actually run — it is
-validated locally only, so the first PR is where it gets proved.
+reset, the v7 changelog modal). Three adversarial Codex reviews of the finished diff raised
+seven findings between them; all are fixed, and the sections below are what they were. A
+verification pass over the round-two fixes found a further instance of the bulk-replacement
+class and fixed it (the demo-plan button, below). Green as of 2026-08-30, on the committed tree:
+backend 253 vitest tests, common 68, web 1756 unit tests, 25 Playwright e2e tests, `vue-tsc`
+clean, root `lint-check` clean (44 pre-existing warnings in `parsing/`, 0 errors). The e2e job
+in CI has never actually run — it is validated locally only, so the first PR is where it gets
+proved.
 
 ## Where things live
 
@@ -68,6 +68,11 @@ Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localh
   anywhere (REST list, WS join, every op), owner rows exempt. The deletions, revision bumps
   and socket kicks after it are cleanup that a retry or the sweeper finishes. Re-sharing never
   lowers the epoch, so a former member must join again — the row is re-stamped, not resurrected.
+- **An authorization and the room it authorizes are one operation, never two reads.**
+  `RoomAccessService.authorize(roomId, credentials)` reads the room, resolves the membership,
+  re-reads and refuses unless `membershipEpoch`, `passwordVersion`, `shared` and `deletedAt` are
+  unmoved. It returns the room copy the decision is true of, and a snapshot may be built from
+  that copy and no other.
 - **Nothing after a committed write may block the ack.** Activity rows and socket sends on the
   op path are best-effort and logged; a client that loses its ack never clears its one
   in-flight slot and stops editing altogether. Same rule for the REST meta mutations: a
@@ -115,8 +120,8 @@ socket `4403`. The end-of-chain emit is kept as well: the sweep is idempotent, a
 connected in between still has to be re-checked. `rejectUnparsable` in `room.gateway.ts` used to
 answer a schema-invalid frame with a full snapshot on the strength of `connection.rooms` alone —
 that map records what a socket *joined*, never what it may still read — and now re-runs the same
-`RoomAccessService.resolve` the parsed op path runs, answering `forbidden` and dropping the room
-when it fails. `leave()` emits `access_revoked` scoped `departed-member` with the leaver's
+access check the parsed op path runs, answering `forbidden` and dropping the room when it fails.
+(Re-running the check was not enough on its own; round three, below, is why.) `leave()` emits `access_revoked` scoped `departed-member` with the leaver's
 `userId`, and the gateway drops that room from that account's sockets rather than closing them:
 leaving withdraws nothing the room itself grants (a shared room would still admit them as a
 visitor), so a re-check would not kick them, and one socket carries every other tab.
@@ -147,18 +152,62 @@ of an ack, and its one in-flight slot never cleared. The audit that came with it
 each loops over sockets after a committed REST mutation, and one unwritable socket used to abort
 the loop and leave the rest unnotified.
 
+## The round-three finding: two reads are not an authorization
+
+The round-two fix made `rejectUnparsable` re-run the access check, and that was still wrong,
+for a reason that applied to nearly every check on the branch. The check was **two separate
+reads** — read the room, then read the membership — and an unshare fits between them. The room
+copy still says `shared` at epoch N, the row still says `member` at epoch N, the pair agrees,
+and the snapshot that goes out is of a room that was made private in between. The kick does not
+help: the frame is already executing and event delivery is asynchronous.
+
+**`RoomAccessService.authorize` is now the one door**, and it hands back the room the decision
+is valid for. It reads the room, resolves, re-reads, and retries (three attempts, then refuses)
+unless the four fields any decision consumes are unmoved: `membershipEpoch`, `passwordVersion`,
+`shared`, `deletedAt`. `resolve` is still there but is no longer an authorization on its own —
+it judges one copy, and only `authorize` knows whether that copy still stands. Every caller went
+through it: `handleJoin`, `rejectUnparsable`, the op path (`RoomOpService`'s `OpAuthorizer` is
+now a thunk returning the whole outcome, so the service never reads the room itself), and
+`revokeAccess`, where anything short of a clean grant kicks.
+
+**The op path had the same window with a different sink.** `applyNow` authorized on a read room
+and then guarded the write on `{roomId, revision, deletedAt}` — and **unshare bumps
+`membershipEpoch`, not `revision`**, so a just-revoked member's in-flight op committed straight
+through the guard. A password change bumps `passwordVersion` and likewise leaves `revision`
+alone, so a rotated-out visitor's op did too; the guard did not cover it, and dropping that one
+term from the guard is enough to make the visitor test commit again. The filter now carries
+`membershipEpoch` for any non-owner and `passwordVersion` as well for a visitor. **Owners are
+exempt on purpose**: they never lose their own room, and guarding them would refuse the op an
+owner had in flight across their own share or rotation. A guard miss is now re-authorized rather
+than assumed stale, because the `stale` outcome carries a snapshot too.
+
+Two smaller notes from the same sweep. Mongo matches an absent field against `null` and never
+against `0`, so the guard spells the epoch `room.membershipEpoch ?? null` — a room document
+written before the field existed would otherwise fail every non-owner write. And **REST
+`join` reads the membership before the room now**: every lever that withdraws access advances a
+counter on the room and never on the row, so a room read afterwards is never the older of the
+two and the same interleaving cannot arise. That one is an ordering argument rather than a
+re-read, and it has no race test behind it.
+
+`backend/test/ws-authorization-race.spec.ts` stages the gap deterministically by wrapping
+`RoomAccessService.resolve` on the live instance, so the revocation runs after the room read and
+before the membership read. Both halves were negative-controlled: with the re-read removed the
+join test receives `[snapshot, presence]` and the malformed-frame test receives `[op_reject]`
+(which carries a snapshot); with the write guard removed both write cases return `applied`.
+
 ## What the verification pass actually checked, so it need not be re-derived
 
 Three enumerations, run against the code rather than the tests. Redo them whenever a new sender,
 a new revocation lever or a new bulk path lands.
 
-- **Every WS sender of room content is access-checked, or is only reachable from one that is.**
-  The senders are: the join snapshot (`resolve` before it), the four snapshot-carrying `op_reject`
-  outcomes (`stale`, `not_owner`, `too_large`, and the lost-guard re-read — `applyNow` authorises
-  before any of them can be returned), `rejectUnparsable` (re-checks since the round-two fix), and
-  the two fan-outs, `broadcastOp` and `fanOutRoomMeta`. The fan-outs are the only ones that go on
-  registry membership alone, and that is sound because `connection.rooms` is written in exactly one
-  place — `handleJoin`, after `resolve` — and every one of the four levers that withdraws access
+- **Every WS sender of room content is access-checked, or is only reachable from one that is —
+  and serves the room copy that check returned.** The senders are: the join snapshot, the four
+  snapshot-carrying `op_reject` outcomes (`stale`, `not_owner`, `too_large`, and the lost-guard
+  re-read, which re-authorizes rather than re-reading raw), `rejectUnparsable`, and the two
+  fan-outs, `broadcastOp` and `fanOutRoomMeta`. Every one of the first six goes through
+  `RoomAccessService.authorize` and serializes `access.room`. The fan-outs are the only ones that
+  go on registry membership alone, and that is sound because `connection.rooms` is written in one
+  place — `handleJoin`, after `authorize` — and every one of the four levers that withdraws access
   (unshare, password set/rotate, delete, leave) emits an event that drops or closes those sockets.
   `ConnectionRegistry.leaveRoom` clears both indexes, so a dropped room leaves nothing behind.
 - **No raw `connection.send` survives on a post-commit path.** The remaining direct calls are all

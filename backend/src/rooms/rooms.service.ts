@@ -275,12 +275,16 @@ export class RoomsService {
   }
 
   async join (userId: string, roomId: string, visitorToken?: string): Promise<JoinRoomResult> {
+    // The membership is read first deliberately. Every lever that withdraws access
+    // advances a counter on the *room* and never on the row, so a room read after
+    // it is never the older of the two and a voided row cannot be authorized
+    // against the copy from before the unshare landed.
+    const existing = await this.memberships.findOne({ userId, roomId }).lean()
     const room = await this.requireRoom(roomId)
     if (!room.shared) throw roomError('not_shared', 'This room is not shared.', HttpStatus.FORBIDDEN)
 
     // A row an earlier unshare voided is not a membership: re-joining is the only
     // way back in, which is what stops a re-share resurrecting the old collaborators.
-    const existing = await this.memberships.findOne({ userId, roomId }).lean()
     if (existing && membershipGrantsAccess(existing, room)) {
       return { status: 'already_member', room: toListEntry(room, existing.role, existing.order) }
     }

@@ -6,7 +6,7 @@ import type { ClientOpMessage, Factory, RoomDiff } from 'common'
 
 import { APPLIED_OPS_RING, Room } from '../rooms/schemas/room.schema'
 import { CLOCK, Clock } from '../rooms/clock'
-import { RoomAccessRole } from './room-access.service'
+import { RoomAccess, RoomAccessRole } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
 import { mergeFactories } from './room-snapshot'
 
@@ -22,8 +22,8 @@ export type OpOutcome =
   | { status: 'forbidden' }
   | { status: 'gone' }
 
-/** Resolves the sender's role against the room as just read; null means no access. */
-export type OpAuthorizer = (room: Room) => Promise<RoomAccessRole | null>
+/** One consistent read: the sender's access and the room copy it is valid for. */
+export type OpAuthorizer = () => Promise<RoomAccess>
 
 @Injectable()
 export class RoomOpService {
@@ -46,11 +46,11 @@ export class RoomOpService {
     actor: string,
     authorize: OpAuthorizer,
   ): Promise<OpOutcome> {
-    const room = await this.rooms.findOne({ roomId: op.roomId }).lean()
-    if (!room || room.deletedAt !== null) return { status: 'gone' }
-
-    const role = await authorize(room)
-    if (!role) return { status: 'forbidden' }
+    // The room the op is judged against is the one authorization was computed
+    // against; reading it here separately is the window this closes.
+    const access = await authorize()
+    if (access.status !== 'granted') return refuse(access)
+    const { role, room } = access
 
     // Dedup precedes the revision check: a retried op has a stale base by definition.
     const replayed = room.appliedOps.find(entry => entry.opId === op.opId)
@@ -67,7 +67,7 @@ export class RoomOpService {
     const revision = op.baseRevision + 1
     const updated = await this.rooms
       .findOneAndUpdate(
-        { roomId: op.roomId, revision: op.baseRevision, deletedAt: null },
+        { roomId: op.roomId, revision: op.baseRevision, deletedAt: null, ...accessGuard(role, room) },
         {
           $set: { ...contentUpdate(op.diff, factories), lastActivityAt: this.clock.now() },
           $inc: { revision: 1 },
@@ -80,9 +80,12 @@ export class RoomOpService {
       .lean()
 
     if (!updated) {
-      // The guard lost, so someone moved the room between the read and the write.
-      const fresh = await this.rooms.findOne({ roomId: op.roomId }).lean()
-      return fresh && fresh.deletedAt === null ? { status: 'stale', room: fresh } : { status: 'gone' }
+      // The guard covers access as well as the revision, so a miss is re-authorized
+      // rather than assumed stale: the snapshot a `stale` carries must not answer a
+      // sender whose access went away between the check and the write.
+      const fresh = await authorize()
+      if (fresh.status !== 'granted') return refuse(fresh)
+      return { status: 'stale', room: fresh.room }
     }
 
     // Past this line the content is committed, so nothing may deny the sender its
@@ -108,6 +111,27 @@ export class RoomOpService {
 
     return result
   }
+}
+
+/** A refused read, as an outcome. A room nobody may read is `gone` either way. */
+const refuse = (access: Exclude<RoomAccess, { status: 'granted' }>): OpOutcome =>
+  access.status === 'missing' || access.status === 'deleted'
+    ? { status: 'gone' }
+    : { status: 'forbidden' }
+
+/**
+ * The room must still be in the state the sender's role was computed from. Unshare
+ * bumps `membershipEpoch` and a password change bumps `passwordVersion`, and
+ * neither touches `revision` — so the revision guard alone lets a just-revoked
+ * op commit. Owners are exempt: they never lose their own room, and their own
+ * share or rotation would otherwise refuse the op they had in flight.
+ */
+const accessGuard = (role: RoomAccessRole, room: Room): Record<string, unknown> => {
+  if (role === 'owner') return {}
+  // Spelled `?? null` because Mongo matches an absent field against null, never 0.
+  const guard: Record<string, unknown> = { membershipEpoch: room.membershipEpoch ?? null }
+  if (role === 'visitor') guard.passwordVersion = room.passwordVersion ?? null
+  return guard
 }
 
 /** The post-merge factory list, or null when the diff does not touch factories. */
