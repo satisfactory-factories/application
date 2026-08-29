@@ -17,11 +17,12 @@ deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email 
 reset, the v7 changelog modal). Three adversarial Codex reviews of the finished diff raised
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
-class and fixed it (the demo-plan button, below). Green as of 2026-08-30, on the committed tree:
-backend 253 vitest tests, common 68, web 1756 unit tests, 25 Playwright e2e tests, `vue-tsc`
-clean, root `lint-check` clean (44 pre-existing warnings in `parsing/`, 0 errors). The e2e job
-in CI has never actually run — it is validated locally only, so the first PR is where it gets
-proved.
+class and fixed it (the demo-plan button, below). Green as of 2026-08-30, on the committed tree,
+re-run end to end after the round-three fix landed: backend 253 vitest tests, common 68, web 1756
+unit tests (1 skipped), `vue-tsc` clean, root `lint-check` clean (44 pre-existing warnings in
+`parsing/`, 0 errors), root `build` clean, and the 25 Playwright e2e tests twice consecutively —
+25 passed both times, no flakes and no retries. The e2e job in CI has never actually run — it is
+validated locally only, so the first PR is where it gets proved.
 
 ## Where things live
 
@@ -189,6 +190,15 @@ counter on the room and never on the row, so a room read afterwards is never the
 two and the same interleaving cannot arise. That one is an ordering argument rather than a
 re-read, and it has no race test behind it.
 
+**Closed, and independently re-audited on 2026-08-30.** The part worth carrying forward is the
+write guard, because it is the half that is easy to leave out: a revocation never touches
+`revision`, so guarding an op on the revision alone lets a member who was cut off a moment ago
+commit anyway. Putting `membershipEpoch` into the same `findOneAndUpdate` filter — and
+`passwordVersion` as well for a visitor — makes the write itself fail the instant access moved,
+at no extra read and with no window left to lose. The re-audit walked every sender of room
+content and every write of a room and found no other path serving or writing a copy older than
+the check it rode on; the two residuals it did turn up are in the follow-ups below.
+
 `backend/test/ws-authorization-race.spec.ts` stages the gap deterministically by wrapping
 `RoomAccessService.resolve` on the live instance, so the revocation runs after the room read and
 before the membership read. Both halves were negative-controlled: with the re-read removed the
@@ -197,8 +207,8 @@ join test receives `[snapshot, presence]` and the malformed-frame test receives 
 
 ## What the verification pass actually checked, so it need not be re-derived
 
-Three enumerations, run against the code rather than the tests. Redo them whenever a new sender,
-a new revocation lever or a new bulk path lands.
+Five enumerations, run against the code rather than the tests. Redo them whenever a new sender,
+a new revocation lever, a new room write or a new bulk path lands.
 
 - **Every WS sender of room content is access-checked, or is only reachable from one that is —
   and serves the room copy that check returned.** The senders are: the join snapshot, the four
@@ -221,8 +231,38 @@ a new revocation lever or a new bulk path lands.
   snapshot lands — declaring there would claim authorship of a peer's plan) and
   `pages/share/[id].vue` (it calls `addTab`, so nothing is replaced). Not applicable:
   `WorldImport.vue` never writes the plan at all.
+- **Every write of a room, and what its authorization rides on.** The op write is the only one
+  that mutates room *content*, and it carries the access fingerprint in its own filter (above).
+  Create, adopt and the legacy import are create-only, so there is no prior room whose access
+  could have moved under them. The owner-only meta writes — `rename`, `share`, `unshare`,
+  `setPassword`, `removePassword` and the delete tombstone — ride on `requireOwner`, whose two
+  reads cannot go stale in the access sense: ownership is the one grant nothing revokes, and
+  owner rows are epoch-exempt by design.
+- **No REST route serves room content at all**, which is why the whole problem lives on the
+  socket. Every rooms response is a `RoomListEntry` (id, name, slug, shared, hasPassword,
+  revision, role, order) or a bare status. `RoomSnapshot` is the only shape carrying
+  `factories`, it is built at five sites, all of them in `room.gateway.ts`, and every one is
+  built from an `authorize()` result. `GET /share/:id` serves the legacy snapshot collection,
+  which is deliberately public and holds no room.
 
 ## Flagged follow-ups, none of them blocking
+
+Re-checked line by line against the code on 2026-08-30; every one below still held, so nothing
+was dropped. The first two are new, from the round-three race audit.
+
+- **The op fan-out rides on registry membership, not on a fresh check.** `broadcastOp` sends the
+  sender's diff to every socket the registry holds in that room, so between the epoch write in
+  `unshare` and the asynchronous `revokeAccess` sweep, a concurrent peer's diff can still reach a
+  socket that was revoked a moment earlier. Bounded and small: that peer already holds the whole
+  room from its own join, so what escapes is the edits made in those milliseconds, not the plan.
+  Re-authorizing per peer per op would cost a room read on the hottest path, which is why it was
+  left; dropping the room from the registry synchronously at the emit, rather than in the async
+  sweep, is the cheap version of the fix.
+- **`share()` does not carry `deletedAt: null` into its write.** A share racing its own room's
+  delete can set `shared: true` and a slug back onto a tombstoned room. Nothing is disclosed —
+  every read path either filters the tombstone or refuses on it, so the room stays inert — but
+  the slug is stranded until the sweeper drops the room. `rename` and both password writes have
+  the same missing term, in the harmless direction. One clause in the filter closes it.
 
 - **`revokeAccess` closes the whole socket, not just the room.** Still true for the two real
   revocation levers: `room.gateway.ts` drops a *deleted* room from each connection and leaves the
