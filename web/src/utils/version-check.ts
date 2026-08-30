@@ -1,8 +1,11 @@
 // Polls the API for the version the site is currently on, and announces one that is newer than
 // this build so the user can reload when it suits them. Issue #166.
 //
-// The version gate in `api.ts` is the other half of this and a different thing: that one fires
-// when the API *refuses* this build, and blocks. This one is advisory and dismissible.
+// The version gate is the other half of this and a different thing: it fires when the API (426)
+// or the socket (4426) *refuses* this build, and raises the persistent VersionPrompt banner.
+// This one is advisory and dismissible. The gate is strictly stronger news about the same fact,
+// so once it has spoken this stops: two notices telling someone to reload is one too many, and
+// the blocking one wins.
 
 import { config } from '@/config/config'
 import eventBus from '@/utils/eventBus'
@@ -63,6 +66,7 @@ export const startVersionCheck = (): (() => void) => {
     clearInterval(timer)
     timer = undefined
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    eventBus.off('versionMismatch', stop)
   }
 
   const check = async () => {
@@ -95,6 +99,8 @@ export const startVersionCheck = (): (() => void) => {
   }
 
   document.addEventListener('visibilitychange', onVisibilityChange)
+  // The gate has refused this build outright; there is nothing left for an advisory ping to add.
+  eventBus.on('versionMismatch', stop)
   timer = setInterval(() => void check(), VERSION_POLL_INTERVAL_MS)
 
   // Checked immediately as well as on the interval: a tab restored from yesterday's session
