@@ -1,6 +1,7 @@
 import { expect, test } from '../helpers/fixtures'
 import {
   addFactory,
+  expectMirroredNote,
   expectQuiesced,
   mirroredFactories,
   mirroredNote,
@@ -26,6 +27,14 @@ const raceResolved = async (
   }
   await expectQuiesced([first, second], roomId)
 }
+
+/**
+ * `raceResolved` proves the engine is settled, not that `localStorage.factoryTabs`
+ * has caught up: the mirror is written on the persistence debounce while the meta
+ * these checks read is written eagerly, so the two can disagree for a moment. Both
+ * clients being equally behind passes the convergence check as well. Every note
+ * read below therefore polls — the expected values are unchanged.
+ */
 
 const factoryNamesIn = async (
   ...args: Parameters<typeof mirroredFactories>
@@ -56,8 +65,8 @@ test('two clients editing the same factory converge on one winner', async ({
     message: 'neither concurrent edit survived',
   }).toMatch(new RegExp(`^(${fromFirst}|${fromSecond})$`))
 
-  const winner = await mirroredNote(first, roomId, 'Contested')
-  expect(await mirroredNote(second, roomId, 'Contested')).toBe(winner)
+  const winner = await mirroredNote(first, roomId, 'Contested') as string
+  await expectMirroredNote(second, roomId, 'Contested', winner)
 })
 
 /**
@@ -81,8 +90,8 @@ test('two clients adding a factory each keep both of them', async ({ client, req
     await expect.poll(() => factoryNamesIn(page, roomId), {
       message: 'a device lost one of the two additions',
     }).toEqual(['Alpha', 'Bravo'])
-    expect(await mirroredNote(page, roomId, 'Alpha')).toBe('added on the first device')
-    expect(await mirroredNote(page, roomId, 'Bravo')).toBe('added on the second device')
+    await expectMirroredNote(page, roomId, 'Alpha', 'added on the first device')
+    await expectMirroredNote(page, roomId, 'Bravo', 'added on the second device')
   }
 })
 
@@ -105,7 +114,7 @@ test('two clients annotating different factories keep both notes', async ({ clie
   await raceResolved(pair, base, 2)
 
   for (const page of [first, second]) {
-    expect(await mirroredNote(page, roomId, 'Smelters')).toBe('the first device wrote this')
-    expect(await mirroredNote(page, roomId, 'Constructors')).toBe('the second device wrote this')
+    await expectMirroredNote(page, roomId, 'Smelters', 'the first device wrote this')
+    await expectMirroredNote(page, roomId, 'Constructors', 'the second device wrote this')
   }
 })
