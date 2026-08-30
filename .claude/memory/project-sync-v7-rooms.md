@@ -57,6 +57,11 @@ change to that file.
 The e2e ports 3000/3001 are not configurable: the API's CORS allowlist and the WS upgrade's
 Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localhost:3001`.
 
+Vercel's install command (`web/vercel.json`) must be `pnpm install --filter web...` with the
+three dots: web aliases `common` to its *source*, so the web typecheck compiles common's
+files and needs common's dependencies (zod) installed. Plain `--filter web` skips them and
+every zod-derived type collapses into a wall of unrelated-looking TS errors.
+
 ## Decisions that must not be re-litigated (full list in the plan)
 
 - Three tab types, user's choice: **local** (browser only), **synced** (private room, own
