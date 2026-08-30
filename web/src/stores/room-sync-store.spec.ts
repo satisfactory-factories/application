@@ -7,7 +7,10 @@ import type { WebSocketLike } from '@/sync/ws-client'
 import { OP_DEBOUNCE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
 import { addProductToFactory } from '@/utils/factory-management/products'
+import { getDisposal, setDepotCount, setSinkCount } from '@/utils/factory-management/disposal'
+import { setChecklistEnabled, toggleChecklistProduct } from '@/utils/factory-management/checklist'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import { gameData } from '@/utils/gameData'
 import { mergeFactories } from '@/sync/room-state'
@@ -868,6 +871,38 @@ describe('room-sync-store', () => {
         read: factory => factory.inputs.length,
         expected: 1,
       },
+      // The four below arrived with the merge of main. Each writes a stored field that no
+      // calculation announces, so each is exactly the class the audit exists to catch.
+      {
+        what: 'a checklist tick',
+        edit: factory => toggleChecklistProduct(factory, factory.products[0]),
+        read: factory => factory.products[0].completed,
+        expected: true,
+      },
+      {
+        what: 'the checklist being switched on',
+        edit: factory => setChecklistEnabled(factory, true),
+        read: factory => factory.checklistEnabled,
+        expected: true,
+      },
+      {
+        what: 'a sink placed on a surplus',
+        edit: factory => setSinkCount(factory, 'IronIngot', 3),
+        read: factory => getDisposal(factory, 'IronIngot'),
+        expected: { sinks: 3, depots: 0 },
+      },
+      {
+        what: 'a depot uploader',
+        edit: factory => setDepotCount(factory, 'IronIngot', 2),
+        read: factory => getDisposal(factory, 'IronIngot'),
+        expected: { sinks: 0, depots: 2 },
+      },
+      {
+        what: 'a custom building',
+        edit: factory => addCustomBuildingToFactory(factory, { building: 'portal', amount: 2 }),
+        read: factory => factory.customBuildings.map(entry => entry.building),
+        expected: ['portal'],
+      },
     ]
 
     /** Alpha produces something, so a game sync mark and a tray have somewhere to live. */
@@ -1142,6 +1177,90 @@ describe('room-sync-store', () => {
 
       expect(tab.groups?.map(group => group.name)).toEqual(['Smelting'])
       expect((lastOp().diff.groups as { name: string }[]).map(group => group.name)).toEqual(['Smelting'])
+    })
+
+    // The Depot research the plan is written against. It decides what an Uploader moves, so a
+    // tab that could not send it would report a fully-researched save's capacity on every other
+    // device the plan is open on.
+    it('carries the depot tiers, which nothing recalculates', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      store.enterOffline()
+
+      tab.depotUploadTier = 1
+      tab.depotExpansionTier = 3
+      eventBus.emit('tabEdited', 'depotUploadTier')
+      eventBus.emit('tabEdited', 'depotExpansionTier')
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(fixture, 6, { depotUploadTier: 4, depotExpansionTier: 4 }),
+        revision: 6,
+      })
+
+      expect(tab.depotUploadTier).toBe(1)
+      expect(tab.depotExpansionTier).toBe(3)
+      expect(lastOp().diff.depotUploadTier).toBe(1)
+      expect(lastOp().diff.depotExpansionTier).toBe(3)
+    })
+
+    // Dismissing the raw-resources notice is the user answering for this plan. Without this the
+    // rebase puts the unanswered plan back and the notice returns on the next reconnect.
+    it('carries the answered-for stamp', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+
+      tab.plannerVersion = '0.6.0'
+      eventBus.emit('tabEdited', 'plannerVersion')
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+      const refused = lastOp().opId
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: refused,
+        reason: 'stale_base',
+        snapshot: snapshotOf(fixture, 5),
+      })
+
+      expect(tab.plannerVersion).toBe('0.6.0')
+      expect(lastOp().diff.plannerVersion).toBe('0.6.0')
+    })
+
+    // The room is the authoritative copy, and `addTab` stamps a brand-new empty tab as
+    // answered-for — the tab created to join someone else's room is exactly that. Keeping the
+    // stamp would push "this plan has been answered for" onto a room whose owner was never
+    // asked, silencing their raw-resources notice. A snapshot therefore clears it.
+    it('takes the room\'s answer over a stamp the tab arrived holding', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(fixture, 4)
+      tab.plannerVersion = '0.6.0'
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 5), revision: 5 })
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(tab.plannerVersion).toBeUndefined()
+      expect(opsOf()).toHaveLength(0)
+    })
+
+    it('takes a room setting the tab has none of its own', () => {
+      const tab = syncAt(fixture, 4)
+      delete tab.depotUploadTier
+
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(fixture, 5, { depotUploadTier: 2 }),
+        revision: 5,
+      })
+
+      expect(tab.depotUploadTier).toBe(2)
+      expect(opsOf()).toHaveLength(0)
     })
 
     // Without the emit nothing schedules a flush, so an inbound op lands first and the

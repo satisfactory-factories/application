@@ -17,12 +17,13 @@ deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email 
 reset, the v7 changelog modal). Three adversarial Codex reviews of the finished diff raised
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
-class and fixed it (the demo-plan button, below). Green as of 2026-08-30, on the committed tree,
-re-run end to end after the round-three fix landed: backend 253 vitest tests, common 68, web 1756
-unit tests (1 skipped), `vue-tsc` clean, root `lint-check` clean (44 pre-existing warnings in
-`parsing/`, 0 errors), root `build` clean, and the 25 Playwright e2e tests twice consecutively —
-25 passed both times, no flakes and no retries. The e2e job in CI has never actually run — it is
-validated locally only, so the first PR is where it gets proved.
+class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
+restored: see "The merge from main" below. Green as of 2026-08-30, on the committed tree: backend
+258 vitest tests, common 70, web 2623 unit tests (1 skipped), `vue-tsc` clean, root `lint-check`
+clean (64 pre-existing warnings in `parsing/`, 0 errors), root `build` clean. The 25 Playwright
+e2e tests passed twice consecutively before the merge and have NOT been re-run since it. The e2e
+job in CI has never actually run — it is validated locally only, so the first PR is where it gets
+proved.
 
 ## Where things live
 
@@ -226,7 +227,8 @@ a new revocation lever, a new room write or a new bulk path lands.
   becoming `internal_error` is the correct signal. Everything past a committed write goes through
   `deliver()`.
 - **The bulk content-replacement paths.** Live and declaring: `clearFactories`, the template
-  loader, `Introduction.vue`'s demo button, and paste (via `clear-all`). Correctly silent:
+  loader, `Introduction.vue`'s demo button, `RawResourcesWizard.apply()` (found by the re-run
+  after the merge from main), and paste (via `clear-all`). Correctly silent:
   `setFactories`/`initFactories`/`beginLoading` (the load funnel, which is also how an inbound
   snapshot lands — declaring there would claim authorship of a peer's plan) and
   `pages/share/[id].vue` (it calls `addTab`, so nothing is replaced). Not applicable:
@@ -244,6 +246,71 @@ a new revocation lever, a new room write or a new bulk path lands.
   `factories`, it is built at five sites, all of them in `room.gateway.ts`, and every one is
   built from an `authorize()` result. `GET /share/:id` serves the legacy snapshot collection,
   which is deliberately public and holds no room.
+
+## The merge from main, and the two guarantees it could have broken silently
+
+Main's 66 commits added persisted fields to `Factory` and `FactoryTab` (AWESOME Sink and depot
+disposal, custom buildings, per-factory checklist mode, extraction/well group settings, the depot
+research tiers). Two v7 invariants do not survive that on their own, and neither fails loudly.
+
+**The zod schemas strip unknown keys, so a stored field missing from them is deleted.** Not
+rejected — deleted, on every op, adoption and share, with the sender's own copy keeping it and
+every peer's losing it. `partDisposal` was the one that changed numbers: sinks and depot uploaders
+would not have survived a round trip. Fifteen fields were missing in all; every one is now in
+`common/src/schemas/factory.ts`, optional where the interface says optional so an absent value
+stays absent (a default would add bytes the sender's copy does not have, and the diff fingerprint
+is byte-comparison). Three guards, because the fixture and the real thing rot apart:
+`common/src/schemas/factory.spec.ts` deep-equals a fully populated fixture through the schema;
+`web/src/sync/schema-parity.spec.ts` deep-equals what `newFactory()` plus a real calculation pass
+actually builds, with every new feature exercised; and `backend/test/rooms-adopt.spec.ts` +
+`ws-ops.spec.ts` prove it end to end through Mongo. **Adding a field to `common/src/types/factory.ts`
+without adding it to the schema now fails the build.**
+
+**The tab-level fields did not exist in the room protocol at all.** `depotUploadTier`,
+`depotExpansionTier` and `plannerVersion` describe the save a plan is written against, so they have
+to travel with the plan; `RoomContent`/`TAB_FIELDS`, `RoomSnapshot`, `RoomDiff`, the Mongo `Room`
+schema, `toRoomSnapshot`, `contentUpdate` and the create/adopt body all carry them now.
+`TAB_SCALARS` is the table the client's tab-field plumbing loops over, so a fourth scalar is one
+array entry rather than eight hand-edited comparisons.
+
+Two rules fell out of it and are load-bearing:
+
+- **A diff cannot express "cleared".** Absent means unchanged, so an absent local value never
+  counts as a difference (`fieldDiffers`) and never enters a diff (`buildDiff`). Nothing in the
+  planner clears one of these back to absent, so nothing is lost by it — but a template that
+  deliberately re-arms the raw notice by clearing `plannerVersion` stays local by construction,
+  and `Templates.vue` only declares the stamping half.
+- **A snapshot writes the tab fields as the room states them, absent included.** `addTab` stamps a
+  brand-new empty tab as answered-for, and the tab created to join someone else's room is exactly
+  that — so preserving a local stamp the room lacks would push "this plan has been answered for"
+  onto a room whose owner was never asked and silence their raw-resources notice. Clearing errs
+  the other way, showing a notice that may not be needed.
+
+**Intent parity for the new mutation sites.** The audit predates these commits, so its five
+enumerations were re-run. Seven sites declared payload and no intent, which means a rebase
+discarded them: all seven checklist mutations in `utils/factory-management/checklist.ts` (a build
+session can consist of nothing but ticks, so there is no other edit to ride back on) and
+`updateDepotCount` in `PlannerFactorySatisfactionItems.vue` — its sink twin is declared for free by
+`calculateFactory`, and skipping the recalculation for the depot skipped the declaration with it.
+Four more declared nothing at all: the two depot research tiers in `useDepotResearch.ts` and
+`plannerVersion` in `dismissRawBreakingNotice`, which reached `markPlanEdited` (local save) but no
+room; and `RawResourcesWizard.apply()`, a bulk plan replacement that lands on ids it already holds,
+which is the `markPlanReplaced` class the audit already caught three times. `Templates.vue` and the
+paste handler declare the tab fields they write. Everything else upstream added was already covered,
+because it routes through `updateFactory`: custom buildings, sinks, the extraction settings, Satisfy
+and Trim, the per-group Add Factory (via `moveFactoryToGroup`), and tasks-on-blur (via `taskEdited`).
+`usePlannerOptions` is correctly silent — those are per-browser view settings, not plan content.
+
+**The version notifier overlap (#587).** Three components could tell someone to reload:
+`VersionPrompt` (ours — the persistent banner on a 426 or a 4426 close), `UpdateAvailableToast`
+(upstream's dismissible release ping) and `UpdateRequiredDialog` (upstream's blocking dialog, on an
+`X-Planner-Client-Outdated` header the NestJS API never sends, reachable only from the share page's
+raw fetch). The gate is the same news said harder — nothing this tab sends will be accepted until it
+reloads — so both of upstream's stand down behind it: the toast and the dialog close on
+`versionMismatch` and refuse to open after one, and `startVersionCheck` stops polling. Ours wins
+placement deliberately; a modal over the banner would hide the notice the sync engine's own state is
+driving. Nothing was deleted, so if `GET /version` ever lands the release ping works as upstream
+intended.
 
 ## Flagged follow-ups, none of them blocking
 
@@ -290,6 +357,10 @@ was dropped. The first two are new, from the round-three race audit.
   itself: `DroneCalculator.vue` (see below) and `updateProductSelection` in `Product.vue`,
   whose Uranium/Plutonium-waste branch clears the product and returns before `updateFactory`,
   so the clear is not even persisted until the next action.
+- **`GET /version` does not exist on the NestJS API.** `web/src/utils/version-check.ts` polls it,
+  so upstream's release notifier (#587) is inert — silently, by design. Adding the route also
+  means deciding whether it joins `/health` and `GET /share/:id` on the version-gate exemption
+  list, which is a reviewed contract, so it was left alone rather than decided in passing.
 - **The `?setupDemo=true` demo path must stay silent, unlike the button.** `app-store.ts` loads the
   same demo when that query string is present, and it deliberately declares nothing. It runs during
   store construction, before `room-sync-store` exists to hear an emit, and on a synced tab the join

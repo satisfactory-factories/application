@@ -275,6 +275,9 @@
       // answered by construction. The exception is the one that exists to reproduce a plan from
       // before the change: it must arrive unanswered or it cannot reproduce anything.
       tab.plannerVersion = template.rearmNotice ? undefined : config.plannerVersion
+      // Only the stamp is declarable: a diff has no way to say "cleared", so the re-arming
+      // template stays local by construction rather than being announced and ignored.
+      if (!template.rearmNotice) markTabEdited('plannerVersion')
     }
 
     if (template.rearmNotice) {

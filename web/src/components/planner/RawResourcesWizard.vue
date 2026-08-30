@@ -344,6 +344,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { formatNumber } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { markPlanReplaced } from '@/utils/sync-intent'
   import {
     applyRawWizard,
     choicesForRow,
@@ -603,6 +604,10 @@
     await afterPaint()
 
     try {
+      // The wizard rewrites the whole plan, and lands on ids it already holds — new mines are
+      // appended but every rebalanced factory keeps its id, so structural inference sees no
+      // change at all. Declared before the swap, while the outgoing plan is still readable.
+      markPlanReplaced(appStore.getFactories(), pending.value.factories)
       appStore.setFactories(pending.value.factories)
       // The plan has now been answered for, whichever door the wizard was opened through —
       // running it from Options never went past the notice that would otherwise stamp it.

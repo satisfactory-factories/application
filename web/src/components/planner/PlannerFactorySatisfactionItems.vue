@@ -930,7 +930,10 @@
     setDepotCount(props.factory, partId, count)
     // Read back for the same reason the sink does: only a count that actually landed counts.
     notifyDepotTutorial(getDepotCount(props.factory, partId))
-    eventBus.emit('factoryUpdated', props.factory)
+    // Intent as well as payload. The sink gets its declaration from calculateFactory; skipping
+    // the recalculation here must not also skip saying whose edit this was, or a rebase drops
+    // the uploader count the user just set.
+    markFactoryEdited(props.factory)
   }
 
   // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.

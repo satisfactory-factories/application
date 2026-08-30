@@ -127,6 +127,8 @@
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { confirmDialog } from '@/utils/helpers'
   import { serializePlan } from '@/utils/plan-backup'
+  import type { PlanBlob } from '@/utils/plan-backup'
+  import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
 
   const { getFactories, getCurrentTab, prepareLoader, forceCalculation } = useAppStore()
@@ -197,6 +199,16 @@
     eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
   }
 
+  // Only what the pasted blob actually states. The three tab settings are optional and the
+  // diff has no way to express clearing one, so declaring an absent value would leave intent
+  // that no op could ever satisfy.
+  const declarePastedTabFields = (parsedPlan: PlanBlob) => {
+    markTabEdited('groups')
+    if (parsedPlan.plannerVersion !== undefined) markTabEdited('plannerVersion')
+    if (parsedPlan.depotUploadTier !== undefined) markTabEdited('depotUploadTier')
+    if (parsedPlan.depotExpansionTier !== undefined) markTabEdited('depotExpansionTier')
+  }
+
   const pastePlanFromClipboard = () => {
     navigator.clipboard.readText().then(plan => {
       try {
@@ -245,6 +257,10 @@
               // somebody else's save.
               tab.depotUploadTier = parsedPlan.depotUploadTier
               tab.depotExpansionTier = parsedPlan.depotExpansionTier
+              // Declared for whatever the blob actually stated. An absent value is not
+              // declarable — the diff cannot carry "cleared" — so a blob that states none
+              // leaves the room's own settings alone rather than silently clearing them.
+              declarePastedTabFields(parsedPlan)
             }
           }
           prepareLoader(factoriesToLoad)

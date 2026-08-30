@@ -12,6 +12,9 @@ const roomId = z.string().min(1).max(CAPS.string)
 const roomContent = {
   factories: z.array(factorySchema).max(CAPS.factoriesPerRoom).optional(),
   powerTarget: z.number().optional(),
+  depotUploadTier: z.number().optional(),
+  depotExpansionTier: z.number().optional(),
+  plannerVersion: z.string().max(CAPS.string).optional(),
   groups: z.array(factoryGroupSchema).optional(),
 }
 

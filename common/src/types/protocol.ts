@@ -72,7 +72,13 @@ export interface RoomSlugLookup {
   hasPassword: boolean
 }
 
-/** A room as the server hands it out. Never carries `passwordHash`. */
+/**
+ * A room as the server hands it out. Never carries `passwordHash`.
+ *
+ * The four tab-owned settings below `factories` travel with the plan rather than the
+ * browser: they describe the save the plan is written against, so a synced tab that
+ * dropped them would resize somebody else's plan on every device but the one it was set on.
+ */
 export interface RoomSnapshot {
   roomId: string
   name: string
@@ -81,6 +87,9 @@ export interface RoomSnapshot {
   hasPassword: boolean
   factories: Factory[]
   powerTarget: number
+  depotUploadTier?: number
+  depotExpansionTier?: number
+  plannerVersion?: string
   groups: FactoryGroup[]
   revision: number
   createdBy: string
@@ -94,6 +103,14 @@ export interface RoomSnapshot {
 export interface RoomDiff {
   name?: string
   powerTarget?: number
+  /**
+   * Absent means "unchanged", never "cleared". Nothing in the planner clears these back to
+   * absent once set — a tier is only ever written as a clamped number and `plannerVersion`
+   * is only ever stamped — so the diff needs no way to say so.
+   */
+  depotUploadTier?: number
+  depotExpansionTier?: number
+  plannerVersion?: string
   groups?: FactoryGroup[]
   factories?: Factory[]
   removedFactoryIds?: number[]

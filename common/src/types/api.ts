@@ -71,6 +71,9 @@ export interface DeleteRoomResult {
 export interface RoomContentPayload {
   factories?: Factory[]
   powerTarget?: number
+  depotUploadTier?: number
+  depotExpansionTier?: number
+  plannerVersion?: string
   groups?: FactoryGroup[]
 }
 

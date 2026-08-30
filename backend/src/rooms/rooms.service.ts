@@ -395,6 +395,11 @@ export class RoomsService {
         createdBy: userId,
         factories: input.factories ?? [],
         powerTarget: input.powerTarget ?? 0,
+        // Passed through as given: absent means "not stated", which the planner reads as
+        // fully researched / not answered for. Defaulting here would state it for them.
+        depotUploadTier: input.depotUploadTier,
+        depotExpansionTier: input.depotExpansionTier,
+        plannerVersion: input.plannerVersion,
         groups: input.groups ?? [],
         lastActivityAt: this.clock.now(),
       })

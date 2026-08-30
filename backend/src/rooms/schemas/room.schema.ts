@@ -62,6 +62,18 @@ export class Room {
   @Prop({ type: Number, default: 0 })
   powerTarget!: number
 
+  // No defaults: absent is a meaning here, not a gap. The depot tiers read as fully
+  // researched when unset, and an unset `plannerVersion` means the plan has not been
+  // answered for — writing a value in would answer it on the user's behalf.
+  @Prop({ type: Number })
+  depotUploadTier?: number
+
+  @Prop({ type: Number })
+  depotExpansionTier?: number
+
+  @Prop({ type: String })
+  plannerVersion?: string
+
   @Prop({ type: MongooseSchema.Types.Mixed, default: () => [] })
   groups!: FactoryGroup[]
 

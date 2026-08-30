@@ -21,6 +21,9 @@ describe('POST /rooms/adopt', () => {
     name: 'Local plan',
     factories: [makeFactory({ name: 'Adopted' })],
     powerTarget: 250,
+    depotUploadTier: 1,
+    depotExpansionTier: 3,
+    plannerVersion: '0.6.0',
   })
 
   beforeAll(async () => {
@@ -153,6 +156,40 @@ describe('POST /rooms/adopt', () => {
     const stored = await connection.collection('rooms').findOne({ roomId })
     expect((stored?.factories as { power: unknown }[])[0].power)
       .toEqual({ consumed: 0, produced: 0, difference: 0 })
+  })
+
+  /**
+   * The zod schemas strip unknown keys, so a stored field missing from them is deleted here,
+   * once, on the way in — and every later snapshot hands the loss back to every device. The
+   * fixture carries the sink counts, the custom building, the checklist state and the rest, so
+   * a field added to the interface and forgotten in the schema fails this.
+   */
+  it('stores the adopted plan whole, stripping nothing', async () => {
+    const roomId = randomUUID()
+    const tab = localTab(roomId)
+
+    expect((await adopt(mine, tab)).status).toBe(200)
+
+    const stored = await connection.collection('rooms').findOne({ roomId })
+    expect(stored?.factories).toEqual(tab.factories)
+    expect(stored?.depotUploadTier).toBe(1)
+    expect(stored?.depotExpansionTier).toBe(3)
+    expect(stored?.plannerVersion).toBe('0.6.0')
+  })
+
+  // Absent is a meaning: the tiers read as fully researched and an absent stamp means the plan
+  // has not been answered for. Writing a value in would answer it on the user's behalf.
+  it('leaves the tab settings unset when the local tab never stated them', async () => {
+    const roomId = randomUUID()
+    const { depotUploadTier, depotExpansionTier, plannerVersion, ...bare } = localTab(roomId)
+    void [depotUploadTier, depotExpansionTier, plannerVersion]
+
+    expect((await adopt(mine, bare)).status).toBe(200)
+
+    const stored = await connection.collection('rooms').findOne({ roomId })
+    expect(stored?.depotUploadTier).toBeUndefined()
+    expect(stored?.depotExpansionTier).toBeUndefined()
+    expect(stored?.plannerVersion).toBeUndefined()
   })
 
   it('requires a room id, unlike create', async () => {

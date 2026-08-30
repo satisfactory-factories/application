@@ -22,7 +22,9 @@ import {
   emptyAcked,
   stableStringify,
   TAB_FIELDS,
+  TAB_SCALARS,
   UNKNOWN_CONTENT,
+  UNKNOWN_SCALAR,
 } from '@/sync/room-state'
 import type { AckedState, RoomContent, TabField } from '@/sync/room-state'
 import {
@@ -190,10 +192,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return engine.pending !== null || engine.touchedFactories.size > 0 || engine.touchedFields.size > 0
   }
 
+  // A local `undefined` never counts as a difference: the diff has no way to clear a tab
+  // field, so claiming one differs would leave intent nothing could ever satisfy.
   const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
-    if (field === 'name') return local.name !== acked.name
-    if (field === 'powerTarget') return local.powerTarget !== acked.powerTarget
-    return stableStringify(local.groups) !== acked.groups
+    if (field === 'groups') return stableStringify(local.groups) !== acked.groups
+    const value = local[field]
+    return value !== undefined && value !== acked[field]
   }
 
   /**
@@ -365,15 +369,19 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       if (engine.touchedFields.has(field) && fieldDiffers(engine.acked, local, field)) overlaid = true
     }
 
-    return {
-      content: {
-        name: engine.touchedFields.has('name') ? local.name : server.name,
-        powerTarget: engine.touchedFields.has('powerTarget') ? local.powerTarget : server.powerTarget,
-        groups: engine.touchedFields.has('groups') ? local.groups : server.groups,
-        factories,
-      },
-      overlaid,
+    // Touched wins, but only where this client actually holds a value: an untouched or
+    // absent scalar takes the server's, which is what keeps a tab that has never set a
+    // depot tier from wiping the one a peer set.
+    const content: RoomContent = { ...server, factories }
+    for (const field of TAB_SCALARS) {
+      const value = local[field]
+      if (engine.touchedFields.has(field) && value !== undefined) {
+        Object.assign(content, { [field]: value })
+      }
     }
+    if (engine.touchedFields.has('groups')) content.groups = local.groups
+
+    return { content, overlaid }
   }
 
   const recalculate = (tab: FactoryTab) => {
@@ -386,9 +394,20 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     calculateFactories(tab.factories, data, { origin: 'recalculate' })
   }
 
+  /**
+   * The room is the authoritative copy, so an absent field is written as absent — the same rule
+   * `name`, `powerTarget` and `groups` already follow. Keeping a local value the room does not
+   * have is what would be wrong: `addTab` stamps a brand-new empty tab as answered-for, and the
+   * tab created to join someone else's room is exactly that, so a preserved stamp would be sent
+   * on this client's next op and silence the raw-resources notice for a room whose owner has
+   * never been asked. Erring the other way only shows a notice that may not be needed.
+   */
   const writeContentToTab = (tab: FactoryTab, content: RoomContent) => {
     tab.name = content.name
     tab.powerTarget = content.powerTarget
+    tab.depotUploadTier = content.depotUploadTier
+    tab.depotExpansionTier = content.depotExpansionTier
+    tab.plannerVersion = content.plannerVersion
     tab.groups = content.groups
     tab.factories = content.factories
   }
@@ -530,8 +549,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // Set even for ids the mirror no longer holds: a factory deleted while away is
     // only reported as removed if the baseline still carries it.
     for (const id of engine.touchedFactories) engine.acked.factories.set(id, UNKNOWN_CONTENT)
-    if (engine.touchedFields.has('name')) engine.acked.name = UNKNOWN_CONTENT
-    if (engine.touchedFields.has('powerTarget')) engine.acked.powerTarget = Number.NaN
+    for (const field of TAB_SCALARS) {
+      if (!engine.touchedFields.has(field)) continue
+      Object.assign(engine.acked, { [field]: UNKNOWN_SCALAR[field] })
+    }
     if (engine.touchedFields.has('groups')) engine.acked.groups = UNKNOWN_CONTENT
   }
 

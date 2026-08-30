@@ -138,6 +138,10 @@ export const useAppStore = defineStore('app', () => {
     const tab = getCurrentTab()
     if (tab) {
       tab.plannerVersion = config.plannerVersion
+      // Dismissing is the user answering for this plan, so it is their edit on every device
+      // the plan is open on — without this a rebase puts the unanswered plan back and the
+      // notice returns on the next reconnect.
+      markTabEdited('plannerVersion')
     }
     showRawBreakingNotice.value = false
     markPlanEdited()

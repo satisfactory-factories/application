@@ -201,7 +201,7 @@ describe('checklist', () => {
       vi.restoreAllMocks()
     })
 
-    it('every checklist mutation emits factoryUpdated', () => {
+    it('every checklist mutation declares payload and intent', () => {
       const factory = newFactory('Provider', 0, 1)
       factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
       factory.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
@@ -214,7 +214,9 @@ describe('checklist', () => {
       setChecklistEnabled(factory, true)
       setChecklistPanelHidden(factory, true)
 
-      expect(emitted).toEqual(Array(6).fill('factoryUpdated'))
+      // Payload alone schedules the save; only the intent survives a rebase, and a build
+      // session made of nothing but ticks has no other edit to ride back on.
+      expect(emitted).toEqual(Array(6).fill(['factoryUpdated', 'factoryEdited']).flat())
     })
 
     it('unticking dirties the plan too, not only ticking', () => {
@@ -226,7 +228,7 @@ describe('checklist', () => {
       toggleChecklistInput(factory, factory.inputs[0])
 
       expect(factory.inputs[0].completed).toBe(false)
-      expect(emitted).toEqual(['factoryUpdated'])
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
     })
   })
 

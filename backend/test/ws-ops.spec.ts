@@ -130,6 +130,49 @@ describe('ws ops: the consistency contract', () => {
       expect(room?.factories[2].name).toBe('Second')
     })
 
+    /**
+     * The op path is where a stripped field costs the most: the sender's own copy keeps it,
+     * every peer's does not, and the two disagree for ever. The fixture carries the sink and
+     * uploader counts, the custom building, the checklist state and the extraction settings.
+     */
+    it('stores and broadcasts a factory whole, stripping nothing', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      const edited = makeFactory({ id: 1, name: 'Smelters' })
+      a.client.send(op({ factories: [edited] }, 0))
+      await a.client.next('op_ack')
+
+      const applied = await b.client.next('op_apply')
+      expect(applied.diff.factories?.[0]).toEqual(edited)
+      expect((await readRoom())?.factories[0]).toEqual(edited)
+    })
+
+    it('carries the tab settings the plan is written against', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ depotUploadTier: 1, depotExpansionTier: 3, plannerVersion: '0.6.0' }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.depotUploadTier).toBe(1)
+      expect(room?.depotExpansionTier).toBe(3)
+      expect(room?.plannerVersion).toBe('0.6.0')
+    })
+
+    it('hands the tab settings back in the join snapshot', async () => {
+      const a = await joined(owner.token)
+      a.client.send(op({ depotUploadTier: 0 }, 0))
+      await a.client.next('op_ack')
+
+      const b = await greet(member.token)
+      b.send({ type: 'join', roomId })
+      const snapshot = await b.next('snapshot')
+
+      // Zero is a real tier — the unresearched 15/min — and must not read as absent.
+      expect(snapshot.room.depotUploadTier).toBe(0)
+    })
+
     it('records an activity row and stamps lastActivityAt', async () => {
       const before = (await readRoom())?.lastActivityAt as Date
       const a = await joined(member.token)

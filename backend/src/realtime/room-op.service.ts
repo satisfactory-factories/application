@@ -145,6 +145,9 @@ const contentUpdate = (diff: RoomDiff, factories: Factory[] | null): Record<stri
 
   if (diff.name !== undefined) update.name = diff.name
   if (diff.powerTarget !== undefined) update.powerTarget = diff.powerTarget
+  if (diff.depotUploadTier !== undefined) update.depotUploadTier = diff.depotUploadTier
+  if (diff.depotExpansionTier !== undefined) update.depotExpansionTier = diff.depotExpansionTier
+  if (diff.plannerVersion !== undefined) update.plannerVersion = diff.plannerVersion
   if (diff.groups !== undefined) update.groups = diff.groups
   if (factories !== null) update.factories = factories
 

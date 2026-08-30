@@ -13,6 +13,9 @@ const id = z.string().min(1).max(CAPS.string)
 export const roomDiffSchema = z.object({
   name: z.string().max(CAPS.name).optional(),
   powerTarget: num.optional(),
+  depotUploadTier: num.optional(),
+  depotExpansionTier: num.optional(),
+  plannerVersion: str.optional(),
   groups: z.array(factoryGroupSchema).optional(),
   factories: z.array(factorySchema).max(CAPS.factoriesPerRoom).optional(),
   removedFactoryIds: z.array(num).max(CAPS.factoriesPerRoom).optional(),

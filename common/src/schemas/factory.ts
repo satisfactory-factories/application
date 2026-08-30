@@ -37,6 +37,12 @@ export const partMetricsSchema = z.object({
   // Defaults rather than rejects: plans written before custom buildings existed are already
   // in browsers, and refusing one costs an op per factory.
   amountRequiredBuildings: num.default(0),
+  // Derived every calculation, so absent on anything saved before they existed. Optional
+  // rather than defaulted: a default would add bytes the sender's own copy does not have.
+  isEndProduct: z.boolean().optional(),
+  isSinkable: z.boolean().optional(),
+  amountRequiredSink: num.optional(),
+  amountRemainingPreSink: num.optional(),
   satisfied: z.boolean(),
   exportable: z.boolean(),
 })
@@ -74,6 +80,19 @@ export const factoryCustomBuildingSyncStateSchema = z.object({
   ingredientAmount: num,
 })
 
+export const nodePuritySchema = z.enum(['impure', 'normal', 'pure'])
+
+/**
+ * Satellite extractors per purity on a resource well. The three keys default rather than
+ * reject: the well's output is their sum, and losing the whole factory over one absent key
+ * would cost more than reading the missing purity as no satellites.
+ */
+export const wellSatellitesSchema = z.object({
+  impure: num.default(0),
+  normal: num.default(0),
+  pure: num.default(0),
+})
+
 export const buildingGroupSchema = z.object({
   id: num,
   buildingCount: num,
@@ -88,8 +107,22 @@ export const buildingGroupSchema = z.object({
   powerProducedMax: num.optional(),
   supplyMatrixes: z.boolean().optional(),
   somersloops: num.optional(),
+  // Extraction and resource-well groups only; absent on every other group type.
+  extractorBuilding: str.optional(),
+  purity: nodePuritySchema.optional(),
+  satellites: wellSatellitesSchema.optional(),
   type: z.enum(ItemType),
 })
+
+/**
+ * Checklist mode's two per-row fields, on products, imports and power producers alike:
+ * whether the player has ticked it as built, and the amount it was ticked against.
+ * Optional everywhere — absent means never ticked, which must not read as desynced.
+ */
+const checklistRowFields = {
+  completed: z.boolean().optional(),
+  checklistSyncedAmount: num.optional(),
+}
 
 export const factoryItemSchema = z.object({
   id: str,
@@ -103,6 +136,7 @@ export const factoryItemSchema = z.object({
   buildingGroupsTrayOpen: z.boolean(),
   buildingGroupsHaveProblem: z.boolean(),
   buildingGroupItemSync: z.boolean(),
+  ...checklistRowFields,
 })
 
 export const factoryDependencyRequestSchema = z.object({
@@ -154,6 +188,7 @@ export const factoryInputSchema = z.object({
   factoryId: num.nullable(),
   outputPart: str.nullable(),
   amount: num,
+  ...checklistRowFields,
 })
 
 export const factorySyncStateSchema = z.object({
@@ -166,6 +201,9 @@ export const factoryPowerSyncStateSchema = z.object({
   powerAmount: num,
   recipe: str,
   ingredientAmount: num,
+  // The building this producer was when it was marked in sync. Absent must not read as a
+  // change, so it stays optional rather than defaulting to an empty string.
+  building: str.optional(),
 })
 
 export const factoryTaskSchema = z.object({
@@ -190,6 +228,7 @@ export const factoryPowerProducerSchema = z.object({
   buildingGroupsTrayOpen: z.boolean(),
   buildingGroupsHaveProblem: z.boolean(),
   buildingGroupItemSync: z.boolean(),
+  ...checklistRowFields,
 })
 
 // The three totals default rather than reject: a factory the user added but never
@@ -219,6 +258,16 @@ export const factoryGroupSchema = z.object({
   order: num,
 })
 
+/**
+ * Sinks and depot uploaders placed on one part's surplus. Both counts default so a record
+ * that only ever named one of them still parses; the client floors negatives and non-finite
+ * values on the way in (`cleanDisposalCount`), and `num` refuses NaN here regardless.
+ */
+export const factoryPartDisposalSchema = z.object({
+  sinks: num.default(0),
+  depots: num.default(0),
+})
+
 export const factorySchema = z.object({
   id: num,
   name,
@@ -236,6 +285,9 @@ export const factorySchema = z.object({
   buildingMaterialCosts: z.record(key, buildingMaterialCostSchema).default(() => ({})),
   requirementsSatisfied: z.boolean(),
   exportCalculator: z.record(key, exportCalculatorSettingsSchema),
+  // Optional, with no default: the map is sticky and a plan that never placed a sink or an
+  // uploader has no key at all, which is a different thing from having placed none.
+  partDisposal: z.record(key, factoryPartDisposalSchema).optional(),
   dependencies: factoryDependencySchema,
   rawResources: z.record(key, worldRawResourceSchema),
   power: factoryPowerSchema.default(emptyFactoryPower),
@@ -258,11 +310,21 @@ export const factorySchema = z.object({
   dataVersion: str,
 })
 
+/**
+ * Tab-owned settings beyond the name, power target and group registry. All optional, and
+ * absent carries meaning in every case — the depot tiers read as fully researched, and an
+ * absent `plannerVersion` means the plan has not been answered for. Unclamped on purpose:
+ * the planner clamps a tier on read, and rejecting a tab over a `2.5` here would cost the
+ * whole plan.
+ */
 export const factoryTabSchema = z.object({
   id,
   name,
   factories: z.array(factorySchema).max(CAPS.factoriesPerRoom),
   powerTarget: num.optional(),
+  depotUploadTier: num.optional(),
+  depotExpansionTier: num.optional(),
+  plannerVersion: str.optional(),
   groups: z.array(factoryGroupSchema).optional(),
 })
 

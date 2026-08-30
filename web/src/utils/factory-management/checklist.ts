@@ -13,15 +13,18 @@
 // to checked re-stamps the baseline, which is how a player acknowledges the new number. Marking
 // the whole factory in sync with the game (setSyncState) re-stamps every baseline at once.
 //
-// Every mutation here emits `factoryUpdated`. That is the only thing that sets the cloud-sync
-// dirty flag and schedules a local persist, and checklist mode is the one feature where a whole
-// session can consist of nothing but ticks — so without it a build session uploads nothing, and a
-// second device can then overwrite the lot. That is also why the factory is threaded through the
-// item-level toggles: it makes ticking without dirtying impossible to write by accident.
+// Every mutation here goes through markFactoryEdited, which is payload AND intent. Payload
+// alone would set the dirty flag and schedule the persist — checklist mode is the one feature
+// where a whole session can consist of nothing but ticks, so without it a build session uploads
+// nothing — but a rebase carries over only the factories the user is recorded as having touched,
+// so payload alone means every tick is discarded by the first reject or reconnect. Every caller
+// here is a click handler, so declaring intent is always safe. That is also why the factory is
+// threaded through the item-level toggles: it makes ticking without declaring impossible to
+// write by accident.
 import { Factory, FactoryInput, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { setSyncState } from '@/utils/factory-management/syncState'
-import eventBus from '@/utils/eventBus'
+import { markFactoryEdited } from '@/utils/sync-intent'
 
 export const checklistExportKey = (requestingFactoryId: number | string, part: string): string =>
   `${requestingFactoryId}:${part}`
@@ -47,7 +50,7 @@ export const toggleChecklistExport = (
   if (isChecklistExportDesynced(factory, requestingFactoryId, part, amount)) {
     factory.checklistExportSyncedAmounts[key] = amount
     reconcileFactoryInSyncWithGame(factory)
-    eventBus.emit('factoryUpdated', factory)
+    markFactoryEdited(factory)
     return
   }
   const nowComplete = !factory.checklistExports[key]
@@ -55,7 +58,7 @@ export const toggleChecklistExport = (
   if (nowComplete) {
     factory.checklistExportSyncedAmounts[key] = amount
   }
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 export const toggleChecklistProduct = (factory: Factory, product: FactoryItem): void => {
@@ -70,7 +73,7 @@ export const toggleChecklistProduct = (factory: Factory, product: FactoryItem): 
       product.checklistSyncedAmount = product.amount
     }
   }
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 export const toggleChecklistInput = (factory: Factory, input: FactoryInput): void => {
@@ -83,7 +86,7 @@ export const toggleChecklistInput = (factory: Factory, input: FactoryInput): voi
       input.checklistSyncedAmount = input.amount
     }
   }
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 export const toggleChecklistPowerProducer = (factory: Factory, producer: FactoryPowerProducer): void => {
@@ -96,7 +99,7 @@ export const toggleChecklistPowerProducer = (factory: Factory, producer: Factory
       producer.checklistSyncedAmount = producer.buildingAmount
     }
   }
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 // Re-acknowledging the last desynced item is, in effect, the player reviewing the whole plan by
@@ -112,12 +115,12 @@ const reconcileFactoryInSyncWithGame = (factory: Factory): void => {
 
 export const setChecklistEnabled = (factory: Factory, enabled: boolean): void => {
   factory.checklistEnabled = enabled
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 export const setChecklistPanelHidden = (factory: Factory, hidden: boolean): void => {
   factory.checklistPanelHidden = hidden
-  eventBus.emit('factoryUpdated', factory)
+  markFactoryEdited(factory)
 }
 
 // Desynced: ticked as built, but the number it was ticked against has since moved. An absent

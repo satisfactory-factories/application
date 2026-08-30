@@ -31,6 +31,20 @@ describe('factorySchema', () => {
     expect('somethingElse' in parsed).toBe(false)
   })
 
+  // Unknown keys being stripped is the whole point of this file and also its one hazard: a
+  // stored field the schema has never heard of is deleted from every synced tab, silently, by
+  // every op, adoption and share. Deep equality over a fixture that carries all of them is the
+  // only assertion that fails when a field is added to the interface and forgotten here.
+  it('keeps every persisted field of a fully populated factory', () => {
+    const factory = makeFactory()
+    expect(factorySchema.parse(factory)).toEqual(factory)
+  })
+
+  it('keeps every persisted field of a tab, factories included', () => {
+    const tab = makeFactoryTab()
+    expect(factoryTabSchema.parse(tab)).toEqual(tab)
+  })
+
   it('rejects a missing required field', () => {
     const factory = makeFactory() as Partial<Factory>
     delete factory.dataVersion
