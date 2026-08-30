@@ -316,6 +316,7 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   const name = page.locator('input.factory-name').last()
   await expect(name).toBeVisible()
   await name.fill(edit.name)
+  await commitName(name)
 
   // A note needs no recalculation to reach the sync engine, so it is the cheapest
   // per-factory payload a test can give a new card.
@@ -343,6 +344,11 @@ export const clearPlan = async (page: Page): Promise<void> => {
   await expect(page.locator('input.factory-name')).toHaveCount(0)
 }
 
+/**
+ * The card headers. These hold a *draft* the card only writes back on blur or Enter, so a
+ * field still being edited reads as renamed when the plan is not. Every helper that types
+ * into one commits it, which is what keeps this read honest.
+ */
 export const factoryNames = (page: Page): Promise<string[]> =>
   page.locator('input.factory-name')
     .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))
@@ -356,6 +362,17 @@ export const renameFactory = async (
   const field = page.locator('input.factory-name').nth(index)
   await expect(field).toBeVisible()
   await field.fill(name)
+  await commitName(field)
+}
+
+/**
+ * Enter is what writes a header draft back to the factory and declares the rename; a filled
+ * field alone changes nothing. The blur it leaves behind is the proof the handler ran, so
+ * this waits on that rather than on a duration.
+ */
+const commitName = async (field: Locator): Promise<void> => {
+  await field.press('Enter')
+  await expect(field).not.toBeFocused()
 }
 
 /** The tasks card's "New Task" field; Enter is what commits it. */

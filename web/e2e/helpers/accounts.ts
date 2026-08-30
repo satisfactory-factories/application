@@ -94,8 +94,10 @@ interface ClientOptions {
  * session is seeded through storage state rather than an init script so nothing
  * re-writes the token on later navigations.
  *
- * The two dismissal flags keep the welcome dialog and the release splash off the
- * screen; both are modal overlays that would swallow every click.
+ * The dismissal flags keep the welcome dialog and the release decks off the screen;
+ * every one is a modal overlay that would swallow every click. Each release adds its
+ * own key (`seenV<n>Splash`), so a new deck needs a new line here or the whole suite
+ * times out clicking through a scrim.
  */
 export const newClient = async (
   browser: Browser,
@@ -104,6 +106,7 @@ export const newClient = async (
   const storage = [
     { name: 'dismissed-introduction', value: 'true' },
     { name: 'seenV51Splash', value: 'true' },
+    { name: 'seenV6Splash', value: 'true' },
     { name: 'newTabChooserSeen', value: 'true' },
   ]
   if (user) {
