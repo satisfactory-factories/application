@@ -33,7 +33,6 @@ const mountComponent = (factory: Factory, component: any) => {
   return mount(component, {
     propsData: {
       factory,
-      helpText: false,
     },
     global: {
       plugins: [vuetify],
@@ -258,6 +257,26 @@ describe('Component: BuildingGroups', () => {
         // We have baked in a debounce delay of 250ms, so make the test wait
         await new Promise(resolve => setTimeout(resolve, 1000))
         expect(itemBuildingCount.element.value).toBe('2.5')
+      })
+
+      it('OC @ 100% should reset the clock and resync the item quantity', async () => {
+        // Regression: resetClocks used to mutate the groups without calling updateFactory,
+        // so with Sync enabled the item's own Qty/min stayed stale at whatever the last
+        // manual clock left it (see the OC @ 100% button, resetClocks in BuildingGroups.vue).
+        await buildingGroupClock.setValue('200')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(product.amount).toBe(60)
+
+        await buildingGroupClock.setValue('50')
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Debounce
+        expect(product.amount).toBe(15)
+
+        const ocButton = subject.findAll('button').find(b => b.text().includes('OC @ 100%'))
+        await ocButton!.trigger('click')
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        expect(buildingGroup.overclockPercent).toBe(100)
+        expect(product.amount).toBe(30)
       })
 
       it('should the clock be changed, the group\'s power should update', async () => {
@@ -812,6 +831,175 @@ describe('Component: BuildingGroups', () => {
         await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
         expect(buildingGroupPowerUsed.text()).toBe(`37,500\u00A0MW`)
       })
+    })
+  })
+
+  // Effective buildings for a mine are counted in reference-extractor units (Miner Mk.1 on a
+  // normal node), so "88 short" would mean 88 Mk.1-equivalents — meaningless to someone
+  // building Mk.3s. Mines report the same figures as output instead.
+  describe('extraction reports output rather than effective buildings', () => {
+    let product: FactoryItem
+
+    beforeEach(() => {
+      addProductToFactory(factory, {
+        id: 'Stone',
+        amount: 5760,
+        recipe: 'Extract_Stone',
+      })
+      product = factory.products[0]
+      product.buildingGroupsTrayOpen = true
+
+      // One Miner Mk.3 on a pure node: 240 x 2 = 480/min against a 5,760/min target.
+      const group = product.buildingGroups[0]
+      group.extractorBuilding = 'minermk3'
+      group.purity = 'pure'
+      group.buildingCount = 1
+      group.overclockPercent = 100
+
+      calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+      subject = mountProduct(factory)
+    })
+
+    it('shows the groups\' combined rate and the shortfall in items per minute', () => {
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-output"]`).text()).toBe('480/min')
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-output"]`).text()).toBe('5280/min')
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-output-verb"]`).text()).toBe('short')
+    })
+
+    it('does not render the effective buildings figure for a mine', () => {
+      expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(false)
+      expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).exists()).toBe(false)
+    })
+
+    // 5,280/min short: every purity is offered so the user doesn't have to guess which nodes
+    // the hint assumes. Counts are buildings at 100%, the same unit as the rest of the row.
+    it('hints how many of each miner would close the gap, per purity', () => {
+      // The separating spaces are CSS margins, so the DOM text runs the pills together.
+      const hints = subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).text()
+
+      // Impure halves the rate: 30 / 60 / 120 per minute
+      expect(hints).toContain('Impure:Mk.1: 176|Mk.2: 88|Mk.3: 44')
+      // Normal: 60 / 120 / 240
+      expect(hints).toContain('Normal:Mk.1: 88|Mk.2: 44|Mk.3: 22')
+      // Pure doubles it: 120 / 240 / 480
+      expect(hints).toContain('Pure:Mk.1: 44|Mk.2: 22|Mk.3: 11')
+    })
+
+    // Crude Oil has one extractor, so naming it in every pill says only what the building
+    // group above it already says. It is also the clearest case for fractional counts:
+    // rounding 0.25 up to 1 would advise four times the extractor the gap needs.
+    it('names no building, and counts part buildings, for a single-extractor resource', () => {
+      const oilFactory = newFactory('Oil')
+      addProductToFactory(oilFactory, { id: 'LiquidOil', amount: 180, recipe: 'Extract_LiquidOil' })
+      const oil = oilFactory.products[0]
+      oil.buildingGroupsTrayOpen = true
+      oil.buildingGroups[0].buildingCount = 1 // 120/min of 180, so 60/min short
+      oil.buildingGroups[0].purity = 'normal'
+      oil.buildingGroups[0].overclockPercent = 100
+      calculateFactories([oilFactory], gameData, { origin: 'buildingGroup' })
+
+      const hints = mountProduct(oilFactory).find(`[id="${oilFactory.id}-${oil.id}-shortfall-hints"]`).text()
+
+      expect(hints).not.toContain('Oil Extractor')
+      // 60/min short against 60 / 120 / 240 per minute by purity
+      expect(hints).toBe('To cover the shortfall, add the equivalent of:Impure:1Normal:0.5Pure:0.25')
+    })
+
+    it('drops the hint once the mine is no longer short', () => {
+      product.buildingGroups[0].buildingCount = 12 // 12 x 480 = 5,760
+      calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+      subject = mountProduct(factory)
+
+      expect(subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).exists()).toBe(false)
+    })
+  })
+
+  it('never hints for an ordinary product, which has only one building', () => {
+    addProductToFactory(factory, { id: 'IronIngot', amount: 300, recipe: 'IngotIron' })
+    const product = factory.products[0]
+    product.buildingGroupsTrayOpen = true
+    product.buildingGroups[0].buildingCount = 1 // 9 buildings short
+    calculateFactories([factory], gameData, { origin: 'buildingGroup' })
+    subject = mountProduct(factory)
+
+    expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).exists()).toBe(true)
+    expect(subject.find(`[id="${factory.id}-${product.id}-shortfall-hints"]`).exists()).toBe(false)
+  })
+})
+
+// An Alien Power Augmenter's groups always follow the item, so a gap between the two is the sync
+// mid-flight, never something the user is being asked to close. The balancing controls that go
+// with a gap were already hidden for them; the per-group Trim/Satisfy button and the shortfall
+// hint were not, so a plain decrease still put both on screen.
+describe('Component: BuildingGroups (always-synced buildings)', () => {
+  let factory: Factory
+  let producer: FactoryPowerProducer
+
+  const addProducer = (building: string, recipe: string) => {
+    setActivePinia(createPinia())
+    factory = newFactory('Alien Power')
+    addPowerProducerToFactory(factory, {
+      building,
+      buildingAmount: 3,
+      recipe,
+      updated: FactoryPowerChangeType.Building,
+    })
+    producer = factory.powerProducers[0]
+    producer.buildingGroupsTrayOpen = true
+    calculateFactories([factory], gameData)
+  }
+
+  // What a mid-edit factory looks like: the item has moved, the group has not caught up yet.
+  const leaveGroupShort = () => {
+    producer.buildingGroups[0].buildingCount = 1
+  }
+
+  const balanceButton = (subject: VueWrapper<any>) =>
+    subject.find(`[id="${factory.id}-${producer.buildingGroups[0].id}-balance"]`)
+
+  const shortfallHints = (subject: VueWrapper<any>) =>
+    subject.find(`[id="${factory.id}-${producer.id}-shortfall-hints"]`)
+
+  describe('an Alien Power Augmenter', () => {
+    beforeEach(() => addProducer('alienpoweraugmenter', 'AlienPowerAugmenter'))
+
+    it('offers no Trim or Satisfy on a group that is behind the item', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(balanceButton(subject).exists()).toBe(false)
+    })
+
+    it('hints at no shortfall to cover', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(shortfallHints(subject).exists()).toBe(false)
+      expect(subject.text()).not.toContain('To cover the shortfall')
+    })
+  })
+
+  // The same state on a generator the user really does have to balance by hand, so the assertions
+  // above are about the augmenter rather than about the fixture failing to produce a gap.
+  describe('a nuclear generator', () => {
+    beforeEach(() => addProducer('generatornuclear', 'GeneratorNuclear_NuclearFuelRod'))
+
+    it('still offers Trim or Satisfy on a group that is behind the item', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(balanceButton(subject).exists()).toBe(true)
+    })
+
+    it('still hints at what would cover the shortfall', async () => {
+      leaveGroupShort()
+      const subject = mountPowerProducer(factory)
+      await nextTick()
+
+      expect(shortfallHints(subject).exists()).toBe(true)
     })
   })
 })

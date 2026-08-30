@@ -1,25 +1,22 @@
 <template>
-  <v-dialog v-model="showDialog" max-width="1000" scrollable>
-    <v-card class="my-2">
-      <v-card-title class="text-center pb-0">
-        <h1 class="text-h1">Import a world! [WIP]</h1>
-      </v-card-title>
-      <v-card-subtitle class="text-center">
-        <h6 class="text-h6">Find all your somersloops.</h6>
-      </v-card-subtitle>
-      <v-card-text class="text-body-1 text-left">
-        <p>This will currently search through your world and find all the machines that contains somersloops.</p>
-        <p>This feature is Work In Progress, and we plan to add more features such as factory importing.</p>
-        <!-- https://satisfactory.wiki.gg/wiki/Save_files#Save_file_location -->
-        <p>Can't find your worlds? Check out <a href="https://satisfactory.fandom.com/wiki/Save_files#Save_File_Location" target="_blank">Save File Location</a> in the Satisfactory Wiki.</p>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="blue" @click="selectFile">
-          <i class="fas fa-file-import" /><span class="ml-2">Select file (.sav)</span>
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <app-dialog
+    v-model="showDialog"
+    icon="fas fa-file-import"
+    max-width="1000"
+    scrollable
+    title="Import a world! [WIP]"
+  >
+    <h3 class="text-subtitle-1 font-weight-bold mb-1">Find all your somersloops.</h3>
+    <p class="mb-3">This will currently search through your world and find all the machines that contains somersloops.</p>
+    <p class="mb-3">This feature is Work In Progress, and we plan to add more features such as factory importing.</p>
+    <!-- https://satisfactory.wiki.gg/wiki/Save_files#Save_file_location -->
+    <p class="mb-0">Can't find your worlds? Check out <a href="https://satisfactory.fandom.com/wiki/Save_files#Save_File_Location" target="_blank">Save File Location</a> in the Satisfactory Wiki.</p>
+    <template #actions>
+      <v-btn color="blue" variant="flat" @click="selectFile">
+        <i class="fas fa-file-import" /><span class="ml-2">Select file (.sav)</span>
+      </v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

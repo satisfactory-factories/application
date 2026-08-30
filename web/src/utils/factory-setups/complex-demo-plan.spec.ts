@@ -9,6 +9,7 @@ import { resolveFactoryIcon } from '@/utils/factory-icons'
 
 let factories: Factory[]
 let oilFac: Factory
+let copperMineFac: Factory
 let copperIngotsFac: Factory
 let copperBasicsFac: Factory
 let circuitBoardsFac: Factory
@@ -24,6 +25,7 @@ describe('Complex Demo Plan', () => {
     factories = complexDemoPlan().getFactories()
     calculateFactories(factories, gameData)
     oilFac = findFacByName('Oil Processing', factories)
+    copperMineFac = findFacByName('Copper Mine', factories)
     copperIngotsFac = findFacByName('Copper Ingots', factories)
     copperBasicsFac = findFacByName('Copper Basics', factories)
     circuitBoardsFac = findFacByName('Circuit Boards', factories)
@@ -38,7 +40,7 @@ describe('Complex Demo Plan', () => {
     expect(factories.length).toBeGreaterThan(0)
   })
   it('should have the expected number of factories', () => {
-    expect(factories.length).toBe(9)
+    expect(factories.length).toBe(14)
   })
   describe('Presentation', () => {
     it('should give every factory an icon the registry knows', () => {
@@ -47,13 +49,34 @@ describe('Complex Demo Plan', () => {
         expect(resolveFactoryIcon(factory.icon).kind, `${factory.name}: ${factory.icon}`).not.toBe('default')
       })
     })
-    it('should put the copper chain in one group, sorted below the ungrouped factories', () => {
+    it('should sort its groups below the ungrouped factories, each one contiguous', () => {
       const grouped = factories.filter(factory => factory.group)
-      expect(grouped.map(factory => factory.name)).toEqual(['Copper Ingots', 'Copper Basics'])
-      expect(new Set(grouped.map(factory => factory.group?.id)).size).toBe(1)
+
+      expect(grouped.map(factory => [factory.group?.name, factory.name])).toEqual([
+        ['Copper', 'Copper Mine'],
+        ['Copper', 'Copper Ingots'],
+        ['Copper', 'Copper Basics'],
+        ['Power', 'Uranium Mine'],
+        ['Power', 'Uranium Power'],
+        ['Power', 'Alien Power'],
+        ['Power', 'Geothermal Power'],
+        ['Power', 'Plutonium Processing'],
+      ])
       // The invariant repairFactoryGroups enforces on load; authored the same way so the
       // template does not shuffle the moment it is opened.
       expect(factories.slice(-grouped.length)).toEqual(grouped)
+      expect(grouped.map(factory => factory.group!.order)).toEqual([0, 0, 0, 1, 1, 1, 1, 1])
+    })
+
+    // Nuclear Waste is a byproduct of Uranium Power, and a byproduct only exists once its
+    // factory has been calculated — so a group order that put Plutonium Processing first had
+    // its export pruned on the first pass and the waste chain silently disappeared.
+    it('should keep the waste chain intact with the producer ahead of the consumer', () => {
+      const order = factories.map(factory => factory.name)
+
+      expect(plutoniumFac.inputs.some(input => input.outputPart === 'NuclearWaste')).toBe(true)
+      expect(getPartExportRequests(uraniumFac, 'NuclearWaste')).toHaveLength(1)
+      expect(order.indexOf('Uranium Power')).toBeLessThan(order.indexOf('Plutonium Processing'))
     })
     it('should number displayOrder as the index into the array', () => {
       factories.forEach((factory, index) => {
@@ -61,13 +84,70 @@ describe('Complex Demo Plan', () => {
       })
     })
   })
+  describe('Portal Hub', () => {
+    let portalFac: Factory
+    let cellsFac: Factory
+
+    beforeEach(() => {
+      portalFac = findFacByName('Portal Hub', factories)
+      cellsFac = findFacByName('Singularity Cells', factories)
+    })
+
+    it('should be a factory of nothing but custom buildings', () => {
+      expect(portalFac.products).toHaveLength(0)
+      expect(portalFac.powerProducers).toHaveLength(0)
+      expect(portalFac.customBuildings).toHaveLength(1)
+      expect(portalFac.customBuildings[0]).toMatchObject({
+        building: 'portal',
+        amount: 10,
+        powerConsumed: 2500,
+        ingredients: [{ part: 'SingularityCell', perMin: 20 }],
+      })
+    })
+
+    it('should draw the portals power and list them as buildings to build', () => {
+      expect(portalFac.power.consumed).toBe(2500)
+      expect(portalFac.buildingRequirements.portal).toEqual({
+        name: 'portal',
+        amount: 10,
+        powerConsumed: 2500,
+      })
+    })
+
+    it('should have its Singularity Cell upkeep met by the import', () => {
+      expect(portalFac.parts.SingularityCell.amountRequiredBuildings).toBe(20)
+      expect(portalFac.parts.SingularityCell.amountSuppliedViaInput).toBe(20)
+      expect(portalFac.parts.SingularityCell.satisfied).toBe(true)
+      expect(portalFac.hasProblem).toBe(false)
+    })
+
+    it('should make the demand reach its supplier as an export request', () => {
+      expect(getPartExportRequests(cellsFac, 'SingularityCell')).toHaveLength(1)
+      expect(cellsFac.dependencies.metrics.SingularityCell.request).toBe(20)
+      expect(cellsFac.dependencies.metrics.SingularityCell.isRequestSatisfied).toBe(true)
+    })
+
+    // Deliberate: the cell line is a half-built branch, like Plutonium Processing.
+    it('should leave the Singularity Cell factory short of its ingredients', () => {
+      expect(cellsFac.products[0].amount).toBe(20)
+      expect(cellsFac.parts.DarkMatter.satisfied).toBe(false)
+      expect(cellsFac.parts.IronPlate.satisfied).toBe(false)
+      expect(cellsFac.parts.Cement.satisfied).toBe(false)
+      expect(cellsFac.parts.SpaceElevatorPart_9.satisfied).toBe(false)
+      expect(cellsFac.hasProblem).toBe(true)
+    })
+  })
   describe('Oil Processing', () => {
     it('should have Oil Processing factory configured correctly', () => {
-      expect(oilFac.products.length).toBe(2)
-      expect(oilFac.products[0].id).toBe('Plastic')
-      expect(oilFac.products[0].amount).toBe(640)
-      expect(oilFac.products[1].id).toBe('LiquidFuel')
-      expect(oilFac.products[1].amount).toBe(40)
+      expect(oilFac.products.length).toBe(3)
+      // The oil comes first so the factory reads in the order it flows: extract, refine, burn.
+      expect(oilFac.products[0].id).toBe('LiquidOil')
+      expect(oilFac.products[0].amount).toBe(960)
+      expect(oilFac.products[0].recipe).toBe('Extract_LiquidOil')
+      expect(oilFac.products[1].id).toBe('Plastic')
+      expect(oilFac.products[1].amount).toBe(640)
+      expect(oilFac.products[2].id).toBe('LiquidFuel')
+      expect(oilFac.products[2].amount).toBe(40)
       // toMatchObject: the producer also carries building group state not asserted here
       expect(oilFac.powerProducers[0]).toMatchObject({
         building: 'generatorfuel',
@@ -88,22 +168,30 @@ describe('Complex Demo Plan', () => {
       })
     })
     it('should have product requirements calculated correctly', () => {
-      expect(oilFac.products[0].requirements).toStrictEqual({ LiquidOil: { amount: 960 } })
+      // Extraction takes no ingredients — the node is the ingredient.
+      expect(oilFac.products[0].requirements).toStrictEqual({})
+      expect(oilFac.products[1].requirements).toStrictEqual({ LiquidOil: { amount: 960 } })
     })
     it('should have byproducts calculated correctly', () => {
-      expect(oilFac.products[0].byProducts).toStrictEqual([{
+      expect(oilFac.products[1].byProducts).toStrictEqual([{
         id: 'HeavyOilResidue',
         byProductOf: 'Plastic',
         amount: 320,
       }])
     })
-    it('should have raw fluids correctly added as raw inputs', () => {
+    it('should extract its own oil rather than assuming it', () => {
       expect(oilFac.inputs).toHaveLength(0)
-      expect(oilFac.rawResources.LiquidOil).toStrictEqual({
-        id: 'LiquidOil',
-        name: 'Crude Oil',
-        amount: 960,
-      })
+      expect(oilFac.rawResources.LiquidOil).toBeUndefined()
+    })
+    it('should split the extraction across pure and normal nodes', () => {
+      const groups = oilFac.products[0].buildingGroups
+      expect(groups).toHaveLength(2)
+      expect(groups[0]).toMatchObject({ extractorBuilding: 'oilpump', purity: 'pure', buildingCount: 3 })
+      expect(groups[1]).toMatchObject({ extractorBuilding: 'oilpump', purity: 'normal', buildingCount: 2 })
+      // 3 x 240 + 2 x 120 lands exactly on what the Plastic line drinks.
+      expect(oilFac.products[0].amount).toBe(960)
+      // Open on load: the purity split is the thing worth seeing.
+      expect(oilFac.products[0].buildingGroupsTrayOpen).toBe(true)
     })
     it('should have fluid parts calculated correctly', () => {
       expect(oilFac.parts.LiquidOil).toEqual({
@@ -111,27 +199,38 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 960,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 960,
         amountSuppliedViaInput: 0,
-        amountSuppliedViaRaw: 960,
-        amountSuppliedViaProduction: 0,
+        // Supplied by the extractors, not topped up from nowhere.
+        amountSuppliedViaRaw: 0,
+        amountSuppliedViaProduction: 960,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
-        exportable: false,
+        isEndProduct: false,
+        isSinkable: false,
+        exportable: true,
       })
       expect(oilFac.parts.LiquidFuel).toEqual({
         amountRequired: 40,
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 40,
+        amountRequiredBuildings: 0,
         amountSupplied: 40,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 40,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
       expect(oilFac.parts.HeavyOilResidue).toEqual({
@@ -139,13 +238,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 60,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 320,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 320,
         amountSuppliedViaRaw: 0,
         amountRemaining: 260,
+        amountRemainingPreSink: 260,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
     })
@@ -155,13 +259,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 640,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 640,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 640,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
     })
@@ -193,7 +302,8 @@ describe('Complex Demo Plan', () => {
 
     it('should have the correct amount of power calculated', () => {
       // 24 refineries @ 100% (720) + 4 @ 200% (2^1.321928 = 2.5x power, 300) + 1 fuel refinery (30)
-      expect(oilFac.power.consumed).toBe(1050)
+      // + 5 Oil Extractors @ 40 MW (200). Purity does not change the draw, only the yield.
+      expect(oilFac.power.consumed).toBe(1250)
     })
 
     it('should have the correct number of buildings calculated along with their power', () => {
@@ -202,6 +312,11 @@ describe('Complex Demo Plan', () => {
           amount: 2,
           name: 'generatorfuel',
           powerProduced: 500,
+        },
+        oilpump: {
+          amount: 5,
+          name: 'oilpump',
+          powerConsumed: 200,
         },
         oilrefinery: {
           // 24 + 4 overclocked for Plastic, plus 1 for Residual Fuel. powerConsumed here is
@@ -218,24 +333,53 @@ describe('Complex Demo Plan', () => {
     it('should have Copper Ingots factory configured correctly', () => {
       expect(copperIngotsFac.products.length).toBe(1)
       expect(copperIngotsFac.products[0].id).toBe('CopperIngot')
-      expect(copperIngotsFac.products[0].amount).toBe(320)
+      expect(copperIngotsFac.products[0].amount).toBe(520)
 
-      // Inputs
-      expect(copperIngotsFac.inputs).toHaveLength(0) // Raw resources inputs
-      expect(copperIngotsFac.rawResources.OreCopper).toStrictEqual({
-        id: 'OreCopper',
-        name: 'Copper Ore',
-        amount: 320,
-      })
+      // Its ore is mined by the Copper Mine now, not assumed.
+      expect(copperIngotsFac.inputs).toHaveLength(1)
+      expect(copperIngotsFac.inputs[0].outputPart).toBe('OreCopper')
+      expect(copperIngotsFac.inputs[0].amount).toBe(520)
+      expect(copperIngotsFac.rawResources.OreCopper).toBeUndefined()
 
       // Dependencies
       expect(copperIngotsFac.dependencies.metrics.CopperIngot).toStrictEqual({
         part: 'CopperIngot',
-        supply: 320,
-        request: 320,
-        difference: 0,
+        supply: 520,
+        request: 480,
+        difference: 40,
         isRequestSatisfied: true,
       })
+    })
+  })
+
+  describe('Copper Mine', () => {
+    it('should mine its ore rather than assume it, and open with the groups showing', () => {
+      expect(copperMineFac.displayOrder).toBe(6) // Head of the Copper group, where the chain starts
+      // Its own extractors are what supply it, so what shows here is the gap between what it digs
+      // and what it has promised away - a real shortfall to act on, not the old free ore.
+      expect(copperMineFac.rawResources.OreCopper).toMatchObject({ id: 'OreCopper', amount: 160 })
+
+      const ore = copperMineFac.products[0]
+      expect(ore.id).toBe('OreCopper')
+      expect(ore.recipe).toBe('Extract_OreCopper')
+      expect(ore.buildingGroupsTrayOpen).toBe(true)
+      expect(ore.buildingGroups).toHaveLength(2)
+      expect(ore.buildingGroups[0]).toMatchObject({ extractorBuilding: 'minermk3', purity: 'normal', buildingCount: 1 })
+      expect(ore.buildingGroups[1]).toMatchObject({ extractorBuilding: 'minermk1', purity: 'pure', buildingCount: 1 })
+      // 240 on a normal node plus 120 from a Mk.1 on a pure one: deliberately 160 short of
+      // the 520 the smelters ask for, so the plan opens with an export shortage to look at.
+      expect(ore.amount).toBe(360)
+    })
+
+    it('should be unable to meet what Copper Ingots asks of it', () => {
+      expect(copperMineFac.dependencies.metrics.OreCopper).toStrictEqual({
+        part: 'OreCopper',
+        supply: 360,
+        request: 520,
+        difference: -160,
+        isRequestSatisfied: false,
+      })
+      expect(copperMineFac.hasProblem).toBe(true)
     })
   })
 
@@ -253,7 +397,7 @@ describe('Complex Demo Plan', () => {
       expect(copperBasicsFac.inputs.length).toBe(1)
       expect(copperBasicsFac.inputs[0].factoryId).toBe(copperIngotsFac.id)
       expect(copperBasicsFac.inputs[0].outputPart).toBe('CopperIngot')
-      expect(copperBasicsFac.inputs[0].amount).toBe(320) // Deliberate shortage
+      expect(copperBasicsFac.inputs[0].amount).toBe(480) // Deliberate shortage: it needs 520
 
       // Dependencies
       expect(copperBasicsFac.dependencies.metrics.Cable).toStrictEqual({
@@ -310,17 +454,21 @@ describe('Complex Demo Plan', () => {
 
   describe('Uranium Power', () => {
     it('should have Uranium Power factory configured correctly', () => {
-      expect(uraniumFac.products.length).toBe(5)
-      expect(uraniumFac.products[0].id).toBe('Cement')
-      expect(uraniumFac.products[0].amount).toBe(60)
-      expect(uraniumFac.products[1].id).toBe('SulfuricAcid')
-      expect(uraniumFac.products[1].amount).toBe(160)
-      expect(uraniumFac.products[2].id).toBe('ElectromagneticControlRod')
-      expect(uraniumFac.products[2].amount).toBe(10)
-      expect(uraniumFac.products[3].id).toBe('NuclearFuelRod')
-      expect(uraniumFac.products[3].amount).toBe(2)
-      expect(uraniumFac.products[4].id).toBe('UraniumCell')
-      expect(uraniumFac.products[4].amount).toBe(100)
+      expect(uraniumFac.products.length).toBe(7)
+      // The ore it digs for itself comes first, so the factory reads in the order it flows.
+      expect(uraniumFac.products[0].id).toBe('OreUranium')
+      expect(uraniumFac.products[0].amount).toBe(120)
+      expect(uraniumFac.products[0].recipe).toBe('Extract_OreUranium')
+      expect(uraniumFac.products[1].id).toBe('Cement')
+      expect(uraniumFac.products[1].amount).toBe(60)
+      expect(uraniumFac.products[2].id).toBe('SulfuricAcid')
+      expect(uraniumFac.products[2].amount).toBe(160)
+      expect(uraniumFac.products[3].id).toBe('ElectromagneticControlRod')
+      expect(uraniumFac.products[3].amount).toBe(10)
+      expect(uraniumFac.products[4].id).toBe('NuclearFuelRod')
+      expect(uraniumFac.products[4].amount).toBe(2)
+      expect(uraniumFac.products[5].id).toBe('UraniumCell')
+      expect(uraniumFac.products[5].amount).toBe(100)
 
       expect(uraniumFac.powerProducers.length).toBe(1)
       // toMatchObject: the producer also carries building group state not asserted here
@@ -357,27 +505,38 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 60,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 60,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 60,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
+      // Imported from the Raw Materials Mine rather than assumed out of thin air.
       expect(uraniumFac.parts.Stone).toEqual({
         amountRequired: 180,
         amountRequiredExports: 0,
         amountRequiredProduction: 180,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 180,
-        amountSuppliedViaInput: 0,
+        amountSuppliedViaInput: 180,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 180,
+        amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
       expect(uraniumFac.parts.SulfuricAcid).toEqual({
@@ -385,13 +544,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 200,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 200,
         amountSuppliedViaRaw: 0,
         amountRemaining: 40,
+        amountRemainingPreSink: 40,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
       expect(uraniumFac.parts.Sulfur).toEqual({
@@ -399,41 +563,58 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 160,
-        amountSuppliedViaInput: 0,
+        amountSuppliedViaInput: 160,
         amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 160,
+        amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
+      // Pumped on site: 22 Water Extractors, over-producing 80/min because 2560 isn't a multiple
+      // of the 120/min a pump gives.
       expect(uraniumFac.parts.Water).toEqual({
         amountRequired: 2560,
         amountRequiredExports: 0,
         amountRequiredProduction: 160,
         amountRequiredPower: 2400,
-        amountSupplied: 2560,
+        amountRequiredBuildings: 0,
+        amountSupplied: 2640,
         amountSuppliedViaInput: 0,
-        amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 2560,
-        amountRemaining: 0,
+        amountSuppliedViaProduction: 2640,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: 80,
+        amountRemainingPreSink: 80,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
-        exportable: false,
+        isEndProduct: false,
+        isSinkable: false,
+        exportable: true,
       })
       expect(uraniumFac.parts.ElectromagneticControlRod).toEqual({
         amountRequired: 10,
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 10,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 10,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(uraniumFac.parts.Stator).toEqual({
@@ -441,13 +622,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 15,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -15,
+        amountRemainingPreSink: -15,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
       expect(uraniumFac.parts.CircuitBoardHighSpeed).toEqual({
@@ -455,13 +641,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
       expect(uraniumFac.parts.NuclearFuelRod).toEqual({
@@ -469,13 +660,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 2,
+        amountRequiredBuildings: 0,
         amountSupplied: 2,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 2,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(uraniumFac.parts.UraniumCell).toEqual({
@@ -483,13 +679,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 100,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(uraniumFac.parts.SteelPlateReinforced).toEqual({
@@ -497,13 +698,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 6,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -6,
+        amountRemainingPreSink: -6,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
       expect(uraniumFac.parts.OreUranium).toEqual({
@@ -511,27 +717,37 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 200,
         amountRequiredPower: 0,
-        amountSupplied: 200,
-        amountSuppliedViaInput: 0,
-        amountSuppliedViaProduction: 0,
-        amountSuppliedViaRaw: 200,
-        amountRemaining: 0,
+        amountRequiredBuildings: 0,
+        amountSupplied: 240,
+        amountSuppliedViaInput: 120,
+        amountSuppliedViaProduction: 120,
+        amountSuppliedViaRaw: 0,
+        amountRemaining: 40,
+        amountRemainingPreSink: 40,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
-        exportable: false,
+        isEndProduct: false,
+        isSinkable: true,
+        exportable: true,
       })
       expect(uraniumFac.parts.NuclearWaste).toEqual({
         amountRequired: 100,
         amountRequiredExports: 100,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
     })
@@ -563,13 +779,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 33.333,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 33.333,
         amountSuppliedViaRaw: 0,
         amountRemaining: 33.333,
+        amountRemainingPreSink: 33.333,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
       expect(plutoniumFac.parts.NuclearWaste).toEqual({
@@ -577,13 +798,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 25,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 100,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: 75,
+        amountRemainingPreSink: 75,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.Silica).toEqual({
@@ -591,13 +817,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 16.667,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -16.667,
+        amountRemainingPreSink: -16.667,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
       expect(plutoniumFac.parts.NitricAcid).toEqual({
@@ -605,13 +836,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.SulfuricAcid).toEqual({
@@ -619,13 +855,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 10,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 0,
         amountRemaining: -10,
+        amountRemainingPreSink: -10,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: false,
       })
       expect(plutoniumFac.parts.Water).toEqual({
@@ -633,13 +874,18 @@ describe('Complex Demo Plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 10,
         amountSuppliedViaInput: 0,
         amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 10,
         amountRemaining: 10,
+        amountRemainingPreSink: 10,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: true,
+        isEndProduct: false,
+        isSinkable: false,
         exportable: true,
       })
     })
@@ -678,7 +924,7 @@ describe('Complex Demo Plan', () => {
 
   describe('overclocking', () => {
     it('should keep the Plastic line split of 24 @ 100% and 4 @ 200%, costing 8 shards', () => {
-      const plastic = oilFac.products[0]
+      const plastic = oilFac.products[1]
       expect(plastic.buildingGroups).toHaveLength(2)
       expect(plastic.buildingGroups[0]).toMatchObject({ buildingCount: 24, overclockPercent: 100 })
       expect(plastic.buildingGroups[1]).toMatchObject({ buildingCount: 4, overclockPercent: 200 })

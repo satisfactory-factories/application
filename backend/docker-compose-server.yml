@@ -40,7 +40,7 @@ services:
       # kept generous to cover a slow Mongo handshake.
       start_period: 30s
   mongo:
-    image: mongo:8.3.4
+    image: mongo:8.3.7
     container_name: sf-db
     restart: always
     ports:

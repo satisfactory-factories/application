@@ -63,6 +63,18 @@ export function formatNumberFully (value: any, precision = 3, snap = false): num
   return snap ? snapNearInteger(Number(result)) : Number(result)
 }
 
+// The "(1234)" a Satisfy/Trim button appends to name the figure it would set, so the user can see
+// what they are agreeing to before pressing rather than after. Empty when there is no figure to
+// give — a half-built row, or a building group no setting could balance — so the button reads
+// exactly as it always did rather than claiming a target of "(0)".
+export function fixTargetSuffix (target: number | null | undefined, unit?: 'mw'): string {
+  if (target === null || target === undefined || !Number.isFinite(target)) {
+    return ''
+  }
+
+  return ` (${unit === 'mw' ? formatMw(target) : formatNumber(target)})`
+}
+
 // Matches the in-game power screens: MW with thousands separators (e.g. "5,100 MW").
 // The non-breaking space stops the value wrapping onto a new line before the unit.
 export function formatMw (value: number): string {
@@ -74,4 +86,25 @@ export function formatMw (value: number): string {
 // shows MW via formatMw to match the game's power screens.
 export function formatGw (value: number): string {
   return `${Number(formatNumber(value / 1000, 2)).toLocaleString('en-US')}\u00A0GW`
+}
+
+// A quantity squeezed under a 36px icon: at most four characters, so 1234 reads 1.2k and
+// 10000 reads 10k. Deliberately not Intl.NumberFormat's compact notation, which rounds to
+// "10K" with a capital and localises the suffix — the planner's figures are per-minute rates
+// and read as k/M everywhere else. The sign is the caller's to draw; this formats the value
+// it is given, negative or not.
+export function formatCompact (value: number): string {
+  // Largest unit first, and the threshold is 0.9995 rather than 1 so a value that would round
+  // up to "1000k" is promoted to "1M" instead of overflowing the four characters.
+  for (const [divisor, suffix] of [[1_000_000, 'M'], [1000, 'k']] as const) {
+    const scaled = value / divisor
+    if (Math.abs(scaled) < 0.9995) continue
+    // One decimal below ten (1.2k), none above (12k) — the difference between 12.3k and 12k is
+    // not worth the two characters at this size.
+    return `${formatNumber(scaled, Math.abs(scaled) < 10 ? 1 : 0)}${suffix}`
+  }
+
+  // Sub-1000 keeps one decimal only where it changes the reading, so 0.5 survives and
+  // 320.0001 does not become "320.0".
+  return formatNumber(value, 1)
 }

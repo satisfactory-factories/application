@@ -18,6 +18,37 @@ export const hasFractionalClock = (groups: BuildingGroup[] | undefined): boolean
     group.clockSetByUser === true && (group.overclockPercent ?? 100) % 1 !== 0)
 }
 
+/**
+ * An id for a row inside a factory — a power producer or a custom building.
+ *
+ * Issued against what the factory already holds, for the same reason generateFactoryId is issued
+ * against the plan: these ids key the game-sync snapshots, so two rows sharing one id collapse
+ * into a single snapshot entry, and the count check then drops the factory out of sync the
+ * instant it is marked as built, with nothing on screen to explain it. They also key element ids
+ * on the card, where a duplicate breaks getElementById outright — which is why the taken set
+ * spans both collections rather than just the one being added to.
+ *
+ * NOSONAR: a display identifier, not a security token.
+ */
+export const generateFactoryItemId = (factory: Factory): string => {
+  const taken = new Set<string>([
+    ...(factory.powerProducers ?? []).map(producer => producer.id),
+    ...(factory.customBuildings ?? []).map(customBuilding => customBuilding.id),
+  ])
+  let range = 10000
+
+  for (let attempt = 0; ; attempt++) {
+    const id = Math.floor(Math.random() * range).toString() // NOSONAR
+    if (!taken.has(id)) {
+      return id
+    }
+    // Saturated id space — widen rather than spin forever.
+    if (attempt > 0 && attempt % 50 === 0) {
+      range *= 10
+    }
+  }
+}
+
 export const createNewPart = (factory: Factory, part: string) => {
   if (!factory.parts[part]) {
     factory.parts[part] = {
@@ -25,11 +56,14 @@ export const createNewPart = (factory: Factory, part: string) => {
       amountRequiredExports: 0,
       amountRequiredProduction: 0,
       amountRequiredPower: 0,
+      amountRequiredBuildings: 0,
       amountSupplied: 0,
       amountSuppliedViaInput: 0,
       amountSuppliedViaRaw: 0,
       amountSuppliedViaProduction: 0,
       amountRemaining: 0,
+      amountRemainingPreSink: 0,
+      amountRequiredSink: 0,
       satisfied: true,
       isRaw: false,
       exportable: false,
@@ -48,6 +82,25 @@ export const getRecipe = (recipeId: any, gameData: DataInterface): Recipe | unde
   }
 
   return recipe
+}
+
+// Recipes that make the part outright, as opposed to dropping it as a byproduct of making
+// something else. The distinction matters wherever a part is turned into a product: a product's
+// amount is always read against its recipe's *primary* output, so a recipe that only drops the
+// part on the side would silently reinterpret the number the user asked for as an amount of
+// something else entirely.
+export const getPrimaryProductRecipes = (partId: string, gameData: DataInterface): Recipe[] => {
+  return gameData.recipes.filter(recipe =>
+    recipe.products.some(product => product.part === partId && !product.isByProduct)
+  )
+}
+
+// True when the game gives at least one way of making the part on purpose. Only a handful of
+// parts fail this — Dissolved Silica falls out of Quartz Purification and nothing else. Dark
+// Matter Residue looks like one of them in most factories, since every Quantum Encoder recipe
+// drops it, but a Converter makes it outright, so it is not.
+export const canPartBeProducedDirectly = (partId: string, gameData: DataInterface): boolean => {
+  return getPrimaryProductRecipes(partId, gameData).length > 0
 }
 
 export const getPowerRecipe = (id: string, gameData: DataInterface): PowerRecipe | undefined => {
@@ -94,11 +147,19 @@ export const isAlwaysSyncedBuilding = (building: string): boolean => {
   return ALWAYS_SYNCED_BUILDINGS.has(building)
 }
 
+// A power producer is named by its building, but a freshly added one has no building until the
+// user picks it — every view that lists producers hits that half-configured state, so the fallback
+// belongs here rather than in each of them.
+export const getPowerProducerDisplayName = (producer: { building: string }): string =>
+  producer.building ? getBuildingDisplayName(producer.building) : 'Power Generator'
+
 export const getBuildingDisplayName = (building: string) => {
   const buildingFriendly = new Map<string, string>([
     ['assemblermk1', 'Assembler'],
     ['blender', 'Blender'],
     ['constructormk1', 'Constructor'],
+    ['frackingextractor', 'Resource Well Extractor'],
+    ['frackingsmasher', 'Resource Well Pressurizer'],
     ['converter', 'Converter'],
     ['foundrymk1', 'Foundry'],
     ['hadroncollider', 'Particle Accelerator'],
@@ -109,11 +170,49 @@ export const getBuildingDisplayName = (building: string) => {
     ['geothermalgenerator', 'Geothermal Generator'],
     ['generatornuclear', 'Nuclear Power Plant'],
     ['manufacturermk1', 'Manufacturer'],
+    ['minermk1', 'Miner Mk.1'],
+    ['minermk2', 'Miner Mk.2'],
+    ['minermk3', 'Miner Mk.3'],
+    ['oilpump', 'Oil Extractor'],
     ['oilrefinery', 'Oil Refinery'],
     ['packager', 'Packager'],
     ['quantumencoder', 'Quantum Encoder'],
     ['smeltermk1', 'Smelter'],
-    ['waterExtractor', 'Water Extractor'],
+    ['waterpump', 'Water Extractor'],
+    // Custom buildings — everything the player places that makes nothing. Mirrors the
+    // displayName the parser emits for each one; custom-buildings.spec.ts fails if the two
+    // ever drift. They are listed here as well because <game-asset> names a building without
+    // having the game data to hand.
+    ['resourcesink', 'AWESOME Sink'],
+    ['ceilinglight', 'Ceiling Light'],
+    ['dronestation', 'Drone Port'],
+    ['floodlightpole', 'Flood Light Tower'],
+    ['traindockingstationliquid', 'Fluid Freight Platform'],
+    ['fluidtruckstation', 'Fluid Truck Station'],
+    ['traindockingstation', 'Freight Platform'],
+    ['pipehyperstart', 'Hypertube Entrance'],
+    ['jumppadadjustable', 'Jump Pad'],
+    ['portal', 'Main Portal'],
+    ['elevator', 'Personnel Elevator'],
+    ['pipelinepump', 'Pipeline Pump Mk.1'],
+    ['pipelinepumpmk2', 'Pipeline Pump Mk.2'],
+    ['radartower', 'Radar Tower'],
+    ['portalsatellite', 'Satellite Portal'],
+    ['streetlight', 'Street Light'],
+    ['trainstation', 'Train Station'],
+    ['truckstation', 'Truck Station'],
+    ['landingpad', 'U-Jelly Landing Pad'],
+    ['floodlightwall', 'Wall-Mounted Flood Light'],
+    // Logistics. Keyed by icon slug rather than by the game's internal name like the entries
+    // above: these only ever reach here from the export calculator, which names them by icon.
+    ['conveyor-belt-mk-1', 'Conveyor Belt Mk.1'],
+    ['conveyor-belt-mk-2', 'Conveyor Belt Mk.2'],
+    ['conveyor-belt-mk-3', 'Conveyor Belt Mk.3'],
+    ['conveyor-belt-mk-4', 'Conveyor Belt Mk.4'],
+    ['conveyor-belt-mk-5', 'Conveyor Belt Mk.5'],
+    ['conveyor-belt-mk-6', 'Conveyor Belt Mk.6'],
+    ['pipeline-mk-1', 'Pipeline Mk.1'],
+    ['pipeline-mk-2', 'Pipeline Mk.2'],
   ])
 
   return buildingFriendly.get(building) ?? `UNKNOWN BUILDING: ${building}`

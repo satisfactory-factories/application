@@ -10,7 +10,7 @@
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
         <v-chip class="sf-chip small beta-chip">
-          BETA v0.5
+          BETA v0.6
           <span class="mx-1">•</span>
           <a class="show-changes" href="#" @click.prevent="showChanges">Show changes</a>
         </v-chip>

@@ -10,17 +10,37 @@ export interface PowerItem {
   supplementalRatio?: number;
 }
 
+/** Purity of a resource node. Stored on extraction building groups, so `common` owns it. */
+export type NodePurity = 'impure' | 'normal' | 'pure'
+
 export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
   amountRequiredPower: number;
+  // Demanded by custom buildings (a Portal's Singularity Cells). Absent on plans saved before
+  // custom buildings existed; initFactories backfills it.
+  amountRequiredBuildings: number;
   amountSupplied: number; // Total amount of surplus used for display purposes
   amountSuppliedViaInput: number; // This is the amount supplied by the inputs
   amountSuppliedViaRaw: number; // This is the amount supplied by the raw resources assumed to be handled by the user.
   amountSuppliedViaProduction: number; // This is the amount supplied by internal products
   amountRemaining: number; // This is the amount remaining after all inputs and internal products are accounted for. Can be a minus number, which is used for surplus calculations.
   isRaw: boolean; // Whether the part is a raw resource or not, if so it will always be marked as satisfied.
+  // Nothing in the game consumes this part: it is the end of its chain. Derived from the game
+  // data every calculation, like isRaw. Optional so a part built before the metrics are stamped
+  // (or by an old test fixture) reads as false rather than undefined-y.
+  isEndProduct?: boolean;
+  // Whether the AWESOME Sink would take this part. Decides how serious an unwanted byproduct is:
+  // a sinkable one has a way out, a fluid or radioactive one does not. Derived like isEndProduct.
+  isSinkable?: boolean;
+  // What the AWESOME Sinks placed on this part take: everything left once production, power and
+  // exports have had their share. Zero unless the user placed a sink, and always zero for a part
+  // the sink will not accept. Derived every calculation, so optional for plans saved before it.
+  amountRequiredSink?: number;
+  // The surplus this part would carry if it were not being sunk. Kept so the satisfaction row can
+  // show the number sinking removed rather than silently reporting zero.
+  amountRemainingPreSink?: number;
   satisfied: boolean; // Use of use flag for templating.
   exportable: boolean // Whether the product should be a candidate for imports.
 }
@@ -30,6 +50,20 @@ export interface BuildingRequirement {
   amount: number;
   powerConsumed?: number;
   powerProduced?: number;
+}
+
+/**
+ * The material cost of every building this factory needs, for one part. Summed across
+ * production buildings, power generators, extractors and custom buildings alike — anything
+ * counted in `buildingRequirements` — from the game data's per-building construction cost.
+ *
+ * `buildings` breaks the total down by which building(s) call for the part, keyed by building
+ * name with the building's own count as the value (every one of them needs the same cost, so
+ * this is the count, not a re-multiplied amount) — the "used in" chips issue #477 asks for.
+ */
+export interface BuildingMaterialCost {
+  amount: number;
+  buildings: { [building: string]: number };
 }
 
 export interface ByProductItem {
@@ -66,6 +100,14 @@ export interface BuildingGroup {
   // Alien Power Matrixes (raises their circuit boost and creates fuel demand).
   supplyMatrixes?: boolean
   somersloops?: number
+  // Extraction groups only: which extractor sits on the nodes and how pure they are. Both are
+  // per group because one ore line routinely mixes marks and purities. Absent on every other
+  // group type; defaults are applied when missing.
+  extractorBuilding?: string
+  purity?: NodePurity
+  // Resource well groups only: how many satellite extractors sit on each purity of micro-node.
+  // The well's output is their sum; the group's clock is the pressurizer's and scales them all.
+  satellites?: { [purity in NodePurity]: number }
   type: ItemType
 }
 
@@ -81,6 +123,17 @@ export interface FactoryItem {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this product's buildings as built. Optional so every
+  // existing product literal (tests, saved plans, factory-setups) stays valid; absent reads as
+  // not-yet-built. Meaningless while factory.checklistEnabled is false, but kept regardless so
+  // re-enabling remembers progress.
+  completed?: boolean
+  // Checklist mode: `amount` at the moment this item was last ticked (or the whole factory was
+  // last marked in sync with the game). If `amount` has since moved away from this, the item is
+  // "desynced" — the player said it was built, but the plan asked for something different
+  // afterwards. Absent means no baseline was ever taken (never checked, or checked before this
+  // existed), which must read as "not desynced" rather than triggering on every old save.
+  checklistSyncedAmount?: number
 }
 
 export interface FactoryDependencyRequest {
@@ -135,6 +188,11 @@ export interface FactoryInput {
   factoryId: number | null;
   outputPart: string | null;
   amount: number
+  // Checklist mode: has the user marked this import's infrastructure as built. See
+  // FactoryItem.completed for why this is optional and kept regardless of checklist mode.
+  completed?: boolean
+  // Checklist mode: `amount` at last tick/factory-sync. See FactoryItem.checklistSyncedAmount.
+  checklistSyncedAmount?: number
 }
 
 export interface FactorySyncState {
@@ -146,6 +204,27 @@ export interface FactoryPowerSyncState {
   buildingAmount: number
   powerAmount: number
   recipe: string // And also the fuel used
+  ingredientAmount: number
+  // Which building this producer was when it was marked in sync. Needed because the state is keyed
+  // by the producer's id rather than its building, so swapping the building in place keeps the same
+  // key and would otherwise go unnoticed. Optional: plans marked in sync before the key changed
+  // have no record of it, and an absent value must not read as a change.
+  building?: string
+}
+
+/**
+ * What a factory's custom buildings looked like when the user said "this is what I have built".
+ *
+ * Keyed by the custom building's own id rather than by its building, for the same reason the
+ * power producers are: a factory can legitimately hold two rows of the same building, and keying
+ * by building would collapse them into one entry that the count check could never satisfy.
+ */
+export interface FactoryCustomBuildingSyncState {
+  building: string
+  amount: number
+  // What the buildings were drawing when the snapshot was taken. Derived from `amount` and the
+  // game data's rate, so it moves when either does — a game update that changes what a Portal
+  // eats is a change to what stands in your world, even though the count never moved.
   ingredientAmount: number
 }
 
@@ -178,6 +257,31 @@ export interface FactoryPowerProducer {
   buildingGroupsTrayOpen: boolean
   buildingGroupsHaveProblem: boolean
   buildingGroupItemSync: boolean
+  // Checklist mode: has the user marked this generator as built. See FactoryItem.completed for
+  // why this is optional and kept regardless of checklist mode.
+  completed?: boolean
+  // Checklist mode: `buildingAmount` at last tick/factory-sync. See FactoryItem.checklistSyncedAmount.
+  checklistSyncedAmount?: number
+}
+
+/**
+ * A building the user has placed in this factory that makes nothing: a portal, a train station,
+ * a radar tower. It costs power, and a few of them (the Main Portal's Singularity Cells) cost
+ * parts to keep running, which become a demand the factory has to satisfy like any other.
+ *
+ * Deliberately has no building groups: none of these can be overclocked or sloop'd, so a group
+ * would only ever echo `amount`.
+ */
+export interface FactoryCustomBuilding {
+  id: string;
+  building: string; // Key into gameData.customBuildings, e.g. 'portal'
+  amount: number; // How many the user wants
+  // Upkeep, in parts per minute for ALL of them. Seeded from the game data when the building is
+  // picked and rescaled with `amount`, but stored on the factory: a portal link that is not
+  // always open costs less than the book rate, and the user is allowed to say so.
+  ingredients: { part: string, perMin: number }[];
+  powerConsumed: number; // Calculated: amount x the building's draw
+  displayOrder: number;
 }
 
 export interface FactoryPower {
@@ -224,6 +328,22 @@ export interface FactoryGroup {
   // every member on each toggle cost a save and a recalculation per factory.
 }
 
+/**
+ * What the user has told the planner to do with a part's surplus.
+ *
+ * The two are one axis with very different consequences, which is why they sit in one record. A
+ * sink is disposal: the surplus is gone, and the ledger says so. A depot is storage: finite, so it
+ * defers a backlog rather than preventing one, and it changes no number at all.
+ */
+export interface FactoryPartDisposal {
+  // AWESOME Sink buildings on this part. Any positive number sinks the WHOLE surplus — the sink
+  // takes whatever the belt brings it, so the count says what to build and what it draws, not how
+  // much it will accept.
+  sinks: number;
+  // Dimensional Depot Uploaders on this part. One Mercer Sphere each.
+  depots: number;
+}
+
 export interface Factory {
   id: number;
   name: string;
@@ -232,10 +352,22 @@ export interface Factory {
   products: FactoryItem[];
   byProducts: ByProductItem[];
   powerProducers: FactoryPowerProducer[];
+  customBuildings: FactoryCustomBuilding[];
   parts: { [key: string]: PartMetrics };
   buildingRequirements: { [key: string]: BuildingRequirement };
+  // The material cost report behind Power & Buildings' "Material Costs" panel (#477). Keyed by
+  // part. Absent on plans saved before it existed; initFactories backfills it and forces a
+  // recalculation, since — unlike an empty array — the true figures for existing buildings are
+  // not "0" or "nothing" until then.
+  buildingMaterialCosts: { [key: string]: BuildingMaterialCost };
   requirementsSatisfied: boolean;
   exportCalculator: { [key: string]: ExportCalculatorSettings };
+  // Per-part disposal — the sinks and depot uploaders placed on each part's surplus. Its own map
+  // rather than a field on PartMetrics because parts.ts wipes and rebuilds factory.parts on every
+  // calculation. Sticky by design: a flag is never pruned when its part leaves the factory, so
+  // read-time filtering makes a stale key inert and bringing the part back restores the intent.
+  // Optional so plans saved before it load untouched; newFactory and initFactories set `{}`.
+  partDisposal?: { [partId: string]: FactoryPartDisposal };
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
@@ -245,9 +377,23 @@ export interface Factory {
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };
   syncStatePower: { [key: string]: FactoryPowerSyncState };
+  syncStateCustomBuildings: { [key: string]: FactoryCustomBuildingSyncState };
   displayOrder: number;
   tasks: FactoryTask[]
   notes: string
+  // Checklist mode: ticks off products, imports and exports as the player builds them in-game.
+  checklistEnabled: boolean
+  // Whether the checklist summary panel (shown above Products/Power when enabled) is collapsed.
+  checklistPanelHidden: boolean
+  // Export checklist ticks, keyed by `${requestingFactoryId}:${part}` (see checklistExportKey in
+  // utils/factory-management/checklist.ts). A dependency request is derived/recalculated data, so
+  // its completion state is kept separately here rather than on the request object itself, which
+  // could be rebuilt and silently drop it.
+  checklistExports: { [key: string]: boolean }
+  // Export checklist baselines, same keying as checklistExports: the request's `amount` at the
+  // moment that export was last ticked (or the whole factory was last marked in sync with the
+  // game). See FactoryItem.checklistSyncedAmount for what this is for.
+  checklistExportSyncedAmounts: { [key: string]: number }
   // ID from src/data/factory-icons.json. Absent (old plans, or "use default") shows the
   // generic industry glyph. Deliberately a bare ID: plans in localStorage, Mongo and share
   // links cannot be migrated, so nothing about how it is drawn belongs in the stored value.
@@ -265,7 +411,32 @@ export interface FactoryTab {
   // The user's arbitrary grid generation target (MW) for this plan. Optional so
   // older saved tabs load cleanly; defaults to 0 when absent.
   powerTarget?: number;
+  // How far the MAM's Dimensional Depot upload-speed research has been taken, 0-4. Decides what
+  // one Uploader can actually move (15/min doubling to 240/min), so it decides whether the
+  // Uploaders in the plan can keep up with what is being sent to them. Per plan rather than per
+  // browser: it describes the world the plan is written against. Absent means fully researched.
+  depotUploadTier?: number;
+  // How far the MAM's Depot Expansion research has been taken, 0-4, deciding how many stacks of
+  // each item the Depot holds (1 to 5). The planner does not model that storage, so this changes
+  // no calculation; it is here because it is Mercer Spheres the save spends on the Depot, and the
+  // statistics count them. Same reasoning as depotUploadTier for living on the plan. Absent means
+  // fully researched.
+  depotExpansionTier?: number;
   // Registry for groups that currently have no member factory to carry them. Everything else
   // is derived from the factories themselves; reconcileGroups() keeps the two in step.
   groups?: FactoryGroup[];
+  // The planner version this plan has been reconciled with.
+  //
+  // It records that the user has ANSWERED for this plan, not that the plan is correct: it is
+  // stamped both when the Raw Resources Wizard fixes a plan and when the user dismisses the
+  // notice saying they will sort it themselves. Absent means the plan was built before v0.6,
+  // when raw resources were still assumed. Do not read it as "this plan's raw supply is met" —
+  // ask collectRawWizardRows() for that.
+  plannerVersion?: string;
+}
+
+// Fields saved plans still carry from before raw supply stopped being assumable. Typed only so
+// the load path can strip them; nothing reads them.
+export interface LegacyRawAssumptionFields {
+  assumeRawInputs?: boolean | null;
 }

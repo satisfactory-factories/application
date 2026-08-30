@@ -7,6 +7,9 @@
     </navigation>
 
     <tab-navigation v-if="showTabNavigation" />
+    <splash-v6 />
+    <!-- The previous release's deck. Mounted for the whole session but only ever opened by
+         hand, from the last slide of the one above. -->
     <splash />
     <v-main>
       <router-view />
@@ -16,12 +19,14 @@
       <adoption-dialog />
       <offline-prompt />
       <version-prompt />
+      <update-required-dialog />
+      <update-available-toast />
     </v-main>
   </v-app>
 </template>
 
 <script setup lang="ts">
-  import { onMounted } from 'vue'
+  import { onMounted, onUnmounted } from 'vue'
   import { useRoute } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
@@ -29,6 +34,7 @@
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
+  import { startVersionCheck } from '@/utils/version-check'
 
   const { smAndDown } = useDisplay()
   const authButtonColor = computed(() => smAndDown.value ? 'grey-darken-3' : undefined)
@@ -43,9 +49,14 @@
     return route.path === '/' || route.path === '/graph'
   })
 
-  // An anonymous joined tab has no membership on the server, so nothing in the
-  // room list ever brings it back; this is the only thing that reconnects it.
+  // Started here rather than as an import side effect, so it has somewhere to be stopped.
+  let stopVersionCheck: (() => void) | undefined
+
   onMounted(() => {
+    // An anonymous joined tab has no membership on the server, so nothing in the
+    // room list ever brings it back; this is the only thing that reconnects it.
     useRoomsStore().restoreJoinedTabs()
+    stopVersionCheck = startVersionCheck()
   })
+  onUnmounted(() => stopVersionCheck?.())
 </script>

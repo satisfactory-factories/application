@@ -1,54 +1,57 @@
 <template>
-  <v-btn
-    class="ma-1"
-    prepend-icon="fas fa-files-medical"
-    @click="dialog = true"
-  >Templates</v-btn>
-  <v-dialog v-model="dialog" max-width="1200">
-    <v-card class="pa-2">
-      <v-card-title>
-        <h4 class="text-h4">Load a template plan</h4>
-      </v-card-title>
-      <v-card-text class="pa-4 pt-0">
-        <p>
-          Clicking on a button below will load a template plan into the planner. <span class="text-red font-weight-bold">This will overwrite any existing plan WITHOUT warning.</span> You may wish to save your plan first by creating a share link.
-        </p>
-        <v-table>
-          <thead>
-            <tr>
-              <th class="text-body-1 font-weight-bold text-center" scope="row">Name</th>
-              <th class="text-body-1 font-weight-bold" scope="row">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="template in templates" :key="template.name">
-              <tr v-if="template.show">
-                <td class="text-center">
-                  <v-btn
-                    class="mr-2"
-                    :color="template.isDebug ? 'secondary' : 'green'"
-                    :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
-                    @click="loadTemplate(template)"
-                  >
-                    {{ template.name }}
-                  </v-btn></td>
-                <td class="py-1">{{ template.description }}</td>
-              </tr>
-            </template>
-          </tbody>
-        </v-table>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="blue darken-1" variant="elevated" @click="dialog = false">Close</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <!-- Wrapped like the buttons it sits among in the sidebar's global actions, so the row's
+       hints all arrive the same way. -->
+  <tooltip text="Load one of the example plans — a small starter, the full demo, or Mael's MegaPlan. Overwrites the current plan without asking.">
+    <v-btn
+      class="ma-1"
+      prepend-icon="fas fa-files-medical"
+      @click="dialog = true"
+    >Templates</v-btn>
+  </tooltip>
+  <app-dialog
+    v-model="dialog"
+    icon="fas fa-files-medical"
+    max-width="1200"
+    scrollable
+    title="Load a template plan"
+  >
+    <p class="mb-3">
+      Clicking on a button below will load a template plan into the planner. <span class="text-red font-weight-bold">This will overwrite any existing plan WITHOUT warning.</span> You may wish to save your plan first by creating a share link.
+    </p>
+    <v-table>
+      <thead>
+        <tr>
+          <th class="text-body-1 font-weight-bold text-center" scope="row">Name</th>
+          <th class="text-body-1 font-weight-bold" scope="row">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="template in sortedTemplates" :key="template.name">
+          <tr v-if="template.show">
+            <td class="text-center">
+              <v-btn
+                class="mr-2"
+                :color="template.isDebug ? 'secondary' : 'green'"
+                :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
+                @click="loadTemplate(template)"
+              >
+                {{ template.name }}
+              </v-btn></td>
+            <td class="py-1">{{ template.description }}</td>
+          </tr>
+        </template>
+      </tbody>
+    </v-table>
+  </app-dialog>
 </template>
 <script lang="ts" setup>
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { createSimple } from '@/utils/factory-setups/simple-plan'
+  import { create503PreMiningPlan } from '@/utils/factory-setups/503-pre-mining-plan'
+  import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
   import { useAppStore } from '@/stores/app-store'
+  import { config } from '@/config/config'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
   import { create315Scenario } from '@/utils/factory-setups/315-non-exportable-parts-imports'
@@ -67,7 +70,7 @@
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
   import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
 
-  const { prepareLoader, isDebugMode, getCurrentTab, getFactories } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, getFactories, rearmRawBreakingNotice } = useAppStore()
 
   const dialog = ref(false)
 
@@ -78,6 +81,9 @@
     data: string
     show: boolean
     isDebug: boolean
+    // Re-arms the one-time raw-resources breaking-change notice, which is otherwise
+    // unreachable once dismissed.
+    rearmNotice?: boolean
   }
 
   interface TemplatePayload {
@@ -92,11 +98,18 @@
   const scenarioData = (factories: Factory[]) =>
     JSON.stringify({ factories, powerTarget: 0 } satisfies TemplatePayload)
 
-  const templates = [
+  const templates: Template[] = [
     {
       name: 'Demo',
-      description: 'Contains 7 factories with a mix of fluids, solids and multiple dependencies, along with power generation. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and multiple missing resources for the Uranium Power.',
+      description: 'Contains 12 factories with a mix of fluids, solids and multiple dependencies, along with power generation and all three ways of mining: a dedicated Copper Mine feeding the ingots, a Raw Materials Mine hosting two resources for the nuclear chain, and Oil Processing and Uranium Power extracting their own crude and water on site. Has a purposeful bottleneck on Copper Basics to demonstrate the bottleneck feature, and missing Stators, High-Speed Connectors and Encased Beams for the Uranium Power.',
       data: planData(complexDemoPlan()),
+      show: true,
+      isDebug: false,
+    },
+    {
+      name: 'Mining',
+      description: 'Shows the extraction features end to end: an Iron Mine mixing Mk.3 miners on pure nodes with a Mk.2 on a normal one, a Nitrogen resource well with its satellite spread, and a Nitric Acid factory extracting its own water on site.',
+      data: planData(createMiningDemoPlan()),
       show: true,
       isDebug: false,
     },
@@ -109,10 +122,18 @@
     },
     {
       name: 'Mael\'s "MegaPlan"',
-      description: 'A real-life plan created by Maelstrome. This is considered a very large plan, and makes use of all features of the planner.',
+      description: 'A real-life plan created by Maelstrome. 36 factories sorted into seven groups, from the raw mines through to the Phase 5 parts, powered by nuclear, plutonium, rocket fuel, geothermal and Alien Power Augmenters. This is considered a very large plan, and makes use of all features of the planner.',
       data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,
+    },
+    {
+      name: '#503: Pre-mining plan (migration modal)',
+      description: 'A plan built the way plans were before mining existed: seven factories short of seven raw resources, with iron short in two places so the wizard has a shared mine to build. Loading it re-opens the one-time breaking-change notice, which is otherwise unreachable once dismissed. Related to issue #503.',
+      data: scenarioData(create503PreMiningPlan().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+      rearmNotice: true,
     },
     {
       name: 'PowerOnlyImport',
@@ -214,6 +235,28 @@
     },
   ]
 
+  // Listed as: the real plans first, then the unnumbered debug scenarios, then the issue
+  // ones in issue order. Declaration order decides the rest, so related entries stay together.
+  const issueNumber = (name: string) => Number(/#(\d+)/.exec(name)?.[1] ?? NaN)
+
+  const sortedTemplates = computed(() => {
+    const rank = (template: Template) => {
+      if (!template.isDebug) return 0
+      return Number.isNaN(issueNumber(template.name)) ? 1 : 2
+    }
+
+    return [...templates]
+      .map((template, index) => ({ template, index }))
+      .sort((a, b) =>
+        rank(a.template) - rank(b.template) ||
+        // Only the issue group has a meaningful order of its own.
+        (rank(a.template) === 2
+          ? issueNumber(a.template.name) - issueNumber(b.template.name)
+          : 0) ||
+        a.index - b.index)
+      .map(entry => entry.template)
+  })
+
   const loadTemplate = (template: Template) => {
     console.log('Template loaded:', template.name, 'starting load')
 
@@ -228,6 +271,14 @@
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
       markTabEdited('powerTarget')
+      // Templates are built by today's code, so they have never assumed a raw resource and are
+      // answered by construction. The exception is the one that exists to reproduce a plan from
+      // before the change: it must arrive unanswered or it cannot reproduce anything.
+      tab.plannerVersion = template.rearmNotice ? undefined : config.plannerVersion
+    }
+
+    if (template.rearmNotice) {
+      rearmRawBreakingNotice()
     }
 
     // The template overwrites the whole plan, so declare all of it: the records it

@@ -18,6 +18,7 @@ import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { getSomersloopIngredientFactor } from '@/utils/factory-management/building-groups/somersloops'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { hasNoDemand } from '@/utils/factory-management/status'
 
 const gameData = await fetchGameData()
 
@@ -31,6 +32,19 @@ export const addProductToFactory = (
     displayOrder?: number,
   }
 ) => {
+  // An item with no recipe is not a product. The engine counts its output as supplied while
+  // asking for no ingredients and no buildings, so one of these silently satisfies whatever it
+  // was added to fix - a shortage clicked from the satisfaction panel simply disappeared.
+  // Refused here as well as at the source (getDefaultRecipeIdForPart), because this is the last
+  // point before it reaches the plan.
+  //
+  // An empty row - no item AND no recipe - is the ordinary "add product" button, which hands the
+  // user a blank line to fill in. That one is fine.
+  if (options.id && !options.recipe) {
+    console.warn(`addProductToFactory: Refusing to add "${options.id}" with no recipe!`)
+    return
+  }
+
   // If there is no amount set, set it up so that the building count is at least 1.
   if (!options.amount) {
     const recipe = getRecipe(options.recipe, gameData)
@@ -53,6 +67,7 @@ export const addProductToFactory = (
     buildingGroupsTrayOpen: false,
     buildingGroupsHaveProblem: false,
     buildingGroupItemSync: true,
+    completed: false,
   })
 
   // Since we now depend upon the factory having its building requirements calculated for the building groups to be added correctly, do that now.
@@ -67,6 +82,15 @@ export const addProductToFactory = (
 }
 
 type Recipe = NonNullable<ReturnType<typeof getRecipe>>
+
+// The DOM id of one product row, shared by the row itself, by the byproduct markers it carries
+// and by everything that jumps to it — an import's View button lands on the product supplying it
+// rather than on the supplying factory's card, which only says "somewhere in here".
+//
+// `subject` is the product's part, a byproduct's part, or a power producer's building: a producer's
+// own id is a random instance number, so its row is addressed by what it burns.
+export const productRowId = (factoryId: number | string, subject: string): string =>
+  `${factoryId}-products-item-${subject}`
 
 export const productHasFractionalClock = (product: FactoryItem): boolean =>
   hasFractionalClock(product.buildingGroups)
@@ -232,18 +256,33 @@ export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory
   if (!factory.parts[product.id]) {
     return false
   }
-  return factory.parts[product.id].amountRequiredProduction > 0 || factory.parts[product.id].amountRequiredPower > 0
+  return factory.parts[product.id].amountRequiredProduction > 0 ||
+    factory.parts[product.id].amountRequiredPower > 0 ||
+    (factory.parts[product.id].amountRequiredBuildings ?? 0) > 0
 }
 
-export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) => {
-  // Calculate whether the product is in demand at all
-  if (!product.id) {
-    return false
+// Delegates so the product row and the noDemand status can never disagree about what "no demand"
+// means. status.ts is a leaf, so importing it here closes no cycle.
+export const shouldShowNotInDemand = (product: FactoryItem, factory: Factory) =>
+  hasNoDemand(factory, product.id)
+
+// The quantity fixProduct would set, without setting it. The Satisfy and Trim buttons name it, so
+// the user can see what they are agreeing to before pressing rather than after.
+//
+// Null when the question cannot be answered — a half-built product, or one whose part ledger has
+// not been calculated yet — in which case the button falls back to naming no figure at all.
+export const fixProductTarget = (product: FactoryItem, factory: Factory): number | null => {
+  if (!product?.id || !factory.parts[product.id]) {
+    return null
   }
 
-  const partRequired = factory.parts[product.id]?.amountRequired
+  const partData = factory.parts[product.id]
 
-  return partRequired <= 0
+  // Byproducts are handled by reading the part ledger rather than the recipe: the ledger already
+  // accounts for whatever else in the factory produces this part.
+  const diff = partData.amountRequired - partData.amountSuppliedViaProduction
+
+  return diff + product.amount
 }
 
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {
@@ -260,15 +299,8 @@ export const fixProduct = (product: FactoryItem, factory: Factory): void => {
     throw new Error(error)
   }
 
-  const partData = factory.parts[product.id]
-
-  // If the factory is producing byproducts, we need to handle that properly. Using the part data we should be able to achieve this regardless of the product type.
-
-  const produced = partData.amountSuppliedViaProduction
-  const required = partData.amountRequired
-  const diff = required - produced
-
-  product.amount = diff + product.amount
+  // Non-null: both throwing guards above have already run.
+  product.amount = fixProductTarget(product, factory) as number
 
   // updateFactory must be called!
 }

@@ -1,9 +1,18 @@
 <template>
   <div
     v-for="(producer, producerIndex) in factory.powerProducers"
+    :id="productRowId(factory.id, producer.building)"
     :key="`${factory.id}-${producerIndex}`"
     class="powerProducer factory-item px-4 my-2 border-md rounded sub-card"
+    :class="{ warning: producer.byproduct && isUnhandledByproduct(factory, producer.byproduct.part) }"
   >
+    <!-- Status chips name the part, so the waste needs an anchor of its own. Zero-height and at
+         the top of the row, so it scrolls to the row. -->
+    <div
+      v-if="producer.byproduct"
+      :id="productRowId(factory.id, producer.byproduct.part)"
+      class="status-anchor"
+    />
     <div class="factory-item-controls">
       <v-btn
         :color="producer.displayOrder === 0 ? 'grey-darken-3' : 'primary'"
@@ -30,6 +39,16 @@
       />
     </div>
     <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
+      <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
+        <input
+          :checked="!!producer.completed"
+          class="checklist-tick"
+          :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
+          :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
+          type="checkbox"
+          @click.prevent="toggleChecklistPowerProducer(factory, producer)"
+        >
+      </div>
       <div class="input-row d-flex align-center">
         <span v-show="!producer.building" class="mr-2">
           <i class="fas fa-building" style="width: 42px; height: 42px" />
@@ -159,6 +178,22 @@
           />
           <span>/min</span>
         </v-chip>
+        <tooltip
+          v-if="isPotentialBlockage(factory, producer.byproduct.part)"
+          text="Nothing consumes this byproduct, so it will back up and stall the generator unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
+        >
+          <v-chip class="sf-chip small status-note ml-2">
+            <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+          </v-chip>
+        </tooltip>
+        <tooltip
+          v-if="isUnhandledByproduct(factory, producer.byproduct.part)"
+          text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the generator's output and stalls it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
+        >
+          <v-chip class="sf-chip small status-warning ml-2">
+            <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
+          </v-chip>
+        </tooltip>
       </div>
       <div class="d-flex align-center">
         <p class="mr-2">Requires:</p>
@@ -199,14 +234,30 @@
         </v-chip>
         <span>
           <v-chip
-            class="sf-chip orange input"
+            class="sf-chip building input"
             variant="tonal"
           >
             <game-asset :key="`${producerIndex}-${producer.building}`" clickable :subject="producer.building" type="building" />
             <span>
               <b>{{ getBuildingDisplayName(producer.building) }}</b>
             </span>
+            <!-- Split across groups, this figure has nowhere sensible to land: an augmenter
+                 has no clock, so the split is whole buildings and the planner would have to
+                 guess which group grows. The building groups own the count instead — said out
+                 loud, because a greyed-out field on its own only tells you that it stopped
+                 working, never why. -->
+            <template v-if="buildingCountOwnedByGroups(producer)">
+              <span :id="`${factory.id}-${producer.id}-building-count`" class="count-locked-value">
+                <b>{{ formatNumber(producer.buildingAmount) }}</b>
+              </span>
+              <span class="count-locked-label">Disabled</span>
+              <tooltip-info
+                :is-caption="false"
+                text="This augmenter is split across more than one Building Group.<br>Augmenters have no clock, so there is no way to give a group half a building, and nothing here says which group a change should grow. The Building Groups below decide the count instead."
+              />
+            </template>
             <v-number-input
+              v-else
               :id="`${factory.id}-${producer.id}-building-count`"
               v-model="producer.buildingAmount"
               class="inline-inputs ml-0"
@@ -216,13 +267,19 @@
               hide-spin-buttons
               :min="0.001"
               :producer="producer.id"
-              width="120px"
+              width="100px"
               @update:model-value="updatePowerProducerFigures(FactoryPowerChangeType.Building, producer, factory)"
             />
             <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Building}`" />
           </v-chip>
         </span>
       </div>
+      <!-- The boost is applied to the plan's whole generation, so say so where the augmenter
+           is configured rather than only in the power statistics. -->
+      <p v-if="isAugmenter(producer)" class="text-body-2 mt-2 augmenter-grid-note">
+        <i class="fas fa-info-circle mr-1" />
+        Assumes every factory in this plan sits on <b>one power grid</b> — the boost is a share of the plan's total generation, and separate sub-grids are not modelled.
+      </p>
     </div>
     <!-- Geothermal generators have no overclock, fuel or somersloops — building groups
          would only echo the building count, so they are hidden entirely. -->
@@ -230,6 +287,7 @@
       v-if="producer.building && producer.building !== 'geothermalgenerator'"
       :building="producer.building"
       :factory="factory"
+      :force-open="isAugmenter(producer)"
       :id-prefix="`${factory.id}-power-${producerIndex}`"
       :item="producer"
       :type="ItemType.Power"
@@ -245,7 +303,10 @@
   import { PowerRecipe } from '@/interfaces/Recipes'
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
+  import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isPowerProducerChecklistDesynced, toggleChecklistPowerProducer } from '@/utils/factory-management/checklist'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
@@ -263,7 +324,6 @@
 
   const props = defineProps<{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   const deletePowerProducer = (index: number, factory: Factory) => {
@@ -323,6 +383,23 @@
     }
 
     return (getPowerRecipeById(producer.recipe)?.ingredients.length ?? 0) === 0
+  }
+
+  // Alien Power Augmenters: the only producers whose recipe boosts the grid rather than
+  // generating against a fuel. Their groups carry the matrix toggle, so the groups — not the
+  // producer line — are where the real configuration happens.
+  const isAugmenter = (producer: FactoryPowerProducer): boolean => {
+    if (!producer.recipe) {
+      return false
+    }
+
+    return !!getPowerRecipeById(producer.recipe)?.boost
+  }
+
+  // Once an augmenter is split across groups the producer's own building count is no longer
+  // a control the planner can honour — see the template comment above.
+  const buildingCountOwnedByGroups = (producer: FactoryPowerProducer): boolean => {
+    return isAugmenter(producer) && producer.buildingGroups.length > 1
   }
 
   // Min/max output across the groups for variable-output generators (Geothermal).
@@ -415,6 +492,70 @@
 
 <style lang="scss" scoped>
   .powerProducer {
-    border-left: 5px solid #ff9800 !important
+    border-left: 5px solid var(--sf-power-generation) !important
+  }
+
+  // A standing caveat about the whole plan, not a problem with this producer — so it reads
+  // as a footnote rather than competing with the status chips above it.
+  .augmenter-grid-note {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  // The count once its building groups own it. The figure keeps the chip's colour so it still
+  // reads as the count, and the label beside it is muted to the same 0.5 a disabled inline
+  // input carries, so the pair reads as one state rather than two separate facts.
+  .count-locked-value {
+    margin: 0 0 0 8px !important;
+  }
+
+  .count-locked-label {
+    margin: 0 0 0 8px !important;
+    opacity: 0.5;
+  }
+
+  // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
+  // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
+  // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
+  .checklist-tick {
+    appearance: none;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-radius: 3px;
+    cursor: pointer;
+    display: block;
+    height: 18px;
+    margin: 0;
+    position: relative;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    width: 18px;
+
+    &:checked {
+      background-color: var(--sf-success);
+      border-color: var(--sf-success);
+    }
+
+    &:checked::after {
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      content: '';
+      height: 10px;
+      left: 4px;
+      position: absolute;
+      top: 0;
+      transform: rotate(45deg);
+      width: 5px;
+    }
+
+    // Desynced: still checked, but the plan's number for this item moved since it was ticked.
+    // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
+    // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+    // second symbol crammed into an 18px box read worse than the empty box does.
+    &.desynced:checked {
+      background-color: var(--sf-status-warning-border);
+      border-color: var(--sf-status-warning-border);
+
+      &::after {
+        content: none;
+      }
+    }
   }
 </style>

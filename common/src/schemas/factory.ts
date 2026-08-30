@@ -34,6 +34,9 @@ export const partMetricsSchema = z.object({
   amountSuppliedViaProduction: num,
   amountRemaining: num,
   isRaw: z.boolean(),
+  // Defaults rather than rejects: plans written before custom buildings existed are already
+  // in browsers, and refusing one costs an op per factory.
+  amountRequiredBuildings: num.default(0),
   satisfied: z.boolean(),
   exportable: z.boolean(),
 })
@@ -49,6 +52,26 @@ export const byProductItemSchema = z.object({
   id: str,
   amount: num,
   byProductOf: str,
+})
+
+export const buildingMaterialCostSchema = z.object({
+  amount: num,
+  buildings: z.record(key, num),
+})
+
+export const factoryCustomBuildingSchema = z.object({
+  id: str,
+  building: str,
+  amount: num,
+  ingredients: z.array(z.object({ part: str, perMin: num })),
+  powerConsumed: num,
+  displayOrder: num,
+})
+
+export const factoryCustomBuildingSyncStateSchema = z.object({
+  building: str,
+  amount: num,
+  ingredientAmount: num,
 })
 
 export const buildingGroupSchema = z.object({
@@ -204,8 +227,13 @@ export const factorySchema = z.object({
   products: z.array(factoryItemSchema),
   byProducts: z.array(byProductItemSchema),
   powerProducers: z.array(factoryPowerProducerSchema),
+  // Everything below carrying a default arrived with the merge of main and is defaulted for
+  // the same reason `power` is: plans without it are already stored, on the server and in
+  // browsers alike, and a rejection there costs an op per factory.
+  customBuildings: z.array(factoryCustomBuildingSchema).default(() => []),
   parts: z.record(key, partMetricsSchema),
   buildingRequirements: z.record(key, buildingRequirementSchema),
+  buildingMaterialCosts: z.record(key, buildingMaterialCostSchema).default(() => ({})),
   requirementsSatisfied: z.boolean(),
   exportCalculator: z.record(key, exportCalculatorSettingsSchema),
   dependencies: factoryDependencySchema,
@@ -217,9 +245,14 @@ export const factorySchema = z.object({
   inSync: z.boolean().nullable(),
   syncState: z.record(key, factorySyncStateSchema),
   syncStatePower: z.record(key, factoryPowerSyncStateSchema),
+  syncStateCustomBuildings: z.record(key, factoryCustomBuildingSyncStateSchema).default(() => ({})),
   displayOrder: num,
   tasks: z.array(factoryTaskSchema).max(CAPS.tasks),
   notes: z.string().max(CAPS.notes),
+  checklistEnabled: z.boolean().default(false),
+  checklistPanelHidden: z.boolean().default(false),
+  checklistExports: z.record(key, z.boolean()).default(() => ({})),
+  checklistExportSyncedAmounts: z.record(key, num).default(() => ({})),
   icon: str.optional(),
   group: factoryGroupSchema.optional(),
   dataVersion: str,

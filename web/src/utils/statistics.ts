@@ -5,29 +5,45 @@ import {
 } from '@/utils/helpers'
 import { getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
 import { getTotalPowerShards } from '@/utils/factory-management/building-groups/common'
+import {
+  getDepotCount,
+  getFactoryMercerSpheres,
+  MERCER_SPHERES_PER_DEPOT,
+} from '@/utils/factory-management/disposal'
+import { DEFAULT_DEPOT_TIER, depotRateForTier } from '@/composables/useDepotResearch'
+export interface BuildingTotal {
+  name: string
+  totalAmount: number
+  // Where they are, in plan order. A plan-wide count says how many to build without saying
+  // where any of them go.
+  sources: FactoryContribution[]
+}
+
 // This function calculates the total number of buildings for each type
-export const calculateTotalBuildingsByType = (factories: Factory[]) => {
-  const buildings: Record<
-    string,
-    {
-      name: string;
-      totalAmount: number;
-    }
-  > = {} // Explicitly define the type
+export const calculateTotalBuildingsByType = (factories: Factory[]): BuildingTotal[] => {
+  const buildings: Record<string, BuildingTotal> = {}
 
   factories.forEach(factory => {
     Object.entries(factory.buildingRequirements).forEach(
       ([key, requirement]) => {
-        if (!buildings[key]) {
-          // Initialize the building entry
-          buildings[key] = {
-            name: requirement.name,
-            totalAmount: 0,
-          }
+        // A requirement can sit at zero once its products are removed; it is not a building.
+        if (requirement.amount <= 0) {
+          return
         }
 
-        // Accumulate the total amount and total power
-        buildings[key].totalAmount += requirement.amount
+        const entry = buildings[key] ??= {
+          name: requirement.name,
+          totalAmount: 0,
+          sources: [],
+        }
+
+        entry.totalAmount += requirement.amount
+        entry.sources.push({
+          id: factory.id,
+          name: factory.name,
+          icon: factory.icon,
+          amount: requirement.amount,
+        })
       }
     )
   })
@@ -37,30 +53,62 @@ export const calculateTotalBuildingsByType = (factories: Factory[]) => {
   )
 }
 
-export const calculateTotalRawResources = (factories: Factory[]) => {
-  const rawResources: Record<string, { id: string; totalAmount: number; }> = {}
+/**
+ * What the plan takes out of the world, summed per resource.
+ *
+ * Read off the products a factory makes, not off `factory.rawResources`. That map is what the
+ * planner filled in while it still ASSUMED raw supply — v0.6 removed the assumption, so it is
+ * empty in any plan that mines properly, and this panel went blank for exactly the plans that
+ * do the right thing. A raw resource reaching a plan now is a product like any other; it is the
+ * part being raw, not the way it arrived, that makes it belong here.
+ */
+/**
+ * One factory's share of a plan-wide figure, so a statistics row can say where a number came
+ * from and be clicked through to it. A total on its own reports a problem without saying where
+ * to go and fix it.
+ */
+export interface FactoryContribution {
+  id: number
+  name: string
+  icon?: string
+  amount: number
+}
+
+// Below this a figure is float noise from a reverse-solve rather than a real contribution.
+const CONTRIBUTION_EPSILON = 0.001
+
+export interface RawResourceTotal {
+  id: string
+  totalAmount: number
+  // Who digs it up, in plan order. One resource routinely comes from several places — the demo
+  // plan's water is pumped in one factory and its copper mined in another.
+  sources: FactoryContribution[]
+}
+
+export const calculateTotalRawResources = (factories: Factory[]): RawResourceTotal[] => {
+  const rawResources: Record<string, RawResourceTotal> = {}
 
   factories.forEach(factory => {
-    Object.values(factory.rawResources).forEach(resource => {
-      if (!rawResources[resource.id]) {
-        // Initialize the raw resource entry
-        rawResources[resource.id] = {
-          id: resource.id,
-          totalAmount: 0,
-        }
+    factory.products.forEach(product => {
+      // isRaw is decided by the game data during the parts pass, so an extractor, a resource
+      // well and anything else that outputs a node resource all count without listing recipes.
+      if (!factory.parts[product.id]?.isRaw) {
+        return
       }
-      // Accumulate the resource amount
-      rawResources[resource.id].totalAmount += resource.amount
+
+      const entry = rawResources[product.id] ??= { id: product.id, totalAmount: 0, sources: [] }
+      entry.totalAmount += product.amount
+
+      // A factory can hold more than one product of the same resource — two node purities split
+      // across separate products, say — and it is still one place to go.
+      const source = entry.sources.find(candidate => candidate.id === factory.id)
+      if (source) {
+        source.amount += product.amount
+      } else {
+        entry.sources.push({ id: factory.id, name: factory.name, icon: factory.icon, amount: product.amount })
+      }
     })
   })
-  // // Calculate percentage consumed
-  // worldResources.forEach(worldResource => {
-  //   if (rawResources[worldResource.id]) {
-  //     const totalAmount = rawResources[worldResource.id].totalAmount
-  //     rawResources[worldResource.id].percentageConsumed =
-  //       totalAmount > 0 ? Math.min((totalAmount / worldResource.amount) * 100, 100) : 0
-  //   }
-  // })
 
   // Convert the object to an array and sort it alphabetically by display name
   return Object.values(rawResources).sort((a, b) =>
@@ -68,18 +116,24 @@ export const calculateTotalRawResources = (factories: Factory[]) => {
   )
 }
 
-export const calculateTotalParts = (factories: Factory[]) => {
-  const parts: Record<
-    string,
-    {
-      id: string;
-      amountRequired: number;
-      amountSupplied: number;
-      amountRemaining: number;
-      satisfied: boolean;
-      isRaw: boolean;
-    }
-  > = {}
+export interface PartTotal {
+  id: string
+  amountRequired: number
+  amountSupplied: number
+  amountRemaining: number
+  satisfied: boolean
+  isRaw: boolean
+  // Where this part comes from, and who is short of it, in plan order.
+  //
+  // A factory appears if it PRODUCES the part — carrying what it makes — or if it is short of it,
+  // carrying the shortfall. Keyed off production rather than off the balance alone, because a
+  // factory making exactly what it ships has a balance of zero: listing only imbalances left
+  // every item that adds up with nothing at all against it, which is most of a finished plan.
+  sources: FactoryContribution[]
+}
+
+export const calculateTotalParts = (factories: Factory[]): PartTotal[] => {
+  const parts: Record<string, PartTotal> = {}
 
   factories.forEach(factory => {
     Object.entries(factory.parts).forEach(([partId, partData]) => {
@@ -91,6 +145,7 @@ export const calculateTotalParts = (factories: Factory[]) => {
           amountRemaining: 0,
           satisfied: true,
           isRaw: partData.isRaw,
+          sources: [],
         }
       }
 
@@ -99,6 +154,23 @@ export const calculateTotalParts = (factories: Factory[]) => {
       parts[partId].amountSupplied += partData.amountSuppliedViaProduction
       parts[partId].amountRemaining += partData.amountRemaining
       parts[partId].satisfied &&= partData.satisfied // Combine satisfaction status
+
+      // What this factory has to say about the part: what it makes of it, or what it is short of.
+      // A factory that only imports it and consumes the lot says neither, and listing those would
+      // bury the ones that do.
+      const produced = partData.amountSuppliedViaProduction
+      const amount = produced > CONTRIBUTION_EPSILON
+        ? produced
+        : (partData.amountRemaining < -CONTRIBUTION_EPSILON ? partData.amountRemaining : 0)
+
+      if (amount !== 0) {
+        parts[partId].sources.push({
+          id: factory.id,
+          name: factory.name,
+          icon: factory.icon,
+          amount,
+        })
+      }
     })
   })
 
@@ -192,6 +264,107 @@ export const getFactorySomersloops = (factory: Factory): number => {
   return total
 }
 
+/**
+ * One factory's contribution to a depoted item: how many Uploaders it has on the part, and how much
+ * of the part it actually has spare to feed them.
+ */
+export interface DimensionalDepotSource extends FactoryContribution {
+  containers: number
+}
+
+export interface DimensionalDepotEntry {
+  id: string
+  // Uploaders across the whole plan for this item.
+  totalContainers: number
+  // What the plan actually has spare to upload, items/min.
+  totalAmount: number
+  // What those Uploaders can carry between them at the plan's researched upload speed. Below
+  // totalAmount means the depot cannot keep up and the remainder still backs up.
+  uploadCapacity: number
+  sources: DimensionalDepotSource[]
+}
+
+/**
+ * What the plan sends to the Dimensional Depot, per item.
+ *
+ * Reads the surplus rather than production, for the same reason the toggle is offered on surplus:
+ * a logistics factory that imports everything and uploads the overflow is a real build, and asking
+ * "does this factory make the part" would exclude exactly that case.
+ *
+ * A contributor with nothing spare is KEPT rather than filtered out, and is NOT treated as a
+ * problem. An Uploader is fed off a splitter on the line, so it takes a share of whatever passes
+ * until it is full and then stops accepting — a buffer that fills once, not a consumer with a
+ * standing appetite. An item whose steady-state surplus is zero therefore still fills its depot;
+ * it just borrows from the export while doing so, and once full everything flows on as planned.
+ * The rate here is what is spare in steady state, which is the honest number, but a zero in it
+ * does not mean the depot stays empty.
+ */
+export const calculateDimensionalDepot = (
+  factories: Factory[],
+  // Items/min one Uploader can move at the plan's MAM research level. Passed in rather than read
+  // from the store so this stays a pure function of the plan, which is what its spec relies on.
+  uploadRatePerMin: number = depotRateForTier(DEFAULT_DEPOT_TIER),
+): DimensionalDepotEntry[] => {
+  const items: Record<string, DimensionalDepotEntry> = {}
+
+  factories.forEach(factory => {
+    Object.keys(factory.partDisposal ?? {}).forEach(partId => {
+      const containers = getDepotCount(factory, partId)
+      if (containers <= 0) return
+
+      // The disposal map is sticky, so it can name a part the factory no longer handles. A stale
+      // key is inert rather than an error: the user's intent is preserved if the part comes back.
+      const part = factory.parts[partId]
+      if (!part) return
+
+      const entry = items[partId] ??= {
+        id: partId,
+        totalContainers: 0,
+        totalAmount: 0,
+        uploadCapacity: 0,
+        sources: [],
+      }
+
+      // Sunk parts land at zero remaining, so the pre-sink figure is what the depot would see if
+      // the sink were not there. Falls back to amountRemaining for a plan saved before the field.
+      const spare = Math.max(0, part.amountRemainingPreSink ?? part.amountRemaining ?? 0)
+
+      // Deliberately NOT reduced when the part is also sunk, and the two figures are not meant
+      // to be added up. The sink takes the whole surplus because the planner assumes a
+      // programmable splitter routing the excess to it, and the depot is a finite buffer on the
+      // same line that fills and then backs up until the player spends it. Nothing can say when
+      // that happens, so what is spare is the only honest number to put against the Uploaders.
+
+      entry.totalContainers += containers
+      entry.totalAmount += spare
+      entry.sources.push({
+        id: factory.id,
+        name: factory.name,
+        icon: factory.icon,
+        amount: spare,
+        containers,
+      })
+    })
+  })
+
+  return Object.values(items)
+    .map(entry => ({
+      ...entry,
+      uploadCapacity: entry.totalContainers * uploadRatePerMin,
+    }))
+    .sort((a, b) => getPartDisplayName(a.id).localeCompare(getPartDisplayName(b.id)))
+}
+
+// Mercer Spheres the plan's Dimensional Depot Uploaders cost to build, one apiece. The MAM research
+// is deliberately excluded — see DEPOT_RESEARCH_MERCER_SPHERES.
+export const getFactoryMercerSpheresUsed = (factory: Factory): number => getFactoryMercerSpheres(factory)
+
+export const calculateTotalMercerSpheres = (factories: Factory[]): number =>
+  factories.reduce((total, factory) => total + getFactoryMercerSpheres(factory), 0)
+
+// Re-exported so components reference one definition rather than restating "one per uploader".
+export { MERCER_SPHERES_PER_DEPOT }
+
 // Per-factory usage list for the statistics summary — only factories actually using any.
 export const calculateFactoriesUsing = (
   factories: Factory[],
@@ -204,6 +377,32 @@ export const calculateFactoriesUsing = (
 // account for overclocking and somersloops). Peak differs from consumed only when
 // variable-power buildings (Particle Accelerator etc.) are present. The circuit boost
 // (Alien Power Augmenters) is part of total generation, matching the in-game power graph.
+export interface FactoryPower {
+  factory: Factory
+  produced: number
+  consumed: number
+  difference: number
+}
+
+/**
+ * Power per factory, heaviest net drain first.
+ *
+ * Deliberately ordered by cost rather than by the plan's own display order: the factory worth
+ * looking at is the one costing the most, and display order buries it wherever it happens to sit.
+ */
+export const calculateFactoryPower = (factories: Factory[]): FactoryPower[] =>
+  factories
+    .map(factory => {
+      const totals = calculateTotalPower([factory])
+      return {
+        factory,
+        produced: totals.totalPowerProduced,
+        consumed: totals.totalPowerConsumed,
+        difference: totals.totalPowerDifference,
+      }
+    })
+    .sort((a, b) => a.difference - b.difference || a.factory.name.localeCompare(b.factory.name))
+
 export const calculateTotalPower = (factories: Factory[]) => {
   let totalPowerConsumed = 0
   let totalPowerConsumedMin = 0

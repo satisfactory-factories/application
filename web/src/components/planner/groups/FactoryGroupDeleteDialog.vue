@@ -1,37 +1,40 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="520">
-    <v-card v-if="group">
-      <v-card-title class="text-h6 py-4">Delete "{{ group.name }}"?</v-card-title>
-      <v-divider />
-      <v-card-text>
-        <p class="text-body-2 mb-4">
-          {{ count }} {{ count === 1 ? 'factory is' : 'factories are' }} in this group.
-          Deleting the group does not delete them — choose where they should go.
-        </p>
-        <v-radio-group v-model="destination" hide-details>
-          <v-radio label="Ungrouped" :value="null" />
-          <v-radio
-            v-for="other in otherGroups"
-            :key="other.id"
-            :value="other.id"
-          >
-            <template #label>
-              <span class="d-flex align-center">
-                <span class="dot mr-2" :style="{ backgroundColor: other.color }" />
-                {{ other.name }}
-              </span>
-            </template>
-          </v-radio>
-        </v-radio-group>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
-        <v-btn color="red" variant="flat" @click="confirm">Delete group</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <app-dialog
+    v-if="group"
+    v-model="isOpen"
+    icon="fas fa-folder-times"
+    max-width="520"
+    :title="`Delete &quot;${group.name}&quot;?`"
+  >
+    <!-- An empty group is still confirmed, so that the red button next to a group's own
+         controls cannot delete one on a single stray click. There is just nothing to ask. -->
+    <p v-if="!count" class="mb-0">
+      This group is empty. Deleting it changes nothing else in the plan.
+    </p>
+    <p v-else class="mb-4">
+      {{ count }} {{ count === 1 ? 'factory is' : 'factories are' }} in this group.
+      Deleting the group does not delete them — choose where they should go.
+    </p>
+    <v-radio-group v-if="count" v-model="destination" hide-details>
+      <v-radio label="Ungrouped" :value="null" />
+      <v-radio
+        v-for="other in otherGroups"
+        :key="other.id"
+        :value="other.id"
+      >
+        <template #label>
+          <span class="d-flex align-center">
+            <span class="dot mr-2" :style="{ backgroundColor: other.color }" />
+            {{ other.name }}
+          </span>
+        </template>
+      </v-radio>
+    </v-radio-group>
+    <template #actions>
+      <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
+      <v-btn color="red" variant="flat" @click="confirm">Delete group</v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

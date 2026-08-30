@@ -29,6 +29,7 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
   }],
   byProducts: [],
   powerProducers: [],
+  customBuildings: [],
   parts: {
     IronIngot: {
       amountRequired: 0,
@@ -41,11 +42,13 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
       amountSuppliedViaProduction: 30,
       amountRemaining: -30,
       isRaw: false,
+      amountRequiredBuildings: 0,
       satisfied: true,
       exportable: true,
     },
   },
   buildingRequirements: { smeltermk1: { name: 'smeltermk1', amount: 1 } },
+  buildingMaterialCosts: {},
   requirementsSatisfied: true,
   exportCalculator: {
     IronIngot: { selected: null, factorySettings: {} },
@@ -59,9 +62,14 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
   inSync: null,
   syncState: {},
   syncStatePower: {},
+  syncStateCustomBuildings: {},
   displayOrder: 0,
   tasks: [],
   notes: '',
+  checklistEnabled: false,
+  checklistPanelHidden: false,
+  checklistExports: {},
+  checklistExportSyncedAmounts: {},
   dataVersion: '1.2-05',
   ...overrides,
 })

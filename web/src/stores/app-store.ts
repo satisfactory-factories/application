@@ -1,6 +1,6 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
 import { emptyFactoryPower, PROTOCOL_VERSION } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
@@ -17,9 +17,13 @@ import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+import { refreshBuildingGroupProblems } from '@/utils/factory-management/building-groups/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
-import { captureOrder, markPlanReplaced, markReorderedFactories } from '@/utils/sync-intent'
+import { captureOrder, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
+import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
+import { getHandGatheredParts } from '@/utils/factory-management/parts'
+import { config } from '@/config/config'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -30,12 +34,17 @@ export const useAppStore = defineStore('app', () => {
   const factoryTabs = ref<FactoryTab[]>(JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[])
 
   if (factoryTabs.value.length === 0) {
+    // Fill the tabs from the legacy factories array if present so no data gets lost
+    const legacyFactories: Factory[] = JSON.parse(localStorage.getItem('factories') ?? '[]')
     factoryTabs.value = [
       {
         id: crypto.randomUUID(),
         name: 'Default',
-        // Fill the tabs from the legacy factories array if present so no data gets lost
-        factories: JSON.parse(localStorage.getItem('factories') ?? '[]'),
+        factories: legacyFactories,
+        // A tab conjured out of nothing has never assumed a raw resource in its life, so it is
+        // born answered. One filled from the legacy array is a plan from before the change and
+        // must still be asked about.
+        plannerVersion: legacyFactories.length > 0 ? undefined : config.plannerVersion,
       },
     ]
   }
@@ -97,6 +106,62 @@ export const useAppStore = defineStore('app', () => {
     (localStorage.getItem('showSatisfactionBreakdowns') ?? 'false') === 'true'
   )
 
+  // ==== RAW RESOURCES BREAKING-CHANGE NOTICE
+  // Raw resources are no longer assumed to be supplied — they are mined or imported like anything
+  // else, and only the resources the game gives no extractor for (Leaves, Wood, alien remains...)
+  // are still taken as gathered by hand. There is deliberately no setting: an optional assumption
+  // meant two plans could disagree about what they meant, and the answer was invisible on the card.
+  //
+  // That silently turns saved plans red, so say so once. Once, and never again — otherwise every
+  // old plan the user opens interrupts them with the same news.
+  const showRawBreakingNotice = ref<boolean>(false)
+
+  // Answered per PLAN, not per browser. A single localStorage flag meant dismissing this once
+  // silenced it for every plan the user opened afterwards — so the next pre-v0.6 plan they
+  // pasted, opened from a share link or restored from their account sat there red with nothing
+  // on screen explaining why. The answer belongs to the plan, and travels with it.
+  const askRawBreakingNotice = () => {
+    const tab = getCurrentTab()
+
+    // A plan that has been answered, and one that has nothing to answer for, are both silent.
+    // The second half matters: a plan from before the change that happens to import everything
+    // it needs is not worth interrupting anyone about.
+    showRawBreakingNotice.value = Boolean(tab) &&
+      !tab.plannerVersion &&
+      collectRawWizardRows(factories.value).length > 0
+  }
+
+  // Stamping on dismissal is deliberate: the flag records that the user has ANSWERED for this
+  // plan, not that the plan is fixed. Saying "I'll sort it myself" is an answer, and being asked
+  // again every time they open their own plan would be the wrong reward for it.
+  const dismissRawBreakingNotice = () => {
+    const tab = getCurrentTab()
+    if (tab) {
+      tab.plannerVersion = config.plannerVersion
+    }
+    showRawBreakingNotice.value = false
+    markPlanEdited()
+  }
+
+  // Hand the notice over to something that is about to say the same thing better — the v0.6
+  // splash, whose first slide IS this warning and which will not close until it is acknowledged.
+  // Deliberately NOT marked as seen: if that acknowledgement never comes (the tab is closed on
+  // the slide), the next load raises the notice again rather than losing it silently.
+  const deferRawBreakingNotice = () => {
+    showRawBreakingNotice.value = false
+  }
+
+  // Debug scenario only: put the notice back to never-seen so it behaves as it does for someone
+  // opening a plan built before this change. Otherwise it is unreachable once dismissed.
+  const rearmRawBreakingNotice = () => {
+    const tab = getCurrentTab()
+    if (tab) {
+      delete tab.plannerVersion
+    }
+    // Deliberately does not ask here: the plan being re-armed has not loaded yet, so the only
+    // thing to evaluate at this point is the one on its way out. loadingCompleted does it.
+  }
+
   const shownFactories = (factories: Factory[]) => {
     return factories.filter(factory => !factory.hidden).length
   }
@@ -147,31 +212,75 @@ export const useAppStore = defineStore('app', () => {
   let persistTimer: ReturnType<typeof setTimeout> | undefined
   let lastPersistedPlan = ''
 
-  const persistPlan = () => {
+  /**
+   * @param fromLoad only ever true for a debounced write that a LOAD scheduled. The v0.6 migration
+   * recalculates as it loads, and stamping that as an edit would make a stale browser copy look
+   * newer than the account's — which is exactly what checkForOOS reads to decide whether to warn
+   * before overwriting.
+   *
+   * Provenance is passed into the timer rather than held in a shared flag, because persistPlan is
+   * also called DIRECTLY by the interval, visibilitychange and pagehide below. Those exist to catch
+   * mutations that bypass schedulePersist entirely, so a shared flag let them consume a load's
+   * provenance and save a real edit without its timestamp.
+   *
+   * Their default is the CURRENT loading state, read at call time, rather than a flat false: the
+   * 5-second interval fires during any load that takes longer than that, and switching browser tabs
+   * mid-load fires visibilitychange. Treating those as user work stamped a plan nobody had edited.
+   */
+  const persistPlan = (fromLoad = !isLoaded.value) => {
     clearTimeout(persistTimer)
+    // A user edit that is still waiting to be written stamps the plan even if the write itself was
+    // ordered by a load. Renaming a factory and switching tab inside the 500ms window used to lose
+    // the timestamp: the load's schedulePersist cancelled the user's timer and inherited the write,
+    // so the rename reached localStorage while lastEdit still described the plan before it.
+    const userEditPending = pendingUserEdit
+    pendingUserEdit = false
     // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
     const json = JSON.stringify(toRaw(factoryTabs.value))
     if (json === lastPersistedPlan) return
     lastPersistedPlan = json
     localStorage.setItem('factoryTabs', json)
-    setLastEdit() // Update last edit time whenever the data changes, from any source.
+    if (!fromLoad || userEditPending) {
+      setLastEdit() // Update last edit time whenever the data changes, from any source.
+    }
   }
 
+  // Sticky until the write actually happens. schedulePersist cancels and replaces the pending
+  // timer, so without this the LAST scheduler decided the provenance of a write that may already
+  // contain someone's edit.
+  let pendingUserEdit = false
+
   const schedulePersist = () => {
+    // Read now, not when the timer fires: persistence is debounced by 500ms and a load finishes
+    // well inside that, so reading isLoaded at fire time saw a loaded app and stamped it anyway.
+    const duringLoad = !isLoaded.value
+    if (!duringLoad) {
+      pendingUserEdit = true
+    }
     clearTimeout(persistTimer)
-    persistTimer = setTimeout(persistPlan, 500)
+    persistTimer = setTimeout(() => persistPlan(duringLoad), 500)
   }
 
   eventBus.on('factoryUpdated', schedulePersist)
   eventBus.on('tabEdited', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
 
+  // Anything written straight onto the tab has to call this. Tab-level state reaches neither the
+  // local save nor the cloud dirty flag on its own — both hang off factory events — so an edit
+  // that never touches a factory looks right in this browser and never reaches the account.
+  const markPlanEdited = () => {
+    eventBus.emit('planUpdated')
+    schedulePersist()
+  }
+
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
-    setInterval(persistPlan, 5_000)
+    // All three wrapped: pagehide would otherwise hand its Event object in as `fromLoad`, which is
+    // truthy, and silently stop the close-the-tab flush from stamping the edit.
+    setInterval(() => persistPlan(), 5_000)
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') persistPlan()
     })
-    window.addEventListener('pagehide', persistPlan)
+    window.addEventListener('pagehide', () => persistPlan())
   }
 
   // Dev-only test hook: lets browser tests measure reactive churn during interactions.
@@ -345,6 +454,14 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
 
+    // The assumption is gone; drop what saved plans still carry for it so they stop hauling a
+    // dead field through every share, paste and sync from here on.
+    const tab = getCurrentTab() as (FactoryTab & LegacyRawAssumptionFields) | undefined
+    if (tab) {
+      delete tab.assumeRawInputs
+    }
+    newFactories.forEach(factory => delete (factory as Factory & LegacyRawAssumptionFields).assumeRawInputs)
+
     // Reset the factories currently loaded, if there is any
     if (currentFactoryTab.value.factories.length > 0) {
       currentFactoryTab.value.factories = []
@@ -396,7 +513,23 @@ export const useAppStore = defineStore('app', () => {
 
   const loadingCompleted = () => {
     console.log('appStore: ============= LOADING COMPLETED =============', factories.value)
+
+    // Asked here rather than at the top of the load for two reasons: the loader may swap in a
+    // recovered plan part way through, so this is the first point the plan is the one being
+    // loaded; and the check reads the part ledgers, which do not exist until the plan has been
+    // through initFactories. It also has to settle before loadingCompleted is announced, since
+    // the v0.6 splash opens on that event and needs to know whether this plan is asking anything.
+    askRawBreakingNotice()
+
     eventBus.emit('loadingCompleted')
+
+    // Flushed synchronously, as a load, BEFORE the flag flips. Everything above has scheduled a
+    // debounced write 500ms out; the moment isLoaded is true, a direct flush (the 5-second
+    // interval, a tab switch, closing the tab) that lands inside that window would cancel the
+    // pending load-origin write and save the migration as though the user had made it, stamping
+    // lastEdit. Writing it here leaves that later write with nothing to do, since persistPlan
+    // returns early when the plan has not changed since the last one.
+    persistPlan(true)
     isLoaded.value = true
 
     // Reset the saved factories
@@ -408,6 +541,8 @@ export const useAppStore = defineStore('app', () => {
   const initFactories = (newFactories: Factory[]): Factory[] => {
     console.log('appStore: initFactories', newFactories)
     let needsCalculation = false
+    // The same set calculatePartRaw uses, so the pre-v0.6 detector below cannot drift from it.
+    const handGathered = getHandGatheredParts(gameData)
 
     // Everything the loader put right, from any source, reported together in one dialog.
     // Reset first: the dialog describes the plan being loaded now, so repairs the previous
@@ -416,7 +551,7 @@ export const useAppStore = defineStore('app', () => {
     planRepairs.value = []
 
     try {
-      repairs.push(...validateFactories(newFactories, gameData))
+      repairs.push(...validateFactories(newFactories, gameData, getCurrentTab()))
     } catch (err) {
       // If err is type of Error
       if (err instanceof Error) {
@@ -452,6 +587,11 @@ export const useAppStore = defineStore('app', () => {
           factory.parts[part].amountRequiredPower = 0
           needsCalculation = true
         }
+
+        // For #478
+        if (factory.parts[part].amountRequiredBuildings === undefined) {
+          factory.parts[part].amountRequiredBuildings = 0
+        }
         if (factory.parts[part].amountSuppliedViaRaw === undefined) {
           factory.parts[part].amountSuppliedViaRaw = 0
           needsCalculation = true
@@ -476,7 +616,24 @@ export const useAppStore = defineStore('app', () => {
             needsCalculation = true
           }
         }
+
+        // Patch for #503. Before v0.6 the planner supplied any raw shortfall itself, so a plan
+        // saved then still reads satisfied — and every gate downstream believes it: no red
+        // factories, no breaking-change notice, and a wizard that reports nothing to fix. Only
+        // hand-gathered parts keep raw supply now, so anything else still carrying it predates
+        // the change. Recalculating is what turns the stored ledger into the truth.
+        if (partData.isRaw && partData.amountSuppliedViaRaw > 0 && !handGathered.has(part)) {
+          needsCalculation = true
+        }
       })
+
+      // Patch for #498 / #7. Deliberately does NOT set needsCalculation: an empty map means no
+      // part is sunk or depoted, which is exactly what every plan saved before this did, so
+      // nothing derived changes and a needless recalculation would block the main thread for
+      // seconds on a big plan.
+      if (factory.partDisposal === undefined) {
+        factory.partDisposal = {}
+      }
 
       // Patch for #250
       if (factory.tasks === undefined) {
@@ -484,6 +641,20 @@ export const useAppStore = defineStore('app', () => {
       }
       if (factory.notes === undefined) {
         factory.notes = ''
+      }
+
+      // Checklist mode: default the new per-factory fields for plans saved before it existed.
+      if (factory.checklistEnabled === undefined) {
+        factory.checklistEnabled = false
+      }
+      if (factory.checklistPanelHidden === undefined) {
+        factory.checklistPanelHidden = false
+      }
+      if (factory.checklistExports === undefined) {
+        factory.checklistExports = {}
+      }
+      if (factory.checklistExportSyncedAmounts === undefined) {
+        factory.checklistExportSyncedAmounts = {}
       }
 
       // Patch for #180
@@ -505,6 +676,22 @@ export const useAppStore = defineStore('app', () => {
       // Patch for #270
       if (factory.syncStatePower === undefined) {
         factory.syncStatePower = {}
+      }
+
+      // Patch for #478
+      if (factory.customBuildings === undefined) {
+        factory.customBuildings = []
+      }
+      if (factory.syncStateCustomBuildings === undefined) {
+        factory.syncStateCustomBuildings = {}
+      }
+
+      // Patch for #477. Unlike an empty array, {} is NOT what a recalculation would produce for
+      // an existing factory's buildings — they had a real material cost all along, it just was
+      // not being calculated yet — so this forces one rather than leaving the panel empty.
+      if (factory.buildingMaterialCosts === undefined) {
+        factory.buildingMaterialCosts = {}
+        needsCalculation = true
       }
 
       factory.products.forEach(product => {
@@ -532,9 +719,24 @@ export const useAppStore = defineStore('app', () => {
         if (product.amount !== formatNumberFully(product.amount)) {
           needsCalculation = true
         }
+
+        // A group's type must match the item it hangs off. Plans exported from older builds
+        // carry it wrong, and it is read all over the building group UI to decide which
+        // controls to draw, so a mislabelled group renders the wrong editor.
+        product.buildingGroups.forEach(group => {
+          if (group.type !== ItemType.Product) {
+            group.type = ItemType.Product
+          }
+        })
       })
 
       factory.powerProducers.forEach(producer => {
+        producer.buildingGroups?.forEach(group => {
+          if (group.type !== ItemType.Power) {
+            group.type = ItemType.Power
+          }
+        })
+
         // Patch for #11
         if (producer.buildingGroups === undefined || producer.buildingGroups.length === 0) {
           producer.buildingGroups = []
@@ -617,6 +819,11 @@ export const useAppStore = defineStore('app', () => {
     if (needsCalculation) {
       console.log('appStore: initFactories: Data migrations were applied, recalculating')
       calculateFactories(newFactories, gameDataStore.getGameData(), { origin: 'recalculate' })
+    } else {
+      // Whether a group set counts as balanced is the one stored verdict that depends on a
+      // setting rather than on the plan, so a plan from another browser has to be re-judged
+      // against this one's tolerance. Cheap enough to run on every load, unlike the recalc above.
+      refreshBuildingGroupProblems(newFactories)
     }
 
     // What the loader gate reads: the stagger paces a render that followed work.
@@ -738,6 +945,14 @@ export const useAppStore = defineStore('app', () => {
     const cleared = [...factories.value]
     factories.value.length = 0
     factories.value = []
+    // Memberless groups are the one piece of group state no factory carries, so clearing the
+    // factories does not take them with it. Left behind, they outlive the plan they belonged to
+    // and turn up in whatever is loaded next.
+    const tab = getCurrentTab()
+    if (tab) {
+      delete tab.groups
+      markTabEdited('groups')
+    }
     markPlanReplaced(cleared, [])
     schedulePersist()
   }
@@ -747,6 +962,69 @@ export const useAppStore = defineStore('app', () => {
   const getTab = (id: string) => {
     return factoryTabs.value.find(tab => tab.id === id)
   }
+  // A plan restored from the user's account. Clients up to v0.5 stored a bare Factory[]; from
+  // v0.6 the whole tab is stored. An array is not old data to migrate — it is a client that has
+  // not reloaded yet — so both shapes load, and an array is read as a plan from before the
+  // change, which is exactly what it is.
+  const loadServerPlan = (data: Factory[] | FactoryTab) => {
+    // A restore is a load, and it bypasses the loader, so nothing else marks it as one. Without
+    // this the work below announces every factory it touches while the app is still flagged
+    // "loaded": cloud sync marks the account copy dirty and the next tick uploads the restored
+    // plan straight back over the copy it just came from, before the user has answered anything.
+    // Restored in a finally, because leaving it false switches syncing off for the session.
+    const wasLoaded = isLoaded.value
+    isLoaded.value = false
+
+    try {
+      if (Array.isArray(data)) {
+        // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
+        // has to be asked about — including on a fresh machine, whose tab was born answered for
+        // contents it no longer has.
+        const legacyTab = getCurrentTab()
+        if (legacyTab) {
+          legacyTab.plannerVersion = undefined
+          // Same reasoning, and the same treatment a legacy clipboard paste gets: a bare array
+          // predates the Depot tiers entirely, so anything still here belongs to the plan being
+          // replaced rather than the one arriving.
+          legacyTab.depotUploadTier = undefined
+          legacyTab.depotExpansionTier = undefined
+        }
+        // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
+        // something different by it - raw resources were assumed supplied - so its stored ledger
+        // is the one thing that cannot be believed, and it is exactly what the notice below reads.
+        setFactories(data, true)
+        // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
+        // nothing else calls this - the plan simply turned red with nothing on screen saying why.
+        askRawBreakingNotice()
+        return
+      }
+
+      const tab = getCurrentTab()
+      if (tab) {
+        // The name travels with the plan; the id does not. Restoring into a tab created on this
+        // machine, its id is what local state is keyed by, while the name is what the user called
+        // the plan when they saved it — so keeping the local one silently renamed their plan.
+        if (data.name) tab.name = data.name
+        tab.powerTarget = data.powerTarget
+        tab.groups = data.groups
+        tab.plannerVersion = data.plannerVersion
+        // Assigned even when the saved plan has none, for the same reason as groups: absent
+        // means fully researched, so keeping the local tab's tiers would size somebody else's
+        // plan against this browser's last save rather than their own.
+        tab.depotUploadTier = data.depotUploadTier
+        tab.depotExpansionTier = data.depotExpansionTier
+      }
+      // Deliberately NOT forced here. This tab was written by a current client, so its quantities
+      // are the user's own and its ledger means what it says. A forced recalculation treats
+      // building groups as authoritative and writes them back over any item deliberately left out
+      // of sync with its groups, which would quietly rewrite a restored plan.
+      setFactories(data.factories ?? [])
+      askRawBreakingNotice()
+    } finally {
+      isLoaded.value = wasLoaded
+    }
+  }
+
   const getCurrentTab = () => {
     return factoryTabs.value[currentFactoryTabIndex.value]
   }
@@ -754,20 +1032,39 @@ export const useAppStore = defineStore('app', () => {
     return factoryTabs.value
   }
 
-  const addTab = ({
-    id = crypto.randomUUID(),
-    name = 'New Tab',
-    factories = [],
-    powerTarget,
-    groups,
-  } = {} as Partial<FactoryTab>, { activate = true }: { activate?: boolean } = {}) => {
+  const addTab = (tab: Partial<FactoryTab> = {}, { activate = true }: { activate?: boolean } = {}) => {
+    const {
+      id = crypto.randomUUID(),
+      name = 'New Tab',
+      factories = [],
+      powerTarget,
+      groups,
+      depotUploadTier,
+      depotExpansionTier,
+    } = tab
+
     factoryTabs.value.push({
       id,
       name,
       factories,
-      // Preserve the plan's power target when importing a tab (e.g. from a share link).
+      // Preserve the plan's power target when importing a tab (e.g. from a share link) —
+      // it describes the plan, not the browser.
       powerTarget,
+      // And its memberless groups, which are the only ones no factory carries — a share link
+      // that dropped them would arrive missing folders the sender could see.
       groups,
+      // Same for the answer to the raw-resources change. `in` was meant to spot an imported plan
+      // carrying no version, but it cannot: JSON.stringify drops an undefined key, so a genuine
+      // pre-v0.6 plan arrives through a share link or the clipboard with the key simply absent
+      // and looked identical to a brand-new tab — which stamped it answered and swallowed the
+      // warning it needs. Its factories are what tell the two apart, the same rule the default
+      // tab uses: a tab conjured out of nothing has never assumed a raw resource in its life.
+      plannerVersion: tab.plannerVersion ?? (factories.length > 0 ? undefined : config.plannerVersion),
+      // The Depot research the incoming plan was written against. A share link that dropped
+      // these would arrive reading as fully researched, quietly giving the recipient 16x the
+      // upload speed the sender planned for and hiding every over-capacity warning.
+      depotUploadTier,
+      depotExpansionTier,
     })
 
     // A tab the room list brought in shouldn't yank the user off what they were doing.
@@ -955,6 +1252,7 @@ export const useAppStore = defineStore('app', () => {
     planRepairs,
     dismissPlanRepairs,
     getLastEdit,
+    persistPlan,
     setLastEdit,
     getFactories,
     setFactories,
@@ -972,6 +1270,13 @@ export const useAppStore = defineStore('app', () => {
     reorderTabs,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
+    showRawBreakingNotice,
+    askRawBreakingNotice,
+    dismissRawBreakingNotice,
+    deferRawBreakingNotice,
+    markPlanEdited,
+    loadServerPlan,
+    rearmRawBreakingNotice,
     prepareLoader,
     reloadTabFromMirror,
     canRenderInstantly,

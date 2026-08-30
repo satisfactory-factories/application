@@ -26,7 +26,6 @@
 
   const props = defineProps <{
     factory: Factory;
-    helpText: boolean;
   }>()
 
   // Validation rule for the character limit

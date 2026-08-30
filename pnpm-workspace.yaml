@@ -10,10 +10,10 @@ catalog:
   typescript: 6.0.3
   ts-node: 10.9.2
   '@eslint/js': 10.0.1
-  eslint: 10.8.0
+  eslint: 10.8.1
   eslint-import-resolver-typescript: 4.4.5
   eslint-plugin-import-x: 4.17.1
-  typescript-eslint: 8.65.0
+  typescript-eslint: 8.67.0
   zod: 4.4.3
   '@playwright/test': 1.62.1
   # Both the backend suite and web's Playwright harness boot one; a version skew
@@ -40,3 +40,21 @@ allowBuilds:
   # Left unbuilt so a `pnpm install` never blocks on a mongod download; the
   # backend test run fetches and caches the binary on first use instead.
   mongodb-memory-server: false
+
+# js-yaml reaches us only through jest coverage tooling
+# (babel-plugin-istanbul -> @istanbuljs/load-nyc-config), which asks for ^3.13.1 and
+# would otherwise hold us on the v3-legacy line. This override is what lets us track
+# the current major instead. The key stays ^3.13.1 because that is the range being
+# matched, not the version being installed.
+#
+# This is a deliberate two-major substitution under a package that never declared it,
+# so it is worth knowing what moved. load-nyc-config calls js-yaml load() on an nyc
+# YAML config, and v5 changed that call: CORE_SCHEMA rather than DEFAULT_SCHEMA,
+# !!set loads as a Set, numbers parse differently, and empty input throws instead of
+# returning undefined. Nothing here exercises it -- no package has a .nycrc.yaml -- so
+# the test suite cannot vouch for this either way. Adding one is what would expose it.
+#
+# Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
+# that governs what Renovate proposes, not what an override pins.
+overrides:
+  js-yaml@^3.13.1: 5.3.0

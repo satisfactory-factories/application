@@ -26,17 +26,24 @@
             size="small"
             :value="mark"
           >
-            <tooltip :text="`Mk.${mark} (${speeds[mark]} ${unit})`">
-              <game-asset :subject="`${iconPrefix}${mark}`" type="building" />
-            </tooltip>
+            <!-- The throughput goes in game-asset's own tooltip rather than a wrapper around it:
+                 the two are separate systems and both fire, so a wrapped icon hovers twice. -->
+            <game-asset
+              :subject="`${iconPrefix}${mark}`"
+              :tooltip="`Mk.${mark} (${speeds[mark]} ${unit})`"
+              type="building"
+            />
           </v-btn>
         </v-btn-toggle>
       </div>
       <div class="d-flex align-center justify-center">
         <v-chip class="sf-chip input unit blue" variant="tonal">
-          <tooltip :text="`${getPartDisplayName(request.part)} (${unit})`">
-            <game-asset clickable :subject="request.part" type="item" />
-          </tooltip>
+          <game-asset
+            clickable
+            :subject="request.part"
+            :tooltip="`${getPartDisplayName(request.part)} (${unit})`"
+            type="item"
+          />
           <v-number-input
             class="inline-inputs ml-0 amount-input"
             control-variant="stacked"
@@ -52,9 +59,11 @@
       <div class="text-center text-caption my-1">OR</div>
       <div class="d-flex align-center justify-center">
         <v-chip class="sf-chip input unit" variant="tonal">
-          <tooltip :text="`Whole Mk.${group.mark} ${nounPlural.toLowerCase()} to build`">
-            <game-asset :subject="`${iconPrefix}${group.mark}`" type="building" />
-          </tooltip>
+          <game-asset
+            :subject="`${iconPrefix}${group.mark}`"
+            :tooltip="`Whole Mk.${group.mark} ${nounPlural.toLowerCase()} to build`"
+            type="building"
+          />
           <v-number-input
             class="inline-inputs ml-0 count-input"
             control-variant="stacked"

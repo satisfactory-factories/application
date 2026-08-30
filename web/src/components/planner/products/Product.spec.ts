@@ -14,7 +14,6 @@ const mountSubject = (factory: Factory) => {
   return mount(Product, {
     propsData: {
       factory,
-      helpText: false,
     },
     global: {
       plugins: [vuetify],
@@ -30,7 +29,7 @@ const mountSubject = (factory: Factory) => {
 
 describe('Component: Product', () => {
   let factory = newFactory('test')
-  let subject: VueWrapper<{ factory: Factory, helpText: boolean }>
+  let subject: VueWrapper<{ factory: Factory }>
 
   beforeEach(() => {
     setActivePinia(createPinia())

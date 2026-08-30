@@ -2,7 +2,11 @@
   <!-- Animated (sidebar) keeps the wrapper mounted with no chips: the grid row is what animates,
        and a v-if would take it out of the layout so there would be nothing to grow from. Everywhere
        else it goes, or its empty box still claims a slot in the parent's flex gap. -->
-  <div v-if="animated || chips.length" class="status-chips" :class="{ open: chips.length > 0, animated: animated && ready }">
+  <div
+    v-if="animated || chips.length"
+    class="status-chips"
+    :class="{ open: chips.length > 0, animated: animated && ready, stacked: animated }"
+  >
     <div class="status-chips-inner" :class="[`size-${size}`, { detailed }]">
       <tooltip
         v-for="status in chips"
@@ -11,8 +15,8 @@
       >
         <v-chip
           class="sf-chip no-margin"
-          :class="[size, `status-${status.severity}`, { clickable: !!status.section }]"
-          @click.stop="status.section && emit('navigate', status.section)"
+          :class="[size, `status-${status.severity}`, isNavigable(status) ? 'sf-chip-clickable' : 'sf-chip-info']"
+          v-bind="navigateProps(status)"
         >
           <!-- Subjects get their own icons; the label carries the total, so an overflow count is
                only worth showing where the label doesn't already say it. -->
@@ -55,14 +59,39 @@
     // Grow/retract the row rather than snapping. Only the sidebar wants this — the card header
     // and section headers already sit in layouts that reflow.
     animated?: boolean
+    // Whether @navigate is wired up. Declared emits are stripped out of $attrs, so the component
+    // cannot see the listener — and a chip that looks pressable and isn't is worse than a plain
+    // one. Section headers leave it off: you are already in the section it would jump to.
+    navigable?: boolean
   }>(), {
     statuses: () => [],
     size: 'x-small',
     detailed: false,
     animated: false,
+    navigable: false,
   })
 
-  const emit = defineEmits<{ (event: 'navigate', section: FactoryStatusSection): void }>()
+  // The subjects ride along so the jump can land on the rows that own the problem rather than on
+  // the section heading above them. All of them, not just the first: a chip reading "3 shortages"
+  // is about three rows, and lighting one of them makes the user hunt for the other two. The
+  // parent composes the element ids: only it knows the factory.
+  const emit = defineEmits<{
+    (event: 'navigate', target: { section: FactoryStatusSection, subjects: string[] }): void
+  }>()
+
+  const isNavigable = (status: FactoryStatus) => props.navigable && !!status.section
+
+  // Bound as a whole object rather than @click, so a chip with nowhere to go gets no listener at
+  // all: a bound listener is what earns a chip Vuetify's v-chip--link, and with it a tab stop and
+  // Enter/Space handling it has no use for.
+  const navigateProps = (status: FactoryStatus) => isNavigable(status)
+    ? {
+      onClick: (event: MouseEvent | KeyboardEvent) => {
+        event.stopPropagation()
+        emit('navigate', { section: status.section!, subjects: status.subjects.map(subject => subject.id) })
+      },
+    }
+    : {}
 
   const chips = computed(() => getChipStatuses(props.statuses))
 
@@ -127,17 +156,18 @@
   }
 }
 
-.status-chips.open .status-chips-inner {
+// Only where the chips sit on their own line under the factory name (the sidebar) — the gutter
+// keeps them off it. On a shared line it would push them 2px below the chips beside them, which is
+// visible against the sync and power chips in a card header.
+.status-chips.open.stacked .status-chips-inner {
   padding-top: 4px;
+}
 
+.status-chips.open .status-chips-inner {
   > * {
     opacity: 1;
     transition-delay: 0.15s;
   }
-}
-
-.sf-chip.clickable {
-  cursor: pointer;
 }
 
 // x-small chips are a fixed 26px with no vertical padding; the item icons need the box to breathe.

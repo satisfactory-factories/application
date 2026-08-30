@@ -366,6 +366,40 @@ describe('factory-groups', () => {
       repairFactoryGroups(loaded)
       expect(loaded.map(f => f.name)).toEqual(['Alpha', 'Bravo'])
     })
+
+    // The repair used to renumber only the groups that had members, so an empty group kept an
+    // order that now collided with a populated one — and collectGroups' name tiebreak then moved
+    // it. A group with a late-alphabet name sitting between two populated groups is the case that
+    // showed it: it jumped to the end on every load, permanently.
+    it('holds an empty group in place across a load', () => {
+      const loaded = [newFactory('One', 0, 1), newFactory('Two', 1, 2)]
+      loaded[0].group = group('aaa', 0, { name: 'Aaa' })
+      loaded[1].group = group('ccc', 2, { name: 'Ccc' })
+      const loadedTab = {
+        id: 'tab', name: 'Tab', factories: loaded, groups: [group('zzz', 1, { name: 'Zzz' })],
+      } as unknown as FactoryTab
+
+      repairFactoryGroups(loaded, loadedTab)
+
+      expect(collectGroups(loaded, loadedTab).map(g => g.name)).toEqual(['Aaa', 'Zzz', 'Ccc'])
+      expectInvariant(loaded, loadedTab)
+    })
+
+    it('is stable across repeated loads', () => {
+      const loaded = [newFactory('One', 0, 1), newFactory('Two', 1, 2)]
+      loaded[0].group = group('aaa', 0, { name: 'Aaa' })
+      loaded[1].group = group('ccc', 2, { name: 'Ccc' })
+      const loadedTab = {
+        id: 'tab', name: 'Tab', factories: loaded, groups: [group('zzz', 1, { name: 'Zzz' })],
+      } as unknown as FactoryTab
+
+      repairFactoryGroups(loaded, loadedTab)
+      const first = collectGroups(loaded, loadedTab).map(g => g.name)
+      repairFactoryGroups(loaded, loadedTab)
+      repairFactoryGroups(loaded, loadedTab)
+
+      expect(collectGroups(loaded, loadedTab).map(g => g.name)).toEqual(first)
+    })
   })
 
   describe('colour', () => {

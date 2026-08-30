@@ -1,11 +1,11 @@
 <template>
   <div class="d-flex align-center flex-wrap ga-2">
-    <h4 class="text-h4">
-      <i class="fas fa-power-off mr-3" />Power Consumption and Generation
+    <h4 class="text-h4 d-flex align-center">
+      <span class="stats-heading-icon"><i class="fas fa-power-off section-icon power" /></span>Power Consumption and Generation
     </h4>
     <v-chip
       id="stats-power-summary-generation"
-      class="sf-chip generation no-margin"
+      class="sf-chip generation small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -14,7 +14,7 @@
     </v-chip>
     <v-chip
       id="stats-power-summary-consumption"
-      class="sf-chip consumption no-margin"
+      class="sf-chip consumption small no-margin"
       variant="tonal"
     >
       <i class="fas fa-bolt" />
@@ -24,7 +24,7 @@
     <tooltip :text="hasTarget ? 'Difference vs your power target' : 'Difference vs the plan\'s consumption'">
       <v-chip
         id="stats-power-summary-difference"
-        class="sf-chip no-margin"
+        class="sf-chip small no-margin"
         :class="balanceDifference >= 0 ? 'green' : 'red'"
         variant="tonal"
       >
@@ -37,9 +37,6 @@
       </v-chip>
     </tooltip>
   </div>
-  <p v-show="helpText" class="mb-4">
-    <i class="fas fa-info-circle mr-2" />Shows world level power consumption and generation data.
-  </p>
   <v-alert
     id="stats-power-accuracy-note"
     class="mt-2 mb-2"
@@ -55,7 +52,7 @@
   <v-row class="mt-1">
     <v-col cols="12" md="8">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-check-square mr-2" />Plan
+        <i class="fas fa-check-square mr-2 section-icon plan" />Power in Plan
       </h2>
       <v-table class="power-table" density="compact">
         <thead>
@@ -152,7 +149,7 @@
     </v-col>
     <v-col cols="12" md="4">
       <h2 class="text-h5 font-weight-bold text-no-wrap">
-        <i class="fas fa-bullseye mr-2" />Power Target
+        <i class="fas fa-bullseye mr-2 section-icon target" />Power Target
       </h2>
       <div class="d-flex align-center">
         <v-chip class="sf-chip input no-margin" variant="tonal">
@@ -218,22 +215,104 @@
       </v-table>
     </v-col>
   </v-row>
+
+  <!-- Per factory. Collapsed by default: the plan-level figures above are what most people come
+       for, and forty rows under them would bury those. Deliberately simpler than the tables above
+       — no min/max columns, since the point here is which factory is costing what. -->
+  <div class="d-flex align-center mt-4">
+    <h2 class="text-h5 font-weight-bold text-no-wrap">
+      <i class="fas fa-industry mr-2" />Power by factory
+    </h2>
+    <v-btn
+      class="ml-auto"
+      color="primary"
+      :prepend-icon="factoriesHidden ? 'fas fa-eye' : 'fas fa-eye-slash'"
+      size="small"
+      :variant="factoriesHidden ? 'outlined' : 'flat'"
+      @click="factoriesHidden = !factoriesHidden"
+    >{{ factoriesHidden ? 'Show' : 'Hide' }}</v-btn>
+  </div>
+  <v-table
+    v-if="!factoriesHidden && factoryPower.length > 0"
+    id="stats-power-by-factory"
+    class="power-table mt-2"
+    density="compact"
+  >
+    <thead>
+      <tr>
+        <th>Factory</th>
+        <th class="text-right">Generated</th>
+        <th class="text-right">Consumed</th>
+        <th class="text-right">Difference</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        v-for="entry in factoryPower"
+        :key="entry.factory.id"
+        class="hover"
+        @click="navigateToFactory(entry.factory.id)"
+      >
+        <td>
+          <div class="d-flex align-center ga-2">
+            <factory-icon-display :icon="entry.factory.icon" size="20" />
+            <span>{{ entry.factory.name }}</span>
+          </div>
+        </td>
+        <td class="text-right">{{ entry.produced > 0 ? mw(entry.produced) : '—' }}</td>
+        <td class="text-right">{{ entry.consumed > 0 ? mw(entry.consumed) : '—' }}</td>
+        <td
+          class="text-right"
+          :class="{ 'text-green': entry.difference > 0, 'text-red': entry.difference < 0 }"
+        >
+          {{ mw(entry.difference) }}
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr id="stats-power-by-factory-total" class="font-weight-bold total-row">
+        <td>Total</td>
+        <td class="text-right">{{ mw(totalPower.totalPowerProduced) }}</td>
+        <td class="text-right">{{ mw(totalPower.totalPowerConsumed) }}</td>
+        <td
+          class="text-right"
+          :class="{
+            'text-green': totalPower.totalPowerDifference > 0,
+            'text-red': totalPower.totalPowerDifference < 0,
+          }"
+        >{{ mw(totalPower.totalPowerDifference) }}</td>
+      </tr>
+    </tfoot>
+  </v-table>
 </template>
 
 <script setup lang="ts">
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { calculateTotalPower } from '@/utils/statistics'
+  import { calculateFactoryPower, calculateTotalPower } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   const totalPower = computed(() => calculateTotalPower(props.factories))
+
+  // Biggest net drain first: the factory to look at is the one costing the most, and a plan
+  // ordered by display order buries it wherever the user happened to put it.
+  const factoryPower = computed(() => calculateFactoryPower(props.factories))
+
+  // Its own key, not the section's: someone who wants the plan totals open still does not
+  // necessarily want forty factory rows under them.
+  const factoriesHidden = ref<boolean>(localStorage.getItem('statisticsPowerByFactoryHidden') !== 'false')
+  watch(factoriesHidden, value => {
+    localStorage.setItem('statisticsPowerByFactoryHidden', value.toString())
+  })
+
+  const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   const { powerTarget, hasTarget } = usePowerTarget()
   const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)
@@ -276,6 +355,15 @@
 </script>
 
 <style scoped lang="scss">
+  // Section heading icons — a splash of colour per heading so the section list reads at a
+  // glance instead of as one long run of white icons. Reuses tokens already meaningful
+  // elsewhere on this page rather than inventing new ones.
+  .section-icon {
+    &.power { color: var(--sf-yellow); }
+    &.plan { color: var(--sf-success); }
+    &.target { color: var(--sf-light-blue); }
+  }
+
   // Pin the note to the shared opaque muted blue (mutedBlue in colors.ts) instead
   // of Vuetify's translucent tonal underlay, so it and the sidebar summary's
   // expand button are literally the same colour regardless of backdrop.

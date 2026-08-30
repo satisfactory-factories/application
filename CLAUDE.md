@@ -70,7 +70,7 @@ Backend tests: `cd backend && pnpm exec vitest run` (vitest + supertest + `mongo
 
 When game recipes/items change, regenerate data via the parser, then:
 1. Copy the parser output to `web/public/gameData_v<version>.json` with a **new** version name.
-2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-05`) — this triggers clients to re-download.
+2. Bump `dataVersion` in `web/src/config/config.ts` (currently `1.2-08`) — this triggers clients to re-download.
 3. Delete the old `web/public/gameData_*.json`.
 
 The version tracks the game's minor version. See `parsing/README.md` for the full parser workflow.
@@ -78,6 +78,7 @@ The version tracks the game's minor version. See `parsing/README.md` for the ful
 ## Conventions
 
 - **TypeScript everywhere.** Vue components use `<script setup>` + Composition API and Vuetify components for UI.
+- **Dialogs — "modal" and "dialog" mean the same thing here, and both mean `AppDialog`.** Every dialog in the app goes through `web/src/components/common/AppDialog.vue`; do not reach for a bare `v-dialog` + `v-card` again. It owns the shared layout — a padded `text-h4` title row with the icon beside the label, the close button in the top-right corner, a `text-body-2` body, and an actions row whose buttons sit right by default (no leading `v-spacer` needed; use one to push something *left*). Props cover the variations: `title`/`icon`, `max-width`, `persistent`, `scrollable`, `closable` (off for a dialog that must be answered), `centre-title`, `divider`, `body-max-height`, `body-class`, `card-class`, `close-id`/`close-title`; slots cover the rest: `title` for a heading needing markup, `header` for controls between the title and a scrolling body, `actions` for the button row. `AppDialog.spec.ts` locks the layout, so a change to it is a change to every dialog. The only components still on a raw `v-dialog` are the release splash decks and the fullscreen `StatisticsFactorySummary.vue`, which keep their own chrome deliberately.
 - 2-space indent, LF endings, trailing newline, no trailing whitespace. `pnpm lint` (auto-fix) must pass before commit — CI blocks otherwise.
 - **Conventional Commits**, scoped by component: `feat(web): ...`, `fix(parser): ...`, `chore(repo): ...`. Universal SemVer across all packages.
 - Update `CHANGELOG.md` for significant changes. Deploys are trunk-based off `main` (GitHub Actions → Vercel for web, Docker image → webhook → the API box for backend — see `docs/deployment.md`).

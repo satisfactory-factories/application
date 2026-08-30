@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { create220Scenario } from '@/utils/factory-setups/220-byproduct-only-part'
+import { create545Scenario } from '@/utils/factory-setups/545-byproduct-only-part'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import {
   addShortageToFactory,
   convertWasteToGeneratorFuel,
   showByProductChip,
-  showImportedChip, showInternalChip,
-  showProductChip, showRawChip,
+  showExportedChip,
+  showExtractedChip, showImportedChip,
+  showInternalChip,
+  showManuallyGatheredChip,
+  showProductChip,
   showRecycledChip,
   showSatisfactionItemButton,
   showUnpackagedChip,
@@ -18,6 +22,7 @@ import { addInputToFactory, getAllInputs, getInput } from '@/utils/factory-manag
 import { create338Scenario } from '@/utils/factory-setups/338-satisfaction-chips'
 import { create243Scenario } from '@/utils/factory-setups/243-water-recycling'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { getFactoryStatuses } from '@/utils/factory-management/status'
 
 describe('satisfaction', () => {
   let factories: Factory[]
@@ -50,7 +55,9 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addProduct')).toBe(false)
+        // Reversed by design: an unmet raw part is a shortage like any other now, and
+        // "+ Product" is how you mine it here.
+        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addProduct')).toBe(true)
       })
       it('should NOT show for a part that is satisfied', () => {
         // Add import to satisfy the part
@@ -71,8 +78,26 @@ describe('satisfaction', () => {
         // SteelPlateReinforced is now satisfied
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addProduct')).toBe(false)
       })
-      it('should NOT show for a part that is already a byproduct within the factory', () => {
-        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'addProduct')).toBe(false)
+      // #545: being a byproduct of something else is no reason to refuse making it on purpose.
+      // Heavy Oil Residue falls out of Plastic here, and Alt: Heavy Oil Residue makes it outright.
+      it('should show for a byproduct within the factory that the game can also make outright', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'addProduct')).toBe(true)
+      })
+      it('should NOT show for a byproduct within the factory that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'addProduct')).toBe(false)
+      })
+      it('should NOT show for a part that is already a product within the factory', () => {
+        addProductToFactory(mockFactory, {
+          id: 'SteelPlate',
+          amount: 1,
+          recipe: 'SteelPlate',
+        })
+        calculateFactories(factories, gameData)
+
+        expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addProduct')).toBe(false)
       })
     })
 
@@ -91,8 +116,23 @@ describe('satisfaction', () => {
     })
 
     describe('correctManually', () => {
-      it('should show for a part that is already a byproduct within the factory', () => {
-        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'correctManually')).toBe(true)
+      // #545: the button is the dead end, so it is only for parts nothing can make on purpose.
+      it('should show for a byproduct within the factory that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'correctManually')).toBe(true)
+      })
+      it('should NOT show for a byproduct within the factory that the game can also make outright', () => {
+        expect(showSatisfactionItemButton(mockFactory, 'HeavyOilResidue', 'correctManually')).toBe(false)
+      })
+      it('should NOT show for a byproduct-only part that is satisfied', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        // Halve the consumer so the byproduct covers it.
+        byProductOnly[0].products[1].amount = 135
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'correctManually')).toBe(false)
       })
       it('should NOT show for a product already in the factory', () => {
         addProductToFactory(mockFactory, {
@@ -104,6 +144,61 @@ describe('satisfaction', () => {
       })
       it('should NOT show for a part that can be added as a product directly', () => {
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'correctManually')).toBe(false)
+      })
+    })
+
+    // #545: Phase 5 Intermediates. Dark Matter Residue arrives as a byproduct of the Quantum
+    // Encoder recipes and is burnt by Dark Matter Crystal faster than they supply it, so the
+    // factory is short of a part it is already producing on the side - and which a Converter can
+    // make outright. The planner offered "Correct Manually" and "Add to factory" (another
+    // factory), but no way to make up the shortfall where it was needed.
+    describe('#545: a byproduct the game can also make outright', () => {
+      let darkMatterFac: Factory
+      let darkMatterFactories: Factory[]
+
+      beforeEach(() => {
+        darkMatterFac = newFactory('Phase 5 Intermediates')
+        darkMatterFactories = [darkMatterFac]
+
+        // Produces 125/min Dark Matter Residue as a byproduct...
+        addProductToFactory(darkMatterFac, {
+          id: 'QuantumOscillator',
+          amount: 5,
+          recipe: 'SuperpositionOscillator',
+        })
+        // ...and consumes 250/min of it.
+        addProductToFactory(darkMatterFac, {
+          id: 'DarkMatter',
+          amount: 50,
+          recipe: 'DarkMatter',
+        })
+        calculateFactories(darkMatterFactories, gameData)
+      })
+
+      it('is short of the byproduct', () => {
+        expect(darkMatterFac.parts.DarkEnergy.satisfied).toBe(false)
+        expect(darkMatterFac.byProducts.find(byProduct => byProduct.id === 'DarkEnergy')).toBeDefined()
+      })
+
+      it('offers "+ Product" so the shortfall can be made in this factory', () => {
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'addProduct')).toBe(true)
+      })
+
+      it('does NOT tell the user to correct it manually', () => {
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'correctManually')).toBe(false)
+      })
+
+      it('offers "Fix Product" instead of "+ Product" once it is also a product', () => {
+        addProductToFactory(darkMatterFac, {
+          id: 'DarkEnergy',
+          amount: 1,
+          recipe: 'DarkEnergy',
+        })
+        calculateFactories(darkMatterFactories, gameData)
+
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'addProduct')).toBe(false)
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'fixProduct')).toBe(true)
+        expect(showSatisfactionItemButton(darkMatterFac, 'DarkEnergy', 'correctManually')).toBe(false)
       })
     })
 
@@ -316,6 +411,13 @@ describe('satisfaction', () => {
       it('should show for a part that is not satisfied', () => {
         expect(showSatisfactionItemButton(mockFactory, 'SteelPlate', 'addToFactory')).toBe(true)
       })
+      // #545: another factory can only make what some factory could make.
+      it('should NOT show for a part that nothing can make outright', () => {
+        const byProductOnly = create545Scenario().getFactories()
+        calculateFactories(byProductOnly, gameData)
+
+        expect(showSatisfactionItemButton(byProductOnly[0], 'DissolvedSilica', 'addToFactory')).toBe(false)
+      })
       it('should NOT show for a part that is raw', () => {
         addProductToFactory(mockFactory, {
           id: 'IronIngot',
@@ -324,7 +426,9 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addToFactory')).toBe(false)
+        // Reversed by design: importing ore from a mine factory is exactly what should be
+        // offered now that nothing supplies it for free.
+        expect(showSatisfactionItemButton(mockFactory, 'OreIron', 'addToFactory')).toBe(true)
       })
       it('should NOT show for a part that is satisfied', () => {
         const steelFac = newFactory('Steel 2')
@@ -364,7 +468,7 @@ describe('satisfaction', () => {
       const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
       expect(shortage).toBeGreaterThan(0)
 
-      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate', Math.abs(mockFactory.parts.SteelPlate.amountRemaining))
       calculateFactories(factories, gameData)
 
       expect(targetFactory.products.length).toBe(1)
@@ -392,7 +496,7 @@ describe('satisfaction', () => {
       const shortage = Math.abs(mockFactory.parts.SteelPlate.amountRemaining)
       expect(shortage).toBeGreaterThan(0)
 
-      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate')
+      addShortageToFactory(mockFactory, targetFactory, 'SteelPlate', 'SteelPlate', Math.abs(mockFactory.parts.SteelPlate.amountRemaining))
       calculateFactories(factories, gameData)
 
       expect(targetFactory.products.length).toBe(1)
@@ -482,28 +586,116 @@ describe('satisfaction', () => {
       })
     })
 
-    describe('showRawChip', () => {
-      it('should show for a raw part', () => {
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(true)
+    describe('showExportedChip', () => {
+      it('should show on the factory another factory imports from', () => {
+        // The Steel factory supplies mockFactory's SteelPlate import
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(true)
       })
-      it('should NOT show for a product only', () => {
-        expect(showRawChip(mockFactory, 'Plastic')).toBe(false)
+      it('should NOT show on the importing side of the same link', () => {
+        expect(showExportedChip(mockFactory, 'SteelPlate')).toBe(false)
       })
-      it('should NOT show for a byproduct only', () => {
-        expect(showRawChip(mockFactory, 'PolymerResin')).toBe(false)
+      it('should NOT show for a product nobody has asked for', () => {
+        expect(showExportedChip(mockFactory, 'Plastic')).toBe(false)
       })
-      it('should NOT show for an imported part', () => {
-        expect(showRawChip(mockFactory, 'SteelPlate')).toBe(false)
+      it('should stop showing once the import is removed', () => {
+        mockFactory.inputs = []
+        calculateFactories(factories, gameData)
+        expect(showExportedChip(factories[1], 'SteelPlate')).toBe(false)
       })
-      // #431: unpackaging supplies the raw part, so there is no genuine raw import
-      it('should NOT show for a raw part fully supplied by unpackaging', () => {
+    })
+
+    describe('showManuallyGatheredChip', () => {
+      // Mycelia has no extractor in the game — you walk up to it and press E — so the planner
+      // takes it as gathered by hand rather than reporting a shortage nobody could act on.
+      // Fabric needs Mycelia (hand-gathered), the ingots need Iron Ore (mineable). One factory
+      // wanting both is the clearest statement of where the line now sits.
+      const mixedFactory = () => {
+        const factory = newFactory('Mixed', 9, 9)
+        addProductToFactory(factory, { id: 'Fabric', amount: 30, recipe: 'Fabric' })
+        addProductToFactory(factory, { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+        calculateFactories([factory], gameData)
+        return factory
+      }
+
+      it('should show for a raw part the game gives no extractor for', () => {
+        const factory = mixedFactory()
+        expect(factory.parts.Mycelia.amountSuppliedViaRaw).toBeGreaterThan(0)
+        expect(showManuallyGatheredChip(factory, 'Mycelia')).toBe(true)
+        expect(factory.parts.Mycelia.satisfied).toBe(true)
+      })
+      // Iron Ore is mineable, so it is a shortage rather than something handed over.
+      it('should NOT show for a raw part that can be extracted', () => {
+        const factory = mixedFactory()
+        expect(factory.parts.OreIron.amountSuppliedViaRaw).toBe(0)
+        expect(showManuallyGatheredChip(factory, 'OreIron')).toBe(false)
+        expect(factory.parts.OreIron.satisfied).toBe(false)
+      })
+      it('should NOT show for a product', () => {
+        expect(showManuallyGatheredChip(mockFactory, 'Plastic')).toBe(false)
+      })
+      it('should NOT show for an extractable raw part left short', () => {
+        expect(showManuallyGatheredChip(mockFactory, 'LiquidOil')).toBe(false)
+      })
+    })
+
+    describe('showExtractedChip', () => {
+      it('should show for a raw part the factory mines itself', () => {
+        const mine = newFactory('Copper Mine', 9, 9)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(showExtractedChip(mine, 'OreCopper')).toBe(true)
+      })
+      // Unpackaging supplies the raw part, but it is not extraction. #431
+      it('should NOT show for a raw part supplied by unpackaging', () => {
         addUnpackagedOilToCoverDemand(mockFactory)
         calculateFactories(factories, gameData)
 
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(false)
+        expect(showExtractedChip(mockFactory, 'LiquidOil')).toBe(false)
       })
-      it('should show for a raw part only partially supplied by unpackaging', () => {
-        // Cover only part of the crude oil demand, the rest still comes from raw supply
+      it('should NOT show for an ordinary product', () => {
+        expect(showExtractedChip(mockFactory, 'Plastic')).toBe(false)
+      })
+    })
+
+    // A raw shortage is an ordinary shortage: no chip of its own any more, so these assert the
+    // satisfied flag the shortage status reads, and one case pins the status itself.
+    describe('raw shortages', () => {
+      const isShort = (factory: Factory, partId: string) => !factory.parts[partId].satisfied
+
+      it('should be short of a raw part the factory neither extracts nor imports', () => {
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(true)
+        expect(getFactoryStatuses(mockFactory)).toContainEqual(expect.objectContaining({
+          type: 'partShortage',
+          subjects: expect.arrayContaining([{ id: 'LiquidOil', type: 'item' }]),
+        }))
+      })
+      it('should NOT be short once the factory extracts it', () => {
+        const mine = newFactory('Copper Mine', 9, 9)
+        addProductToFactory(mine, {
+          id: 'OreCopper',
+          amount: 120,
+          recipe: 'Extract_OreCopper',
+        })
+        calculateFactories([mine], gameData)
+
+        expect(isShort(mine, 'OreCopper')).toBe(false)
+      })
+      // #431: unpackaging covers the demand, so there is nothing short.
+      it('should NOT be short of a raw part fully supplied by unpackaging', () => {
+        addUnpackagedOilToCoverDemand(mockFactory)
+        calculateFactories(factories, gameData)
+
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(false)
+      })
+      // The bug this whole change exists to kill: mining or unpackaging SOME of a raw part
+      // used to read as fully satisfied, because the chip that would have said otherwise was
+      // suppressed by the one saying "extracted".
+      it('should be short of a raw part only partially supplied', () => {
         addProductToFactory(mockFactory, {
           id: 'LiquidOil',
           amount: 30,
@@ -511,8 +703,7 @@ describe('satisfaction', () => {
         })
         calculateFactories(factories, gameData)
 
-        expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBeGreaterThan(0)
-        expect(showRawChip(mockFactory, 'LiquidOil')).toBe(true)
+        expect(isShort(mockFactory, 'LiquidOil')).toBe(true)
       })
     })
 

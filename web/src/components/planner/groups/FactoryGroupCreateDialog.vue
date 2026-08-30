@@ -1,69 +1,62 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="460">
-    <v-card>
-      <v-card-title class="text-h6 py-4">New group</v-card-title>
-      <v-divider />
-      <v-card-text>
-        <!-- Colour first, beside the name: picking one is the fast path, and having it inline
-             means a group is never created uncoloured and then fixed up afterwards. -->
-        <div class="d-flex align-center ga-3">
-          <div class="colour-column">
-            <div class="swatch-grid">
-              <button
-                v-for="entry in groupPalette"
-                :key="entry.value"
-                class="swatch"
-                :class="{ selected: entry.value === color }"
-                :style="{ backgroundColor: entry.value }"
-                :title="entry.name"
-                type="button"
-                @click="color = entry.value"
-              />
-              <button
-                class="swatch custom-trigger"
-                :class="{ selected: custom }"
-                title="Custom colour"
-                type="button"
-                @click="custom = !custom"
-              >
-                <i class="fas fa-plus" />
-              </button>
-            </div>
-          </div>
+  <app-dialog v-model="isOpen" icon="fas fa-folder-plus" max-width="460" title="New group">
+    <!-- Colour first, beside the name: picking one is the fast path, and having it inline
+         means a group is never created uncoloured and then fixed up afterwards. -->
+    <div class="d-flex align-center ga-3">
+      <div class="colour-column">
+        <div class="swatch-grid">
+          <button
+            v-for="entry in groupPalette"
+            :key="entry.value"
+            class="swatch"
+            :class="{ selected: entry.value === color }"
+            :style="{ backgroundColor: entry.value }"
+            :title="entry.name"
+            type="button"
+            @click="color = entry.value"
+          />
+          <button
+            class="swatch custom-trigger"
+            :class="{ selected: custom }"
+            title="Custom colour"
+            type="button"
+            @click="custom = !custom"
+          >
+            <i class="fas fa-plus" />
+          </button>
         </div>
+      </div>
+    </div>
 
-        <v-color-picker
-          v-if="custom"
-          v-model="color"
-          class="mt-3"
-          hide-inputs
-          mode="hex"
-          :modes="['hex']"
-        />
+    <v-color-picker
+      v-if="custom"
+      v-model="color"
+      class="mt-3"
+      hide-inputs
+      mode="hex"
+      :modes="['hex']"
+    />
 
-        <v-text-field
-          ref="nameField"
-          v-model="name"
-          autofocus
-          class="mt-4"
-          hide-details
-          label="Group name"
-          variant="outlined"
-          @keyup.enter="submit"
-        />
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <div class="preview ml-2" :style="previewStyle">
-          <span class="preview-spine" />
-          <span class="ml-2">{{ name || 'New group' }}</span>
-        </div>
-        <v-spacer />
-        <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
-        <v-btn color="primary" variant="flat" @click="submit">Create</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <v-text-field
+      ref="nameField"
+      v-model="name"
+      autofocus
+      class="mt-4"
+      hide-details
+      label="Group name"
+      variant="outlined"
+      @keyup.enter="submit"
+    />
+    <template #actions>
+      <div class="preview ml-2" :style="previewStyle">
+        <span class="preview-spine" />
+        <span class="ml-2">{{ name || 'New group' }}</span>
+      </div>
+      <v-spacer />
+      <v-btn variant="text" @click="isOpen = false">Cancel</v-btn>
+      <v-btn color="primary" variant="flat" @click="submit">Create</v-btn>
+    </template>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">

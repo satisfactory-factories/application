@@ -4,8 +4,62 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { getHandGatheredParts, isAmountSatisfied } from '@/utils/factory-management/parts'
 
 describe('parts', () => {
+  // The one place the assumption still lives, and it is decided by the game data rather than by
+  // a setting. Pinned exactly: game data is versioned and regenerated, and without this a new
+  // recipe could silently turn a hand-gathered resource into a mandatory planned input, or turn
+  // a mineable one into something the planner quietly supplies for free.
+  //
+  // Wells count as extractors here. Nitrogen Gas is well-only, and classing it hand-gathered
+  // would erase every Nitrogen shortage in every plan.
+  describe('hand-gathered resources', () => {
+    it('is exactly the resources the game gives no extractor for', () => {
+      expect([...getHandGatheredParts(gameData)].sort()).toEqual([
+        'Crystal',
+        'Crystal_mk2',
+        'Crystal_mk3',
+        'Gift',
+        'HatcherParts',
+        'HogParts',
+        'Leaves',
+        'Mycelia',
+        'SpitterParts',
+        'StingerParts',
+        'Wood',
+      ])
+    })
+
+    it('does not class a well-only resource as hand-gathered', () => {
+      expect(getHandGatheredParts(gameData).has('NitrogenGas')).toBe(false)
+    })
+
+    it('memoises per game data object rather than once for the process', () => {
+      const other = { ...gameData, items: { ...gameData.items, rawResources: {} } }
+      expect(getHandGatheredParts(gameData).size).toBe(11)
+      expect(getHandGatheredParts(other).size).toBe(0)
+      expect(getHandGatheredParts(gameData).size).toBe(11)
+    })
+
+    // https://github.com/satisfactory-factories/application/issues/594 — a hand-gathered part's
+    // whole demand is taken as supplied above, so it must never also land in factory.rawResources:
+    // that map drives the "Raw Resources" card, which reads as a hard shortage ("Add an extractor
+    // ... or import them") that nobody can act on for something the game gives no extractor for.
+    it('takes a hand-gathered ingredient as supplied and keeps it off the raw resources list', () => {
+      const factory = newFactory('Protein')
+      // Protein_Hog: 1 Hog Remains (HogParts, hand-gathered) -> Alien Protein.
+      addProductToFactory(factory, { id: 'AlienProtein', amount: 10, recipe: 'Protein_Hog' })
+      calculateFactories([factory], gameData)
+
+      expect(factory.parts.HogParts.isRaw).toBe(true)
+      expect(factory.parts.HogParts.amountSuppliedViaRaw).toBeGreaterThan(0)
+      expect(factory.parts.HogParts.amountRemaining).toBe(0)
+      expect(factory.parts.HogParts.satisfied).toBe(true)
+      expect(factory.rawResources.HogParts).toBeUndefined()
+    })
+  })
+
   describe('calculateParts', () => {
     let mockFactory: Factory
 
@@ -58,10 +112,13 @@ describe('parts', () => {
       calculateFactories([mockFactory], gameData)
 
       // Expect that all parts involved with creating Alumina have been added, including water.
+      // Water has an extractor, so nothing supplies it for free — it is a shortage until the
+      // factory pumps it or imports it.
       expect(mockFactory.parts.Water.amountRequired).toBe(150)
-      expect(mockFactory.parts.Water.amountSupplied).toBe(150)
-      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(150)
-      expect(mockFactory.parts.Water.amountRemaining).toBe(0)
+      expect(mockFactory.parts.Water.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.Water.amountSupplied).toBe(0)
+      expect(mockFactory.parts.Water.amountRemaining).toBe(-150)
+      expect(mockFactory.parts.Water.satisfied).toBe(false)
     })
 
     it('should calculate metrics properly when a product is used by another product', () => {
@@ -174,13 +231,15 @@ describe('parts', () => {
 
       expect(mockFactory.parts.LiquidOil.amountRequired).toBe(60)
       expect(mockFactory.parts.LiquidOil.amountSuppliedViaProduction).toBe(30)
-      // Only the shortfall is assumed to be supplied raw
-      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(30)
-      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(60)
-      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(0)
-      expect(mockFactory.parts.LiquidOil.satisfied).toBe(true)
+      // The half unpackaging doesn't cover is a real shortfall now. This is the exact shape of
+      // the bug that killed the assumption: partially covering a raw part used to read as
+      // fully satisfied, with the assumed remainder invisible.
+      expect(mockFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(mockFactory.parts.LiquidOil.amountSupplied).toBe(30)
+      expect(mockFactory.parts.LiquidOil.amountRemaining).toBe(-30)
+      expect(mockFactory.parts.LiquidOil.satisfied).toBe(false)
 
-      // The raw resources list should only show the shortfall
+      // The raw resources list still shows what the world would have to provide
       expect(mockFactory.rawResources.LiquidOil.amount).toBe(30)
     })
 
@@ -220,8 +279,10 @@ describe('parts', () => {
 
       calculateFactories([packagerFactory, consumerFactory], gameData)
 
-      // The packager genuinely draws raw crude oil from the world
-      expect(packagerFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(300)
+      // The packager needs raw crude oil it doesn't extract, so it is short of it — the world
+      // no longer hands it over.
+      expect(packagerFactory.parts.LiquidOil.amountSuppliedViaRaw).toBe(0)
+      expect(packagerFactory.parts.LiquidOil.satisfied).toBe(false)
       expect(packagerFactory.rawResources.LiquidOil.amount).toBe(300)
 
       // The consumer's crude oil demand is fully met by unpackaging - no raw import, no surplus
@@ -269,5 +330,69 @@ describe('parts', () => {
     calculateFactories([mockFactory], gameData)
 
     expect(mockFactory.parts['']).toBeUndefined()
+  })
+})
+
+// A group solved against a target expresses its clock in the four decimal places the game allows,
+// so on a large line it lands a hair under and stays there. Before this, a sweep of 10,000/min
+// on-site mines came out falsely red 33 times in 101 with nothing the user could do about it.
+describe('satisfaction tolerance', () => {
+  it('ignores a shortfall the clock could not have corrected', () => {
+    expect(isAmountSatisfied(-0.009, 10000)).toBe(true)
+    expect(isAmountSatisfied(-0.0009, 100)).toBe(true)
+  })
+
+  it('still reports a shortage worth acting on', () => {
+    expect(isAmountSatisfied(-1, 10000)).toBe(false)
+    expect(isAmountSatisfied(-0.5, 100)).toBe(false)
+    expect(isAmountSatisfied(-100, 100)).toBe(false)
+    // Just outside the tolerance at each scale.
+    expect(isAmountSatisfied(-0.02, 10000)).toBe(false)
+    expect(isAmountSatisfied(-0.002, 100)).toBe(false)
+  })
+
+  // Quantities are stored to three decimal places, so a shortfall of EXACTLY the 0.001 floor is
+  // ordinary. Whether `supplied - required` lands a hair above or below it is decided by the
+  // magnitudes involved rather than by anything the user did: 100 - 99.999 comes out as
+  // -0.0010000000000047748 while 10 - 9.999 comes out as -0.0009999999999994458. Without slack on
+  // the comparison, three of these nine went red for a gap the tolerance exists to forgive, and
+  // the user could not close it - three decimal places is the finest quantity the planner stores.
+  it.each([10, 50, 100, 123, 200, 600, 1000, 5000, 10000])(
+    'forgives a shortfall of exactly one thousandth at %i/min', required => {
+      expect(isAmountSatisfied((required - 0.001) - required, required)).toBe(true)
+    }
+  )
+
+  // The same figure on the export side, which reads through the same function.
+  it('does not let float noise decide the boundary either way', () => {
+    expect(isAmountSatisfied(-0.001, 100)).toBe(true)
+    expect(isAmountSatisfied(-0.0011, 100)).toBe(false)
+  })
+
+  it('leaves a surplus and an exact match satisfied', () => {
+    expect(isAmountSatisfied(0, 100)).toBe(true)
+    expect(isAmountSatisfied(50, 100)).toBe(true)
+  })
+
+  it('does not mask a shortage when nothing is required', () => {
+    expect(isAmountSatisfied(-5, 0)).toBe(false)
+  })
+
+  // The end-to-end case: a factory mining exactly what it smelts, at a scale where the drift bites.
+  it('does not turn a self-sufficient mine red at scale', () => {
+    const factory = newFactory('Mine and Smelt')
+    addProductToFactory(factory, { id: 'IronIngot', amount: 10062.5, recipe: 'IngotIron' })
+    addProductToFactory(factory, { id: 'OreIron', amount: 10062.5, recipe: 'Extract_OreIron' })
+    Object.assign(factory.products[1].buildingGroups[0], { extractorBuilding: 'minermk3', purity: 'pure' })
+    factory.products[1].buildingGroupItemSync = true
+
+    const plan = [factory]
+    calculateFactories(plan, gameData)
+    factory.products[1].amount = factory.parts.OreIron.amountRequired
+    calculateFactories(plan, gameData)
+    calculateFactories(plan, gameData, { origin: 'buildingGroup' })
+
+    expect(factory.parts.OreIron.satisfied).toBe(true)
+    expect(factory.hasProblem).toBe(false)
   })
 })

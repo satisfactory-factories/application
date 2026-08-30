@@ -10,12 +10,26 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Utilities
 import { configDefaults, coverageConfigDefaults, defineConfig } from 'vitest/config'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 // e2e/ is Playwright's, and it must stay out of Vitest entirely: its files import
 // @playwright/test, which cannot run under jsdom. The *.e2e.ts naming already
 // misses Vitest's include, so these two are belt and braces.
 const PLAYWRIGHT_FILES = ['e2e/**', 'playwright.config.ts']
+
+// The repo root package.json is the single version for everything here, and it is what the
+// backend's client gate compares against. Read at config time so a build can never ship a
+// version that disagrees with the release it came from — and so a missing root manifest fails
+// the build rather than silently stamping a placeholder.
+//
+// Handed over as a VITE_ variable rather than a `define`: Vite only applies `define` to the
+// client environment, so under Vitest the constant would be undefined and every spec touching
+// the config would die on it. import.meta.env works in dev, in the build and in tests, which is
+// the same route VITE_ENV already takes.
+process.env.VITE_APP_VERSION = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
+).version
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -111,6 +125,13 @@ export default defineConfig(() => ({
       exclude: [...coverageConfigDefaults.exclude, ...PLAYWRIGHT_FILES],
     },
     css: true,
+    // The suite waits out roughly 135 seconds of real debounce timers across its component specs,
+    // and a jsdom + Vuetify mount on top of that does not fit in Vitest's 5s default once the
+    // files are running in parallel. Tests were failing on the timeout rather than on an
+    // assertion, on a different handful each run — worst seen was a 384ms test taking 15.6s.
+    // CI runs on 4 vCPUs, so it is permanently in the contended state this only reaches under load.
+    testTimeout: 20000,
+    hookTimeout: 30000,
     server: {
       deps: {
         inline: ['vuetify'],

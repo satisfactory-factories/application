@@ -8,6 +8,7 @@
     class="game-asset-content"
     :data-hover-link="wiki ? '' : undefined"
     :data-hover-tooltip="title"
+    :data-hover-tooltip-note="note || undefined"
   >
     <v-img
       v-if="!ficsmas && !unknown"
@@ -27,6 +28,7 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { getCustomBuildingData, getCustomBuildingIcon } from '@/utils/factory-management/custom-buildings'
 
   // Props
   const props = defineProps<{
@@ -35,6 +37,8 @@
     width?: string | number | undefined
     type: 'building' | 'item' | 'item_id' | 'vehicle'
     title?: string
+    // A second tooltip line, for a caller with something to add beyond the name.
+    note?: string
     // Marks the image as a wiki link, so the tooltip can say so on its own line.
     wiki?: boolean
   }>()
@@ -82,6 +86,17 @@
       return ''
     }
     if (type === 'building') {
+      // Custom buildings (portals, stations, lights) have no building image — see
+      // getCustomBuildingIcon. The few with no icon at all fall back to the same glyph an
+      // unknown item gets, rather than requesting a file that isn't there.
+      if (getCustomBuildingData(subject, gameData)) {
+        const customIcon = getCustomBuildingIcon(subject)
+        if (!customIcon) {
+          unknown.value = true
+          return ''
+        }
+        return getImageUrl(customIcon, 'item', size)
+      }
       return getImageUrl(subject, 'building', size)
     } else if (type === 'item_id') {
       return getImageUrl(subject, 'item', size)

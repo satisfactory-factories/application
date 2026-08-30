@@ -1,0 +1,191 @@
+name: "Release: Publish"
+
+# Publishes a GitHub release whose body is that version's section of the in-app
+# Change Log, converted to markdown.
+#
+# The source is web/src/pages/changelog.vue — the page players actually read —
+# not CHANGELOG.md. Both describe the same updates, but at very different
+# altitudes: CHANGELOG.md is the exhaustive technical record and reads as noise
+# to someone who only wants to know what is new, while the in-app page is the
+# written-for-players version, with screenshots and a 🆕 / 👍 / 🔧 key. This
+# workflow does no writing of its own: pick a version, and that release's
+# entry becomes the release body.
+#
+# Deploys are trunk-based (docs/how-do-we-release.md) — merging to main is what
+# ships the app — so a release here is a record of what shipped, not the act of
+# shipping it. That is also why this is dispatch-only: releases are cut when
+# someone decides an update is done, not on every push to main.
+#
+# The notes always come from the Change Log on the branch this workflow runs
+# from, while the tag is pinned to `sha`. That split is deliberate: it is what
+# lets a past update be released retroactively, using an entry written today
+# against a commit from months ago.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 0.6.0. Becomes the tag, and its major.minor picks the Change Log release.'
+        required: true
+        type: string
+      sha:
+        description: 'Commit to pin the release to. Leave blank for the current head of main.'
+        required: false
+        type: string
+      draft:
+        description: 'Publish as a draft, so the notes can be read before anyone else sees them.'
+        type: boolean
+        default: false
+      # Alpha and Beta are this project's maturity branding, not a statement
+      # that a build was never shipped: every one of them went out to
+      # satisfactory-factories.app. GitHub's pre-release flag means "not ready
+      # for general use", so it is off unless a release genuinely is.
+      prerelease:
+        description: 'Mark as a pre-release — a build not meant for general use. Off for anything that actually shipped.'
+        type: boolean
+        default: false
+      overwrite:
+        description: 'Rewrite the notes on a release that already exists for this tag, instead of failing.'
+        type: boolean
+        default: false
+
+# Creating a release and its tag is a write to the repository.
+permissions:
+  contents: write
+
+# Two releases at once would race on tag creation, and a re-run started before
+# the first finished would be the likeliest way to cause it.
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Full history: the sha check below has to be able to see a commit from any
+      # point in the repo's life, not just the last shallow slice of main.
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # Every input reaches bash through env rather than ${{ }} interpolation, so
+      # nothing a dispatcher types is ever expanded into the script itself.
+      - name: Check the version is a tag we would want
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::\"$VERSION\" is not a version. Give it as x.y.z with no leading v — the existing tags are 0.2.1 and 0.3.0, and the tag is taken from this verbatim."
+            exit 1
+          fi
+
+      # A release pinned to a commit that never reached main would describe an
+      # update nobody was ever served, so both facts are checked before anything
+      # is written.
+      - name: Resolve the commit to pin the release to
+        id: target
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$INPUT_SHA" ]]; then
+            sha="$(git rev-parse origin/main)"
+            echo "No sha given; using the current head of main: $sha"
+          else
+            if ! git cat-file -e "${INPUT_SHA}^{commit}" 2>/dev/null; then
+              echo "::error::$INPUT_SHA is not a commit in this repository."
+              exit 1
+            fi
+            sha="$(git rev-parse "${INPUT_SHA}^{commit}")"
+            if ! git merge-base --is-ancestor "$sha" origin/main; then
+              echo "::error::$sha is not on main. A release has to point at something that actually shipped."
+              exit 1
+            fi
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "subject=$(git log -1 --format=%s "$sha")" >> "$GITHUB_OUTPUT"
+
+      - name: Convert the Change Log entry into release notes
+        id: notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          meta="$(node .github/scripts/changelog-release-notes.mjs \
+            --version "$VERSION" \
+            --out "$RUNNER_TEMP/release-notes.md")"
+          echo "$meta"
+          echo "title=$(jq -r .title <<<"$meta")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          TITLE: ${{ steps.notes.outputs.title }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          OVERWRITE: ${{ inputs.overwrite }}
+        run: |
+          set -euo pipefail
+
+          notes="$RUNNER_TEMP/release-notes.md"
+
+          if gh release view "$VERSION" --json id >/dev/null 2>&1; then
+            if [[ "$OVERWRITE" != "true" ]]; then
+              echo "::error::A release already exists for $VERSION. Re-run with overwrite to rewrite its notes."
+              exit 1
+            fi
+            # A published release's tag already exists and cannot be re-pointed.
+            # A draft's has not been created yet — it is cut when the draft is
+            # published — so sha still applies there, and saying otherwise would
+            # strand a draft on whatever commit its first run happened to pick.
+            edit=(--title "$TITLE" --notes-file "$notes" --draft="$DRAFT" --prerelease="$PRERELEASE")
+            if [[ "$(gh release view "$VERSION" --json isDraft --jq .isDraft)" == "true" ]]; then
+              edit+=(--target "$TARGET_SHA")
+              echo "::notice::Rewriting the existing $VERSION draft, pinned to $TARGET_SHA. Its tag is cut when the draft is published."
+            else
+              echo "::notice::Rewriting the existing $VERSION release. Its tag keeps pointing where it already did; sha is ignored once a release is published."
+            fi
+            gh release edit "$VERSION" "${edit[@]}"
+          else
+            args=(--target "$TARGET_SHA" --title "$TITLE" --notes-file "$notes")
+            if [[ "$DRAFT" == "true" ]]; then args+=(--draft); fi
+            if [[ "$PRERELEASE" == "true" ]]; then args+=(--prerelease); fi
+            gh release create "$VERSION" "${args[@]}"
+          fi
+
+          echo "url=$(gh release view "$VERSION" --json url --jq .url)" >> "$GITHUB_OUTPUT"
+
+      - name: Summarise what was published
+        env:
+          VERSION: ${{ inputs.version }}
+          TITLE: ${{ steps.notes.outputs.title }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          SUBJECT: ${{ steps.target.outputs.subject }}
+          URL: ${{ steps.publish.outputs.url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## $TITLE"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Release | [$VERSION]($URL) |"
+            echo "| Tag | \`$VERSION\` |"
+            echo "| Commit | \`${TARGET_SHA:0:8}\` — $SUBJECT |"
+            echo
+            echo "Notes taken from the \`$TITLE\` entry of the in-app Change Log."
+          } >> "$GITHUB_STEP_SUMMARY"

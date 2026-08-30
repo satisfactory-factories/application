@@ -1,9 +1,10 @@
 // Check for invalid factory data e.g. inputs without factories etc
 import { calculateFactory, findFac, generateFactoryId } from '@/utils/factory-management/factory'
-import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryInput, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
 import { StructuralRepair } from '@/utils/factory-management/repair'
+import { cleanDisposalCount } from '@/utils/factory-management/disposal'
 import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
 
 const repair = (factory: Factory, summary: string): StructuralRepair => {
@@ -31,6 +32,64 @@ export const repairDuplicateFactoryIds = (factories: Factory[]): StructuralRepai
     factory.id = generateFactoryId(factories)
     seen.add(factory.id)
     repairs.push(repair(factory, `Shared an internal ID with another factory, which mixes up their imports and exports. It has been given an ID of its own; check its imports still point where you expect.`))
+  })
+
+  return repairs
+}
+
+/**
+ * Brings a loaded plan's disposal map back to what the setters would have written.
+ *
+ * The setters sanitise, so nothing this app writes can be malformed — but they are not the only
+ * way in. A share link is another player's JSON, and a hand-edited or truncated one can carry a
+ * null record (which throws the moment the power total walks the map), a negative count (which
+ * subtracts megawatts from the grid), or a string (which turns the total into a concatenation).
+ *
+ * Unknown part IDs are deliberately left alone: the map is sticky by design, so a plan that has
+ * been reworked keeps counts for parts it no longer makes, and every reader already skips them.
+ */
+export const repairPartDisposal = (factories: Factory[]): StructuralRepair[] => {
+  const repairs: StructuralRepair[] = []
+
+  factories.forEach(factory => {
+    const disposal = factory.partDisposal
+    if (!disposal || typeof disposal !== 'object') {
+      // Not an object at all: nothing to salvage, and every reader assumes it can be indexed.
+      if (disposal !== undefined) {
+        delete factory.partDisposal
+        repairs.push(repair(factory, `Had unreadable sink and Depot settings, which have been cleared. Set them again on the items you were disposing of.`))
+      }
+      return
+    }
+
+    let damaged = false
+
+    Object.entries(disposal).forEach(([partId, record]) => {
+      if (!record || typeof record !== 'object') {
+        delete disposal[partId]
+        damaged = true
+        return
+      }
+
+      const sinks = cleanDisposalCount(record.sinks)
+      const depots = cleanDisposalCount(record.depots)
+
+      if (sinks !== record.sinks || depots !== record.depots) damaged = true
+
+      // Dropped rather than kept at zero, so a repaired plan saves the same as one that never
+      // had the counts — matching what clearing them in the UI does.
+      if (sinks === 0 && depots === 0) {
+        delete disposal[partId]
+        return
+      }
+
+      record.sinks = sinks
+      record.depots = depots
+    })
+
+    if (damaged) {
+      repairs.push(repair(factory, `Had sink or Depot counts that could not be read as whole numbers. They have been corrected; check the Storage column on its items.`))
+    }
   })
 
   return repairs
@@ -165,13 +224,22 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
 
 // Repairs everything wrong with a loaded plan that can be put right automatically, and
 // returns what it corrected so the user can be told. An empty list means the plan was clean.
-export const validateFactories = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
+export const validateFactories = (
+  factories: Factory[],
+  gameData: DataInterface,
+  // Carries the groups no factory is a member of. Without it the group repair renumbers only
+  // the populated groups, and every empty one moves position on load.
+  tab?: FactoryTab,
+): StructuralRepair[] => {
   const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
 
   // Both run before anything reads a factory by ID or pairs an input with a request.
   const repairs: StructuralRepair[] = [
     ...repairDuplicateFactoryIds(factories),
     ...mergeDuplicateInputs(factories, gameData),
+    // Before the power and Mercer Sphere totals walk the map, which is where a malformed record
+    // throws rather than merely reading wrong.
+    ...repairPartDisposal(factories),
   ]
 
   factories.forEach(factory => {
@@ -244,7 +312,7 @@ export const validateFactories = (factories: Factory[], gameData: DataInterface)
   // Converges disagreeing copies of a group record and re-establishes the group ordering
   // invariant. Silent by design: a group that has drifted is cosmetic, and nothing here can
   // lose a factory, so it does not deserve a line in the plan-repair dialog.
-  repairFactoryGroups(factories)
+  repairFactoryGroups(factories, tab)
 
   return repairs
 }

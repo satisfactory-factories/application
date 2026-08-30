@@ -1,10 +1,11 @@
 <template>
   <component
     :is="clickable ? 'button' : 'span'"
+    :aria-label="clickable ? titleText : undefined"
     class="factory-icon"
     :class="{ clickable }"
+    :data-hover-tooltip="titleText"
     :style="boxStyle"
-    :title="titleText"
     :type="clickable ? 'button' : undefined"
     @click="emit('click', $event)"
   >

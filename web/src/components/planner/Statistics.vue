@@ -3,8 +3,8 @@
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
-          <v-col class="text-h4 flex-grow-1" cols="8">
-            <i class="fas fa-chart-line" /><span class="ml-3">Statistics</span>
+          <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
+            <span class="stats-heading-icon"><i class="fas fa-chart-line" /></span>Statistics
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
@@ -78,39 +78,15 @@
           </tooltip>
         </v-card-text>
         <v-card-text v-if="!hidden" class="text-body-1">
-          <statistics-power :factories="factories" :help-text="helpText" />
+          <statistics-power :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-resources :factories="factories" :help-text="helpText" />
+          <statistics-resources :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-items-difference :factories="factories" :help-text="helpText" />
+          <statistics-items-difference :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-shards-sloops :factories="factories" :help-text="helpText" />
+          <statistics-shards-sloops :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-buildings :factories="factories" :help-text="helpText" />
-          <v-col class="text-center pb-0">
-            <v-btn
-              v-show="!hiddenProducts"
-              color="primary"
-              prepend-icon="fas fa-eye-slash"
-              variant="flat"
-              @click="toggleProductsVisibility"
-            >Hide all Products
-            </v-btn>
-            <v-btn
-              v-show="hiddenProducts"
-              color="primary"
-              prepend-icon="fas fa-eye"
-              variant="outlined"
-              @click="toggleProductsVisibility"
-            >Show all Products
-            </v-btn>
-          </v-col>
-
-          <!-- Produced Items Area -->
-          <div v-if="!hiddenProducts">
-            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-            <statistics-items :factories="factories" :help-text="helpText" />
-          </div>
+          <statistics-buildings :factories="factories" />
         </v-card-text>
       </v-card>
     </v-col>
@@ -129,7 +105,6 @@
 
   const props = defineProps<{
     factories: Factory[];
-    helpText: boolean;
   }>()
 
   // Power strip shown while the statistics are collapsed. Its balance chip mirrors
@@ -140,21 +115,16 @@
     ? totalPower.value.totalPowerProduced - powerTarget.value
     : totalPower.value.totalPowerDifference)
 
-  // Default to not showing the stats on first ever load
-  const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'false'
-  const statisticsProductsHidden = localStorage.getItem('statisticsProductsHidden') ?? 'false'
+  // Default to hidden on first ever load — a fresh visitor (or a demo plan) should land on the
+  // factory cards, not a wall of statistics.
+  const statisticsHidden = localStorage.getItem('statisticsHidden') ?? 'true'
 
   // Initialize the 'hidden' refs based on the value in localStorage.
-  // Compare against the string — Boolean('false') is true, which hid the section for fresh visitors.
   const hidden = ref<boolean>(statisticsHidden === 'true')
-  const hiddenProducts = ref<boolean>(statisticsProductsHidden === 'true')
 
   // Watch the 'hidden' ref and update localStorage whenever it changes
   watch(hidden, newValue => {
     localStorage.setItem('statisticsHidden', newValue.toString())
-  })
-  watch(hiddenProducts, newValue => {
-    localStorage.setItem('statisticsProductsHidden', newValue.toString())
   })
 
   // Function to toggle visibility
@@ -165,14 +135,11 @@
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless,
   // so reveal it before the scroll arrives.
   eventBus.on('openSection', sectionId => {
-    if (sectionId === 'statistics') {
+    // The Mercer Sphere block is inside this section, so a jump aimed at it has to unhide the
+    // whole card first or there is nothing on the page to scroll to.
+    if (sectionId === 'statistics' || sectionId === 'statistics-mercer-spheres') {
       hidden.value = false
     }
   })
-
-  // Function to toggle visibility
-  const toggleProductsVisibility = () => {
-    hiddenProducts.value = !hiddenProducts.value
-  }
 
 </script>

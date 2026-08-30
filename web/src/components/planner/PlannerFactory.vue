@@ -12,13 +12,12 @@
                 @click="iconDialogOpen = true"
               />
               <factory-group-tray :factory="factory" />
-              <!-- v-model still owns the write (it is what handles IME composition); the
-                   listener beside it only declares that the write was the user's. -->
               <input
-                v-model="factory.name"
+                v-model="draftName"
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
-                @input="renameFactory"
+                @blur="commitName"
+                @keyup.enter="acceptName"
               >
             </div>
             <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
@@ -28,27 +27,28 @@
                    excluded because the sync chip further down this same bar already says it,
                    with help text and a reset button the status chip cannot offer. -->
               <factory-status-chips
+                navigable
                 size="small"
                 :statuses="cardStatuses"
-                @navigate="section => navigateToFactory(factory.id, `${factory.id}-${section}`)"
+                @navigate="target => navigateToStatus(target)"
               />
               <!-- tasks chip -->
               <div v-if="countActiveTasks(factory)">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-tasks`)">
                   <i class="fas fa-tasks" />
                   <span class="ml-2">Tasks: {{ countActiveTasks(factory) }}</span>
                 </v-chip>
               </div>
               <!-- notes chip -->
               <div v-if="factory.notes">
-                <v-chip class="sf-chip small yellow no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
+                <v-chip class="sf-chip sf-chip-clickable small blue no-margin" @click="navigateToFactory(factory.id, `${factory.id}-notes`)">
                   <i class="fas fa-sticky-note" />
                   <span class="ml-2">See notes</span>
                 </v-chip>
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip small green no-margin" @click="markInSync(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="markInSync(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -64,7 +64,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip small orange no-margin" @click="markInSync(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="markInSync(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -80,10 +80,22 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="markInSync(factory)">
+                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="markInSync(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
+                </v-chip>
+              </div>
+              <!-- checklist progress chip -->
+              <div v-if="factory.checklistEnabled">
+                <v-chip
+                  class="sf-chip sf-chip-clickable small no-margin"
+                  :class="checklistChipClass(factory)"
+                  @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+                >
+                  <i class="fas fa-check" />
+                  <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+                  <span v-if="hasChecklistDesync(factory)" class="ml-2">(desynced)</span>
                 </v-chip>
               </div>
               <!-- power difference chip -->
@@ -92,7 +104,7 @@
                 :text="`Power difference: generates ${formatMw(factory.power?.produced ?? 0)}, consumes ${formatMw(factory.power?.consumed ?? 0)}`"
               >
                 <v-chip
-                  class="sf-chip small no-margin"
+                  class="sf-chip sf-chip-info small no-margin"
                   :class="factoryPowerDifference > 0 ? 'green' : 'consumption'"
                 >
                   <i class="fas fa-bolt" />
@@ -100,16 +112,29 @@
                   <span class="ml-2">{{ powerDiffDisplay }}</span>
                 </v-chip>
               </tooltip>
+              <!-- circuit boost chip. Its own chip because it is not this factory's power: an
+                   augmenter adds a percentage of the WHOLE plan's generation, so a factory
+                   generating nothing can still be why the plan's total is far above the sum of
+                   the generators you can see. -->
+              <tooltip
+                v-if="factoryBoost > 0"
+                :text="`Alien Power Augmenters here add ${formatMw(factoryBoost)} to the grid, ${boostPercentDisplay} of the plan's total generation. It is counted in the plan's power, not this factory's.`"
+              >
+                <v-chip class="sf-chip sf-chip-info small circuit-boost no-margin">
+                  <i class="fas fa-bolt" /><i class="fas fa-arrow-up" />
+                  <span class="ml-2">{{ formatMw(factoryBoost) }}</span>
+                </v-chip>
+              </tooltip>
               <!-- power shards chip -->
               <tooltip v-if="factoryPowerShards > 0" text="Power Shards needed by this factory">
-                <v-chip class="sf-chip small yellow no-margin">
+                <v-chip class="sf-chip sf-chip-info small yellow no-margin">
                   <game-asset height="18" subject="power-shard" type="item_id" width="18" />
                   <span class="ml-2">{{ factoryPowerShards }}</span>
                 </v-chip>
               </tooltip>
               <!-- somersloops chip -->
               <tooltip v-if="factorySomersloops > 0" text="Somersloops used by this factory">
-                <v-chip class="sf-chip small sloop no-margin">
+                <v-chip class="sf-chip sf-chip-info small sloop no-margin">
                   <game-asset height="18" subject="somersloop" type="item_id" width="18" />
                   <span class="ml-2">{{ factorySomersloops }}</span>
                 </v-chip>
@@ -175,27 +200,52 @@
               variant="outlined"
               @click="confirmDelete() && deleteFactory(factory)"
             />
+            <!-- Checklist toggle sits directly under the action buttons above, rather than in the
+                 chips bar on the left: it is a mode switch for the whole card, not a status. -->
+            <v-tooltip location="top" max-width="360">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex justify-end mt-2">
+                  <v-switch
+                    :id="`${factory.id}-checklist-toggle`"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    label="Checklist"
+                    :model-value="factory.checklistEnabled"
+                    @update:model-value="value => toggleChecklist(!!value)"
+                  />
+                </div>
+              </template>
+              <span>
+                Turn this on to get a checklist of everything this factory needs to build:
+                assemblers for each product, generators for power, a source for each import and
+                infrastructure for each export. Tick items off as you build them to track your own
+                progress. If a ticked item's numbers change later, it stays checked but is flagged
+                as desynced, so you can see exactly what changed.
+              </span>
+            </v-tooltip>
           </v-col>
         </v-row>
         <v-card-text v-if="!factory.hidden">
+          <template v-if="factory.checklistEnabled">
+            <planner-factory-checklist :id="`${factory.id}-checklist`" :factory="factory" />
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+          </template>
           <products-and-power
             :id="`${factory.id}-products`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <factory-imports
             :id="`${factory.id}-imports`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
           <planner-factory-satisfaction
             :id="`${factory.id}-satisfaction`"
             :factory="factory"
-            :help-text="helpText"
             :statuses="statuses"
           />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
@@ -204,14 +254,12 @@
               <planner-factory-tasks
                 :id="`${factory.id}-tasks`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
             <v-col cols="12" md="6">
               <planner-factory-notes
                 :id="`${factory.id}-notes`"
                 :factory="factory"
-                :help-text="helpText"
               />
             </v-col>
           </v-row>
@@ -223,9 +271,9 @@
           <div
             v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
-            :class="factory.products.length > 0 ? 'border-b-md' : ''"
+            :class="hasOutput ? 'border-b-md' : ''"
           >
-            <p class="section-label">Imports:</p>
+            <p class="section-label">Importing:</p>
             <div class="section-chips">
               <div
                 v-for="[inputFactoryId, inputs] in groupedInputs"
@@ -283,7 +331,7 @@
             class="text-body-1 py-2 px-4 collapsed-section"
             :class="hasExports(factory) ? 'border-b-md' : ''"
           >
-            <p v-if="factory.products.length === 0">Empty factory! Select a product!</p>
+            <p v-if="!hasOutput">Empty factory! Select a product!</p>
             <template v-else>
               <p class="section-label">Producing:</p>
               <div class="section-chips">
@@ -311,8 +359,59 @@
                       :class="differenceClass(factory.parts[part.id].amountRemaining)"
                     >
                       (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
+                    <!-- A sunk part balances to zero, so without this a factory throwing 100/min
+                         into a sink reads identically to one that produces exactly what it ships. -->
+                    <span
+                      v-if="(factory.parts[part.id].amountRequiredSink ?? 0) > 0"
+                      class="ml-2 text-awesome-sink"
+                    >({{ formatNumber(factory.parts[part.id].amountRequiredSink ?? 0) }}/min sunk)</span>
                   </v-chip>
                 </template>
+                <!-- Power generators produce as surely as products do, and a factory made only of
+                     them used to collapse to "Empty factory!". Green, and led by the same bolt-plus
+                     the generator's own power chip wears when expanded: a building icon on its own
+                     reads as a product, as though the factory were manufacturing generators. -->
+                <v-chip
+                  v-for="(producer, producerIndex) in factory.powerProducers"
+                  :key="`${factory.id}-power-${producerIndex}`"
+                  class="sf-chip green"
+                >
+                  <i class="fas fa-bolt" />
+                  <i class="fas fa-plus mr-2" />
+                  <game-asset
+                    v-if="producer.building"
+                    clickable
+                    height="32"
+                    :subject="producer.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ getPowerProducerDisplayName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
+                  </span>
+                  <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
+                </v-chip>
+                <!-- Custom buildings produce nothing, so they are stated as what they cost. Same
+                     reasoning as the generators above: without them a portal room collapsed to
+                     "Empty factory!". -->
+                <v-chip
+                  v-for="(customBuilding, customIndex) in factory.customBuildings"
+                  :key="`${factory.id}-custom-${customIndex}`"
+                  class="sf-chip custom-building"
+                >
+                  <game-asset
+                    v-if="customBuilding.building"
+                    clickable
+                    height="32"
+                    :subject="customBuilding.building"
+                    type="building"
+                    width="32"
+                  />
+                  <span class="ml-2">
+                    <b>{{ getBuildingDisplayName(customBuilding.building) }}</b>: {{ formatNumber(Math.ceil(customBuilding.amount)) }}x
+                  </span>
+                  <span class="ml-2 text-orange">(-{{ formatMw(customBuilding.powerConsumed) }})</span>
+                </v-chip>
               </div>
             </template>
           </div>
@@ -320,7 +419,7 @@
             v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
             class="text-body-1 py-2 px-4 collapsed-section"
           >
-            <p class="section-label">Exports:</p>
+            <p class="section-label">Exporting:</p>
             <div class="section-chips">
               <div
                 v-for="dependant in Object.keys(factory.dependencies.requests)"
@@ -332,10 +431,14 @@
                 <span class="mx-2">
                   <b>{{ findFactory(dependant).name }}</b>
                 </span>
+                <!-- The chip is more specific than the row it sits in: it knows which part goes
+                     where, so it jumps to the import row taking it rather than the factory. -->
                 <v-chip
                   v-for="part in factory.dependencies.requests[dependant]"
                   :key="part.part"
-                  class="sf-chip small product"
+                  class="sf-chip sf-chip-clickable small product"
+                  title="Jump to the import taking this export"
+                  @click.stop="navigateToImport(dependant, part.part)"
                 >
                   <game-asset
                     v-if="part.part"
@@ -359,30 +462,66 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref } from 'vue'
+  import { computed, inject, ref, watch } from 'vue'
   import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { differenceClass, getPartDisplayName } from '@/utils/helpers'
+  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
+  import {
+    checklistChipClass,
+    countChecklistCompleted,
+    countChecklistTotal,
+    hasChecklistDesync,
+    setChecklistEnabled,
+  } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
   import { markFactoryEdited } from '@/utils/sync-intent'
-  import { factoryStatusClass, getFactoryStatuses } from '@/utils/factory-management/status'
+  import {
+    factoryStatusClass,
+    FactoryStatusSection,
+    getFactoryStatuses,
+    statusJumpTargets,
+  } from '@/utils/factory-management/status'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
+  import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
+  import { importRowId } from '@/utils/factory-management/inputs'
+  import eventBus from '@/utils/eventBus'
 
   const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
-  const navigateToFactory = inject('navigateToFactory') as (id: string | number, subsection?: string) => void
+  const navigateToFactory = inject('navigateToFactory') as (
+    id: string | number,
+    subsection?: string | string[],
+    fallback?: string,
+  ) => void
+
+  // Land on the import row consuming this factory's export, rather than on the destination
+  // factory's card which only says "somewhere in here". Falls back to its Imports section.
+  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
+    navigateToFactory(
+      requestingFactoryId,
+      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
+      `${requestingFactoryId}-imports`
+    )
+  }
+
+  // Aim at every row the status names, with its section as the fallback for anything that has no
+  // row of its own.
+  const navigateToStatus = (target: { section: FactoryStatusSection, subjects: string[] }) => {
+    const { targets, fallback } = statusJumpTargets(props.factory.id, target)
+    navigateToFactory(props.factory.id, targets, fallback)
+  }
 
   const props = defineProps<{
     factory: Factory
-    helpText: boolean
     totalFactories: number;
   }>()
 
@@ -391,6 +530,27 @@
   const { smAndDown } = useDisplay()
 
   const iconDialogOpen = ref(false)
+
+  // The name is held as a draft while typing: writing each keystroke into the factory re-rendered
+  // every place the name appears, which read as lag. Blur or Enter is what applies it.
+  const draftName = ref(props.factory.name)
+  watch(() => props.factory.name, name => {
+    draftName.value = name
+  })
+
+  // The write is here rather than on each keystroke, so this is also where the rename is
+  // declared: intent, not just payload, or a rebase would take the server's name back.
+  const commitName = () => {
+    if (draftName.value === props.factory.name) return
+    props.factory.name = draftName.value
+    markFactoryEdited(props.factory)
+  }
+
+  // Enter accepts the rename and leaves the field, matching the group name in the sidebar.
+  const acceptName = (event: KeyboardEvent) => {
+    commitName()
+    ;(event.target as HTMLInputElement).blur()
+  }
 
   // Up/down move a factory within its own group, so the buttons disable at the group's edges
   // rather than the plan's. Keyed on global position they sat enabled at every group boundary
@@ -410,8 +570,23 @@
   // Sign is conveyed by the chip's plus/minus icon, so display the magnitude only.
   const powerDiffDisplay = computed(() => formatMw(Math.abs(factoryPowerDifference.value)))
 
+  // What this factory's augmenters add to the grid, and the share of the plan's generation that
+  // represents — the number that makes a 61 GW group read as 251 GW on the plan.
+  const factoryBoost = computed(() => props.factory.power?.boostMw ?? 0)
+  const boostPercentDisplay = computed(() =>
+    `${formatNumber((props.factory.power?.boostPercent ?? 0) * 100)}%`,
+  )
+
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
+
+  // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
+  // Power generators alone are a perfectly good factory, and were being called empty.
+  const hasOutput = computed(() =>
+    props.factory.products.length > 0 ||
+    props.factory.powerProducers.length > 0 ||
+    (props.factory.customBuildings?.length ?? 0) > 0
+  )
 
   // Collapsed view: one group chip per source factory, with all its imported parts inside.
   const groupedInputs = computed<[number, FactoryInput[]][]>(() => {
@@ -457,13 +632,13 @@
 
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
-      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '')
+      (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
+      // A portal room makes nothing and generates nothing, and is still a thing you built.
+      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
   }
 
   // Every handler below writes a field the plan persists and the room syncs, so each one
   // declares intent as well as payload — a rebase carries over only what the user touched.
-  const renameFactory = () => markFactoryEdited(props.factory)
-
   const setHidden = (hidden: boolean) => {
     props.factory.hidden = hidden
     markFactoryEdited(props.factory)
@@ -478,6 +653,16 @@
     factory.inSync = null
     markFactoryEdited(factory)
   }
+
+  // The tutorial is opt-out, not opt-in: the first time anyone turns checklist mode on, in any
+  // factory, explain what it does. Dismissing it (see ChecklistTutorial.vue) is what stops it
+  // firing again, so this only ever checks the flag rather than setting it.
+  const toggleChecklist = (enabled: boolean) => {
+    setChecklistEnabled(props.factory, enabled)
+    if (enabled && localStorage.getItem('dismissed-checklist-tutorial') !== 'true') {
+      eventBus.emit('openChecklistTutorial')
+    }
+  }
 </script>
 
 <style lang="scss" scoped>
@@ -486,6 +671,12 @@
 .factory-divider {
   color: var(--sf-header);
   opacity: 1;
+}
+
+// The reset button ends the chip, so the chip's own right padding only reads as a
+// gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
+.sf-chip.small.sync-chip {
+  padding-right: 0 !important;
 }
 
 .factory-name {
@@ -505,6 +696,12 @@
     cursor: text;
     text-decoration: underline;
   }
+
+  // The underline is the focus feedback; the browser's ring drew a box round the whole 85%.
+  &:focus, &:focus-visible {
+    outline: none;
+  }
+
 }
 
 // Collapsed-view section rows (Imports / Producing / Exports) read as a table:
@@ -535,33 +732,6 @@
     > .sf-chip {
       margin: 0 !important;
     }
-  }
-}
-
-// Collapsed-view grouping: a factory-coloured "chip" that wraps the part chips
-// imported from / exported to that factory. Shares the factory token + card header
-// background (see src/utils/colors.ts).
-.factory-group-chip {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  border: 2px solid var(--sf-factory-border);
-  border-radius: 28px;
-  background-color: var(--sf-factory-bg);
-  color: var(--sf-factory);
-  padding: 4px 6px 4px 10px;
-  row-gap: 4px;
-
-  // The global .sf-chip.no-margin rule out-specifies utility classes like ml-1,
-  // so the 4px rhythm between part chips has to live here, where the scope
-  // attribute wins the specificity contest.
-  .sf-chip {
-    margin: 0 0 0 4px !important;
-  }
-
-  &.clickable:hover {
-    cursor: pointer;
-    background-color: #323232;
   }
 }
 </style>

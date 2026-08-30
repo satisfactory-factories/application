@@ -10,7 +10,7 @@ vi.mock('@/utils/gameDataService', async () => {
 })
 
 describe('stress plan', () => {
-  it('should build a valid ~124 factory plan that calculates cleanly', () => {
+  it('should build a valid 100+ factory plan that calculates cleanly', () => {
     const factories = createStressPlan(4)
     expect(factories.length).toBeGreaterThanOrEqual(100)
 

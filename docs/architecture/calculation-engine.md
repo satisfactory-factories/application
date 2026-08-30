@@ -13,12 +13,13 @@ interface Factory {
   products: FactoryItem[]             // recipes at chosen output rates
   byProducts: ByProductItem[]         // secondary recipe outputs
   powerProducers: FactoryPowerProducer[]
+  customBuildings: FactoryCustomBuilding[] // buildings that make nothing: portals, stations, lights
   parts: { [part: string]: PartMetrics }   // THE supply/demand ledger — the heart
   buildingRequirements: { [building: string]: BuildingRequirement }
   requirementsSatisfied: boolean      // every ledger entry satisfied?
   dependencies: FactoryDependency     // requests other factories make OF this one
   exportCalculator: {...}             // train/truck/drone transport math settings
-  rawResources: {...}                 // raw parts assumed handled by the player
+  rawResources: {...}                 // raw parts the world would have to provide
   power: FactoryPower                 // {consumed, produced, difference}
   hasProblem: boolean                 // aggregate flag the UI paints red
   inSync: boolean | null              // sync-with-game state (null = never synced)
@@ -31,8 +32,8 @@ interface Factory {
 
 Every part a factory touches gets one entry. Satisfaction is decided here and nowhere else:
 
-- Demand: `amountRequired` = `amountRequiredProduction` (internal recipe ingredients) + `amountRequiredExports` (other factories' requests) + `amountRequiredPower` (generator fuel).
-- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw` (raw resources are treated as always available — the player handles miners themselves).
+- Demand: `amountRequired` = `amountRequiredProduction` (internal recipe ingredients) + `amountRequiredExports` (other factories' requests) + `amountRequiredPower` (generator fuel) + `amountRequiredBuildings` (custom building upkeep, e.g. a Main Portal's Singularity Cells).
+- Supply: `amountSupplied` = `amountSuppliedViaInput` (imports) + `amountSuppliedViaProduction` (own products/byproducts, incl. generator waste) + `amountSuppliedViaRaw`. **Raw resources are not assumed to be supplied** — anything a factory doesn't extract or import is a real deficit that flows through `amountRemaining` (the `rawShortage` status). There is no setting. The one exception is decided by the game data: `getHandGatheredParts()` (`parts.ts`) is the raw resources with no extractor of any kind — Leaves, Wood, Mycelia, alien remains, power slugs, the FICSMAS Gift — and only those get `amountSuppliedViaRaw` topped up. That rule **counts resource wells**; reusing `getExtractionRecipeForPart` (which excludes them) would class well-only Nitrogen Gas as hand-gathered and erase every Nitrogen shortage. The set is memoised per `gameData` object and pinned by spec.
 - Verdict: `amountRemaining = supplied − required`; `satisfied = amountRemaining >= 0`. `exportable` marks parts other factories may import.
 
 ## The recalculation pipeline
@@ -46,12 +47,13 @@ Every part a factory touches gets one entry. Satisfaction is decided here and no
 3. `calculateProducts` — recipe math: ingredient demand and byproducts, scaled by `amount / recipe.products[0].perMin`.
 4. `calculateSyncState` — detect drift from the in-game snapshot.
 5. `calculatePowerProducers` — solve generators (see below).
-6. `calculateFactoryBuildingsAndPower` — building counts and power draw.
-7. `calculateFactoryDependencies` + `calculateDependencyMetrics` — register this factory's imports on the producers; aggregate request totals.
-8. `calculateParts` — fill the ledger, set `requirementsSatisfied`.
-9. `calculateDependencyMetricsSupply` — now that supply is known, finalize `isRequestSatisfied` / `difference` per requested part.
-10. Building-group sync (`syncBuildingGroups`, `checkForItemUpdate`) then a second `calculatePowerProducers` + `calculateFinalBuildingsAndPower` (groups can change power).
-11. `calculateHasProblem` for **all** factories, then emit `factoryUpdated`.
+6. `calculateCustomBuildings` — power draw and upkeep of buildings that produce nothing (see below).
+7. `calculateFactoryBuildingsAndPower` — building counts and power draw.
+8. `calculateFactoryDependencies` + `calculateDependencyMetrics` — register this factory's imports on the producers; aggregate request totals.
+9. `calculateParts` — fill the ledger, set `requirementsSatisfied`.
+10. `calculateDependencyMetricsSupply` — now that supply is known, finalize `isRequestSatisfied` / `difference` per requested part.
+11. Building-group sync (`syncBuildingGroups`, `checkForItemUpdate`) then a second `calculatePowerProducers` + `calculateFinalBuildingsAndPower` (groups can change power).
+12. `calculateHasProblem` for **all** factories, then emit `factoryUpdated`.
 
 `modes` matters: `{ loadMode }` suppresses input-nuking during the first pass; `{ origin: 'buildingGroup' }` and `{ forceRebalance }` control building-group rebalancing (see [building-groups.md](./building-groups.md)).
 
@@ -66,6 +68,10 @@ Integrity helpers: `flushInvalidRequests`, `deleteRequestPair`, `deleteInputPair
 ## Power producers
 
 `FactoryPowerProducer` keeps both what the user asked for (`buildingAmount`, `powerAmount`, `fuelAmount`) and what was computed, plus `updated: 'building' | 'fuel' | 'power' | 'ingredient'` recording **which field the user last edited** — `calculatePowerProducers` (power.ts) picks the corresponding solver (`updateViaBuilding` / `updateViaFuel` / `updateViaPower` / `updateViaIngredient`) and derives the rest. Fuel consumption feeds `amountRequiredPower` in the ledger; byproducts (e.g. nuclear waste) feed supply.
+
+## Custom buildings
+
+`FactoryCustomBuilding` (`custom-buildings.ts`) is a building the player places that runs no recipe — a portal, a train station, a radar tower. The parser lists them in `gameData.customBuildings`: every buildable with a power draw that isn't already a production building, extractor or generator. There is no recipe, no clock and no building groups, so the pass is arithmetic: `powerConsumed = amount x building.power`, and upkeep (`ingredients`) is `amount x` the rate per building, which lands in the ledger as `amountRequiredBuildings` and is imported like anything else. Only the Main Portal has upkeep today (2 Singularity Cells/min, transcribed from the wiki — Docs.json does not state it).
 
 ## Sync state
 

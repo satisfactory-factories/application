@@ -15,13 +15,17 @@ import {
   calculateDependencyMetrics,
   calculateDependencyMetricsSupply,
   calculateFactoryDependencies,
+  carryPassMarks,
   flushInvalidRequests,
+  markPassCompleted,
 } from '@/utils/factory-management/dependencies'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
 import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculateGridBoost, calculatePowerProducers } from '@/utils/factory-management/power'
+import { calculateCustomBuildings } from '@/utils/factory-management/custom-buildings'
+import { calculateBuildingMaterialCosts } from '@/utils/factory-management/building-costs'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { applyDiff } from '@/utils/factory-management/commit'
 import { toRaw } from 'vue'
@@ -85,15 +89,18 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     products: [],
     byProducts: [],
     powerProducers: [],
+    customBuildings: [],
     inputs: [],
     previousInputs: [],
     parts: {},
     buildingRequirements: {} as { [p: string]: BuildingRequirement },
+    buildingMaterialCosts: {},
     dependencies: {
       requests: {},
       metrics: {},
     } as FactoryDependency,
     exportCalculator: {},
+    partDisposal: {},
     rawResources: {},
     // Zeroed rather than `{}`: nothing recalculates on add, and an empty power object
     // is not a valid factory on the wire, so the tab's first sync op was refused.
@@ -105,9 +112,14 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     inSync: null,
     syncState: {},
     syncStatePower: {},
+    syncStateCustomBuildings: {},
     displayOrder: order ?? -1, // this will get set by the planner
     tasks: [],
     notes: '',
+    checklistEnabled: false,
+    checklistPanelHidden: false,
+    checklistExports: {},
+    checklistExportSyncedAmounts: {},
     dataVersion: '2025-01-03',
   }
 }
@@ -123,7 +135,17 @@ export interface CalculationModes {
   // Internal: set when calculateFactory re-runs itself after a building-group
   // sync changed item amounts, to prevent further recursion.
   groupResync?: boolean
+  // Internal: set when calculateFactory re-runs itself after the post-sync power pass
+  // changed what the power producers consume, to prevent further recursion.
+  powerResync?: boolean
 }
+
+// What the factory's power producers consume, as a value comparable across passes.
+// Alien Power Augmenters derive their matrix demand from their building groups rather than
+// from their own amount, so this is the one demand that can move during the group sync.
+const powerIngredientFingerprint = (factory: Factory): string =>
+  JSON.stringify(factory.powerProducers.map(producer =>
+    producer.ingredients.map(ingredient => [ingredient.part, ingredient.perMin])))
 
 // We update the factory in layers of calculations. This makes it much easier to conceptualize.
 // This is the raw engine: it mutates whatever objects it is handed, rebuilding parts /
@@ -151,6 +173,10 @@ const calculateFactoryEngine = (
 
   // Calculate the generation of power for the factory
   calculatePowerProducers(factory, gameData)
+
+  // Calculate what the factory's custom buildings (portals, stations et al) draw and consume.
+  // Must run before the parts pass, which turns their upkeep into demand.
+  calculateCustomBuildings(factory, gameData)
 
   // Calculate the amount of buildings and power required to make the factory and any power generation.
   calculateFactoryBuildingsAndPower(factory, gameData)
@@ -193,13 +219,13 @@ const calculateFactoryEngine = (
   factory.products.forEach(product => {
     syncBuildingGroups(product, ItemType.Product, factory, modes)
     if (shouldSyncItemToGroups(product, ItemType.Product)) {
-      checkForItemUpdate(product, factory)
+      checkForItemUpdate(product, factory, ItemType.Product)
     }
   })
   factory.powerProducers.forEach(producer => {
     syncBuildingGroups(producer, ItemType.Power, factory, modes)
     if (shouldSyncItemToGroups(producer, ItemType.Power)) {
-      checkForItemUpdate(producer, factory)
+      checkForItemUpdate(producer, factory, ItemType.Power)
     }
   })
 
@@ -216,10 +242,25 @@ const calculateFactoryEngine = (
     return calculateFactoryEngine(factory, allFactories, gameData, { ...modes, groupResync: true })
   }
 
+  // An Alien Power Augmenter's matrix demand is read off its building groups, not off its
+  // own building amount, so the sync above can change what this factory consumes — and
+  // calculateParts built the ledger from the pre-sync figures. Fingerprint the demand
+  // either side of the pass below and re-run once if it moved; without this the groups
+  // show the new figure while satisfaction, imports and dependencies sit an edit behind.
+  const preResyncIngredients = powerIngredientFingerprint(factory)
+
   // It's possible that the power producers have changed, so we need to recalculate the power.
   calculatePowerProducers(factory, gameData)
 
+  if (!modes.powerResync && preResyncIngredients !== powerIngredientFingerprint(factory)) {
+    return calculateFactoryEngine(factory, allFactories, gameData, { ...modes, powerResync: true })
+  }
+
   calculateFinalBuildingsAndPower(factory)
+
+  // The material cost report for Power & Buildings' "Material Costs" panel. Reads the building
+  // counts calculateFinalBuildingsAndPower just finalized, so it must run after it.
+  calculateBuildingMaterialCosts(factory, gameData)
 
   // Alien Power Augmenters boost the whole grid, so their MW contribution depends on
   // every factory's generation — recompute the plan-wide boost now totals are known.
@@ -229,6 +270,10 @@ const calculateFactoryEngine = (
   allFactories.forEach(fac => {
     calculateHasProblem(fac)
   })
+
+  // Everything this factory's own pass writes now exists, byproducts included. flushInvalidRequests
+  // reads this to decide whether it may judge the factory's outputs at all.
+  markPassCompleted(factory)
 
   // Emit an event that the data has been updated so it can be synced.
   // During a clone run the wrapper emits after committing, with the real objects.
@@ -310,14 +355,14 @@ const cloneForCalculation = (factories: Factory[]): Factory[] => {
   const raws = toRaw(factories).map(factory => toRaw(factory))
 
   try {
-    return structuredClone(raws)
+    return carryPassMarks(raws, structuredClone(raws))
   } catch (err) {
     // structuredClone refuses a Proxy, and assigning the result of a reactive array's
     // filter() stores the proxies it read out as elements — see rawArray in common.ts,
     // which every such site now uses. A miss would otherwise break every subsequent
     // calculation, so unwrap the hard way rather than leaving the plan uncalculated.
     console.error('factory: cloneForCalculation: the plan holds a reactive proxy, falling back to a deep unwrap. This is a bug — the assignment that stored it should use rawArray().', err)
-    return deepRaw(raws) as Factory[]
+    return carryPassMarks(raws, deepRaw(raws) as Factory[])
   }
 }
 
@@ -364,6 +409,10 @@ export const calculateFactory = (
     cloneRunDepth--
   }
 
+  // The pass ran on the clones, so the marks landed there. Carry them back onto the live plan
+  // or the next calculation starts believing nothing has ever been calculated.
+  carryPassMarks(results, allFactories)
+
   const changed = commitResults(allFactories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))
   // The edited factory's user-made change (e.g. a new product amount) happened before
@@ -395,6 +444,8 @@ export const calculateFactories = (
   } finally {
     cloneRunDepth--
   }
+
+  carryPassMarks(results, factories)
 
   const changed = commitResults(factories, results)
   changed.forEach(fac => eventBus.emit('factoryUpdated', fac))

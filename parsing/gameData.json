@@ -6,6 +6,8 @@
         "constructormk1": 4,
         "converter": 0.1,
         "foundrymk1": 16,
+        "frackingextractor": 0,
+        "frackingsmasher": 150,
         "generatorbiomass": 0,
         "generatorcoal": 0,
         "generatorfuel": 0,
@@ -13,10 +15,15 @@
         "geothermalgenerator": 0,
         "hadroncollider": 0.1,
         "manufacturermk1": 55,
+        "minermk1": 5,
+        "minermk2": 15,
+        "minermk3": 45,
+        "oilpump": 40,
         "oilrefinery": 30,
         "packager": 10,
         "quantumencoder": 0.1,
-        "smeltermk1": 4
+        "smeltermk1": 4,
+        "waterpump": 20
     },
     "items": {
         "parts": {
@@ -821,6 +828,13 @@
             "Rubber": {
                 "name": "Rubber",
                 "stackSize": 200,
+                "isFluid": false,
+                "isFicsmas": false,
+                "energyGeneratedInMJ": 0
+            },
+            "SAM": {
+                "name": "SAM",
+                "stackSize": 100,
                 "isFluid": false,
                 "isFicsmas": false,
                 "energyGeneratedInMJ": 0
@@ -5181,7 +5195,7 @@
         },
         {
             "id": "Bauxite_Caterium",
-            "displayName": "Bauxite (Caterium)",
+            "displayName": "Bauxite (Convert: Caterium)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5213,7 +5227,7 @@
         },
         {
             "id": "Bauxite_Copper",
-            "displayName": "Bauxite (Copper)",
+            "displayName": "Bauxite (Convert: Copper)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5239,6 +5253,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_OreBauxite",
+            "displayName": "Bauxite (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreBauxite",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5510,7 +5564,7 @@
         },
         {
             "id": "Caterium_Copper",
-            "displayName": "Caterium Ore (Copper)",
+            "displayName": "Caterium Ore (Convert: Copper)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5542,7 +5596,7 @@
         },
         {
             "id": "Caterium_Quartz",
-            "displayName": "Caterium Ore (Quartz)",
+            "displayName": "Caterium Ore (Convert: Quartz)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5568,6 +5622,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_OreGold",
+            "displayName": "Caterium Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreGold",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5634,7 +5728,7 @@
         },
         {
             "id": "Coal_Iron",
-            "displayName": "Coal (Iron)",
+            "displayName": "Coal (Convert: Iron)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5666,7 +5760,7 @@
         },
         {
             "id": "Coal_Limestone",
-            "displayName": "Coal (Limestone)",
+            "displayName": "Coal (Convert: Limestone)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5692,6 +5786,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Coal",
+            "displayName": "Coal (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Coal",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5853,7 +5987,7 @@
         },
         {
             "id": "Copper_Quartz",
-            "displayName": "Copper Ore (Quartz)",
+            "displayName": "Copper Ore (Convert: Quartz)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5885,7 +6019,7 @@
         },
         {
             "id": "Copper_Sulfur",
-            "displayName": "Copper Ore (Sulfur)",
+            "displayName": "Copper Ore (Convert: Sulfur)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -5911,6 +6045,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_OreCopper",
+            "displayName": "Copper Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreCopper",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -5961,6 +6135,74 @@
             "building": {
                 "name": "constructormk1",
                 "power": 4
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_LiquidOil",
+            "displayName": "Crude Oil (Oil Extractor)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "LiquidOil",
+                    "amount": 1,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "oilpump",
+                "power": 40
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "oilpump",
+                        "ratePerMin": 120
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_LiquidOil_Well",
+            "displayName": "Crude Oil (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "LiquidOil",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7198,7 +7440,7 @@
         },
         {
             "id": "Iron_Limestone",
-            "displayName": "Iron Ore (Limestone)",
+            "displayName": "Iron Ore (Convert: Limestone)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7224,6 +7466,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_OreIron",
+            "displayName": "Iron Ore (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreIron",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7305,7 +7587,7 @@
         },
         {
             "id": "Limestone_Sulfur",
-            "displayName": "Limestone (Sulfur)",
+            "displayName": "Limestone (Convert: Sulfur)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7331,6 +7613,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Stone",
+            "displayName": "Limestone (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Stone",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -7575,7 +7897,7 @@
         },
         {
             "id": "Nitrogen_Bauxite",
-            "displayName": "Nitrogen Gas (Bauxite)",
+            "displayName": "Nitrogen Gas (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7607,7 +7929,7 @@
         },
         {
             "id": "Nitrogen_Caterium",
-            "displayName": "Nitrogen Gas (Caterium)",
+            "displayName": "Nitrogen Gas (Convert: Caterium)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -7633,6 +7955,42 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_NitrogenGas_Well",
+            "displayName": "Nitrogen Gas (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "NitrogenGas",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -8495,7 +8853,7 @@
         },
         {
             "id": "Quartz_Bauxite",
-            "displayName": "Raw Quartz (Bauxite)",
+            "displayName": "Raw Quartz (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -8527,7 +8885,7 @@
         },
         {
             "id": "Quartz_Coal",
-            "displayName": "Raw Quartz (Coal)",
+            "displayName": "Raw Quartz (Convert: Coal)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -8553,6 +8911,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_RawQuartz",
+            "displayName": "Raw Quartz (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "RawQuartz",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -8845,6 +9243,46 @@
             "building": {
                 "name": "oilrefinery",
                 "power": 30
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_SAM",
+            "displayName": "SAM (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "SAM",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -9336,7 +9774,7 @@
         },
         {
             "id": "Sulfur_Coal",
-            "displayName": "Sulfur (Coal)",
+            "displayName": "Sulfur (Convert: Coal)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -9368,7 +9806,7 @@
         },
         {
             "id": "Sulfur_Iron",
-            "displayName": "Sulfur (Iron)",
+            "displayName": "Sulfur (Convert: Iron)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -9394,6 +9832,46 @@
                 "power": 250,
                 "minPower": 100,
                 "maxPower": 400
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Sulfur",
+            "displayName": "Sulfur (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Sulfur",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -10174,6 +10652,46 @@
             "isFicsmas": false
         },
         {
+            "id": "Extract_OreUranium",
+            "displayName": "Uranium (Miner)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "OreUranium",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "minermk1",
+                "power": 5
+            },
+            "extraction": {
+                "purities": [
+                    "impure",
+                    "normal",
+                    "pure"
+                ],
+                "extractors": [
+                    {
+                        "building": "minermk1",
+                        "ratePerMin": 60
+                    },
+                    {
+                        "building": "minermk2",
+                        "ratePerMin": 120
+                    },
+                    {
+                        "building": "minermk3",
+                        "ratePerMin": 240
+                    }
+                ]
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
             "id": "NuclearFuelRod",
             "displayName": "Uranium Fuel Rod",
             "ingredients": [
@@ -10210,7 +10728,7 @@
         },
         {
             "id": "Uranium_Bauxite",
-            "displayName": "Uranium Ore (Bauxite)",
+            "displayName": "Uranium Ore (Convert: Bauxite)",
             "ingredients": [
                 {
                     "part": "SAMIngot",
@@ -10266,6 +10784,72 @@
             "building": {
                 "name": "assemblermk1",
                 "power": 15
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Water_Well",
+            "displayName": "Water (Resource Well)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Water",
+                    "amount": 1,
+                    "perMin": 60,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "frackingsmasher",
+                "power": 150
+            },
+            "extraction": {
+                "purities": [],
+                "extractors": [
+                    {
+                        "building": "frackingsmasher",
+                        "ratePerMin": 60
+                    }
+                ],
+                "well": {
+                    "satelliteBuilding": "frackingextractor",
+                    "satelliteRates": {
+                        "impure": 30,
+                        "normal": 60,
+                        "pure": 120
+                    }
+                }
+            },
+            "isAlternate": false,
+            "isFicsmas": false
+        },
+        {
+            "id": "Extract_Water",
+            "displayName": "Water (Water Extractor)",
+            "ingredients": [],
+            "products": [
+                {
+                    "part": "Water",
+                    "amount": 1,
+                    "perMin": 120,
+                    "isByProduct": false
+                }
+            ],
+            "building": {
+                "name": "waterpump",
+                "power": 20
+            },
+            "extraction": {
+                "purities": [
+                    "normal"
+                ],
+                "extractors": [
+                    {
+                        "building": "waterpump",
+                        "ratePerMin": 120
+                    }
+                ]
             },
             "isAlternate": false,
             "isFicsmas": false
@@ -10657,5 +11241,854 @@
                 "power": 2500
             }
         }
-    ]
+    ],
+    "customBuildings": [
+        {
+            "name": "resourcesink",
+            "displayName": "AWESOME Sink",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "ceilinglight",
+            "displayName": "Ceiling Light",
+            "power": 2,
+            "ingredients": []
+        },
+        {
+            "name": "dronestation",
+            "displayName": "Drone Port",
+            "power": 100,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightpole",
+            "displayName": "Flood Light Tower",
+            "power": 6,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstationliquid",
+            "displayName": "Fluid Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "fluidtruckstation",
+            "displayName": "Fluid Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "traindockingstation",
+            "displayName": "Freight Platform",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "pipehyperstart",
+            "displayName": "Hypertube Entrance",
+            "power": 10,
+            "ingredients": []
+        },
+        {
+            "name": "jumppadadjustable",
+            "displayName": "Jump Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "portal",
+            "displayName": "Main Portal",
+            "power": 250,
+            "ingredients": [
+                {
+                    "part": "SingularityCell",
+                    "perMin": 2
+                }
+            ]
+        },
+        {
+            "name": "elevator",
+            "displayName": "Personnel Elevator",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepump",
+            "displayName": "Pipeline Pump Mk.1",
+            "power": 4,
+            "ingredients": []
+        },
+        {
+            "name": "pipelinepumpmk2",
+            "displayName": "Pipeline Pump Mk.2",
+            "power": 8,
+            "ingredients": []
+        },
+        {
+            "name": "radartower",
+            "displayName": "Radar Tower",
+            "power": 30,
+            "ingredients": []
+        },
+        {
+            "name": "portalsatellite",
+            "displayName": "Satellite Portal",
+            "power": 250,
+            "ingredients": []
+        },
+        {
+            "name": "streetlight",
+            "displayName": "Street Light",
+            "power": 1,
+            "ingredients": []
+        },
+        {
+            "name": "trainstation",
+            "displayName": "Train Station",
+            "power": 50,
+            "ingredients": []
+        },
+        {
+            "name": "truckstation",
+            "displayName": "Truck Station",
+            "power": 20,
+            "ingredients": []
+        },
+        {
+            "name": "landingpad",
+            "displayName": "U-Jelly Landing Pad",
+            "power": 5,
+            "ingredients": []
+        },
+        {
+            "name": "floodlightwall",
+            "displayName": "Wall-Mounted Flood Light",
+            "power": 6,
+            "ingredients": []
+        }
+    ],
+    "buildingCosts": {
+        "generatorbiomass": [
+            {
+                "part": "IronPlate",
+                "amount": 15
+            },
+            {
+                "part": "IronRod",
+                "amount": 15
+            },
+            {
+                "part": "Wire",
+                "amount": 25
+            }
+        ],
+        "minermk1": [
+            {
+                "part": "IronPlate",
+                "amount": 10
+            },
+            {
+                "part": "Cement",
+                "amount": 10
+            }
+        ],
+        "constructormk1": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 2
+            },
+            {
+                "part": "Cable",
+                "amount": 8
+            }
+        ],
+        "smeltermk1": [
+            {
+                "part": "IronRod",
+                "amount": 5
+            },
+            {
+                "part": "Wire",
+                "amount": 8
+            }
+        ],
+        "foundrymk1": [
+            {
+                "part": "ModularFrame",
+                "amount": 10
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            },
+            {
+                "part": "Cement",
+                "amount": 20
+            }
+        ],
+        "oilrefinery": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 30
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 20
+            }
+        ],
+        "oilpump": [
+            {
+                "part": "Motor",
+                "amount": 15
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 20
+            },
+            {
+                "part": "Cable",
+                "amount": 60
+            }
+        ],
+        "pipehyperstart": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 4
+            },
+            {
+                "part": "Rotor",
+                "amount": 4
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 10
+            }
+        ],
+        "generatorcoal": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 20
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            },
+            {
+                "part": "Cable",
+                "amount": 30
+            }
+        ],
+        "pipelinepump": [
+            {
+                "part": "CopperSheet",
+                "amount": 2
+            },
+            {
+                "part": "Rotor",
+                "amount": 2
+            }
+        ],
+        "waterpump": [
+            {
+                "part": "CopperSheet",
+                "amount": 20
+            },
+            {
+                "part": "IronPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Rotor",
+                "amount": 10
+            }
+        ],
+        "resourcesink": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 15
+            },
+            {
+                "part": "Cable",
+                "amount": 30
+            },
+            {
+                "part": "Cement",
+                "amount": 45
+            }
+        ],
+        "streetlight": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 10
+            },
+            {
+                "part": "Wire",
+                "amount": 4
+            },
+            {
+                "part": "IronRod",
+                "amount": 4
+            }
+        ],
+        "ceilinglight": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 16
+            },
+            {
+                "part": "SteelPlate",
+                "amount": 6
+            }
+        ],
+        "minermk2": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "SteelPipe",
+                "amount": 20
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 10
+            }
+        ],
+        "floodlightpole": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 4
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 8
+            }
+        ],
+        "floodlightwall": [
+            {
+                "part": "HighSpeedWire",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 4
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 2
+            }
+        ],
+        "elevator": [
+            {
+                "part": "SteelPlate",
+                "amount": 1
+            },
+            {
+                "part": "Silica",
+                "amount": 1
+            }
+        ],
+        "pipelinepumpmk2": [
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 1
+            },
+            {
+                "part": "Motor",
+                "amount": 2
+            },
+            {
+                "part": "Plastic",
+                "amount": 10
+            }
+        ],
+        "hadroncollider": [
+            {
+                "part": "MotorLightweight",
+                "amount": 10
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameFused",
+                "amount": 25
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 50
+            },
+            {
+                "part": "HighSpeedWire",
+                "amount": 500
+            }
+        ],
+        "converter": [
+            {
+                "part": "ModularFrameFused",
+                "amount": 10
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 25
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 50
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 100
+            }
+        ],
+        "quantumencoder": [
+            {
+                "part": "MotorLightweight",
+                "amount": 20
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 20
+            },
+            {
+                "part": "CoolingSystem",
+                "amount": 50
+            },
+            {
+                "part": "TimeCrystal",
+                "amount": 50
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 100
+            }
+        ],
+        "frackingextractor": [
+            {
+                "part": "SteelPlate",
+                "amount": 10
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 10
+            }
+        ],
+        "frackingsmasher": [
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 25
+            },
+            {
+                "part": "Motor",
+                "amount": 50
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 50
+            },
+            {
+                "part": "Rubber",
+                "amount": 100
+            }
+        ],
+        "generatornuclear": [
+            {
+                "part": "ComputerSuper",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 25
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 100
+            },
+            {
+                "part": "Cable",
+                "amount": 200
+            },
+            {
+                "part": "Cement",
+                "amount": 250
+            }
+        ],
+        "minermk3": [
+            {
+                "part": "SteelPipe",
+                "amount": 50
+            },
+            {
+                "part": "ComputerSuper",
+                "amount": 5
+            },
+            {
+                "part": "ModularFrameFused",
+                "amount": 10
+            },
+            {
+                "part": "MotorLightweight",
+                "amount": 3
+            }
+        ],
+        "dronestation": [
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 20
+            },
+            {
+                "part": "HighSpeedConnector",
+                "amount": 20
+            },
+            {
+                "part": "AluminumPlate",
+                "amount": 50
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 50
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            }
+        ],
+        "packager": [
+            {
+                "part": "SteelPlate",
+                "amount": 20
+            },
+            {
+                "part": "Rubber",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 10
+            }
+        ],
+        "manufacturermk1": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 20
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            },
+            {
+                "part": "Cable",
+                "amount": 50
+            }
+        ],
+        "assemblermk1": [
+            {
+                "part": "IronPlateReinforced",
+                "amount": 8
+            },
+            {
+                "part": "Rotor",
+                "amount": 4
+            },
+            {
+                "part": "Cable",
+                "amount": 10
+            }
+        ],
+        "radartower": [
+            {
+                "part": "Computer",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 20
+            },
+            {
+                "part": "CrystalOscillator",
+                "amount": 25
+            },
+            {
+                "part": "Cable",
+                "amount": 100
+            }
+        ],
+        "geothermalgenerator": [
+            {
+                "part": "Motor",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrame",
+                "amount": 25
+            },
+            {
+                "part": "HighSpeedConnector",
+                "amount": 25
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 250
+            }
+        ],
+        "alienpoweraugmenter": [
+            {
+                "part": "WAT1",
+                "amount": 10
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 50
+            },
+            {
+                "part": "Cable",
+                "amount": 100
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 50
+            },
+            {
+                "part": "Motor",
+                "amount": 25
+            },
+            {
+                "part": "Computer",
+                "amount": 10
+            }
+        ],
+        "portal": [
+            {
+                "part": "MotorLightweight",
+                "amount": 5
+            },
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 10
+            },
+            {
+                "part": "QuantumOscillator",
+                "amount": 15
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 25
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 50
+            }
+        ],
+        "portalsatellite": [
+            {
+                "part": "ModularFrameLightweight",
+                "amount": 5
+            },
+            {
+                "part": "QuantumOscillator",
+                "amount": 10
+            },
+            {
+                "part": "SAMFluctuator",
+                "amount": 25
+            },
+            {
+                "part": "FicsiteMesh",
+                "amount": 25
+            }
+        ],
+        "blender": [
+            {
+                "part": "Computer",
+                "amount": 10
+            },
+            {
+                "part": "ModularFrameHeavy",
+                "amount": 10
+            },
+            {
+                "part": "Motor",
+                "amount": 20
+            },
+            {
+                "part": "AluminumCasing",
+                "amount": 50
+            }
+        ],
+        "trainstation": [
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 200
+            }
+        ],
+        "traindockingstation": [
+            {
+                "part": "Motor",
+                "amount": 5
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 25
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 100
+            }
+        ],
+        "traindockingstationliquid": [
+            {
+                "part": "Motor",
+                "amount": 5
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 10
+            },
+            {
+                "part": "Plastic",
+                "amount": 25
+            },
+            {
+                "part": "Cement",
+                "amount": 50
+            },
+            {
+                "part": "Wire",
+                "amount": 100
+            }
+        ],
+        "fluidtruckstation": [
+            {
+                "part": "ModularFrame",
+                "amount": 15
+            },
+            {
+                "part": "Stator",
+                "amount": 20
+            },
+            {
+                "part": "Rubber",
+                "amount": 20
+            },
+            {
+                "part": "Plastic",
+                "amount": 50
+            }
+        ],
+        "generatorfuel": [
+            {
+                "part": "Motor",
+                "amount": 15
+            },
+            {
+                "part": "SteelPlateReinforced",
+                "amount": 15
+            },
+            {
+                "part": "CopperSheet",
+                "amount": 30
+            },
+            {
+                "part": "Rubber",
+                "amount": 50
+            },
+            {
+                "part": "HighSpeedWire",
+                "amount": 50
+            }
+        ],
+        "truckstation": [
+            {
+                "part": "ModularFrame",
+                "amount": 15
+            },
+            {
+                "part": "Rotor",
+                "amount": 20
+            },
+            {
+                "part": "Cable",
+                "amount": 50
+            }
+        ],
+        "jumppadadjustable": [
+            {
+                "part": "Rotor",
+                "amount": 2
+            },
+            {
+                "part": "IronPlate",
+                "amount": 15
+            },
+            {
+                "part": "Cable",
+                "amount": 10
+            }
+        ],
+        "landingpad": [
+            {
+                "part": "Rotor",
+                "amount": 2
+            },
+            {
+                "part": "Cable",
+                "amount": 20
+            },
+            {
+                "part": "GenericBiomass",
+                "amount": 200
+            }
+        ]
+    }
 }

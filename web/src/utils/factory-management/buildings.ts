@@ -3,6 +3,14 @@ import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterf
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { getCustomBuildingData, getCustomBuildingPower } from '@/utils/factory-management/custom-buildings'
+import {
+  getGroupExtractor,
+  getGroupSatelliteCount,
+  getWell,
+  isExtractionRecipe,
+} from '@/utils/factory-management/building-groups/extraction'
+import { getFactorySinkPower } from '@/utils/factory-management/disposal'
 
 export const calculateProductBuildings = (factory: Factory, gameData: DataInterface) => {
   factory.products.forEach(product => {
@@ -33,6 +41,28 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
         name: buildingData.name,
         amount: buildingCount,
         powerConsumed: (buildingData.power * wholeBuildingCount) + (buildingData.power * Math.pow(fractionalBuildingCount, 1.321928)), // Power usage = initial power usage x (clock speed / 100)1.321928
+      }
+
+      // Extraction products can mix extractor marks across their groups, so a single
+      // product-level estimate would be wrong. Their counts and power are summed from the
+      // groups in calculateFinalBuildingsAndPower; only seed the entries here.
+      if (isExtractionRecipe(product.recipe)) {
+        product.buildingRequirements.powerConsumed = 0
+        const well = getWell(product.recipe)
+        product.buildingGroups.forEach(group => {
+          const groupBuilding = getGroupExtractor(group, product.recipe)
+          if (!factory.buildingRequirements[groupBuilding]) {
+            factory.buildingRequirements[groupBuilding] = { name: groupBuilding, amount: 0, powerConsumed: 0 }
+          }
+          if (well && !factory.buildingRequirements[well.satelliteBuilding]) {
+            factory.buildingRequirements[well.satelliteBuilding] = {
+              name: well.satelliteBuilding,
+              amount: 0,
+              powerConsumed: 0,
+            }
+          }
+        })
+        return
       }
 
       // Add it to the factory building requirements
@@ -87,12 +117,37 @@ export const calculatePowerProducerBuildings = (factory: Factory, gameData: Data
   })
 }
 
+// Custom buildings make nothing, so nothing else in the engine would ever mention them. They
+// still have to be built and still draw power, which is the entire point of listing them.
+export const calculateCustomBuildingRequirements = (factory: Factory, gameData: DataInterface) => {
+  factory.customBuildings?.forEach(customBuilding => {
+    if (!getCustomBuildingData(customBuilding.building, gameData)) {
+      return // Not chosen yet, or no longer in the game data.
+    }
+
+    if (!factory.buildingRequirements[customBuilding.building]) {
+      factory.buildingRequirements[customBuilding.building] = {
+        name: customBuilding.building,
+        amount: 0,
+        powerConsumed: 0,
+      }
+    }
+
+    const buildingData = factory.buildingRequirements[customBuilding.building]
+    buildingData.amount += Math.ceil(customBuilding.amount)
+    buildingData.powerConsumed = formatNumberFully(
+      (buildingData.powerConsumed ?? 0) + customBuilding.powerConsumed, 3
+    )
+  })
+}
+
 // Sums up all building data to create an aggregate value of power and building requirements
 export const calculateFactoryBuildingsAndPower = (factory: Factory, gameData: DataInterface) => {
   factory.buildingRequirements = {}
   // First tot up all building and power requirements for products and power generators
   calculateProductBuildings(factory, gameData)
   calculatePowerProducerBuildings(factory, gameData)
+  calculateCustomBuildingRequirements(factory, gameData)
 }
 
 // This is called later on in the calculation process to get the final values using the building groups, which will be actually what the player needs to build.
@@ -124,6 +179,21 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       consumedMax += group.powerUsageMax ?? group.powerUsage
     })
   })
+
+  // AWESOME Sinks the user has placed on this factory's surpluses. A flat 30 MW each, counted
+  // into the swing figures identically: the sink has no clock, so it never runs at anything but
+  // its rated draw.
+  const sinkPower = getFactorySinkPower(factory)
+  consumed += sinkPower
+  consumedMin += sinkPower
+  consumedMax += sinkPower
+
+  // Custom buildings have no building groups to read a clock off — they cannot be overclocked,
+  // so their draw is flat and lands on all three figures alike.
+  const customBuildingPower = getCustomBuildingPower(factory)
+  consumed += customBuildingPower
+  consumedMin += customBuildingPower
+  consumedMax += customBuildingPower
 
   factory.power.consumed = formatNumberFully(consumed, 1)
   factory.power.consumedMin = formatNumberFully(consumedMin, 1)
@@ -158,10 +228,20 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
 
   // Sum up the buildings
   products.forEach(product => {
+    const extraction = isExtractionRecipe(product.recipe)
+
     product.buildingGroups.forEach(group => {
       if (!group.buildingCount) return
 
-      const building = product.buildingRequirements.name
+      // Extraction products mix marks across groups, so the building is the group's own
+      // extractor and the entry may not have been seeded from the product's single building.
+      const building = extraction
+        ? getGroupExtractor(group, product.recipe)
+        : product.buildingRequirements.name
+
+      if (extraction && !factory.buildingRequirements[building]) {
+        factory.buildingRequirements[building] = { name: building, amount: 0, powerConsumed: 0 }
+      }
 
       const buildingData = factory.buildingRequirements[building] // It should be present by the time this is run (from calculateFactoryBuildingsAndPower)
       if (!buildingData) {
@@ -169,7 +249,36 @@ export const calculateFinalBuildingsAndPower = (factory: Factory) => {
       }
 
       buildingData.amount += group.buildingCount
+      if (extraction) {
+        buildingData.powerConsumed = formatNumberFully((buildingData.powerConsumed ?? 0) + group.powerUsage, 3)
+
+        // A well's satellite extractors have to be built too, though they draw no power —
+        // the pressurizer counted above pays for all of them.
+        const satellites = getGroupSatelliteCount(group, product.recipe)
+        if (satellites > 0) {
+          const satelliteBuilding = getWell(product.recipe)!.satelliteBuilding
+          if (!factory.buildingRequirements[satelliteBuilding]) {
+            factory.buildingRequirements[satelliteBuilding] = {
+              name: satelliteBuilding,
+              amount: 0,
+              powerConsumed: 0,
+            }
+          }
+          factory.buildingRequirements[satelliteBuilding].amount += satellites
+        }
+      }
     })
+  })
+
+  // Custom buildings are not derived from groups at all: the count is what the user typed, so
+  // it is added straight back after the reset above.
+  factory.customBuildings?.forEach(customBuilding => {
+    const buildingData = factory.buildingRequirements[customBuilding.building]
+    if (!buildingData) {
+      return // Building not yet chosen, or gone from the game data.
+    }
+
+    buildingData.amount += Math.ceil(customBuilding.amount)
   })
 
   // And the power producers' buildings, which are also derived from their groups.

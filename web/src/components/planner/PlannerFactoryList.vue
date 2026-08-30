@@ -1,4 +1,67 @@
 <template>
+  <!-- Add Factory sits above everything else, including the jump-links: with a plan full of
+       groups this button used to be a scroll away, even though clicking it adds the new
+       factory up here at the top of the list — moved to sit beside the factory it creates. -->
+  <v-row class="pa-0 ma-0">
+    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
+      <tooltip text="Add a new, empty factory to the plan, filed under no group.">
+        <v-btn
+          color="primary"
+          prepend-icon="fas fa-plus"
+          ripple
+          @click="createFactory()"
+        >
+          Add Factory
+        </v-btn>
+      </tooltip>
+      <!-- Group management sits on its own line under it: neither button is the thing you reach
+           for most, and side by side they competed with Add Factory for the same glance. -->
+      <div class="d-flex justify-center flex-wrap ga-2">
+        <tooltip text="Create a new group: a folder to file factories under, so a big plan stays navigable.">
+          <v-btn
+            class="create-group-btn"
+            color="secondary"
+            prepend-icon="fas fa-folder-plus"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="createGroupOpen = true"
+          >
+            Group
+          </v-btn>
+        </tooltip>
+        <tooltip :text="factories.length === 0 ? 'Nothing to arrange yet — add a factory first.' : 'Reorder groups and factories, and move factories between groups, with buttons instead of dragging.'">
+          <v-btn
+            class="arrange-btn"
+            color="secondary"
+            :disabled="factories.length === 0"
+            prepend-icon="fas fa-sort"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="arrangeOpen = true"
+          >
+            Arrange
+          </v-btn>
+        </tooltip>
+        <tooltip :text="factories.length === 0 ? 'Nothing to group yet — add a factory first.' : 'Rename, reorder and recolour every group at once, and move factories between them.'">
+          <v-btn
+            class="bulk-group-btn"
+            color="secondary"
+            :disabled="factories.length === 0"
+            prepend-icon="fas fa-object-group"
+            ripple
+            size="small"
+            variant="outlined"
+            @click="bulkGroupOpen = true"
+          >
+            Multi-Group Edit
+          </v-btn>
+        </tooltip>
+      </div>
+    </v-col>
+  </v-row>
+
   <div v-show="show && factories.length > 0" class="factory-list section-links">
     <!-- Statistics jump-link with an at-a-glance power summary. -->
     <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit, 'active-view': activeFactoryId === 'statistics' }">
@@ -49,14 +112,14 @@
         @click="navigateToSection('factory-summary')"
       >
         <v-row class="d-flex flex-nowrap ma-0 align-center">
-          <v-spacer class="d-flex align-center text-body-1 pa-2">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
             <i class="fas fa-list mr-2" />
-            <span>Factories Summary</span>
+            <span>Global Factories Summary</span>
           </v-spacer>
           <v-tooltip right>
             <template #activator="{ props }">
               <v-col
-                class="context-icon align-content-center text-center py-0 px-2"
+                class="factory-count align-content-center text-center py-0 px-2"
                 cols="auto"
                 v-bind="props"
               >
@@ -82,9 +145,77 @@
             <span>Open fullscreen summary</span>
           </v-tooltip>
         </v-row>
+        <!-- The state of the plan in three numbers, on their own line the way a group's power and
+             product rows are: the sidebar is narrow and drags narrower still, and beside the title
+             they wrapped "Factories Summary" onto two lines instead. Only what applies is shown —
+             a row of zeroes is noise on a healthy plan, and a number appearing is the whole point. -->
+        <div v-if="statusTally.length" class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip
+            v-for="chip in statusTally"
+            :key="chip.key"
+            :text="chip.tooltip"
+          >
+            <v-chip class="sf-chip x-small no-margin" :class="chip.class" variant="tonal">
+              <i :class="chip.icon" />
+              <span class="ml-1">{{ chip.count }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
+      </v-card>
+    </div>
+    <!-- Dimensional Depot jump-link. Only once the plan uses it, matching the section itself:
+         a permanent row for a feature nobody in this plan has touched is a row of nothing. -->
+    <div
+      v-if="depotSummary"
+      class="mb-1 rounded factory-card depot-link"
+      :class="{ 'active-view': activeFactoryId === 'dimensional-depot' }"
+    >
+      <v-card
+        class="w-100 header list px-0 rounded-0"
+        style="box-shadow: none !important;"
+        @click="navigateToSection('dimensional-depot')"
+      >
+        <v-row class="d-flex flex-nowrap ma-0 align-center">
+          <v-spacer class="d-flex align-center text-body-1 pa-2 text-no-wrap">
+            <game-asset
+              class="mr-2"
+              height="20"
+              subject="dimensional-depot"
+              type="item_id"
+              width="20"
+            />
+            <span>Dimensional Depot</span>
+          </v-spacer>
+        </v-row>
+        <!-- Icon-only chips on their own line, like the summary's status tally above: the sidebar
+             is narrow and drags narrower still, and a word beside each number wraps the title. -->
+        <div class="d-flex align-center flex-wrap ga-1 px-2 pb-2">
+          <tooltip :text="`Items tracked: ${depotSummary.items}`">
+            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
+              <i class="fas fa-box" />
+              <span class="ml-1">{{ depotSummary.items }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip :text="`Dimensional Depot Uploaders: ${depotSummary.containers}`">
+            <v-chip class="sf-chip x-small no-margin dimensional-depot" variant="tonal">
+              <game-asset height="14" subject="dimensional-depot-uploader" type="item_id" width="14" />
+              <span class="ml-1">{{ depotSummary.containers }}</span>
+            </v-chip>
+          </tooltip>
+          <tooltip
+            v-if="depotSummary.overCapacity > 0"
+            :text="`${depotSummary.overCapacity} item(s) arriving faster than their Uploaders can take`"
+          >
+            <v-chip class="sf-chip x-small no-margin status-warning-outlined" variant="tonal">
+              <i class="fas fa-tachometer-alt" />
+              <span class="ml-1">{{ depotSummary.overCapacity }}</span>
+            </v-chip>
+          </tooltip>
+        </div>
       </v-card>
     </div>
   </div>
+
   <div v-show="show" class="factory-list">
     <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
          not stored, so there is no group record to reorder. -->
@@ -92,19 +223,27 @@
       v-if="ungroupedSection"
       :section="ungroupedSection"
       :statuses="statuses"
+      @create-factory="createFactory"
     />
 
+    <!-- Off entirely where the pointer is coarse: the drag gesture is the scroll gesture on a
+         touchscreen, so every attempt to scroll the tray reordered the plan instead. The Arrange
+         dialog below is what does this there. -->
     <draggable
+      :disabled="!dragEnabled"
       :group="{ name: 'sidebar-groups' }"
       handle=".group-drag-handle"
       item-key="id"
       :model-value="groupSections"
       @change="onGroupOrderChange"
+      @end="draggingGroup = false"
+      @start="draggingGroup = true"
     >
       <template #item="{ element }">
         <planner-sidebar-group
           :section="element"
           :statuses="statuses"
+          @create-factory="createFactory"
           @delete="requestGroupDelete"
         />
       </template>
@@ -112,48 +251,9 @@
   </div>
 
   <factory-group-create-dialog v-model="createGroupOpen" />
+  <factory-arrange-dialog v-model="arrangeOpen" />
   <factory-group-bulk-dialog v-model="bulkGroupOpen" />
   <factory-group-delete-dialog v-model="deleteGroupOpen" :group="groupPendingDelete" />
-
-  <v-row class="pa-0 ma-0">
-    <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
-      <v-btn
-        color="primary"
-        prepend-icon="fas fa-plus"
-        ripple
-        @click="createFactory"
-      >
-        Add Factory
-      </v-btn>
-      <!-- Group management sits on its own line under it: neither button is the thing you reach
-           for most, and side by side they competed with Add Factory for the same glance. -->
-      <div class="d-flex justify-center flex-wrap ga-2">
-        <v-btn
-          class="create-group-btn"
-          color="secondary"
-          prepend-icon="fas fa-folder-plus"
-          ripple
-          size="small"
-          variant="outlined"
-          @click="createGroupOpen = true"
-        >
-          Group
-        </v-btn>
-        <v-btn
-          class="bulk-group-btn"
-          color="secondary"
-          :disabled="factories.length === 0"
-          prepend-icon="fas fa-object-group"
-          ripple
-          size="small"
-          variant="outlined"
-          @click="bulkGroupOpen = true"
-        >
-          Multi-Group Edit
-        </v-btn>
-      </div>
-    </v-col>
-  </v-row>
 </template>
 
 <script setup lang="ts">
@@ -162,9 +262,13 @@
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
+  import { useDepotResearch } from '@/composables/useDepotResearch'
+  import { calculateDimensionalDepot } from '@/utils/statistics'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
-  import { getFactoryStatuses } from '@/utils/factory-management/status'
+  import { useFactoryDrag } from '@/composables/useFactoryDrag'
+  import { factoryStatusTallyChips, getFactoryStatuses, tallyFactoryStatuses } from '@/utils/factory-management/status'
   import PlannerSidebarGroup from '@/components/planner/groups/PlannerSidebarGroup.vue'
+  import FactoryArrangeDialog from '@/components/planner/groups/FactoryArrangeDialog.vue'
   import FactoryGroupCreateDialog from '@/components/planner/groups/FactoryGroupCreateDialog.vue'
   import FactoryGroupBulkDialog from '@/components/planner/groups/FactoryGroupBulkDialog.vue'
   import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
@@ -176,7 +280,9 @@
   const activeFactoryId: Ref<number | string | null> = inject('activeFactoryId', ref<number | string | null>(null))
 
   const emit = defineEmits<{
-    (event: 'createFactory'): void;
+    // The group the new factory belongs in: an id, null for Ungrouped, or nothing at all from the
+    // plan-wide button, which has no group in mind.
+    (event: 'createFactory', groupId?: string | null): void;
     (event: 'updateFactories', factories: Factory[]): void;
   }>()
   const compProps = defineProps<{
@@ -199,22 +305,24 @@
   // Groups. Every mutation goes through the composable, which is the single writer — this
   // component is mounted twice at once (docked sidebar and the teleported drawer), so it must
   // not hold its own copy of the ordering. The old local `factoriesCopy` is gone for that reason.
-  const { countIn, deleteGroup, sections, setGroupOrder } = useFactoryGroups()
+  const { sections, setGroupOrder } = useFactoryGroups()
+
+  // Held for the duration of a group drag so a sidebar that is only peeked out doesn't collapse
+  // out from under the group being dragged. See Planner.vue's peekLocked.
+  const { draggingGroup, dragEnabled } = useFactoryDrag()
 
   const ungroupedSection = computed(() => sections.value.find(section => !section.group))
   const groupSections = computed(() => sections.value.filter(section => section.group))
 
   const createGroupOpen = ref(false)
+  const arrangeOpen = ref(false)
   const bulkGroupOpen = ref(false)
   const deleteGroupOpen = ref(false)
   const groupPendingDelete = ref<FactoryGroup | null>(null)
 
+  // Always asks, empty group or not. An empty one has nothing to reassign, but deleting it was
+  // still a single click on a small red button sitting next to the group's own controls.
   const requestGroupDelete = (group: FactoryGroup) => {
-    // Nothing to reassign, so nothing to ask about — an empty group just goes.
-    if (countIn(group.id) === 0) {
-      deleteGroup(group.id)
-      return
-    }
     groupPendingDelete.value = group
     deleteGroupOpen.value = true
   }
@@ -242,8 +350,27 @@
     compProps.factories.map(factory => [factory.id, getFactoryStatuses(factory)]),
   ))
 
-  const createFactory = () => {
-    emit('createFactory')
+  // Reuses the memo above rather than walking the plan a second time.
+  const statusTally = computed(() => factoryStatusTallyChips(tallyFactoryStatuses(statuses.value.values())))
+
+  // Null when nothing in the plan touches the Depot, which is what hides the whole jump-link —
+  // the same test Planner.vue uses to decide whether to render the section it points at.
+  const { depotRate } = useDepotResearch()
+  const depotSummary = computed(() => {
+    const entries = calculateDimensionalDepot(compProps.factories, depotRate.value)
+    if (!entries.length) return null
+
+    // Mercer Spheres are deliberately not here: they are counted in the statistics, beside the
+    // Power Shards and Somersloops, and saying it in both places said nothing new.
+    return {
+      items: entries.length,
+      containers: entries.reduce((total, entry) => total + entry.totalContainers, 0),
+      overCapacity: entries.filter(entry => entry.totalAmount > entry.uploadCapacity).length,
+    }
+  })
+
+  const createFactory = (groupId: string | null = null) => {
+    emit('createFactory', groupId)
   }
 </script>
 
@@ -283,6 +410,23 @@
       opacity: 1;
     }
   }
+}
+
+// The jump-link wears the section's own colour, so the sidebar entry and the card it scrolls to
+// are recognisably the same thing. Kept to this one entry deliberately: Statistics and the
+// Factories Summary are neutral because they are about the whole plan, and colouring all three
+// would turn the top of the sidebar into a stack of competing panels.
+.section-links .factory-card.depot-link {
+  .v-card {
+    background-color: var(--sf-dimensional-depot-panel-bg) !important;
+
+    &:hover {
+      // The plain white hover wash reads grey over a coloured fill, so lift the fill itself.
+      background-color: color-mix(in srgb, var(--sf-dimensional-depot-panel-bg) 82%, #fff) !important;
+    }
+  }
+
+  border-left: 3px solid var(--sf-dimensional-depot-panel-border) !important;
 }
 
 .section-links {
@@ -345,6 +489,12 @@
   &:hover {
     color: white;
   }
+}
+
+// The plan's factory count, which is a fact rather than an affordance — the muted grey the
+// context icons wear read as disabled next to the status chips beside it.
+.factory-count {
+  color: #e0e0e0;
 }
 
 .pt-n1 {

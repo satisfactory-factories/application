@@ -8,6 +8,7 @@
 import 'vuetify/styles'
 
 // Composables
+import { h } from 'vue'
 import { createVuetify } from 'vuetify'
 import { VNumberInput } from 'vuetify/components/VNumberInput'
 import { aliases, fa } from 'vuetify/iconsets/fa'
@@ -58,7 +59,18 @@ export default createVuetify({
   },
   icons: {
     defaultSet: 'fa',
-    aliases,
+    // Selection-control marks are drawn in CSS, not by these aliases — see global.scss.
+    aliases: {
+      ...aliases,
+      // `clear` is the one alias that has to be clickable, and a class icon cannot be. Font
+      // Awesome's SVG-replacement JS swaps the <i> a class icon renders for an <svg>, detaching
+      // the very node Vue bound the click handler to — so every `clearable` field drew its X and
+      // then ignored every click on it. Handing Vuetify a component instead nests the glyph in a
+      // Vue-owned <i class="v-icon">: Font Awesome replaces only the inner <i>, the outer one
+      // keeps the handler (and the button role and label). Same trap as the dynamic icon swaps
+      // documented in .claude/memory/fontawesome-dynamic-icons.md.
+      clear: () => h('i', { class: 'fas fa-times-circle' }),
+    },
     sets: {
       fa,
     },

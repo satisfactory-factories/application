@@ -42,27 +42,39 @@ describe('Simple factory plan', () => {
         amountRequiredExports: 100,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 0,
+        amountRemainingPreSink: 0,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
+      // Nothing in this plan digs the ore up, and it is no longer assumed, so the smelter is
+      // short of it. The Raw Resources Wizard is what turns this into a mine.
       expect(ingotFac.parts.OreIron).toEqual({
         amountRequired: 100,
         amountRequiredExports: 0,
         amountRequiredProduction: 100,
         amountRequiredPower: 0,
-        amountSupplied: 100,
+        amountRequiredBuildings: 0,
+        amountSupplied: 0,
         amountSuppliedViaInput: 0,
-        amountSuppliedViaRaw: 100,
+        amountSuppliedViaRaw: 0,
         amountSuppliedViaProduction: 0,
-        amountRemaining: 0,
-        satisfied: true,
+        amountRemaining: -100,
+        amountRemainingPreSink: -100,
+        amountRequiredSink: 0,
+        satisfied: false,
         isRaw: true,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false, // It's raw, so it's not exportable
       })
     })
@@ -81,8 +93,9 @@ describe('Simple factory plan', () => {
       })
     })
     it('should have the correct flags', () => {
-      expect(ingotFac.requirementsSatisfied).toBe(true)
-      expect(ingotFac.hasProblem).toBe(false)
+      // Short of the ore it smelts, which is now a real shortage rather than an assumption.
+      expect(ingotFac.requirementsSatisfied).toBe(false)
+      expect(ingotFac.hasProblem).toBe(true)
       expect(ingotFac.usingRawResourcesOnly).toBe(true)
     })
     it('should have the correct total power', () => {
@@ -135,13 +148,18 @@ describe('Simple factory plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 0,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 100,
         amountSuppliedViaRaw: 0,
         amountRemaining: 100,
+        amountRemainingPreSink: 100,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: true,
       })
       expect(ironPlateFac.parts.IronIngot).toEqual({
@@ -149,13 +167,18 @@ describe('Simple factory plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 150,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 100,
         amountSuppliedViaInput: 100,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -50,
+        amountRemainingPreSink: -50,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })
@@ -196,13 +219,18 @@ describe('Simple factory plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 150,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 151,
         amountSuppliedViaInput: 151,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: 1,
+        amountRemainingPreSink: 1,
+        amountRequiredSink: 0,
         satisfied: true,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })
@@ -226,13 +254,18 @@ describe('Simple factory plan', () => {
         amountRequiredExports: 0,
         amountRequiredProduction: 150,
         amountRequiredPower: 0,
+        amountRequiredBuildings: 0,
         amountSupplied: 0,
         amountSuppliedViaInput: 0,
         amountSuppliedViaProduction: 0,
         amountSuppliedViaRaw: 0,
         amountRemaining: -150,
+        amountRemainingPreSink: -150,
+        amountRequiredSink: 0,
         satisfied: false,
         isRaw: false,
+        isEndProduct: false,
+        isSinkable: true,
         exportable: false,
       })
     })
@@ -241,8 +274,10 @@ describe('Simple factory plan', () => {
 
       // In the plan iron plates fac is importing ingots from Iron Ingots, we need to detect if the hasProblem is true in the other factory.
 
-      // Ingots should not have a problem at the start, Iron Plate should
-      expect(ingotFac.hasProblem).toBe(false)
+      // Ingots should be meeting the request at the start, Iron Plate should not.
+      // Asserted on the part rather than hasProblem: the ingot factory is separately short of
+      // its ore now, which would mask the propagation this case exists to prove.
+      expect(ingotFac.parts.IronIngot.satisfied).toBe(true)
       expect(ironPlateFac.hasProblem).toBe(true)
 
       // Increase the demand upon IngotFac
@@ -251,7 +286,8 @@ describe('Simple factory plan', () => {
       // Calculate the Iron Plate factory, as that's what is called from the UI upon changing input values
       calculateFactory(ironPlateFac, factories, gameData)
 
-      // Check that the Iron Ingot factory now has a problem
+      // Check that the Iron Ingot factory can no longer meet the raised request
+      expect(ingotFac.parts.IronIngot.satisfied).toBe(false)
       expect(ingotFac.hasProblem).toBe(true)
       expect(ingotFac.requirementsSatisfied).toBe(false)
       // And that Iron Plate does not have a problem anymore

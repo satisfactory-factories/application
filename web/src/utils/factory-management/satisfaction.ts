@@ -1,8 +1,16 @@
 import { Factory, FactoryItem, PartMetrics } from '@/interfaces/planner/FactoryInterface'
 import { addProductToFactory, getProduct, shouldShowInternal } from '@/utils/factory-management/products'
 import { addInputToFactory, getAllInputs } from '@/utils/factory-management/inputs'
+import { getPartExportRequests } from '@/utils/factory-management/exports'
+import { isExtractionRecipe } from '@/utils/factory-management/building-groups/extraction'
+import { canPartBeProducedDirectly } from '@/utils/factory-management/common'
+import { fetchGameData } from '@/utils/gameDataService'
 import { PowerRecipe } from '@/interfaces/Recipes'
+import { DataInterface } from '@/interfaces/DataInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { isSunk } from '@/utils/factory-management/disposal'
+
+const gameData = await fetchGameData()
 
 const nuclearParts = ['NuclearWaste', 'PlutoniumWaste']
 
@@ -39,23 +47,41 @@ export const showSatisfactionItemButton = (
   }
 }
 
-// Shown for any shortage that could be produced by another factory (i.e. not raw, not nuclear waste).
+// Hand-gathered raws need no guard in any of these: the engine leaves them satisfied, and every
+// predicate below already requires !part.satisfied. An unmet raw part is now a shortage like any
+// other — fixed by mining it here or importing it from a mine factory.
+
+// Shown for any shortage that could be produced by another factory (i.e. not nuclear waste).
 export const showAddToFactory = (factory: Factory, part: PartMetrics, partId: string) => {
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !part.isRaw && !part.satisfied
+  if (part.satisfied) {
+    return false
+  }
+  // Another factory can only make what some factory could make. Offering this for a part with no
+  // recipe of its own built a factory with an empty product row and left an import pointing at
+  // it, which supplied nothing - Dissolved Silica and the Power Slugs both landed there.
+  return canPartBeProducedDirectly(partId, gameData)
 }
 
 // Adds the shortage of a part as a product on the target factory, and imports it back into the
 // shortage factory so the deficit is actually resolved. Caller is expected to recalculate factories.
+//
+// `amount` is explicit rather than read from amountRemaining here, so a caller that showed the
+// user a number applies that number. Validated rather than absolute-valued: a negative would mean
+// a surplus, and silently turning that into production is the bug an abs() would hide.
 export const addShortageToFactory = (
   shortageFactory: Factory,
   targetFactory: Factory,
   partId: string,
   recipe: string,
+  amount: number,
 ) => {
-  const shortage = Math.abs(shortageFactory.parts[partId]?.amountRemaining ?? 0)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error(`addShortageToFactory: refusing to add ${amount} of ${partId} to ${targetFactory.name}`)
+  }
+  const shortage = amount
 
   const existingProduct = getProduct(targetFactory, partId, true) as FactoryItem | undefined
   if (existingProduct) {
@@ -85,22 +111,42 @@ export const showAddProduct = (factory: Factory, part: PartMetrics, partId: stri
   if (nuclearParts.includes(partId)) {
     return false
   }
-  return !getProduct(factory, partId) && !part.isRaw && !part.satisfied
+  if (part.satisfied) {
+    return false
+  }
+  // Deliberately productOnly: the part already arriving as a byproduct of something else is no
+  // reason to refuse making it on purpose as well. Dark Matter Residue drops out of every Quantum
+  // Encoder recipe and is also made outright by a Converter, and a factory short of it could add
+  // it to any *other* factory but not the one that needed it — which made no sense to anyone.
+  if (getProduct(factory, partId, true)) {
+    return false
+  }
+  // Nothing to add if the game has no recipe that makes the part on purpose; those get
+  // "Correct Manually" instead.
+  return canPartBeProducedDirectly(partId, gameData)
 }
 
 export const showFixProduct = (factory: Factory, part: PartMetrics, partId: string) => {
-  return getProduct(factory, partId, true) && !part.isRaw && !part.satisfied
+  return getProduct(factory, partId, true) && !part.satisfied
 }
 
+// The dead end: a shortage of something this factory only gets as a byproduct, and that the game
+// gives no way of making on purpose. Scaling the byproduct means scaling whatever produces it,
+// which the planner won't guess at, so the user is told to sort it out themselves.
+//
+// A part that *can* be made on purpose is not a dead end even while it arrives here as a
+// byproduct — it gets "+ Product" (see showAddProduct) instead.
 export const showCorrectManually = (factory: Factory, part: PartMetrics, partId: string) => {
-  const isByProduct = factory.byProducts.find(byProduct => byProduct.id === partId)
-  // If the product is already a byproduct, isn't raw and isn't satisfied, show it
-  if (isByProduct && !part.isRaw && !part.satisfied) {
-    return true
+  if (part.satisfied) {
+    return false
   }
 
-  // Beyond a byproduct, we don't care about it's state
-  return false
+  const isByProduct = factory.byProducts.some(byProduct => byProduct.id === partId)
+  if (!isByProduct) {
+    return false
+  }
+
+  return !canPartBeProducedDirectly(partId, gameData)
 }
 
 export const showFixImport = (factory: Factory, part: PartMetrics, partId: string) => {
@@ -151,12 +197,28 @@ export const showByProductChip = (factory: Factory, partId: string) => {
 export const showImportedChip = (factory: Factory, partId: string) => {
   return getAllInputs(factory, partId).length > 0
 }
-export const showRawChip = (factory: Factory, partId: string) => {
-  const part = factory.parts[partId]
-  // Only show when raw supply is actually being drawn from the world. A raw part fully
-  // supplied by unpackaging (e.g. Packaged Oil -> Crude Oil) is not a raw import. #431
-  return part.isRaw && part.amountSuppliedViaRaw > 0
+// Another factory has asked this one for the part — the mirror of the Imported chip.
+export const showExportedChip = (factory: Factory, partId: string) => {
+  return getPartExportRequests(factory, partId).length > 0
 }
+// Extraction, import and gathering are independent facts about a part, so they get independent
+// predicates. Encoding them as one mutually exclusive value is what once let a factory mining
+// 100 of the 180 it needed report as fully satisfied: 'extracted' won, and the assumed 80 was
+// never mentioned.
+
+// A raw resource the game gives no extractor for, so the planner takes it as gathered by hand.
+// amountSuppliedViaRaw is only ever non-zero for those now, which makes it the whole test.
+export const showManuallyGatheredChip = (factory: Factory, partId: string) => {
+  const part = factory.parts[partId]
+  return !!part?.isRaw && part.amountSuppliedViaRaw > 0
+}
+
+// This factory digs the part up itself.
+export const showExtractedChip = (factory: Factory, partId: string) => {
+  return factory.products.some(product => product.id === partId && isExtractionRecipe(product.recipe))
+}
+
+// A raw part this factory neither extracts nor imports enough of.
 export const showUnpackagedChip = (factory: Factory, partId: string) => {
   const part = factory.parts[partId]
   if (!part.isRaw) {
@@ -176,7 +238,7 @@ export const showRecycledChip = (factory: Factory, partId: string) => {
   if (!part) {
     return false
   }
-  return part.amountRequiredProduction + part.amountRequiredPower > 0
+  return part.amountRequiredProduction + part.amountRequiredPower + (part.amountRequiredBuildings ?? 0) > 0
 }
 export const showInternalChip = (factory: Factory, partId: string) => {
   const product = getProduct(factory, partId, true) as FactoryItem
@@ -185,6 +247,51 @@ export const showInternalChip = (factory: Factory, partId: string) => {
   }
   return shouldShowInternal(product, factory)
 }
+
+/**
+ * Whether the Storage column offers this part a sink and a depot at all.
+ *
+ * Every part the factory handles, whether it makes it, imports it, or is short of it. This used to
+ * require a surplus, which was wrong in the case the Depot is most useful for: a logistics factory
+ * that imports a part precisely so it can upload it. Its imports balance exactly, so it had no
+ * surplus, so the planner offered it no Uploader, and the build the feature exists to support was
+ * the one build it forbade.
+ *
+ * Nothing needs a surplus gate to stay honest. The sink takes `max(0, surplus)`, so a sink on a
+ * part with nothing spare is inert by construction rather than by being hidden, and it starts
+ * working by itself the moment the part does have something spare. The Depot changes no number at
+ * all. So the gate only ever removed a choice; it never protected a calculation.
+ *
+ * The building exclusions still apply, in showSinkControl and showDepotControl below: those are
+ * about what the buildings physically accept, which is a fact about the game rather than a
+ * judgement about the plan.
+ */
+export const showDisposalControls = (factory: Factory, partId: string): boolean =>
+  Boolean(factory.parts[partId])
+
+// The sink has a conveyor input and nothing else, and it refuses radioactive items outright. Both
+// facts live in isSinkablePart, which the engine stamps onto the part every calculation.
+export const showSinkControl = (factory: Factory, partId: string): boolean =>
+  showDisposalControls(factory, partId) && factory.parts[partId]?.isSinkable !== false
+
+/**
+ * The Uploader also takes a conveyor and nothing else, so a fluid cannot go in it — but unlike the
+ * sink it has no objection to radioactive items. The wiki's Radiation page is explicit that
+ * uploading a radioactive part to the Depot stops its radiation entirely, so Uranium Waste and
+ * Plutonium Waste are legitimate here even though the sink refuses them.
+ *
+ * That is why this asks the game data rather than reusing `isSinkable`: the two exclusions only
+ * look alike. It also takes gameData rather than reading a stamped field, because nothing in the
+ * engine needs the answer — the Depot changes no number, so this is purely an affordance.
+ */
+export const showDepotControl = (factory: Factory, partId: string, gameData: DataInterface): boolean =>
+  showDisposalControls(factory, partId) && !gameData?.items?.parts?.[partId]?.isFluid
+
+// Only true when the sink is actually taking something. A sink placed on a part whose surplus has
+// since been exported away is still set, but it is not sinking anything, and saying "Sunk" over a
+// zero would be a lie.
+export const isActivelySunk = (factory: Factory, partId: string): boolean =>
+  isSunk(factory, partId) && (factory.parts[partId]?.amountRequiredSink ?? 0) > 0
 
 export const convertWasteToGeneratorFuel = (recipe: PowerRecipe, amount: number) => {
   // In order to get the fuel amount to insert into the UI, we need to do some math.
