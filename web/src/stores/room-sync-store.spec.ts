@@ -871,7 +871,7 @@ describe('room-sync-store', () => {
         read: factory => factory.inputs.length,
         expected: 1,
       },
-      // The four below arrived with the merge of main. Each writes a stored field that no
+      // The five below arrived with the merge of main. Each writes a stored field that no
       // calculation announces, so each is exactly the class the audit exists to catch.
       {
         what: 'a checklist tick',

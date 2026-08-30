@@ -738,6 +738,9 @@
       appStore.addFactory(targetFactory)
 
       addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part), Math.abs(factory.parts[part]?.amountRemaining ?? 0))
+      // The new factory is structural and inferred; the import this put on the factory that was
+      // short is not, and a rebase would drop it while keeping the producer it points at.
+      markFactoryEdited(factory)
       calculateFactories(appStore.getFactories(), getGameData())
       eventBus.emit('toast', { message: `Created "${targetFactory.name}" producing "${getPartDisplayName(part)}"!` })
 
