@@ -45,7 +45,7 @@ jobs:
 
       # --filter, or the shared lockfile makes this install backend and parsing too.
       - name: Install dependencies
-        run: pnpm install --filter web
+        run: pnpm install --filter web...
 
       - name: Lint check
         run: pnpm lint-check

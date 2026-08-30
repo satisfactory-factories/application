@@ -247,8 +247,11 @@ export const expectMirroredNote = async (
   factoryName: string,
   note: string,
 ): Promise<void> => {
+  // 30s: convergence rides two debounce cycles plus rebase churn, and a loaded
+  // 2-core CI runner can stretch that past the default 10s poll.
   await expect.poll(() => mirroredNote(page, tabId, factoryName), {
     message: `${factoryName}'s note never reached this client's mirror`,
+    timeout: 30_000,
   }).toBe(note)
 }
 

@@ -18,7 +18,15 @@ import { RoomsModule } from './rooms/rooms.module'
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnv }),
+    // Under vitest the .env file must not win over process.env: the test apps
+    // inject the in-memory mongod's URI through process.env, and the committed
+    // backend/.env would silently redirect every suite to a real localhost Mongo.
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnv,
+      ignoreEnvFile: Boolean(process.env.VITEST),
+    }),
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

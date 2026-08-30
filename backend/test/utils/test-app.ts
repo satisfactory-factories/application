@@ -1,9 +1,7 @@
-import { randomUUID } from 'node:crypto'
 import type { Server } from 'node:http'
 
 import { PROTOCOL_VERSION, WS_PATH } from 'common'
 import { ThrottlerStorage } from '@nestjs/throttler'
-import { inject } from 'vitest'
 import { getConnectionToken } from '@nestjs/mongoose'
 import { Test } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
@@ -16,7 +14,7 @@ import { RoomActivityService } from '../../src/rooms/room-activity.service'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
-export const TEST_JWT_SECRET = 'test-jwt-secret'
+export { TEST_JWT_SECRET } from './constants'
 export const VERSION_HEADERS = { 'X-App-Version': PROTOCOL_VERSION }
 
 export interface TestContext {
@@ -44,15 +42,11 @@ const NEVER_THROTTLED: ThrottlerStorage = {
 }
 
 /**
- * Env is set before the module is compiled, and each app gets its own database on
- * the run's shared mongod. Caveat: ConfigService answers from the parsed .env
- * before process.env, so a variable that backend/.env also defines keeps the
- * file's value. Never assert on TEST_JWT_SECRET; verify through JwtService.
+ * Env comes from test/utils/env-setup.ts, which runs before any module import —
+ * AppModule's ConfigModule bakes env at import time and ignores backend/.env
+ * under vitest. Apps in one test process share that process's database.
  */
 export const createTestApp = async (options: TestAppOptions = {}): Promise<TestContext> => {
-  process.env.JWT_SECRET = TEST_JWT_SECRET
-  process.env.MONGODB_URI = `${inject('mongoUri')}sf-${randomUUID()}`
-
   const builder = Test.createTestingModule({ imports: [AppModule] })
   if (options.stepRunner) builder.overrideProvider(EnsureStepRunner).useValue(options.stepRunner)
   if (options.activity) builder.overrideProvider(RoomActivityService).useValue(options.activity)

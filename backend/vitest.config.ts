@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.spec.ts', 'src/**/*.spec.ts'],
     globalSetup: ['test/utils/global-setup.ts'],
+    setupFiles: ['test/utils/env-setup.ts'],
     // One mongod serves the whole run, and suites that hammer it in parallel see
     // writes go missing. Serial is 18 files in ~55s, which is cheap enough.
     fileParallelism: false,
