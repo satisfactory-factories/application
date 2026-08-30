@@ -11,8 +11,10 @@ The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms,
 10-second last-write-wins blob sync, plus a NestJS backend rewrite. The binding contract is
 `.claude/plans/sync-v7-realtime-rooms.md` (revision 8, reconciled with the built backend).
 
-**Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
-merged — no PR has been opened.** Every task line in the plan is delivered bar the four
+**Status: shipped for review as PR #620 (opened 2026-08-30) from branch
+`claude/sync-mechanism-refactor-7b021b`; not yet merged.** The PR body carries the three
+manual box steps and the deliberate 0.7.0-over-0.8.0 version choice. The e2e CI job's first
+live run happens on that PR. Every task line in the plan is delivered bar the four
 deliberate v0.7.0 follow-ups (history UI, presence beyond an occupancy count, email password
 reset, the v0.7.0 changelog modal). Three adversarial Codex reviews of the finished diff raised
 seven findings between them; all are fixed, and the sections below are what they were. A
