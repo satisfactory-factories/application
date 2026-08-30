@@ -368,6 +368,12 @@ was dropped. The first two are new, from the round-three race audit.
   there would invert that: the demo would claim authorship and overwrite the account's real plan on
   the next rebase. The changelog dialog's "Open Demo" button uses this path (`href="/?setupDemo=true"`),
   so it is user-reachable, not dev-only as an earlier note had it.
+- **`loadServerPlan` in `app-store.ts` is dead wiring, and arrived from main.** It restores a
+  plan from the account and is exported, but nothing outside its own spec calls it: its v6 UI
+  (`Sync.vue`, the OOS dialog, the force-download button) is what this branch deleted. It is
+  correctly silent as it stands — it flags the app as loading first, so it is a load rather than
+  an edit — but anything that wires it back up to a button needs `markPlanReplaced` and the four
+  `markTabEdited` calls for the tab fields it overwrites.
 - **`updateFactories` is dead wiring.** `PlannerFactoryList.vue` and `PlannerSidebarContent.vue`
   both declare the emit and neither ever fires it, so `Planner.vue`'s `updateFactoriesList` — a bare
   `setFactories` with no declaration — is unreachable. Worth deleting; if anything ever wires it up
