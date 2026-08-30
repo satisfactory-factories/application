@@ -525,7 +525,7 @@ export class RoomsService {
   }
 
   /**
-   * The activity row is an audit trail with no reader in v7, and by the time it is
+   * The activity row is an audit trail with no reader in v0.7.0, and by the time it is
    * written the mutation has committed. Failing the request would report a change
    * that did happen — a revocation, in unshare's case — as one that did not.
    */

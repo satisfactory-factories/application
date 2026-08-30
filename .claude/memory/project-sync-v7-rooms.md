@@ -1,20 +1,20 @@
 ---
 name: project-sync-v7-rooms
-description: v7 realtime rooms sync — built and green on branch claude/sync-mechanism-refactor-7b021b; contract in .claude/plans/sync-v7-realtime-rooms.md, file map and follow-ups here
+description: v0.7.0 realtime rooms sync — built and green on branch claude/sync-mechanism-refactor-7b021b; contract in .claude/plans/sync-v7-realtime-rooms.md, file map and follow-ups here
 metadata:
   type: project
   volatility: hot
   lastVerified: 2026-08-30
 ---
 
-The v7 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
+The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
 10-second last-write-wins blob sync, plus a NestJS backend rewrite. The binding contract is
 `.claude/plans/sync-v7-realtime-rooms.md` (revision 8, reconciled with the built backend).
 
 **Status: the build is complete on branch `claude/sync-mechanism-refactor-7b021b` and not yet
 merged — no PR has been opened.** Every task line in the plan is delivered bar the four
-deliberate v7 follow-ups (history UI, presence beyond an occupancy count, email password
-reset, the v7 changelog modal). Three adversarial Codex reviews of the finished diff raised
+deliberate v0.7.0 follow-ups (history UI, presence beyond an occupancy count, email password
+reset, the v0.7.0 changelog modal). Three adversarial Codex reviews of the finished diff raised
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
@@ -75,7 +75,7 @@ Origin check name `localhost:3000`, and a `VITE_ENV=dev` bundle bakes in `localh
   shares collection are never rewritten.
 - Offline mode is first-class (manual airplane switch + detection prompt).
 - Caps: 10 owned rooms, 25 memberships per user. Activity is recorded (who/when per op) but
-  has no UI in v7.
+  has no UI in v0.7.0.
 - **Revocation is a single write, not a chain.** Unshare clears `shared` and bumps the room's
   `membershipEpoch` in one update; a `RoomMembership` whose `epoch` is below it grants nothing
   anywhere (REST list, WS join, every op), owner rows exempt. The deletions, revision bumps
@@ -262,7 +262,7 @@ a new revocation lever, a new room write or a new bulk path lands.
 
 Main's 66 commits added persisted fields to `Factory` and `FactoryTab` (AWESOME Sink and depot
 disposal, custom buildings, per-factory checklist mode, extraction/well group settings, the depot
-research tiers). Two v7 invariants do not survive that on their own, and neither fails loudly.
+research tiers). Two v0.7.0 invariants do not survive that on their own, and neither fails loudly.
 
 **The zod schemas strip unknown keys, so a stored field missing from them is deleted.** Not
 rejected — deleted, on every op, adoption and share, with the sender's own copy keeping it and
@@ -418,7 +418,7 @@ are new, from the round-three race audit.
   deletes it. Deliberate: re-stamping a row the user already holds costs no capacity, and the
   sweeper reclaims it.
 - **`web/src/pages/share/[id].vue` still uses three blocking `alert()`s** for a bad or
-  unparseable snapshot link. Everything built for v7 uses the toast bus; these predate it and
+  unparseable snapshot link. Everything built for v0.7.0 uses the toast bus; these predate it and
   were left alone deliberately, but they are the last blocking dialogs on a sync path.
 - ~~`CHANGELOG.md` has a stray `## [Unreleased]` section below `## Beta v0.7`.~~ **Closed by the
   merge**: its content became upstream's `## Beta v0.6` section, so the heading merged out empty

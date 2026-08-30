@@ -1,4 +1,4 @@
-# v7: Realtime sync, rooms, and the backend rewrite
+# v0.7.0: Realtime sync, rooms, and the backend rewrite
 
 Status: revision 8. Reconciled with the built backend (2026-08-28): `POST /share` stays —
 snapshot links must remain creatable, so "read-only" applies to existing legacy rows, not
@@ -16,12 +16,12 @@ Branch: `claude/sync-mechanism-refactor-7b021b`. Date: 2026-08-27.
 
 ## What this is
 
-The v7 headline feature. Today the planner saves one tab as a blob every 10 seconds and the
+The v0.7.0 headline feature. Today the planner saves one tab as a blob every 10 seconds and the
 last writer wins. We replace that with synced tabs: a tab the user chooses to sync lives on
 the server as a room, changes flow both ways over a WebSocket in real time, a synced tab can
 be opened to live collaboration by invite link (optionally password-protected), snapshot
 share links stay separate and read-only-in-time, preferences follow the account, offline use
-is a first-class mode, and the backend is rewritten in NestJS. The v7 changelog modal is a
+is a first-class mode, and the backend is rewritten in NestJS. The v0.7.0 changelog modal is a
 separate later session.
 
 ## Tasks
@@ -54,7 +54,7 @@ separate later session.
 - Build rooms REST as resume-aware ensure-steps: list, create, rename, tombstone-first delete, leave, reorder, share/unshare, slug lookup, `POST /rooms/:id/auth` (password → visitor token), join, create-only adopt, password set/rotate/remove
 - Build the WS gateway: hello/join → snapshot-or-up-to-date, serialized per-room apply with revision-guarded writes and opId dedup, live access re-checks (membership, shared flag, visitor-token `passwordVersion`), Origin check, heartbeat, throttles, `maxPayload`
 - Implement metadata fan-out: room changes bump every member's `roomsRevision` and notify every affected user channel
-- Record activity: stamp actor + timestamp + kind on every accepted op and meta mutation into `RoomActivity` (capped per room; no UI in v7)
+- Record activity: stamp actor + timestamp + kind on every accepted op and meta mutation into `RoomActivity` (capped per room; no UI in v0.7.0)
 - Implement the hourly sweeper: tombstoned rooms (any state), membership-less non-shared rooms older than 24h, activity-log trim
 - Enforce the validation/caps table through the shared zod schemas; port today's truncation exactly
 - Keep `GET /share/:id` read-only on the existing collection; `/save` and `/load` return 410
@@ -98,7 +98,7 @@ separate later session.
    stop leaked links, keep members; unshare = make it fully private again, kick everyone.
 6. **Anonymous visitors stay local** except joining someone's shared tab.
 7. **NestJS + MongoDB/Mongoose, standalone mongod** (no transactions, no replica-set change).
-8. **Old clients are cut by the version gate**; v7+ clients get a refresh prompt.
+8. **Old clients are cut by the version gate**; v0.7.0+ clients get a refresh prompt.
 9. **Preferences sync = semantic keys only** (`showSatisfactionBreakdowns`,
    `factoryGroupCustomColors`, `buildingGroupTutorialOpened`,
    `dismissed-introduction`, `statistics*Hidden`, `summaryHidden`, `shortageJumpToFactory`).
@@ -107,7 +107,7 @@ separate later session.
 11. **Offline mode is first-class**: manual toggle plus graceful detection.
 12. **Activity is recorded, not rendered.** Who/when/what lands in a capped per-tab log now;
     the history UI is a follow-up.
-13. **Playwright** for the live two-browser tests; one v7 headline release; `main` stays
+13. **Playwright** for the live two-browser tests; one v0.7.0 headline release; `main` stays
     shippable until the branch lands; `tab-sync-v2` is a design reference only.
 
 ---
@@ -182,7 +182,7 @@ persistent "new version available — refresh" prompt.
   room's `membershipEpoch` at the moment the row was granted; below it the row is void.
 - `RoomActivity`: `{ roomId, at, actor (userId or 'anon'), kind, summary? }`, capped per
   room (~200; the sweeper trims). Written on every accepted op and meta change. **No UI in
-  v7** — the data is simply ready for the history feature later.
+  v0.7.0** — the data is simply ready for the history feature later.
 - `User`: + `roomsRevision`, `legacyImportRoomId`. `UserPreferences`: `{ userId, prefs,
   revision }`.
 - Legacy `FactoryData` (keyed by username) stays read-only forever. `Share` keeps accepting
@@ -351,7 +351,7 @@ contract, plus a SIGTERM handler that closes sockets cleanly.
 
 **CORS, fixed deliberately.** Today's allowlist contains the API's own origin instead of the
 web origin, and `X-App-Version` triggers preflights. The new config allows the production
-web origin + `localhost:3000`, and the header. Without this, v7 could not call a single
+web origin + `localhost:3000`, and the header. Without this, v0.7.0 could not call a single
 gated endpoint in production.
 
 **Release runbook.**
@@ -359,7 +359,7 @@ gated endpoint in production.
    links keep working.
 2. Verify from the production origin: a preflighted `X-App-Version` request succeeds, and a
    WS upgrade completes through the Cloudflare tunnel.
-3. Web deploys to Vercel minutes later. Refreshes get v7.
+3. Web deploys to Vercel minutes later. Refreshes get v0.7.0.
 4. The breakage window is those minutes plus stale open tabs. Accepted, announced.
 5. Rollback: retag the previous backend image, revert the Vercel deploy. Legacy data was
    never written and mirrors kept `factoryTabs` v6-readable, so both server and browser land
@@ -407,9 +407,9 @@ mirror shape stays v6-readable; preferences merge.
 
 CI gets a new job running the e2e suite headless.
 
-## Out of scope (v7 follow-ups)
+## Out of scope (v0.7.0 follow-ups)
 
-Email password reset (Mailgun), the v7 changelog modal, the activity/history UI (data is
+Email password reset (Mailgun), the v0.7.0 changelog modal, the activity/history UI (data is
 recorded from day one), on-select factory rendering rework, room read-only lock, presence
 cursors/avatars (bare occupancy count only if free), the Vue Flow graph rebuild
 (`graphPosition` is already optional in the payload schema), horizontal backend scaling.

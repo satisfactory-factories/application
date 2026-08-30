@@ -14,7 +14,7 @@ import { parseContentBody } from '../rooms/rooms.dto'
 
 export const ENDPOINT_REMOVED: EndpointRemovedBody = {
   code: 'endpoint_removed',
-  message: 'Whole-plan save and load were replaced by synced tabs in v7.',
+  message: 'Whole-plan save and load were replaced by synced tabs in v0.7.0.',
 }
 
 /** Share ids are three words; a collision just means picking three more. */
