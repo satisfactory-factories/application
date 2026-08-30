@@ -19,11 +19,22 @@ seven findings between them; all are fixed, and the sections below are what they
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-30, on the committed tree: backend
-258 vitest tests, common 70, web 2623 unit tests (1 skipped), `vue-tsc` clean, root `lint-check`
-clean (64 pre-existing warnings in `parsing/`, 0 errors), root `build` clean. The 25 Playwright
-e2e tests passed twice consecutively before the merge and have NOT been re-run since it. The e2e
+258 vitest tests (22 files), common 70 (4), web 2625 unit tests (140 files, 1 skipped), `vue-tsc`
+clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root `build`
+clean, and the 25 Playwright e2e tests passed twice consecutively **after** the merge. The e2e
 job in CI has never actually run — it is validated locally only, so the first PR is where it gets
 proved.
+
+Two counting traps in that line, both of which have already misled a pass. The web figure
+includes the 8 files and 129 tests in `web/testing/tdd/`: they are **not** excluded by
+`vite.config.mts`, whose only exclusions are `e2e/**` and `playwright.config.ts`, so they run with
+everything else and are currently all green — [[tdd-specs-fail-intentionally]] describes a state
+that does not hold on this branch, so read the run rather than assuming a failure there is
+someone's WIP. And `web/src/sync/room-state.ts` carries one literal NUL byte, in the
+`UNKNOWN_CONTENT` sentinel, which makes git classify the whole file as binary: `git diff`,
+`git show` and every PR review of the sync engine's state module print "Binary files differ" and
+no diff at all. Pre-existing rather than merge fallout, and worth knowing before anyone reviews a
+change to that file.
 
 ## Where things live
 
@@ -301,6 +312,26 @@ because it routes through `updateFactory`: custom buildings, sinks, the extracti
 and Trim, the per-group Add Factory (via `moveFactoryToGroup`), and tasks-on-blur (via `taskEdited`).
 `usePlannerOptions` is correctly silent — those are per-browser view settings, not plan content.
 
+**The independent re-check of all of it, 2026-08-30.** The field diff was re-derived from
+scratch rather than re-read: a throwaway script parsed every `export interface` out of
+`common/src/types/factory.ts` and compared it against the zod shapes pulled off the schema
+objects at runtime, both directions, optionality included. Clean — no missing field, no extra,
+no optionality mismatch, and the only interface with no schema pair is
+`LegacyRawAssumptionFields`, which is meant to be stripped. The check is self-proving: an empty
+or wrongly-resolved shape would have reported every field as missing rather than none. Worth
+redoing exactly that way after any future merge, because it costs minutes and does not depend on
+anyone having kept a fixture current.
+
+**Three more payload-without-intent sites, found by re-running the sweep over the merged tree.**
+All three add a product to a factory that already exists and recalculate through the plural
+`calculateFactories`, which is payload only: "Add to factory" in `AddToPlannerDialog.vue` (the
+Parts & Recipes tray), the product-plus-import pair in `AddShortageDialog.vue`, and the import
+left on the short factory when `PlannerFactorySatisfactionItems.vue` builds a producer for a
+shortage. The first two now have component specs. The pattern to keep testing for is the plural
+call in a click handler: `calculateFactory` declares intent for the factory the user acted on and
+`calculateFactories` declares nothing at all, so any handler reaching for the plural form has to
+say whose edit it was.
+
 **The version notifier overlap (#587).** Three components could tell someone to reload:
 `VersionPrompt` (ours — the persistent banner on a 426 or a 4426 close), `UpdateAvailableToast`
 (upstream's dismissible release ping) and `UpdateRequiredDialog` (upstream's blocking dialog, on an
@@ -314,8 +345,13 @@ intended.
 
 ## Flagged follow-ups, none of them blocking
 
-Re-checked line by line against the code on 2026-08-30; every one below still held, so nothing
-was dropped. The first two are new, from the round-three race audit.
+Re-checked line by line against the code on 2026-08-30, after the merge and again after the final
+verification pass. All still hold bar the changelog one, struck through below. Spot-confirmed this
+pass: the NestJS API really has no `/version` route (the controllers serve preferences, auth,
+health, the legacy share/save/load pair and sixteen rooms routes, and none of them is it), and
+both dead-wiring claims are still dead — `loadServerPlan` is called by nothing but its own spec,
+and `updateFactories` is declared as an emit in two components and fired by neither. The first two
+are new, from the round-three race audit.
 
 - **The op fan-out rides on registry membership, not on a fresh check.** `broadcastOp` sends the
   sender's diff to every socket the registry holds in that room, so between the epoch write in
@@ -384,13 +420,26 @@ was dropped. The first two are new, from the round-three race audit.
 - **`web/src/pages/share/[id].vue` still uses three blocking `alert()`s** for a bad or
   unparseable snapshot link. Everything built for v7 uses the toast bus; these predate it and
   were left alone deliberately, but they are the last blocking dialogs on a sync path.
-- **`CHANGELOG.md` has a `## [Unreleased]` section sitting *below* the finished
-  `## Beta v0.7` section**, holding the factory-icon and building-group work. Whoever cuts the
-  release has to decide what that heading now means rather than assuming it is empty.
+- ~~`CHANGELOG.md` has a stray `## [Unreleased]` section below `## Beta v0.7`.~~ **Closed by the
+  merge**: its content became upstream's `## Beta v0.6` section, so the heading merged out empty
+  and is gone. The headings are now v0.7, v0.6, v0.5, Alpha v0.4, in that order.
 
-## Two defects found by the e2e suite, both fixed here
+## Three defects found by the e2e suite, all fixed here
 
 Keep these: the shapes recur, and the second one bites twice.
+
+- **The render mirror lags the engine, so every assertion that reads it must poll.**
+  `localStorage.factoryTabs` is written on the persistence debounce; `tabMirrorMeta` — the
+  revision and the outstanding-intent set — is written eagerly by `persistMeta`. So a harness
+  check that waits on revision and quiescence and then reads the mirror is reading a store that
+  has not caught up yet, and `expectConverged` does not save it: that compares the two clients'
+  mirrors to each other, and two clients equally behind are equal. Measured on the notes race at
+  4 stale reads in 6, always correct a moment later, failing about one run in three. `mirroredNote`
+  is the raw read and `expectMirroredNote` is the polled one; the concurrency tests were the only
+  ones using the raw form for a cross-device check, and now do not. **This looks exactly like a
+  lost edit** — the mirror shows the seeded value and the assertion says the user's note vanished
+  — so the first instinct is to go hunting in the rebase. Check the timing before the engine:
+  add a settle and re-read, and if it converges the engine was never wrong.
 
 - **An uncalculated factory is a valid factory now.** `newFactory()` used to leave `power` as
   `{}` and nothing recalculates on add, so the first op after every "Add Factory" was refused
@@ -425,8 +474,11 @@ Keep these: the shapes recur, and the second one bites twice.
   field and hidden/game-sync chips (`PlannerFactory.vue`), tasks, notes, icon, groups
   (`useFactoryGroups.ts`), show/hide-all and the reorder family (`Planner.vue`), the building
   groups row (`BuildingGroups.vue`, `BuildingGroupsSection.vue`), all five export calculators,
-  blank product/generator/import rows, `usePowerTarget`, and `addFactory`/`removeFactory` in
-  `app-store.ts` for their own reindex. Calculation entry points need no call —
+  blank product/generator/import rows, `usePowerTarget`, `addFactory`/`removeFactory` in
+  `app-store.ts` for their own reindex, every checklist mutation (`checklist.ts`), the depot
+  uploader count, the two research tiers (`useDepotResearch.ts`), and the three add-product
+  dialogs (`AddToPlannerDialog.vue`, `AddShortageDialog.vue`,
+  `PlannerFactorySatisfactionItems.vue`). Calculation entry points need no call —
   `calculateFactory()` already emits intent for the factory the user acted on — and the added
   or removed record itself needs none, because `markStructuralIntent` infers it from the diff.
   Only the record is inferred, though, never the reindex it caused: that distinction is the
