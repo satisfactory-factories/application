@@ -56,6 +56,9 @@ const probeIntervalMs = (): number => {
 /** Failed reconnects before the "you appear to be offline" prompt. */
 export const OFFLINE_PROMPT_AFTER = 3
 
+/** How long the "offline mode is on" notice stays up. */
+export const OFFLINE_NOTICE_MS = 10_000
+
 /** Consecutive rejects before a room stops resending, so a refused op cannot hot-loop. */
 export const REJECT_PAUSE_AFTER = 3
 
@@ -912,6 +915,14 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     failedReconnects.value = 0
     clearTimeout(debounceTimer)
     socket?.stop()
+    // The notice goes; the state does not. The tab bar's chip and the account
+    // panel both say "Offline mode" for as long as it is on.
+    eventBus.emit('toast', {
+      message: 'Offline mode is on. Your edits are kept on this device and sent when you turn it off.',
+      type: 'warning',
+      variant: 'timed',
+      timeout: OFFLINE_NOTICE_MS,
+    })
   }
 
   const dismissOfflinePrompt = () => {

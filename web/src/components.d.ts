@@ -107,6 +107,7 @@ declare module 'vue' {
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
+    ToastNotification: typeof import('./components/common/ToastNotification.vue')['default']
     Todo: typeof import('./components/graph/Todo.vue')['default']
     Tooltip: typeof import('./components/tooltip.vue')['default']
     TooltipInfo: typeof import('./components/tooltip-info.vue')['default']

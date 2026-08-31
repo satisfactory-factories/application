@@ -1,5 +1,6 @@
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
+import { setOfflineMode } from '../helpers/session'
 import { installWsGate } from '../helpers/network'
 import type { WsGate } from '../helpers/network'
 import {
@@ -39,13 +40,14 @@ test('a dropped connection offers offline mode, and nothing edited in it is lost
   await expect(prompt).toContainText('Your data will sync when you\'re back online')
   await expect(prompt).toContainText('Go into offline mode?')
 
+  // The notice times out; the tab bar's chip is what says offline mode is still on.
   await first.getByTestId('offline-accept').click()
-  await expect(first.getByTestId('offline-indicator')).toBeVisible()
+  await expect(first.getByTestId('tab-bar-offline')).toContainText('Offline mode')
 
   await addFactory(first, { name: 'Made offline', note: 'added after accepting the prompt' })
 
   gate.restore()
-  await first.getByTestId('offline-exit').click()
+  await setOfflineMode(first, user, false)
 
   // Both survive: the one the drop swallowed and the one made while silent.
   await expect.poll(() => factoryNames(second), {

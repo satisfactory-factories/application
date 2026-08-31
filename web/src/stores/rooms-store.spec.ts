@@ -186,6 +186,37 @@ describe('rooms-store', () => {
       expect(roomSync.rooms[tab.id]).toBeUndefined()
     })
 
+    it('makes the reader dismiss a deletion somebody else performed', async () => {
+      const tab = localTab('Doomed')
+      listReturns([entry({ roomId: tab.id })])
+      await store.refresh()
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      roomSync.handleMessage({ type: 'room_deleted', roomId: tab.id })
+      store.reconcileRooms()
+
+      expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({
+        variant: 'permanent',
+        message: expect.stringContaining('was deleted by its owner'),
+      }))
+    })
+
+    it('says nothing about a deletion this browser asked for', async () => {
+      const tab = localTab('Mine to delete')
+      listReturns([entry({ roomId: tab.id })])
+      await store.refresh()
+      vi.mocked(api.deleteRoom).mockResolvedValue({ status: 'deleted' })
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      // The room's own fan-out reaches this client's socket while the request is open.
+      const removal = store.removeTab(tab.id)
+      roomSync.handleMessage({ type: 'room_deleted', roomId: tab.id })
+      store.reconcileRooms()
+      expect(await removal).toBe(true)
+
+      expect(emit).not.toHaveBeenCalledWith('toast', expect.anything())
+    })
+
     it('reacts to a room going away without being asked', async () => {
       const tab = localTab('Doomed')
       listReturns([entry({ roomId: tab.id })])

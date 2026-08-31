@@ -2,6 +2,7 @@ import mitt from 'mitt'
 import type { VersionMismatchBody } from 'common'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import type { TabField } from '@/sync/room-state'
+import type { ToastData } from '@/utils/toast'
 
 type Events = {
   factoryUpdated: Factory;
@@ -26,7 +27,7 @@ type Events = {
   // A newer release is live. Advisory, unlike the version gate: this build still works, so the
   // user is offered a reload rather than made to do one.
   updateAvailable: { version: string };
-  toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
+  toast: ToastData;
   // Initial factory loading dialog
   loadingCompleted: undefined;
   incrementLoad: { step: string }; // Payload to denote loading or calculation step

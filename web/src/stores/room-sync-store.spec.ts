@@ -4,7 +4,12 @@ import { PROTOCOL_VERSION } from 'common'
 import type { Factory, FactoryTab, RoomSnapshot, ServerMessage } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
 import type { WebSocketLike } from '@/sync/ws-client'
-import { OP_DEBOUNCE_MS, REVISION_PROBE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
+import {
+  OFFLINE_NOTICE_MS,
+  OP_DEBOUNCE_MS,
+  REVISION_PROBE_MS,
+  useRoomSyncStore,
+} from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
@@ -786,6 +791,18 @@ describe('room-sync-store', () => {
       window.dispatchEvent(new Event('offline'))
 
       expect(store.mode).toBe('offlinePrompt')
+    })
+
+    it('announces offline mode once, on a timer rather than for ever', () => {
+      syncAt(fixture, 4)
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      store.enterOffline()
+
+      expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({
+        variant: 'timed',
+        timeout: OFFLINE_NOTICE_MS,
+      }))
     })
 
     it('goes back to quiet retrying when the prompt is declined', () => {

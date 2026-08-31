@@ -137,6 +137,13 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   // ===== Revocation =====
 
+  /**
+   * Rooms this browser removed itself. The server's `room_deleted` comes back over the
+   * socket to the client that asked for it, and telling someone their own deletion
+   * worked is noise; a peer losing a plan under them is not.
+   */
+  const selfRemoved = new Set<string>()
+
   /** The tab keeps every byte it had and quietly stops being a room. */
   const convertToLocal = (roomId: string, reason: 'deleted' | 'access') => {
     const tab = appStore.getTab(roomId)
@@ -145,12 +152,18 @@ export const useRoomsStore = defineStore('rooms', () => {
     removeVisitorToken(roomId)
     delete entries.value[roomId]
     if (!tab) return
+    if (selfRemoved.delete(roomId)) return
 
+    // Losing a plan someone else deleted is not something to catch out of the corner
+    // of an eye, so it waits to be dismissed. An unshare leaves a working copy behind
+    // and can time out.
+    const deleted = reason === 'deleted'
     eventBus.emit('toast', {
-      message: reason === 'deleted'
+      message: deleted
         ? `"${tab.name}" was deleted by its owner. Your copy is kept as a local tab.`
         : `"${tab.name}" is no longer shared with you. Your copy is kept as a local tab.`,
       type: 'warning',
+      variant: deleted ? 'permanent' : 'timed',
       timeout: NOTICE_MS,
     })
   }
@@ -401,11 +414,16 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (state.kind === 'synced') {
       const offline = blocked()
       if (offline) return offline
+      // Set before the request: the fan-out can reach this client's own socket
+      // before the response does, and the notice is for everyone but us.
+      selfRemoved.add(tabId)
       try {
         await (state.role === 'owner' ? api.deleteRoom(tabId) : api.leaveRoom(tabId))
       } catch (error) {
         // Already gone server-side is the outcome we were asking for.
         if (!(error instanceof ApiError && error.status === 404)) {
+          // The tab is still a room, so a later deletion by its owner is news again.
+          selfRemoved.delete(tabId)
           lastError.value = describe(error)
           return describe(error)
         }
