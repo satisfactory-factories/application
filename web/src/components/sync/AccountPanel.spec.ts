@@ -120,16 +120,21 @@ describe('AccountPanel', () => {
   })
 
   describe('connection state', () => {
+    // The icon is named as well as the label: every state has its own, and the one
+    // this panel could not reach from its default state was the one that was wrong.
     it.each([
-      [{ mode: 'online', connection: 'connected' }, 'Connected'],
-      [{ mode: 'reconnecting', connection: 'reconnecting' }, 'Reconnecting'],
-      [{ mode: 'offlinePrompt', connection: 'reconnecting' }, 'You appear to be offline'],
-      [{ mode: 'offline', connection: 'stopped' }, 'Offline mode'],
-      [{ mode: 'online', connection: 'version_mismatch' }, 'Update required'],
-    ])('reads %o as "%s"', (state, label) => {
+      [{ mode: 'online', connection: 'connected' }, 'Connected', 'fa-wifi'],
+      [{ mode: 'reconnecting', connection: 'reconnecting' }, 'Reconnecting', 'fa-sync'],
+      [{ mode: 'offlinePrompt', connection: 'reconnecting' }, 'You appear to be offline', 'fa-exclamation-triangle'],
+      [{ mode: 'offline', connection: 'stopped' }, 'Offline mode', 'fa-plane'],
+      [{ mode: 'online', connection: 'version_mismatch' }, 'Update required', 'fa-exclamation-triangle'],
+      [{ mode: 'online', connection: 'stopped' }, 'Not connected', 'fa-ban'],
+    ])('reads %o as "%s"', (state, label, icon) => {
       const wrapper = render({ roomSync: state })
+      const chip = at(wrapper, 'connection-chip')
 
-      expect(at(wrapper, 'connection-chip').text()).toContain(label)
+      expect(chip.text()).toContain(label)
+      expect(chip.find(`i.${icon}`).exists()).toBe(true)
     })
   })
 
@@ -253,14 +258,22 @@ describe('AccountPanel', () => {
 
   // The vendored Font Awesome is 5.15.4, where a v6 name draws the missing-icon
   // placeholder instead of failing, so the names are asserted rather than eyeballed.
-  it('draws every icon with a name the vendored Font Awesome 5 ships', () => {
-    const names = [...render().html().matchAll(/fa-[a-z0-9-]+/g)].map(match => match[0])
+  // Every connection state is rendered: a state the default render cannot reach is
+  // exactly where the last one of these hid.
+  it.each([
+    { mode: 'online', connection: 'connected' },
+    { mode: 'reconnecting', connection: 'reconnecting' },
+    { mode: 'offlinePrompt', connection: 'reconnecting' },
+    { mode: 'offline', connection: 'stopped' },
+    { mode: 'online', connection: 'version_mismatch' },
+  ])('draws %o with names the vendored Font Awesome 5 ships', state => {
+    const names = [...render({ roomSync: state }).html().matchAll(/fa-[a-z0-9-]+/g)]
+      .map(match => match[0])
 
     expect(names.length).toBeGreaterThan(0)
-    expect(names).not.toContain('fa-cloud-arrow-down')
-    expect(names).not.toContain('fa-triangle-exclamation')
-    expect(names).not.toContain('fa-plug-circle-xmark')
-    expect(names).not.toContain('fa-rotate')
+    for (const v6 of ['fa-cloud-arrow-down', 'fa-triangle-exclamation', 'fa-plug-circle-xmark', 'fa-rotate']) {
+      expect(names).not.toContain(v6)
+    }
   })
 
   it('signs out of the rooms before the account, so no plan is orphaned', async () => {
