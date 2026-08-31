@@ -397,7 +397,46 @@ export const useAppStore = defineStore('app', () => {
     loadingCompleted()
   }
 
+  // A load owns the chain from the moment it starts until loadingCompleted. Two chains
+  // share loadedCount, factories.value and the preLoadFactories key, so an overlap
+  // truncates the plan — and the overlay's after-enter used to start one on every open.
+  const loadInFlight = ref(false)
+  // Latest wins: a load asked for mid-chain replaces whatever was waiting and runs when
+  // the current one finishes. Superseding is right because each request carries the whole
+  // plan, so the newer one already describes everything the older one would have loaded.
+  let queuedLoad: { newFactories?: Factory[], forceRecalc: boolean } | null = null
+
   const prepareLoader = async (newFactories?: Factory[], forceRecalc = false) => {
+    if (loadInFlight.value) {
+      console.log('appStore: prepareLoader: a load is already in flight, queueing this one.')
+      queuedLoad = { newFactories, forceRecalc }
+      return
+    }
+
+    loadInFlight.value = true
+    try {
+      await runLoad(newFactories, forceRecalc)
+    } catch (error) {
+      abandonLoad(error)
+      throw error
+    }
+  }
+
+  /** Nothing reaches loadingCompleted now, so release the chain or every later load queues behind a dead one. */
+  const abandonLoad = (error: unknown) => {
+    console.error('appStore: the load chain failed, releasing it', error)
+    loadInFlight.value = false
+    queuedLoad = null
+  }
+
+  /**
+   * The load drives itself. It used to stop at `prepareForLoad` and wait for the loading
+   * overlay's `readyForData` to carry on — which only ever fires on a CSS transition into
+   * view, so a load requested while the overlay was already up, or on a page that does not
+   * mount it at all, hung forever with `isLoaded` false. The overlay is UI: it is told what
+   * is happening and nothing waits on it.
+   */
+  const runLoad = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
     const factoriesToLoad = newFactories ?? factories.value
     console.log('appStore: prepareLoader', factoriesToLoad)
@@ -423,6 +462,10 @@ export const useAppStore = defineStore('app', () => {
       count: factories.value.length,
       shown: shownFactories(factories.value),
     })
+
+    // Give the overlay a beat to paint before the staggered render starts.
+    await loadPause(50)
+    await beginLoading(factories.value, true)
   }
 
   /**
@@ -435,9 +478,18 @@ export const useAppStore = defineStore('app', () => {
     await prepareLoader(currentFactoryTab.value.factories)
   }
 
-  /** The loader overlay is up and asking for data; the gate decides what it gets. */
+  /**
+   * The overlay has finished animating in and is asking for data. This is only ever the
+   * boot load, where the overlay is on screen before anything has asked for one — every
+   * other load drives itself and must not be started a second time from here.
+   */
   const startQueuedLoad = () => {
+    if (loadInFlight.value) {
+      console.log('appStore: Received readyForData event while a load is in flight, ignoring.')
+      return
+    }
     console.log('appStore: Received readyForData event, triggering load.')
+    loadInFlight.value = true
 
     // Reading the getter inits the plan on the first load, which is what decides
     // whether the stagger is owed.
@@ -448,7 +500,7 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    beginLoading(plan, true)
+    beginLoading(plan, true).catch(abandonLoad)
   }
 
   // When the loader is ready, we will receive an event saying to initiate the load.
@@ -538,6 +590,16 @@ export const useAppStore = defineStore('app', () => {
 
     // Reset the saved factories
     localStorage.removeItem('preLoadFactories')
+
+    // The chain is over, so the next one may start. Released after the event above, since
+    // a queued load hides the planner again the moment it begins.
+    loadInFlight.value = false
+    const queued = queuedLoad
+    queuedLoad = null
+    if (queued) {
+      console.log('appStore: loadingCompleted: running the load that was queued behind this one.')
+      void prepareLoader(queued.newFactories, queued.forceRecalc)
+    }
   }
 
   // ==== FACTORY MANAGEMENT
@@ -850,14 +912,10 @@ export const useAppStore = defineStore('app', () => {
       console.error('appStore: getFactories: No current factory tab set!')
       return []
     }
-    // If the factories are not initialized, wait for a duration for the app to load then return them.
-    if (!inited.value) {
-      // Something wants to load these values so prepare the loader
-      eventBus.emit('prepareForLoad', {
-        count: currentFactoryTab.value.factories.length,
-        shown: shownFactories(currentFactoryTab.value.factories),
-      })
-    }
+    // Deliberately does not announce a load. This is a getter, not a chain: it used to emit
+    // prepareForLoad, which hides the sidebar and opens the overlay with nothing behind it to
+    // ever say the load finished. The boot chain emits the same event with the same counts a
+    // moment later, and until it does the overlay reads "Loading Planner...".
     return inited.value ? factories.value : initFactories(currentFactoryTab.value.factories)
   }
 
@@ -1253,6 +1311,7 @@ export const useAppStore = defineStore('app', () => {
     lastEdit,
     isDebugMode,
     isLoaded,
+    loadInFlight,
     planRepairs,
     dismissPlanRepairs,
     getLastEdit,

@@ -418,11 +418,14 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
    * recalculate, then send whatever still differs — or nothing. Every recovery
    * runs through here: reject, reconnect snapshot, inbound over a pending op,
    * offline exit and disconnect-before-apply.
+   *
+   * Returns whether it recalculated, which is the only thing a caller needs the
+   * loader for.
    */
-  const rebase = (roomId: string, server: RoomContent, revision: number, send = true) => {
+  const rebase = (roomId: string, server: RoomContent, revision: number, send = true): boolean => {
     const room = rooms.value[roomId]
     const engine = engines.get(roomId)
-    if (!room || !engine) return
+    if (!room || !engine) return false
 
     engine.acked = ackedFromContent(server, revision)
     engine.seeded = true
@@ -431,11 +434,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.revision = revision
     if (room.status !== 'paused') room.status = 'synced'
 
+    let recalculated = false
     const tab = getTab(roomId)
     if (tab) {
       const overlaid = overlayIntent(engine, server, tab)
       writeContentToTab(tab, overlaid.content)
-      if (overlaid.overlaid) recalculate(tab)
+      recalculated = overlaid.overlaid
+      if (recalculated) recalculate(tab)
       appStore.schedulePersist()
       // Whatever the overlay left identical to the adopted state is not divergence.
       clearSatisfiedIntent(roomId, engine.acked)
@@ -443,6 +448,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     persistMeta(roomId)
     if (send) flushRoom(roomId)
+    return recalculated
   }
 
   // ===== Reducer =====
@@ -512,9 +518,14 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
     if (!rooms.value[roomId]) return
-    rebase(roomId, contentFromSnapshot(snapshot), revision)
-    // A snapshot is a whole-plan replace, so it takes the same validation and
-    // loader path a plan load does rather than being written in behind it.
+    const recalculated = rebase(roomId, contentFromSnapshot(snapshot), revision)
+    // Only a snapshot that recalculated needs the loader. The 10s revision probe answers
+    // with a snapshot whenever it heals a missed op, and running the load funnel for those
+    // blanked the planner and blocked flushing for the length of a chain, over and over.
+    // The content is already written and persisted; a quiet apply is the whole difference.
+    if (!recalculated) return
+    // A whole-plan replace the user's own edits fought with. That takes the same
+    // validation and loader path a plan load does rather than being written in behind it.
     void appStore.reloadTabFromMirror(roomId)
   }
 

@@ -191,15 +191,54 @@ describe('room-sync-store', () => {
       expect(opsOf()).toHaveLength(0)
     })
 
-    it('sends a snapshot through the loader funnel rather than in behind it', () => {
+    // The idle revision probe re-joins every 10 seconds and is answered with a snapshot
+    // whenever it heals a missed op. Running the load funnel for those blanked the planner
+    // and stopped the client sending, over and over, for a plan that never changed here.
+    it('applies a snapshot quietly when there was nothing local to rebase over', () => {
+      const emit = vi.spyOn(eventBus, 'emit')
       const reload = vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
-      setTab([])
+      const tab = setTab([])
       store.trackRoom(ROOM)
       connect()
 
       receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
 
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      expect(reload).not.toHaveBeenCalled()
+      expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
+      emit.mockRestore()
+    })
+
+    it('sends a snapshot that fought with a local edit through the loader funnel', () => {
+      const tab = syncAt(fixture, 4)
+      const reload = vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+
+      const server = wire(fixture)
+      server[0].name = 'Theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      expect(names(tab)).toEqual(['Mine', 'Beta'])
       expect(reload).toHaveBeenCalledWith(ROOM)
+    })
+
+    it('never hides the planner for a snapshot into a tab nobody is looking at', async () => {
+      const tab = syncAt(fixture, 4)
+      appStore.factoryTabs.push({ id: 'other-tab', name: 'Other', factories: [], powerTarget: 0, groups: [] })
+      appStore.currentFactoryTab = appStore.getTab('other-tab') as FactoryTab
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+      const server = wire(fixture)
+      server[0].name = 'Theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+      await Promise.resolve()
+
+      expect(names(tab)).toEqual(['Mine', 'Beta'])
+      expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
+      emit.mockRestore()
     })
 
     it('does not send while a load is in flight, and flushes once it completes', () => {

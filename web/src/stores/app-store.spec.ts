@@ -29,6 +29,17 @@ const resetAppStore = (keepLocalStorage = false) => {
   appStore = useAppStore()
 }
 
+/**
+ * Waits for a staggered load to finish. Resetting the store does not stop one that is
+ * already running, and the event bus is global, so a chain left in flight goes on
+ * emitting into whichever test comes next.
+ */
+const settleLoads = async () => {
+  for (let attempt = 0; attempt < 200 && appStore.loadInFlight; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }
+}
+
 describe('app-store', () => {
   beforeEach(() => {
     // Reset mocks before each test
@@ -440,9 +451,15 @@ describe('app-store', () => {
     })
 
     describe('prepareLoader', () => {
-      it('should leave isLoaded false while a staggered load is still pending', async () => {
+      // The load used to stop at prepareForLoad and wait for the loading overlay's
+      // readyForData to carry it on. Nothing here mounts that overlay, and neither does
+      // /room/<slug> — so the chain has to finish on its own or it never finishes at all.
+      it('should drive a staggered load to completion with no overlay listening', async () => {
         await appStore.prepareLoader([newFactory('Foo')], true)
-        expect(appStore.isLoaded).toBe(false)
+
+        expect(appStore.isLoaded).toBe(true)
+        expect(appStore.loadInFlight).toBe(false)
+        expect(appStore.getFactories()).toHaveLength(1)
       })
 
       it('should emit the plannerShow,false event', async () => {
@@ -544,6 +561,48 @@ describe('app-store', () => {
           appStore.startQueuedLoad()
 
           expect(appStore.isLoaded).toBe(false)
+          await settleLoads()
+        })
+      })
+
+      // Two chains share loadedCount, the tab's factory array and the preLoadFactories key,
+      // so an overlap loses factories. Only one runs at a time; the other waits its turn.
+      describe('one chain at a time', () => {
+        const countEmits = (event: string) =>
+          vi.mocked(eventBus.emit).mock.calls.filter(call => call[0] === event).length
+
+        it('should queue a load asked for mid-chain and let the later one win', async () => {
+          const first = [newFactory('First', 0, 1)]
+          const second = [newFactory('Second', 0, 2), newFactory('Second B', 1, 3)]
+          vi.mocked(eventBus.emit).mockClear()
+
+          const running = appStore.prepareLoader(first, true)
+          // Same tick: the first chain has not passed its first pause, so this one queues.
+          await appStore.prepareLoader(second, true)
+          await running
+          await settleLoads()
+
+          expect(appStore.getFactories().map(entry => entry.name)).toEqual(['Second', 'Second B'])
+          // Both chains ran to the end, one after the other. A dead chain would show one.
+          expect(countEmits('loadingCompleted')).toBe(2)
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        it('should ignore the overlay asking for data while a load is driving itself', async () => {
+          const plan = [newFactory('Foo', 0, 1), newFactory('Bar', 1, 2)]
+          vi.mocked(eventBus.emit).mockClear()
+
+          const running = appStore.prepareLoader(plan, true)
+          // What the overlay's after-enter does the moment it animates into view.
+          appStore.startQueuedLoad()
+          await running
+          await settleLoads()
+
+          expect(appStore.getFactories()).toHaveLength(2)
+          // One increment per factory plus one render step: a second chain would reset
+          // loadedCount and blank the tab, so the count is the proof it never started.
+          expect(countEmits('incrementLoad')).toBe(3)
+          expect(countEmits('loadingCompleted')).toBe(1)
         })
       })
 
@@ -628,11 +687,12 @@ describe('app-store', () => {
           expect(appStore.getFactories()).toEqual(factories)
         })
 
+        // One call, because the load drives itself: an interrupted load makes prepareLoader
+        // take the full path, which is what picks the recovered plan up.
         it('should have loaded the correct number of factories given preLoadFactories', async () => {
           localStorage.setItem('preLoadFactories', JSON.stringify(mockFailedFactories))
-          await appStore.prepareLoader(factories)
 
-          await appStore.beginLoading(factories)
+          await appStore.prepareLoader(factories)
 
           // Check the resulting data
           expect(appStore.getFactories()).toEqual(mockFailedFactories)
@@ -1015,7 +1075,9 @@ describe('app-store', () => {
         expect(appStore.getFactories()).toEqual([factory])
       })
 
-      it('should emit prepareForLoad if the state is not inited', async () => {
+      // It used to, and the event has no chain behind it: it hides the sidebar and opens the
+      // overlay with nothing that will ever say the load finished. A getter announces nothing.
+      it('should NOT emit prepareForLoad when it inits the state itself', async () => {
         appStore.inited = false
         vi.spyOn(eventBus, 'emit')
 
@@ -1024,11 +1086,7 @@ describe('app-store', () => {
         // Wait for reactivity
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
-          // There should be no factories to load as it's a blank state
-          count: 0,
-          shown: 0,
-        })
+        expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
       })
 
       it('should NOT emit prepareForLoad if the state is inited', async () => {

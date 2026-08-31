@@ -350,6 +350,39 @@ placement deliberately; a modal over the banner would hide the notice the sync e
 driving. Nothing was deleted, so if `GET /version` ever lands the release ping works as upstream
 intended.
 
+## The load chain drives itself; the overlay is UI (2026-08-31)
+
+**A load must never hang off a CSS transition.** `Loading.vue` emitted `readyForData` only from
+its `v-overlay`'s `@after-enter`, which fires on mount and on false-to-true transitions and
+nothing else — and that event was the only thing that called `beginLoading`. So any
+`prepareLoader` raised while the overlay was already up, while another load was running, or on a
+page that does not mount `Loading.vue` at all (`/room/<slug>`) started a chain nothing finished:
+`plannerShow` latched false (skeletons forever), the overlay froze at "0 out of N", and
+`isLoaded` never flipped back. That last one is the expensive part, because `recordIntent` and
+`flushRoom` in `room-sync-store.ts` both refuse while `!appStore.isLoaded` — a dead chain made
+the client silently receive-only. `prepareLoader` now emits `prepareForLoad` for the UI and then
+calls `beginLoading` itself; `startQueuedLoad` is still wired to `readyForData` but only ever
+serves the boot load.
+
+**One chain at a time, latest wins.** Two chains share `loadedCount`, the tab's factory array and
+the `preLoadFactories` key, so an overlap truncates the plan — and `prepareLoader` is re-entrant
+by design (socket snapshots, tab switches, deletes, templates). A `loadInFlight` ref is set in
+`prepareLoader`/`startQueuedLoad` and cleared in `loadingCompleted`, which then runs whatever
+queued behind it. Superseding rather than serialising is safe because every request carries the
+whole plan. `startQueuedLoad` is a no-op while the flag is set, so the overlay animating into
+view can never start a second chain.
+
+**A remote apply that changes nothing locally must not run the loader.** `rebase` returns whether
+it recalculated (the overlay of user-touched records over the server's copy), and `onSnapshot`
+only calls `reloadTabFromMirror` when it did. Every 10s revision probe answers with a snapshot
+whenever it heals a missed op, and each one used to blank the planner and block flushing for the
+length of a chain. Background tabs were already quiet, via `reloadTabFromMirror`'s own
+active-tab guard.
+
+**`getFactories()` no longer emits `prepareForLoad`.** It is a getter with no chain behind it: the
+event hides the sidebar list and opens the overlay, and nothing it starts ever says the load
+finished. The boot chain emits the same event with the same counts moments later.
+
 ## The PR-review polish round (2026-08-31), and the one real bug in it
 
 Ten review points on the v0.7.0 UI. Most were copy or placement; three are worth keeping.
