@@ -99,4 +99,10 @@
 .notes-locked :deep(.v-messages__message) {
   color: var(--sf-warning);
 }
+
+// The lock must be visible before anyone tries to type: a yellow ring on the
+// field itself, not just the message under it.
+.notes-locked :deep(.v-field) {
+  box-shadow: 0 0 0 2px var(--sf-warning) inset;
+}
 </style>
