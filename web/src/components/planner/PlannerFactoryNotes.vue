@@ -86,6 +86,8 @@
   const clearNotes = () => {
     props.factory.notes = ''
     noteEdited()
+    // Cleared means done: whoever held the field is finished with it.
+    release()
   }
 </script>
 

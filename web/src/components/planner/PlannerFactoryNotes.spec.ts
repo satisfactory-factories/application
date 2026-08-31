@@ -161,5 +161,26 @@ describe('PlannerFactoryNotes', () => {
 
       expect(renew).toHaveBeenCalledWith(roomId, `notes:${factory.id}`)
     })
+
+    // Clicking Clear Notes blurs the textarea first, then rewrites its value. The
+    // rewrite must not re-claim the lock: the peer would show a field held by
+    // nobody until the server swept it.
+    it('leaves the field unlocked for everyone after Clear Notes', async () => {
+      const claim = vi.spyOn(roomSync, 'claimField').mockReturnValue(true)
+      const release = vi.spyOn(roomSync, 'releaseField').mockReturnValue(true)
+      factory.notes = 'Old note'
+      await nextTick()
+
+      await fireEvent.focus(textarea())
+      await fireEvent.blur(textarea())
+      claim.mockClear()
+
+      await fireEvent.click(clearButton()!)
+      await nextTick()
+
+      expect(factory.notes).toBe('')
+      expect(claim).not.toHaveBeenCalled()
+      expect(release).toHaveBeenCalledWith(roomId, `notes:${factory.id}`)
+    })
   })
 })

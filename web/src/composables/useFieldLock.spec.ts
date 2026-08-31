@@ -92,13 +92,42 @@ describe('useFieldLock', () => {
   })
 
   // The client gives its own lock up on the same idle line the server would, so a
-  // keystroke after that pause has to claim the field rather than renew nothing.
+  // keystroke after that pause has to claim the field rather than renew nothing —
+  // but only while the field is still genuinely focused.
   it('claims again when the keystroke comes after its own lock lapsed', () => {
+    refuseClaims()
     const lock = bind()
+    lock.claim()
+    vi.mocked(store.claimField).mockReturnValue(true)
+    vi.mocked(store.claimField).mockClear()
 
     lock.renew()
 
     expect(store.claimField).toHaveBeenCalledWith(ROOM, FIELD)
+    expect(store.renewField).not.toHaveBeenCalled()
+  })
+
+  // The Clear Notes shape: blur releases, then the programmatic value change fires
+  // the input handler. Claiming there re-locks a field nobody is in, and the peer
+  // shows a stale lock until the server sweeps it.
+  it('never claims from an input event once the field has lost focus', () => {
+    const lock = bind()
+    lock.claim()
+    lock.release()
+    vi.mocked(store.claimField).mockClear()
+
+    lock.renew()
+
+    expect(store.claimField).not.toHaveBeenCalled()
+    expect(store.renewField).not.toHaveBeenCalled()
+  })
+
+  it('never claims from an input event on a field that was never focused', () => {
+    const lock = bind()
+
+    lock.renew()
+
+    expect(store.claimField).not.toHaveBeenCalled()
     expect(store.renewField).not.toHaveBeenCalled()
   })
 
