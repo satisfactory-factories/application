@@ -52,24 +52,42 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   // ===== Room list =====
 
-  const refresh = async ({ offerAdoption = false } = {}): Promise<boolean> => {
-    const authStore = useAuthStore()
-    if (!authStore.isLoggedIn || roomSync.isSuppressed || refreshing.value) return false
+  /** The list request in flight, so two callers share one rather than one being dropped. */
+  let inFlight: Promise<RoomListEntry[] | null> | null = null
 
+  const fetchRooms = async (): Promise<RoomListEntry[] | null> => {
     refreshing.value = true
     try {
       const response = await api.listRooms()
       roomsRevision.value = response.roomsRevision
       applyRoomList(response.rooms)
       roomSync.roomsListStale = false
-      if (offerAdoption) await openAdoptionOffer(response.rooms)
-      return true
+      return response.rooms
     } catch (error) {
       lastError.value = describe(error)
-      return false
+      return null
     } finally {
       refreshing.value = false
+      inFlight = null
     }
+  }
+
+  /**
+   * Overlapping callers join the request already in flight instead of being turned
+   * away: opening the account tray refreshes the list, and it opens straight after a
+   * login, which is the same moment the login sequence asks for the list plus the
+   * adoption offer. Turning the second one away lost the offer entirely.
+   */
+  const refresh = async ({ offerAdoption = false } = {}): Promise<boolean> => {
+    const authStore = useAuthStore()
+    if (!authStore.isLoggedIn || roomSync.isSuppressed) return false
+
+    inFlight ??= fetchRooms()
+    const rooms = await inFlight
+    if (rooms === null) return false
+
+    if (offerAdoption) await openAdoptionOffer(rooms)
+    return true
   }
 
   /**
@@ -565,8 +583,16 @@ export const useRoomsStore = defineStore('rooms', () => {
     restoreJoinedTabs()
   }
 
+  /**
+   * `begin()` runs off the `loggedIn` event, so anything that has to follow the room
+   * list landing awaits this instead of racing it. Creating a tab mid-refresh is the
+   * case that matters: the list would come back without it and convert it to local.
+   */
+  let session: Promise<void> = Promise.resolve()
+  const whenSessionReady = (): Promise<void> => session.catch(() => undefined)
+
   const onLoggedIn = () => {
-    void begin()
+    session = begin()
   }
 
   eventBus.on('loggedIn', onLoggedIn)
@@ -614,6 +640,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     // Room list
     refresh,
     begin,
+    whenSessionReady,
     signOut,
     dispose,
 

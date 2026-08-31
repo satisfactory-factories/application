@@ -845,6 +845,18 @@ tr.sf-nav-flash {
   border-radius: 3px;
 }
 
+// Opt-in: `class="sf-checkbox-tick"` on a v-checkbox draws a white tick over the filled mark, so a
+// ticked box reads as a tick rather than as the stray filled square the group and options dialogs
+// each drew their own control to avoid. The box colour is the control's own `color` prop, so pair
+// it with one that the white tick shows up on. An image rather than another pseudo-element:
+// `::before` is Vuetify's ripple overlay and `::after` is already the box.
+.sf-checkbox-tick .v-selection-control--dirty .v-selection-control__input::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6.2 4.6 9.3 10.5 3' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+}
+
 // A drawn tick box on a native checkbox, shared by the factory task list and the Mercer Sphere
 // research rows. Native rather than a v-checkbox because Vuetify's selection controls point their
 // icons at Font Awesome Regular, which this app does not ship, so the unticked box renders as

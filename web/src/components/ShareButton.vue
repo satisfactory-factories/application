@@ -1,12 +1,18 @@
 <template>
-  <v-btn
-    color="blue rounded"
-    data-testid="share-button"
-    icon="fas fa-share-alt"
-    size="small"
-    variant="flat"
-    @click="dialogOpen = true"
-  />
+  <v-tooltip location="top">
+    <template #activator="{ props: tooltipProps }">
+      <v-btn
+        color="blue rounded"
+        data-testid="share-button"
+        icon="fas fa-share-alt"
+        size="small"
+        variant="flat"
+        v-bind="tooltipProps"
+        @click="dialogOpen = true"
+      />
+    </template>
+    <span>Share this tab: a snapshot link, or an invite to plan together</span>
+  </v-tooltip>
   <share-dialog v-model="dialogOpen" :tab-id="tabId" />
 </template>
 

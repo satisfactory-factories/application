@@ -5,6 +5,7 @@ import { registerUser } from '../helpers/accounts'
 import type { TestUser } from '../helpers/accounts'
 import {
   addFactory,
+  addLocalTab,
   expectTabKind,
   mirroredFactories,
   openPlanner,
@@ -13,10 +14,16 @@ import {
 } from '../helpers/planner'
 import { closeAccountPanel, signIn } from '../helpers/session'
 
-/** The offer is opt-out, so accepting it is one button on a dialog nothing dismisses. */
-const acceptAdoption = async (page: Page): Promise<void> => {
+const adoptionDialog = async (page: Page) => {
   const dialog = page.getByTestId('adoption-dialog')
   await expect(dialog).toBeVisible({ timeout: 20_000 })
+  await expect(dialog).toContainText('Sync your planner tabs now?')
+  return dialog
+}
+
+/** The offer is opt-out, so accepting it is one button on a dialog nothing dismisses. */
+const acceptAdoption = async (page: Page): Promise<void> => {
+  const dialog = await adoptionDialog(page)
   await dialog.getByRole('button', { name: /^Sync \d+ plan/ }).click()
   await expect(dialog).toBeHidden({ timeout: 20_000 })
 }
@@ -81,4 +88,39 @@ test('two browsers with different local plans both adopt into one account', asyn
     { timeout: 30_000, message: 'the second device\'s plan did not reach both bars' },
     ).toEqual(['Beta plan'])
   }
+})
+
+test('unticking a plan leaves that one local and syncs the rest', async ({ client, request }) => {
+  const user = await registerUser(request)
+  const page = await openPlanner(await client())
+
+  await addFactory(page, { name: 'Kept local', note: 'the one that gets unticked' })
+  await addLocalTab(page)
+  await addFactory(page, { name: 'Synced up', note: 'the one that stays ticked' })
+
+  let ids: string[] = []
+  await expect.poll(async () => {
+    ids = (await readTabBar(page)).map(entry => entry.id)
+    return ids.length === 2 && ids.every(Boolean)
+  }, { message: 'both local plans never reached the mirror' }).toBe(true)
+  const [first, second] = ids
+
+  await signIn(page, user)
+
+  const dialog = await adoptionDialog(page)
+  const rows = dialog.getByTestId('adoption-candidate')
+  await expect(rows).toHaveCount(2)
+
+  const firstBox = rows.first().locator('input')
+  await firstBox.click()
+  // The tick has to follow the click, which is the half that was reported broken.
+  await expect(firstBox).not.toBeChecked()
+  await expect(rows.nth(1).locator('input')).toBeChecked()
+  await expect(dialog.getByTestId('adopt-submit')).toContainText('Sync 1 plan')
+
+  await dialog.getByTestId('adopt-submit').click()
+  await expect(dialog).toBeHidden({ timeout: 20_000 })
+
+  await expectTabKind(page, first, 'local')
+  await expectTabKind(page, second, 'synced')
 })

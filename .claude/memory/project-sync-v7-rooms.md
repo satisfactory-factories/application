@@ -4,7 +4,7 @@ description: v0.7.0 realtime rooms sync — built and green on branch claude/syn
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-08-30
+  lastVerified: 2026-08-31
 ---
 
 The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -20,10 +20,10 @@ reset, the v0.7.0 changelog modal). Three adversarial Codex reviews of the finis
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
-restored: see "The merge from main" below. Green as of 2026-08-30, on the committed tree: backend
-258 vitest tests (22 files), common 70 (4), web 2625 unit tests (140 files, 1 skipped), `vue-tsc`
-clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root `build`
-clean, and the 25 Playwright e2e tests passed twice consecutively **after** the merge. The e2e
+restored: see "The merge from main" below. Green as of 2026-08-31, after the PR-review polish round below:
+backend 270 vitest tests (23 files), common 70 (4), web 2681 unit tests (144 files, 1 skipped),
+`vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
+`build` clean, and all 27 Playwright e2e tests passing. The e2e
 job in CI has never actually run — it is validated locally only, so the first PR is where it gets
 proved.
 
@@ -349,6 +349,54 @@ reloads — so both of upstream's stand down behind it: the toast and the dialog
 placement deliberately; a modal over the banner would hide the notice the sync engine's own state is
 driving. Nothing was deleted, so if `GET /version` ever lands the release ping works as upstream
 intended.
+
+## The PR-review polish round (2026-08-31), and the one real bug in it
+
+Ten review points on the v0.7.0 UI. Most were copy or placement; three are worth keeping.
+
+**Two callers of `refresh()` overlap on every login, and the loser used to be dropped.** The
+account panel now refetches the room list when the tray opens (content ops move a room's
+`lastActivityAt` without bumping `roomsRevision`, so nothing else would ever refresh the
+times). The tray is open at the moment `loggedInUser` flips, so the panel mounts and calls
+`refresh()` in the render microtask **before** `begin()` reaches its own
+`refresh({ offerAdoption: true })` one microtask later. The old guard (`if (refreshing) return
+false`) then threw the second call away, and with it the adoption offer: both adoption e2e
+tests failed with "adoption-dialog not found" and nothing else in the suite noticed.
+`refresh` now coalesces on an in-flight promise (`fetchRooms`) and every caller gets the same
+list back, so the offer runs whoever won. The lesson generalises: a "drop the second caller"
+guard silently discards the *options* that caller was carrying.
+
+**"The checkboxes are broken" was a rendering complaint, not a wiring one.** Reproduced in a
+real browser before touching anything: the array `v-model` reacted correctly, `--dirty`
+flipped, and the input toggled on both a click on the box and a click on the label. What did
+not read as a change is the mark itself. `global.scss` draws selection marks in CSS (Font
+Awesome ships no Regular family, see [[fontawesome-dynamic-icons]]) and with no `color` prop
+the ticked state is a solid **white** square where the unticked one is a white outline at 55%
+opacity. So the dialog now sets `color="primary"` and opts into `sf-checkbox-tick`, a new
+global modifier that lays the app's white tick (an inline SVG background, because `::before`
+is Vuetify's ripple and `::after` is already the box) over the filled mark. The result matches
+the hand-drawn `.tick.on` in `FactoryGroupBulkDialog.vue` and `OptionsDialog.vue`, which exist
+because someone hit exactly this and worked around it locally. The per-row model is explicit
+now (`:model-value` + `@update:model-value`) rather than an array `v-model`, which is what the
+component spec can actually assert.
+
+**Four Font Awesome 6 names had reached the branch**, all drawing the dashed placeholder:
+`fa-cloud-arrow-down` (the Recover button Matt flagged), `fa-triangle-exclamation`,
+`fa-plug-circle-xmark` (twice) and `fa-rotate` (in `AccountPanel.vue` and `VersionPrompt.vue`).
+The cheap sweep that finds them: pull every `"name":[`/`name:[` key out of
+`web/public/assets/js/fa-solid.min.js` into a list, then grep every `fa-*` token in the changed
+files against it. That bundle is FA **Pro** 5.15.4, so Pro-only v5 names like `wifi-slash` are
+available and v6 renames are not.
+
+Also in the round: the sign-in/register form is its own component
+(`web/src/components/sync/AuthForm.vue`) so the new-tab chooser can show it inline and carry on
+to create the synced tab afterwards (it awaits `roomsStore.whenSessionReady()` first, or the
+in-flight room list comes back without the new tab and converts it straight to local);
+`RoomListEntry.lastActivityAt` (ISO string) now travels to the client and a rename stamps it
+as an op does; the tab bar's copy/share/delete buttons sit together with real `v-tooltip`s
+instead of `title` attributes; and `NewTabDialog`/`AdoptionDialog` moved onto `AppDialog`,
+where a `data-testid` on the component falls through to `.v-overlay__content` and stays
+reachable from the e2e suite.
 
 ## Flagged follow-ups, none of them blocking
 

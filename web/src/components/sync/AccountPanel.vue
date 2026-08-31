@@ -48,14 +48,30 @@
       <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
       <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
       <v-chip v-if="room.role === 'member'" size="x-small" variant="tonal">Member</v-chip>
-      <v-btn
-        color="blue"
-        icon="fas fa-share-alt"
-        size="x-small"
-        title="Share this plan"
-        variant="flat"
-        @click="openShare(room.roomId)"
-      />
+      <v-tooltip location="top">
+        <template #activator="{ props: timeProps }">
+          <span
+            class="text-caption text-grey text-no-wrap"
+            data-testid="plan-last-changed"
+            v-bind="timeProps"
+          >{{ relativeTime(room.lastActivityAt, now) }}</span>
+        </template>
+        <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
+      </v-tooltip>
+      <v-tooltip location="top">
+        <template #activator="{ props: shareProps }">
+          <v-btn
+            color="blue"
+            data-testid="share-plan"
+            icon="fas fa-share-alt"
+            size="x-small"
+            variant="flat"
+            v-bind="shareProps"
+            @click="openShare(room.roomId)"
+          />
+        </template>
+        <span>Sharing and invite links for this plan</span>
+      </v-tooltip>
     </div>
 
     <v-divider class="my-3" />
@@ -67,10 +83,11 @@
       variant="tonal"
       @click="recover"
     >
-      <i class="fas fa-cloud-arrow-down mr-2" />Recover server copy
+      <i class="fas fa-cloud-download-alt mr-2" />Recover server copy
     </v-btn>
     <p class="text-body-2 mt-1 mb-4 text-grey">
-      Brings back the single plan older versions of the planner saved to your account.
+      Adds the plan the old planner saved to your account as a new synced tab. There is only
+      ever one of these, and you only need to do it once.
     </p>
     <p v-if="recoverMessage" class="text-body-2 mb-4">{{ recoverMessage }}</p>
 
@@ -127,12 +144,18 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import ShareDialog from '@/components/sync/ShareDialog.vue'
   import { ApiError, ApiNetworkError, legacyRecover } from '@/api/client'
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+  import { absoluteTime, relativeTime } from '@/utils/relative-time'
+
+  const props = withDefaults(defineProps<{
+    /** True while the account tray is showing this panel. */
+    open?: boolean
+  }>(), { open: true })
 
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
@@ -143,17 +166,33 @@
     Object.values(roomsStore.entries).sort((a, b) => a.order - b.order)
   )
 
+  /**
+   * Content edits move a room's last-changed stamp without bumping `roomsRevision`,
+   * so nothing refetches the list on its own: a panel opened an hour into a session
+   * would show the times it was first given. Reading the clock here too keeps the
+   * "3 min ago" line measured from when the panel was opened.
+   */
+  const now = ref(new Date())
+
+  watch(() => props.open, isOpen => {
+    if (!isOpen) return
+    now.value = new Date()
+    void roomsStore.refresh()
+  }, { immediate: true })
+
+  // Every name below is Font Awesome 5: the vendored bundle is 5.15.4, and a v6
+  // name draws the dashed missing-icon placeholder rather than failing.
   const connection = computed(() => {
     if (roomSync.connection === 'version_mismatch') {
-      return { label: 'Update required', color: 'red', icon: 'fa-triangle-exclamation' }
+      return { label: 'Update required', color: 'red', icon: 'fa-exclamation-triangle' }
     }
     switch (roomSync.mode) {
       case 'offline': return { label: 'Offline mode', color: 'orange', icon: 'fa-plane' }
-      case 'offlinePrompt': return { label: 'You appear to be offline', color: 'amber', icon: 'fa-plug-circle-xmark' }
-      case 'reconnecting': return { label: 'Reconnecting', color: 'amber', icon: 'fa-rotate' }
+      case 'offlinePrompt': return { label: 'You appear to be offline', color: 'amber', icon: 'fa-wifi-slash' }
+      case 'reconnecting': return { label: 'Reconnecting', color: 'amber', icon: 'fa-sync' }
       default: return roomSync.isConnected
         ? { label: 'Connected', color: 'green', icon: 'fa-plug' }
-        : { label: 'Not connected', color: 'grey', icon: 'fa-plug-circle-xmark' }
+        : { label: 'Not connected', color: 'grey', icon: 'fa-wifi-slash' }
     }
   })
 

@@ -10,7 +10,7 @@
           variant="flat"
           @click="refresh"
         >
-          <i class="fas fa-rotate mr-2" />Refresh
+          <i class="fas fa-sync mr-2" />Refresh
         </v-btn>
       </div>
     </v-alert>

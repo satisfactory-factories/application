@@ -26,7 +26,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `two-devices` | An edit reaches the account's other device inside 2s; both mirrors end deep-equal. |
 | `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive, whether the edit is an add or a note. |
 | `tab-lifecycle` | Create, rename, delete and drag-reorder all reach a second device; a member is offered no rename. |
-| `new-tab-chooser` | Local is offered to anyone, synced only to an account, and the chooser says why. |
+| `new-tab-chooser` | Local is offered to anyone; picking synced without an account signs in on the same dialog and still makes the tab. |
 | `invite` | An anonymous visitor joins by link and edits back; a signed-in joiner's tab follows their account to a second device. |
 | `snapshot-link` | `/share/:id` still imports a frozen local copy, and the owner's later edits do not reach it. |
 | `invite-password` | A wrong password is refused inline, the right one joins, and a rotation kicks the visitor while the member stays. |
@@ -34,7 +34,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `bulk-clear` | "Clear all" on one device empties the other, with nothing left unsent on either. |
 | `offline-manual` | The airplane switch makes zero requests, the edits made behind it sync on the way back, and a task written offline survives a rebase onto a room that moved on. |
 | `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive, and so does a rename left unsent by the drop. |
-| `adoption` | Two browsers with different local plans adopt into one account and converge on the union. |
+| `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
 

@@ -139,6 +139,22 @@ describe('rooms', () => {
       expect(second.order).toBe(1)
     })
 
+    it('carries a last-changed stamp the tab list can show', async () => {
+      const room = await createRoom(owner, 'Timed')
+
+      const [listed] = (await get('/rooms', owner)).body.rooms
+      expect(listed.lastActivityAt).toEqual(expect.any(String))
+      expect(new Date(listed.lastActivityAt).toISOString()).toBe(listed.lastActivityAt)
+
+      await put(`/rooms/${room.roomId}/name`, owner).send({ name: 'Renamed' })
+
+      const stored = await connection.collection('rooms').findOne({ roomId: room.roomId })
+      const [renamed] = (await get('/rooms', owner)).body.rooms
+      expect(renamed.lastActivityAt).toBe((stored?.lastActivityAt as Date).toISOString())
+      expect(new Date(renamed.lastActivityAt).getTime())
+        .toBeGreaterThanOrEqual(new Date(listed.lastActivityAt).getTime())
+    })
+
     it('hides another account\'s rooms', async () => {
       await createRoom(owner)
 

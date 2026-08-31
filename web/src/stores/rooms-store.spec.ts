@@ -43,6 +43,7 @@ const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   revision: 3,
   role: 'owner',
   order: 0,
+  lastActivityAt: '2026-08-31T11:00:00.000Z',
   ...overrides,
 })
 
@@ -231,6 +232,23 @@ describe('rooms-store', () => {
 
       await store.refresh({ offerAdoption: true })
 
+      expect(store.adoptionOpen).toBe(true)
+      expect(store.adoptionCandidates).toEqual([tab.id])
+    })
+
+    // The account tray refreshes the list when it opens, and it opens on the same
+    // login that asks for the offer. Turning the second caller away lost the offer.
+    it('still offers when a plain refresh is already in flight', async () => {
+      const tab = localTab('Mine')
+      listReturns([entry({ roomId: 'other-room' })])
+
+      const [, offered] = await Promise.all([
+        store.refresh(),
+        store.refresh({ offerAdoption: true }),
+      ])
+
+      expect(offered).toBe(true)
+      expect(api.listRooms).toHaveBeenCalledTimes(1)
       expect(store.adoptionOpen).toBe(true)
       expect(store.adoptionCandidates).toEqual([tab.id])
     })

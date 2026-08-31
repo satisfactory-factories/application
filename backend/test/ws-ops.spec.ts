@@ -22,6 +22,7 @@ describe('ws ops: the consistency contract', () => {
   let clients: TestClient[]
 
   const post = (path: string, as?: TestUser) => call(context.app, 'post', path, as)
+  const get = (path: string, as?: TestUser) => call(context.app, 'get', path, as)
 
   const greet = async (token?: string) => {
     const client = await TestClient.greet(url, token)
@@ -173,8 +174,11 @@ describe('ws ops: the consistency contract', () => {
       expect(snapshot.room.depotUploadTier).toBe(0)
     })
 
-    it('records an activity row and stamps lastActivityAt', async () => {
+    it('records an activity row and moves the last-changed stamp the room list serves', async () => {
       const before = (await readRoom())?.lastActivityAt as Date
+      const listedBefore = (await get('/rooms', owner)).body.rooms[0].lastActivityAt as string
+      expect(listedBefore).toBe(before.toISOString())
+
       const a = await joined(member.token)
 
       a.client.send(op({ powerTarget: 500 }, 0))
@@ -184,7 +188,10 @@ describe('ws ops: the consistency contract', () => {
         .find({ roomId, kind: 'op' }).toArray()
       expect(rows).toHaveLength(1)
       expect(rows[0].actor).toBe(member.userId)
-      expect((await readRoom())?.lastActivityAt.getTime()).toBeGreaterThanOrEqual(before.getTime())
+
+      const stamped = (await readRoom())?.lastActivityAt as Date
+      expect(stamped.getTime()).toBeGreaterThanOrEqual(before.getTime())
+      expect((await get('/rooms', owner)).body.rooms[0].lastActivityAt).toBe(stamped.toISOString())
     })
   })
 

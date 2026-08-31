@@ -40,7 +40,7 @@ separate later session.
 - Add "Duplicate as local tab" and the revocation handler (membership lost or room deleted → the tab quietly becomes a local copy)
 - Add the `/room/:slug` page: resolve the slug, take the password when one is set, join (membership when logged in, visitor token when not), open the tab live
 - Build the share dialog with two clearly separated actions: "Copy snapshot link" (read-only copy, any tab, no account) and "Invite collaborators" (synced tabs; slug; optional password set/change/remove; copyable link)
-- Build login-time adoption as an offer per tab ("Sync this tab?" / "Keep my local plans too"), "(local)" suffixes, and the "Recover server copy" button
+- Build login-time adoption as an offer per tab ("Sync your planner tabs now?"), "(local)" suffixes, and the "Recover server copy" button
 - Gate the staggered loader behind "calculation actually happened"; instant render when revision + app version match
 - Build the preferences sync store (enumerated semantic keys, debounced PUT with `baseRevision`)
 - Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
@@ -120,8 +120,9 @@ only), `collaborative` (a shared room — yours as owner, or someone else's as m
 document on the server is the only authoritative copy; the browser holds a render cache. Badges make the state
 visible at a glance. The plus button opens a small chooser: **Local tab** — lives in this
 browser, no account; **Synced tab** — needs an account, syncs across your devices, supports
-live collaboration and invites. New visitors default to local; a one-time nudge dot on the
-plus button advertises the rest. A local tab's UUID becomes its room ID if it is ever
+live collaboration and invites; chosen without an account, the chooser swaps its body for the
+sign-in/register form and makes the tab once that lands. New visitors default to local; a
+one-time nudge dot on the plus button advertises the rest. A local tab's UUID becomes its room ID if it is ever
 synced, so identity never changes. Synced tabs still write full content to
 `localStorage.factoryTabs` in today's exact shape (the render mirror — and what makes a v6
 rollback land on readable data). Sync metadata (`revision`, `appVersion`, user-touched ids)
@@ -159,11 +160,12 @@ instantly. Everything else goes through the full `initFactories` validation/migr
 Server data stops bypassing the loader funnel.
 
 **Account tile** (replaces `Auth.vue` + `Sync.vue`): username, change-password, logout, live
-connection state, the offline switch, the synced-tab list with share controls, "Recover
-server copy". The old OOS dialog and force-download button die.
+connection state, the offline switch, the synced-tab list with share controls and a
+last-changed time per plan, "Recover server copy". The old OOS dialog and force-download
+button die.
 
 **Adoption on login.** Every login, every browser: local tabs the server does not know get a
-per-tab offer to sync ("Keep my local plans too"). Never forced, create-only, "(local)"
+per-tab offer to sync ("Sync your planner tabs now?"). Never forced, create-only, "(local)"
 suffix on name collisions, content never merged.
 
 **Version prompt.** A fetch wrapper adds `X-App-Version`; any 426 or WS 4426 shows a

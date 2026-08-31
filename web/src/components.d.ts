@@ -18,6 +18,7 @@ declare module 'vue' {
     AppDialog: typeof import('./components/common/AppDialog.vue')['default']
     AppFooter: typeof import('./components/AppFooter.vue')['default']
     Auth: typeof import('./components/Auth.vue')['default']
+    AuthForm: typeof import('./components/sync/AuthForm.vue')['default']
     AwesomeSinkTutorial: typeof import('./components/planner/AwesomeSinkTutorial.vue')['default']
     BeltPipeCalculator: typeof import('./components/planner/satisfaction/calculator/BeltPipeCalculator.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']

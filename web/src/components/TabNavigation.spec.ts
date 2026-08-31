@@ -27,6 +27,7 @@ const entry = (roomId: string, name: string, order: number): RoomListEntry => ({
   revision: 1,
   role: 'owner',
   order,
+  lastActivityAt: '2026-08-31T11:00:00.000Z',
 })
 
 describe('Component: TabNavigation', () => {
@@ -133,6 +134,54 @@ describe('Component: TabNavigation', () => {
     expect(emit).toHaveBeenCalledWith('toast', {
       message: 'Could not save the tab order: Server exploded',
       type: 'error',
+    })
+  })
+
+  describe('the per-tab actions', () => {
+    /** The order they sit in on the bar, read from the bar itself. */
+    const actionOrder = (wrapper: VueWrapper) =>
+      [...wrapper.element.querySelectorAll('[data-testid]')]
+        .map(element => element.getAttribute('data-testid'))
+        .filter(id => id !== null && ['duplicate-tab', 'share-button', 'delete-tab'].includes(id))
+
+    it('keeps copy, share and delete together in that order', async () => {
+      await mixedBar()
+      appStore.activateTab('room-a')
+      await flushPromises()
+      const wrapper = render()
+
+      expect(actionOrder(wrapper)).toEqual(['duplicate-tab', 'share-button', 'delete-tab'])
+    })
+
+    // A `title` attribute is the browser's own tooltip: slow, unstyled, and easy to
+    // miss. Both of these have to be real hover tooltips.
+    it.each([
+      ['duplicate-tab', 'Copy this tab into a local one'],
+      ['delete-tab', 'Delete this plan from your account'],
+    ])('explains %s on hover, not through a title attribute', async (testId, wording) => {
+      await mixedBar()
+      appStore.activateTab('room-a')
+      await flushPromises()
+      const wrapper = render()
+
+      const button = wrapper.find(`[data-testid="${testId}"]`)
+      expect(button.attributes('title')).toBeUndefined()
+
+      await button.trigger('mouseenter')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain(wording)
+    })
+
+    it('says the milder thing for a local tab, which nobody else can lose', async () => {
+      appStore.addTab({ id: 'second', name: 'Second', factories: [] }, { activate: false })
+      const wrapper = render()
+
+      expect(wrapper.find('[data-testid="duplicate-tab"]').exists()).toBe(false)
+      await wrapper.find('[data-testid="delete-tab"]').trigger('mouseenter')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('Delete this tab')
     })
   })
 

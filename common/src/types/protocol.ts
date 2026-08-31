@@ -54,6 +54,8 @@ export interface RoomListEntry {
   revision: number
   role: RoomRole
   order: number
+  /** ISO 8601. When the plan itself last changed, for the "last changed" line. */
+  lastActivityAt: string
 }
 
 /**

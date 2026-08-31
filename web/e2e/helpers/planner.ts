@@ -120,6 +120,14 @@ export const expectTabKind = async (
   }).toBe(kind)
 }
 
+/** The plus button's chooser, taking the local half. */
+export const addLocalTab = async (page: Page): Promise<void> => {
+  await page.getByTestId('add-tab').click()
+  await page.getByTestId('choose-local-tab').click()
+  await expect(page.getByTestId('choose-local-tab')).toBeHidden()
+  await settle(page)
+}
+
 /**
  * The plus button's chooser, taking the synced half. Returns the new room id,
  * which is the tab's own UUID — identity never changes when a tab is synced.

@@ -103,27 +103,39 @@
       >
         <i class="fas fa-plane mr-2" />{{ offlineHint.label }}
       </v-chip>
-      <v-btn
-        v-if="kindOf(currentTabId) !== 'local'"
-        color="grey-darken-1 rounded"
-        icon="fas fa-copy"
-        size="small"
-        title="Duplicate as a local tab"
-        variant="flat"
-        @click="onClickDuplicate"
-      />
       <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
+      <!-- The three per-tab actions sit together: copy it, share it, delete it. -->
+      <v-tooltip v-if="kindOf(currentTabId) !== 'local'" location="top">
+        <template #activator="{ props: duplicateProps }">
+          <v-btn
+            color="grey-darken-1 rounded"
+            data-testid="duplicate-tab"
+            icon="fas fa-copy"
+            size="small"
+            variant="flat"
+            v-bind="duplicateProps"
+            @click="onClickDuplicate"
+          />
+        </template>
+        <span>Copy this tab into a local one that only lives in this browser</span>
+      </v-tooltip>
       <ShareButton />
-      <v-btn
-        v-if="appStore.factoryTabs.length > 1"
-        color="red rounded"
-        icon="fas fa-trash"
-        :loading="deleting"
-        size="small"
-        variant="flat"
-        @click="onClickDelete"
-      />
+      <v-tooltip v-if="appStore.factoryTabs.length > 1" location="top">
+        <template #activator="{ props: deleteProps }">
+          <v-btn
+            color="red rounded"
+            data-testid="delete-tab"
+            icon="fas fa-trash"
+            :loading="deleting"
+            size="small"
+            variant="flat"
+            v-bind="deleteProps"
+            @click="onClickDelete"
+          />
+        </template>
+        <span>{{ deleteTooltip }}</span>
+      </v-tooltip>
     </div>
 
     <!-- Mounted here rather than in the layout so it shares a lifetime with OptionsDialog, which
@@ -259,6 +271,15 @@
       eventBus.emit('toast', { message: 'Duplicated as a local tab.', type: 'success' })
     }
   }
+
+  const deleteTooltip = computed(() => {
+    const state = appStore.getTabState(currentTabId.value)
+    if (state.kind === 'local') return 'Delete this tab'
+    if (state.kind === 'synced' && state.role === 'owner') {
+      return 'Delete this plan from your account, on every device'
+    }
+    return 'Remove this shared plan from your tabs'
+  })
 
   const deleteWarning = () => {
     const state = appStore.getTabState(currentTabId.value)

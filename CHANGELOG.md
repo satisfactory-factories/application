@@ -11,7 +11,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 ### Every tab is now local, synced or shared
 
 - The old model saved one tab as a blob every ten seconds and the last writer won, so two devices could quietly overwrite each other and the only fix was a manual force download. That is replaced by **three kinds of tab, and you pick**. A **local** tab lives in this browser and needs no account, exactly like every tab did before. A **synced** tab lives on your account and appears on every device you sign in on. A **shared** tab is a synced tab you have invited other people into, and everyone edits the same plan live.
-- The **+ button now opens a chooser** rather than silently making a local tab. It explains what each kind is, and a one-time dot on the button points it out the first time. Local stays the default, so nothing changes for anyone who never signs in.
+- The **+ button now opens a chooser** rather than silently making a local tab. It explains what each kind is, and a one-time dot on the button points it out the first time. Local stays the default, so nothing changes for anyone who never signs in. Pick synced without an account and you can sign in or register on the same dialog; the tab you asked for is made as soon as you do.
 - **Each tab wears its kind in the tab bar**: a monitor for local, a single person for synced, a group of people for shared. A shared tab also shows how many people are in it right now.
 - **Tabs can be dragged into whatever order you like.** The order of your synced tabs follows your account, so a bar you arrange on one machine looks the same when you sign in on another. Local tabs belong to this browser and hold the position you put them in, wherever the synced ones move to. Ordering is paused while offline mode is on.
 - **A local tab keeps its identity when you sync it.** Its ID becomes the plan's ID on the server, so nothing about it is recreated or renamed.
@@ -47,8 +47,8 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 
 ### Account panel
 
-- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, the list of your synced plans with a share button on each, and **Change password**.
-- **Recover server copy** brings back the single plan older versions of the planner saved to your account, on demand. If you sign in with an account that has one saved plan and this browser has nothing in it, it is brought back automatically.
+- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, the list of your synced plans with a share button and a last-changed time on each, and **Change password**.
+- **Recover server copy** adds the plan the old planner saved to your account as a new synced tab. There is only ever one of these, and you only need to do it once. If you sign in with an account that has one saved plan and this browser has nothing in it, it is brought back automatically.
 - Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Say no and they stay exactly as they are. Names that would collide get a "(local)" suffix rather than being merged.
 - The out-of-sync dialog and the force download button are gone. Neither has anything to do now.
 

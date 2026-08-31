@@ -122,8 +122,10 @@ export class RoomsService {
   async rename (userId: string, roomId: string, name: string): Promise<RoomListEntry> {
     await this.requireOwner(userId, roomId)
 
+    // Stamped here as well as on the op path: a rename is a change to the plan as
+    // the tab list shows it, so the "last changed" line has to move with it.
     await this.steps.run('update-room-meta', async () => {
-      await this.rooms.updateOne({ roomId }, { $set: { name } })
+      await this.rooms.updateOne({ roomId }, { $set: { name, lastActivityAt: this.clock.now() } })
     })
 
     return this.finishMetaMutation(userId, roomId, 'renamed')
@@ -577,4 +579,7 @@ export const toListEntry = (room: Room, role: RoomRole, order: number): RoomList
   revision: room.revision,
   role,
   order,
+  // Serialised here rather than left as a Date: the type is the client's too, and a
+  // JSON round trip would hand it a string whatever this said.
+  lastActivityAt: (room.lastActivityAt ?? room.updatedAt ?? new Date()).toISOString(),
 })
