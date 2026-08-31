@@ -118,14 +118,20 @@
         prepend-icon="fas fa-arrow-up"
         @click="doFixProduct(product, factory)"
       >Satisfy{{ fixTargetLabel(product, factory) }}</v-btn>
-      <v-btn
+      <tooltip
         v-show="shouldShowFix(product, factory) == 'surplus'"
-        class="rounded align-self-center"
-        color="yellow"
-        prepend-icon="fas fa-arrow-down"
-        size="default"
-        @click="doFixProduct(product, factory)"
-      >Trim{{ fixTargetLabel(product, factory) }}</v-btn>
+        classes="align-self-center"
+        :disabled="!isImportShortfallTrim(product, factory)"
+        text="This factory imports this item as well as making it, so it only has to produce what the imports don't cover.<br>Trimming sets the quantity to that difference and leaves the imports alone."
+      >
+        <v-btn
+          class="rounded"
+          color="yellow"
+          prepend-icon="fas fa-arrow-down"
+          size="default"
+          @click="doFixProduct(product, factory)"
+        >{{ trimLabel(product, factory) }}</v-btn>
+      </tooltip>
       <v-chip v-if="shouldShowInternal(product, factory)" class="align-self-center sf-chip small green">
         <i class="fas fa-industry mr-1" />Internal
       </v-chip>
@@ -305,6 +311,7 @@
     fixProduct,
     fixProductTarget,
     increaseProductQtyViaBuilding,
+    isImportShortfallTrim,
     productRowId,
     shouldShowFix,
     shouldShowInternal,
@@ -562,6 +569,11 @@
   // before the press rather than only after it.
   const fixTargetLabel = (product: FactoryItem, factory: Factory): string =>
     fixTargetSuffix(fixProductTarget(product, factory))
+
+  // Named apart from a plain Trim when imports are what makes the target smaller.
+  const trimLabel = (product: FactoryItem, factory: Factory): string =>
+    (isImportShortfallTrim(product, factory) ? 'Trim to import shortfall' : 'Trim') +
+    fixTargetLabel(product, factory)
 
   const autocompletePartItemsGenerator = () => {
     const gameDataParts = getGameData().items.parts

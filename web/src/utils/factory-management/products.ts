@@ -252,6 +252,15 @@ export const shouldShowFix = (product: FactoryItem, factory: Factory): string | 
   return null
 }
 
+// A Trim offered because imports already cover part of the demand is a different proposition to
+// an ordinary one: it does not cut production down to the requirement, it cuts it to whatever the
+// imports leave over. The button says so, because the figure is smaller than a plain Trim's and
+// would otherwise look like it had cut too far.
+export const isImportShortfallTrim = (product: FactoryItem, factory: Factory): boolean => {
+  const part = factory.parts[product.id]
+  return !!part && part.amountSuppliedViaInput > 0 && part.amountSuppliedViaProduction > 0
+}
+
 export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory: Factory) => {
   if (!factory.parts[product.id]) {
     return false

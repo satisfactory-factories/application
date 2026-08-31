@@ -664,6 +664,37 @@ describe('products', () => {
       expect(target).toBe(Math.abs(part.amountRemaining) + product.amount)
     })
 
+    it('should trim to the difference when several factories import the same part', () => {
+      // Two oil fields feeding one that also extracts for itself. Local production only has to
+      // cover what the imports do not: 5232 needed, 2100 imported, so the product trims to 3132.
+      const fieldA = newFactory('Oil Field A', 0, 1)
+      addProductToFactory(fieldA, { id: 'LiquidOil', amount: 900, recipe: 'Extract_LiquidOil' })
+      const fieldB = newFactory('Oil Field B', 1, 2)
+      addProductToFactory(fieldB, { id: 'LiquidOil', amount: 1200, recipe: 'Extract_LiquidOil' })
+
+      const main = newFactory('Oil MegaFac', 2, 3)
+      addProductToFactory(main, { id: 'LiquidOil', amount: 5232, recipe: 'Extract_LiquidOil' })
+      addProductToFactory(main, { id: 'Plastic', amount: 3488, recipe: 'Plastic' })
+      addInputToFactory(main, { factoryId: fieldA.id, outputPart: 'LiquidOil', amount: 900 })
+      addInputToFactory(main, { factoryId: fieldB.id, outputPart: 'LiquidOil', amount: 1200 })
+
+      const factories = [fieldA, fieldB, main]
+      calculateFactories(factories, gameData)
+
+      expect(main.parts.LiquidOil.amountRequired).toBe(5232)
+      expect(main.parts.LiquidOil.amountSuppliedViaInput).toBe(2100)
+      expect(shouldShowFix(main.products[0], main)).toBe('surplus')
+      expect(fixProductTarget(main.products[0], main)).toBe(3132)
+
+      // And pressing it balances the part exactly, rather than leaving another surplus behind.
+      fixProduct(main.products[0], main)
+      calculateFactories(factories, gameData)
+
+      expect(main.products[0].amount).toBe(3132)
+      expect(main.parts.LiquidOil.amountRemaining).toBe(0)
+      expect(shouldShowFix(main.products[0], main)).toBe(null)
+    })
+
     it('should never ask for a negative quantity', () => {
       // Imports well past what the factory needs: trimming the product away entirely still
       // leaves a surplus, so the arithmetic runs negative. A product cannot be made -350 times.
