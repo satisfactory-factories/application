@@ -21,12 +21,13 @@ seven findings between them; all are fixed, and the sections below are what they
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
-below (load chain, quiet applies, the UI round): backend 272 vitest tests (23 files), common 70 (4),
-web 2732 unit tests (150 files, 1 skipped),
+below (load chain, quiet applies, the UI round) and the verification round that closed them:
+backend 272 vitest tests (23 files), common 75 (4), web 2736 unit tests (150 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 34 Playwright e2e tests passing. The e2e
-job in CI has never actually run — it is validated locally only, so the first PR is where it gets
-proved.
+`build` clean, and all 34 Playwright e2e tests passing — twice at full speed and once under
+`E2E_CPU_THROTTLE=6`, which is the run that earns its keep and is the one that found the last real
+bug. The e2e job in CI has never actually run: it is validated locally only, so the first PR is
+where it gets proved.
 
 Two counting traps in that line, both of which have already misled a pass. The web figure
 includes the 8 files and 129 tests in `web/testing/tdd/`: they are **not** excluded by
@@ -570,8 +571,37 @@ asks the reader to go and report an outage on Discord, so a user on a train must
 
 The battery over the three preview-bug stages above (load chain, quiet applies, presence and
 propagation, the UI round). Every gate was re-run and every fix re-read against the complaint it
-answered. Three more defects fell out, all of the same shape as the ones already fixed, none of
-them caught by any suite until a test was written for it.
+answered. Five more defects fell out, none caught by any suite until a test was written for it,
+and the biggest of them was the original complaint's actual cause.
+
+**The one that matters: a blank product row could not be sent, and that stopped the whole plan
+syncing.** "Add Product" hands the user a row with no item, and a row with no item has no building
+to require, so the planner writes `buildingRequirements: {}`. `buildingRequirementSchema` demands
+`name` and `amount`, so the op carrying that row comes back `invalid` — three of them in a row
+pause the room, and from that moment the tab sends nothing at all: not the item the user then
+picks, not anything after it. **This is the "sync doesn't work" report.** The two halves:
+
+- **It is invisible at full speed.** The blank row and the chosen item land in one debounced op, so
+  the invalid intermediate never reaches the wire. Under `E2E_CPU_THROTTLE=6` the debounce fires
+  between the click and the choice every single time: `live-propagation` failed 6/6 before and
+  passes 9/9 after, and the same two tests failed identically at `b0568fa2`, so this is the
+  branch's own bug and not something the verification round introduced. **Any "it only fails on
+  CI" sync report starts with the throttle, not with a re-read.**
+- **Fixed the way `power` was, on both sides.** `productBuildingRequirementSchema` defaults the
+  pair (plans holding `{}` are already in browsers and on the server, so no client fix reaches
+  them), and the planner writes the zeroed shape. Not only at construction: `buildings.ts` resets
+  `product.buildingRequirements` to `{}` on **every** recalculation for a row it cannot cost, and
+  that reset is what actually put it on the wire. Fixing the constructor alone left the test red.
+
+**And the amplifier that turned it into silence: a paused room never resumed.** `REJECT_PAUSE_AFTER`
+is 3; `resumeRoom` existed and *nothing called it*, `flushRoom` and `probeRevision` both require
+`synced`, and `rebase` deliberately leaves a pause alone. So the tab was receive-only for the life
+of the page, with no indication, until a reload. The idle probe now resumes a paused room rather
+than skipping it — the streak's real job is the retry *rate*, not permanence. Worth remembering as
+a shape: **an exported recovery function with no caller is a silent failure waiting for its
+trigger**, and this branch's follow-up list already names two more of them.
+
+Then three of the same class as the fixes above, all in the load chain and the activity tracker:
 
 **The rule the load chain now obeys, stated once: a chain owns the tab it started on, and
 anything else that wants to change that plan queues a whole copy behind it.** Two ways it was
@@ -608,7 +638,7 @@ puts a bottom notice under an open tray *and* a toast at the same time (entering
 empties `.bottom-notices` in the same tick), so this is a trap rather than a live bug — but it is
 the reason to check the computed value rather than trust the prop.
 
-**Driving it by hand is what found the third one, and it is worth repeating.** The pass was two
+**Driving it by hand is what found the "last updated" one, and it is worth repeating.** The pass was two
 browser contexts against a stack of one's own: `MongoMemoryServer` for the database, the compiled
 `backend/dist/main.js` under a supervisor that stops and starts it on a dropped file, and
 `vite preview` on the built bundle. Owning the API process is what makes "stop the backend
@@ -623,13 +653,15 @@ also has its original default tab.
 
 ## Flagged follow-ups, none of them blocking
 
-Re-checked line by line against the code on 2026-08-30, after the merge and again after the final
-verification pass. All still hold bar the changelog one, struck through below. Spot-confirmed this
-pass: the NestJS API really has no `/version` route (the controllers serve preferences, auth,
-health, the legacy share/save/load pair and sixteen rooms routes, and none of them is it), and
-both dead-wiring claims are still dead — `loadServerPlan` is called by nothing but its own spec,
-and `updateFactories` is declared as an emit in two components and fired by neither. The first two
-are new, from the round-three race audit.
+Re-checked line by line against the code on 2026-08-31, in the verification round. All still hold.
+Re-confirmed by grep this pass: the NestJS API really has no `/version` route, `loadServerPlan` is
+called by nothing but its own spec, `updateFactories` is declared as an emit in two components and
+fired by neither, and `share/[id].vue` still has its three `alert()`s. The changelog entry that
+used to sit here is gone: the merge closed it, and a struck-through line is not worth carrying.
+`resumeRoom` was on this list's implicit shape too and has now been fixed rather than flagged (see
+the verification round above) — dead recovery wiring is the one kind of follow-up that costs data
+rather than tidiness, so treat the two remaining dead-wiring entries as smaller only because
+nothing routes through them. The first two below are from the round-three race audit.
 
 - **The op fan-out rides on registry membership, not on a fresh check.** `broadcastOp` sends the
   sender's diff to every socket the registry holds in that room, so between the epoch write in
@@ -698,9 +730,6 @@ are new, from the round-three race audit.
 - **`web/src/pages/share/[id].vue` still uses three blocking `alert()`s** for a bad or
   unparseable snapshot link. Everything built for v0.7.0 uses the toast bus; these predate it and
   were left alone deliberately, but they are the last blocking dialogs on a sync path.
-- ~~`CHANGELOG.md` has a stray `## [Unreleased]` section below `## Beta v0.7`.~~ **Closed by the
-  merge**: its content became upstream's `## Beta v0.6` section, so the heading merged out empty
-  and is gone. The headings are now v0.7, v0.6, v0.5, Alpha v0.4, in that order.
 
 ## Preview deployment (2026-08-31): live
 
