@@ -68,20 +68,6 @@
       >
         <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
         <v-tooltip location="top">
-          <template #activator="{ props: shareProps }">
-            <v-btn
-              color="blue"
-              data-testid="share-local-plan"
-              icon="fas fa-share-alt"
-              size="x-small"
-              variant="flat"
-              v-bind="shareProps"
-              @click="openShare(tab.id)"
-            />
-          </template>
-          <span>Sharing options for this plan</span>
-        </v-tooltip>
-        <v-tooltip location="top">
           <template #activator="{ props: convertProps }">
             <v-btn
               color="green"
@@ -114,76 +100,30 @@
           None yet. Make one from the + button on the tab bar, or send a local plan to the
           cloud from the Local tab.
         </p>
-        <div
+        <cloud-plan-row
           v-for="room in ownedRooms"
           :key="room.roomId"
-          class="align-center d-flex ga-2 mb-2"
           data-testid="my-plan"
-        >
-          <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
-          <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
-          <v-tooltip location="top">
-            <template #activator="{ props: timeProps }">
-              <span
-                class="text-caption text-grey text-no-wrap"
-                data-testid="plan-last-changed"
-                v-bind="timeProps"
-              >{{ relativeTime(room.lastActivityAt, now) }}</span>
-            </template>
-            <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template #activator="{ props: shareProps }">
-              <v-btn
-                color="blue"
-                data-testid="share-plan"
-                icon="fas fa-share-alt"
-                size="x-small"
-                variant="flat"
-                v-bind="shareProps"
-                @click="openShare(room.roomId)"
-              />
-            </template>
-            <span>Sharing and invite links for this plan</span>
-          </v-tooltip>
-        </div>
+          :loading="togglingId === room.roomId"
+          :now="now"
+          :open="isOpen(room.roomId)"
+          :room="room"
+          @toggle="toggleOpen"
+        />
       </div>
 
       <div v-if="joinedRooms.length > 0" class="mt-3" data-testid="joined-plans">
         <p class="text-body-2 font-weight-bold mb-2">Joined Plans</p>
-        <div
+        <cloud-plan-row
           v-for="room in joinedRooms"
           :key="room.roomId"
-          class="align-center d-flex ga-2 mb-2"
           data-testid="joined-plan"
-        >
-          <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
-          <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
-          <v-tooltip location="top">
-            <template #activator="{ props: timeProps }">
-              <span
-                class="text-caption text-grey text-no-wrap"
-                data-testid="plan-last-changed"
-                v-bind="timeProps"
-              >{{ relativeTime(room.lastActivityAt, now) }}</span>
-            </template>
-            <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
-          </v-tooltip>
-          <v-tooltip location="top">
-            <template #activator="{ props: shareProps }">
-              <v-btn
-                color="blue"
-                data-testid="share-plan"
-                icon="fas fa-share-alt"
-                size="x-small"
-                variant="flat"
-                v-bind="shareProps"
-                @click="openShare(room.roomId)"
-              />
-            </template>
-            <span>Sharing and invite links for this plan</span>
-          </v-tooltip>
-        </div>
+          :loading="togglingId === room.roomId"
+          :now="now"
+          :open="isOpen(room.roomId)"
+          :room="room"
+          @toggle="toggleOpen"
+        />
       </div>
     </div>
 
@@ -234,19 +174,16 @@
         {{ passwordSuccess }}
       </p>
     </v-form>
-
-    <share-dialog v-model="shareOpen" :tab-id="shareTabId" />
   </div>
 </template>
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-  import ShareDialog from '@/components/sync/ShareDialog.vue'
+  import CloudPlanRow from '@/components/sync/CloudPlanRow.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
-  import { absoluteTime, relativeTime } from '@/utils/relative-time'
 
   const props = withDefaults(defineProps<{
     /** True while the account tray is showing this panel. */
@@ -311,14 +248,23 @@
     else roomSync.exitOffline()
   }
 
-  // ===== Sharing =====
+  // ===== Show and hide =====
 
-  const shareOpen = ref(false)
-  const shareTabId = ref('')
+  /** Open means a tab for the room exists in this browser; the bar is the set. */
+  const openIds = computed(() => new Set(appStore.getTabs().map(tab => tab.id)))
+  const isOpen = (roomId: string) => openIds.value.has(roomId)
 
-  const openShare = (tabId: string) => {
-    shareTabId.value = tabId
-    shareOpen.value = true
+  const togglingId = ref('')
+
+  /** Refusals (offline, last tab) already toast from the store; nothing to add. */
+  const toggleOpen = async (roomId: string) => {
+    togglingId.value = roomId
+    try {
+      if (isOpen(roomId)) roomsStore.hidePlan(roomId)
+      else await roomsStore.openPlan(roomId)
+    } finally {
+      togglingId.value = ''
+    }
   }
 
   // ===== Convert to cloud =====

@@ -95,9 +95,11 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   /**
-   * The list is the authority on which tabs are synced. A room with no tab here
-   * is one made on another device, and a synced tab the list no longer carries
-   * has had its access revoked.
+   * The list is the authority on which tabs are synced, and the tab bar is the
+   * authority on which rooms are open: a room with no tab here is hidden in this
+   * browser and stays that way — the list never opens a tab on its own, so a
+   * refresh, a reconnect or a login cannot un-hide a plan. A synced tab the list
+   * no longer carries has had its access revoked.
    */
   const applyRoomList = (list: RoomListEntry[]) => {
     const known = new Map(list.map(entry => [entry.roomId, entry]))
@@ -110,9 +112,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
 
     for (const entry of list) {
-      if (!appStore.getTab(entry.roomId)) {
-        appStore.addTab({ id: entry.roomId, name: entry.name, factories: [] }, { activate: false })
-      }
+      if (!appStore.getTab(entry.roomId)) continue
       appStore.setTabState(entry.roomId, {
         kind: 'synced',
         shared: entry.shared,
@@ -137,6 +137,76 @@ export const useRoomsStore = defineStore('rooms', () => {
     const tabIds = appStore.getTabs().map(tab => tab.id)
 
     appStore.reorderTabs(interleaveTabOrder(tabIds, serverOrder, tabId => known.has(tabId)))
+  }
+
+  // ===== Opening and hiding cloud plans =====
+
+  /** Open/hide refusals surface as toasts here, so no caller can drop one silently. */
+  const refuse = (message: string): string => {
+    lastError.value = message
+    eventBus.emit('toast', { message, type: 'error', timeout: NOTICE_MS })
+    return message
+  }
+
+  /**
+   * Opens a cloud plan into this browser's tab bar. The tab starts empty and the
+   * socket join fills it, exactly as every synced tab loads; the room and the
+   * membership already exist, so nothing is written server-side. Idempotent: an
+   * open plan is simply brought to the front.
+   */
+  const openPlan = async (roomId: string): Promise<true | string> => {
+    const offline = blocked()
+    if (offline) return refuse(offline)
+
+    let entry = entries.value[roomId]
+    if (!entry) {
+      await refresh()
+      entry = entries.value[roomId]
+    }
+    if (!entry) return refuse('That plan is not on your account.')
+
+    if (!appStore.getTab(roomId)) {
+      appStore.addTab({ id: roomId, name: entry.name, factories: [] }, { activate: false })
+    }
+    appStore.setTabState(roomId, {
+      kind: 'synced',
+      shared: entry.shared,
+      role: entry.role,
+      revision: entry.revision,
+    })
+    roomSync.trackRoom(roomId)
+    appStore.activateTab(roomId)
+    return true
+  }
+
+  /**
+   * Unmounts a cloud plan from this browser: the tab, its sync state and its
+   * mirror metadata go, the server room and the membership stay untouched. The
+   * bar is the per-browser open set, so this is all "hidden" is. Idempotent: a
+   * plan with no tab is already hidden.
+   */
+  const hidePlan = (roomId: string): true | string => {
+    const offline = blocked()
+    if (offline) return refuse(offline)
+
+    if (!appStore.getTab(roomId)) return true
+
+    const tabs = appStore.getTabs()
+    if (tabs.length === 1) {
+      return refuse('The tab bar cannot be left empty. Open another plan first.')
+    }
+
+    // Never pull the plan out from under the user: move to a neighbouring tab
+    // first, so the removal happens behind the view rather than to it.
+    if (appStore.getCurrentTab()?.id === roomId) {
+      const index = tabs.findIndex(tab => tab.id === roomId)
+      const neighbour = tabs[index + 1] ?? tabs[index - 1]
+      appStore.activateTab(neighbour.id)
+    }
+
+    roomSync.untrackRoom(roomId)
+    appStore.removeTab(roomId)
+    return true
   }
 
   // ===== Revocation =====
@@ -235,6 +305,9 @@ export const useRoomsStore = defineStore('rooms', () => {
         timeout: NOTICE_MS,
       })
       await refresh()
+      // The list never opens tabs, and a recovered plan announced by a toast
+      // must actually be on screen.
+      if (result.room) await openPlan(result.room.roomId)
     } catch (error) {
       lastError.value = describe(error)
     }
@@ -413,7 +486,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!appStore.reorderTabs(orderedIds)) return 'That order does not match the tabs on screen.'
 
     const synced = syncedTabOrder(orderedIds, tabId => tabId in entries.value)
+    // Hidden rooms have no slot in the bar, so they are left out of the
+    // comparison too — otherwise every drag would read as a change.
     const stored = Object.values(entries.value)
+      .filter(entry => appStore.getTab(entry.roomId) !== undefined)
       .sort((a, b) => a.order - b.order)
       .map(entry => entry.roomId)
     // Dragging local tabs about changes nothing the server tracks, and a pointless
@@ -591,7 +667,12 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   // ===== Session =====
 
-  /** Called once the session is known good: connect, then pull the tab list. */
+  /**
+   * Called once the session is known good: connect, then pull the tab list.
+   * Deliberately opens no tabs — the bar this browser already holds is the open
+   * set. Which rooms to open on a fresh interactive login is the caller's
+   * decision, made through `openPlan` per room (the login chooser's seam).
+   */
   const begin = async (): Promise<void> => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) return
@@ -698,6 +779,8 @@ export const useRoomsStore = defineStore('rooms', () => {
     declineAdoption,
 
     // Tab actions
+    openPlan,
+    hidePlan,
     createSyncedTab,
     canRename,
     renameTab,

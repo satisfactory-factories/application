@@ -1215,6 +1215,28 @@ export const useAppStore = defineStore('app', () => {
     prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
   }
 
+  /**
+   * Removes any tab by id. The bar never goes below one tab, and the selection
+   * stays on the tab the user is looking at when another one goes.
+   */
+  const removeTab = (tabId: string): boolean => {
+    if (factoryTabs.value.length === 1) return false
+    const index = factoryTabs.value.findIndex(tab => tab.id === tabId)
+    if (index === -1) return false
+
+    factoryTabs.value.splice(index, 1)
+    markTabLocal(tabId)
+
+    if (index < currentFactoryTabIndex.value) {
+      currentFactoryTabIndex.value--
+    } else if (index === currentFactoryTabIndex.value) {
+      currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
+      prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
+    }
+    schedulePersist()
+    return true
+  }
+
   const renameTab = (tabId: string, name: string) => {
     const tab = getTab(tabId)
     if (!tab || name === '') return false
@@ -1387,6 +1409,7 @@ export const useAppStore = defineStore('app', () => {
     addTab,
     activateTab,
     removeCurrentTab,
+    removeTab,
     renameTab,
     duplicateTab,
     rekeyTab,

@@ -4,6 +4,7 @@ import { PROBE_INTERVAL_MS } from '../config'
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import {
+  addFactory,
   createSyncedTab,
   deleteCurrentTab,
   dragTab,
@@ -13,10 +14,12 @@ import {
   renameAffordance,
   renameCurrentTab,
   selectTab,
+  settle,
   tabNames,
+  waitForRevision,
   waitForTab,
 } from '../helpers/planner'
-import { shareARoom, syncedPair } from '../helpers/rooms'
+import { hidePlan, shareARoom, showPlan, syncedPair } from '../helpers/rooms'
 
 /** The account's tabs, in bar order. The local "Default" tab is nobody else's business. */
 const syncedNames = async (page: Page): Promise<string[]> =>
@@ -29,10 +32,11 @@ test('a tab created, renamed and deleted on one device follows the account', asy
   client,
   request,
 }) => {
-  const { first, second } = await syncedPair(client, request)
+  const { user, first, second } = await syncedPair(client, request)
 
   const created = await createSyncedTab(first)
-  await waitForTab(second, created)
+  // A room made elsewhere stays hidden here until this device opens it.
+  await showPlan(second, user, created)
   await expectTabKind(second, created, 'synced')
 
   await renameCurrentTab(first, 'Renamed on the first device')
@@ -50,15 +54,45 @@ test('a tab created, renamed and deleted on one device follows the account', asy
   await expectTabKind(second, created, 'local')
 })
 
+/**
+ * The tab bar is the per-browser open set: Hide closes the tab and nothing else,
+ * a reload cannot resurrect it, and Show brings the plan back from the account
+ * with everything it held. The plan itself never leaves the server.
+ */
+test('a hidden plan survives a reload hidden, and Show brings it all back', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+  const page = await openPlanner(await client({ user }))
+  const roomId = await createSyncedTab(page)
+  await addFactory(page, { name: 'Hidden cargo', note: 'kept on the account' })
+  await waitForRevision(page, roomId, 1)
+
+  await hidePlan(page, user, roomId)
+  await expect.poll(() => hasTab(page, roomId), {
+    message: 'the hidden plan kept its tab',
+  }).toBe(false)
+
+  await page.reload()
+  await settle(page)
+  expect(await hasTab(page, roomId), 'a reload re-opened the hidden plan').toBe(false)
+
+  await showPlan(page, user, roomId)
+  await expectTabKind(page, roomId, 'synced')
+  await selectTab(page, roomId)
+  await expect(page.locator('input.factory-name')).toHaveValue('Hidden cargo')
+})
+
 test('a tab order dragged on one device reaches the other', async ({ client, request }) => {
-  const { roomId, first, second } = await syncedPair(client, request)
+  const { user, roomId, first, second } = await syncedPair(client, request)
 
   await selectTab(first, roomId)
   await renameCurrentTab(first, 'First plan')
   const other = await createSyncedTab(first)
   await renameCurrentTab(first, 'Second plan')
 
-  await waitForTab(second, other)
+  await showPlan(second, user, other)
   await expect.poll(() => syncedNames(second)).toEqual(['First plan', 'Second plan'])
 
   // Index 0 is the local Default tab, which the server has no row for.
@@ -81,14 +115,14 @@ test('a tab order dragged after an idle soak still reaches the other', async ({
   client,
   request,
 }) => {
-  const { roomId, first, second } = await syncedPair(client, request)
+  const { user, roomId, first, second } = await syncedPair(client, request)
 
   await selectTab(first, roomId)
   await renameCurrentTab(first, 'Soak one')
   const other = await createSyncedTab(first)
   await renameCurrentTab(first, 'Soak two')
 
-  await waitForTab(second, other)
+  await showPlan(second, user, other)
   await expect.poll(() => syncedNames(second)).toEqual(['Soak one', 'Soak two'])
 
   await first.waitForTimeout(PROBE_INTERVAL_MS * 2 + 1_000)

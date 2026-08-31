@@ -4,7 +4,6 @@ import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
 import type { RoomListEntry } from 'common'
 import AccountPanel from './AccountPanel.vue'
-import ShareDialog from './ShareDialog.vue'
 import vuetify from '@/plugins/vuetify'
 import type { FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { useAppStore } from '@/stores/app-store'
@@ -24,6 +23,7 @@ const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   role: 'owner',
   order: 0,
   lastActivityAt: '2026-08-31T11:00:00.000Z',
+  factoryCount: 0,
   ...overrides,
 })
 
@@ -214,16 +214,6 @@ describe('AccountPanel', () => {
       expect(at(wrapper, 'local-plan').exists()).toBe(false)
     })
 
-    it('opens the share dialog for the local tab that was clicked', async () => {
-      const wrapper = render({}, mixedTabs())
-
-      await at(wrapper, 'share-local-plan').trigger('click')
-
-      const dialog = wrapper.findComponent(ShareDialog)
-      expect(dialog.props('modelValue')).toBe(true)
-      expect(dialog.props('tabId')).toBe('local-1')
-    })
-
     it('converts a local tab through the adoption path', async () => {
       const wrapper = render({}, mixedTabs())
 
@@ -276,15 +266,90 @@ describe('AccountPanel', () => {
       expect(at(wrapper, 'my-plan').text()).toContain('Shared')
     })
 
-    it('opens the share dialog for the room that was clicked', async () => {
-      const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+    it('carries no per-row share buttons; sharing lives in the planner toolbar', async () => {
+      const wrapper = render(
+        { rooms: { entries: { 'room-1': entry(), 'room-2': entry({ roomId: 'room-2', role: 'member', order: 1 }) } } },
+        { tabs: [tab('local-1', 'Mine')] },
+      )
+      expect(at(wrapper, 'share-local-plan').exists()).toBe(false)
+
       await openCloud(wrapper)
 
-      await at(wrapper, 'share-plan').trigger('click')
+      expect(at(wrapper, 'share-plan').exists()).toBe(false)
+      expect(wrapper.html()).not.toContain('fa-share-alt')
+    })
 
-      const dialog = wrapper.findComponent(ShareDialog)
-      expect(dialog.props('modelValue')).toBe(true)
-      expect(dialog.props('tabId')).toBe('room-1')
+    it('says how many factories each plan holds, singular included', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry({ factoryCount: 12 }),
+            'room-2': entry({ roomId: 'room-2', factoryCount: 1, order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      const counts = wrapper.findAll('[data-testid="plan-factory-count"]').map(count => count.text())
+      expect(counts).toEqual(['12 factories', '1 factory'])
+    })
+
+    it('gives a joined plan the same two-line row', async () => {
+      const wrapper = render({
+        rooms: { entries: { 'room-2': entry({ roomId: 'room-2', role: 'member', factoryCount: 3 }) } },
+      })
+      await openCloud(wrapper)
+
+      const row = at(wrapper, 'joined-plan')
+      expect(row.find('[data-testid="plan-factory-count"]').text()).toBe('3 factories')
+      expect(row.find('[data-testid="plan-last-changed"]').exists()).toBe(true)
+      expect(row.find('[data-testid="show-plan"]').exists()).toBe(true)
+    })
+  })
+
+  describe('show and hide', () => {
+    const oneRoom = { rooms: { entries: { 'room-1': entry() } } }
+
+    it('offers Show on a hidden plan and opens it through the store', async () => {
+      const wrapper = render(oneRoom)
+      await openCloud(wrapper)
+
+      const show = at(wrapper, 'show-plan')
+      expect(show.text()).toBe('Show')
+      expect(at(wrapper, 'hide-plan').exists()).toBe(false)
+
+      await show.trigger('click')
+      await flushPromises()
+
+      expect(roomsStore.openPlan).toHaveBeenCalledWith('room-1')
+      expect(roomsStore.hidePlan).not.toHaveBeenCalled()
+    })
+
+    it('offers Hide on an open plan and hides it through the store', async () => {
+      const wrapper = render(oneRoom, {
+        tabs: [tab('room-1', 'Iron Plates'), tab('local-1', 'Mine')],
+        tabStates: { 'room-1': { kind: 'synced', shared: false, role: 'owner', revision: 3 } },
+      })
+      await openCloud(wrapper)
+
+      const hide = at(wrapper, 'hide-plan')
+      expect(hide.text()).toBe('Hide')
+      expect(at(wrapper, 'show-plan').exists()).toBe(false)
+
+      await hide.trigger('click')
+      await flushPromises()
+
+      expect(roomsStore.hidePlan).toHaveBeenCalledWith('room-1')
+      expect(roomsStore.openPlan).not.toHaveBeenCalled()
+    })
+
+    // Hidden is the whole point of the list: a plan with no tab still has a row.
+    it('keeps a hidden plan in the list', async () => {
+      const wrapper = render(oneRoom, { tabs: [tab('local-1', 'Mine')] })
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'my-plan').text()).toContain('Iron Plates')
+      expect(at(wrapper, 'show-plan').exists()).toBe(true)
     })
   })
 
@@ -332,14 +397,14 @@ describe('AccountPanel', () => {
     })
   })
 
-  it('says what the per-plan share button opens, on hover', async () => {
+  it('says what Show will do, on hover', async () => {
     const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
     await openCloud(wrapper)
 
-    await at(wrapper, 'share-plan').trigger('mouseenter')
+    await at(wrapper, 'show-plan').trigger('mouseenter')
     await flushPromises()
 
-    expect(document.body.textContent).toContain('Sharing and invite links for this plan')
+    expect(document.body.textContent).toContain('Open this plan in your tab bar.')
   })
 
   // The vendored Font Awesome is 5.15.4, where a v6 name draws the missing-icon

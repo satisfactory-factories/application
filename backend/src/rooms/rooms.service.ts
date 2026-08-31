@@ -582,4 +582,5 @@ export const toListEntry = (room: Room, role: RoomRole, order: number): RoomList
   // Serialised here rather than left as a Date: the type is the client's too, and a
   // JSON round trip would hand it a string whatever this said.
   lastActivityAt: (room.lastActivityAt ?? room.updatedAt ?? new Date()).toISOString(),
+  factoryCount: room.factories?.length ?? 0,
 })

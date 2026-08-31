@@ -155,6 +155,24 @@ describe('rooms', () => {
         .toBeGreaterThanOrEqual(new Date(listed.lastActivityAt).getTime())
     })
 
+    it('carries a factory count without shipping the factories themselves', async () => {
+      const roomId = randomUUID()
+      await post('/rooms', owner).send({
+        roomId,
+        name: 'Counted',
+        factories: [makeFactory({ id: 1, name: 'A' }), makeFactory({ id: 2, name: 'B' })],
+      })
+      await createRoom(owner, 'Empty')
+
+      const rooms = (await get('/rooms', owner)).body.rooms as
+        { roomId: string, factoryCount: number, factories?: unknown }[]
+
+      const counted = rooms.find(room => room.roomId === roomId)
+      expect(counted?.factoryCount).toBe(2)
+      expect(counted?.factories).toBeUndefined()
+      expect(rooms.find(room => room.roomId !== roomId)?.factoryCount).toBe(0)
+    })
+
     it('hides another account\'s rooms', async () => {
       await createRoom(owner)
 

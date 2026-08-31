@@ -23,6 +23,7 @@ const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   role: 'owner',
   order: 0,
   lastActivityAt: '2026-08-31T11:00:00.000Z',
+  factoryCount: 0,
   ...overrides,
 })
 

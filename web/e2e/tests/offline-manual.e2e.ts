@@ -12,6 +12,7 @@ import {
   openPlanner,
   selectTab,
 } from '../helpers/planner'
+import { showPlan } from '../helpers/rooms'
 import { setOfflineMode } from '../helpers/session'
 
 /**
@@ -34,6 +35,7 @@ test('offline mode is silent, and the edits made in it sync on the way back', as
   await addFactory(first, { name: 'Baseline', note: 'made while online' })
 
   const second = await openPlanner(await client({ user }))
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
   await expect(second.locator('input.factory-name')).toHaveValue('Baseline')
 
@@ -72,6 +74,7 @@ test('a task added in offline mode survives the way back out', async ({ client, 
   await addFactory(first, { name: 'Smelters', note: 'made while online' })
 
   const second = await openPlanner(await client({ user }))
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
   await expect(second.locator('input.factory-name')).toHaveValue('Smelters')
 

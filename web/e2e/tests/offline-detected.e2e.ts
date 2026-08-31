@@ -1,6 +1,7 @@
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import { setOfflineMode } from '../helpers/session'
+import { showPlan } from '../helpers/rooms'
 import { installWsGate } from '../helpers/network'
 import type { WsGate } from '../helpers/network'
 import {
@@ -25,6 +26,7 @@ test('a dropped connection offers offline mode, and nothing edited in it is lost
   const roomId = await createSyncedTab(first)
 
   const second = await openPlanner(await client({ user }))
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
 
   // An op that is genuinely in flight when the link dies: sent by the client,
@@ -76,6 +78,7 @@ test('a rename left unsent by a dropped connection survives the reconnect', asyn
   await addFactory(first, { name: 'Smelters', note: 'made while online' })
 
   const second = await openPlanner(await client({ user }))
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
   await expect(second.locator('input.factory-name')).toHaveValue('Smelters')
 

@@ -18,7 +18,7 @@ test('an edit on one device reaches the account\'s other device within 2s', asyn
 }) => {
   const { roomId, first, second } = await syncedPair(client, request)
 
-  // The room list is what tells the second device the tab exists at all.
+  // The second device opened the plan from the panel; the tab is live in its bar.
   expect(await readTabBar(second)).toContainEqual(
     expect.objectContaining({ kind: 'synced', selected: true }),
   )

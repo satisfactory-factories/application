@@ -79,6 +79,34 @@ separate later session.
 - Update Dockerfile, compose docs, `docs/deployment.md`; write the release runbook; manual box steps loud at the top of the PR
 - Update `CHANGELOG.md`; bump to 0.7.0
 
+### Cloud plan offload (post-review round) — delivered
+
+The shared model for this round: a cloud plan is OPEN in a browser when a local tab exists
+for its roomId and HIDDEN when the account room exists with no local tab. The tab bar is the
+per-browser open set; nothing extra is persisted, and hiding never touches the server room.
+
+- Add `openPlan(roomId)` / `hidePlan(roomId)` to `rooms-store` — open creates the tab from the
+  list entry and tracks the room (the socket join fills the content), hide untracks and removes
+  the tab, its state and its mirror meta while leaving the room and membership alone; both
+  idempotent, both refuse offline with a visible toast, hide steps off the viewed tab first and
+  never empties the bar
+- Stop `applyRoomList` creating tabs for rooms with no local tab, so a hidden room stays hidden
+  across refreshes, reconnects and logins; login opens nothing on its own (the login chooser,
+  next stage, decides through `openPlan` — that is the seam)
+- Rework the account panel's My Plans / Joined Plans rows to two lines — name plus Show/Hide on
+  line one, factory count plus relative last-changed (absolute in the tooltip) on line two — and
+  drop the per-row share buttons (`CloudPlanRow.vue`)
+- Add `factoryCount` to `RoomListEntry` (common type + backend `toListEntry` + backend test);
+  additive REST field, `PROTOCOL_VERSION` unchanged
+- Add `removeTab(tabId)` to `app-store` (never below one tab, selection preserved)
+- Update the e2e helpers and tests that relied on rooms auto-opening: `showPlan`/`hidePlan`
+  helpers in `e2e/helpers/rooms.ts`, second devices in `syncedPair`, tab-lifecycle, invite,
+  preferences, offline-manual, offline-detected, loading-tab and adoption open plans via the
+  panel's Show button
+
+Still open for the next stage: the login chooser (pick which rooms to open on a fresh
+interactive login) and sharing controls in the tab settings modal.
+
 ## Locked decisions
 
 1. **Three tab types, and the user chooses.** **Local** — default, this browser only, no
@@ -434,11 +462,14 @@ mirror shape stays v6-readable; preferences merge.
 **Playwright e2e (two browser contexts, real backend + WS).**
 - A edits, B sees it within 2s; deep-equal of both clients after quiesce.
 - Same-factory simultaneous edits converge on one winner; different factories both survive.
-- Tab create/rename/delete/reorder propagate to a second logged-in device; the owner's
-  rename reaches a member's device; a member's rename attempt is refused.
+- Tab create/rename/delete/reorder propagate to a second logged-in device once it opens the
+  plan from the panel (rooms never open tabs on their own); a hidden plan stays hidden
+  across a reload and Show restores it with its content; the owner's rename reaches a
+  member's device; a member's rename attempt is refused.
 - New-tab chooser: local by default, synced requires login.
-- Invite flow: share a tab, join by `/room/<slug>` logged-out and logged-in; joined tab
-  appears on the joiner's second device; snapshot link still imports a frozen copy.
+- Invite flow: share a tab, join by `/room/<slug>` logged-out and logged-in; the joined plan
+  opens from the panel on the joiner's second device; snapshot link still imports a frozen
+  copy.
 - Password: set one, wrong password refused, correct password joins, rotate kicks the
   anonymous visitor, member stays.
 - Unshare: collaborator's tab converts to a local copy with the last state intact.

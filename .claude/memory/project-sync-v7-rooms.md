@@ -4,7 +4,7 @@ description: v0.7.0 realtime rooms sync — built and green on branch claude/syn
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-08-31
+  lastVerified: 2026-09-01
 ---
 
 The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -29,10 +29,11 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 299 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2802 unit tests (152 files, 1 skipped),
+backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
+web 2830 unit tests (152 files, 1 skipped) as of the cloud-plan-offload round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 40 Playwright e2e tests passing. The whole suite ran twice at full speed
+`build` clean, and all 41 Playwright e2e tests passing (41st added in the cloud-plan-offload
+round). The whole suite ran twice at full speed
 and once under `E2E_CPU_THROTTLE=6` in the bulk-removal round below; the throttled run is the one
 that earns its keep, and it is the one that found the last real bug in an earlier round.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
@@ -824,6 +825,50 @@ Kept deliberately: `legacyAutoImport` (called by the store), the backend
 `POST /rooms/legacy/recover` route and `LegacyImportService.recover` (auto-import calls it),
 and the snapshot-share endpoints. The FA-name sweep note above that mentions the Recover
 button describes a state this section supersedes.
+
+## Cloud plan offload (2026-09-01): the tab bar is the open set
+
+The model, binding since this round: **a cloud plan is OPEN in a browser when a local tab
+exists for its roomId, and HIDDEN when the account room exists with no local tab.** The tab
+bar is the per-browser open set and nothing extra is persisted — hidden is simply "no tab".
+Hiding never touches the server room or the membership.
+
+- `applyRoomList` in `rooms-store.ts` **no longer creates tabs**: it updates state and tracks
+  only rooms that already have a tab. That is what makes hidden survive refreshes, reconnects
+  and logins, and it means a room made on another device no longer pops into this bar. Its
+  old "brings in a room made on another device" spec now asserts the opposite.
+- `openPlan(roomId)` / `hidePlan(roomId)` on the rooms-store are the only two doors. Open adds
+  an empty tab from the list entry, sets state, tracks (the WS join fills the content, same as
+  any synced tab) and activates. Hide steps off the viewed tab first (neighbour right, else
+  left), refuses to empty the bar, then `untrackRoom` + `appStore.removeTab` (new; never below
+  one tab, selection preserved). Both are idempotent; both refuse offline through `blocked()`
+  with a toast emitted in the store (`refuse()`), so no caller can swallow it.
+- **Login opens nothing on its own.** `begin()` connects and pulls the list only. Which rooms
+  to open on a fresh interactive login is the caller's decision through `openPlan` — that seam
+  is where the next stage's login chooser plugs in. Same-browser logout/login still restores
+  the open set for free, because signOut leaves the tabs in the bar as local copies and the
+  next `applyRoomList` re-marks the ones the list still carries. The one auto-open kept:
+  `autoImportLegacy` opens the recovered room, because its toast promises it is on screen.
+- The panel rows (`CloudPlanRow.vue`, used by both My Plans and Joined Plans) are two lines:
+  name + Show/Hide button (testid `show-plan`/`hide-plan`, with `data-room-id` for e2e), then
+  `factoryCount` + relative last-changed with the absolute in a tooltip. The per-row share
+  buttons are gone from the panel (local rows included); sharing lives on the planner toolbar
+  and, next stage, in the tab settings modal.
+- `factoryCount` was added to `RoomListEntry` (common type + backend `toListEntry`, covered by
+  a `rooms.spec.ts` test). Additive REST field, `PROTOCOL_VERSION` untouched. There is no zod
+  schema for REST responses (only request bodies and WS frames), so no schema change existed
+  to make. Backend is now 300 vitest tests; web 2830 (1 skipped) with the new hide/open,
+  panel-row and `removeTab` specs. The hide guard specs were negative-controlled: neutering
+  the last-tab guard makes "refuses to hide the last tab" fail.
+- The e2e suite leaned on auto-open everywhere a second device appeared. `showPlan`/`hidePlan`
+  helpers in `e2e/helpers/rooms.ts` open/close a plan through the panel by `data-room-id`;
+  `syncedPair`'s second device uses it, as do tab-lifecycle, invite, preferences,
+  offline-manual, offline-detected, loading-tab and adoption. A reorder no longer reads as a
+  change just because hidden rooms exist: the `sameOrder` comparison filters entries to those
+  with tabs.
+
+The share-button and last-changed sentences in the account-panel-split section above describe
+a state this section supersedes.
 
 ## Flagged follow-ups, none of them blocking
 

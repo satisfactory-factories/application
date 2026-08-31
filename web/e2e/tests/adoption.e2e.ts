@@ -12,6 +12,7 @@ import {
   readTabBar,
   tabNames,
 } from '../helpers/planner'
+import { showPlan } from '../helpers/rooms'
 import { closeAccountPanel, signIn } from '../helpers/session'
 
 const adoptionDialog = async (page: Page) => {
@@ -67,6 +68,11 @@ test('two browsers with different local plans both adopt into one account', asyn
   // than merging anything.
   await adoptOn(second, user)
   await expectTabKind(second, secondTab, 'synced')
+
+  // Each device opens the plan the other adopted: rooms follow the account,
+  // but tabs only open where a device asks for them.
+  await showPlan(first, user, secondTab)
+  await showPlan(second, user, firstTab)
 
   for (const page of [first, second]) {
     await expect.poll(async () => [...await tabNames(page)].sort(), {

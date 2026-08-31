@@ -2,9 +2,36 @@ import { expect } from '@playwright/test'
 import type { APIRequestContext, BrowserContext, Page } from '@playwright/test'
 
 import { registerUser, type TestUser } from './accounts'
-import { addFactory, createSyncedTab, openPlanner, selectTab } from './planner'
+import { addFactory, createSyncedTab, openPlanner, selectTab, settle, waitForTab } from './planner'
+import { closeAccountPanel, openAccountPanel } from './session'
 
 export type ClientFactory = (options?: { user?: TestUser }) => Promise<BrowserContext>
+
+/**
+ * Opens an account plan into this device's tab bar through the panel's Show
+ * button. The tab bar is the per-browser open set now, so a room made or joined
+ * elsewhere never opens a tab here on its own — this is how a device opts in.
+ */
+export const showPlan = async (page: Page, user: TestUser, roomId: string): Promise<void> => {
+  await openAccountPanel(page, user)
+  await page.getByTestId('plans-tab-cloud').click()
+  await page.locator(`[data-testid="show-plan"][data-room-id="${roomId}"]`).click()
+  await waitForTab(page, roomId)
+  // Settled before the Escape: the loading overlay is persistent, and while it
+  // is the topmost overlay the tray would swallow no keystrokes.
+  await settle(page)
+  await closeAccountPanel(page)
+}
+
+/** The other direction: closes the plan's tab here without touching the account. */
+export const hidePlan = async (page: Page, user: TestUser, roomId: string): Promise<void> => {
+  await openAccountPanel(page, user)
+  await page.getByTestId('plans-tab-cloud').click()
+  await page.locator(`[data-testid="hide-plan"][data-room-id="${roomId}"]`).click()
+  await expect(page.locator(`[data-testid="show-plan"][data-room-id="${roomId}"]`)).toBeVisible()
+  await settle(page)
+  await closeAccountPanel(page)
+}
 
 export interface SyncedPair {
   user: TestUser
@@ -26,7 +53,10 @@ export const syncedPair = async (
   const roomId = await createSyncedTab(first)
   for (const name of seed) await addFactory(first, { name, note: `seeded ${name}` })
 
+  // A second device opens with only its own local tab: account rooms stay
+  // hidden until this browser opts in, which is what the panel's Show does.
   const second = await openPlanner(await client({ user }))
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
   await expect(second.locator('input.factory-name')).toHaveCount(seed.length, { timeout: 20_000 })
 

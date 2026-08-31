@@ -28,6 +28,7 @@ const entry = (roomId: string, name: string, order: number): RoomListEntry => ({
   role: 'owner',
   order,
   lastActivityAt: '2026-08-31T11:00:00.000Z',
+  factoryCount: 0,
 })
 
 describe('Component: TabNavigation', () => {

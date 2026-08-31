@@ -9,6 +9,7 @@ import {
   selectTab,
   settle,
 } from '../helpers/planner'
+import { showPlan } from '../helpers/rooms'
 import { signIn } from '../helpers/session'
 
 /** The switch is per factory, so it only exists once a factory is on screen. */
@@ -48,6 +49,7 @@ test('a preference set on one device is there on the next login', async ({ clien
   // And the planner reads it as the setting it is, not just a stored string.
   await second.reload()
   await settle(second)
+  await showPlan(second, user, roomId)
   await selectTab(second, roomId)
   await expect(breakdownToggle(second)).toBeChecked()
 })

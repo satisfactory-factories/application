@@ -1579,6 +1579,47 @@ describe('app-store', () => {
         expect(appStore.getCurrentTab()).toEqual(originalTab)
       })
     })
+
+    describe('removeTab', () => {
+      beforeEach(() => {
+        resetAppStore()
+      })
+
+      it('should refuse to empty the bar', () => {
+        const only = appStore.getCurrentTab().id
+
+        expect(appStore.removeTab(only)).toBe(false)
+        expect(appStore.getTab(only)).toBeDefined()
+      })
+
+      it('should keep the selection on the tab being viewed when an earlier one goes', () => {
+        const first = appStore.getCurrentTab().id
+        appStore.addTab({ id: 'viewed', name: 'Viewed', factories: [] })
+
+        expect(appStore.removeTab(first)).toBe(true)
+
+        expect(appStore.getTab(first)).toBeUndefined()
+        expect(appStore.getCurrentTab().id).toBe('viewed')
+      })
+
+      it('should land on a real neighbour when the viewed tab itself goes', () => {
+        appStore.addTab({ id: 'doomed', name: 'Doomed', factories: [] })
+
+        expect(appStore.removeTab('doomed')).toBe(true)
+
+        expect(appStore.getTab('doomed')).toBeUndefined()
+        expect(appStore.getCurrentTab()).toBeDefined()
+      })
+
+      it('should drop the removed tab\'s sync state with it', () => {
+        appStore.addTab({ id: 'synced', name: 'Synced', factories: [] })
+        appStore.setTabState('synced', { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+
+        appStore.removeTab('synced')
+
+        expect(appStore.getTabState('synced').kind).toBe('local')
+      })
+    })
   })
 
   describe('tab lifecycle', () => {

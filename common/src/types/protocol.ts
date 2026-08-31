@@ -64,6 +64,8 @@ export interface RoomListEntry {
   order: number
   /** ISO 8601. When the plan itself last changed, for the "last changed" line. */
   lastActivityAt: string
+  /** How many factories the plan holds, for the account panel's plan lists. */
+  factoryCount: number
 }
 
 /**

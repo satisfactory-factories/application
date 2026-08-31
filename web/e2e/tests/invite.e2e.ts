@@ -9,9 +9,8 @@ import {
   readTabBar,
   selectTab,
   waitForRevision,
-  waitForTab,
 } from '../helpers/planner'
-import { shareARoom } from '../helpers/rooms'
+import { shareARoom, showPlan } from '../helpers/rooms'
 
 test('a logged-out visitor joining the invite link gets the owner\'s plan', async ({
   client,
@@ -34,8 +33,9 @@ test('a logged-out visitor joining the invite link gets the owner\'s plan', asyn
 })
 
 // A logged-in joiner holds a membership rather than a pointer in one browser, so
-// the tab is part of the account and every device signed into it has it.
-test('a joined tab is in the joiner\'s bar on their other device too', async ({
+// the plan follows the account: their other device lists it under Joined Plans
+// and opens it from there. No tab appears anywhere without that device asking.
+test('a joined plan can be opened from the panel on the joiner\'s other device', async ({
   client,
   request,
 }) => {
@@ -49,7 +49,7 @@ test('a joined tab is in the joiner\'s bar on their other device too', async ({
   await expectTabKind(first, roomId, 'collaborative')
 
   const second = await openPlanner(await client({ user: joiner }))
-  await waitForTab(second, roomId)
+  await showPlan(second, joiner, roomId)
   await expectTabKind(second, roomId, 'collaborative')
 
   await selectTab(second, roomId)

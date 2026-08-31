@@ -4,6 +4,7 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import { installWsGate } from '../helpers/network'
 import type { WsGate } from '../helpers/network'
+import { showPlan } from '../helpers/rooms'
 import type { ClientFactory } from '../helpers/rooms'
 import {
   addImport,
@@ -20,7 +21,6 @@ import {
   selectTab,
   setFactoryNote,
   settle,
-  waitForTab,
 } from '../helpers/planner'
 
 /**
@@ -109,7 +109,7 @@ const twoDevicesOnABigPlan = async (
   const renderer = await openPlanner(await client({ user }), '/', async page => {
     gate = await installWsGate(page)
   })
-  await waitForTab(renderer, roomId)
+  await showPlan(renderer, user, roomId)
   await selectTab(renderer, roomId)
   await expect(renderer.locator('input.factory-name')).toHaveCount(PLAN_SIZE, { timeout: 30_000 })
   await expectConverged([owner, renderer], roomId)

@@ -27,6 +27,7 @@ declare module 'vue' {
     BuildingGroupsSection: typeof import('./components/planner/products/BuildingGroupsSection.vue')['default']
     BuildingGroupTutorial: typeof import('./components/planner/products/BuildingGroupTutorial.vue')['default']
     ChecklistTutorial: typeof import('./components/planner/ChecklistTutorial.vue')['default']
+    CloudPlanRow: typeof import('./components/sync/CloudPlanRow.vue')['default']
     Copyright: typeof import('./components/Copyright.vue')['default']
     CustomBuilding: typeof import('./components/planner/products/CustomBuilding.vue')['default']
     DebounceSpinner: typeof import('./components/planner/DebounceSpinner.vue')['default']

@@ -45,6 +45,7 @@ const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   role: 'owner',
   order: 0,
   lastActivityAt: '2026-08-31T11:00:00.000Z',
+  factoryCount: 0,
   ...overrides,
 })
 
@@ -117,16 +118,17 @@ describe('rooms-store', () => {
       expect(appStore.getTabState(tab.id).role).toBe('member')
     })
 
-    it('brings in a room made on another device without stealing focus', async () => {
+    // The tab bar is this browser's open set: the list reports the room, and
+    // opening it is the user's move (or, next stage, the login chooser's).
+    it('leaves a room made on another device hidden, not forced into the bar', async () => {
       localTab('Plan')
-      const before = appStore.currentFactoryTabIndex
       listReturns([entry({ roomId: 'remote-room', name: 'Made elsewhere' })])
 
       await store.refresh()
 
-      expect(appStore.getTab('remote-room')?.name).toBe('Made elsewhere')
-      expect(appStore.currentFactoryTabIndex).toBe(before)
-      expect(appStore.getTabState('remote-room').kind).toBe('synced')
+      expect(store.entries['remote-room']?.name).toBe('Made elsewhere')
+      expect(appStore.getTab('remote-room')).toBeUndefined()
+      expect(roomSync.rooms['remote-room']).toBeUndefined()
     })
 
     it('sweeps sidecar metadata for tabs the bar no longer holds', async () => {
@@ -157,6 +159,161 @@ describe('rooms-store', () => {
 
       expect(await store.refresh()).toBe(false)
       expect(api.listRooms).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('opening and hiding cloud plans', () => {
+    /** A synced tab in the bar plus a second local one, so hiding has somewhere to land. */
+    const openRoom = async (roomId = 'room-1') => {
+      const tab = localTab('Anchor')
+      listReturns([entry({ roomId, name: 'Cloudy' })])
+      await store.refresh()
+      expect(await store.openPlan(roomId)).toBe(true)
+      return tab
+    }
+
+    describe('openPlan', () => {
+      it('creates the tab from the list entry, tracks the room and brings it forward', async () => {
+        localTab('Anchor')
+        listReturns([entry({ roomId: 'room-1', name: 'Cloudy', revision: 7, shared: true, role: 'member' })])
+        await store.refresh()
+
+        expect(await store.openPlan('room-1')).toBe(true)
+
+        expect(appStore.getTab('room-1')?.name).toBe('Cloudy')
+        expect(appStore.getTabState('room-1')).toEqual({
+          kind: 'synced',
+          shared: true,
+          role: 'member',
+          revision: 7,
+        })
+        expect(roomSync.rooms['room-1']).toBeDefined()
+        expect(appStore.getCurrentTab().id).toBe('room-1')
+      })
+
+      it('is idempotent: opening an open plan only brings it forward', async () => {
+        await openRoom()
+        appStore.activateTab(appStore.getTabs()[0].id)
+
+        expect(await store.openPlan('room-1')).toBe(true)
+
+        expect(appStore.getTabs().filter(tab => tab.id === 'room-1')).toHaveLength(1)
+        expect(appStore.getCurrentTab().id).toBe('room-1')
+      })
+
+      it('fetches the list first when the room is not yet known here', async () => {
+        localTab('Anchor')
+        listReturns([entry({ roomId: 'room-1', name: 'Cloudy' })])
+
+        expect(await store.openPlan('room-1')).toBe(true)
+
+        expect(api.listRooms).toHaveBeenCalled()
+        expect(appStore.getTab('room-1')).toBeDefined()
+      })
+
+      it('refuses a room the account does not hold, out loud', async () => {
+        localTab('Anchor')
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(await store.openPlan('nope')).toBe('That plan is not on your account.')
+
+        expect(appStore.getTab('nope')).toBeUndefined()
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'error' }))
+      })
+
+      it('refuses while offline, with a visible toast', async () => {
+        localTab('Anchor')
+        roomSync.enterOffline()
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(await store.openPlan('room-1')).toBe(OFFLINE_MESSAGE)
+
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({
+          type: 'error',
+          message: OFFLINE_MESSAGE,
+        }))
+      })
+    })
+
+    describe('hidePlan', () => {
+      it('removes the tab, its state and its mirror meta, and keeps the server room', async () => {
+        await openRoom()
+        setTabMirrorMeta('room-1', {
+          revision: 2,
+          appVersion: PROTOCOL_VERSION,
+          userTouchedIds: [],
+          userTouchedFields: [],
+          declaredRemovals: [],
+        })
+
+        expect(store.hidePlan('room-1')).toBe(true)
+
+        expect(appStore.getTab('room-1')).toBeUndefined()
+        expect(appStore.getTabState('room-1').kind).toBe('local')
+        expect(readTabMirrorMeta()['room-1']).toBeUndefined()
+        expect(roomSync.rooms['room-1']).toBeUndefined()
+        // Still on the account: hiding is this browser's business alone.
+        expect(store.entries['room-1']).toBeDefined()
+        expect(api.deleteRoom).not.toHaveBeenCalled()
+        expect(api.leaveRoom).not.toHaveBeenCalled()
+      })
+
+      it('steps off the plan being viewed before hiding it', async () => {
+        const anchor = await openRoom()
+        expect(appStore.getCurrentTab().id).toBe('room-1')
+
+        expect(store.hidePlan('room-1')).toBe(true)
+
+        expect(appStore.getCurrentTab().id).toBe(anchor.id)
+        expect(appStore.getTab('room-1')).toBeUndefined()
+      })
+
+      it('refuses to hide the last tab in the bar, out loud', async () => {
+        const anchor = localTab('Only')
+        listReturns([entry({ roomId: anchor.id })])
+        await store.refresh()
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(store.hidePlan(anchor.id)).toBe('The tab bar cannot be left empty. Open another plan first.')
+
+        expect(appStore.getTab(anchor.id)).toBeDefined()
+        expect(appStore.getTabState(anchor.id).kind).toBe('synced')
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'error' }))
+      })
+
+      it('is idempotent: hiding a hidden plan is quietly done', async () => {
+        localTab('Anchor')
+        listReturns([entry({ roomId: 'room-1' })])
+        await store.refresh()
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(store.hidePlan('room-1')).toBe(true)
+        expect(emit).not.toHaveBeenCalledWith('toast', expect.anything())
+      })
+
+      it('refuses while offline, with a visible toast', async () => {
+        await openRoom()
+        roomSync.enterOffline()
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(store.hidePlan('room-1')).toBe(OFFLINE_MESSAGE)
+
+        expect(appStore.getTab('room-1')).toBeDefined()
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({
+          type: 'error',
+          message: OFFLINE_MESSAGE,
+        }))
+      })
+    })
+
+    it('keeps a hidden plan hidden across refreshes', async () => {
+      await openRoom()
+      expect(store.hidePlan('room-1')).toBe(true)
+
+      await store.refresh()
+
+      expect(appStore.getTab('room-1')).toBeUndefined()
+      expect(store.entries['room-1']).toBeDefined()
     })
   })
 
