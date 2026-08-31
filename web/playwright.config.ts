@@ -19,8 +19,11 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  timeout: 90_000,
+  // 30s: worst-case honest convergence under contention is rebase churn plus the
+  // 10s revision-probe healing cycle plus the 5s mirror interval — a loaded
+  // 2-core CI runner needs the ceiling; fast machines never touch it.
+  expect: { timeout: 30_000 },
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   use: {
     baseURL: WEB_URL,
