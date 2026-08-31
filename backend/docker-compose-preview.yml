@@ -1,0 +1,48 @@
+# The preview API. Lives on the box at /root/docker-preview/docker-compose.yml —
+# this copy is a hand-maintained mirror, exactly like docker-compose-server.yml,
+# and nothing syncs it. Change one, change the other.
+#
+# What makes this different from production:
+#   - it pulls the `backend-preview` tag, published by "Backend: Deploy Preview"
+#     from whichever branch was asked for, rather than `backend-latest` from main
+#   - it listens on 3002, because 3001 is production's and both run on one box
+#   - it has no mongo service. It reuses production's mongod with a DIFFERENT
+#     DATABASE NAME, so the data is separate while the memory cost is not paid
+#     twice. That is why the network below is external.
+services:
+  backend:
+    image: maelstromeous/satisfactory-factories:backend-preview
+    restart: always
+    container_name: sf-backend-preview
+    networks:
+      - backend
+    env_file:
+      - sf-preview.env
+    # 3002 on both sides. The app takes its port from PORT in sf-preview.env, so
+    # this is still the "no translation anywhere" rule production follows — the
+    # number is simply 3002 instead of 3001, all the way through. The Cloudflare
+    # tunnel for api-preview.satisfactory-factories.app resolves to this port.
+    ports:
+      - "3002:3002"
+    command: pnpm start
+    # Preview must never be able to starve production. Do not lower this: main's
+    # API runs `ts-node backend.ts`, which compiles the whole app on boot and
+    # needs well over 512MB of V8 heap — at 512m it OOM-killed on every start
+    # (exit 134, "Ineffective mark-compacts near heap limit"). V8 sizes its heap
+    # from the cgroup limit, so the cap is what decides this, not the app.
+    # PR #620's API runs compiled dist/ and is much lighter, but the cap has to
+    # suit whichever branch is loaded.
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  # Production's network, joined rather than created — this is how the preview
+  # container reaches the `sf-db` container without a second mongod.
+  backend:
+    name: sf-backend
+    external: true

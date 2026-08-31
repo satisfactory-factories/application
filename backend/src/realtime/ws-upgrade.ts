@@ -2,16 +2,10 @@ import type { IncomingMessage } from 'node:http'
 
 import type WebSocket from 'ws'
 
-import { WEB_ORIGINS } from '../config/cors'
+import { isAllowedWsOrigin } from '../config/cors'
 import { wsConnectionLimiter } from './ws-throttle'
 
-/**
- * Anti-CSRF hygiene, not authorization. A missing Origin is a non-browser client,
- * which cannot be CSRF'd and could forge the header anyway; the token in `hello`
- * is what actually authorises anything.
- */
-export const isAllowedWsOrigin = (origin: string | undefined): boolean =>
-  origin === undefined || origin === '' || WEB_ORIGINS.includes(origin)
+export { isAllowedWsOrigin }
 
 /** Mirrors express's `trust proxy = 1`: one trusted hop, so the last entry wins. */
 export const wsClientIp = (request: IncomingMessage): string => {
