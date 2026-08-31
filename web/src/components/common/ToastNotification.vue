@@ -1,27 +1,29 @@
 <template>
   <!-- Out of the global overlay stack: a snackbar is `persistent`, so while it is up it
        is the top overlay and swallows the Escape that would have closed the dialog or
-       tray behind it. A toast is never what Escape is aimed at. -->
+       tray behind it. A toast is never what Escape is aimed at. Leaving the stack also
+       gives up the z-index it allocated, hence the explicit one: the bottom-edge banners
+       sit at 2400 and a toast that appeared behind them would not appear at all. -->
   <v-snackbar
     v-model="open"
     _disable-global-stack
     :color="colour"
     data-testid="toast"
     :timeout="-1"
-    top
+    :z-index="2600"
   >
     <!-- Escaped: toasts interpolate factory and part names. See safeHtml. -->
     <span v-html="safeHtml(message)" />
 
     <!-- Keyed so a second toast restarts the animation instead of inheriting the
          first one's remaining time. -->
-    <div
-      v-if="variant === 'timed'"
-      :key="cycle"
-      class="toast-timer"
-      data-testid="toast-timer"
-      :style="{ animationDuration: `${duration}ms` }"
-    />
+    <div v-if="variant === 'timed'" :key="cycle" class="toast-timer">
+      <div
+        class="toast-timer__fill"
+        data-testid="toast-timer"
+        :style="{ animationDuration: `${duration}ms` }"
+      />
+    </div>
 
     <template v-if="variant === 'permanent'" #actions>
       <v-btn data-testid="toast-dismiss" variant="text" @click="dismiss">Dismiss</v-btn>
@@ -102,16 +104,35 @@
   position: relative;
 }
 
-// Anchored right so the remaining time slides left to right as it runs out.
+// `currentColor` both times: Vuetify picks the snackbar's text colour for contrast
+// against whatever fill the type chose, so the bar reads on every one of them.
 .toast-timer {
-  animation: toast-drain linear forwards;
-  background-color: rgba(255, 255, 255, 0.85);
   bottom: 0;
   height: 3px;
   left: 0;
   position: absolute;
   right: 0;
+}
+
+// The track behind the fill. A pseudo-element rather than an opacity on the parent,
+// which would take the fill down with it.
+.toast-timer::before {
+  background-color: currentcolor;
+  content: "";
+  inset: 0;
+  opacity: 0.2;
+  position: absolute;
+}
+
+// Anchored right so the remaining time slides left to right as it runs out.
+.toast-timer__fill {
+  animation: toast-drain linear forwards;
+  background-color: currentcolor;
+  height: 100%;
+  opacity: 0.8;
+  position: relative;
   transform-origin: right center;
+  width: 100%;
 }
 
 @keyframes toast-drain {
