@@ -27,6 +27,7 @@ import {
   UNKNOWN_SCALAR,
 } from '@/sync/room-state'
 import type { AckedState, RoomContent, TabField } from '@/sync/room-state'
+import { diffChangesContent } from '@/sync/plan-activity'
 import {
   pruneTabMirrorMeta,
   readTabMirrorMeta,
@@ -645,6 +646,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!engine.seeded) {
       requestSnapshot(roomId)
       return
+    }
+
+    // Read before the diff lands, while the tab still holds what it is being compared to.
+    const tab = getTab(roomId)
+    if (tab && diffChangesContent(diff, tab.factories)) {
+      eventBus.emit('planContentApplied', { tabId: roomId })
     }
 
     if (!hasLocalEdits(roomId)) {

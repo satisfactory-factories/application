@@ -103,6 +103,7 @@
       >
         <i class="fas fa-plane mr-2" />{{ offlineHint.label }}
       </v-chip>
+      <last-updated-indicator />
       <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
       <!-- The three per-tab actions sit together: copy it, share it, delete it. -->
@@ -156,6 +157,7 @@
   import { useRoomsStore } from '@/stores/rooms-store'
   import { isCollaborative } from '@/sync/tab-sync-state'
   import PlannerSearch from '@/components/planner/PlannerSearch.vue'
+  import LastUpdatedIndicator from '@/components/planner/LastUpdatedIndicator.vue'
   import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
 

@@ -524,6 +524,26 @@ describe('room-sync-store', () => {
       emit.mockRestore()
     })
 
+    it('announces a peer\'s op as a plan change, but not their rename or reorder', () => {
+      syncAt(fixture, 4)
+      const emit = vi.spyOn(eventBus, 'emit')
+      const applied = () => emit.mock.calls.filter(call => call[0] === 'planContentApplied')
+
+      const moved = wire(fixture)
+      moved[0].displayOrder = 1
+      moved[1].displayOrder = 0
+      moved[0].name = 'Renamed by them'
+      receive({ type: 'op_apply', roomId: ROOM, revision: 5, diff: { factories: moved } })
+      expect(applied()).toHaveLength(0)
+
+      const edited = wire(fixture[1])
+      edited.notes = 'Needs a second smelter'
+      receive({ type: 'op_apply', roomId: ROOM, revision: 6, diff: { factories: [edited] } })
+
+      expect(applied()).toEqual([['planContentApplied', { tabId: ROOM }]])
+      emit.mockRestore()
+    })
+
     /**
      * A diff is replace-by-id, so the only thing saying two records swapped is
      * their `displayOrder` — and the array's order is what the planner renders.

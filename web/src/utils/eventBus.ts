@@ -16,6 +16,9 @@ type Events = {
   // than on a factory). Persistence and the cloud dirty flag both hang off factoryUpdated, so
   // without this a tab-level edit is saved by nothing.
   planUpdated: undefined;
+  // A peer's op landed and it changed what the plan says — not a rename and not a
+  // reorder, both of which arrive as ops like anything else.
+  planContentApplied: { tabId: string };
   loggedIn: undefined;
   sessionExpired: undefined;
   // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
