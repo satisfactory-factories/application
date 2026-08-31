@@ -566,6 +566,61 @@ drops whatever the banner last believed, because backend silence is the whole po
 browser reporting `navigator.onLine === false` is not evidence about the server — this banner
 asks the reader to go and report an outage on Discord, so a user on a train must not be told to.
 
+## The verification round (2026-08-31): what re-reading the fixes found
+
+The battery over the three preview-bug stages above (load chain, quiet applies, presence and
+propagation, the UI round). Every gate was re-run and every fix re-read against the complaint it
+answered. Three more defects fell out, all of the same shape as the ones already fixed, none of
+them caught by any suite until a test was written for it.
+
+**The rule the load chain now obeys, stated once: a chain owns the tab it started on, and
+anything else that wants to change that plan queues a whole copy behind it.** Two ways it was
+still broken:
+
+- **Switching tabs mid-stagger appended the loading plan onto the new tab.** `loadNextFactory`
+  pushed through `factories.value`, which resolves to whatever tab is current at that instant, so
+  a click on another tab part-way through a staggered load moved the remaining pushes onto it.
+  The chain now holds the tab it began on. Guard: `app-store.spec.ts` "should not push the loading
+  plan into a tab the user switched to" (fails with the getter restored, `['Other One', 'B']`).
+- **A snapshot the user's edits fought with was handed the live array.**
+  `reloadTabFromMirror` passed `currentFactoryTab.value.factories` straight to `prepareLoader`,
+  and while a chain was still staggering that array was being appended to, so the queued load
+  committed the room's plan with duplicates on the end. It takes a copy now, exactly as
+  `writeContentToTab` already did. Guard: `room-sync-store.spec.ts` "does not duplicate the plan
+  when a recalculating snapshot lands mid-stagger" (fails without it, `['Mine', 'Beta', 'Beta']`).
+
+**"Last updated" dropped any edit followed by a tab switch inside 300ms.** The burst was
+fingerprinted against whatever tab was current when the debounce fired; by then that is the new
+tab, whose prints were reseeded on the way in, so the edit read as no change and no tab was ever
+stamped. The tab watcher flushes an outstanding burst against the tab being left, while its
+prints still describe it. The `isLoaded` guard moved out of the shared settle and onto the timer
+path only: a burst announced while loaded must still be honoured when the switch that flushes it
+has already started the next tab's load. **This is only visible by hand** — every unit test and
+every e2e test paused long enough for the debounce to fire first.
+
+**Vuetify only honours a snackbar's `z-index` prop when the overlay stack is empty.**
+`useStack` computes `lastZIndex + 10` from the top of the global stack and falls back to the prop
+only when nothing is in it, and `_disable-global-stack` does not change that — it only stops the
+toast pushing itself on. So a toast raised with the account tray open sits at 2010, not the 2600
+it asks for, and `.bottom-notices` is 2400. Measured both ways: with nothing else open the toast
+is 2600 and paints over the red health banner; with the tray open it is 2010. No reachable path
+puts a bottom notice under an open tray *and* a toast at the same time (entering offline mode
+empties `.bottom-notices` in the same tick), so this is a trap rather than a live bug — but it is
+the reason to check the computed value rather than trust the prop.
+
+**Driving it by hand is what found the third one, and it is worth repeating.** The pass was two
+browser contexts against a stack of one's own: `MongoMemoryServer` for the database, the compiled
+`backend/dist/main.js` under a supervisor that stops and starts it on a dropped file, and
+`vite preview` on the built bundle. Owning the API process is what makes "stop the backend
+mid-session" a real test rather than a mocked one. What it showed, all correct: a product added on
+either side rendering on the other with no reload, the sidebar listing the active tab across three
+switches, the deletion notice sticky with a Dismiss button on the other window and *nothing* on
+the one that asked for it, the offline notice draining its bar and going away while the tab-bar
+chip stays, and the red banner appearing when the API stops answering and clearing when it comes
+back. Two of the three failures in the first run were faults in the harness, not the app — a
+Vuetify picker's search input again, and taking "the tab that is not the room" from a browser that
+also has its original default tab.
+
 ## Flagged follow-ups, none of them blocking
 
 Re-checked line by line against the code on 2026-08-30, after the merge and again after the final

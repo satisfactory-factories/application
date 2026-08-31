@@ -54,6 +54,21 @@ export const buildingRequirementSchema = z.object({
   powerProduced: num.optional(),
 })
 
+/** A blank "Add Product" row has no item and so no building to require yet. */
+export const emptyBuildingRequirement = { name: '', amount: 0 }
+
+/**
+ * The product's own requirement, defaulted for the same reason `power` is: the planner
+ * writes `{}` into a row the user has not chosen an item for, that row is real stored
+ * content, and refusing it costs every op the client sends afterwards.
+ */
+export const productBuildingRequirementSchema = z.object({
+  name: str.default(''),
+  amount: num.default(0),
+  powerConsumed: num.optional(),
+  powerProduced: num.optional(),
+}).default(emptyBuildingRequirement)
+
 export const byProductItemSchema = z.object({
   id: str,
   amount: num,
@@ -130,7 +145,7 @@ export const factoryItemSchema = z.object({
   amount: num,
   displayOrder: num,
   requirements: z.record(key, z.object({ amount: num })),
-  buildingRequirements: buildingRequirementSchema,
+  buildingRequirements: productBuildingRequirementSchema,
   byProducts: z.array(byProductItemSchema).optional(),
   buildingGroups: z.array(buildingGroupSchema),
   buildingGroupsTrayOpen: z.boolean(),

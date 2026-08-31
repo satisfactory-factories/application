@@ -123,6 +123,48 @@ describe('factorySchema', () => {
       expect(parsed.factories[0].power).toEqual({ consumed: 0, produced: 0, difference: 0 })
     })
   })
+
+  // Clicking "Add Product" hands the user a blank line with no item and therefore no
+  // building to require. The planner writes `{}` there, and refusing it stopped the
+  // client sending anything for that room ever again.
+  describe('a product row with nothing chosen yet', () => {
+    const blankRow = (buildingRequirements: unknown) => {
+      const factory = makeFactory()
+      factory.products = [{
+        ...factory.products[0],
+        id: '',
+        recipe: '',
+        requirements: {},
+        buildingGroups: [],
+        buildingRequirements: buildingRequirements as Factory['products'][0]['buildingRequirements'],
+      }]
+      return factory
+    }
+
+    it('accepts an empty building requirement and zeroes it', () => {
+      const parsed = factorySchema.parse(blankRow({}))
+      expect(parsed.products[0].buildingRequirements).toEqual({ name: '', amount: 0 })
+    })
+
+    it('accepts the field being absent entirely', () => {
+      const parsed = factorySchema.parse(blankRow(undefined))
+      expect(parsed.products[0].buildingRequirements).toEqual({ name: '', amount: 0 })
+    })
+
+    it('leaves a chosen product\'s building alone', () => {
+      expect(factorySchema.parse(makeFactory()).products[0].buildingRequirements)
+        .toEqual({ name: 'smeltermk1', amount: 1 })
+    })
+
+    it('still rejects a non-numeric amount', () => {
+      expect(factorySchema.safeParse(blankRow({ name: 'x', amount: 'lots' })).success).toBe(false)
+    })
+
+    it('parses inside a tab, so adoption and snapshot links take it too', () => {
+      const parsed = factoryTabSchema.parse(makeFactoryTab({ factories: [blankRow({})] }))
+      expect(parsed.factories[0].products[0].buildingRequirements).toEqual({ name: '', amount: 0 })
+    })
+  })
 })
 
 describe('factoryTabSchema', () => {
