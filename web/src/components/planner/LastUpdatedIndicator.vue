@@ -18,8 +18,8 @@
   import { usePlanActivityStore } from '@/stores/plan-activity-store'
   import { absoluteTime, relativeTime } from '@/utils/relative-time'
 
-  /** Fast enough that "now" never lingers past the minute it belongs to. */
-  const TICK_MS = 20_000
+  /** Seconds resolution: the text counts up from "1s ago", so it ticks per second. */
+  const TICK_MS = 1_000
 
   /** Matches the CSS animation below. */
   const FLASH_MS = 1600
