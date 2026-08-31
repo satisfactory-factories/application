@@ -4,7 +4,7 @@ import { PROTOCOL_VERSION } from 'common'
 import type { Factory, FactoryTab, RoomSnapshot, ServerMessage } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
 import type { WebSocketLike } from '@/sync/ws-client'
-import { OP_DEBOUNCE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
+import { OP_DEBOUNCE_MS, REVISION_PROBE_MS, useRoomSyncStore } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
@@ -1318,6 +1318,74 @@ describe('room-sync-store', () => {
       expect(store.rooms[ROOM]).toBeUndefined()
       expect(readTabMirrorMeta()[ROOM]).toBeUndefined()
       expect(framesOf().at(-1)).toEqual({ type: 'leave', roomId: ROOM })
+    })
+  })
+
+  describe('the idle revision probe', () => {
+    // Post-commit broadcasts are best-effort, so a dropped op_apply leaves a
+    // client stale with nothing to notice the gap. The probe is the noticing.
+    it('re-joins with the acked revision and takes the healing snapshot', () => {
+      const tab = syncAt(fixture, 3)
+      const joins = joinsOf().length
+
+      expect(store.probeRevision(ROOM)).toBe(true)
+      expect(joinsOf().length).toBe(joins + 1)
+      expect(joinsOf().at(-1)).toMatchObject({ roomId: ROOM, lastRevision: 3 })
+
+      // The reply carries an edit this client never received.
+      const healed = wire(fixture)
+      healed[0].notes = 'written while the frame was lost'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(healed, 4), revision: 4 })
+
+      expect(tab.factories[0].notes).toBe('written while the frame was lost')
+      expect(store.rooms[ROOM].revision).toBe(4)
+      expect(store.rooms[ROOM].status).toBe('synced')
+    })
+
+    it('stays quiet while an op is in flight or edits are pending', () => {
+      const tab = syncAt(fixture, 3)
+      tab.factories[0].name = 'Alpha edited'
+      store.markUserTouched(ROOM, 1)
+      store.flushRoom(ROOM)
+      const joins = joinsOf().length
+
+      expect(store.probeRevision(ROOM)).toBe(false)
+      expect(joinsOf().length).toBe(joins)
+    })
+
+    it('stays quiet in offline mode', () => {
+      syncAt(fixture, 3)
+      store.enterOffline()
+      const joins = joinsOf().length
+
+      expect(store.probeRevision(ROOM)).toBe(false)
+      expect(joinsOf().length).toBe(joins)
+    })
+
+    it('fires from the interval without being asked', () => {
+      vi.useFakeTimers()
+      setActivePinia(createPinia())
+      appStore = useAppStore()
+      appStore.isLoaded = true
+      sockets = []
+      store = useRoomSyncStore()
+      store.configure({
+        socket: new SyncSocket({
+          url: 'ws://test.local/ws',
+          socketFactory: url => {
+            const socket = new FakeSocket(url)
+            sockets.push(socket)
+            return socket
+          },
+        }),
+      })
+      syncAt(fixture, 3)
+      const joins = joinsOf().length
+
+      vi.advanceTimersByTime(REVISION_PROBE_MS)
+
+      expect(joinsOf().length).toBe(joins + 1)
+      expect(joinsOf().at(-1)).toMatchObject({ roomId: ROOM, lastRevision: 3 })
     })
   })
 })

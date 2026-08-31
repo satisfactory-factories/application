@@ -83,7 +83,12 @@ test('a member gets the owner\'s rename and is offered no rename of their own', 
   await selectTab(member, roomId)
 
   // The UI's answer to "members may not rename" is that the control is absent.
-  expect(await renameAffordance(member).count()).toBe(0)
+  // Polled: the pencil is derived from the role, which lands with the rooms
+  // refresh a beat after the join on a slow runner. The tab is already selected
+  // and rendered here, so a settled count of 0 is meaningful, not vacuous.
+  await expect.poll(() => renameAffordance(member).count(), {
+    message: 'the member still sees a rename control',
+  }).toBe(0)
 
   await selectTab(owner, roomId)
   await renameCurrentTab(owner, 'Renamed by its owner')

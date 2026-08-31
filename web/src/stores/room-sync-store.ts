@@ -41,6 +41,7 @@ import eventBus from '@/utils/eventBus'
 
 /** Trailing debounce on plan changes: one op per burst of edits, never one per keystroke. */
 export const OP_DEBOUNCE_MS = 400
+export const REVISION_PROBE_MS = 10_000
 
 /** Failed reconnects before the "you appear to be offline" prompt. */
 export const OFFLINE_PROMPT_AFTER = 3
@@ -842,6 +843,24 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return ensureSocket().join(roomId, { visitorToken: engine.visitorToken })
   }
 
+  /**
+   * Post-commit broadcasts are deliberately best-effort, so a dropped op_apply
+   * would otherwise leave this client stale forever. An idle re-join answers
+   * up_to_date (two lines) or a healing snapshot; never fires mid-edit.
+   */
+  const probeRevision = (roomId: string): boolean => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine || isSuppressed.value) return false
+    if (!engine.seeded || room.status !== 'synced' || hasLocalEdits(roomId)) return false
+    if (!socket || socket.status !== 'connected') return false
+    return socket.join(roomId, { lastRevision: engine.acked.revision, visitorToken: engine.visitorToken })
+  }
+
+  const probeTick = () => {
+    for (const roomId of Object.keys(rooms.value)) probeRevision(roomId)
+  }
+
   // ===== Offline mode =====
 
   /** Airplane mode: total backend silence, not quieter retrying. */
@@ -908,7 +927,11 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   if (typeof window !== 'undefined') window.addEventListener('offline', onBrowserOffline)
 
+  const probeTimer = setInterval(probeTick, REVISION_PROBE_MS)
+  if (typeof probeTimer === 'object' && 'unref' in probeTimer) probeTimer.unref()
+
   const dispose = () => {
+    clearInterval(probeTimer)
     eventBus.off('factoryEdited', onFactoryEdited)
     eventBus.off('tabEdited', onTabEdited)
     eventBus.off('factoryUpdated', scheduleFlush)
@@ -946,6 +969,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     untrackRoom,
     join,
     requestSnapshot,
+    probeRevision,
 
     // Intent and ops
     markUserTouched,
