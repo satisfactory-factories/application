@@ -1,6 +1,10 @@
 <template>
+  <!-- Out of the global overlay stack: a snackbar is `persistent`, so while it is up it
+       is the top overlay and swallows the Escape that would have closed the dialog or
+       tray behind it. A toast is never what Escape is aimed at. -->
   <v-snackbar
     v-model="open"
+    _disable-global-stack
     :color="colour"
     data-testid="toast"
     :timeout="-1"
