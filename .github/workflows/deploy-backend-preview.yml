@@ -1,0 +1,110 @@
+name: "Backend: Deploy Preview"
+
+# Ships a branch's API to the preview environment:
+#
+#   https://api-preview.satisfactory-factories.app
+#
+# Same three steps as "Backend: Deploy", pointed at the other half of the box —
+# the `backend-preview` image tag, the `satisfactory-factories-preview` hook, the
+# `/root/docker-preview` compose stack on port 3002, and its own Mongo database.
+# See docs/deployment.md for the whole picture.
+#
+# There are two ways in, and they answer different needs:
+#
+#   * Add the `deploy-preview-api` label to a PR. Every push to that PR then
+#     redeploys the preview API from its head commit, which is what you want
+#     while actively building against a backend change.
+#   * Run it by hand from the Actions tab, picking any branch. Use this to put
+#     the preview API back on `main` when you are finished — nothing does that
+#     automatically, and whatever was deployed last stays deployed.
+#
+# THE PREVIEW API IS SHARED. There is one of it, and every Vercel preview points
+# at it. Loading a branch that changes the wire protocol therefore breaks every
+# other open preview until it is put back. That is a deliberate trade — the
+# alternative is a container per PR, and almost all work here is frontend-only.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# Same reasoning as production: never cancel a run that is already publishing or
+# calling the webhook, because a cancelled publish can leave the moving tag
+# pointing at a half-pushed manifest. Queue behind instead.
+concurrency:
+  group: deploy-backend-preview
+  cancel-in-progress: false
+
+jobs:
+  # A fork PR carries no secrets, so the publish step would fail at the registry
+  # login. Gate on the head repo rather than letting it fail confusingly.
+  gate:
+    name: Should deploy
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - id: check
+        # Evaluated as one GitHub expression and handed to the shell as a plain
+        # string, rather than interpolated into shell syntax — a `${{ }}` that
+        # expands into the middle of an `if` is how these gates go subtly wrong.
+        env:
+          GO: ${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-preview-api')) }}
+        run: |
+          echo "go=$GO" >> "$GITHUB_OUTPUT"
+          [ "$GO" = "true" ] || echo "Not deploying: this needs the \`deploy-preview-api\` label, on a branch in this repository rather than a fork." >> "$GITHUB_STEP_SUMMARY"
+
+  checks:
+    name: Checks
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    uses: ./.github/workflows/build-backend.yml
+
+  publish:
+    name: Publish preview image
+    needs: [gate, checks]
+    if: needs.gate.outputs.go == 'true'
+    uses: ./.github/workflows/publish-backend.yml
+    with:
+      push: true
+      moving-tag: backend-preview
+      # Empty on workflow_dispatch, which already checks out the chosen branch.
+      ref: ${{ github.event.pull_request.head.sha || '' }}
+    secrets: inherit
+
+  deploy:
+    name: Deploy
+    needs: [gate, publish]
+    if: needs.gate.outputs.go == 'true'
+    uses: ./.github/workflows/deploy-webhook.yml
+    with:
+      hook: satisfactory-factories-preview
+    secrets: inherit
+
+  verify:
+    name: Verify preview API
+    needs: [gate, deploy]
+    if: needs.gate.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The hook already blocks on the container's healthcheck, so this is the
+      # end-to-end half: it proves the tunnel in front of the box is still
+      # pointed at a serving container, which the box-side check cannot see.
+      - name: Health check through the public hostname
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            body=$(curl -sS --max-time 15 https://api-preview.satisfactory-factories.app/health) && \
+              echo "$body" | grep -q '"status":"ok"' && {
+                echo "Preview API is serving:"
+                echo "$body"
+                echo "Preview API is serving \`$body\`" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              }
+            echo "Attempt $attempt: not ready yet."
+            sleep 10
+          done
+          echo "::error::api-preview.satisfactory-factories.app never returned a healthy /health. The image published and the box reported success, so look at the tunnel or the container: ssh sf 'docker logs sf-backend-preview'"
+          exit 1
