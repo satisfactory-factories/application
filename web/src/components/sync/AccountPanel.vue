@@ -187,12 +187,14 @@
       return { label: 'Update required', color: 'red', icon: 'fa-exclamation-triangle' }
     }
     switch (roomSync.mode) {
+      // Icons must exist in the bundled FA free set: fa-wifi-slash is pro-only
+      // and rendered as a dead glyph here once already.
       case 'offline': return { label: 'Offline mode', color: 'orange', icon: 'fa-plane' }
-      case 'offlinePrompt': return { label: 'You appear to be offline', color: 'amber', icon: 'fa-wifi-slash' }
+      case 'offlinePrompt': return { label: 'You appear to be offline', color: 'amber', icon: 'fa-triangle-exclamation' }
       case 'reconnecting': return { label: 'Reconnecting', color: 'amber', icon: 'fa-sync' }
       default: return roomSync.isConnected
-        ? { label: 'Connected', color: 'green', icon: 'fa-plug' }
-        : { label: 'Not connected', color: 'grey', icon: 'fa-wifi-slash' }
+        ? { label: 'Connected', color: 'green', icon: 'fa-wifi' }
+        : { label: 'Not connected', color: 'grey', icon: 'fa-ban' }
     }
   })
 
