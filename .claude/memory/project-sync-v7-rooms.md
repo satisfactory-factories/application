@@ -385,6 +385,38 @@ active-tab guard.
 event hides the sidebar list and opens the overlay, and nothing it starts ever says the load
 finished. The boot chain emits the same event with the same counts moments later.
 
+## Calculating and pacing the render are two questions (2026-08-31)
+
+The instant path above landed answering one question for both, and the preview showed the cost:
+a switch to a big tab had nothing to calculate, so it skipped the recalculation (right) and the
+loader with it (wrong). The click produced no movement whatsoever, and then the tab locked up
+for the length of the render. [[rendering-rework-loader-intent]] predicted this exactly — the
+75ms stagger is not cosmetic, it paces the render, and it stops being load-bearing only once
+rendering is on-select, which is still not built.
+
+The two gates are now separate. Calculation is still decided by the plan's own state
+(`needsCalculation`, `forceRecalc`). Pacing is decided by size: `needsPacedRender` in
+`web/src/utils/render-pacing.ts` draws the line at more than `PACED_RENDER_FACTORY_COUNT` (10)
+factories, the same number `Loading.vue` warns the user at, and both now read that one constant.
+`canRenderInstantly` refuses a plan over the line however current its mirror is, and
+`shouldStagger` takes the plan as an argument and returns true for one — so both the instant path
+and the "nothing was calculated" fast paths in `runLoad`/`startQueuedLoad` land on the staggered
+chain. It is the same chain as ever, so `incrementLoad`, the progress bar and `loadingCompleted`
+all still fire, with no recalculation anywhere in it.
+
+**The overlay has to be announced before the work, not after it.** `runLoad` emits
+`prepareForLoad` at the top for a plan over the line and then yields a frame (`nextPaint`, the
+awaitable form of the existing `afterPaint`): everything after it — validation, migration, the
+mount storm — blocks the main thread, and an overlay raised on the far side of that is an overlay
+nobody sees. The counts are announced again from the plan that really loads.
+
+Quiet applies stay quiet: none of this touches `reloadTabFromMirror`'s active-tab guard or
+`onSnapshot`'s "only when the rebase recalculated" rule, so a background snapshot still raises no
+overlay. Guards: `app-store.spec.ts` "a plan too big to render in one flush" (three cases, one
+spying on `calculateFactories` to prove nothing was calculated) and the e2e `sidebar-tabs` case
+"opening a big tab raises the loader, and opening a small one does not". Both were negative
+controlled by neutering `needsPacedRender`: three unit failures and the e2e overlay assertion.
+
 ## The quiet-apply round (2026-08-31): three bugs the preview showed, and what they share
 
 All three were reported from the live preview as "sync doesn't work", and none of them was the

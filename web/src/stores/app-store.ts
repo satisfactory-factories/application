@@ -23,6 +23,7 @@ import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repa
 import { captureOrder, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
 import { getHandGatheredParts } from '@/utils/factory-management/parts'
+import { needsPacedRender } from '@/utils/render-pacing'
 import { config } from '@/config/config'
 
 export const useAppStore = defineStore('app', () => {
@@ -181,6 +182,9 @@ export const useAppStore = defineStore('app', () => {
     if (import.meta.env.MODE === 'test') fn()
     else requestAnimationFrame(fn)
   }
+
+  /** The awaitable form, for a chain that has to let the overlay reach the screen. */
+  const nextPaint = () => new Promise<void>(resolve => afterPaint(resolve))
 
   // Watch the tab index, if it changes we need to throw up a loading
   watch(currentFactoryTabIndex, () => {
@@ -355,11 +359,12 @@ export const useAppStore = defineStore('app', () => {
     new Promise(resolve => setTimeout(resolve, import.meta.env.MODE === 'test' ? 0 : ms))
 
   // ==== LOADER GATING
-  // The 75ms-per-factory stagger is not cosmetic: it paces the synchronous render
-  // of the whole list so a big plan doesn't freeze the tab. It only earns that cost
-  // when a calculation actually happened. A plan that is already calculated renders
-  // straight through, and a tab whose mirror the sync engine has proven current
-  // skips even the validation pass.
+  // Two separate questions, and conflating them is what made a tab switch hitch with no
+  // loader on screen. Whether to CALCULATE is answered by the plan's own state: an already
+  // calculated plan is recalculated for nothing. Whether to PACE THE RENDER is answered by
+  // its size: the 75ms-per-factory stagger is not cosmetic, it paces the render of the whole
+  // list so a big plan doesn't freeze the tab, and that cost is owed by every big plan
+  // however little there was to calculate.
   let lastLoadCalculated = false
 
   // A previous load died mid-way and beginLoading holds the recovery copy, so the
@@ -369,13 +374,19 @@ export const useAppStore = defineStore('app', () => {
     return stored !== null && stored !== '[]'
   }
 
-  const shouldStagger = (): boolean => lastLoadCalculated || hasInterruptedLoad()
+  const shouldStagger = (plan: Factory[]): boolean =>
+    lastLoadCalculated || hasInterruptedLoad() || needsPacedRender(plan)
 
-  /** True when the mirror is provably the server's current state, written by this app version. */
+  /**
+   * True when the mirror is provably the server's current state, written by this app
+   * version, and small enough that mounting it in one flush cannot hitch. A big plan is
+   * still spared the recalculation; it just takes the loader while it renders.
+   */
   const canRenderInstantly = (tabId: string): boolean => {
     const state = tabSyncStates.value[tabId]
     if (!state || state.kind === 'local' || state.revision === null) return false
     if (hasInterruptedLoad()) return false
+    if (needsPacedRender(getTab(tabId)?.factories ?? [])) return false
 
     const meta = readTabMirrorMeta()[tabId]
     return meta !== undefined &&
@@ -439,9 +450,22 @@ export const useAppStore = defineStore('app', () => {
   const runLoad = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
 
+    // The overlay goes up BEFORE the work and a frame is yielded so it paints. Everything below
+    // this blocks the main thread on a big plan, and a click that puts nothing on screen until
+    // it is over reads as a frozen tab. Read for its counts only, never committed — the plan
+    // that really loads is read after the pause below, and re-announced there.
+    const announcing = newFactories ?? currentFactoryTab.value?.factories ?? []
+    if (needsPacedRender(announcing)) {
+      eventBus.emit('prepareForLoad', {
+        count: announcing.length,
+        shown: shownFactories(announcing),
+      })
+    }
+
     // Tell planner to hide to remove all rendered content
     eventBus.emit('plannerShow', false)
 
+    await nextPaint()
     // Wait a bit for the planner to comply
     await loadPause(50)
 
@@ -454,8 +478,8 @@ export const useAppStore = defineStore('app', () => {
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)
 
-    if (!shouldStagger()) {
-      console.log('appStore: prepareLoader: Nothing was calculated, rendering straight through.')
+    if (!shouldStagger(factories.value)) {
+      console.log('appStore: prepareLoader: Nothing was calculated and the plan is small, rendering straight through.')
       loadingCompleted()
       return
     }
@@ -502,8 +526,8 @@ export const useAppStore = defineStore('app', () => {
     // Reading the getter inits the plan on the first load, which is what decides
     // whether the stagger is owed.
     const plan = factories.value
-    if (!shouldStagger()) {
-      console.log('appStore: readyForData: Nothing was calculated, rendering straight through.')
+    if (!shouldStagger(plan)) {
+      console.log('appStore: readyForData: Nothing was calculated and the plan is small, rendering straight through.')
       loadingCompleted()
       return
     }

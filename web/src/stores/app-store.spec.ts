@@ -15,6 +15,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
+import { PACED_RENDER_FACTORY_COUNT } from '@/utils/render-pacing'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 
@@ -562,6 +563,55 @@ describe('app-store', () => {
 
           expect(appStore.isLoaded).toBe(false)
           await settleLoads()
+        })
+
+        // Calculating and pacing the render are separate questions. A plan too big to mount
+        // in one flush took the instant path because there was nothing to calculate, so the
+        // click produced no movement at all and then the tab locked up.
+        describe('a plan too big to render in one flush', () => {
+          const emitsOf = (event: string) =>
+            vi.mocked(eventBus.emit).mock.calls.filter(call => call[0] === event)
+
+          const bigPlan = () => Array.from(
+            { length: PACED_RENDER_FACTORY_COUNT + 1 },
+            (_, index) => newFactory(`Big ${index}`, index, index + 1),
+          )
+
+          it('should take the staggered loader with nothing calculated', async () => {
+            const calculate = vi.spyOn(FactoryManager, 'calculateFactories')
+            const plan = bigPlan()
+
+            await appStore.prepareLoader(plan)
+
+            expect(calculate).not.toHaveBeenCalled()
+            expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
+              count: plan.length,
+              shown: plan.length,
+            })
+            // One per factory plus the render step: the whole chain, not a shortcut to the end.
+            expect(emitsOf('incrementLoad')).toHaveLength(plan.length + 1)
+            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+            expect(appStore.getFactories()).toEqual(plan)
+          })
+
+          // The overlay is what the user sees the instant they click, so it is announced
+          // before the validate-and-mount work rather than after it.
+          it('should raise the overlay before it starts the work', async () => {
+            vi.mocked(eventBus.emit).mockClear()
+
+            await appStore.prepareLoader(bigPlan())
+
+            const events = vi.mocked(eventBus.emit).mock.calls.map(call => call[0])
+            expect(events.indexOf('prepareForLoad')).toBeGreaterThanOrEqual(0)
+            expect(events.indexOf('prepareForLoad')).toBeLessThan(events.indexOf('plannerShow'))
+          })
+
+          it('should still render a small plan straight through', async () => {
+            await appStore.prepareLoader([newFactory('Small One'), newFactory('Small Two')])
+
+            expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          })
         })
       })
 
@@ -1552,6 +1602,8 @@ describe('app-store', () => {
       expect(appStore.getTabState('ghost').kind).toBe('local')
     })
 
+    // Two conditions, and both have to hold: the mirror is provably the server's current
+    // state, and the plan is small enough that mounting it in one flush cannot hitch.
     describe('instant render gating', () => {
       const mirrorAt = (tabId: string, revision: number, appVersion = PROTOCOL_VERSION) => {
         setTabMirrorMeta(tabId, { revision, appVersion, userTouchedIds: [], userTouchedFields: [] })
@@ -1559,10 +1611,24 @@ describe('app-store', () => {
 
       it('should render instantly when the mirror matches the server revision', () => {
         const tab = appStore.getCurrentTab()
+        tab.factories.push(newFactory('Small One'), newFactory('Small Two'))
         appStore.setTabState(tab.id, syncedState(4))
         mirrorAt(tab.id, 4)
 
         expect(appStore.canRenderInstantly(tab.id)).toBe(true)
+      })
+
+      // The regression Matt reported: an up-to-date big plan skipped the loader as well as
+      // the recalculation, so the click produced nothing until the whole plan appeared.
+      it('should not render a big plan instantly, however current its mirror is', () => {
+        const tab = appStore.getCurrentTab()
+        for (let index = 0; index <= PACED_RENDER_FACTORY_COUNT; index++) {
+          tab.factories.push(newFactory(`Big ${index}`, index, index + 1))
+        }
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
       })
 
       it('should not render instantly when the mirror is behind the server', () => {

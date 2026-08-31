@@ -3,11 +3,15 @@ import { registerUser } from '../helpers/accounts'
 import {
   addFactory,
   addLocalTab,
+  addNamedFactory,
+  clickTab,
   createSyncedTab,
   expectQuiesced,
   expectSidebarLists,
+  loadingOverlay,
   openPlanner,
   selectTab,
+  settle,
   waitForTab,
 } from '../helpers/planner'
 import { shareARoom } from '../helpers/rooms'
@@ -42,6 +46,50 @@ test('the sidebar lists the active tab across repeated switches between two sync
     await selectTab(page, beta)
     await expectSidebarLists(page, ['Beta One'])
   }
+})
+
+/**
+ * A plan too big to mount in one flush has to say so the moment it is clicked. It used to
+ * take the instant path whenever there was nothing to calculate, which gave the user no
+ * movement at all and then locked the tab for the length of the render.
+ */
+test('opening a big tab raises the loader, and opening a small one does not', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+  const page = await openPlanner(await client({ user }))
+  const overlay = loadingOverlay(page)
+
+  const small = await createSyncedTab(page)
+  await addFactory(page, { name: 'Small One', note: 'the only one here' })
+
+  const big = await createSyncedTab(page)
+  // One over the boundary the loader itself warns at, which is where pacing starts.
+  const bigNames: string[] = []
+  for (let index = 1; index <= 11; index++) {
+    bigNames.push(`Big ${index}`)
+    await addNamedFactory(page, `Big ${index}`)
+  }
+  // Acknowledged at the server's revision, so this is the instant path being asked to
+  // pace itself rather than a plan that has something to calculate.
+  await expectQuiesced([page], big)
+
+  await clickTab(page, small)
+  // Sampled rather than checked once: the staggered path holds the overlay for a second
+  // or more, so a whole window of clear samples is what says the small tab stayed instant.
+  for (let sample = 0; sample < 6; sample++) {
+    expect(await overlay.count(), 'the small tab raised a loader it does not need').toBe(0)
+    await page.waitForTimeout(50)
+  }
+  await expectSidebarLists(page, ['Small One'])
+
+  await clickTab(page, big)
+  await expect(overlay, 'the big tab rendered with no loader on screen').toBeVisible()
+  await expect(overlay).toContainText('factories')
+
+  await settle(page)
+  await expectSidebarLists(page, bigNames)
 })
 
 test('the sidebar lists a local tab the same way', async ({ client, request }) => {

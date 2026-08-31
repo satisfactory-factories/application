@@ -42,9 +42,12 @@ export const openPlanner = async (
  * is a full-viewport box, so `:visible` reads a finished load as a running one
  * whenever the callback is late.
  */
+export const loadingOverlay = (page: Page): Locator =>
+  page.locator('[data-testid="loading-overlay"].v-overlay--active')
+
 export const settle = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('add-tab')).toBeVisible()
-  const overlay = page.locator('[data-testid="loading-overlay"].v-overlay--active')
+  const overlay = loadingOverlay(page)
   await expect(overlay).toHaveCount(0)
   // A snapshot landing a moment after the first check raises a load of its own,
   // and one clear sample would have read that as a settled planner. Two clear
@@ -155,8 +158,11 @@ export const createSyncedTab = async (page: Page): Promise<string> => {
   return created as string
 }
 
-/** Brings a tab to the front by room id; names are not unique, ids are. */
-export const selectTab = async (page: Page, tabId: string): Promise<void> => {
+/**
+ * Clicks a tab in the bar by room id, and returns the moment the click lands. For a test
+ * watching what the switch puts on screen; everything else wants `selectTab`.
+ */
+export const clickTab = async (page: Page, tabId: string): Promise<void> => {
   let index = -1
   await expect.poll(async () => {
     index = (await storedTabs(page)).findIndex(tab => tab.id === tabId)
@@ -164,6 +170,11 @@ export const selectTab = async (page: Page, tabId: string): Promise<void> => {
   }, { message: `tab ${tabId} never appeared in this client's tab bar` }).toBeGreaterThanOrEqual(0)
 
   await page.locator('[data-testid="factory-tab"]').nth(index).click()
+}
+
+/** Brings a tab to the front by room id; names are not unique, ids are. */
+export const selectTab = async (page: Page, tabId: string): Promise<void> => {
+  await clickTab(page, tabId)
   await settle(page)
 }
 
@@ -332,6 +343,16 @@ export const notesField = (page: Page): Locator =>
  * event cannot be split across that.
  */
 export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> => {
+  const freshId = await addNamedFactory(page, edit.name)
+  const card = page.locator(`[id="${freshId}"]`)
+
+  // A note needs no recalculation to reach the sync engine, so it is the cheapest
+  // per-factory payload a test can give a new card.
+  await card.locator(`[id="${freshId}-notes"] textarea:not([aria-hidden="true"])`).fill(edit.note)
+}
+
+/** The name half alone, for a test that only needs the plan to be a certain size. */
+export const addNamedFactory = async (page: Page, factoryName: string): Promise<string> => {
   // Keyboard rather than mouse: the button is the last thing in the column, and
   // the offline banner is fixed to the bottom of the viewport on top of it.
   await page.getByTestId('add-factory').press('Enter')
@@ -347,21 +368,19 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
 
   const card = page.locator(`[id="${freshId}"]`)
   const name = card.locator('input.factory-name')
-  await name.fill(edit.name)
+  await name.fill(factoryName)
   await commitName(name)
   // A rebase racing the commit can still revert the draft; a person retypes,
   // and so does the test — once.
   try {
-    await expect(name).toHaveValue(edit.name, { timeout: 2_000 })
+    await expect(name).toHaveValue(factoryName, { timeout: 2_000 })
   } catch {
-    await name.fill(edit.name)
+    await name.fill(factoryName)
     await commitName(name)
-    await expect(name).toHaveValue(edit.name)
+    await expect(name).toHaveValue(factoryName)
   }
 
-  // A note needs no recalculation to reach the sync engine, so it is the cheapest
-  // per-factory payload a test can give a new card.
-  await card.locator(`[id="${freshId}-notes"] textarea:not([aria-hidden="true"])`).fill(edit.note)
+  return freshId
 }
 
 /** Edits a factory already on screen, addressed by its position in the plan. */

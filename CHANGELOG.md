@@ -55,7 +55,8 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 
 ### Loading
 
-- The staggered load only runs when something was actually calculated. Switching to a tab the server has already confirmed is current renders it immediately.
+- Switching to a tab the server has already confirmed is current no longer recalculates it. A small plan opens instantly.
+- A big plan still gets the loading dialog while it draws, and the dialog now appears the moment you click the tab. Drawing a hundred factory cards takes a moment whether or not there was anything to calculate, and the wait used to happen with nothing on screen to say so.
 - Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.
 
 ### Knowing what just happened
