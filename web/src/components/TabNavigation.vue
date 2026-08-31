@@ -103,7 +103,9 @@
       >
         <i class="fas fa-plane mr-2" />{{ offlineHint.label }}
       </v-chip>
-      <last-updated-indicator />
+      <!-- Hidden on a phone for the same reason the search box collapses to a button
+           there: the bar has no width to spare once the tabs have had theirs. -->
+      <last-updated-indicator v-if="!smAndDown" />
       <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
       <!-- The three per-tab actions sit together: copy it, share it, delete it. -->
@@ -320,7 +322,7 @@
   // Below the lg breakpoint there is no room for the docked sidebar — the
   // toolbar's burger icon drives the navigation drawer tray instead, so the
   // button only shows on desktop.
-  const { lgAndUp } = useDisplay()
+  const { lgAndUp, smAndDown } = useDisplay()
 
   const toggleSidebar = () => {
     eventBus.emit('toggleSidebar')
