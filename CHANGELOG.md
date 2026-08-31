@@ -146,6 +146,46 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   box itself (and anywhere else that same tick is drawn) could stay visually unticked. Every
   checklist checkbox now keys its `<input>` on the checked value itself, which sidesteps that race.
 
+- **Fix Product no longer ignores what the factory imports** (#595). The shortfall it wrote counted
+  only what the factory produced itself, so a part with 1425/min imported against 2740/min needed
+  was fixed to 2740 rather than 1315 — and the figure named on the Satisfy and Trim buttons was
+  wrong in the same way, since both read from the same calculation. Where a part is imported as
+  well as made on site, local production only has to cover what the imports don't: a factory
+  needing 5232/min with 2100/min arriving from two other factories now offers to trim its own
+  production to 3132. That button is labelled **Trim to import shortfall** rather than just Trim,
+  with a tooltip saying why, since it deliberately stops short of the full requirement. Trim can
+  no longer name a negative quantity either: where the imports cover the whole demand on their
+  own, it now offers 0 — stop making it — rather than a number the Qty field can't hold.
+
+- **A factory that consumes its own output no longer reports a phantom surplus to export** (#540).
+  Export supply was read gross, so a mine extracting 480 ore a minute and smelting every bit of it
+  on site still offered 240 of it to another factory and called the request satisfied. The figure
+  is now what the factory actually has spare once production, power, buildings and sinking have
+  taken their share, so an over-committed factory reads as short — and the plan-wide "produced
+  items difference" in Statistics no longer counts ore that was never really available.
+- **An over-committed mine can be given imports again** (#541). A mine shipping out more than it
+  extracts matched the "nothing here could ever import anything" shortcut — extraction takes no
+  ingredients, so its Add Import button was disabled — even with another mine in the plan able to
+  cover the difference. Export demand now counts, so the button is offered. Together with #540 the
+  two halves are coherent: the mine goes red and the fix for it is available in the same place.
+
+- **The Share button now shares the plan you are actually looking at** (#535). It took its copy of
+  the open tab once, when the page loaded, and the button never remounts — so after switching tabs
+  it went on sharing the plan that had been open at load, under that tab's name.
+
+- **Two power generators in one factory can no longer be issued the same ID** (#546). Generator IDs
+  were drawn at random with nothing checking whether the factory already held that number, and
+  those IDs key the Game Sync snapshots — so a collision (roughly one factory in 200 with ten
+  generators) made the factory drop out of sync the moment it was marked as built, permanently and
+  with nothing on screen explaining why. Both the generator itself and the ID backfill that runs on
+  plans from before generators had IDs now issue them against what the factory already holds.
+
+- **The Raw Resources Wizard's backup no longer zeroes an older power target** (#536). If you set a
+  power target before targets became per-plan, the backup recorded it as 0 — and since the backup
+  is the only undo for a migration that can't be reversed, and pasting it writes the target back
+  onto the plan, restoring stamped that 0 in for good. It now reads the target the same way Copy
+  plan and the rest of the planner do, legacy fallback included.
+
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

@@ -30,8 +30,9 @@
   import eventBus from '@/utils/eventBus'
   import { announceClientOutdated, apiHeaders, clientTooOldError, isClientTooOldResponse } from '@/utils/api'
 
-  // Get user auth stuff from the app store
-  const { currentFactoryTab } = useAppStore()
+  // Held as the store, not destructured. A tab switch reassigns currentFactoryTab, and this button
+  // never remounts, so a destructured copy would go on sharing the tab open at page load (#535).
+  const appStore = useAppStore()
   const authStore = useAuthStore()
 
   const apiUrl = config.apiUrl
@@ -40,13 +41,15 @@
   const showCopyDialog = ref(false)
 
   const createShareLink = async () => {
-    if (!currentFactoryTab.factories || currentFactoryTab.factories.length === 0) {
+    const factoryTab = appStore.currentFactoryTab
+
+    if (!factoryTab?.factories || factoryTab.factories.length === 0) {
       alert('No factory data to share!')
       return
     }
 
     creating.value = true
-    link.value = await handleCreation(currentFactoryTab) ?? ''
+    link.value = await handleCreation(factoryTab) ?? ''
     creating.value = false
 
     // If no link was returned assume server errors

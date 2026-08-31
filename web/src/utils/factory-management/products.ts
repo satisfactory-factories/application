@@ -252,6 +252,15 @@ export const shouldShowFix = (product: FactoryItem, factory: Factory): string | 
   return null
 }
 
+// A Trim offered because imports already cover part of the demand is a different proposition to
+// an ordinary one: it does not cut production down to the requirement, it cuts it to whatever the
+// imports leave over. The button says so, because the figure is smaller than a plain Trim's and
+// would otherwise look like it had cut too far.
+export const isImportShortfallTrim = (product: FactoryItem, factory: Factory): boolean => {
+  const part = factory.parts[product.id]
+  return !!part && part.amountSuppliedViaInput > 0 && part.amountSuppliedViaProduction > 0
+}
+
 export const shouldShowInternal = (product: FactoryItem | ByProductItem, factory: Factory) => {
   if (!factory.parts[product.id]) {
     return false
@@ -278,11 +287,17 @@ export const fixProductTarget = (product: FactoryItem, factory: Factory): number
 
   const partData = factory.parts[product.id]
 
-  // Byproducts are handled by reading the part ledger rather than the recipe: the ledger already
-  // accounts for whatever else in the factory produces this part.
-  const diff = partData.amountRequired - partData.amountSuppliedViaProduction
+  // What is left to make once every other source is counted. #595: imports are one of them —
+  // import 1425 of a part you need 2740 of and only 1315 is left to make. Not amountSupplied,
+  // which folds in amountSuppliedViaRaw: for a hand-gathered raw that is the whole shortfall.
+  const diff = partData.amountRequired -
+    partData.amountSuppliedViaProduction -
+    partData.amountSuppliedViaInput
 
-  return diff + product.amount
+  // + product.amount because this product's own output sits inside amountSuppliedViaProduction,
+  // making the result a quantity to set rather than one to add. Floored at zero: with enough
+  // imported or dropped as a byproduct the sum goes negative, and zero means stop making it.
+  return Math.max(0, diff + product.amount)
 }
 
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {

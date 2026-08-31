@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BuildingGroup,
   Factory,
@@ -111,6 +111,45 @@ describe('power', () => {
       const buildingGroup = producer.buildingGroups[0]
       expect(buildingGroup.buildingCount).toBe(1)
       expect(buildingGroup.parts.LiquidTurboFuel).toBe(7.5)
+    })
+
+    // #546: producer ids key syncState, so two producers sharing one collapse into a single
+    // snapshot entry and the count check drops the factory out of sync the moment it is marked
+    // as built — with nothing on screen to explain it.
+    describe('id uniqueness', () => {
+      afterEach(() => {
+        vi.restoreAllMocks()
+      })
+
+      const addProducer = () => addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        buildingAmount: 1,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Building,
+      })
+
+      it('should not issue an id another producer already holds', () => {
+        // Every draw lands on the same number, so an unchecked generator hands both producers
+        // the same id. Asserted as distinctness rather than exact values because the ids are
+        // not the only thing adding a producer draws a random number for.
+        vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+        addProducer()
+        addProducer()
+
+        const ids = factory.powerProducers.map(producer => producer.id)
+        expect(ids).toHaveLength(2)
+        expect(new Set(ids).size).toBe(2)
+      })
+
+      it('should not issue an id a custom building already holds', () => {
+        factory.customBuildings = [{ id: '5000' } as any]
+        vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+        addProducer()
+
+        expect(factory.powerProducers[0].id).not.toBe('5000')
+      })
     })
   })
 
