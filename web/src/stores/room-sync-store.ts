@@ -909,7 +909,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   const probeTick = () => {
-    for (const roomId of Object.keys(rooms.value)) probeRevision(roomId)
+    for (const roomId of Object.keys(rooms.value)) {
+      // A paused room retries here or nowhere: no UI clears the pause, so refused ops
+      // used to leave the tab receive-only until the page was reloaded, silently. The
+      // probe interval is the rate limit the streak was protecting the server from.
+      if (rooms.value[roomId].status === 'paused') resumeRoom(roomId)
+      else probeRevision(roomId)
+    }
   }
 
   // ===== Offline mode =====
@@ -1029,6 +1035,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     join,
     requestSnapshot,
     probeRevision,
+    // One tick of the idle interval, which the interval itself makes unreachable to a spec.
+    probeTick,
 
     // Intent and ops
     markUserTouched,

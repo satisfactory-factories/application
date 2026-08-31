@@ -707,6 +707,34 @@ describe('room-sync-store', () => {
       expect(opsOf()).toHaveLength(4)
     })
 
+    // Nothing in the UI calls resumeRoom, so without this a paused room is receive-only
+    // until the page is reloaded — and says nothing about it while it is.
+    it('lets the idle probe clear a pause nobody else would', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+      store.flushRoom(ROOM)
+
+      for (let revision = 5; revision <= 7; revision++) {
+        const server = wire(fixture)
+        server[0].name = `Theirs ${revision}`
+        receive({
+          type: 'op_reject',
+          roomId: ROOM,
+          opId: lastOp().opId,
+          reason: 'stale_base',
+          snapshot: snapshotOf(server, revision),
+        })
+      }
+      expect(store.rooms[ROOM].status).toBe('paused')
+      const sentWhilePaused = opsOf().length
+
+      store.probeTick()
+
+      expect(store.rooms[ROOM].status).toBe('synced')
+      expect(opsOf().length).toBeGreaterThan(sentWhilePaused)
+    })
+
     it('turns the tab into a local copy when a reject carries no snapshot', () => {
       const tab = syncAt(fixture, 4)
       tab.factories[0].name = 'Mine'
