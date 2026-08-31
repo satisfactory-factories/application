@@ -1,8 +1,8 @@
 // VITE_API_URL overrides everything, and is how a build is pointed somewhere other than the
 // two defaults. Vercel sets it to the preview API for the Preview environment, so no preview
 // deployment can read or write live plans; production leaves it unset. See docs/deployment.md.
-const apiUrl = import.meta.env.VITE_API_URL
-  || (import.meta.env.VITE_ENV === 'dev' ? 'http://localhost:3001' : 'https://api.satisfactory-factories.app')
+const apiUrl = import.meta.env.VITE_API_URL ||
+  (import.meta.env.VITE_ENV === 'dev' ? 'http://localhost:3001' : 'https://api.satisfactory-factories.app')
 
 export const config = {
   apiUrl,
