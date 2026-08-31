@@ -431,6 +431,38 @@ are new, from the round-three race audit.
   merge**: its content became upstream's `## Beta v0.6` section, so the heading merged out empty
   and is gone. The headings are now v0.7, v0.6, v0.5, Alpha v0.4, in that order.
 
+## The CI hardening round (post-PR, 2026-08-31): what the slow runner exposed
+
+Five pushes to green after the PR opened; the same one concurrency test failed each time and
+its cause was different at each layer peeled. Keep these, in order of generality:
+
+- **`E2E_CPU_THROTTLE=6 pnpm exec playwright test` reproduces loaded-CI timing on any
+  machine** (a CDP `setCPUThrottlingRate` hook in `e2e/helpers/accounts.ts`). The baseline
+  failed 1 in 8 throttled where a fast machine passed 12 straight; every future "CI-only"
+  e2e flake starts here, not with pushes at CI.
+- **Never anchor an e2e action on position or name when a collaborator can mutate the DOM
+  between actions.** `.last()` re-resolves per action (a remote factory landing between fill
+  and commit put the note in the other client's card), and two simultaneous Adds both hold an
+  identical default-named record once one flushes. The one client-local marker is **focus**:
+  Add Factory now lands the cursor in the new name field and the helper anchors on
+  `input.factory-name:focus`.
+- **A rename committed through `props.factory` can land on a detached object** — a rebase
+  replaces factory records wholesale, and the commit then never syncs. `commitName` writes
+  through the store's live record by id, and an inbound apply no longer clobbers a *focused*
+  draft (the user's later commit wins as any content edit does).
+- **Post-commit fan-out is best-effort, so a lost `op_apply` needs an active healer**: every
+  idle synced room re-joins with its acked revision each `REVISION_PROBE_MS` (10s); the
+  server answers `up_to_date` or a healing snapshot. Never fires mid-edit, in flight, or
+  offline (`probeRevision` in `room-sync-store.ts`).
+- The suite-wide expect ceiling is 30s (`playwright.config.ts`): honest worst-case
+  convergence is rebase churn + the 10s probe cycle + the 5s mirror interval on two cores.
+- The backend vitest suite runs with `.env` ignored (`ignoreEnvFile` under `VITEST`, env
+  from `test/utils/env-setup.ts` which runs before module import) — before that, the suite
+  silently tested against a real localhost Mongo wherever one listened, because Nest bakes
+  config at import time and the committed `backend/.env` beat `process.env`.
+- CI installs need dependency-closure filters: `--filter web...` (three dots) in both
+  `web/vercel.json` and `build-web.yml`, because web compiles `common`'s source.
+
 ## Three defects found by the e2e suite, all fixed here
 
 Keep these: the shapes recur, and the second one bites twice.
