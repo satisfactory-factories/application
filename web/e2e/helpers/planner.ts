@@ -44,7 +44,13 @@ export const openPlanner = async (
  */
 export const settle = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('add-tab')).toBeVisible()
-  await expect(page.locator('[data-testid="loading-overlay"].v-overlay--active')).toHaveCount(0)
+  const overlay = page.locator('[data-testid="loading-overlay"].v-overlay--active')
+  await expect(overlay).toHaveCount(0)
+  // A snapshot landing a moment after the first check raises a load of its own,
+  // and one clear sample would have read that as a settled planner. Two clear
+  // samples with a gap is the cheap guard; every await of a snapshot needs it.
+  await page.waitForTimeout(250)
+  await expect(overlay).toHaveCount(0)
 }
 
 // ===== Tabs =====
@@ -239,6 +245,7 @@ export interface MirroredFactory {
   name: string
   notes: string
   tasks: { title: string, completed: boolean }[]
+  products: { id: string, amount: number }[]
 }
 
 export const mirroredNote = async (
@@ -425,3 +432,118 @@ export const mirroredTasks = async (
 ): Promise<string[]> =>
   ((await mirroredFactories(page, tabId)).find(factory => factory.name === factoryName)?.tasks ?? [])
     .map(task => task.title)
+
+// ===== Products =====
+
+/** The main-column card for a factory, addressed by its name field's position. */
+export const factoryCard = async (page: Page, index: number): Promise<Locator> => {
+  const name = page.locator('input.factory-name').nth(index)
+  await expect(name).toBeVisible()
+  const id = await name.evaluate(el => el.closest('.factory-card:not(.sub-card)')?.id ?? '')
+  expect(id, 'the factory name field sits outside a factory card').not.toBe('')
+  return page.locator(`[id="${id}"]`)
+}
+
+export const productRows = (card: Locator): Locator =>
+  card.locator('[data-testid="product-row"]')
+
+/**
+ * The item each product row is showing. Vuetify renders a picker's selection as
+ * its own element and leaves the `<input>` holding the *search* text, which is
+ * blank on every field nobody is typing into — so the input is not the answer.
+ */
+export const selectedProductItems = (card: Locator): Locator =>
+  card.locator('[data-testid="product-row"] .v-input:has(input[id$="-item"]) .v-autocomplete__selection-text')
+
+export const productNames = async (card: Locator): Promise<string[]> =>
+  (await selectedProductItems(card).allTextContents()).map(text => text.trim())
+
+/**
+ * "Add Product", then the item chosen from the picker. The blank row is stored
+ * content on its own and the selection is what turns it into a real product, so
+ * both halves have to reach the other client.
+ */
+export const addProduct = async (page: Page, index: number, item: string): Promise<void> => {
+  const card = await factoryCard(page, index)
+  const before = await productRows(card).count()
+  await card.getByRole('button', { name: 'Add Product' }).click()
+
+  // A product with no id yet: the row's picker is `<factoryId>--item` until one
+  // is chosen, which is the only client-local way to name the row just added.
+  const picker = card.locator('input[id$="--item"]')
+  await expect(picker, 'the new product row never appeared').toBeVisible()
+  await picker.fill(item)
+  await page.getByRole('option', { name: item, exact: true }).first().click()
+
+  await expect(productRows(card)).toHaveCount(before + 1)
+  await expect.poll(() => productNames(card), {
+    message: `the product picker never settled on ${item}`,
+  }).toContain(item)
+}
+
+/** Polled and visibility-honest: the row is on screen and it names the item. */
+export const expectProductVisible = async (
+  page: Page,
+  index: number,
+  item: string,
+): Promise<void> => {
+  const card = await factoryCard(page, index)
+  await expect.poll(() => productNames(card), {
+    message: `${item} never reached this client's product list`,
+    timeout: 30_000,
+  }).toContain(item)
+
+  await expect(
+    selectedProductItems(card).filter({ hasText: item }).first(),
+    'the product is in the DOM but not on screen',
+  ).toBeVisible()
+}
+
+/** The item ids the mirror holds for one factory, which is what actually synced. */
+export const mirroredProducts = async (
+  page: Page,
+  tabId: string,
+  factoryName: string,
+): Promise<string[]> =>
+  ((await mirroredFactories(page, tabId)).find(factory => factory.name === factoryName)?.products ?? [])
+    .map(product => product.id)
+
+/**
+ * Moves a factory one place down the plan, through the Arrange dialog. Buttons
+ * rather than the sidebar's drag gesture: the reorder under test is the write
+ * and its fan-out, and Sortable's pointer choreography is a second thing to fail.
+ */
+export const moveFactoryDown = async (page: Page, index: number): Promise<void> => {
+  await page.locator('.sidebar-content .arrange-btn').click()
+  const dialog = page.getByTestId('arrange-dialog')
+  await expect(dialog).toBeVisible()
+
+  await dialog.locator('.factory-row').nth(index).locator('.factory-down').click()
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  await expect(dialog).toBeHidden()
+}
+
+// ===== Sidebar =====
+
+/**
+ * The docked sidebar's factory rows. Scoped to `.sidebar-content`: the navigation
+ * drawer renders the same component, so an unscoped id matches every row twice.
+ */
+export const sidebarFactoryRows = (page: Page): Locator =>
+  page.locator('.sidebar-content [data-testid="sidebar-factory-row"]')
+
+/**
+ * The sidebar visibly lists exactly these factories, in order. `toBeVisible`
+ * rather than a count or a text read: the bug this guards against renders the
+ * rows into a sidebar nobody can see.
+ */
+export const expectSidebarLists = async (page: Page, names: string[]): Promise<void> => {
+  const rows = sidebarFactoryRows(page)
+  await expect(rows, 'the sidebar never listed the right number of factories')
+    .toHaveCount(names.length)
+
+  for (const [index, name] of names.entries()) {
+    await expect(rows.nth(index), `sidebar row ${index} is not on screen`).toBeVisible()
+    await expect(rows.nth(index)).toContainText(name)
+  }
+}

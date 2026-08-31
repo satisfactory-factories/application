@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   // Set by Vercel on the Preview environment only, pointing at the preview API.
   // Absent in production and in local dev, where config.ts falls back.
   readonly VITE_API_URL?: string
+  // Compresses the sync engine's revision probe. Set only by the e2e harness.
+  readonly VITE_PROBE_MS?: string
 }
 
 declare module '*.vue' {

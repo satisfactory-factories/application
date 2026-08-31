@@ -9,6 +9,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server'
 import {
   API_PORT,
   BACKEND_ROOT,
+  PROBE_INTERVAL_MS,
   REPO_ROOT,
   skipBuild,
   WEB_PORT,
@@ -49,7 +50,7 @@ const build = async (): Promise<void> => {
   await runToCompletion('pnpm', ['--filter', 'backend', 'run', 'build'], { cwd: REPO_ROOT })
   await runToCompletion('pnpm', ['exec', 'vite', 'build'], {
     cwd: WEB_ROOT,
-    env: { VITE_ENV: 'dev' },
+    env: { VITE_ENV: 'dev', VITE_PROBE_MS: String(PROBE_INTERVAL_MS) },
   })
 }
 

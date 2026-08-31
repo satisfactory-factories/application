@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 
+import { PROBE_INTERVAL_MS } from '../config'
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import {
@@ -69,6 +70,37 @@ test('a tab order dragged on one device reaches the other', async ({ client, req
   await expect.poll(() => syncedNames(second), {
     message: 'the order never reached the second device',
   }).toEqual(['Second plan', 'First plan'])
+})
+
+/**
+ * The same drag, made after both devices have sat idle across two revision-probe
+ * cycles. The probe re-joins every idle room, so this is the reorder racing the
+ * healing path rather than a quiet socket. `E2E_PROBE_MS=2000` compresses it.
+ */
+test('a tab order dragged after an idle soak still reaches the other', async ({
+  client,
+  request,
+}) => {
+  const { roomId, first, second } = await syncedPair(client, request)
+
+  await selectTab(first, roomId)
+  await renameCurrentTab(first, 'Soak one')
+  const other = await createSyncedTab(first)
+  await renameCurrentTab(first, 'Soak two')
+
+  await waitForTab(second, other)
+  await expect.poll(() => syncedNames(second)).toEqual(['Soak one', 'Soak two'])
+
+  await first.waitForTimeout(PROBE_INTERVAL_MS * 2 + 1_000)
+
+  await dragTab(first, 2, 1)
+
+  await expect.poll(() => syncedNames(first), {
+    message: 'the drag did not reorder the bar it happened in',
+  }).toEqual(['Soak two', 'Soak one'])
+  await expect.poll(() => syncedNames(second), {
+    message: 'the order never reached the second device after the soak',
+  }).toEqual(['Soak two', 'Soak one'])
 })
 
 test('a member gets the owner\'s rename and is offered no rename of their own', async ({

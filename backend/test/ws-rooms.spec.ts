@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { RoomGateway } from '../src/realtime/room.gateway'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, createTestApp, destroyTestApp } from './utils/test-app'
 import { TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
@@ -174,6 +175,55 @@ describe('ws join, snapshots and presence', () => {
 
       transient.close()
       await expect(watcher.next('presence')).resolves.toMatchObject({ count: 1 })
+    })
+
+    /**
+     * The client re-joins every idle room on its revision probe, so a join that
+     * changes no occupancy must cost nothing: the answer is `up_to_date` and the
+     * room's other sockets hear nothing at all.
+     */
+    it('says nothing about presence when a joined socket re-joins to probe', async () => {
+      const watcher = await greet(owner.token)
+      watcher.send({ type: 'join', roomId })
+      await watcher.next('presence')
+
+      const prober = await greet(owner.token)
+      prober.send({ type: 'join', roomId })
+      await prober.next('snapshot')
+      // Drained on both sides: the arrival itself is a real occupancy change.
+      await expect(prober.next('presence')).resolves.toMatchObject({ count: 2 })
+      await expect(watcher.next('presence')).resolves.toMatchObject({ count: 2 })
+
+      prober.send({ type: 'join', roomId, lastRevision: 0 })
+      await expect(prober.next('up_to_date')).resolves.toMatchObject({ roomId })
+
+      await prober.expectSilence('presence')
+      await watcher.expectSilence('presence')
+    })
+
+    /**
+     * The ws ping/pong heartbeat is the marco-polo: a socket that misses two
+     * sweeps is terminated, and the rooms it held have to be recounted for the
+     * peers still in them.
+     */
+    it('recounts the rooms a socket held once the heartbeat terminates it', async () => {
+      const watcher = await greet(owner.token)
+      watcher.send({ type: 'join', roomId })
+      await watcher.next('presence')
+
+      const doomed = await greet(owner.token)
+      doomed.send({ type: 'join', roomId })
+      await expect(watcher.next('presence')).resolves.toMatchObject({ count: 2 })
+
+      // The watcher answers its pings; the dead one is silenced first, so only it
+      // misses two sweeps.
+      doomed.socket.pause()
+      const gateway = context.app.get(RoomGateway)
+      gateway.pingAll()
+      await new Promise(resolve => setTimeout(resolve, 150))
+      gateway.pingAll()
+
+      await expect(watcher.next('presence')).resolves.toMatchObject({ roomId, count: 1 })
     })
   })
 })

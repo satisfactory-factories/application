@@ -43,6 +43,16 @@ import eventBus from '@/utils/eventBus'
 export const OP_DEBOUNCE_MS = 400
 export const REVISION_PROBE_MS = 10_000
 
+/**
+ * Build-time only, and only ever set by the e2e harness: a compressed probe puts
+ * several healing cycles inside a test-length run. A production bundle has no
+ * such value, so this is the constant above.
+ */
+const probeIntervalMs = (): number => {
+  const override = Number(import.meta.env.VITE_PROBE_MS)
+  return Number.isFinite(override) && override > 0 ? override : REVISION_PROBE_MS
+}
+
 /** Failed reconnects before the "you appear to be offline" prompt. */
 export const OFFLINE_PROMPT_AFTER = 3
 
@@ -396,6 +406,16 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   /**
+   * The array's order is the render order and `displayOrder` is the index into it
+   * (see factory-groups.ts). A diff is replace-by-id, so a peer's reorder arrives
+   * as new indexes on records this client already holds and nothing else would
+   * move them: the plan's data changed and the screen did not. Stable, so records
+   * sharing an index keep the order they arrived in.
+   */
+  const inDisplayOrder = (factories: Factory[]): Factory[] =>
+    [...factories].sort((left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0))
+
+  /**
    * The room is the authoritative copy, so an absent field is written as absent — the same rule
    * `name`, `powerTarget` and `groups` already follow. Keeping a local value the room does not
    * have is what would be wrong: `addTab` stamps a brand-new empty tab as answered-for, and the
@@ -410,7 +430,17 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     tab.depotExpansionTier = content.depotExpansionTier
     tab.plannerVersion = content.plannerVersion
     tab.groups = content.groups
-    tab.factories = content.factories
+
+    const next = inDisplayOrder(content.factories)
+    tab.factories = next
+    // A load chain owns the plan array until it completes: it captured this tab's
+    // factories before the write and commits that copy back at the end, which the
+    // engine then diffs as a deletion of the whole room. Queued as the next load,
+    // the room's content lands after the chain instead of under it. A copy, because
+    // a staggered chain is still pushing into the array it holds.
+    if (appStore.loadInFlight && appStore.getCurrentTab()?.id === tab.id) {
+      void appStore.prepareLoader([...next])
+    }
   }
 
   /**
@@ -938,7 +968,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   if (typeof window !== 'undefined') window.addEventListener('offline', onBrowserOffline)
 
-  const probeTimer = setInterval(probeTick, REVISION_PROBE_MS)
+  const probeTimer = setInterval(probeTick, probeIntervalMs())
   if (typeof probeTimer === 'object' && 'unref' in probeTimer) probeTimer.unref()
 
   const dispose = () => {

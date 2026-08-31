@@ -19,3 +19,12 @@ export const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 
 /** Set to skip the two builds while iterating on the tests themselves. */
 export const skipBuild = (): boolean => process.env.E2E_SKIP_BUILD === '1'
+
+/**
+ * The sync engine's idle revision probe, baked into the bundle at build time.
+ * `E2E_PROBE_MS=2000 pnpm test:e2e` compresses it so a soak crosses several
+ * probe cycles in a test-length run; unset, it is the app's own 10s.
+ */
+export const PROBE_INTERVAL_MS = Number(process.env.E2E_PROBE_MS) > 0
+  ? Number(process.env.E2E_PROBE_MS)
+  : 10_000

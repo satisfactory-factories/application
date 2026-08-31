@@ -223,6 +223,33 @@ describe('room-sync-store', () => {
       expect(reload).toHaveBeenCalledWith(ROOM)
     })
 
+    /**
+     * The load chain owns the plan array until it completes, and it used to commit
+     * the copy it captured at the start. A join snapshot landing inside that window
+     * was overwritten with the empty tab the chain was loading — and the engine then
+     * sent that back as a deletion of everyone else's plan.
+     */
+    it('survives a load chain that started before the snapshot arrived', async () => {
+      const tab = setTab([])
+      appStore.currentFactoryTab = tab
+      store.trackRoom(ROOM)
+      connect()
+
+      // Parked on the chain's first pause, exactly where a tab switch waits.
+      const loading = appStore.prepareLoader(tab.factories)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
+      await loading
+      await vi.waitFor(() => {
+        if (appStore.loadInFlight) throw new Error('the queued load is still running')
+      })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      // The load may re-normalise records and send them; what it must never do is
+      // tell the server the room is empty.
+      store.flushRoom(ROOM)
+      expect(opsOf().flatMap(op => op.diff.removedFactoryIds ?? [])).toEqual([])
+    })
+
     it('never hides the planner for a snapshot into a tab nobody is looking at', async () => {
       const tab = syncAt(fixture, 4)
       appStore.factoryTabs.push({ id: 'other-tab', name: 'Other', factories: [], powerTarget: 0, groups: [] })
@@ -247,6 +274,7 @@ describe('room-sync-store', () => {
       tab.name = 'Renamed mid-load'
 
       store.flushRoom(ROOM)
+      console.log('OPS', JSON.stringify(opsOf()).slice(0, 900))
       expect(opsOf()).toHaveLength(0)
 
       appStore.isLoaded = true
@@ -489,6 +517,35 @@ describe('room-sync-store', () => {
       expect(emit.mock.calls.some(call => call[0] === 'calculationsCompleted')).toBe(false)
       expect(opsOf()).toHaveLength(0)
       emit.mockRestore()
+    })
+
+    /**
+     * A diff is replace-by-id, so the only thing saying two records swapped is
+     * their `displayOrder` — and the array's order is what the planner renders.
+     * Without re-deriving it the peer's data lands and the screen does not move.
+     */
+    it('re-orders the plan when a peer\'s diff moves records past each other', () => {
+      const tab = syncAt(fixture, 4)
+
+      const moved = wire(fixture)
+      moved[0].displayOrder = 1
+      moved[1].displayOrder = 0
+      receive({ type: 'op_apply', roomId: ROOM, revision: 5, diff: { factories: moved } })
+
+      expect(names(tab)).toEqual(['Beta', 'Alpha'])
+    })
+
+    it('renders a snapshot in the order its records claim', () => {
+      const moved = wire(fixture)
+      moved[0].displayOrder = 1
+      moved[1].displayOrder = 0
+
+      const tab = setTab([])
+      store.trackRoom(ROOM)
+      connect()
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(moved, 3), revision: 3 })
+
+      expect(names(tab)).toEqual(['Beta', 'Alpha'])
     })
 
     it('rebases an inbound op over a pending one without asking for a snapshot', () => {
@@ -1047,6 +1104,9 @@ describe('room-sync-store', () => {
 
     const orders = (tab: FactoryTab) => tab.factories.map(entry => entry.displayOrder)
 
+    const orderOf = (tab: FactoryTab, name: string) =>
+      tab.factories.find(entry => entry.name === name)?.displayOrder
+
     it('carries every moved record over a divergent snapshot', () => {
       vi.useFakeTimers()
       const tab = syncAt(fixture, 4)
@@ -1060,9 +1120,15 @@ describe('room-sync-store', () => {
       receive(helloOk)
       receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
 
-      expect(orders(tab)).toEqual([1, 0])
+      // By name, not by position: the tab is re-derived from the indexes it now
+      // holds, so the array reads Beta-then-Alpha and both records carry the move.
+      expect(orderOf(tab, 'Alpha')).toBe(1)
+      expect(orderOf(tab, 'Beta')).toBe(0)
+
       const sent = lastOp().diff.factories as Factory[]
-      expect(sent.map(entry => entry.displayOrder)).toEqual([1, 0])
+      expect(sent.map(entry => [entry.name, entry.displayOrder])).toEqual(
+        expect.arrayContaining([['Alpha', 1], ['Beta', 0]]),
+      )
     })
 
     // Without the second factory's own emit the overlay keeps only the clicked one, and the

@@ -243,7 +243,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     // access check was made against, re-read and confirmed unmoved.
     const { room } = access
     connection.rooms.set(room.roomId, { roomId: room.roomId, visitorToken: message.visitorToken })
-    this.registry.joinRoom(connection, room.roomId)
+    const joined = this.registry.joinRoom(connection, room.roomId)
 
     if (message.lastRevision === room.revision) {
       connection.send({ type: 'up_to_date', roomId: room.roomId, revision: room.revision })
@@ -256,7 +256,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       })
     }
 
-    this.broadcastPresence(room.roomId)
+    // Occupancy only moves when a socket actually arrives. Every idle room re-joins
+    // on the revision probe, so broadcasting per join was a frame to every peer in
+    // every room on every client's probe tick, saying the same number each time.
+    if (joined) this.broadcastPresence(room.roomId)
   }
 
   private handleLeave (connection: Connection, roomId: string): void {

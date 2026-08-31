@@ -438,14 +438,18 @@ export const useAppStore = defineStore('app', () => {
    */
   const runLoad = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
-    const factoriesToLoad = newFactories ?? factories.value
-    console.log('appStore: prepareLoader', factoriesToLoad)
 
     // Tell planner to hide to remove all rendered content
     eventBus.emit('plannerShow', false)
 
     // Wait a bit for the planner to comply
     await loadPause(50)
+
+    // Read after the pause, never before it: an inbound snapshot landing inside it
+    // replaces the tab's array, and committing the copy captured earlier deletes the
+    // room's content — which the sync engine then sends as an op.
+    const factoriesToLoad = newFactories ?? factories.value
+    console.log('appStore: prepareLoader', factoriesToLoad)
 
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)

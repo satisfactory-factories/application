@@ -24,8 +24,19 @@ export class ConnectionRegistry {
     addTo(this.byUser, connection.userId, connection)
   }
 
-  joinRoom (connection: Connection, roomId: string): void {
-    addTo(this.byRoom, roomId, connection)
+  /**
+   * True only when this socket was not already in the room. A client re-joins to
+   * probe its revision, and presence has not changed for any of those.
+   */
+  joinRoom (connection: Connection, roomId: string): boolean {
+    const existing = this.byRoom.get(roomId)
+    if (!existing) {
+      this.byRoom.set(roomId, new Set([connection]))
+      return true
+    }
+    if (existing.has(connection)) return false
+    existing.add(connection)
+    return true
   }
 
   leaveRoom (connection: Connection, roomId: string): void {

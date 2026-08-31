@@ -5,6 +5,7 @@
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
+    data-testid="product-row"
   >
     <!-- A status chip names the part, so a byproduct needs an anchor of its own or the jump has
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->

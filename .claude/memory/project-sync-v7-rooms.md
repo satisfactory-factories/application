@@ -383,6 +383,58 @@ active-tab guard.
 event hides the sidebar list and opens the overlay, and nothing it starts ever says the load
 finished. The boot chain emits the same event with the same counts moments later.
 
+## The quiet-apply round (2026-08-31): three bugs the preview showed, and what they share
+
+All three were reported from the live preview as "sync doesn't work", and none of them was the
+protocol. Keep them: two are load-chain ownership and one is a rendering derivation.
+
+**A join could delete the whole room, and the load chain was holding the knife.** `runLoad` read
+`newFactories ?? factories.value` *before* its 50ms `plannerShow` pause and committed that array
+at the end. A join snapshot landing inside the pause replaced `tab.factories` with the room's
+content; the chain then wrote its captured (empty) array back, and the engine diffed that against
+the acked snapshot and sent `removedFactoryIds` for every factory in the room. The owner's plan
+went empty on their screen. Only reachable since quiet applies landed (above): before them every
+snapshot re-ran the loader, which happened to paper over it. Two changes close it: `runLoad`
+reads the array *after* the pause, and `writeContentToTab` queues the new content as the next load
+(`prepareLoader([...next])`) whenever `appStore.loadInFlight` and the write is for the active tab
+— a copy, because a staggered chain is still pushing into the array it holds. **The general rule:
+while a load chain owns the plan, nothing else may assign `tab.factories` and expect it to
+survive.** `web/src/stores/room-sync-store.spec.ts` "survives a load chain that started before
+the snapshot arrived" is the guard; negative-controlled by putting the early read back.
+
+**Reproducing it needed load.** `E2E_CPU_THROTTLE=6 pnpm exec playwright test invite.e2e
+--repeat-each=4` failed 4/4 before the fix and 12/12 after. At full speed the same bug was one
+failure in two whole-suite runs, in a different test each time — which reads as flake and is not.
+
+**A peer's reorder never moved anything on screen.** A diff is replace-by-id, so the only thing
+saying two factories swapped is their `displayOrder`, and the array's order is what the planner
+renders. The receiver applied the new indexes and left the array alone, so the data agreed and the
+screens did not. `inDisplayOrder` in `writeContentToTab` re-derives the array from the indexes it
+now holds — the invariant `factory-groups.ts` opens by declaring, applied on the way in. The
+server's own stored array order is still "replace by id, then append" and therefore stale; that is
+harmless only because every client sorts on receipt.
+
+**Presence was a frame per peer per room per client per probe tick.** `handleJoin` broadcast
+presence on every join, and the client re-joins every idle room each `REVISION_PROBE_MS` to heal a
+missed `op_apply`. `ConnectionRegistry.joinRoom` now returns whether the socket was newly added and
+the gateway broadcasts only then; leave, disconnect and the kicks are unchanged. The ws ping/pong
+heartbeat is already the marco-polo — browsers answer protocol pings themselves — and a terminated
+socket reaches `handleDisconnect`, which recounts every room it held. No client change was needed.
+
+**Two e2e traps worth keeping.** A Vuetify picker's `<input>` holds the *search* text, blank on
+every field nobody is typing into; the selection is rendered separately as
+`.v-autocomplete__selection-text`, so reading `input.value` says a synced product never arrived
+when it plainly did. And `E2E_PROBE_MS=2000 pnpm test:e2e` compresses the revision probe
+(`VITE_PROBE_MS`, read once in `room-sync-store.ts`, wired through `e2e/config.ts` and the build in
+`global-setup.ts`), which is what puts several healing cycles inside a test-length run; unset, it
+is the app's own 10s and the soak tests simply wait longer.
+
+New e2e files: `live-propagation.e2e.ts` (product both ways, rename, reorder, and the same
+exchange across two idle probe cycles) and `sidebar-tabs.e2e.ts` (the docked sidebar visibly lists
+the active tab's factories across repeated switches, for synced, local and joined tabs).
+`settle()` now takes two clear overlay samples with a gap, because a snapshot landing just after
+the first one raises a load of its own.
+
 ## The PR-review polish round (2026-08-31), and the one real bug in it
 
 Ten review points on the v0.7.0 UI. Most were copy or placement; three are worth keeping.
