@@ -1682,7 +1682,13 @@ describe('app-store', () => {
     // state, and the plan is small enough that mounting it in one flush cannot hitch.
     describe('instant render gating', () => {
       const mirrorAt = (tabId: string, revision: number, appVersion = PROTOCOL_VERSION) => {
-        setTabMirrorMeta(tabId, { revision, appVersion, userTouchedIds: [], userTouchedFields: [] })
+        setTabMirrorMeta(tabId, {
+          revision,
+          appVersion,
+          userTouchedIds: [],
+          userTouchedFields: [],
+          declaredRemovals: [],
+        })
       }
 
       it('should render instantly when the mirror matches the server revision', () => {

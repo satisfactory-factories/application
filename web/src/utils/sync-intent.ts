@@ -45,11 +45,19 @@ export const markReorderedFactories = (before: Map<number, string>, factories: F
  * to be declared: `markStructuralIntent` infers only ids that appeared or vanished, so
  * a replacement landing on an id it overwrites would carry no intent at all, and a
  * replacement that announces nothing is never even flushed.
+ *
+ * The departing ids are declared a second way, as `planReplaced`. The server refuses a
+ * burst of removals no bulk action claimed, so this is what tells an emptied plan apart
+ * from a truncated one on the wire.
  */
 export const markPlanReplaced = (before: Factory[], after: Factory[]) => {
   const arriving = new Set(after.map(factory => factory.id))
+  const removedIds: number[] = []
   after.forEach(factory => markFactoryEdited(factory))
   before.forEach(factory => {
-    if (!arriving.has(factory.id)) markFactoryEdited(factory)
+    if (arriving.has(factory.id)) return
+    removedIds.push(factory.id)
+    markFactoryEdited(factory)
   })
+  eventBus.emit('planReplaced', { removedIds })
 }

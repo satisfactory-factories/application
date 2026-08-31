@@ -18,6 +18,25 @@ export class AppliedOp {
 export const AppliedOpSchema = SchemaFactory.createForClass(AppliedOp)
 
 /**
+ * The plan as it stood immediately before the last accepted bulk removal. Latest only,
+ * no UI: it exists so a support action can put a room back after a clear nobody meant.
+ */
+@Schema({ _id: false })
+export class BulkRestore {
+  @Prop({ type: MongooseSchema.Types.Mixed, default: () => [] })
+  factories!: Factory[]
+
+  /** The revision the stashed array was the content of. */
+  @Prop({ type: Number, required: true })
+  revision!: number
+
+  @Prop({ type: Date, required: true })
+  at!: Date
+}
+
+export const BulkRestoreSchema = SchemaFactory.createForClass(BulkRestore)
+
+/**
  * The authoritative copy of a synced tab. `minimize: false` because a factory's
  * empty maps (`syncState`, `rawResources`) are meaningful and mongoose would
  * otherwise drop them, which changes the shape the client gets back.
@@ -82,6 +101,10 @@ export class Room {
 
   @Prop({ type: [AppliedOpSchema], default: () => [] })
   appliedOps!: AppliedOp[]
+
+  /** Never leaves the server: `toRoomSnapshot` names its fields and this is not one. */
+  @Prop({ type: BulkRestoreSchema, default: null })
+  lastBulkRestore!: BulkRestore | null
 
   @Prop({ type: String, required: true })
   createdBy!: string

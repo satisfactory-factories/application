@@ -42,6 +42,7 @@ export const clientOpSchema = z.object({
   opId: id,
   baseRevision: num,
   diff: roomDiffSchema,
+  bulkRemoval: z.boolean().optional(),
 })
 
 export const clientLeaveSchema = z.object({

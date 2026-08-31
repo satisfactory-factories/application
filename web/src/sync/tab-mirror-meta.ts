@@ -15,6 +15,12 @@ export interface TabMirrorMeta {
   /** Intent that survives a restart: the acked baseline itself does not. */
   userTouchedIds: number[]
   userTouchedFields: TabField[]
+  /**
+   * Records a bulk action removed, still unacknowledged. Persisted because the server
+   * refuses undeclared removals, and a restart between the clear and its ack would
+   * otherwise send them undeclared and have the whole plan handed back.
+   */
+  declaredRemovals: number[]
 }
 
 export type TabMirrorMetaMap = Record<string, TabMirrorMeta>
@@ -42,6 +48,9 @@ export const readTabMirrorMeta = (): TabMirrorMetaMap => {
       appVersion: typeof value.appVersion === 'string' ? value.appVersion : PROTOCOL_VERSION,
       userTouchedIds: Array.isArray(value.userTouchedIds) ? value.userTouchedIds.filter(id => typeof id === 'number') : [],
       userTouchedFields: Array.isArray(value.userTouchedFields) ? value.userTouchedFields : [],
+      declaredRemovals: Array.isArray(value.declaredRemovals)
+        ? value.declaredRemovals.filter(id => typeof id === 'number')
+        : [],
     }
   }
   return map

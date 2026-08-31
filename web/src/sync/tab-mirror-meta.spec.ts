@@ -9,11 +9,12 @@ import {
   writeTabMirrorMeta,
 } from '@/sync/tab-mirror-meta'
 
-const meta = (revision: number, ids: number[] = []) => ({
+const meta = (revision: number, ids: number[] = [], declaredRemovals: number[] = []) => ({
   revision,
   appVersion: PROTOCOL_VERSION,
   userTouchedIds: ids,
   userTouchedFields: [] as never[],
+  declaredRemovals,
 })
 
 describe('tab mirror metadata', () => {
@@ -61,6 +62,7 @@ describe('tab mirror metadata', () => {
       appVersion: PROTOCOL_VERSION,
       userTouchedIds: [],
       userTouchedFields: [],
+      declaredRemovals: [],
     })
   })
 

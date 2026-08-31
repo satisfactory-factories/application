@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { CAPS } from 'common'
+import { BULK_REMOVAL_THRESHOLD, CAPS } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { makeFactory } from 'common/testing'
 import type { ClientOpMessage, Factory, RoomDiff } from 'common'
@@ -362,6 +362,100 @@ describe('ws ops: the consistency contract', () => {
 
       expect((await readRoom())?.name).toBe('Renamed by the owner')
     })
+  })
+
+  /**
+   * The server's half of the truncation defence. A client whose plan is half-mounted reports
+   * every unmounted record as deleted, and obeying that empties the room for everybody in it.
+   * Past the threshold the sender has to say the user meant it.
+   */
+  describe('declared bulk removals', () => {
+    const FILLED = 8
+    const ids = Array.from({ length: FILLED }, (_unused, index) => index + 1)
+    const overThreshold = ids.slice(0, BULK_REMOVAL_THRESHOLD + 1)
+
+    /** The fixture room holds two: this fills it to eight, so a removal can pass the threshold. */
+    const fill = async (client: TestClient) => {
+      client.send(op({ factories: ids.slice(2).map(id => named(id, `Factory ${id}`)) }, 0))
+      await client.next('op_ack')
+    }
+
+    const declared = (diff: RoomDiff, baseRevision: number): ClientOpMessage =>
+      ({ ...op(diff, baseRevision), bulkRemoval: true })
+
+    it('refuses a burst of removals nothing declared, and hands back a snapshot', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      const sent = op({ removedFactoryIds: overThreshold }, 1)
+      a.client.send(sent)
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId: sent.opId, reason: 'undeclared_bulk_removal' })
+      expect(rejected.snapshot?.revision).toBe(1)
+      expect(rejected.snapshot?.factories).toHaveLength(FILLED)
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(1)
+      expect(room?.factories).toHaveLength(FILLED)
+    })
+
+    it('accepts the same op once the client declares it', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: overThreshold }, 1))
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ revision: 2 })
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.id))
+        .toEqual(ids.slice(overThreshold.length))
+    })
+
+    it('leaves a removal at the threshold alone, declared or not', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(op({ removedFactoryIds: ids.slice(0, BULK_REMOVAL_THRESHOLD) }, 1))
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ revision: 2 })
+
+      const room = await readRoom()
+      expect(room?.factories).toHaveLength(FILLED - BULK_REMOVAL_THRESHOLD)
+      // Only a bulk removal is worth a restore point; an ordinary edit would just churn it.
+      expect(room?.lastBulkRestore).toBeNull()
+    })
+
+    it('stashes the plan it removed from, so a clear nobody meant can be put back', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: ids }, 1))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toEqual([])
+      expect(room?.lastBulkRestore.revision).toBe(1)
+      expect(room?.lastBulkRestore.factories.map((factory: Factory) => factory.id)).toEqual(ids)
+      expect(room?.lastBulkRestore.at).toBeInstanceOf(Date)
+    })
+
+    // A second copy of an oversized array is how a room document reaches Mongo's own limit,
+    // so the write goes ahead and only the stash is dropped.
+    it('skips the restore point when the stored plan is already over the cap', async () => {
+      const a = await joined(owner.token)
+      const oversized = Array.from(
+        { length: CAPS.factoriesPerRoom + 1 },
+        (_unused, index) => named(index + 1, `Extra ${index}`),
+      )
+      await connection.collection('rooms').updateOne({ roomId }, { $set: { factories: oversized } })
+
+      a.client.send(declared({ removedFactoryIds: overThreshold }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toHaveLength(CAPS.factoriesPerRoom + 1 - overThreshold.length)
+      expect(room?.lastBulkRestore).toBeNull()
+    }, 30_000)
   })
 
   describe('refusals', () => {

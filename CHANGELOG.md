@@ -33,6 +33,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - What you see is always your last acknowledged state from the server, plus everything you have changed since, fully recalculated. A change of yours is never dropped in favour of an incoming one, and nothing is ever half-applied.
 - The owner can rename, share, unshare, set the link, set a password and delete. Everyone else can edit the plan and leave. Renames reach every device.
 - **One person at a time in a text field.** Click into a factory's notes and that box is held for you: everyone else sees it greyed out with "Another builder is editing this" until you click away. Keep typing and it stays yours; leave it alone for ten seconds and it is released for whoever wants it next. It is per field, so the factory next to yours is still open to everybody, and the rest of the plan is unaffected.
+- **Emptying a shared plan is something you have to mean.** Clearing it, pasting over it or loading a template into it says so as it sends. Anything else that asks to delete most of the plan in one go is refused and handed the server's copy back, so a browser that has got itself into a bad state cannot take everyone's plan down with it. The server also keeps the plan as it stood immediately before a bulk deletion, so one that should never have happened can be put back.
 
 ### Offline mode
 

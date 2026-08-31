@@ -416,6 +416,18 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         })
         break
 
+      // The room keeps its plan and the sender rebases onto it, which is the whole
+      // point: a client that shrank by accident is corrected rather than obeyed.
+      case 'undeclared_bulk_removal':
+        connection.send({
+          type: 'op_reject',
+          roomId: message.roomId,
+          opId: message.opId,
+          reason: 'undeclared_bulk_removal',
+          snapshot: toRoomSnapshot(outcome.room),
+        })
+        break
+
       case 'forbidden':
         connection.send({
           type: 'op_reject',

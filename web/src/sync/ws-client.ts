@@ -50,6 +50,8 @@ export interface OutgoingOp {
   opId: string
   baseRevision: number
   diff: RoomDiff
+  /** Set only when every removal in the diff was declared by a bulk action. */
+  bulkRemoval?: boolean
 }
 
 export const syncSocketUrl = (apiUrl: string = config.apiUrl): string => {

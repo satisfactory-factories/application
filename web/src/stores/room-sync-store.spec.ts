@@ -176,6 +176,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
 
       store.trackRoom(ROOM, { visitorToken: 'visitor-1' })
@@ -340,6 +341,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
       store.trackRoom(ROOM)
       connect()
@@ -362,6 +364,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [1],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
       store.trackRoom(ROOM)
       connect()
@@ -458,6 +461,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
       store.trackRoom(ROOM)
       connect()
@@ -1112,6 +1116,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [2],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
 
       store.trackRoom(ROOM)
@@ -1517,6 +1522,137 @@ describe('room-sync-store', () => {
     })
   })
 
+  /**
+   * Past a handful of removals in one op the server wants the client to say the user meant
+   * it, because that many is a whole-plan replacement rather than an edit — and the shape a
+   * truncated client produces. Only a bulk action declares, so the two are told apart.
+   */
+  describe('declared bulk removals', () => {
+    const BIG = 8
+    let big: Factory[]
+
+    const clearThroughTheStore = (tab: FactoryTab) => {
+      appStore.currentFactoryTab = tab
+      appStore.inited = true
+      appStore.clearFactories()
+    }
+
+    beforeEach(() => {
+      big = Array.from({ length: BIG }, (_unused, index) =>
+        newFactory(`Factory ${index}`, index, index + 1))
+      calculateFactories(big, gameData, { origin: 'recalculate' })
+      big = wire(big)
+    })
+
+    it('declares the removals a cleared plan produced', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(big, 4)
+
+      clearThroughTheStore(tab)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(lastOp().diff.removedFactoryIds).toHaveLength(BIG)
+      expect(lastOp().bulkRemoval).toBe(true)
+    })
+
+    // The truncation shape, and the whole point of the flag: the array shrinks and no bulk
+    // action ever said so, so the op goes without the claim and the server refuses it.
+    it('claims nothing for a shrink no bulk action declared', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(big, 4)
+
+      tab.factories.splice(2, 6)
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(lastOp().diff.removedFactoryIds).toHaveLength(6)
+      expect(lastOp().bulkRemoval).toBeUndefined()
+    })
+
+    it('writes the declaration to the mirror, not just to the engine', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(big, 4)
+
+      clearThroughTheStore(tab)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(readTabMirrorMeta()[ROOM]?.declaredRemovals).toEqual(big.map(entry => entry.id))
+    })
+
+    // The op may be a restart away: cleared while offline, or behind a pending op. Read back
+    // off the mirror the removals still have to reach the server as the user's own.
+    it('still declares them after a restart that only has the mirror', () => {
+      setTab([])
+      setTabMirrorMeta(ROOM, {
+        revision: 4,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: big.map(entry => entry.id),
+        userTouchedFields: [],
+        declaredRemovals: big.map(entry => entry.id),
+      })
+
+      store.trackRoom(ROOM)
+      connect()
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(big, 4), revision: 4 })
+
+      expect(lastOp().diff.removedFactoryIds).toHaveLength(BIG)
+      expect(lastOp().bulkRemoval).toBe(true)
+    })
+
+    it('keeps the declaration through a reject, so the resend still carries it', () => {
+      const tab = syncAt(big, 4)
+      clearThroughTheStore(tab)
+      store.flushRoom(ROOM)
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: lastOp().opId,
+        reason: 'stale_base',
+        snapshot: snapshotOf(big, 5),
+      })
+
+      expect(lastOp().baseRevision).toBe(5)
+      expect(lastOp().bulkRemoval).toBe(true)
+    })
+
+    // Spent, not held: a record the baseline no longer carries can never be removed again,
+    // and a declaration that outlived its removal would launder the next accidental one.
+    it('spends the declaration once the server has the removals', () => {
+      const tab = syncAt(big, 4)
+      clearThroughTheStore(tab)
+      store.flushRoom(ROOM)
+
+      receive({ type: 'op_ack', roomId: ROOM, opId: lastOp().opId, revision: 5 })
+
+      expect(readTabMirrorMeta()[ROOM]?.declaredRemovals).toEqual([])
+    })
+
+    // Without this the refusal is a loop: the rebase reads the removals as intent, resends
+    // them, and is refused again every probe cycle while the plan stays gone on one screen.
+    it('takes the refused records back rather than resending them for ever', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(big, 4)
+
+      tab.factories.splice(2, 6)
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+      const refused = lastOp()
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: refused.opId,
+        reason: 'undeclared_bulk_removal',
+        snapshot: snapshotOf(big, 4),
+      })
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(names(tab)).toHaveLength(BIG)
+      expect(lastOp().opId).toBe(refused.opId)
+    })
+  })
+
   describe('a tab field the user set on its own', () => {
     it('survives the reconnect, and is re-sent', () => {
       vi.useFakeTimers()
@@ -1692,6 +1828,7 @@ describe('room-sync-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
 
       store.pruneMirrorMeta()

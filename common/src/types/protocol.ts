@@ -151,12 +151,26 @@ export interface ClientJoinMessage {
   visitorToken?: string
 }
 
+/**
+ * Removals past this in a single op are a whole-plan replacement rather than an edit, and
+ * the server refuses one that does not say so. Nothing but a bulk action — clear, paste,
+ * template, demo — legitimately produces that many, so an undeclared burst is a truncated
+ * client about to empty the room for everybody in it.
+ */
+export const BULK_REMOVAL_THRESHOLD = 5
+
 export interface ClientOpMessage {
   type: 'op'
   roomId: string
   opId: string
   baseRevision: number
   diff: RoomDiff
+  /**
+   * "The user replaced this plan wholesale." Required above `BULK_REMOVAL_THRESHOLD`
+   * removals; only the bulk paths declare it, so a diff that shrank by accident cannot
+   * carry it.
+   */
+  bulkRemoval?: boolean
 }
 
 export interface ClientLeaveMessage {
@@ -241,6 +255,8 @@ export type OpRejectReason =
   | 'forbidden'
   | 'room_deleted'
   | 'too_large'
+  /** Over-threshold removals with no `bulkRemoval`. The sender re-baselines off the snapshot. */
+  | 'undeclared_bulk_removal'
 
 export interface ServerOpRejectMessage {
   type: 'op_reject'

@@ -1,4 +1,4 @@
-import { CAPS } from 'common'
+import { BULK_REMOVAL_THRESHOLD, CAPS } from 'common'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
@@ -19,6 +19,8 @@ export type OpOutcome =
   | { status: 'not_owner', room: Room }
   /** The merged room would exceed the factories-per-room cap. */
   | { status: 'too_large', room: Room }
+  /** A burst of removals nobody declared: the sender is truncated, not editing. */
+  | { status: 'undeclared_bulk_removal', room: Room }
   | { status: 'forbidden' }
   | { status: 'gone' }
 
@@ -61,6 +63,13 @@ export class RoomOpService {
     // Members and visitors write content only; the room's name is the owner's.
     if (op.diff.name !== undefined && role !== 'owner') return { status: 'not_owner', room }
 
+    const removals = op.diff.removedFactoryIds?.length ?? 0
+    const bulk = removals > BULK_REMOVAL_THRESHOLD
+    if (bulk && !op.bulkRemoval) {
+      this.logger.warn(`Refused ${removals} undeclared removals in room ${op.roomId} from ${actor}`)
+      return { status: 'undeclared_bulk_removal', room }
+    }
+
     const factories = mergedFactories(room, op.diff)
     if (factories && factories.length > CAPS.factoriesPerRoom) return { status: 'too_large', room }
 
@@ -69,7 +78,11 @@ export class RoomOpService {
       .findOneAndUpdate(
         { roomId: op.roomId, revision: op.baseRevision, deletedAt: null, ...accessGuard(role, room) },
         {
-          $set: { ...contentUpdate(op.diff, factories), lastActivityAt: this.clock.now() },
+          $set: {
+            ...contentUpdate(op.diff, factories),
+            ...this.restorePoint(bulk, room),
+            lastActivityAt: this.clock.now(),
+          },
           $inc: { revision: 1 },
           $push: {
             appliedOps: { $each: [{ opId: op.opId, revision }], $slice: -APPLIED_OPS_RING },
@@ -97,6 +110,24 @@ export class RoomOpService {
     }
 
     return { status: 'applied', revision: updated.revision }
+  }
+
+  /**
+   * The plan as it stood before a bulk removal, stashed in the same guarded write so it can
+   * only exist for a state that committed. Skipped above the factory cap: a second copy of an
+   * oversized array is how a room document reaches Mongo's own 16MB limit.
+   */
+  private restorePoint (bulk: boolean, room: Room): Record<string, unknown> {
+    if (!bulk) return {}
+    if (room.factories.length > CAPS.factoriesPerRoom) {
+      this.logger.warn(
+        `Skipping the bulk restore point for room ${room.roomId}: ${room.factories.length} factories`,
+      )
+      return {}
+    }
+    return {
+      lastBulkRestore: { factories: room.factories, revision: room.revision, at: this.clock.now() },
+    }
   }
 
   private enqueue<T> (roomId: string, work: () => Promise<T>): Promise<T> {

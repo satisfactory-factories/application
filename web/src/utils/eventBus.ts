@@ -12,6 +12,9 @@ type Events = {
   // The same statement for a field the tab owns rather than a factory, so a
   // power target or a group list edited on its own still saves and still syncs.
   tabEdited: TabField;
+  // The user replaced the whole plan (clear, paste, template, demo). `removedIds` are the
+  // records that went, and they are the only removals the server accepts in bulk.
+  planReplaced: { removedIds: number[] };
   // Plan-level state changed (the planner version, and anything else held on the tab rather
   // than on a factory). Persistence and the cloud dirty flag both hang off factoryUpdated, so
   // without this a tab-level edit is saved by nothing.

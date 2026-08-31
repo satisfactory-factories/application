@@ -68,6 +68,7 @@ separate later session.
 
 - Create the `common` workspace package: message unions, zod schemas, `PROTOCOL_VERSION`, canonical `Factory`/`FactoryTab` types
 - Write the complete zod `Factory`/`FactoryTab` schema with the caps table — the persistent-data boundary
+- Declare bulk removals on the wire: `bulkRemoval` past `BULK_REMOVAL_THRESHOLD`, set only by a whole-plan replacement and only for the ids it removed; refuse an undeclared burst with a snapshot to rebase onto, and stash the pre-op plan as `lastBulkRestore`
 
 ### Infrastructure and proof
 
@@ -288,7 +289,7 @@ hand-duplicated backend interface file.
 
 **Wire protocol.**
 - Client → server: `hello {token?, protocolVersion}`, `join {roomId, lastRevision?,
-  visitorToken?}`, `op {roomId, opId, baseRevision, diff}`, `leave {roomId}`,
+  visitorToken?}`, `op {roomId, opId, baseRevision, diff, bulkRemoval?}`, `leave {roomId}`,
   `lock {roomId, fieldKey}`, `unlock {roomId, fieldKey}`.
 - Server → client: `hello_ok`, `snapshot {room, revision}`, `up_to_date {revision}`,
   `op_ack {opId, revision}`, `op_apply {revision, diff}`, `op_reject {opId, reason,
@@ -342,6 +343,12 @@ a re-join is told what a room holds only when it holds something.
   send nothing if nothing differs (how "it applied before the drop" resolves).
 - Duplicate `opId`s in the ring return the original ack; the guarantee's honest scope is the
   single in-flight retry window, the only op a client ever retries.
+- **Removals past `BULK_REMOVAL_THRESHOLD` (5) in one op must carry `bulkRemoval: true`**, which
+  only a whole-plan replacement sets (clear, paste, template, demo) and only for the ids that
+  replacement removed. Without it the server answers `op_reject {reason:
+  'undeclared_bulk_removal', snapshot}`, so a client whose plan is half-mounted re-baselines
+  instead of emptying the room. An accepted bulk removal stashes the pre-op factory array on the
+  room as `lastBulkRestore`, latest only, in the same guarded write.
 
 **Who declares intent.** Adds, deletes and tab-field divergence are inferred from the diff
 (`markStructuralIntent`); everything else has to be declared, because a factory that already

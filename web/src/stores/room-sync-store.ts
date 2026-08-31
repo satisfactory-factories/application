@@ -114,6 +114,12 @@ interface RoomEngine {
   pending: PendingOp | null
   touchedFactories: Set<number>
   touchedFields: Set<TabField>
+  /**
+   * Ids a bulk replacement removed and the server has not acknowledged yet. An op whose
+   * removals are all in here is sent as `bulkRemoval`, which is the only way past the
+   * server's threshold; anything else that shrinks the plan that far is refused.
+   */
+  declaredRemovals: Set<number>
   /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
   needsSnapshot: boolean
   visitorToken?: string
@@ -154,6 +160,7 @@ const newEngine = (options: TrackRoomOptions): RoomEngine => ({
   pending: null,
   touchedFactories: new Set(),
   touchedFields: new Set(),
+  declaredRemovals: new Set(),
   needsSnapshot: false,
   visitorToken: options.visitorToken,
 })
@@ -298,6 +305,11 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     for (const field of [...engine.touchedFields]) {
       if (!fieldDiffers(baseline, local, field)) engine.touchedFields.delete(field)
     }
+    // A record the baseline no longer holds can never be removed again, so its declaration
+    // is spent. One that survived the rebase keeps it: the removal is still owed.
+    for (const id of [...engine.declaredRemovals]) {
+      if (!baseline.factories.has(id)) engine.declaredRemovals.delete(id)
+    }
   }
 
   // ===== Persistence =====
@@ -311,6 +323,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       appVersion: PROTOCOL_VERSION,
       userTouchedIds: [...engine.touchedFactories],
       userTouchedFields: [...engine.touchedFields],
+      declaredRemovals: [...engine.declaredRemovals],
     })
   }
 
@@ -372,6 +385,16 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return false
   }
 
+  /**
+   * Whether this op may claim `bulkRemoval`. Every removed id has to have been declared by a
+   * bulk replacement, so a diff that shrank for any other reason cannot borrow the claim from
+   * one that did — which is what keeps the server's threshold worth having.
+   */
+  const declaresEveryRemoval = (engine: RoomEngine, diff: RoomDiff): boolean => {
+    const removed = diff.removedFactoryIds ?? []
+    return removed.length > 0 && removed.every(id => engine.declaredRemovals.has(id))
+  }
+
   const flushRoom = (roomId: string): boolean => {
     const room = rooms.value[roomId]
     const engine = engines.get(roomId)
@@ -397,6 +420,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       opId,
       baseRevision: engine.acked.revision,
       diff: result.diff,
+      bulkRemoval: declaresEveryRemoval(engine, result.diff) || undefined,
     })
     if (!sent) return false
 
@@ -786,10 +810,22 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!room || !engine) return
     if (engine.pending && engine.pending.opId !== opId) return
 
+    const refusedRemovals = engine.pending?.diff.removedFactoryIds ?? []
     engine.pending = null
     room.hasPendingOp = false
     room.rejectStreak += 1
     room.lastError = reason
+
+    // The server will not take these removals and this client has no way to make them
+    // declarable, so a resend is a loop. Dropping the intent lets the rebase below put the
+    // records back, which is the safe direction: the plan is on the server, not here.
+    if (reason === 'undeclared_bulk_removal' && refusedRemovals.length > 0) {
+      console.error(
+        'roomSyncStore: the server refused removals nothing declared, restoring them from its copy',
+        { roomId, factoryIds: refusedRemovals },
+      )
+      for (const id of refusedRemovals) engine.touchedFactories.delete(id)
+    }
 
     if (!snapshot) {
       // Nothing to rebase onto: the room is gone or this client is no longer in it.
@@ -958,6 +994,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       const stored = readTabMirrorMeta()[roomId]
       for (const id of stored?.userTouchedIds ?? []) engine.touchedFactories.add(id)
       for (const field of stored?.userTouchedFields ?? []) engine.touchedFields.add(field)
+      for (const id of stored?.declaredRemovals ?? []) engine.declaredRemovals.add(id)
     } else if (options.visitorToken) {
       engine.visitorToken = options.visitorToken
     }
@@ -1169,6 +1206,20 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   /**
+   * The user emptied or replaced the whole plan. Recorded per id and persisted, because the
+   * op that carries these removals may be several minutes and a restart away — offline, or
+   * behind a pending op — and undeclared it would be refused and the plan handed back.
+   */
+  const onPlanReplaced = ({ removedIds }: { removedIds: number[] }) => {
+    const tab = appStore.getCurrentTab()
+    const engine = tab ? engines.get(tab.id) : undefined
+    if (!tab || !engine || removedIds.length === 0) return
+
+    for (const id of removedIds) engine.declaredRemovals.add(id)
+    persistMeta(tab.id)
+  }
+
+  /**
    * The mirror is a whole plan again, so this is the flush the load blocked, the moment a
    * provisional baseline can be read off it, and the moment every message parked during
    * the chain is made good — a fresh snapshot rebases onto a complete array.
@@ -1187,6 +1238,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   eventBus.on('factoryEdited', onFactoryEdited)
   eventBus.on('tabEdited', onTabEdited)
+  eventBus.on('planReplaced', onPlanReplaced)
   eventBus.on('factoryUpdated', scheduleFlush)
   eventBus.on('calculationsCompleted', scheduleFlush)
   eventBus.on('loadingCompleted', onLoadingCompleted)
@@ -1202,6 +1254,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     forgetFieldLocks()
     eventBus.off('factoryEdited', onFactoryEdited)
     eventBus.off('tabEdited', onTabEdited)
+    eventBus.off('planReplaced', onPlanReplaced)
     eventBus.off('factoryUpdated', scheduleFlush)
     eventBus.off('calculationsCompleted', scheduleFlush)
     eventBus.off('loadingCompleted', onLoadingCompleted)

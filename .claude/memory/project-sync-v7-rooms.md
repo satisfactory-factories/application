@@ -29,14 +29,12 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 294 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2795 unit tests (152 files, 1 skipped),
+backend 299 vitest tests (25 files, including the field locks below), common 80 (4),
+web 2802 unit tests (152 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 40 Playwright e2e tests passing. The 34 that predate the render-pacing fix
-ran twice at full speed and once under `E2E_CPU_THROTTLE=6`, which is the run that earns its keep
-and is the one that found the last real bug; the rounds since (render pacing, the field locks'
-own two tests, then the loading-tab three) have had one full-speed run each, bar the
-loading-tab file which ran twice.
+`build` clean, and all 40 Playwright e2e tests passing. The whole suite ran twice at full speed
+and once under `E2E_CPU_THROTTLE=6` in the bulk-removal round below; the throttled run is the one
+that earns its keep, and it is the one that found the last real bug in an earlier round.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
 it gets proved.
 
@@ -1046,10 +1044,10 @@ id is in `touchedFactories`" cannot work as written: `markStructuralIntent` runs
 before `buildDiff` and marks every missing id, so the test is a tautology. Capturing the set
 *before* the inference does not rescue it either, because inference is the **only** declaration
 a plain delete has — `removeFactory` and `Planner.vue`'s `deleteFactory` mark the records the
-reindex shifted, never the record removed. Making the guard about declared intent therefore
-means adding a declaration at every site that shrinks the plan, `loadServerPlan` and the
-share/paste imports included, and one missed site silently stops deletions syncing. Left as a
-flagged follow-up; the guard ships keyed on load ownership instead.
+reindex shifted, never the record removed. Declaring at every site that shrinks a plan is what
+that would take, and one missed site silently stops deletions syncing. So the guard ships keyed
+on load ownership, and the declaration comes back in the section below, scoped to bulk removals
+where the call sites are enumerable.
 
 Guards: `room-sync-store.spec.ts` "a tab a load chain owns" (7 cases, including a negative
 control that sends the removal once the tab stops reporting itself as loading),
@@ -1063,6 +1061,69 @@ first snapshot back writes the owner's tab stamp to `undefined` and the raw-reso
 notice can raise itself on a plan that had answered for it; and the import row's option menu
 cannot be clicked by a real pointer event in the e2e viewport, so `addImport` selects with
 `dispatchEvent`.
+
+## Bulk removals are declared, and the server keeps a restore point (2026-08-31)
+
+The guard above stops *this* client truncating a room. It cannot stop the next one, because the
+failure was a client honestly reporting a state it honestly held. So the same rule is stated on
+the wire as well, where it depends on no client being correct.
+
+**Past `BULK_REMOVAL_THRESHOLD` (5, in `common/src/types/protocol.ts`) removals in one op, the op
+must carry `bulkRemoval: true`.** The gateway refuses one that does not, with
+`op_reject { reason: 'undeclared_bulk_removal', snapshot }`, so a truncated client re-baselines
+onto the room's real state instead of emptying it for everybody in it. The check reads nothing
+about the sender: past that many, a diff is a whole-plan replacement rather than an edit.
+
+**Only the bulk paths declare, and they declare *which ids*.** `markPlanReplaced` in
+`web/src/utils/sync-intent.ts` emits `planReplaced { removedIds }`; the store holds them in
+`engine.declaredRemovals` and sets the flag only when every id in the diff's `removedFactoryIds`
+is one of them. Its callers are the whole list of bulk paths: `clearFactories` in `app-store.ts`,
+`Templates.vue`, `Introduction.vue`'s demo button and `RawResourcesWizard.vue` — and pasting a
+plan is covered because it clears first, through `clear-all`. A boolean latch would have covered
+all of them and not been honest: a latch set by a clear would launder the next accidental removal
+that happened to follow it. The set is persisted in the tab mirror meta,
+because the op can be a restart away — cleared while offline, or queued behind a pending op — and
+it is spent in `clearSatisfiedIntent`, where a record the baseline no longer holds can never be
+removed again.
+
+**The refusal has to converge, and it does not for free.** A rejected op is rebased and resent,
+and the rebase reads the missing records as intent — so a refused removal would be resent every
+probe cycle for ever, the plan gone on one screen and whole everywhere else. `onOpReject` drops
+the intent for exactly the ids the refused op named when the reason is
+`undeclared_bulk_removal`, and logs them, so the rebase puts the records back from the server's
+copy. Restoring is the safe direction: the plan is on the server, not in the client that just
+failed to explain itself.
+
+**The one honest cost of the threshold:** single deletes can coalesce into one op behind a slow
+ack, and past five of them that op is refused, so the user watches those deletions come back.
+Declaring at `removeFactory`/`deleteFactory` too would close it, which is the stage-one
+follow-up above done properly.
+
+`PROTOCOL_VERSION` is deliberately unchanged: v0.7.0 is unreleased, so client and server ship
+together and no compatibility shim is owed. The one live consequence is on the shared preview
+API — a tab left open on a preview build from before this change sends no flag, so a clear of
+more than five factories is refused and the plan comes back. A refresh is the whole fix, and the
+version gate will not prompt for one because the protocol version did not move.
+
+**The restore point.** An accepted over-threshold op stashes the pre-op array on the room as
+`lastBulkRestore { factories, revision, at }` inside the same revision-guarded
+`findOneAndUpdate`, so it can only exist for a state that actually committed. Latest only, no UI,
+and it never leaves the server: `toRoomSnapshot` names its fields and this is not one. Skipped
+with a warning when the stored plan is already over `CAPS.factoriesPerRoom`, because a second
+copy of an oversized array is how a room document reaches Mongo's own 16MB limit.
+
+**The testing lesson, and it is why the truncation bug reached live at all.** Every sync fixture
+was two factories. Two mount in one flush, so the stagger the bug lives in never existed in a
+test, and nothing ever delivered an op *during* a load. Both are covered now:
+`loading-tab.e2e.ts` seeds fifteen and lands a peer's op mid-stagger, `bulk-clear.e2e.ts` seeds
+past the threshold so the clear exercises the declaration end to end, and the store spec builds
+eight. A fixture small enough to be convenient is a fixture that cannot reach the code being
+protected.
+
+Guards: `backend/test/ws-ops.spec.ts` "declared bulk removals" (5) and
+`room-sync-store.spec.ts` "declared bulk removals" (7), each negative-controlled by neutering
+one half at a time — the server check both ways, the restore point, its cap skip, the flag, the
+id set, its persistence and the convergence rule.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See

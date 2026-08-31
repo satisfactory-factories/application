@@ -135,6 +135,7 @@ describe('rooms-store', () => {
         appVersion: PROTOCOL_VERSION,
         userTouchedIds: [],
         userTouchedFields: [],
+        declaredRemovals: [],
       })
       listReturns([entry({ roomId: tab.id })])
 
