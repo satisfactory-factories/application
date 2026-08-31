@@ -321,14 +321,30 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   // the offline banner is fixed to the bottom of the viewport on top of it.
   await page.getByTestId('add-factory').press('Enter')
 
-  const name = page.locator('input.factory-name').last()
-  await expect(name).toBeVisible()
+  // Pin the fresh card by its DOM id before touching it. Positional locators
+  // (.last()) re-resolve per action, and a concurrent client's factory can land
+  // between two actions — on CI this put the note into the other client's card,
+  // leaving this factory noteless everywhere, server included.
+  let freshId = ''
+  await expect.poll(async () => {
+    const cards = await page.locator('.factory-card[id]:not(.sub-card)').evaluateAll(els =>
+      els.map(el => ({
+        id: el.id,
+        name: el.querySelector<HTMLInputElement>('input.factory-name')?.value,
+      })))
+    // Remote factories always arrive already named; only ours is default-named.
+    freshId = cards.find(card => card.name === 'A new factory')?.id ?? ''
+    return freshId
+  }, { message: 'the new factory card never appeared' }).not.toBe('')
+
+  const card = page.locator(`[id="${freshId}"]`)
+  const name = card.locator('input.factory-name')
   await name.fill(edit.name)
   await commitName(name)
 
   // A note needs no recalculation to reach the sync engine, so it is the cheapest
   // per-factory payload a test can give a new card.
-  await notesField(page).last().fill(edit.note)
+  await card.locator(`[id="${freshId}-notes"] textarea:not([aria-hidden="true"])`).fill(edit.note)
 }
 
 /** Edits a factory already on screen, addressed by its position in the plan. */
