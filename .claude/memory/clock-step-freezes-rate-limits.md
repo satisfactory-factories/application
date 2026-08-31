@@ -21,9 +21,15 @@ healthcheck alone exhausted the loopback bucket in five minutes and the containe
 with a `retry-after` counting down to a reset an hour away. It self-healed the moment the wall
 clock passed that reset.
 
-**Why it matters:** `update.sh` runs `docker compose up -d --wait`, which blocks on this
-healthcheck, so a deploy attempted inside that window reports `DEPLOY FAILED` on a perfectly good
-image.
+**Why it matters:** the container reports `unhealthy` for as long as the clock offset lasts, which
+is what monitoring and anything healthcheck-gated sees. The deploy risk is narrower than it first
+looks, and worth stating precisely, because `update.sh` runs `docker compose up -d --wait`:
+
+- A deploy publishing a **new** image digest recreates the container, which opens fresh windows
+  against the corrected clock, so it succeeds. This is why the 2026-08-31 10:24 deploy went green.
+- A deploy whose image digest is **unchanged** does not recreate the container, so `--wait` blocks
+  on the stuck healthcheck until it times out and reports `DEPLOY FAILED` on a healthy image.
+- A deploy landing before NTP steps the clock gets a newly created container stuck the same way.
 
 **How to apply:**
 
