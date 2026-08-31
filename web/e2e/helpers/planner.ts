@@ -321,21 +321,14 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   // the offline banner is fixed to the bottom of the viewport on top of it.
   await page.getByTestId('add-factory').press('Enter')
 
-  // Pin the fresh card by its DOM id before touching it. Positional locators
-  // (.last()) re-resolve per action, and a concurrent client's factory can land
-  // between two actions — on CI this put the note into the other client's card,
-  // leaving this factory noteless everywhere, server included.
-  let freshId = ''
-  await expect.poll(async () => {
-    const cards = await page.locator('.factory-card[id]:not(.sub-card)').evaluateAll(els =>
-      els.map(el => ({
-        id: el.id,
-        name: el.querySelector<HTMLInputElement>('input.factory-name')?.value,
-      })))
-    // Remote factories always arrive already named; only ours is default-named.
-    freshId = cards.find(card => card.name === 'A new factory')?.id ?? ''
-    return freshId
-  }, { message: 'the new factory card never appeared' }).not.toBe('')
+  // The new card is the one the cursor landed in. Focus is client-local, so a
+  // concurrent client's identical default-named record can never be confused
+  // with ours no matter how the timing falls — matching by name or position
+  // both lost that race on CI.
+  const focused = page.locator('input.factory-name:focus')
+  await expect(focused, 'the new factory never focused its name field').toBeVisible()
+  const freshId = await focused.evaluate(el => el.closest('.factory-card:not(.sub-card)')?.id ?? '')
+  expect(freshId, 'the focused name field sits outside a factory card').not.toBe('')
 
   const card = page.locator(`[id="${freshId}"]`)
   const name = card.locator('input.factory-name')

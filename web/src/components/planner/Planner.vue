@@ -486,6 +486,18 @@
     if (groupId) moveFactoryToGroup(factory.id, groupId)
     // Reads the factory's group, so it opens the right one — hence after the move, not before.
     navigateToFactory(factory.id)
+    focusFactoryName(factory.id)
+  }
+
+  // A fresh card starts with the cursor in its name, ready to type over. Focus is
+  // also the one client-local marker of "my card" while a collaborator's identical
+  // default-named factory can arrive at any moment.
+  const focusFactoryName = (factoryId: number) => {
+    const focus = () =>
+      document.getElementById(String(factoryId))?.querySelector<HTMLInputElement>('input.factory-name')?.focus()
+    if (typeof requestAnimationFrame === 'undefined') focus()
+    // The card mounts on the next render; the second frame covers slower mounts.
+    else requestAnimationFrame(() => requestAnimationFrame(focus))
   }
 
   // This function calculates the world resources available after each group has consumed Raw Resources.

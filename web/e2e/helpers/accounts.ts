@@ -125,5 +125,17 @@ export const newClient = async (
     headers: { ...route.request().headers(), 'x-forwarded-for': address },
   }))
 
+  // E2E_CPU_THROTTLE=6 makes every page ~6x slower, approximating a loaded CI
+  // runner: the race windows between UI actions, debounces and rebases open wide
+  // enough to reproduce CI-only failures on a fast dev machine.
+  const throttle = Number(process.env.E2E_CPU_THROTTLE ?? 0)
+  if (throttle > 1) {
+    context.on('page', page => {
+      void context.newCDPSession(page)
+        .then(session => session.send('Emulation.setCPUThrottlingRate', { rate: throttle }))
+        .catch(() => {})
+    })
+  }
+
   return context
 }
