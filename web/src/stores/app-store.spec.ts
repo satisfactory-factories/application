@@ -588,6 +588,29 @@ describe('app-store', () => {
           expect(appStore.isLoaded).toBe(true)
         })
 
+        // The stagger pushes into whatever tab is current at the moment of each push,
+        // so switching tabs mid-chain used to append the old plan onto the new one.
+        it('should not push the loading plan into a tab the user switched to', async () => {
+          appStore.addTab({ name: 'Other', factories: [newFactory('Other One', 0, 9)] })
+          const other = appStore.getCurrentTab() as FactoryTab
+          appStore.activateTab(appStore.factoryTabs[0].id)
+          await settleLoads()
+
+          const running = appStore.prepareLoader([newFactory('A', 0, 1), newFactory('B', 1, 2)], true)
+          await new Promise<void>(resolve => {
+            const onIncrement = () => {
+              eventBus.off('incrementLoad', onIncrement)
+              resolve()
+            }
+            eventBus.on('incrementLoad', onIncrement)
+          })
+          appStore.activateTab(other.id)
+          await running
+          await settleLoads()
+
+          expect(other.factories.map(entry => entry.name)).toEqual(['Other One'])
+        })
+
         it('should ignore the overlay asking for data while a load is driving itself', async () => {
           const plan = [newFactory('Foo', 0, 1), newFactory('Bar', 1, 2)]
           vi.mocked(eventBus.emit).mockClear()

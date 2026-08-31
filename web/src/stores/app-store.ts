@@ -479,7 +479,11 @@ export const useAppStore = defineStore('app', () => {
    */
   const reloadTabFromMirror = async (tabId: string) => {
     if (currentFactoryTab.value?.id !== tabId) return
-    await prepareLoader(currentFactoryTab.value.factories)
+    // A copy, for the same reason writeContentToTab takes one: if this queues behind a
+    // chain that is still staggering, that chain keeps pushing its own records into the
+    // tab's live array, and the queued load would commit the room's plan with them on
+    // the end.
+    await prepareLoader([...currentFactoryTab.value.factories])
   }
 
   /**
@@ -552,13 +556,15 @@ export const useAppStore = defineStore('app', () => {
     // Wait 50ms to allow the loader to update
     await loadPause(50)
 
-    // Start loading the factories
-    await loadNextFactory(newFactories)
+    // Start loading the factories. The chain belongs to the tab it started on: each push
+    // used to resolve `factories.value` afresh, so switching tabs mid-stagger appended the
+    // rest of this plan onto the tab the user had just opened.
+    await loadNextFactory(newFactories, currentFactoryTab.value)
   }
 
-  const loadNextFactory = async (newFactories: Factory[]) => {
+  const loadNextFactory = async (newFactories: Factory[], owner: FactoryTab) => {
     while (loadedCount < newFactories.length) {
-      factories.value.push(newFactories[loadedCount])
+      owner.factories.push(newFactories[loadedCount])
       eventBus.emit('incrementLoad', { step: 'increment' })
       loadedCount++
 

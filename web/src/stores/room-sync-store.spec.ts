@@ -255,6 +255,39 @@ describe('room-sync-store', () => {
       expect(opsOf().flatMap(op => op.diff.removedFactoryIds ?? [])).toEqual([])
     })
 
+    /**
+     * The other half of the same rule: a snapshot the user's edits fought with is
+     * handed back to the loader, and handing it the live array lets the chain that is
+     * still staggering append its own copy of the plan onto the room's content.
+     */
+    it('does not duplicate the plan when a recalculating snapshot lands mid-stagger', async () => {
+      const tab = syncAt(fixture, 4)
+      appStore.currentFactoryTab = tab
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+
+      // forceRecalc so the chain actually staggers; the first increment is proof it is.
+      const loading = appStore.prepareLoader(tab.factories, true)
+      await new Promise<void>(resolve => {
+        const onIncrement = () => {
+          eventBus.off('incrementLoad', onIncrement)
+          resolve()
+        }
+        eventBus.on('incrementLoad', onIncrement)
+      })
+
+      const server = wire(fixture)
+      server[0].name = 'Theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      await loading
+      await vi.waitFor(() => {
+        if (appStore.loadInFlight) throw new Error('the queued load is still running')
+      })
+
+      expect(names(tab)).toEqual(['Mine', 'Beta'])
+    })
+
     it('never hides the planner for a snapshot into a tab nobody is looking at', async () => {
       const tab = syncAt(fixture, 4)
       appStore.factoryTabs.push({ id: 'other-tab', name: 'Other', factories: [], powerTarget: 0, groups: [] })
