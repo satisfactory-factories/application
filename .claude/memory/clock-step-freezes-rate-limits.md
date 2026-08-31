@@ -63,6 +63,16 @@ is what monitoring and anything healthcheck-gated sees. The deploy risk is narro
   from `healthRateLimit` only. `apiRateLimit`, `shareRateLimit` and `versionRateLimit` sit on the
   same MemoryStore and a client key active across a step can still freeze. That is accepted rather
   than solved: it self-heals when real time catches up, and no user was affected.
+- **The NestJS rewrite does not inherit this, for a reason worth knowing.** PR #620 replaces
+  `backend.ts` with `@nestjs/throttler`, keeping `/health` at 10 per 60s and adding no loopback
+  exemption, so it looks like the same setup. It is not. Throttler drains the hit count with
+  `setTimeout(..., ttl)` per hit, and Node timers are monotonic, so a clock step cannot stop the
+  count falling. `expiresAt` is wall-clock but only feeds the reported retry-after. The residual
+  hazard is `blockExpiresAt`: once a key is actually blocked, unblocking waits on `Date.now()`, so
+  a backwards step there would extend the block. Reaching that needs more than 10 hits in 60s,
+  which a 30s probe cannot do. Do not port `utils/loopback.ts` into the Nest config expecting it
+  to fix this; it would be belt-and-braces, not a fix.
+
 - **Key off `req.socket.remoteAddress`, never `req.ip`.** `trust proxy` makes `req.ip`
   header-derived and therefore claimable. Verified on the box that host-port traffic reaches the
   container as the docker gateway address rather than `127.0.0.1`, so the exemption covers only
