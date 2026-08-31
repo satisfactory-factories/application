@@ -38,6 +38,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
+| `field-locks` | A focused note disables the same field for the other client and keeps it disabled while its holder types; blur and a ten-second idle both hand it back, and a second factory's note is never covered. |
 
 ## Rate limits, and the address each device claims
 

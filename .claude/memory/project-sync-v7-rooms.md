@@ -23,11 +23,12 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 294 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2737 unit tests (150 files, 1 skipped),
+web 2783 unit tests (152 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 35 Playwright e2e tests passing. The 34 that predate the render-pacing fix
+`build` clean, and all 37 Playwright e2e tests passing. The 34 that predate the render-pacing fix
 ran twice at full speed and once under `E2E_CPU_THROTTLE=6`, which is the run that earns its keep
-and is the one that found the last real bug; the 35-test suite has had one full-speed run since.
+and is the one that found the last real bug; the two rounds since (render pacing, then the field
+locks' own two tests) have had one full-speed run each.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
 it gets proved.
 
@@ -745,6 +746,56 @@ Caps are in `common/src/caps.ts`: `fieldKey` 128 characters (zod, so an over-lon
 and enforced in `claim`. `backend/test/ws-field-locks.spec.ts` (17 tests) drives real `ws`
 clients and a `FakeClock`; the four that carry the design were negative-controlled by
 mutation — steal-the-lock, drop the cap, never expire, never extend on renewal.
+
+### The client half, and the notes field it was proved on (2026-08-31)
+
+`useFieldLock(roomId, fieldKey)` in `web/src/composables/useFieldLock.ts` is the whole
+binding: focus claims, input renews, blur releases, and `disabled` plus a one-line hint come
+back reactive. `web/src/components/planner/PlannerFactoryNotes.vue` is the first and so far
+only caller; a second field is one more call and nothing else, because the key
+(`notes:<factoryId>`) is minted client-side and the server never looks inside it. The state
+and every frame live in `room-sync-store.ts` (`lockedByOther`, `claimField`, `renewField`,
+`releaseField`, `releaseAllFields`, and `fieldLocks` / `connectionId`).
+
+Five things about it that are not obvious from the code:
+
+- **A frame is only sent for a *shared* room.** `canLock` wants `isCollaborative(tabState)`,
+  a connected socket, and the room `synced`. So a local tab, a private synced tab and a
+  paused or joining room all no-op. The private-tab case is a deliberate scope choice
+  rather than an oversight — two devices on one account can still race a notes box, and
+  dropping the `shared` requirement is the whole fix if that is ever wanted.
+- **The client releases its own claim on the TTL; it never expires one it was shown.**
+  Those are two different clocks and only the first is safe. A renewal is deliberately
+  silent server-side, so a peer typing steadily sends no frames at all — a display timer
+  would re-enable a field somebody is actively in. Giving up our own at ten seconds is what
+  makes the release prompt, because the server's sweep is up to a 30s heartbeat behind. The
+  e2e proves both directions, and the negative control is exact: neuter the renewal and the
+  "still typing" assertion fails; neuter the client's own idle release and the "lapses on
+  its own" assertion fails at 25s while the sweep is still coming.
+- **The display is dropped whole when the socket falls over.** A re-join is told a room's
+  locks only when the room holds some, so a display carried across the gap would disable a
+  field nobody is in with no frame coming to correct it.
+- **A tab switch is a blur the field never gets** — the card unmounts first — so the store
+  watches the current tab id and releases everything it holds. Offline mode releases before
+  it stops the socket, in that order.
+- **The renewal throttle is 3s** (`FIELD_LOCK_RENEW_MS`), so a typist costs one frame every
+  few seconds, and the idle timer is reset only by a frame that was actually *sent*, which
+  is what keeps the client's clock and the server's the same one.
+
+The hint is `Another builder is editing this`, rendered through the input's own `:messages`
+row: that row already exists for the character counter, so a lock costs no layout jump. It
+is amber (`var(--sf-warning)`) and the details row is un-dimmed, because Vuetify renders a
+disabled input's messages at 38% and the one line explaining why the field will not take a
+keystroke is worth reading.
+
+Out of scope, in Matt's words: "two people pressing the up and down arrows on any numerical,
+we can't really do anything about that" — a spinner is not a focused edit and a lock cannot
+help. The follow-up fields, in the order they are worth doing: the factory name, tasks,
+group names, and the export calculator's inputs.
+
+`web/e2e/tests/field-locks.e2e.ts` is the two-client proof and it is one of the slower files
+in the suite (~35s), because the ten seconds are real: there is no compressed clock for the
+TTL the way `E2E_PROBE_MS` compresses the revision probe.
 
 ## Flagged follow-ups, none of them blocking
 

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { PROTOCOL_VERSION } from 'common'
+import { nextTick } from 'vue'
+import { FIELD_LOCK_TTL_MS, PROTOCOL_VERSION } from 'common'
 import type { Factory, FactoryTab, RoomSnapshot, ServerMessage } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
 import type { WebSocketLike } from '@/sync/ws-client'
 import {
+  FIELD_LOCK_RENEW_MS,
   OFFLINE_NOTICE_MS,
   OP_DEBOUNCE_MS,
   REVISION_PROBE_MS,
@@ -1590,6 +1592,174 @@ describe('room-sync-store', () => {
 
       expect(joinsOf().length).toBe(joins + 1)
       expect(joinsOf().at(-1)).toMatchObject({ roomId: ROOM, lastRevision: 3 })
+    })
+  })
+
+  describe('field locks', () => {
+    const lockFrames = (socket = latest()) =>
+      framesOf(socket).filter(frame => frame.type === 'lock' || frame.type === 'unlock')
+
+    /** A live room the user can hand to someone else, which is the only kind that locks. */
+    const sharedRoom = (): FactoryTab => {
+      const tab = syncAt(fixture, 3)
+      appStore.setTabState(ROOM, { kind: 'synced', shared: true, role: 'owner', revision: 3 })
+      return tab
+    }
+
+    const peerHolds = (fieldKey: string) => {
+      receive({ type: 'field_locks', roomId: ROOM, locks: [{ fieldKey, holder: 'conn-2' }] })
+    }
+
+    it('claims the field the user focused', () => {
+      sharedRoom()
+
+      expect(store.claimField(ROOM, 'notes:1')).toBe(true)
+
+      expect(lockFrames()).toEqual([{ type: 'lock', roomId: ROOM, fieldKey: 'notes:1' }])
+    })
+
+    // A private tab is one person's, and a local one is not on the wire at all.
+    it('sends nothing for a tab nobody else can be in', () => {
+      syncAt(fixture, 3)
+
+      expect(store.claimField(ROOM, 'notes:1')).toBe(false)
+      expect(lockFrames()).toHaveLength(0)
+    })
+
+    it('sends nothing while offline mode is on', () => {
+      sharedRoom()
+      store.enterOffline()
+
+      expect(store.claimField(ROOM, 'notes:1')).toBe(false)
+      expect(lockFrames()).toHaveLength(0)
+    })
+
+    // The whole of how a frame is read: a holder that is not this socket's own id.
+    it('disables a field a peer holds and never one of its own', () => {
+      sharedRoom()
+
+      peerHolds('notes:1')
+      expect(store.lockedByOther(ROOM, 'notes:1')).toBe(true)
+      expect(store.lockedByOther(ROOM, 'notes:2')).toBe(false)
+
+      receive({ type: 'field_locks', roomId: ROOM, locks: [{ fieldKey: 'notes:1', holder: 'conn-1' }] })
+      expect(store.lockedByOther(ROOM, 'notes:1')).toBe(false)
+    })
+
+    it('re-states the room in full, so a released lock stops disabling anything', () => {
+      sharedRoom()
+      peerHolds('notes:1')
+
+      receive({ type: 'field_locks', roomId: ROOM, locks: [] })
+
+      expect(store.lockedByOther(ROOM, 'notes:1')).toBe(false)
+    })
+
+    it('throttles a typist to one frame per renewal window', () => {
+      vi.useFakeTimers()
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      store.renewField(ROOM, 'notes:1')
+      store.renewField(ROOM, 'notes:1')
+      expect(lockFrames()).toHaveLength(1)
+
+      vi.advanceTimersByTime(FIELD_LOCK_RENEW_MS)
+      store.renewField(ROOM, 'notes:1')
+
+      expect(lockFrames()).toHaveLength(2)
+    })
+
+    it('releases the field on blur', () => {
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      expect(store.releaseField(ROOM, 'notes:1')).toBe(true)
+
+      expect(lockFrames().at(-1)).toEqual({ type: 'unlock', roomId: ROOM, fieldKey: 'notes:1' })
+      // Nothing held, so a second blur is not a second frame.
+      expect(store.releaseField(ROOM, 'notes:1')).toBe(false)
+    })
+
+    // The server expires an idle claim at the same line but only announces it on the
+    // sweep, so giving it up here is what tells the room within ten seconds.
+    it('gives up a lock nobody typed into for the whole idle window', () => {
+      vi.useFakeTimers()
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      vi.advanceTimersByTime(FIELD_LOCK_TTL_MS - 1)
+      expect(lockFrames()).toHaveLength(1)
+
+      vi.advanceTimersByTime(1)
+      expect(lockFrames().at(-1)).toEqual({ type: 'unlock', roomId: ROOM, fieldKey: 'notes:1' })
+    })
+
+    it('pushes that line back on every renewal', () => {
+      vi.useFakeTimers()
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      vi.advanceTimersByTime(FIELD_LOCK_RENEW_MS)
+      store.renewField(ROOM, 'notes:1')
+      vi.advanceTimersByTime(FIELD_LOCK_TTL_MS - 1)
+
+      expect(lockFrames().filter(frame => frame.type === 'unlock')).toHaveLength(0)
+    })
+
+    it('claims the field again when typing resumes after a lapse', () => {
+      vi.useFakeTimers()
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+      vi.advanceTimersByTime(FIELD_LOCK_TTL_MS)
+
+      store.renewField(ROOM, 'notes:1')
+
+      expect(lockFrames().at(-1)).toEqual({ type: 'lock', roomId: ROOM, fieldKey: 'notes:1' })
+    })
+
+    // Switching away is a blur the field never gets: the card unmounts first.
+    it('releases everything it holds when the user switches tab', async () => {
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      appStore.factoryTabs.push({ id: 'other-tab', name: 'Other', factories: [], powerTarget: 0, groups: [] })
+      appStore.currentFactoryTabIndex = 1
+      await nextTick()
+
+      expect(lockFrames().at(-1)).toEqual({ type: 'unlock', roomId: ROOM, fieldKey: 'notes:1' })
+    })
+
+    it('releases everything it holds on the way into offline mode', () => {
+      sharedRoom()
+      store.claimField(ROOM, 'notes:1')
+
+      store.enterOffline()
+
+      expect(lockFrames().at(-1)).toEqual({ type: 'unlock', roomId: ROOM, fieldKey: 'notes:1' })
+    })
+
+    /**
+     * A dropped socket released every lock server-side, and a re-join is told what a
+     * room holds only when it holds something. A display kept across the gap would
+     * disable a field nobody is in, with no frame coming to correct it.
+     */
+    it('forgets what it was shown when the socket drops', () => {
+      sharedRoom()
+      peerHolds('notes:1')
+
+      latest().serverClose(1006)
+
+      expect(store.lockedByOther(ROOM, 'notes:1')).toBe(false)
+    })
+
+    it('forgets a room it has stopped tracking', () => {
+      sharedRoom()
+      peerHolds('notes:1')
+
+      store.untrackRoom(ROOM)
+
+      expect(store.lockedByOther(ROOM, 'notes:1')).toBe(false)
     })
   })
 })

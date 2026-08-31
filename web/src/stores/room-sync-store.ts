@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { CLOSE_CODES, PROTOCOL_VERSION } from 'common'
+import { computed, ref, watch } from 'vue'
+import { CLOSE_CODES, FIELD_LOCK_TTL_MS, PROTOCOL_VERSION } from 'common'
 import type {
   Factory,
   FactoryTab,
+  FieldLock,
   RoomDiff,
   RoomMeta,
   RoomSnapshot,
@@ -34,6 +35,7 @@ import {
   removeTabMirrorMeta,
   setTabMirrorMeta,
 } from '@/sync/tab-mirror-meta'
+import { isCollaborative } from '@/sync/tab-sync-state'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useGameDataStore } from '@/stores/game-data-store'
@@ -62,6 +64,9 @@ export const OFFLINE_NOTICE_MS = 10_000
 
 /** Consecutive rejects before a room stops resending, so a refused op cannot hot-loop. */
 export const REJECT_PAUSE_AFTER = 3
+
+/** Keystrokes renew a field lock at most this often: a typist costs one frame per few seconds. */
+export const FIELD_LOCK_RENEW_MS = 3_000
 
 export type OfflineMode = 'online' | 'reconnecting' | 'offlinePrompt' | 'offline'
 
@@ -112,6 +117,14 @@ interface RoomEngine {
   visitorToken?: string
 }
 
+/** One lock this client holds, and the timer that gives it up on the server's own line. */
+interface HeldFieldLock {
+  roomId: string
+  fieldKey: string
+  lastSentAt: number
+  idleTimer: ReturnType<typeof setTimeout>
+}
+
 export interface TrackRoomOptions {
   /** Re-sent on every join of that room; a visitor has no other credential. */
   visitorToken?: string
@@ -155,6 +168,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   /** A `rooms_changed` landed: the tab list wants refetching. */
   const roomsListStale = ref(false)
   const lastError = ref<string | null>(null)
+  /** This socket's own id, as `hello_ok` handed it over. A lock's holder is one of these. */
+  const connectionId = ref<string | null>(null)
+  /** Who is editing what, per room: `roomId -> fieldKey -> holder`. */
+  const fieldLocks = ref<Record<string, Record<string, string>>>({})
 
   /** No socket, no REST, no retries. Preferences and adoption gate on this too. */
   const isOffline = computed(() => mode.value === 'offline')
@@ -162,6 +179,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const isConnected = computed(() => connection.value === 'connected')
 
   const engines = new Map<string, RoomEngine>()
+  /** The locks this client holds, room and field together, outside reactivity. */
+  const heldLocks = new Map<string, HeldFieldLock>()
 
   let socket: SyncSocket | null = null
   let unsubscribeMessage: (() => void) | null = null
@@ -492,6 +511,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       case 'hello_ok':
         userId.value = message.userId
         roomsRevision.value = message.roomsRevision
+        connectionId.value = message.connectionId
         // The transport holds no room state, so re-joining is ours to do.
         for (const room of liveRooms()) join(room.roomId)
         break
@@ -532,6 +552,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       case 'presence': {
         const room = rooms.value[message.roomId]
         if (room) room.presence = message.count
+        break
+      }
+
+      // The whole truth about the room, every time: replacing the map is the apply.
+      case 'field_locks': {
+        const room = rooms.value[message.roomId]
+        if (room) fieldLocks.value[message.roomId] = holdersOf(message.locks)
         break
       }
 
@@ -745,6 +772,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.status = status
     room.hasPendingOp = false
     engines.delete(roomId)
+    dropRoomLocks(roomId)
     removeTabMirrorMeta(roomId)
   }
 
@@ -767,7 +795,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     // An unacknowledged op died with the socket. Dropping it is what makes the
     // reconnect a plain rebase rather than a second, duplicated send.
-    if (wasConnected) abandonPendingOps()
+    if (wasConnected) {
+      abandonPendingOps()
+      forgetFieldLocks()
+    }
 
     if (status === 'stopped') {
       onSocketStopped()
@@ -871,6 +902,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (rooms.value[roomId]) socket?.leave(roomId)
     delete rooms.value[roomId]
     engines.delete(roomId)
+    dropRoomLocks(roomId)
     removeTabMirrorMeta(roomId)
   }
 
@@ -918,12 +950,102 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }
   }
 
+  // ===== Field locks =====
+
+  const heldKey = (roomId: string, fieldKey: string): string => `${roomId}\u0000${fieldKey}`
+
+  const holdersOf = (locks: FieldLock[]): Record<string, string> =>
+    Object.fromEntries(locks.map(lock => [lock.fieldKey, lock.holder]))
+
+  /** Somebody else is in this field. Our own lock disables nothing on our own screen. */
+  const lockedByOther = (roomId: string | null | undefined, fieldKey: string): boolean => {
+    if (!roomId) return false
+    const holder = fieldLocks.value[roomId]?.[fieldKey]
+    return holder !== undefined && holder !== connectionId.value
+  }
+
+  /**
+   * Locks are for rooms with other people in them: a local or private tab has
+   * nobody to lock against and never sends a frame.
+   */
+  const canLock = (roomId: string): boolean => {
+    if (isSuppressed.value || !isConnected.value) return false
+    if (rooms.value[roomId]?.status !== 'synced') return false
+    return isCollaborative(appStore.getTabState(roomId))
+  }
+
+  const sendFieldLock = (type: 'lock' | 'unlock', roomId: string, fieldKey: string): boolean =>
+    ensureSocket().send({ type, roomId, fieldKey })
+
+  /** Focus, and every reacquisition after an idle lapse. */
+  const claimField = (roomId: string, fieldKey: string): boolean => {
+    if (!canLock(roomId) || !sendFieldLock('lock', roomId, fieldKey)) return false
+
+    const key = heldKey(roomId, fieldKey)
+    clearTimeout(heldLocks.get(key)?.idleTimer)
+    heldLocks.set(key, {
+      roomId,
+      fieldKey,
+      lastSentAt: Date.now(),
+      // The server drops a lock nobody renewed but only announces it on the sweep,
+      // three heartbeats later. Giving ours up on the same line tells the room at 10s.
+      idleTimer: setTimeout(() => releaseField(roomId, fieldKey), FIELD_LOCK_TTL_MS),
+    })
+    return true
+  }
+
+  /** A keystroke. Throttled, so holding a field down costs one frame every few seconds. */
+  const renewField = (roomId: string, fieldKey: string): boolean => {
+    const held = heldLocks.get(heldKey(roomId, fieldKey))
+    if (held && Date.now() - held.lastSentAt < FIELD_LOCK_RENEW_MS) return false
+    return claimField(roomId, fieldKey)
+  }
+
+  /** Blur. The broadcast that follows is what re-enables the field for everyone else. */
+  const releaseField = (roomId: string, fieldKey: string): boolean => {
+    const key = heldKey(roomId, fieldKey)
+    const held = heldLocks.get(key)
+    if (!held) return false
+
+    clearTimeout(held.idleTimer)
+    heldLocks.delete(key)
+    return sendFieldLock('unlock', roomId, fieldKey)
+  }
+
+  const releaseAllFields = () => {
+    for (const held of [...heldLocks.values()]) releaseField(held.roomId, held.fieldKey)
+  }
+
+  /**
+   * A dropped socket released every lock server-side, and a re-join is told what a
+   * room holds only when it holds something — so a display carried across the gap
+   * would disable a field nobody is in, with no frame coming to correct it.
+   */
+  const forgetFieldLocks = () => {
+    for (const held of heldLocks.values()) clearTimeout(held.idleTimer)
+    heldLocks.clear()
+    fieldLocks.value = {}
+  }
+
+  /** The room is going: no unlock worth sending, and nothing left to display. */
+  const dropRoomLocks = (roomId: string) => {
+    for (const [key, held] of [...heldLocks]) {
+      if (held.roomId !== roomId) continue
+      clearTimeout(held.idleTimer)
+      heldLocks.delete(key)
+    }
+    delete fieldLocks.value[roomId]
+  }
+
   // ===== Offline mode =====
 
   /** Airplane mode: total backend silence, not quieter retrying. */
   const enterOffline = () => {
     // Whatever was edited inside the last debounce window still has to be remembered.
     for (const roomId of Object.keys(rooms.value)) recordIntent(roomId)
+    // While the socket is still up: nobody should be left staring at a field this
+    // client walked away from.
+    releaseAllFields()
     mode.value = 'offline'
     failedReconnects.value = 0
     clearTimeout(debounceTimer)
@@ -984,6 +1106,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     scheduleFlush()
   }
 
+  // Switching away is a blur the field never gets: the card is gone before it fires,
+  // and a lock nobody releases sits on the other screens until it lapses.
+  const stopTabWatch = watch(() => appStore.getCurrentTab()?.id, () => releaseAllFields())
+
   eventBus.on('factoryEdited', onFactoryEdited)
   eventBus.on('tabEdited', onTabEdited)
   eventBus.on('factoryUpdated', scheduleFlush)
@@ -997,6 +1123,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const dispose = () => {
     clearInterval(probeTimer)
+    stopTabWatch()
+    forgetFieldLocks()
     eventBus.off('factoryEdited', onFactoryEdited)
     eventBus.off('tabEdited', onTabEdited)
     eventBus.off('factoryUpdated', scheduleFlush)
@@ -1021,6 +1149,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     roomsRevision,
     roomsListStale,
     lastError,
+    connectionId,
+    fieldLocks,
     isOffline,
     isSuppressed,
     isConnected,
@@ -1046,6 +1176,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     flushRoom,
     flushAll,
     resumeRoom,
+
+    // Field locks
+    lockedByOther,
+    claimField,
+    renewField,
+    releaseField,
+    releaseAllFields,
 
     // Offline
     enterOffline,

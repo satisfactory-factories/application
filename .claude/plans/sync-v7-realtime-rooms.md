@@ -46,7 +46,7 @@ separate later session.
 - Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
 - Add the fetch wrapper sending `X-App-Version` and the persistent refresh prompt on 426/4426
 - Wire the notes field to the field-lock protocol: claim on focus, renew on keystroke (throttled), release on blur, and disable the input while a peer holds it
-- Extend field locks to the remaining text and number inputs once notes proves the mechanism
+- Extend field locks to the remaining text and number inputs once notes proves the mechanism: the factory name, tasks, group names, the export calculator fields and the notes' number-input neighbours
 
 ### Backend
 
@@ -310,6 +310,21 @@ must not share a lock. Locks take the same live access check an op does and are 
 on every path that drops a socket from a room, but they are advisory in the strict sense:
 the op path never reads them, so the worst a wrong answer costs is a disabled input.
 Simultaneous arrow presses on a number field stay out of scope.
+
+**The client half.** `useFieldLock(roomId, fieldKey)` binds focus to a claim, input to a
+renewal and blur to a release, and hands back a reactive `disabled` plus the one line the
+locked-out reader sees. The store holds the room's lock map from `field_locks`, compares
+each `holder` against the `connectionId` it was given, and refuses to send a frame at all
+unless the tab is a *shared* room and the socket is connected: a local or private tab has
+nobody to lock against. Renewals throttle to 3s, so a typist costs one frame every few
+seconds. Two rules make the display honest without a second protocol. The client gives up
+its **own** claim after `FIELD_LOCK_TTL_MS` of no renewal, exactly as the server would, so
+a released field is announced within ten seconds rather than on the sweep three heartbeats
+later; and it **never expires a lock it was shown** — a renewal is deliberately silent, so
+a peer typing steadily produces no frames and a display timer would re-enable a field
+somebody is in. Every held lock is released on blur, on unmount, on a tab switch, on
+entering offline mode, and the whole display is dropped when the socket falls over, since
+a re-join is told what a room holds only when it holds something.
 
 **The consistency contract.** The build implements exactly this:
 - What you see is always: last acknowledged server state + all your unacknowledged edits +

@@ -32,6 +32,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - **Edits to different factories both survive.** Edits to the same factory settle on one of them rather than merging into something neither of you asked for.
 - What you see is always your last acknowledged state from the server, plus everything you have changed since, fully recalculated. A change of yours is never dropped in favour of an incoming one, and nothing is ever half-applied.
 - The owner can rename, share, unshare, set the link, set a password and delete. Everyone else can edit the plan and leave. Renames reach every device.
+- **One person at a time in a text field.** Click into a factory's notes and that box is held for you: everyone else sees it greyed out with "Another builder is editing this" until you click away. Keep typing and it stays yours; leave it alone for ten seconds and it is released for whoever wants it next. It is per field, so the factory next to yours is still open to everybody, and the rest of the plan is unaffected.
 
 ### Offline mode
 
