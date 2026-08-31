@@ -24,6 +24,7 @@ import {
 } from "./utils/client-version";
 import { appVersion } from "./utils/app-version";
 import { isAllowedOrigin, parseExtraOrigins } from "./utils/cors";
+import { isLoopbackRequest } from "./utils/loopback";
 
 dotenv.config();
 
@@ -61,11 +62,16 @@ const shareRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 5
 });
-// updown.io probes from three sources and Docker probes every 30s, each on its
-// own IP bucket, so 10 a minute is generous.
+// updown.io probes from three sources, each on its own IP bucket, so 10 a minute is generous.
+//
+// The container's own healthcheck is exempted. It reaches /health over loopback, which nothing
+// outside the container can, and `up --wait` blocks on it: rate-limiting it can only ever turn a
+// healthy deploy into a failed one. A clock step backwards on 2026-08-31 parked this window's
+// reset an hour in the future, and the 30s healthcheck alone then 429'd the container unhealthy.
 const healthRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 10
+  max: 10,
+  skip: isLoopbackRequest
 });
 // The planner polls /version once a minute per visible tab, and several tabs
 // can share one address. Generous enough for that, small enough to be worth

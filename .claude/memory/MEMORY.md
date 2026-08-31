@@ -40,3 +40,4 @@
 - [Building group balance tolerance](building-group-balance-tolerance.md) — balanced is a percentage of the item's demand with a ceiling, and changing it has to force a recalc
 - [Input debounce window](input-debounce-window.md) — the timer does reset per keystroke; the 250ms window is just shorter than typing, and reverse-solving inputs compound partial values
 - [Stale branch: cherry-pick, don't merge](stale-branch-cherry-pick-not-merge.md) — squash merges make a merge-forward conflict on 70 files where a cherry-pick conflicts on 2
+- [Clock step freezes rate limits](clock-step-freezes-rate-limits.md) — a backwards clock step at boot can 429 the backend container unhealthy; looks like prod drift, is not
