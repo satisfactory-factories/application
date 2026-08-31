@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
-import { canPartBeProducedDirectly, createNewPart, getPrimaryProductRecipes } from '@/utils/factory-management/common'
+import { canPartBeProducedDirectly, createNewPart, generateFactoryItemId, getPrimaryProductRecipes } from '@/utils/factory-management/common'
 import { gameData } from '@/utils/gameData'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -36,6 +36,49 @@ describe('common', () => {
 
       // If it was to make a new one it would be initialized as 0.
       expect(mockFactory.parts[part].amountRequired).toBe(1234)
+    })
+  })
+
+  // #546: these ids key the game-sync snapshots and the element ids on the card, so a duplicate
+  // makes the factory permanently unsyncable. The taken set spans both collections.
+  describe('generateFactoryItemId', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    // 0.5 -> "5000", 0.6 -> "6000". Feeding the same draw twice is the collision.
+    const drawSequence = (...values: number[]) => {
+      const queue = [...values]
+      vi.spyOn(Math, 'random').mockImplementation(() => queue.shift() ?? 0.9)
+    }
+
+    test('should not reissue an id a power producer already holds', () => {
+      mockFactory.powerProducers = [{ id: '5000' } as any]
+      drawSequence(0.5, 0.6)
+
+      expect(generateFactoryItemId(mockFactory)).toBe('6000')
+    })
+
+    test('should not reissue an id a custom building already holds', () => {
+      mockFactory.customBuildings = [{ id: '5000' } as any]
+      drawSequence(0.5, 0.6)
+
+      expect(generateFactoryItemId(mockFactory)).toBe('6000')
+    })
+
+    test('should issue an untaken id straight away', () => {
+      mockFactory.powerProducers = [{ id: '5000' } as any]
+      drawSequence(0.6)
+
+      expect(generateFactoryItemId(mockFactory)).toBe('6000')
+    })
+
+    test('should widen the id range when every draw collides', () => {
+      mockFactory.powerProducers = [{ id: '5000' } as any]
+      vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+      // 50 collisions later the range grows tenfold, so the same draw lands somewhere new.
+      expect(generateFactoryItemId(mockFactory)).toBe('50000')
     })
   })
 

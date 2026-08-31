@@ -360,6 +360,7 @@
   } from '@/utils/factory-management/raw-wizard'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { downloadPlan } from '@/utils/plan-backup'
+  import { usePowerTarget } from '@/composables/usePowerTarget'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
 
   const props = defineProps<{ modelValue: boolean }>()
@@ -367,6 +368,10 @@
 
   const appStore = useAppStore()
   const gameDataStore = useGameDataStore()
+  // Via the composable, not tab.powerTarget. A target set before targets were per-plan lives in
+  // localStorage only, and the 0 recorded for it would stick: pasting a backup writes the target
+  // back onto the tab (#536). Copy plan reads it the same way, so both produce the same blob.
+  const { powerTarget } = usePowerTarget()
 
   const rows = ref<WizardRow[]>([])
   const pending = ref<WizardApplyResult | null>(null)
@@ -538,7 +543,7 @@
     downloadPlan({
       name: tab?.name,
       factories: appStore.getFactories(),
-      powerTarget: tab?.powerTarget ?? 0,
+      powerTarget: powerTarget.value,
       // Backed up as it stands, unanswered included: restoring it must put back the plan that
       // was there, warning and all.
       plannerVersion: tab?.plannerVersion,

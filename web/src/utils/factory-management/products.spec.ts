@@ -651,6 +651,85 @@ describe('products', () => {
       expect(fixProductTarget(mockFactory.products[1], mockFactory)).toBe(123)
     })
 
+    it('should count imports against the shortfall', () => {
+      // A factory that both imports a part and makes some of it itself. #595: the shortfall
+      // ignored the import entirely, so Fix Product asked for the whole requirement again.
+      const supplier = newFactory('Ingot Supplier')
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 2000, recipe: 'IngotIron' })
+
+      const consumer = newFactory('Plates')
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 2000, recipe: 'IronPlate' })
+      addProductToFactory(consumer, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addInputToFactory(consumer, {
+        factoryId: supplier.id,
+        amount: 1425,
+        outputPart: 'IronIngot',
+      })
+      calculateFactories([supplier, consumer], gameData)
+
+      const product = consumer.products[1]
+      const part = consumer.parts.IronIngot
+      expect(part.amountSuppliedViaInput).toBe(1425)
+
+      const target = fixProductTarget(product, consumer)
+
+      expect(target).toBe(part.amountRequired - 1425)
+      // The "+ Product" path computes the same figure by a different route.
+      expect(target).toBe(Math.abs(part.amountRemaining) + product.amount)
+    })
+
+    it('should trim to the difference when several factories import the same part', () => {
+      // Two oil fields feeding one that also extracts for itself. Local production only has to
+      // cover what the imports do not: 5232 needed, 2100 imported, so the product trims to 3132.
+      const fieldA = newFactory('Oil Field A', 0, 1)
+      addProductToFactory(fieldA, { id: 'LiquidOil', amount: 900, recipe: 'Extract_LiquidOil' })
+      const fieldB = newFactory('Oil Field B', 1, 2)
+      addProductToFactory(fieldB, { id: 'LiquidOil', amount: 1200, recipe: 'Extract_LiquidOil' })
+
+      const main = newFactory('Oil MegaFac', 2, 3)
+      addProductToFactory(main, { id: 'LiquidOil', amount: 5232, recipe: 'Extract_LiquidOil' })
+      addProductToFactory(main, { id: 'Plastic', amount: 3488, recipe: 'Plastic' })
+      addInputToFactory(main, { factoryId: fieldA.id, outputPart: 'LiquidOil', amount: 900 })
+      addInputToFactory(main, { factoryId: fieldB.id, outputPart: 'LiquidOil', amount: 1200 })
+
+      const factories = [fieldA, fieldB, main]
+      calculateFactories(factories, gameData)
+
+      expect(main.parts.LiquidOil.amountRequired).toBe(5232)
+      expect(main.parts.LiquidOil.amountSuppliedViaInput).toBe(2100)
+      expect(shouldShowFix(main.products[0], main)).toBe('surplus')
+      expect(fixProductTarget(main.products[0], main)).toBe(3132)
+
+      // And pressing it balances the part exactly, rather than leaving another surplus behind.
+      fixProduct(main.products[0], main)
+      calculateFactories(factories, gameData)
+
+      expect(main.products[0].amount).toBe(3132)
+      expect(main.parts.LiquidOil.amountRemaining).toBe(0)
+      expect(shouldShowFix(main.products[0], main)).toBe(null)
+    })
+
+    it('should never ask for a negative quantity', () => {
+      // Imports well past what the factory needs: trimming the product away entirely still
+      // leaves a surplus, so the arithmetic runs negative. A product cannot be made -350 times.
+      const supplier = newFactory('Ingot Supplier')
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 2000, recipe: 'IngotIron' })
+
+      const consumer = newFactory('Plates')
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 100, recipe: 'IronPlate' })
+      addProductToFactory(consumer, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addInputToFactory(consumer, {
+        factoryId: supplier.id,
+        amount: 500,
+        outputPart: 'IronIngot',
+      })
+      calculateFactories([supplier, consumer], gameData)
+
+      // Trim is offered, so the figure it names has to be one the Qty field can hold.
+      expect(shouldShowFix(consumer.products[1], consumer)).toBe('surplus')
+      expect(fixProductTarget(consumer.products[1], consumer)).toBe(0)
+    })
+
     it('should agree with what fixProduct actually sets', () => {
       const factories = create321Scenario().getFactories()
       const byproductFac = factories[0]

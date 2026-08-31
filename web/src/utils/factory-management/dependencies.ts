@@ -362,7 +362,14 @@ export const calculateDependencyMetrics = (factory: Factory) => {
 export const calculateDependencyMetricsSupply = (factory: Factory) => {
   Object.keys(factory.dependencies.metrics).forEach(part => {
     const metrics = factory.dependencies.metrics[part]
-    metrics.supply = factory.parts[part].amountSupplied
+    const partData = factory.parts[part]
+
+    // What the factory has spare, not what it makes. #540: this read amountSupplied, so a mine
+    // extracting 480 ore and smelting all 480 itself still offered 240 of it for export.
+    //
+    // The + undoes a subtraction. amountRequired includes exports, so amountRemaining already has
+    // them taken off; adding them back leaves the pool those exports draw on.
+    metrics.supply = partData.amountRemaining + partData.amountRequiredExports
     metrics.difference = metrics.supply - metrics.request
     metrics.isRequestSatisfied = isAmountSatisfied(metrics.difference, metrics.request)
   })

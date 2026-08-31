@@ -247,6 +247,90 @@ describe('dependencies', () => {
         difference: -100,
       })
     })
+    it('should not offer ore the mine consumes itself', () => {
+      // #540: supply used to read amountSupplied, which is gross. A mine extracting 480 ore and
+      // smelting all 480 offered the whole lot for export, so the request read as satisfied while
+      // the ore was short.
+      const mine = newFactory('Copper Mine', 0, 1)
+      addProductToFactory(mine, {
+        id: 'OreCopper',
+        amount: 480,
+        recipe: 'Extract_OreCopper',
+      })
+      addProductToFactory(mine, {
+        id: 'CopperIngot',
+        amount: 480, // 1:1 with the ore, so nothing is left over
+        recipe: 'IngotCopper',
+      })
+
+      const consumer = newFactory('Copper Sheets', 1, 2)
+      addInputToFactory(consumer, {
+        factoryId: mine.id,
+        outputPart: 'OreCopper',
+        amount: 240,
+      })
+
+      calculateFactories([mine, consumer], gameData)
+
+      // 480 extracted, against 480 smelted on site plus 240 promised away.
+      expect(mine.parts.OreCopper.amountSupplied).toBe(480) // Gross, unchanged by the fix
+      expect(mine.parts.OreCopper.amountRequiredProduction).toBe(480)
+      expect(mine.parts.OreCopper.amountRequiredExports).toBe(240)
+      expect(mine.parts.OreCopper.amountRequired).toBe(720)
+      expect(mine.parts.OreCopper.amountRemaining).toBe(-240)
+      expect(mine.parts.OreCopper.satisfied).toBe(false)
+
+      // supply is amountRemaining with the exports added back: -240 + 240.
+      expect(mine.dependencies.metrics.OreCopper).toEqual({
+        part: 'OreCopper',
+        request: 240,
+        supply: 0,
+        isRequestSatisfied: false,
+        difference: -240,
+      })
+    })
+
+    it('should offer what is left after the mine takes its own share', () => {
+      // The other half of #540: netting off on-site use must not turn a real surplus into a
+      // shortage. The request stays satisfied, it just no longer claims the ore the mine smelts
+      // itself. A factory consuming none of its own part is unaffected; the two tests above cover
+      // that.
+      const mine = newFactory('Copper Mine', 0, 1)
+      addProductToFactory(mine, {
+        id: 'OreCopper',
+        amount: 480,
+        recipe: 'Extract_OreCopper',
+      })
+      addProductToFactory(mine, {
+        id: 'CopperIngot',
+        amount: 120,
+        recipe: 'IngotCopper',
+      })
+
+      const consumer = newFactory('Copper Sheets', 1, 2)
+      addInputToFactory(consumer, {
+        factoryId: mine.id,
+        outputPart: 'OreCopper',
+        amount: 240,
+      })
+
+      calculateFactories([mine, consumer], gameData)
+
+      // 480 extracted, against 120 smelted on site plus 240 promised away.
+      expect(mine.parts.OreCopper.amountRequired).toBe(360)
+      expect(mine.parts.OreCopper.amountRemaining).toBe(120)
+      expect(mine.parts.OreCopper.satisfied).toBe(true)
+
+      // supply is amountRemaining with the exports added back: 120 + 240.
+      expect(mine.dependencies.metrics.OreCopper).toEqual({
+        part: 'OreCopper',
+        request: 240,
+        supply: 360, // 480 extracted, less the 120 smelted on site
+        isRequestSatisfied: true,
+        difference: 120,
+      })
+    })
+
     it('should calculate the dependency metrics from multiple inputs from differing factories', () => {
       const mockDependantFactory2 = newFactory('Iron Rods', 2, 3)
       // Ensure the new factory is in the list

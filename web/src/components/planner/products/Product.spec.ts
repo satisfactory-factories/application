@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import Product from './Product.vue'
 import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
+import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { calculateFactories } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
@@ -123,5 +125,39 @@ describe('Component: Product', () => {
     await toggle.trigger('click')
     expect(product.buildingGroupsTrayOpen).toBe(false)
     expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).exists()).toBe(false)
+  })
+  // A Trim caused by imports cuts to a smaller figure than a plain one, so it says so on the tin.
+  describe('the Trim button', () => {
+    const trimButton = (wrapper: VueWrapper<any>) =>
+      wrapper.findAll('button').find(button => button.text().includes('Trim'))
+
+    it('reads plainly when the factory only produces the part', () => {
+      const solo = newFactory('Solo')
+      addProductToFactory(solo, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addProductToFactory(solo, { id: 'IronPlate', amount: 40, recipe: 'IronPlate' }) // needs 60 ingots
+      calculateFactories([solo], gameData)
+
+      const wrapper = mountSubject(solo)
+      expect(trimButton(wrapper)?.text()).toContain('Trim')
+      expect(trimButton(wrapper)?.text()).not.toContain('import shortfall')
+    })
+
+    it('names the import shortfall when the part is imported as well as made', () => {
+      const supplier = newFactory('Supplier', 0, 1)
+      addProductToFactory(supplier, { id: 'IronIngot', amount: 1000, recipe: 'IngotIron' })
+
+      const consumer = newFactory('Consumer', 1, 2)
+      addProductToFactory(consumer, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      addProductToFactory(consumer, { id: 'IronPlate', amount: 40, recipe: 'IronPlate' }) // needs 60
+      addInputToFactory(consumer, { factoryId: supplier.id, outputPart: 'IronIngot', amount: 50 })
+      calculateFactories([supplier, consumer], gameData)
+
+      const wrapper = mountSubject(consumer)
+      const trim = trimButton(wrapper)
+
+      // 60 needed, 50 imported, so local production trims to 10.
+      expect(trim?.text()).toContain('Trim to import shortfall')
+      expect(trim?.text()).toContain('10')
+    })
   })
 })
