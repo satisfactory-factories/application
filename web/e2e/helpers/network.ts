@@ -32,6 +32,11 @@ export interface WsGate {
   /** How many times the client has opened a socket, successful or not. */
   connections: () => number
   /**
+   * Every frame this client has put on the wire, parsed. The only honest way to
+   * assert that something was never sent, as opposed to never having an effect.
+   */
+  sent: () => Record<string, unknown>[]
+  /**
    * Stops forwarding this client's ops to the server. Resolves once one has been
    * swallowed, so a test can say "an op is in flight" and mean it.
    */
@@ -51,6 +56,7 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
   let killed = false
   let holding = false
   let announceHeld: (() => void) | null = null
+  const sent: Record<string, unknown>[] = []
   const live = new Set<{ client: WebSocketRoute, server: WebSocketRoute }>()
 
   await page.routeWebSocket(/\/ws$/, ws => {
@@ -65,6 +71,13 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
     live.add(pair)
 
     ws.onMessage(message => {
+      // Recorded before the hold, so a swallowed frame still counts as one the client
+      // chose to put on the wire — which is the thing under test.
+      try {
+        sent.push(JSON.parse(String(message)) as Record<string, unknown>)
+      } catch {
+        // A frame this harness cannot read is not one any assertion is about.
+      }
       if (holding && String(message).includes('"type":"op"')) {
         announceHeld?.()
         announceHeld = null
@@ -86,6 +99,7 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
 
   return {
     connections: () => connections,
+    sent: () => [...sent],
     holdOps: () => new Promise<void>(resolve => {
       holding = true
       announceHeld = resolve

@@ -114,6 +114,8 @@ interface RoomEngine {
   pending: PendingOp | null
   touchedFactories: Set<number>
   touchedFields: Set<TabField>
+  /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
+  needsSnapshot: boolean
   visitorToken?: string
 }
 
@@ -152,6 +154,7 @@ const newEngine = (options: TrackRoomOptions): RoomEngine => ({
   pending: null,
   touchedFactories: new Set(),
   touchedFields: new Set(),
+  needsSnapshot: false,
   visitorToken: options.visitorToken,
 })
 
@@ -202,6 +205,32 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const local = contentOfTab(tab)
     if (!ownsRoom(roomId)) local.name = acked.name
     return local
+  }
+
+  /**
+   * A loading tab is read-only to the engine. The chain empties the factory array and
+   * refills it one record at a time, so mid-chain it is a fragment of the plan: merging
+   * a peer's diff into it, overlaying intent onto it, or seeding a baseline from it all
+   * write the truncation back and then report it as the user deleting the plan.
+   */
+  const roomIsMidLoad = (roomId: string): boolean => appStore.isTabLoading(roomId)
+
+  /**
+   * Park an inbound message rather than applying it to a fragment. Nothing is lost: the
+   * room is re-baselined from a fresh snapshot the moment the load finishes.
+   */
+  const parkWhileLoading = (roomId: string): boolean => {
+    if (!roomIsMidLoad(roomId)) return false
+    const engine = engines.get(roomId)
+    if (engine) engine.needsSnapshot = true
+    return true
+  }
+
+  /** Ask for a full snapshot, and only forget the need once the frame is actually away. */
+  const healFromSnapshot = (roomId: string) => {
+    const engine = engines.get(roomId)
+    if (!engine?.needsSnapshot) return
+    if (requestSnapshot(roomId)) engine.needsSnapshot = false
   }
 
   // ===== Intent =====
@@ -301,8 +330,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const room = rooms.value[roomId]
     if (!engine || !room || room.status === 'revoked' || room.status === 'deleted') return
     // Mid-load the mirror is a half-filled array; comparing against it would read
-    // as "the user deleted everything".
-    if (!appStore.isLoaded) return
+    // as "the user deleted everything". Both flags, because the corruption this
+    // guards against is exactly a chain that ran without lowering `isLoaded`.
+    if (!appStore.isLoaded || roomIsMidLoad(roomId)) return
 
     primeBaseline(roomId)
     if (!engine.seeded && !engine.primed) return
@@ -313,6 +343,33 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const before = engine.touchedFactories.size + engine.touchedFields.size
     markStructuralIntent(engine, localContentOf(roomId, tab, engine.acked))
     if (engine.touchedFactories.size + engine.touchedFields.size !== before) persistMeta(roomId)
+  }
+
+  /**
+   * The wire's last word on deletions. Nothing but a user action removes a factory, and
+   * no user action is possible against a card that has not mounted — so a record the
+   * baseline holds and a loading tab does not is a truncation, never a deletion. Refuse
+   * the op and re-baseline instead of telling every other client the plan is gone.
+   *
+   * Deliberately independent of `isLoaded`, the flag that failed: a chain that forgets to
+   * lower it still cannot get a removal onto the wire. Checked before the structural
+   * inference too, which would otherwise record the truncation as the user's own intent
+   * and persist it, carrying it across restarts.
+   */
+  const removalsAreTrustworthy = (roomId: string, engine: RoomEngine, local: RoomContent): boolean => {
+    if (!roomIsMidLoad(roomId)) return true
+
+    const mounted = new Set(local.factories.map(factory => factory.id))
+    const missing = [...engine.acked.factories.keys()].filter(id => !mounted.has(id))
+    if (missing.length === 0) return true
+
+    console.error(
+      'roomSyncStore: refusing to send factory removals nobody asked for, taking a fresh snapshot instead',
+      { roomId, factoryIds: missing },
+    )
+    engine.needsSnapshot = true
+    healFromSnapshot(roomId)
+    return false
   }
 
   const flushRoom = (roomId: string): boolean => {
@@ -328,6 +385,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!tab) return false
 
     const local = localContentOf(roomId, tab, engine.acked)
+    if (!removalsAreTrustworthy(roomId, engine, local)) return false
     markStructuralIntent(engine, local)
 
     const result = buildDiff(engine.acked, local)
@@ -456,12 +514,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     const next = inDisplayOrder(content.factories)
     tab.factories = next
-    // A load chain owns the plan array until it completes: it captured this tab's
-    // factories before the write and commits that copy back at the end, which the
-    // engine then diffs as a deletion of the whole room. Queued as the next load,
-    // the room's content lands after the chain instead of under it. A copy, because
-    // a staggered chain is still pushing into the array it holds.
-    if (appStore.loadInFlight && appStore.getCurrentTab()?.id === tab.id) {
+    // Belt and braces: every inbound path now parks rather than writing into a tab a
+    // load chain owns, so this should be unreachable. If it is ever reached, queueing the
+    // room's content as the next load lands it after the chain instead of under it — and
+    // only for the tab on screen, since that is the one a queued load would commit to. A
+    // copy, because a staggered chain is still pushing into the array it holds.
+    if (appStore.isTabLoading(tab.id) && appStore.getCurrentTab()?.id === tab.id) {
       void appStore.prepareLoader([...next])
     }
   }
@@ -579,6 +637,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
     if (!rooms.value[roomId]) return
+    if (parkWhileLoading(roomId)) return
     const recalculated = rebase(roomId, contentFromSnapshot(snapshot), revision)
     // Only a snapshot that recalculated needs the loader. The 10s revision probe answers
     // with a snapshot whenever it heals a missed op, and running the load funnel for those
@@ -594,6 +653,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const room = rooms.value[roomId]
     const engine = engines.get(roomId)
     if (!room || !engine) return
+    // The baseline this would seed comes off the tab, which is a fragment right now.
+    if (parkWhileLoading(roomId)) return
 
     room.status = 'synced'
     room.revision = revision
@@ -668,6 +729,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const engine = engines.get(roomId)
     if (!room || !engine) return
 
+    // Merging into a fragment writes the fragment back, and the load then commits it.
+    if (parkWhileLoading(roomId)) return
+
     // A primed baseline is a guess: there is nothing here a diff can legitimately
     // be applied onto until the server has answered a join.
     if (!engine.seeded) {
@@ -732,6 +796,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       markRoomGone(roomId, reason === 'room_deleted' ? 'deleted' : 'revoked')
       return
     }
+
+    // Rebasing overlays local state onto the snapshot, and local state is a fragment.
+    // The op is already dropped above, so parking here costs only the resend.
+    if (parkWhileLoading(roomId)) return
 
     const paused = room.rejectStreak >= REJECT_PAUSE_AFTER
     rebase(roomId, contentFromSnapshot(snapshot), snapshot.revision, !paused)
@@ -894,7 +962,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       engine.visitorToken = options.visitorToken
     }
 
-    if (appStore.isLoaded) primeBaseline(roomId)
+    if (appStore.isLoaded && !roomIsMidLoad(roomId)) primeBaseline(roomId)
     if (isConnected.value) join(roomId)
   }
 
@@ -942,10 +1010,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const probeTick = () => {
     for (const roomId of Object.keys(rooms.value)) {
+      // A room parked mid-load whose snapshot request could not be sent — offline, or the
+      // socket down — has nothing else that would ever ask again.
+      if (engines.get(roomId)?.needsSnapshot) healFromSnapshot(roomId)
       // A paused room retries here or nowhere: no UI clears the pause, so refused ops
       // used to leave the tab receive-only until the page was reloaded, silently. The
       // probe interval is the rate limit the streak was protecting the server from.
-      if (rooms.value[roomId].status === 'paused') resumeRoom(roomId)
+      else if (rooms.value[roomId].status === 'paused') resumeRoom(roomId)
       else probeRevision(roomId)
     }
   }
@@ -1098,11 +1169,15 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   /**
-   * The mirror is a whole plan again, so this is both the flush the load blocked
-   * and the moment a provisional baseline can be read off it.
+   * The mirror is a whole plan again, so this is the flush the load blocked, the moment a
+   * provisional baseline can be read off it, and the moment every message parked during
+   * the chain is made good — a fresh snapshot rebases onto a complete array.
    */
   const onLoadingCompleted = () => {
-    for (const roomId of Object.keys(rooms.value)) primeBaseline(roomId)
+    for (const roomId of Object.keys(rooms.value)) {
+      primeBaseline(roomId)
+      healFromSnapshot(roomId)
+    }
     scheduleFlush()
   }
 

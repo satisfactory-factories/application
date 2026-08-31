@@ -59,6 +59,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - Switching to a tab the server has already confirmed is current no longer recalculates it. A small plan opens instantly.
 - A big plan still gets the loading dialog while it draws, and the dialog now appears the moment you click the tab. Drawing a hundred factory cards takes a moment whether or not there was anything to calculate, and the wait used to happen with nothing on screen to say so.
 - Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.
+- **A plan that is still drawing is left alone.** While a big plan renders, nothing arriving from the server is written into it and nothing about it is sent back. Someone else opening a shared plan could previously make everyone's copy lose the factories their screen had not reached yet, which showed up as red factories and a data-corruption warning for everybody else. The plan catches up with the server the moment it has finished drawing.
 
 ### Knowing what just happened
 

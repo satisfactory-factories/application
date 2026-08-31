@@ -357,6 +357,11 @@
     showPlan()
   })
 
+  // The planner asks for its plan; the loading overlay used to, off its CSS transition.
+  // Mounting is the honest ask, since nothing here is on screen until a chain reports
+  // back — and a transition fires on a schedule the store cannot reason about.
+  onMounted(() => eventBus.emit('readyForData'))
+
   eventBus.on('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })

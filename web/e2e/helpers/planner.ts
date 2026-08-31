@@ -528,6 +528,58 @@ export const mirroredProducts = async (
     .map(product => product.id)
 
 /**
+ * Wires one factory to import an item from another. This is the link that makes a
+ * missing factory *visible*: the engine resolves every input by id, so a plan whose
+ * producer has vanished trips "Factory not found" and the corruption alert.
+ */
+export const addImport = async (
+  page: Page,
+  index: number,
+  sourceName: string,
+  item: string,
+  amount = 60,
+): Promise<void> => {
+  const card = await factoryCard(page, index)
+  const imports = card.locator('[id$="-imports"]')
+  await imports.getByRole('button', { name: 'Add Import' }).click()
+
+  const row = imports.locator('.selectors').last()
+  await expect(row, 'the new import row never appeared').toBeVisible()
+
+  /**
+   * `dispatchEvent` rather than `click`: this menu renders where a real pointer event
+   * does not reach the option, and a forced click still lands on whatever is on top.
+   * The product picker's own menu opens higher up the card and has no such problem.
+   */
+  const pick = async (label: string, value: string) => {
+    const field = row.getByLabel(label, { exact: true })
+    await field.click()
+    await field.fill(value)
+    const option = page.getByRole('option', { name: value, exact: true }).first()
+    await expect(option, `the ${label} picker never offered ${value}`).toBeVisible()
+    await option.dispatchEvent('click')
+  }
+
+  await pick('Factory', sourceName)
+  await pick('Item', item)
+
+  const qty = row.getByLabel('Qty /min', { exact: true })
+  await qty.fill(String(amount))
+  await qty.blur()
+
+  await expect.poll(() => importedItems(page, index), {
+    message: `the import of ${item} from ${sourceName} never settled`,
+  }).toContain(item)
+}
+
+/** The items the factory at `index` is importing, read off its own inputs. */
+export const importedItems = async (page: Page, index: number): Promise<string[]> => {
+  const card = await factoryCard(page, index)
+  return (await card.locator('[id$="-imports"] .selectors .v-autocomplete__selection-text')
+    .allTextContents()).map(text => text.trim())
+}
+
+/**
  * Moves a factory one place down the plan, through the Arrange dialog. Buttons
  * rather than the sidebar's drag gesture: the reorder under test is the write
  * and its fan-out, and Sortable's pointer choreography is a second thing to fail.

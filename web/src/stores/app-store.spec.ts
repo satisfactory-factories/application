@@ -709,6 +709,52 @@ describe('app-store', () => {
         })
       })
 
+      /**
+       * The chain empties the tab and refills it, so for its whole length the array is a
+       * fragment of the plan. Two facts have to hold throughout, because the sync engine
+       * reads both: the app says it is not loaded, and the records go to the tab the
+       * chain started on.
+       */
+      describe('what the chain tells the rest of the app', () => {
+        it('should lower isLoaded for the whole of a chain the planner asked for', async () => {
+          await appStore.prepareLoader([newFactory('A', 0, 1), newFactory('B', 1, 2)], true)
+          await settleLoads()
+          expect(appStore.isLoaded).toBe(true)
+
+          const sampled: boolean[] = []
+          const onIncrement = () => sampled.push(appStore.isLoaded)
+          eventBus.on('incrementLoad', onIncrement)
+
+          // What the planner mounting does, and what a return to `/` therefore does.
+          appStore.startQueuedLoad()
+          await settleLoads()
+          eventBus.off('incrementLoad', onIncrement)
+
+          expect(sampled.length, 'the chain never staggered, so nothing was sampled')
+            .toBeGreaterThan(0)
+          expect(sampled).not.toContain(true)
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        // The tab was emptied first and the owner captured afterwards, so a switch in
+        // between sent the records to the new tab and left the old one permanently empty
+        // — which the sync engine reads as the user having deleted the room's contents.
+        it('should fill the tab it emptied, not the one the user switched to', async () => {
+          const first = appStore.getCurrentTab() as FactoryTab
+          first.factories = [newFactory('Original', 0, 1)]
+          appStore.addTab({ name: 'Other', factories: [newFactory('Other One', 0, 9)] }, { activate: false })
+          const other = appStore.getTab(appStore.factoryTabs[1].id) as FactoryTab
+
+          const running = appStore.beginLoading([newFactory('A', 0, 2), newFactory('B', 1, 3)], true)
+          // Inside the pause beginLoading takes before it starts pushing.
+          appStore.currentFactoryTab = other
+          await running
+
+          expect(first.factories.map(entry => entry.name)).toEqual(['A', 'B'])
+          expect(other.factories.map(entry => entry.name)).toEqual(['Other One'])
+        })
+      })
+
       describe('beginLoading', () => {
         let factories: Factory[]
 

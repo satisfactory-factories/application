@@ -5,7 +5,6 @@
     :model-value="showLoad"
     opacity="1"
     persistent
-    @after-enter="afterEnter"
   >
     <v-card class="pa-4 text-center sub-card" width="500">
       <template v-if="!firstLoad">
@@ -89,7 +88,6 @@
     firstLoad.value = false
 
     console.log('Loader: State after prepareForLoad', getState())
-    console.log('Loader: Waiting for v-overlay afterEnter event...')
   }
 
   function incrementLoad (payload: { step: string }) {
@@ -99,11 +97,6 @@
       console.log('Loader: setting isRendering')
       isRendering.value = true
     }
-  }
-
-  const afterEnter = () => {
-    console.log('Loader: v-overlay afterEnter received')
-    eventBus.emit('readyForData')
   }
 
   const loadingCompleted = () => {

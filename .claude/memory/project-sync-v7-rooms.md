@@ -30,12 +30,13 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 294 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2783 unit tests (152 files, 1 skipped),
+web 2795 unit tests (152 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 37 Playwright e2e tests passing. The 34 that predate the render-pacing fix
+`build` clean, and all 40 Playwright e2e tests passing. The 34 that predate the render-pacing fix
 ran twice at full speed and once under `E2E_CPU_THROTTLE=6`, which is the run that earns its keep
-and is the one that found the last real bug; the two rounds since (render pacing, then the field
-locks' own two tests) have had one full-speed run each.
+and is the one that found the last real bug; the rounds since (render pacing, the field locks'
+own two tests, then the loading-tab three) have had one full-speed run each, bar the
+loading-tab file which ran twice.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
 it gets proved.
 
@@ -994,6 +995,74 @@ Keep these: the shapes recur, and the second one bites twice.
   jump restored from session storage on load must not claim the user's authorship. Separately,
   `DroneCalculator.vue` holds `droneTime` in a detached `ref` and never writes it back to the
   factory at all — a pre-existing persistence bug, not a sync one, and untouched here.
+
+## A loading tab is read-only to the engine (2026-08-31)
+
+Reported from live use: while one collaborator was opening a shared plan, everyone else's
+console filled with "Factory not found" and the corruption alert fired. The receiving side was
+innocent — `findFac`, `flushInvalidRequests` and the alert were tripping over references to
+factories a *peer* had just told the server were deleted.
+
+**The staggered loader empties the tab's factory array and refills it one record at a time, so
+for a second or more the plan on that client is a fragment.** The pre-existing `!isLoaded`
+guard covered *sending* and nothing else, so five paths still read the fragment and wrote it
+back, and the client then honestly reported every unmounted record as a user deletion:
+`applyRemote` merging a peer's diff into it, `overlayIntent` reading "touched and gone from
+local state" as a deletion (worst of the five: touched ids are persisted in the mirror meta,
+so a cold boot carries a large set of them straight into this), `writeContentToTab` queueing
+the truncated content as the next load, `seedFromMirror` taking a baseline off it, and
+`recordIntent` inferring removals from it.
+
+Two separate faults kept `isLoaded` true while a chain ran, and either alone is enough:
+
+- **`startQueuedLoad` never lowered it.** Verified empirically rather than assumed:
+  `Loading.vue`'s `v-overlay` sets `appear: true`, so its `@after-enter` fires on *mount* as
+  well as on a false-to-true transition. `Loading.vue` is mounted only by `pages/index.vue`, so
+  navigating away from `/` and back remounts it, re-fires the event and restages the whole
+  plan — in an app that already said it was loaded. The chain is now started from
+  `Planner.vue`'s own `onMounted` instead, because a load must never hang off a CSS
+  transition. That mount is load-bearing on the way back too: `planVisible` in `Planner.vue`
+  starts false and only `loadingCompleted` flips it, so skipping the chain leaves placeholders.
+- **`beginLoading` emptied the tab before it captured the owner**, so a tab switch inside the
+  pause left the first tab permanently empty while the records went to the second. e85e953e
+  fixed the push target; this was the emptying target, the other half of the same bug.
+
+The fix is one rule stated in three places. `appStore.isTabLoading(tabId)` is the fact —
+`loadInFlight` plus the tab the chain actually owns, tracked from `beginLoading` rather than
+inferred from whichever tab is current. `roomIsMidLoad` in `room-sync-store.ts` reads it, and
+every inbound path (`onSnapshot`, `onUpToDate`, `onOpApply`, `onOpReject`) **parks** rather
+than touching the tab: it sets a per-room `needsSnapshot`, and `onLoadingCompleted` requests a
+fresh snapshot that rebases onto a complete array. Parking is not dropping, and it is
+self-healing — `probeTick` retries a request that could not be sent.
+
+**The wire guard is the belt to that pair of braces, and it deliberately does not consult
+`isLoaded`** — that is the flag that failed. `flushRoom` refuses to build a diff at all when
+the baseline holds a factory the loading tab does not, logs the ids loudly and re-baselines. It
+sits *before* `markStructuralIntent`, which would otherwise record the truncation as the user's
+own intent and persist it into the next boot.
+
+One deviation from the prescribed guard, and it matters. "Only send a removal if every removed
+id is in `touchedFactories`" cannot work as written: `markStructuralIntent` runs immediately
+before `buildDiff` and marks every missing id, so the test is a tautology. Capturing the set
+*before* the inference does not rescue it either, because inference is the **only** declaration
+a plain delete has — `removeFactory` and `Planner.vue`'s `deleteFactory` mark the records the
+reindex shifted, never the record removed. Making the guard about declared intent therefore
+means adding a declaration at every site that shrinks the plan, `loadServerPlan` and the
+share/paste imports included, and one missed site silently stops deletions syncing. Left as a
+flagged follow-up; the guard ships keyed on load ownership instead.
+
+Guards: `room-sync-store.spec.ts` "a tab a load chain owns" (7 cases, including a negative
+control that sends the removal once the tab stops reporting itself as loading),
+`app-store.spec.ts` "what the chain tells the rest of the app" (2), and
+`web/e2e/tests/loading-tab.e2e.ts` (3), which reads the frames off the socket through the
+harness gate's new `sent()`. All twelve were negative-controlled by neutering the fix; the two
+e2e cases that fail on the old code fail with real data loss, not a wire assertion.
+
+Two things found in passing and **not** fixed: `createRoom` posts no `plannerVersion`, so the
+first snapshot back writes the owner's tab stamp to `undefined` and the raw-resources migration
+notice can raise itself on a plan that had answered for it; and the import row's option menu
+cannot be clicked by a real pointer event in the e2e viewport, so `addImport` selects with
+`dispatchEvent`.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See

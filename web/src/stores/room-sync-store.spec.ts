@@ -232,26 +232,36 @@ describe('room-sync-store', () => {
     })
 
     /**
-     * The load chain owns the plan array until it completes, and it used to commit
-     * the copy it captured at the start. A join snapshot landing inside that window
-     * was overwritten with the empty tab the chain was loading — and the engine then
-     * sent that back as a deletion of everyone else's plan.
+     * The load chain owns the plan array until it completes, so a snapshot landing
+     * inside that window is parked rather than merged into a fragment. The heal is
+     * a fresh snapshot request the moment the chain reports back, which then rebases
+     * onto a complete array.
      */
-    it('survives a load chain that started before the snapshot arrived', async () => {
+    it('parks a snapshot that lands mid-load and heals from a fresh one', async () => {
       const tab = setTab([])
       appStore.currentFactoryTab = tab
       store.trackRoom(ROOM)
       connect()
+      const joinsBefore = joinsOf().length
 
       // Parked on the chain's first pause, exactly where a tab switch waits.
       const loading = appStore.prepareLoader(tab.factories)
       receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
+      expect(names(tab), 'the parked snapshot was written into the tab anyway').toEqual([])
+
       await loading
       await vi.waitFor(() => {
         if (appStore.loadInFlight) throw new Error('the queued load is still running')
       })
 
+      // A join with no revision: the server can only answer it with a whole snapshot.
+      const heal = joinsOf().slice(joinsBefore).at(-1)
+      expect(heal, 'the load ended without asking for a fresh snapshot').toBeDefined()
+      expect(heal.lastRevision).toBeUndefined()
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
       expect(names(tab)).toEqual(['Alpha', 'Beta'])
+
       // The load may re-normalise records and send them; what it must never do is
       // tell the server the room is empty.
       store.flushRoom(ROOM)
@@ -315,7 +325,6 @@ describe('room-sync-store', () => {
       tab.name = 'Renamed mid-load'
 
       store.flushRoom(ROOM)
-      console.log('OPS', JSON.stringify(opsOf()).slice(0, 900))
       expect(opsOf()).toHaveLength(0)
 
       appStore.isLoaded = true
@@ -362,6 +371,180 @@ describe('room-sync-store', () => {
       const op = lastOp()
       expect(op.baseRevision).toBe(9)
       expect(op.diff.factories.map((entry: Factory) => entry.name)).toEqual(['Edited offline'])
+    })
+  })
+
+  /**
+   * A load chain empties the tab's factory array and refills it one record at a time, so
+   * mid-chain it holds a fragment of the plan. Everything here is one rule: a loading tab
+   * is read-only to the engine. Deriving anything from that fragment — a merge, an
+   * overlay, a baseline, a diff — writes the truncation back and then reports it to
+   * everyone else as the user having deleted their plan.
+   */
+  describe('a tab a load chain owns', () => {
+    /** The chain has emptied the tab and remounted `keep` records so far. */
+    const midLoad = (tab: FactoryTab, keep = 1) => {
+      vi.spyOn(appStore, 'isTabLoading').mockImplementation(id => id === ROOM)
+      tab.factories.splice(keep)
+    }
+
+    /** The chain finishes: the whole plan is back and the tab is the engine's again. */
+    const loadCompleted = (tab: FactoryTab, factories = fixture) => {
+      vi.mocked(appStore.isTabLoading).mockReturnValue(false)
+      tab.factories = wire(factories)
+      eventBus.emit('loadingCompleted')
+    }
+
+    const healRequest = () => joinsOf().at(-1)
+
+    it('parks an inbound op instead of merging it into the fragment', () => {
+      const tab = syncAt(fixture, 4)
+      const joinsBefore = joinsOf().length
+      midLoad(tab)
+
+      const theirs = wire(fixture[1])
+      theirs.name = 'Beta, theirs'
+      receive({ type: 'op_apply', roomId: ROOM, revision: 5, diff: { factories: [theirs] } })
+
+      // Nothing written, nothing adopted, and nothing asked for until the chain ends.
+      expect(names(tab)).toEqual(['Alpha'])
+      expect(store.rooms[ROOM].revision).toBe(4)
+      expect(joinsOf()).toHaveLength(joinsBefore)
+
+      loadCompleted(tab)
+
+      // A join carrying no revision, which the server can only answer with a whole snapshot.
+      expect(healRequest()).toBeDefined()
+      expect(healRequest().lastRevision).toBeUndefined()
+
+      const server = wire(fixture)
+      server[1].name = 'Beta, theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta, theirs'])
+      expect(store.rooms[ROOM].revision).toBe(5)
+    })
+
+    /**
+     * The nastiest of them: touched ids are persisted, so a cold boot carries a big set
+     * of them into the first load. The overlay reads "touched and gone from local state"
+     * as this client having deleted the record, and a record that has merely not been
+     * remounted yet looks exactly like one.
+     */
+    it('never reads an unmounted factory as a deletion, touched or not', () => {
+      const tab = syncAt(fixture, 4)
+      store.markUserTouched(ROOM, 2)
+      midLoad(tab)
+
+      const server = wire(fixture)
+      server[0].name = 'Alpha, theirs'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      // Beta is still only unmounted. Overlaying intent onto the snapshot would have
+      // dropped it from the server's copy and written that back.
+      expect(names(tab)).toEqual(['Alpha'])
+
+      loadCompleted(tab)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      expect(names(tab)).toEqual(['Alpha, theirs', 'Beta'])
+      expect(opsOf().flatMap(op => op.diff.removedFactoryIds ?? [])).toEqual([])
+    })
+
+    it('refuses to seed a baseline off the fragment when up_to_date lands', () => {
+      const tab = setTab(wire(fixture))
+      setTabMirrorMeta(ROOM, {
+        revision: 9,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: [],
+        userTouchedFields: [],
+      })
+      store.trackRoom(ROOM)
+      connect()
+      midLoad(tab)
+
+      receive({ type: 'up_to_date', roomId: ROOM, revision: 9 })
+
+      // A baseline taken here would hold one factory, and the next diff would report the
+      // other as removed. The room stays un-seeded instead.
+      expect(store.rooms[ROOM].status).toBe('joining')
+      expect(opsOf()).toHaveLength(0)
+
+      loadCompleted(tab)
+      expect(healRequest().lastRevision).toBeUndefined()
+    })
+
+    it('parks a rejected op rather than rebasing onto the fragment', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+      store.flushRoom(ROOM)
+      const rejected = lastOp().opId
+      midLoad(tab)
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: rejected,
+        reason: 'stale_base',
+        snapshot: snapshotOf(fixture, 5),
+      })
+
+      expect(names(tab)).toEqual(['Mine'])
+      expect(store.rooms[ROOM].hasPendingOp).toBe(false)
+
+      loadCompleted(tab, [{ ...wire(fixture[0]), name: 'Mine' }, wire(fixture[1])])
+      expect(healRequest().lastRevision).toBeUndefined()
+    })
+
+    /**
+     * The wire guard, and the whole point of it: it does not consult `isLoaded`, the flag
+     * whose failure let this reach production in the first place.
+     */
+    it('drops an op carrying removals and asks for a snapshot instead', () => {
+      const tab = syncAt(fixture, 4)
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const joinsBefore = joinsOf().length
+      midLoad(tab)
+      // The exact hole: the app still believes it is loaded while the chain runs.
+      expect(appStore.isLoaded).toBe(true)
+
+      expect(store.flushRoom(ROOM)).toBe(false)
+
+      expect(opsOf()).toHaveLength(0)
+      expect(joinsOf()).toHaveLength(joinsBefore + 1)
+      expect(healRequest().lastRevision).toBeUndefined()
+      expect(errors).toHaveBeenCalledWith(
+        expect.stringContaining('refusing to send factory removals'),
+        expect.objectContaining({ factoryIds: [2] }),
+      )
+      errors.mockRestore()
+    })
+
+    // The negative control for the guard above: with nothing telling the engine a chain
+    // owns the tab, the same fragment goes out as a deletion of half the room.
+    it('would send that removal if the tab did not report itself as loading', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories.splice(1)
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+      expect(lastOp().diff.removedFactoryIds).toEqual([2])
+    })
+
+    // The guard also has to cover the resend a rebase makes, which reaches the wire
+    // through the same door rather than through a user edit.
+    it('covers the resend a rebase makes', () => {
+      const tab = syncAt(fixture, 4)
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+      store.markUserTouched(ROOM, 1)
+      // Mid-load only from the flush's point of view: the rebase itself is allowed to
+      // run so its trailing resend is the thing under test.
+      tab.factories.splice(1)
+      vi.spyOn(appStore, 'isTabLoading').mockImplementation(id => id === ROOM)
+
+      expect(store.flushRoom(ROOM)).toBe(false)
+      expect(opsOf().flatMap(op => op.diff.removedFactoryIds ?? [])).toEqual([])
+      errors.mockRestore()
     })
   })
 

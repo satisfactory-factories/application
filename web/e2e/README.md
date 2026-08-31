@@ -39,6 +39,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
 | `field-locks` | A focused note disables the same field for the other client and keeps it disabled while its holder types; blur and a ten-second idle both hand it back, and a second factory's note is never covered. |
+| `loading-tab` | A client rendering a big plan makes no writes: no op it sends carries a removal, and both devices end holding every factory. Covered for a tab re-entered, a client with edits still unsent, and a return to the planner from another page. |
 
 ## Rate limits, and the address each device claims
 
