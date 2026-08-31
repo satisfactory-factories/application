@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { Factory } from 'common'
+import type { Factory, FactoryTab } from 'common'
 import { contentPrint } from '@/sync/plan-activity'
 import { useAppStore } from '@/stores/app-store'
 import type { TabField } from '@/sync/room-state'
@@ -77,13 +77,12 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
    * removed, which is a change on its own and is the only case that re-reads
    * the whole plan.
    */
-  const settle = () => {
+  const settleTab = (tab: FactoryTab | undefined) => {
     timer = undefined
     const announced = pending
     pending = new Set()
 
-    const tab = appStore.getCurrentTab()
-    if (!tab || !appStore.isLoaded) return
+    if (!tab) return
     if (tab.id !== followed) {
       follow(tab.id, tab.factories)
       return
@@ -101,6 +100,9 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
     if (resized) follow(tab.id, tab.factories)
     bump(tab.id)
   }
+
+  // A load half-fills the plan array, so its length says nothing until it finishes.
+  const settle = () => settleTab(appStore.isLoaded ? appStore.getCurrentTab() : undefined)
 
   const schedule = () => {
     if (timer === undefined) timer = setTimeout(settle, ACTIVITY_DEBOUNCE_MS)
@@ -134,8 +136,16 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
   eventBus.on('loadingCompleted', onLoadingCompleted)
 
   // Switching tabs is not an edit, so the baseline moves with the user rather than
-  // the first edit on the new tab being swallowed by a reseed.
-  const stopTabWatch = watch(() => appStore.getCurrentTab()?.id, () => followCurrentTab())
+  // the first edit on the new tab being swallowed by a reseed. A burst still owed to
+  // the tab being left is flushed first, while `prints` still describes it: measured
+  // against the new tab's fingerprints it reads as no change and is lost.
+  const stopTabWatch = watch(() => appStore.getCurrentTab()?.id, (_next, previous) => {
+    if (timer !== undefined && previous !== undefined) {
+      clearTimeout(timer)
+      settleTab(appStore.getTab(previous))
+    }
+    followCurrentTab()
+  })
 
   followCurrentTab()
 

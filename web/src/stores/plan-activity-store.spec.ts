@@ -116,6 +116,24 @@ describe('plan-activity-store', () => {
     expect(store.lastUpdatedAt(tabId())).toBeNull()
   })
 
+  // A burst belongs to the tab it was announced on. Switching tabs inside the 300ms
+  // window used to measure it against the new tab's fingerprints and drop it, so an
+  // edit followed by a quick click on another tab was never recorded anywhere.
+  it('stamps the tab an edit was made on when the user switches away first', async () => {
+    const tab = seedPlan()
+    const edited = tabId()
+
+    addProductToFactory(tab.factories[0], { id: 'IronIngot', amount: 60, recipe: 'IngotIron' })
+    eventBus.emit('factoryUpdated', tab.factories[0])
+
+    appStore.addTab({ name: 'Elsewhere', factories: [] })
+    await nextTick()
+    settle()
+
+    expect(store.lastUpdatedAt(edited)).not.toBeNull()
+    expect(store.lastUpdatedAt(tabId())).toBeNull()
+  })
+
   it('keeps a stamp per tab, and remembers them across a reload', async () => {
     seedPlan()
     store.bump('other-tab', 1_000)
