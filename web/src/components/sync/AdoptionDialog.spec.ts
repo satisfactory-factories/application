@@ -140,13 +140,14 @@ describe('AdoptionDialog', () => {
     expect(wrapper?.className).toContain('text-primary')
   })
 
-  it('leaves every plan local when declined', async () => {
+  it('leaves every plan local when declined, and remembers the answer', async () => {
     const decline = vi.spyOn(roomsStore, 'declineAdoption')
     await open(['Alpha'])
 
     body().querySelector<HTMLElement>('[data-testid="adopt-decline"]')?.click()
     await flushPromises()
 
-    expect(decline).toHaveBeenCalled()
+    // remember=true: the store persists the answer so refreshes stop asking.
+    expect(decline).toHaveBeenCalledWith(true)
   })
 })

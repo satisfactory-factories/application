@@ -8,7 +8,7 @@ import { ApiError } from '@/api/client'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
-import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+import { ADOPTION_ANSWERED_KEY, OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
 import { newFactory } from '@/utils/factory-management/factory'
@@ -302,6 +302,43 @@ describe('rooms-store', () => {
       expect(store.adoptionOpen).toBe(false)
       expect(appStore.getTabState(tab.id).kind).toBe('local')
       expect(api.adoptRoom).not.toHaveBeenCalled()
+    })
+
+    // The nag: every refresh re-ran the offer, and declining only closed it for
+    // that page load. An answer now holds for the browser.
+    it('remembers a "No thanks" across refreshes', async () => {
+      localTab('Mine')
+      await store.refresh({ offerAdoption: true })
+      store.declineAdoption(true)
+
+      await store.refresh({ offerAdoption: true })
+
+      expect(store.adoptionOpen).toBe(false)
+      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBe('true')
+    })
+
+    it('counts a completed adoption run as the answer too', async () => {
+      const tab = localTab('Mine')
+      vi.mocked(api.adoptRoom).mockResolvedValue({
+        status: 'created',
+        room: entry({ roomId: tab.id, name: 'Mine' }),
+      })
+      listReturns([entry({ roomId: tab.id, name: 'Mine' })])
+
+      await store.adoptTabs([tab.id])
+
+      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBe('true')
+    })
+
+    // signOut closes the dialog as cleanup; that is not the user answering.
+    it('does not let a sign-out silence the offer', async () => {
+      localTab('Mine')
+      await store.refresh({ offerAdoption: true })
+
+      store.signOut()
+
+      expect(store.adoptionOpen).toBe(false)
+      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBeNull()
     })
 
     it('adopts create-only, carrying the tab id and its content', async () => {

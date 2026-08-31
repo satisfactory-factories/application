@@ -20,6 +20,9 @@ export type JoinOutcome = { ok: true } | { ok: false, code: string | null, messa
 /** Offline mode is total backend silence, so every REST action refuses rather than queues. */
 export const OFFLINE_MESSAGE = 'You are in offline mode. Turn it off to change what is on the server.'
 
+/** Set once the user answers the adoption offer, so a refresh does not ask again. */
+export const ADOPTION_ANSWERED_KEY = 'adoptionOfferAnswered'
+
 const describe = (error: unknown): string => {
   if (error instanceof VersionMismatchError) return 'This version of the planner is out of date. Please refresh.'
   if (error instanceof ApiNetworkError) return 'The server could not be reached.'
@@ -210,6 +213,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     if (candidates.length === 0) return
 
+    // Asked and answered: one prompt per browser, however many refreshes follow.
+    // The plus button stays the way to sync a plan after a "No thanks".
+    if (localStorage.getItem(ADOPTION_ANSWERED_KEY) === 'true') return
+
     adoptionCandidates.value = candidates.map(tab => tab.id)
     adoptionOpen.value = true
   }
@@ -251,7 +258,7 @@ export const useRoomsStore = defineStore('rooms', () => {
       }
     } finally {
       adopting.value = false
-      declineAdoption()
+      declineAdoption(true)
     }
 
     await refresh()
@@ -299,8 +306,13 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
   }
 
-  /** Declining leaves every candidate exactly as it was: local, and kept. */
-  const declineAdoption = () => {
+  /**
+   * Declining leaves every candidate exactly as it was: local, and kept.
+   * `remember` is true only for a real answer (No thanks, or an adoption run) —
+   * never for cleanup closes like sign-out, which must not silence the offer.
+   */
+  const declineAdoption = (remember = false) => {
+    if (remember) localStorage.setItem(ADOPTION_ANSWERED_KEY, 'true')
     adoptionOpen.value = false
     adoptionCandidates.value = []
   }

@@ -38,7 +38,7 @@
         data-testid="adopt-decline"
         :disabled="roomsStore.adopting"
         variant="text"
-        @click="roomsStore.declineAdoption()"
+        @click="roomsStore.declineAdoption(true)"
       >
         No thanks
       </v-btn>
