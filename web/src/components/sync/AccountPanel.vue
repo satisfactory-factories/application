@@ -16,7 +16,9 @@
       size="small"
       variant="flat"
     >
-      <i :class="`fas ${connection.icon} mr-2`" />{{ connection.label }}
+      <!-- Keyed span: FA replaces the <i> with an SVG once, so a :class flip
+           updates a detached element and the glyph freezes on the first state. -->
+      <span :key="connection.icon" class="mr-2"><i :class="`fas ${connection.icon}`" /></span>{{ connection.label }}
     </v-chip>
 
     <v-switch
