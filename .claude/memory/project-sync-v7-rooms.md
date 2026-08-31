@@ -12,7 +12,14 @@ The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms,
 `.claude/plans/sync-v7-realtime-rooms.md` (revision 8, reconciled with the built backend).
 
 **Status: shipped for review as PR #620 (opened 2026-08-30) from branch
-`claude/sync-mechanism-refactor-7b021b`; not yet merged.** The PR body carries the three
+`claude/sync-mechanism-refactor-7b021b`; not yet merged. Since 2026-08-31 the PR targets the
+`beta7` integration branch, not `main`.** `beta7` is the v0.7.0 beta line: a group of test
+users validates the sync feature on its Vercel branch preview (previews point at the shared
+preview API) before anything reaches `main` and production. The four CI check workflows list
+`beta7` beside `main` in their `pull_request`/`push` branch filters; the production deploy
+workflows stay `main`-only on purpose, so merging into `beta7` deploys nothing. Branch
+protection and required checks on `beta7` are not configured (repo settings, owner's call).
+The PR body carries the three
 manual box steps and the deliberate 0.7.0-over-0.8.0 version choice. The e2e CI job's first
 live run happens on that PR. Every task line in the plan is delivered bar the four
 deliberate v0.7.0 follow-ups (history UI, presence beyond an occupancy count, email password

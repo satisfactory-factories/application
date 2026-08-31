@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - main
+      # The v0.7.0 integration line: sync work lands here for beta testing first.
+      - beta7
     paths:
       - 'web/**'
   # Deliberately NOT path-filtered, unlike the push trigger above. This job is a
@@ -18,6 +20,7 @@ on:
   pull_request:
     branches:
       - main
+      - beta7
 permissions:
   contents: read
 jobs:

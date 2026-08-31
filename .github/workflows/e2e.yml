@@ -18,6 +18,8 @@ on:
   push:
     branches:
       - main
+      # The v0.7.0 integration line: sync work lands here for beta testing first.
+      - beta7
     paths:
       - 'web/**'
       - 'backend/**'
@@ -29,6 +31,7 @@ on:
   pull_request:
     branches:
       - main
+      - beta7
     paths:
       - 'web/**'
       - 'backend/**'
