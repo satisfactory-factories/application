@@ -17,6 +17,7 @@
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
                 @blur="commitName"
+                @focus="nameFocused = true"
                 @keyup.enter="acceptName"
               >
             </div>
@@ -534,16 +535,24 @@
   // The name is held as a draft while typing: writing each keystroke into the factory re-rendered
   // every place the name appears, which read as lag. Blur or Enter is what applies it.
   const draftName = ref(props.factory.name)
+  const nameFocused = ref(false)
+  // A remote apply must not clobber a draft mid-typing; blur commits, and the
+  // user's committed name then wins the same way any content edit does.
   watch(() => props.factory.name, name => {
-    draftName.value = name
+    if (!nameFocused.value) draftName.value = name
   })
 
   // The write is here rather than on each keystroke, so this is also where the rename is
   // declared: intent, not just payload, or a rebase would take the server's name back.
+  // Written through the live record: a rebase can replace the factory object between
+  // the keystroke and the commit, and a rename on the detached copy never syncs.
   const commitName = () => {
+    nameFocused.value = false
     if (draftName.value === props.factory.name) return
+    const live = getFactories().find(entry => entry.id === props.factory.id) ?? props.factory
+    live.name = draftName.value
     props.factory.name = draftName.value
-    markFactoryEdited(props.factory)
+    markFactoryEdited(live)
   }
 
   // Enter accepts the rename and leaves the field, matching the group name in the sidebar.

@@ -6,6 +6,7 @@ import vuetify from '@/plugins/vuetify'
 import PlannerFactory from './PlannerFactory.vue'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
+import { useAppStore } from '@/stores/app-store'
 import eventBus from '@/utils/eventBus'
 
 /**
@@ -92,6 +93,37 @@ describe('Component: PlannerFactory (header sync intent)', () => {
 
     expect(subject.find<HTMLInputElement>('input.factory-name').element.value).toBe('Arrived over the wire')
     expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', factory)
+  })
+
+  // A rebase replaces factory objects wholesale; a commit through the stale props
+  // reference lands on a detached copy and never syncs.
+  it('lands the rename on the live record when a rebase swapped the object mid-edit', async () => {
+    const appStore = useAppStore()
+    const live = reactive(newFactory('Iron Ingots', 0, 1)) as Factory
+    appStore.getFactories().push(live)
+
+    const subject = mountSubject()
+    const field = subject.find('input.factory-name')
+    await field.trigger('focus')
+    await field.setValue('Steel Beams')
+    await field.trigger('blur')
+
+    expect(live.name).toBe('Steel Beams')
+    expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', live)
+  })
+
+  it('keeps a focused draft when a remote rename lands, and the commit wins', async () => {
+    const subject = mountSubject()
+    const field = subject.find<HTMLInputElement>('input.factory-name')
+    await field.trigger('focus')
+    await field.setValue('Steel B')
+
+    factory.name = 'Arrived over the wire'
+    await nextTick()
+
+    expect(field.element.value).toBe('Steel B')
+    await field.trigger('blur')
+    expect(factory.name).toBe('Steel B')
   })
 
   it('collapsing the card is an edit, because the flag is stored with the plan', async () => {

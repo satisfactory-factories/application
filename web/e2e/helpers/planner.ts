@@ -341,6 +341,15 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   const name = card.locator('input.factory-name')
   await name.fill(edit.name)
   await commitName(name)
+  // A rebase racing the commit can still revert the draft; a person retypes,
+  // and so does the test — once.
+  try {
+    await expect(name).toHaveValue(edit.name, { timeout: 2_000 })
+  } catch {
+    await name.fill(edit.name)
+    await commitName(name)
+    await expect(name).toHaveValue(edit.name)
+  }
 
   // A note needs no recalculation to reach the sync engine, so it is the cheapest
   // per-factory payload a test can give a new card.
