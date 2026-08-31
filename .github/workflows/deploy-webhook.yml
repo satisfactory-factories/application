@@ -13,6 +13,16 @@ name: "Backend: Trigger Deployment Webhook"
 #   WEBHOOK_SECRET  the shared HMAC secret
 on:
   workflow_call:
+    inputs:
+      # Which hook on the webhooks server to poke. Every hook there is the same
+      # URL with a different last path segment, so the preview hook is derived
+      # from WEBHOOK_URL rather than stored as a second secret — see the
+      # derivation below, which refuses to run if that assumption stops holding.
+      hook:
+        description: 'Hook id to call (satisfactory-factories or satisfactory-factories-preview)'
+        type: string
+        required: false
+        default: satisfactory-factories
 
 permissions:
   contents: read
@@ -33,8 +43,21 @@ jobs:
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          HOOK: ${{ inputs.hook }}
         run: |
-          body='{"application":"satisfactory-factories"}'
+          # WEBHOOK_URL is the production hook's full URL. Rebuild it from its own
+          # base and the default hook id: if that does not reproduce the secret
+          # byte for byte, this derivation is wrong and the preview URL would
+          # point somewhere unintended, so stop rather than POST blind. The URL is
+          # never echoed — this repo is public and the host is not.
+          base="${WEBHOOK_URL%/*}"
+          if [ "$base/satisfactory-factories" != "$WEBHOOK_URL" ]; then
+            echo "::error::WEBHOOK_URL does not end in '/satisfactory-factories', so the hook URL cannot be derived. Fix the secret's shape or give the preview hook its own secret."
+            exit 1
+          fi
+          url="$base/${HOOK}"
+
+          body="{\"application\":\"${HOOK}\"}"
           signature=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -r | cut -d' ' -f1)
 
           # The hook answers 200 or 500 carrying the deploy's own output, so this
@@ -46,4 +69,4 @@ jobs:
             --header "X-Hub-Signature-256: sha256=$signature" \
             --header "X-Hub-SHA: $GITHUB_SHA" \
             --data "$body" \
-            "$WEBHOOK_URL"
+            "$url"

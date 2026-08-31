@@ -57,7 +57,9 @@ This is the core of the app. Everything else is UI around it.
 
 ### Backend (`backend/backend.ts`)
 
-Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT), `/save` + `/load` (authenticated plan sync), `/share` + `/share/:id` (shareable plans, rate-limited), `/hello` (liveness) and `/health` (liveness + a Mongo ping, 503 when the database is unreachable — this is what uptime monitoring points at). Mongoose models in `backend/models/`. API base URL is selected in `web/src/config/config.ts` by `VITE_ENV`.
+Single-file Express app. Routes: `/register`, `/login`, `/validate-token` (JWT), `/save` + `/load` (authenticated plan sync), `/share` + `/share/:id` (shareable plans, rate-limited), `/hello` (liveness) and `/health` (liveness + a Mongo ping, 503 when the database is unreachable — this is what uptime monitoring points at). Mongoose models in `backend/models/`. API base URL is selected in `web/src/config/config.ts`: `VITE_API_URL` wins if set, otherwise `VITE_ENV` picks between localhost and production.
+
+There is a **preview API** at `api-preview.satisfactory-factories.app` that every Vercel preview build points at, so no preview can touch live data. It is one shared instance — put a branch on it with the `deploy-preview-api` label, and put it back on `main` by hand afterwards, because nothing does that automatically. See `docs/deployment.md`.
 
 ### Game data versioning (important, easy to get wrong)
 
