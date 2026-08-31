@@ -4,6 +4,7 @@
 - [Satisfactory Factories project](project-satisfactory-factories.md) — logistics planner for the game; my architecture docs live in `docs/architecture/`
 - [Renovate catalog lockfile mismatch](renovate-catalog-lockfile-mismatch.md) — why `sharedWorkspaceLockfile` must stay true; Renovate only ever commits the root lockfile
 - [Backend deploy & prod drift](backend-deploy-and-prod-drift.md) — before assuming the API is deployable from `main`, or reading a green Actions run as a successful deploy
+- [Preview API environment](preview-api-environment.md) — the second API previews point at; shared, port 3002, and nothing puts it back on `main`
 - [Building groups](building-groups-branch-status.md) — how overclocking/somersloops work and their gotchas; shipped, the branch it was built on is dead
 - [Calc engine gotchas](calc-engine-gotchas.md) — double-pass recalc, load-bearing step order, migration patches, and other traps
 - [Tab sync v2 rework](project-tab-sync-v2.md) — in-flight multi-tab sync on branch `tab-sync-v2`; rendering rework deferred to its own plan

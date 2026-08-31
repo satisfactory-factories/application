@@ -23,6 +23,7 @@ import {
   minimumClientVersion
 } from "./utils/client-version";
 import { appVersion } from "./utils/app-version";
+import { isAllowedOrigin, parseExtraOrigins } from "./utils/cors";
 
 dotenv.config();
 
@@ -81,9 +82,15 @@ app.use(Express.urlencoded({ limit: '20mb', extended: true }));
 app.set('trust proxy', 1); // Trust first proxy
 app.use(apiRateLimit);
 
+// Read once at boot. Empty in production, which leaves CORS exactly as it was; the preview
+// API sets it, because Vercel gives each preview deployment a fresh hostname.
+const EXTRA_ORIGINS = parseExtraOrigins(process.env.CORS_EXTRA_ORIGINS);
+
 // Add CORS middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://api.satisfactory-factories.app'], // Replace with your allowed origins, e.g., 'http://localhost:3000' or specific domains
+  // A request with no Origin header is not a browser cross-origin call, and gets the same
+  // treatment the previous array form gave it: allowed through, with nothing reflected back.
+  origin: (origin, callback) => callback(null, origin === undefined || isAllowedOrigin(origin, EXTRA_ORIGINS)),
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   // X-Planner-Version has to be allowed or the browser's preflight blocks every request from
   // the planner, and the outdated marker has to be exposed or scripts cannot read it.
