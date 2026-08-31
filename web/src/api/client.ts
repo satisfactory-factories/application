@@ -240,9 +240,6 @@ export const lookupRoomBySlug = (slug: string): Promise<RoomSlugLookup> =>
 export const legacyAutoImport = (localTabCount: number): Promise<LegacyImportResult> =>
   apiRequest('/rooms/legacy/auto-import', { method: 'POST', body: { localTabCount } })
 
-export const legacyRecover = (): Promise<LegacyImportResult> =>
-  apiRequest('/rooms/legacy/recover', { method: 'POST', body: {} })
-
 // ===== Preferences =====
 
 export const getPreferences = (): Promise<PreferencesState> => apiRequest('/preferences')

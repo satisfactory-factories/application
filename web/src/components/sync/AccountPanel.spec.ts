@@ -4,17 +4,15 @@ import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
 import type { RoomListEntry } from 'common'
 import AccountPanel from './AccountPanel.vue'
+import ShareDialog from './ShareDialog.vue'
 import vuetify from '@/plugins/vuetify'
-import * as api from '@/api/client'
+import type { FactoryTab } from '@/interfaces/planner/FactoryInterface'
+import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
+import { LOCAL_TAB_STATE, type TabSyncStateMap } from '@/sync/tab-sync-state'
 import { relativeTime } from '@/utils/relative-time'
-
-vi.mock('@/api/client', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/api/client')>()
-  return { ...actual, legacyRecover: vi.fn() }
-})
 
 const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   roomId: 'room-1',
@@ -29,12 +27,19 @@ const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   ...overrides,
 })
 
+const tab = (id: string, name: string): FactoryTab =>
+  ({ id, name, factories: [] } as unknown as FactoryTab)
+
 describe('AccountPanel', () => {
+  let appStore: ReturnType<typeof useAppStore>
   let authStore: ReturnType<typeof useAuthStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
   let roomSync: ReturnType<typeof useRoomSyncStore>
 
-  const render = (initialState: Record<string, unknown> = {}, open = true) => {
+  const render = (
+    initialState: Record<string, unknown> = {},
+    { open = true, tabs = [] as FactoryTab[], tabStates = {} as TabSyncStateMap } = {},
+  ) => {
     const pinia = createTestingPinia({ createSpy: vi.fn, initialState })
     setActivePinia(pinia)
 
@@ -44,12 +49,23 @@ describe('AccountPanel', () => {
     roomsStore = useRoomsStore()
     roomSync = useRoomSyncStore()
 
+    // Testing pinia stubs actions, so the two reads the panel makes are re-wired
+    // to answer from the fixture handed in.
+    appStore = useAppStore()
+    vi.mocked(appStore.getTabs).mockImplementation(() => tabs)
+    vi.mocked(appStore.getTabState).mockImplementation(tabId => tabStates[tabId] ?? LOCAL_TAB_STATE)
+
     return mount(AccountPanel, { global: { plugins: [vuetify, pinia] }, props: { open } })
   }
 
   type Panel = ReturnType<typeof render>
 
   const at = (wrapper: Panel, testId: string) => wrapper.find(`[data-testid="${testId}"]`)
+
+  const openCloud = async (wrapper: Panel) => {
+    await at(wrapper, 'plans-tab-cloud').trigger('click')
+    await flushPromises()
+  }
 
   const fillPasswordForm = async (wrapper: Panel, current: string, next: string, confirm = next) => {
     await at(wrapper, 'toggle-change-password').trigger('click')
@@ -156,62 +172,129 @@ describe('AccountPanel', () => {
     })
   })
 
-  describe('synced plans', () => {
-    it('says so plainly when there are none', () => {
-      expect(at(render(), 'no-synced-plans').exists()).toBe(true)
+  describe('the Local and Cloud tabs', () => {
+    it('opens on Local and switches to Cloud and back', async () => {
+      const wrapper = render()
+      expect(at(wrapper, 'local-pane').exists()).toBe(true)
+      expect(at(wrapper, 'cloud-pane').exists()).toBe(false)
+
+      await openCloud(wrapper)
+      expect(at(wrapper, 'local-pane').exists()).toBe(false)
+      expect(at(wrapper, 'cloud-pane').exists()).toBe(true)
+
+      await at(wrapper, 'plans-tab-local').trigger('click')
+      expect(at(wrapper, 'local-pane').exists()).toBe(true)
+    })
+  })
+
+  describe('local plans', () => {
+    const mixedTabs = () => ({
+      tabs: [tab('local-1', 'My Browser Plan'), tab('room-1', 'Iron Plates')],
+      tabStates: {
+        'room-1': { kind: 'synced', shared: false, role: 'owner', revision: 3 },
+      } as TabSyncStateMap,
     })
 
-    it('lists each room the account holds', () => {
-      const wrapper = render({
-        rooms: { entries: { 'room-1': entry(), 'room-2': entry({ roomId: 'room-2', name: 'Steel', order: 1 }) } },
-      })
+    it('lists only the tabs that live in this browser', () => {
+      const wrapper = render({}, mixedTabs())
 
-      expect(wrapper.findAll('[data-testid="synced-plan"]')).toHaveLength(2)
-      expect(wrapper.text()).toContain('Iron Plates')
-      expect(wrapper.text()).toContain('Steel')
+      const rows = wrapper.findAll('[data-testid="local-plan"]')
+      expect(rows).toHaveLength(1)
+      expect(rows[0].text()).toContain('My Browser Plan')
+      expect(rows[0].text()).not.toContain('Iron Plates')
     })
 
-    it('marks a shared plan and a plan owned by someone else', () => {
-      const wrapper = render({
-        rooms: { entries: { 'room-1': entry({ shared: true, role: 'member' }) } },
+    it('says so plainly when every tab is already on the cloud', () => {
+      const wrapper = render({}, {
+        tabs: [tab('room-1', 'Iron Plates')],
+        tabStates: { 'room-1': { kind: 'synced', shared: false, role: 'owner', revision: 3 } },
       })
 
-      const row = at(wrapper, 'synced-plan')
-      expect(row.text()).toContain('Shared')
-      expect(row.text()).toContain('Member')
+      expect(at(wrapper, 'no-local-plans').exists()).toBe(true)
+      expect(at(wrapper, 'local-plan').exists()).toBe(false)
+    })
+
+    it('opens the share dialog for the local tab that was clicked', async () => {
+      const wrapper = render({}, mixedTabs())
+
+      await at(wrapper, 'share-local-plan').trigger('click')
+
+      const dialog = wrapper.findComponent(ShareDialog)
+      expect(dialog.props('modelValue')).toBe(true)
+      expect(dialog.props('tabId')).toBe('local-1')
+    })
+
+    it('converts a local tab through the adoption path', async () => {
+      const wrapper = render({}, mixedTabs())
+
+      await at(wrapper, 'convert-local-plan').trigger('click')
+      await flushPromises()
+
+      expect(roomsStore.adoptTabs).toHaveBeenCalledWith(['local-1'])
+    })
+  })
+
+  describe('cloud plans', () => {
+    it('splits the rooms into My Plans and Joined Plans by role', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', role: 'member', order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      const mine = at(wrapper, 'my-plans')
+      const joined = at(wrapper, 'joined-plans')
+      expect(mine.findAll('[data-testid="my-plan"]')).toHaveLength(1)
+      expect(mine.text()).toContain('Iron Plates')
+      expect(mine.text()).not.toContain('Steel')
+      expect(joined.findAll('[data-testid="joined-plan"]')).toHaveLength(1)
+      expect(joined.text()).toContain('Steel')
+    })
+
+    it('says so plainly when the account owns no plans', async () => {
+      const wrapper = render()
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'no-owned-plans').exists()).toBe(true)
+    })
+
+    it('keeps the Joined Plans group out of the way until a plan is joined', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'joined-plans').exists()).toBe(false)
+    })
+
+    it('marks a shared plan', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry({ shared: true }) } } })
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'my-plan').text()).toContain('Shared')
+    })
+
+    it('opens the share dialog for the room that was clicked', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+      await openCloud(wrapper)
+
+      await at(wrapper, 'share-plan').trigger('click')
+
+      const dialog = wrapper.findComponent(ShareDialog)
+      expect(dialog.props('modelValue')).toBe(true)
+      expect(dialog.props('tabId')).toBe('room-1')
     })
   })
 
   describe('recover server copy', () => {
-    it('refreshes the room list when something came back', async () => {
-      vi.mocked(api.legacyRecover).mockResolvedValue({ imported: true })
+    // Login pulls the account's tabs on its own now, so the manual control is gone.
+    it('is gone from the panel', () => {
       const wrapper = render()
 
-      await at(wrapper, 'recover-server-copy').trigger('click')
-      await flushPromises()
-
-      expect(roomsStore.refresh).toHaveBeenCalled()
-      expect(wrapper.text()).toContain('Recovered')
-    })
-
-    it('explains an empty recovery instead of looking broken', async () => {
-      vi.mocked(api.legacyRecover).mockResolvedValue({ imported: false, reason: 'no_legacy_data' })
-      const wrapper = render()
-      // Opening the panel refreshes the list, so the count is what proves nothing
-      // else asked for one.
-      const before = vi.mocked(roomsStore.refresh).mock.calls.length
-
-      await at(wrapper, 'recover-server-copy').trigger('click')
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('no older saved plan')
-      expect(roomsStore.refresh).toHaveBeenCalledTimes(before)
-    })
-
-    it('says in plain words what the button actually does', () => {
-      expect(render().text()).toContain(
-        'Adds the plan the old planner saved to your account as a new synced tab'
-      )
+      expect(at(wrapper, 'recover-server-copy').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Recover server copy')
     })
   })
 
@@ -219,18 +302,20 @@ describe('AccountPanel', () => {
     const minutesAgo = (minutes: number) =>
       new Date(Date.now() - minutes * 60_000).toISOString()
 
-    it('shows how long ago each plan was changed', () => {
+    it('shows how long ago each plan was changed', async () => {
       const wrapper = render({
         rooms: { entries: { 'room-1': entry({ lastActivityAt: minutesAgo(5) }) } },
       })
+      await openCloud(wrapper)
 
       expect(at(wrapper, 'plan-last-changed').text()).toBe(relativeTime(minutesAgo(5)))
     })
 
-    it('shows nothing rather than a broken date when the stamp is unreadable', () => {
+    it('shows nothing rather than a broken date when the stamp is unreadable', async () => {
       const wrapper = render({
         rooms: { entries: { 'room-1': entry({ lastActivityAt: 'nonsense' }) } },
       })
+      await openCloud(wrapper)
 
       expect(at(wrapper, 'plan-last-changed').text()).toBe('')
     })
@@ -238,7 +323,7 @@ describe('AccountPanel', () => {
     // Content edits never bump roomsRevision, so nothing else refetches the list and
     // a panel opened later in the session would show the times it was first given.
     it('refreshes the list when the tray opens', async () => {
-      const wrapper = render({}, false)
+      const wrapper = render({}, { open: false })
       expect(roomsStore.refresh).not.toHaveBeenCalled()
 
       await wrapper.setProps({ open: true })
@@ -249,6 +334,7 @@ describe('AccountPanel', () => {
 
   it('says what the per-plan share button opens, on hover', async () => {
     const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+    await openCloud(wrapper)
 
     await at(wrapper, 'share-plan').trigger('mouseenter')
     await flushPromises()
@@ -259,19 +345,26 @@ describe('AccountPanel', () => {
   // The vendored Font Awesome is 5.15.4, where a v6 name draws the missing-icon
   // placeholder instead of failing, so the names are asserted rather than eyeballed.
   // Every connection state is rendered: a state the default render cannot reach is
-  // exactly where the last one of these hid.
+  // exactly where the last one of these hid. The Cloud pane is opened so both panes'
+  // icons are in the swept markup.
   it.each([
     { mode: 'online', connection: 'connected' },
     { mode: 'reconnecting', connection: 'reconnecting' },
     { mode: 'offlinePrompt', connection: 'reconnecting' },
     { mode: 'offline', connection: 'stopped' },
     { mode: 'online', connection: 'version_mismatch' },
-  ])('draws %o with names the vendored Font Awesome 5 ships', state => {
-    const names = [...render({ roomSync: state }).html().matchAll(/fa-[a-z0-9-]+/g)]
-      .map(match => match[0])
+  ])('draws %o with names the vendored Font Awesome 5 ships', async state => {
+    const wrapper = render(
+      { roomSync: state, rooms: { entries: { 'room-1': entry() } } },
+      { tabs: [tab('local-1', 'Mine')] },
+    )
+    const localNames = wrapper.html().match(/fa-[a-z0-9-]+/g) ?? []
+    await openCloud(wrapper)
+    const names = [...localNames, ...(wrapper.html().match(/fa-[a-z0-9-]+/g) ?? [])]
 
+    expect(names).toContain('fa-cloud-upload-alt')
     expect(names.length).toBeGreaterThan(0)
-    for (const v6 of ['fa-cloud-arrow-down', 'fa-triangle-exclamation', 'fa-plug-circle-xmark', 'fa-rotate']) {
+    for (const v6 of ['fa-cloud-arrow-down', 'fa-cloud-arrow-up', 'fa-triangle-exclamation', 'fa-plug-circle-xmark', 'fa-rotate']) {
       expect(names).not.toContain(v6)
     }
   })

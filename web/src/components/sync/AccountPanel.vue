@@ -37,63 +37,157 @@
 
     <v-divider class="mb-3" />
 
-    <p class="text-body-2 font-weight-bold mb-2">Synced plans</p>
-    <p v-if="rooms.length === 0" class="text-body-2 text-grey mb-3" data-testid="no-synced-plans">
-      None yet. Make one from the + button on the tab bar, or sync a local plan when you sign in.
-    </p>
-    <div
-      v-for="room in rooms"
-      :key="room.roomId"
-      class="align-center d-flex ga-2 mb-2"
-      data-testid="synced-plan"
+    <v-tabs
+      v-model="panelTab"
+      class="mb-3"
+      color="primary"
+      density="compact"
+      grow
     >
-      <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
-      <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
-      <v-chip v-if="room.role === 'member'" size="x-small" variant="tonal">Member</v-chip>
-      <v-tooltip location="top">
-        <template #activator="{ props: timeProps }">
-          <span
-            class="text-caption text-grey text-no-wrap"
-            data-testid="plan-last-changed"
-            v-bind="timeProps"
-          >{{ relativeTime(room.lastActivityAt, now) }}</span>
-        </template>
-        <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
-      </v-tooltip>
-      <v-tooltip location="top">
-        <template #activator="{ props: shareProps }">
-          <v-btn
-            color="blue"
-            data-testid="share-plan"
-            icon="fas fa-share-alt"
-            size="x-small"
-            variant="flat"
-            v-bind="shareProps"
-            @click="openShare(room.roomId)"
-          />
-        </template>
-        <span>Sharing and invite links for this plan</span>
-      </v-tooltip>
+      <v-tab data-testid="plans-tab-local" value="local">
+        <span class="mr-2"><i class="fas fa-desktop" /></span>Local
+      </v-tab>
+      <v-tab data-testid="plans-tab-cloud" value="cloud">
+        <span class="mr-2"><i class="fas fa-cloud" /></span>Cloud
+      </v-tab>
+    </v-tabs>
+
+    <div v-if="panelTab === 'local'" data-testid="local-pane">
+      <p
+        v-if="localTabs.length === 0"
+        class="text-body-2 text-grey mb-3"
+        data-testid="no-local-plans"
+      >
+        Every plan in your tab bar is already on the cloud.
+      </p>
+      <div
+        v-for="tab in localTabs"
+        :key="tab.id"
+        class="align-center d-flex ga-2 mb-2"
+        data-testid="local-plan"
+      >
+        <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
+        <v-tooltip location="top">
+          <template #activator="{ props: shareProps }">
+            <v-btn
+              color="blue"
+              data-testid="share-local-plan"
+              icon="fas fa-share-alt"
+              size="x-small"
+              variant="flat"
+              v-bind="shareProps"
+              @click="openShare(tab.id)"
+            />
+          </template>
+          <span>Sharing options for this plan</span>
+        </v-tooltip>
+        <v-tooltip location="top">
+          <template #activator="{ props: convertProps }">
+            <v-btn
+              color="green"
+              data-testid="convert-local-plan"
+              icon="fas fa-cloud-upload-alt"
+              :loading="convertingId === tab.id"
+              size="x-small"
+              variant="flat"
+              v-bind="convertProps"
+              @click="convert(tab.id)"
+            />
+          </template>
+          <span>Send this plan to the cloud</span>
+        </v-tooltip>
+      </div>
+      <p v-if="localTabs.length > 0" class="text-body-2 mt-1 text-grey">
+        A local plan lives in this browser only. Send it to the cloud and it follows your
+        account to every device you sign in on.
+      </p>
+    </div>
+
+    <div v-else data-testid="cloud-pane">
+      <div data-testid="my-plans">
+        <p class="text-body-2 font-weight-bold mb-2">My Plans</p>
+        <p
+          v-if="ownedRooms.length === 0"
+          class="text-body-2 text-grey mb-3"
+          data-testid="no-owned-plans"
+        >
+          None yet. Make one from the + button on the tab bar, or send a local plan to the
+          cloud from the Local tab.
+        </p>
+        <div
+          v-for="room in ownedRooms"
+          :key="room.roomId"
+          class="align-center d-flex ga-2 mb-2"
+          data-testid="my-plan"
+        >
+          <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
+          <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
+          <v-tooltip location="top">
+            <template #activator="{ props: timeProps }">
+              <span
+                class="text-caption text-grey text-no-wrap"
+                data-testid="plan-last-changed"
+                v-bind="timeProps"
+              >{{ relativeTime(room.lastActivityAt, now) }}</span>
+            </template>
+            <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
+          </v-tooltip>
+          <v-tooltip location="top">
+            <template #activator="{ props: shareProps }">
+              <v-btn
+                color="blue"
+                data-testid="share-plan"
+                icon="fas fa-share-alt"
+                size="x-small"
+                variant="flat"
+                v-bind="shareProps"
+                @click="openShare(room.roomId)"
+              />
+            </template>
+            <span>Sharing and invite links for this plan</span>
+          </v-tooltip>
+        </div>
+      </div>
+
+      <div v-if="joinedRooms.length > 0" class="mt-3" data-testid="joined-plans">
+        <p class="text-body-2 font-weight-bold mb-2">Joined Plans</p>
+        <div
+          v-for="room in joinedRooms"
+          :key="room.roomId"
+          class="align-center d-flex ga-2 mb-2"
+          data-testid="joined-plan"
+        >
+          <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
+          <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
+          <v-tooltip location="top">
+            <template #activator="{ props: timeProps }">
+              <span
+                class="text-caption text-grey text-no-wrap"
+                data-testid="plan-last-changed"
+                v-bind="timeProps"
+              >{{ relativeTime(room.lastActivityAt, now) }}</span>
+            </template>
+            <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
+          </v-tooltip>
+          <v-tooltip location="top">
+            <template #activator="{ props: shareProps }">
+              <v-btn
+                color="blue"
+                data-testid="share-plan"
+                icon="fas fa-share-alt"
+                size="x-small"
+                variant="flat"
+                v-bind="shareProps"
+                @click="openShare(room.roomId)"
+              />
+            </template>
+            <span>Sharing and invite links for this plan</span>
+          </v-tooltip>
+        </div>
+      </div>
     </div>
 
     <v-divider class="my-3" />
-
-    <v-btn
-      block
-      data-testid="recover-server-copy"
-      :loading="recovering"
-      variant="tonal"
-      @click="recover"
-    >
-      <i class="fas fa-cloud-download-alt mr-2" />Recover server copy
-    </v-btn>
-    <p class="text-body-2 mt-1 mb-4 text-grey">
-      Adds the plan the old planner saved to your account as a new synced tab. There is only
-      ever one of these, and you only need to do it once.
-    </p>
-    <p v-if="recoverMessage" class="text-body-2 mb-4">{{ recoverMessage }}</p>
-
-    <v-divider class="mb-3" />
 
     <v-btn
       block
@@ -148,7 +242,7 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import ShareDialog from '@/components/sync/ShareDialog.vue'
-  import { ApiError, ApiNetworkError, legacyRecover } from '@/api/client'
+  import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
@@ -159,14 +253,26 @@
     open?: boolean
   }>(), { open: true })
 
+  const appStore = useAppStore()
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
   const roomSync = useRoomSyncStore()
 
   const username = computed(() => authStore.loggedInUser)
+
+  // ===== Local and Cloud lists =====
+
+  const panelTab = ref<'local' | 'cloud'>('local')
+
+  const localTabs = computed(() =>
+    appStore.getTabs().filter(tab => appStore.getTabState(tab.id).kind === 'local')
+  )
+
   const rooms = computed(() =>
     Object.values(roomsStore.entries).sort((a, b) => a.order - b.order)
   )
+  const ownedRooms = computed(() => rooms.value.filter(room => room.role === 'owner'))
+  const joinedRooms = computed(() => rooms.value.filter(room => room.role !== 'owner'))
 
   /**
    * Content edits move a room's last-changed stamp without bumping `roomsRevision`,
@@ -210,44 +316,22 @@
   const shareOpen = ref(false)
   const shareTabId = ref('')
 
-  const openShare = (roomId: string) => {
-    shareTabId.value = roomId
+  const openShare = (tabId: string) => {
+    shareTabId.value = tabId
     shareOpen.value = true
   }
 
-  // ===== Recover =====
+  // ===== Convert to cloud =====
 
-  const recovering = ref(false)
-  const recoverMessage = ref('')
+  const convertingId = ref('')
 
-  const RECOVER_REASONS: Record<string, string> = {
-    already_imported: 'That plan has already been recovered.',
-    no_legacy_data: 'There is no older saved plan on your account.',
-    not_eligible: 'There is nothing to recover right now.',
-  }
-
-  const recover = async () => {
-    if (roomSync.isSuppressed) {
-      recoverMessage.value = OFFLINE_MESSAGE
-      return
-    }
-
-    recovering.value = true
-    recoverMessage.value = ''
+  /** The adoption path: same server call the sign-in offer uses, for one tab. */
+  const convert = async (tabId: string) => {
+    convertingId.value = tabId
     try {
-      const result = await legacyRecover()
-      if (result.imported) {
-        await roomsStore.refresh()
-        recoverMessage.value = 'Recovered. It is in your tab bar now.'
-      } else {
-        recoverMessage.value = RECOVER_REASONS[result.reason ?? ''] ?? 'Nothing to recover.'
-      }
-    } catch (error) {
-      recoverMessage.value = error instanceof ApiNetworkError
-        ? 'The server could not be reached.'
-        : error instanceof ApiError ? error.message : 'Recovery failed.'
+      await roomsStore.adoptTabs([tabId])
     } finally {
-      recovering.value = false
+      convertingId.value = ''
     }
   }
 

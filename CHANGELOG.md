@@ -50,8 +50,8 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 
 ### Account panel
 
-- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, the list of your synced plans with a share button and a last-changed time on each, and **Change password**.
-- **Recover server copy** adds the plan the old planner saved to your account as a new synced tab. There is only ever one of these, and you only need to do it once. If you sign in with an account that has one saved plan and this browser has nothing in it, it is brought back automatically.
+- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, your plans under two tabs, and **Change password**. The **Local** tab lists the plans that live in this browser only, each with a share button and a cloud button that syncs it to your account on the spot. The **Cloud** tab splits your synced plans into **My Plans** (the ones you own) and **Joined Plans** (the ones shared with you), each plan with a share button and a last-changed time.
+- The plan the old planner saved to your account comes back on its own: sign in with an account holding one into a browser with nothing in it, and it appears as a new synced tab. There is only ever one of these, and it only happens once.
 - Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Say no and they stay exactly as they are. Names that would collide get a "(local)" suffix rather than being merged.
 - The out-of-sync dialog and the force download button are gone. Neither has anything to do now.
 

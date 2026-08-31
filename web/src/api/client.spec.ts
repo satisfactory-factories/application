@@ -14,7 +14,6 @@ import {
   joinRoom,
   leaveRoom,
   legacyAutoImport,
-  legacyRecover,
   listRooms,
   lookupRoomBySlug,
   removeRoomPassword,
@@ -258,13 +257,10 @@ describe('api/client', () => {
       expectCall('GET', '/rooms/by-slug/three-word-slug')
     })
 
-    it('runs the legacy import routes', async () => {
+    it('runs the legacy import route', async () => {
       await legacyAutoImport(0)
       expectCall('POST', '/rooms/legacy/auto-import')
       expect(JSON.parse(lastCall()[1].body)).toEqual({ localTabCount: 0 })
-
-      await legacyRecover()
-      expectCall('POST', '/rooms/legacy/recover')
     })
 
     it('reads and writes preferences', async () => {

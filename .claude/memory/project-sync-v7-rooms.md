@@ -803,6 +803,28 @@ group names, and the export calculator's inputs.
 in the suite (~35s), because the ten seconds are real: there is no compressed clock for the
 TTL the way `E2E_PROBE_MS` compresses the revision probe.
 
+## The account panel split (2026-08-31): Local and Cloud
+
+`AccountPanel.vue` now puts the plan lists behind a compact two-tab control (`v-tabs`,
+testids `plans-tab-local` / `plans-tab-cloud`, panes `local-pane` / `cloud-pane`). **Local**
+lists every tab whose `getTabState(...).kind === 'local'`, each row with a share button
+(opens the existing `ShareDialog`, whose local-tab path already offers the snapshot link and
+explains why invites need sync) and a `fa-cloud-upload-alt` convert button that calls
+`roomsStore.adoptTabs([tabId])` — the same adoption path as the sign-in offer, so rekeying,
+name collisions and the offline gate all come for free. **Cloud** splits `roomsStore.entries`
+by `role` into "My Plans" (owner) and "Joined Plans" (member; the section hides when empty),
+keeping the per-room share button, Shared chip and last-changed time. The Member chip is
+gone — the grouping states it. Anonymous `joined`-kind tabs are not listed under Cloud: they
+have no `RoomListEntry`, and a logged-in session upgrades them to memberships anyway.
+
+**Recover server copy is gone.** Login pulls the account's rooms and `autoImportLegacy` in
+`rooms-store.ts` still recovers the old blob for an empty browser, so the manual button had
+no job left. Removed: the button, its handler, and `legacyRecover` in `web/src/api/client.ts`.
+Kept deliberately: `legacyAutoImport` (called by the store), the backend
+`POST /rooms/legacy/recover` route and `LegacyImportService.recover` (auto-import calls it),
+and the snapshot-share endpoints. The FA-name sweep note above that mentions the Recover
+button describes a state this section supersedes.
+
 ## Flagged follow-ups, none of them blocking
 
 Re-checked line by line against the code on 2026-08-31, in the verification round. All still hold.
