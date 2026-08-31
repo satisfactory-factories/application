@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import WebSocket from 'ws'
 import type { ServerMessage } from 'common'
 
@@ -18,6 +20,8 @@ export interface RoomSession {
 
 /** One socket's protocol state. Rooms are multiplexed over it. */
 export class Connection {
+  /** Handed out in `hello_ok` and stamped on every field lock this socket holds. */
+  readonly id = randomUUID()
   readonly rooms = new Map<string, RoomSession>()
   userId: string | null = null
   username: string | null = null

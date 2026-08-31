@@ -9,6 +9,8 @@ import { factoryGroupSchema, factorySchema, factoryTabSchema } from './factory'
 const str = z.string().max(CAPS.string)
 const num = z.number()
 const id = z.string().min(1).max(CAPS.string)
+/** Opaque to the server: only its length is its business. */
+const fieldKey = z.string().min(1).max(CAPS.fieldKey)
 
 export const roomDiffSchema = z.object({
   name: z.string().max(CAPS.name).optional(),
@@ -47,11 +49,25 @@ export const clientLeaveSchema = z.object({
   roomId: id,
 })
 
+export const clientLockSchema = z.object({
+  type: z.literal('lock'),
+  roomId: id,
+  fieldKey,
+})
+
+export const clientUnlockSchema = z.object({
+  type: z.literal('unlock'),
+  roomId: id,
+  fieldKey,
+})
+
 export const clientMessageSchema = z.discriminatedUnion('type', [
   clientHelloSchema,
   clientJoinSchema,
   clientOpSchema,
   clientLeaveSchema,
+  clientLockSchema,
+  clientUnlockSchema,
 ])
 
 // ===== The boundary itself =====

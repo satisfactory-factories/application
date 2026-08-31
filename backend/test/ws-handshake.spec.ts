@@ -69,6 +69,7 @@ describe('ws handshake', () => {
         protocolVersion: PROTOCOL_VERSION,
         userId: null,
         roomsRevision: null,
+        connectionId: expect.any(String),
       })
     })
 

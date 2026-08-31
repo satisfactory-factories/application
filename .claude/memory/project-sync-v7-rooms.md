@@ -22,7 +22,8 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 277 vitest tests (24 files), common 75 (4), web 2737 unit tests (150 files, 1 skipped),
+backend 294 vitest tests (25 files, including the field locks below), common 80 (4),
+web 2737 unit tests (150 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 35 Playwright e2e tests passing. The 34 that predate the render-pacing fix
 ran twice at full speed and once under `E2E_CPU_THROTTLE=6`, which is the run that earns its keep
@@ -701,6 +702,49 @@ chip stays, and the red banner appearing when the API stops answering and cleari
 back. Two of the three failures in the first run were faults in the harness, not the app — a
 Vuetify picker's search input again, and taking "the tab that is not the room" from a browser that
 also has its original default tab.
+
+## Advisory field locks (2026-08-31): the protocol and gateway half
+
+One editor per input, so two people cannot type into the same notes box and have the last
+write win. Built server-first: `common` carries `lock`/`unlock`/`field_locks` and
+`FIELD_LOCK_TTL_MS` (10s), `backend/src/realtime/field-lock.service.ts` holds the maps and
+the gateway does the rest. The client half (claim on focus, throttled renewal on keystroke,
+release on blur, disable a peer-held field) is a later stage; nothing in the UI reads a lock
+yet.
+
+Five decisions worth not re-deriving:
+
+- **`holder` is the socket's `connectionId`, new in `hello_ok`.** Per connection rather than
+  per account: a visitor has no `userId`, and two tabs of one account must not silently share
+  a lock. A client reads a `field_locks` frame by comparing each `holder` against the id it was
+  handed, which is the whole mechanism — no per-recipient `mine` flag, one identical frame to
+  the room.
+- **Advisory in the strict sense.** The op path neither reads nor enforces them, so a wrong
+  answer costs a disabled input and never an edit. That is what lets everything else here be
+  cheap.
+- **A renewal costs no frame, and a refused claim costs no frame.** `claim` returns whether
+  the room's *visible* locks moved; a keystroke renewal moves nothing anyone can see, and a
+  claim on a field somebody else holds is refused by simply not granting it, because the last
+  broadcast already said whose it is. Only real changes broadcast, and each one restates the
+  room's whole list.
+- **Expiry is lazy plus a sweep on the existing heartbeat, so no timer is held per lock.** The
+  lazy check is what decides correctness — an expired field is granted to the next claimant on
+  sight — and the sweep only decides how soon the room is *told*, which is up to
+  `WS_HEARTBEAT_INTERVAL_MS` (30s) behind. That is why `FIELD_LOCK_TTL_MS` is exported from
+  `common`: the client may drop a displayed lock that long after the frame announcing it,
+  rather than waiting on the sweep, and a field left disabled by a stale display is exactly the
+  case nobody can claim their way out of.
+- **Locks take the same live access check an op does**, and release on every path that drops a
+  socket from a room: unlock, expiry, `leave`, disconnect, the revocation kick and
+  `room_deleted`. `RoomAccessService.authorize` is the door, so a claim from a socket whose
+  membership was voided with the kick lost is refused and the room dropped, the way a malformed
+  op frame already was.
+
+Caps are in `common/src/caps.ts`: `fieldKey` 128 characters (zod, so an over-long key is an
+`invalid_message`) and `fieldLocksPerConnection` 32, counted across every room on the socket
+and enforced in `claim`. `backend/test/ws-field-locks.spec.ts` (17 tests) drives real `ws`
+clients and a `FakeClock`; the four that carry the design were negative-controlled by
+mutation — steal-the-lock, drop the cap, never expire, never extend on renewal.
 
 ## Flagged follow-ups, none of them blocking
 

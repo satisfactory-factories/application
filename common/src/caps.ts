@@ -23,6 +23,10 @@ export const CAPS = {
   ownedRoomsPerUser: 10,
   /** Owned plus joined. */
   membershipsPerUser: 25,
+  /** An advisory field-lock key. Opaque to the server, minted by the client. */
+  fieldKey: 128,
+  /** Field locks one socket may hold at once, counted across every room on it. */
+  fieldLocksPerConnection: 32,
   /** Every string with no cap of its own. */
   string: 10_000,
 } as const

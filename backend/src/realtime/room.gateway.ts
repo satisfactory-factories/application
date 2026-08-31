@@ -7,12 +7,19 @@ import { Model } from 'mongoose'
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway } from '@nestjs/websockets'
 import { CLOSE_CODES, PROTOCOL_VERSION, WS_PATH, parseClientMessage } from 'common'
 import type WebSocket from 'ws'
-import type { ClientJoinMessage, ClientOpMessage, ServerMessage } from 'common'
+import type {
+  ClientJoinMessage,
+  ClientLockMessage,
+  ClientOpMessage,
+  ClientUnlockMessage,
+  ServerMessage,
+} from 'common'
 
 import { ANONYMOUS_ACTOR } from '../rooms/room-activity.service'
 import { AuthTokenPayload } from '../auth/auth-token'
 import { Connection } from './connection'
 import { ConnectionRegistry } from './connection-registry'
+import { FieldLockService } from './field-lock.service'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomAccess, RoomAccessService } from './room-access.service'
 import { RoomEventsService } from '../rooms/room-events.service'
@@ -51,6 +58,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   constructor (
     @InjectModel(Room.name) private readonly roomModel: Model<Room>,
     private readonly registry: ConnectionRegistry,
+    private readonly locks: FieldLockService,
     private readonly access: RoomAccessService,
     private readonly ops: RoomOpService,
     private readonly rooms: RoomsService,
@@ -64,7 +72,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.events.on('room_deleted', this.onRoomDeleted)
     this.events.on('access_revoked', this.onAccessRevoked)
 
-    this.heartbeat = setInterval(() => this.pingAll(), WS_HEARTBEAT_INTERVAL_MS)
+    this.heartbeat = setInterval(() => {
+      this.pingAll()
+      this.sweepFieldLocks()
+    }, WS_HEARTBEAT_INTERVAL_MS)
     this.heartbeat.unref()
   }
 
@@ -98,9 +109,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     if (!connection) return
 
     const rooms = [...connection.rooms.keys()]
+    const released = new Set(this.locks.releaseConnection(connection))
     connection.clearHelloTimer()
     this.registry.remove(connection)
-    for (const roomId of rooms) this.broadcastPresence(roomId)
+    for (const roomId of rooms) {
+      this.broadcastPresence(roomId)
+      if (released.has(roomId)) this.broadcastFieldLocks(roomId)
+    }
   }
 
   /** Public so tests can drive the heartbeat without waiting on the interval. */
@@ -113,6 +128,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       connection.isAlive = false
       connection.ping()
     }
+  }
+
+  /**
+   * Rides the heartbeat rather than a timer of its own. A lock nobody renewed is
+   * already refused to its holder and granted to the next claimant on sight, so the
+   * sweep only decides how soon the room is *told*; public so tests can drive it.
+   */
+  sweepFieldLocks (): void {
+    for (const roomId of this.locks.sweep()) this.broadcastFieldLocks(roomId)
   }
 
   // ===== Message dispatch =====
@@ -156,6 +180,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
           break
         case 'leave':
           this.handleLeave(connection, parsed.data.roomId)
+          break
+        case 'lock':
+        case 'unlock':
+          await this.handleFieldLock(connection, parsed.data)
           break
       }
     } catch (cause) {
@@ -212,6 +240,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       protocolVersion: PROTOCOL_VERSION,
       userId: connection.userId,
       roomsRevision,
+      connectionId: connection.id,
     })
   }
 
@@ -256,6 +285,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       })
     }
 
+    // A joiner arriving into a room somebody is already editing has to be told, and
+    // a room holding no locks costs no frame.
+    const locks = this.locks.locks(room.roomId)
+    if (locks.length > 0) this.deliver(connection, { type: 'field_locks', roomId: room.roomId, locks })
+
     // Occupancy only moves when a socket actually arrives. Every idle room re-joins
     // on the revision probe, so broadcasting per join was a frame to every peer in
     // every room on every client's probe tick, saying the same number each time.
@@ -265,7 +299,46 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   private handleLeave (connection: Connection, roomId: string): void {
     if (!connection.rooms.has(roomId)) return
     this.registry.leaveRoom(connection, roomId)
+    const released = this.locks.release(roomId, connection)
     this.broadcastPresence(roomId)
+    if (released) this.broadcastFieldLocks(roomId)
+  }
+
+  // ===== field locks =====
+
+  /**
+   * Advisory, so nothing here touches the op path: a claim on a field somebody else
+   * holds is refused by simply not granting it, and the broadcast that follows any
+   * real change is the only statement of who holds what.
+   */
+  private async handleFieldLock (
+    connection: Connection,
+    message: ClientLockMessage | ClientUnlockMessage,
+  ): Promise<void> {
+    const { roomId, fieldKey } = message
+    const session = connection.rooms.get(roomId)
+    if (!session) {
+      connection.send(error('not_joined', 'Join the room before locking a field.', roomId))
+      return
+    }
+
+    // A lock says who is editing what, so it takes the same live check an op does:
+    // `connection.rooms` records what a socket joined, never what it may still write.
+    const access = await this.access.authorize(roomId, {
+      userId: connection.userId,
+      visitorToken: session.visitorToken,
+    })
+
+    if (access.status !== 'granted') {
+      connection.send(joinRefusal(access.status, roomId))
+      this.handleLeave(connection, roomId)
+      return
+    }
+
+    const changed = message.type === 'lock'
+      ? this.locks.claim(roomId, fieldKey, connection)
+      : this.locks.unlock(roomId, fieldKey, connection)
+    if (changed) this.broadcastFieldLocks(roomId)
   }
 
   // ===== ops =====
@@ -413,6 +486,14 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
   }
 
+  /** The whole truth about the room's locks, every time any of it moves. */
+  private broadcastFieldLocks (roomId: string): void {
+    const locks = this.locks.locks(roomId)
+    for (const peer of this.registry.roomConnections(roomId)) {
+      this.deliver(peer, { type: 'field_locks', roomId, locks })
+    }
+  }
+
   private broadcastPresence (roomId: string): void {
     const count = this.registry.presence(roomId)
     for (const peer of this.registry.roomConnections(roomId)) {
@@ -451,6 +532,8 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       this.deliver(connection, { type: 'room_deleted', roomId })
       this.registry.leaveRoom(connection, roomId)
     }
+    // Nobody is told: the room they held locks in has stopped existing.
+    this.locks.releaseRoom(roomId)
   }
 
   private readonly onAccessRevoked = (event: RoomEventMap['access_revoked']): void => {
@@ -521,6 +604,9 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       this.deliver(connection, error('forbidden', 'Your access to this room was revoked.', roomId))
       connection.close(CLOSE_CODES.forbidden, 'access revoked')
+      // The close handshake is asynchronous, and the room must not go on showing a
+      // field held by a socket that has already been cut off.
+      if (this.locks.release(roomId, connection)) this.broadcastFieldLocks(roomId)
     }
   }
 }

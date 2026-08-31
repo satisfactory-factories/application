@@ -28,6 +28,8 @@ describe('clientMessageSchema', () => {
     { type: 'join', roomId: 'room-1', lastRevision: 4, visitorToken: 'vt' },
     opMessage,
     { type: 'leave', roomId: 'room-1' },
+    { type: 'lock', roomId: 'room-1', fieldKey: 'notes:3' },
+    { type: 'unlock', roomId: 'room-1', fieldKey: 'notes:3' },
   ])('accepts $type', message => {
     expect(clientMessageSchema.safeParse(message).success).toBe(true)
   })
@@ -48,6 +50,17 @@ describe('clientMessageSchema', () => {
 
   it('rejects an empty roomId', () => {
     expect(clientMessageSchema.safeParse({ type: 'leave', roomId: '' }).success).toBe(false)
+  })
+
+  it.each(['', 'x'.repeat(CAPS.fieldKey + 1)])('rejects a field key of %o', fieldKey => {
+    expect(clientMessageSchema.safeParse({ type: 'lock', roomId: 'room-1', fieldKey }).success)
+      .toBe(false)
+  })
+
+  it('accepts a field key right on the cap', () => {
+    const fieldKey = 'x'.repeat(CAPS.fieldKey)
+    expect(clientMessageSchema.safeParse({ type: 'lock', roomId: 'room-1', fieldKey }).success)
+      .toBe(true)
   })
 
   it('strips unknown keys off an accepted message', () => {

@@ -41,6 +41,14 @@ export const CLOSE_CODES = {
 
 export type CloseCode = typeof CLOSE_CODES[keyof typeof CLOSE_CODES]
 
+/**
+ * How long a field lock survives with nothing happening to it. Keystrokes renew it,
+ * so this is the idle window before someone else may claim the field. Shared with the
+ * client because a lock it was told about may be dropped from the display this long
+ * after the frame that announced it, without waiting for the server's sweep.
+ */
+export const FIELD_LOCK_TTL_MS = 10_000
+
 /** Owner can do anything; member can only write content. */
 export type RoomRole = 'owner' | 'member'
 
@@ -156,11 +164,31 @@ export interface ClientLeaveMessage {
   roomId: string
 }
 
+/**
+ * Claim or renew an advisory lock on one input, so nobody else edits it while this
+ * user is in it. Field keys are opaque to the server; the client's scheme starts at
+ * `notes:<factoryId>`, so covering another field is client wiring alone.
+ */
+export interface ClientLockMessage {
+  type: 'lock'
+  roomId: string
+  fieldKey: string
+}
+
+/** Released on blur. Expiry and a dropped socket release a lock without one of these. */
+export interface ClientUnlockMessage {
+  type: 'unlock'
+  roomId: string
+  fieldKey: string
+}
+
 export type ClientMessage =
   | ClientHelloMessage
   | ClientJoinMessage
   | ClientOpMessage
   | ClientLeaveMessage
+  | ClientLockMessage
+  | ClientUnlockMessage
 
 export type ClientMessageType = ClientMessage['type']
 
@@ -172,6 +200,12 @@ export interface ServerHelloOkMessage {
   /** null for an anonymous visitor. */
   userId: string | null
   roomsRevision: number | null
+  /**
+   * This socket's own id, and the whole of how a `field_locks` frame is read: a lock
+   * whose `holder` matches it is this client's. Per connection rather than per account,
+   * because a visitor has no `userId` and two tabs of one account must not share a lock.
+   */
+  connectionId: string
 }
 
 export interface ServerSnapshotMessage {
@@ -243,6 +277,23 @@ export interface ServerPresenceMessage {
   count: number
 }
 
+/** One field somebody is editing. `holder` is the holder's `connectionId`. */
+export interface FieldLock {
+  fieldKey: string
+  holder: string
+}
+
+/**
+ * Every lock the room holds, restated in full on every change and sent to a joiner
+ * arriving into a room that holds any. Advisory: the op path neither reads nor
+ * enforces them, so a stale lock costs a disabled input and never an edit.
+ */
+export interface ServerFieldLocksMessage {
+  type: 'field_locks'
+  roomId: string
+  locks: FieldLock[]
+}
+
 export interface ServerErrorMessage {
   type: 'error'
   code: string
@@ -261,6 +312,7 @@ export type ServerMessage =
   | ServerRoomDeletedMessage
   | ServerRoomsChangedMessage
   | ServerPresenceMessage
+  | ServerFieldLocksMessage
   | ServerErrorMessage
 
 export type ServerMessageType = ServerMessage['type']

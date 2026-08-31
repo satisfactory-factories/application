@@ -26,6 +26,8 @@ const DEFAULT_TIMEOUT_MS = 5_000
 export class TestClient {
   readonly socket: WebSocket
   closeInfo: CloseInfo | null = null
+  /** From `hello_ok`, and what a `field_locks` holder is compared against. */
+  connectionId = ''
 
   private readonly queue: ServerMessage[] = []
   private readonly waiters: Waiter[] = []
@@ -49,7 +51,7 @@ export class TestClient {
   static async greet (url: string, token?: string): Promise<TestClient> {
     const client = await TestClient.open(url)
     client.send({ type: 'hello', protocolVersion: PROTOCOL_VERSION, token })
-    await client.next('hello_ok')
+    client.connectionId = (await client.next('hello_ok')).connectionId
     return client
   }
 

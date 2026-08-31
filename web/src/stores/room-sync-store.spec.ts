@@ -74,6 +74,7 @@ const helloOk: ServerMessage = {
   protocolVersion: PROTOCOL_VERSION,
   userId: 'user-1',
   roomsRevision: 1,
+  connectionId: 'conn-1',
 }
 
 describe('room-sync-store', () => {

@@ -45,6 +45,8 @@ separate later session.
 - Build the preferences sync store (enumerated semantic keys, debounced PUT with `baseRevision`)
 - Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
 - Add the fetch wrapper sending `X-App-Version` and the persistent refresh prompt on 426/4426
+- Wire the notes field to the field-lock protocol: claim on focus, renew on keystroke (throttled), release on blur, and disable the input while a peer holds it
+- Extend field locks to the remaining text and number inputs once notes proves the mechanism
 
 ### Backend
 
@@ -53,6 +55,7 @@ separate later session.
 - Build `Room` (revision, tombstone, opId ring, `passwordHash`, `passwordVersion`), `RoomMembership`, `UserPreferences`, and capped `RoomActivity` schemas
 - Build rooms REST as resume-aware ensure-steps: list, create, rename, tombstone-first delete, leave, reorder, share/unshare, slug lookup, `POST /rooms/:id/auth` (password → visitor token), join, create-only adopt, password set/rotate/remove
 - Build the WS gateway: hello/join → snapshot-or-up-to-date, serialized per-room apply with revision-guarded writes and opId dedup, live access re-checks (membership, shared flag, visitor-token `passwordVersion`), Origin check, heartbeat, throttles, `maxPayload`
+- Hold the advisory field locks in the gateway: claim/renew/unlock, 10s expiry swept on the heartbeat, released on every socket-drop path, broadcast as `field_locks`
 - Implement metadata fan-out: room changes bump every member's `roomsRevision` and notify every affected user channel
 - Record activity: stamp actor + timestamp + kind on every accepted op and meta mutation into `RoomActivity` (capped per room; no UI in v0.7.0)
 - Implement the hourly sweeper: tombstoned rooms (any state), membership-less non-shared rooms older than 24h, activity-log trim
@@ -285,12 +288,28 @@ hand-duplicated backend interface file.
 
 **Wire protocol.**
 - Client → server: `hello {token?, protocolVersion}`, `join {roomId, lastRevision?,
-  visitorToken?}`, `op {roomId, opId, baseRevision, diff}`, `leave {roomId}`.
+  visitorToken?}`, `op {roomId, opId, baseRevision, diff}`, `leave {roomId}`,
+  `lock {roomId, fieldKey}`, `unlock {roomId, fieldKey}`.
 - Server → client: `hello_ok`, `snapshot {room, revision}`, `up_to_date {revision}`,
   `op_ack {opId, revision}`, `op_apply {revision, diff}`, `op_reject {opId, reason,
   snapshot}`, `room_meta`, `room_deleted`, `rooms_changed {roomsRevision}`,
-  `presence {roomId, count}`, `error`.
+  `presence {roomId, count}`, `field_locks {roomId, locks}`, `error`.
 - `up_to_date` is the "nothing changed, skip the reload" primitive.
+
+**Advisory field locks.** A focused text or number input is locked for everyone else, so
+two people cannot type into one notes box and have the last write win. The client mints
+opaque keys (`notes:<factoryId>` to start with, so a further field is client wiring
+alone); the server treats them as strings, capped at 128 characters and 32 live locks per
+socket. `lock` claims or renews, keystrokes renew it, `unlock` releases on blur, and a
+claim nobody renews for `FIELD_LOCK_TTL_MS` (10s) lapses — checked lazily on access and
+swept on the existing heartbeat tick, so no timer is held per lock. Every change restates
+the room's whole lock list as `field_locks`, and a joiner is told what the room already
+holds. **`holder` is the `connectionId` `hello_ok` handed that socket**, per connection
+rather than per account, because a visitor has no `userId` and two tabs of one account
+must not share a lock. Locks take the same live access check an op does and are released
+on every path that drops a socket from a room, but they are advisory in the strict sense:
+the op path never reads them, so the worst a wrong answer costs is a disabled input.
+Simultaneous arrow presses on a number field stay out of scope.
 
 **The consistency contract.** The build implements exactly this:
 - What you see is always: last acknowledged server state + all your unacknowledged edits +
