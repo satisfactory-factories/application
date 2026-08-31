@@ -431,6 +431,19 @@ are new, from the round-three race audit.
   merge**: its content became upstream's `## Beta v0.6` section, so the heading merged out empty
   and is gone. The headings are now v0.7, v0.6, v0.5, Alpha v0.4, in that order.
 
+## Preview deployment (2026-08-31): live
+
+PR #620 carries the `deploy-preview-api` label, so every push redeploys the preview API
+(`api-preview.satisfactory-factories.app`, port 3002) from the branch head. Verified live:
+`/health` ok with Mongo connected, `/login` without `X-App-Version` answers 426, and a raw
+HTTP/1.1 upgrade to `/ws` returns 101 through the tunnel (curl speaks h2 by default and gets
+a 404 that looks like a missing route — always probe websockets with `--http1.1`). The
+preview stack's own env supplies `JWT_SECRET`, `PORT=3002`, `MONGODB_URI?authSource=admin`
+and `CORS_EXTRA_ORIGINS=*.vercel.app,...`; the branch honours the last one in both the HTTP
+CORS callback and the WS upgrade check (`backend/src/config/cors.ts`, hostname-parsed
+wildcards). While this branch is loaded, main-based previews get 426s — re-run "Backend:
+Deploy Preview" against `main` to put it back; nothing does that automatically.
+
 ## The CI hardening round (post-PR, 2026-08-31): what the slow runner exposed
 
 Five pushes to green after the PR opened; the same one concurrency test failed each time and
