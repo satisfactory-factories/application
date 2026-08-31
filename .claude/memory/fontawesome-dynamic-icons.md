@@ -44,6 +44,15 @@ deliberately bogus icon name to tell a real glyph from the placeholder. Use v5 n
 about 1,850 of them) and grep every `fa-*` token in the changed files against that list. Four v6
 names had reached the v0.7.0 branch and a review caught one of them by eye. Note the bundle is FA
 **Pro** 5.15.4, so Pro-only v5 names such as `wifi-slash` are there and free-tier lists will say
-they are not.
+they are not. Two tokens are not icon names and will read as misses: `fa-fw` and `fa-spin` are
+modifier classes.
+
+**A rendering guard only covers the state it renders.** A fifth v6 name survived that sweep —
+`fa-triangle-exclamation` on the account panel's `offlinePrompt` chip — because
+`AccountPanel.spec.ts` had a test asserting no v6 names in the rendered HTML and it rendered the
+component's *default* state, where that branch of the `switch` is unreachable. The spec now runs
+over every connection state, and the state table names each state's icon beside its label. The
+generalisation: a per-state icon lives behind a conditional, so a guard that mounts once proves
+one branch and quietly certifies the rest.
 
 **How to apply:** Toggle a wrapping element Vue owns, with static icon classes inside: `<span v-if="cond"><i class="fas fa-bullseye" /></span><span v-else><i class="fas fa-check-square" /></span>`. Removing the wrapper removes the nested svg; the freshly mounted one gets converted by FA's MutationObserver. Same pattern as the sync-state icons in `PlannerFactoryList.vue`. See also [[verify-tab-navigation]] for browser-driving; dismiss both modals first via localStorage `dismissed-introduction='true'` and `seenV51Splash='true'` or clicks land on the overlay.

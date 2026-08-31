@@ -36,6 +36,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 ### Offline mode
 
 - **A switch in the account panel puts the planner into offline mode**, which means exactly no contact with the server: no connection, no requests, no retries. Keep planning; everything is kept on this device.
+- Switching it on says so once and then gets out of the way. That you are still in offline mode is shown by the chip in the tab bar and by the account panel, which is also where you switch it back off.
 - If the connection drops on its own, a small bar asks whether you want to go offline rather than deciding for you. Say no and it keeps quietly retrying.
 - **Coming back online is manual, like a phone.** When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.
 - Nothing about this blocks the planner. There are no popups to dismiss and no dialog in the way of your plan.
@@ -56,6 +57,12 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 
 - The staggered load only runs when something was actually calculated. Switching to a tab the server has already confirmed is current renders it immediately.
 - Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.
+
+### Knowing what just happened
+
+- **"Last updated" sits beside the search box** and says when the plan in the tab you are looking at last changed, flashing as it moves. Your own edits and a collaborator's both count. Renaming a factory or dragging one somewhere else does not, so the line stays worth reading. It works on a local tab too, and it remembers across a refresh.
+- **A notice you need to act on now waits for you.** A plan deleted by its owner leaves a notice you close yourself, so it cannot slide past while you are looking elsewhere. A notice that is only keeping you informed counts itself down with a line along the bottom and then goes.
+- **The planner says so when the backend is having problems.** A red bar along the bottom names the Discord to report it on, and says which features are away until it is back. Nothing in your tabs is lost while it is: everything is kept in this browser and syncs when the server answers again. It clears itself the moment it does. Closes #108.
 
 ### Under the hood
 

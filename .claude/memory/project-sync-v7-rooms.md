@@ -20,10 +20,11 @@ reset, the v0.7.0 changelog modal). Three adversarial Codex reviews of the finis
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
-restored: see "The merge from main" below. Green as of 2026-08-31, after the PR-review polish round below:
-backend 270 vitest tests (23 files), common 70 (4), web 2681 unit tests (144 files, 1 skipped),
+restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
+below (load chain, quiet applies, the UI round): backend 272 vitest tests (23 files), common 70 (4),
+web 2732 unit tests (150 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 27 Playwright e2e tests passing. The e2e
+`build` clean, and all 34 Playwright e2e tests passing. The e2e
 job in CI has never actually run — it is validated locally only, so the first PR is where it gets
 proved.
 
@@ -482,6 +483,88 @@ as an op does; the tab bar's copy/share/delete buttons sit together with real `v
 instead of `title` attributes; and `NewTabDialog`/`AdoptionDialog` moved onto `AppDialog`,
 where a `data-testid` on the component falls through to `.v-overlay__content` and stays
 reachable from the e2e suite.
+
+## The UI round (2026-08-31): toasts that carry a timer, and three traps in them
+
+**A toast is now a component with modes, and `plain` is still the default.**
+`web/src/components/common/ToastNotification.vue` takes `variant: 'plain' | 'timed' |
+'permanent'`; `Toast.vue` is just the bus listener that drives it, and the payload type moved
+to `web/src/utils/toast.ts` so `eventBus` and the component share one definition. `plain` is
+byte-for-byte the toast the planner has always shown, so the ~30 existing call sites are
+untouched (issue #623 tracks moving them). `timed` drains a line along the bottom edge and
+dismisses itself; `permanent` has no timer and a Dismiss button. The timer is the component's
+own rather than Vuetify's `:timeout`, so the bar and the dismissal run off one clock, and a
+`sequence` prop restarts both when the same notice arrives while it is still up.
+
+Three things about Vuetify's snackbar that cost real time, all of them invisible in jsdom:
+
+- **A snackbar is `persistent`, so it swallows Escape.** VSnackbar hands VOverlay
+  `persistent: true`, which means that while a toast is up it is the top of the global overlay
+  stack and Escape reaches it — and being persistent it does not close either, so the key does
+  nothing at all. Entering offline mode from the account tray and pressing Escape left the tray
+  open. `_disable-global-stack` takes it out of the stack. The offline e2e tests are what found
+  it, because they close the tray with Escape immediately after flipping the switch.
+- **Leaving the stack gives up the z-index it allocated.** The toast dropped to the base 2000
+  while the bottom-edge banners sit at 2400, so it rendered completely behind them. It names
+  `:z-index="2600"` now.
+- **A fixed white bar disappears into an amber toast.** Both the bar and the track behind it are
+  `currentColor`, which Vuetify already picks for contrast against whatever fill the type chose.
+  The track is a `::before` rather than an opacity on the parent, which would take the fill down
+  with it.
+
+Also: `<v-snackbar top>` has been an inert HTML attribute since Vuetify 2. The toast has always
+appeared bottom-centre.
+
+**Two notices moved onto the new modes.** Offline mode's own banner in `OfflinePrompt.vue` is
+gone — that component is only the offer now, and `enterOffline()` emits a ten-second timed toast
+instead. Being *in* offline mode is said by the tab bar's chip and the account panel, which is
+also the way back out, so `offline-detected.e2e.ts` uses `setOfflineMode` rather than the button
+that used to be in the banner. And `convertToLocal` in `rooms-store.ts` sends the deleted case as
+`permanent`: losing a plan someone else deleted is not something to catch out of the corner of an
+eye. The client that asked for the deletion is not told at all — the room's fan-out reaches its
+own socket too, so `removeTab` adds the id to a `selfRemoved` set before the request goes out and
+`convertToLocal` consumes it.
+
+**The bottom-edge banners share one stack.** `default.vue` holds a `.bottom-notices` flex column
+and the health banner and the offline prompt are children of it with no fixed positioning of
+their own. Two fixed banners both on `bottom: 8px` overlap, and both can be up at once.
+
+## "Last updated" and what counts as the plan changing
+
+`LastUpdatedIndicator.vue` sits beside the search box; `stores/plan-activity-store.ts` is the
+tracker and `sync/plan-activity.ts` the pure half. Stamps are per tab and persisted in
+`localStorage.lastPlanUpdate`, so a reload does not reset the line to nothing.
+
+**The rule is a fingerprint, not a call site.** `contentPrint(factory)` is `stableStringify` of
+the record minus `name`, `displayOrder`, `group`, `hidden` and `checklistPanelHidden`, so a
+rename, a reorder, a regroup and a collapse all fingerprint identically and none of them bumps.
+That one definition covers both directions: local edits arrive as `factoryUpdated` and an inbound
+op is measured by `diffChangesContent(diff, tab.factories)` in `onOpApply` before it is applied.
+Doing it this way is what avoids touching the thirty-odd sites that announce an edit.
+
+Two things it cannot see from a fingerprint, and how each is handled. **A deletion leaves the
+deleted record's own bytes identical**, so the tracker also compares how many factories the plan
+holds against how many prints it is carrying; a mismatch is a change and is the only case that
+re-reads the whole plan. And **tab-owned content** comes in on `tabEdited`, where `name` and
+`groups` are excluded and the power target and depot tiers are not.
+
+Fingerprinting is one trailing pass per burst (`ACTIVITY_DEBOUNCE_MS`, 300ms) over only the
+records that burst announced. `stableStringify` of a calculated factory is not cheap and
+`factoryUpdated` fires for every ripple, so a per-event or per-plan fingerprint would have put a
+full-plan serialization on every edit — which is the cost `perf-deep-watcher-bottleneck` exists
+to warn about.
+
+## The backend health banner (#108)
+
+`stores/backend-health-store.ts` polls `GET /health` every 60s and immediately whenever
+`roomSync.connection` becomes `reconnecting`. A 503 (which arrives as a thrown `ApiError`), a
+`fail` body, or a request that never lands raises `BackendHealthBanner.vue`. `/health` is exempt
+from the version gate by design, so a tab too old to call anything else can still ask.
+
+Two silences are deliberate and both are load-bearing. **Offline mode does not poll at all** and
+drops whatever the banner last believed, because backend silence is the whole point of it. And a
+browser reporting `navigator.onLine === false` is not evidence about the server — this banner
+asks the reader to go and report an outage on Discord, so a user on a train must not be told to.
 
 ## Flagged follow-ups, none of them blocking
 
