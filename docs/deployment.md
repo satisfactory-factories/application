@@ -4,8 +4,10 @@ How a merge to `main` becomes a running API, what can go wrong, and how to tell
 whether a deploy actually landed.
 
 For the release philosophy across all three packages see
-[how-do-we-release.md](./how-do-we-release.md). This document is only about
-`backend/`. The web app deploys itself via Vercel and needs none of this.
+[how-do-we-release.md](./how-do-we-release.md). This document is about `backend/`:
+the production API, and the [preview API](#the-preview-api) beside it. The web app
+deploys itself via Vercel and needs none of this, beyond the one environment
+variable that tells a preview build which API to talk to.
 
 ---
 
@@ -183,6 +185,111 @@ surfaces the case where the box's compose file has no healthcheck at all — in
 that situation `--wait` quietly degrades to "is it running", and most of the
 guarantee in point 2 is gone without anything saying so.
 
+## The preview API
+
+There is a second API on the same box, at
+**https://api-preview.satisfactory-factories.app**, and **every Vercel preview
+build points at it**. That is the whole reason it exists: before it, a preview
+deployment talked to the live API, so any PR touching the backend — or touching
+how the frontend talks to it — could only be tested by shipping it to production
+first, and any preview could write to real accounts. See issue #189.
+
+| | production | preview |
+| --- | --- | --- |
+| hostname | `api.satisfactory-factories.app` | `api-preview.satisfactory-factories.app` |
+| port on the box | 3001 | 3002 |
+| compose dir | `/root/docker` | `/root/docker-preview` |
+| container | `sf-backend` | `sf-backend-preview` |
+| image tag | `backend-latest` | `backend-preview` |
+| database | `factory_planner` | `factory_planner_preview` |
+| built from | `main`, on merge | whatever branch you point it at |
+| repo mirror | `backend/docker-compose-server.yml` | `backend/docker-compose-preview.yml` |
+| workflow | `deploy-backend.yml` | `deploy-backend-preview.yml` |
+| hook | `satisfactory-factories` | `satisfactory-factories-preview` |
+
+Everything else is shared, deliberately. It runs on the same box, behind the same
+tunnel, through the same webhook server, and against the **same mongod** — just a
+different database on it, so the data is separate without paying for a second
+Mongo on a 2GB box. It also takes the same lock as a production deploy, so the two
+can never interleave.
+
+### Putting a branch on it
+
+Two ways in, for two different moments:
+
+- **Label the PR `deploy-preview-api`.** Every push to that PR then redeploys the
+  preview API from its head commit. This is what you want while actively building
+  against a backend change.
+- **Run "Backend: Deploy Preview" from the Actions tab**, picking any branch. This
+  is how you put it *back* on `main` when you are done.
+
+**Nothing puts it back on its own.** Whatever was deployed last stays deployed,
+indefinitely.
+
+### The shared-instance trade
+
+There is one preview API, and every preview points at it. So a branch that
+changes the wire protocol breaks every *other* open preview for as long as it is
+loaded. That is accepted rather than solved: almost all work here is frontend,
+the backend changes maybe twice a year, and a container per PR is a great deal of
+machinery to carry for that. If it does become a problem, the shape of the answer
+is a container per PR on a wildcard hostname, which is what issue #189 originally
+asked for.
+
+Concretely: while PR #620 is loaded, other previews will fail against it, because
+it gates every route on a protocol version header they do not send.
+
+### How the frontend finds it
+
+`VITE_API_URL` overrides everything in `web/src/config/config.ts`. Vercel sets it
+on the **Preview** environment only; production leaves it unset and falls through
+to the live API, and local dev falls through to `localhost:3001` as before. There
+is no branch logic in the code — a build points wherever its environment says.
+
+### CORS
+
+A Vercel preview gets a fresh hostname per deployment, so there is no list to
+enumerate. The preview API takes `CORS_EXTRA_ORIGINS` from its env file instead: a
+comma-separated list where an entry may start with `*.` to match any subdomain.
+It is unset in production, which leaves production's CORS exactly as it was.
+
+The matcher parses the origin and compares hostnames rather than doing a string
+suffix test, because `https://evil.com/#.vercel.app` ends in `.vercel.app` too.
+See `backend/utils/cors.spec.ts`.
+
+### Verifying it
+
+```bash
+curl -s https://api-preview.satisfactory-factories.app/health
+# {"status":"ok","uptime":624,"database":{"status":"ok","state":"connected",...}}
+
+ssh sf 'docker ps --format "{{.Names}}\t{{.Image}}\t{{.Status}}"'
+# sf-backend-preview  maelstromeous/satisfactory-factories:backend-preview  Up 10 minutes (healthy)
+```
+
+`/root/deploy.log` on the box carries preview and production deploys interleaved;
+the `Deploy requested` line names the compose directory the run was for.
+
+### Things that will catch you here
+
+- **The memory cap is load-bearing.** `mem_limit` is 768m. `main`'s API runs
+  `ts-node backend.ts`, which compiles on boot; V8 sizes its heap from the cgroup
+  limit, so at 512m it OOM-killed on every single start — exit 134, "Ineffective
+  mark-compacts near heap limit", and a container that looks like it is merely
+  restarting. Do not lower it to make room for something.
+- **The preview Mongo URI needs `?authSource=admin` and production's does not.**
+  The root user was created against production's database, so authenticating
+  against a *different* database name fails with `AuthenticationFailed` unless the
+  URI says where to authenticate. This is the first thing to check if preview
+  reports `"database":{"state":"disconnected"}` while production is fine.
+- **`/root/docker-preview/docker-compose.yml` is hand-mirrored**, exactly like
+  production's, and nothing syncs it. Its mirror here is
+  `backend/docker-compose-preview.yml`.
+- **The preview JWT secret is its own**, generated on the box and never shared
+  with production, so a token minted by preview is worthless against the live API.
+- **Preview data is disposable.** Nothing backs up `factory_planner_preview`, and
+  nothing prunes it either.
+
 ## Verifying a deploy
 
 ```bash
@@ -280,6 +387,17 @@ Repository secrets (Settings → Secrets and variables → Actions):
 > The webhook secret is **shared across every project** on that server. A repo
 > that can trigger this deploy can trigger the others too.
 
+In Vercel (Settings -> Environment Variables), one-off:
+
+| Variable | Environment | Value |
+| --- | --- | --- |
+| `VITE_API_URL` | **Preview** only | `https://api-preview.satisfactory-factories.app` |
+
+Leave it unset for Production and Development. Unset means the build falls through
+to the live API, which is the old behaviour and the thing the preview API exists to
+stop — so if previews start writing to real accounts again, this variable is the
+first place to look.
+
 On the box (`ssh sf`), one-off, and not done by any deploy:
 
 - `/root/docker/docker-compose.yml` must match `backend/docker-compose-server.yml`
@@ -291,3 +409,13 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
 - `/root/update.sh` must match `backend/update.sh`, mode `755`.
 - The webhooks box's deploy key must be in `/root/.ssh/authorized_keys`
   (fingerprint `SHA256:Y69lglv47Mp3dkMh9a/CL1u9PmYldx4u+NTDb0QiFDs`).
+- For the preview API: `/root/docker-preview/docker-compose.yml` must match
+  `backend/docker-compose-preview.yml`, and `/root/docker-preview/sf-preview.env`
+  must exist beside it, mode 600. It carries the same Mongo credentials as
+  production with `factory_planner_preview` as the database and
+  `?authSource=admin` appended, its own generated `JWT_SECRET`, `PORT=3002`,
+  `ENVIRONMENT=preview`, and `CORS_EXTRA_ORIGINS`.
+- The `satisfactory-factories-preview` hook must be loaded on the webhooks box
+  (`cd /root/webhooks && ./sync.sh`). It needs no new secret here: the preview
+  hook's URL is derived from `WEBHOOK_URL` by swapping the last path segment, and
+  the workflow refuses to run if that derivation stops reproducing the secret.
