@@ -182,17 +182,6 @@ Dimensional Depot Uploaders you have put on that item's surplus.
   onto the plan, restoring stamped that 0 in for good. It now reads the target the same way Copy
   plan and the rest of the planner do, legacy fallback included.
 
-- **A mine can no longer promise ore its extractors cannot pull** (#624). A mine or oil field's
-  quantity is deliberately kept separate from its extractor groups, so you can type the rate you
-  want without the planner rewriting it — but the ledger then believed that number outright. A
-  Crude Oil product set to 5385/min above pumps yielding 2850/min was counted at the full 5385, so
-  the factory reported a comfortable surplus, a real import from another oil field was labelled
-  **Redundant!**, and 2535/min of oil that does not exist propped up everything downstream. What a
-  mine supplies is now what its extractors actually extract; the difference shows up as an ordinary
-  raw resource shortage. Your typed quantity and your hand-built groups are both left exactly as
-  they are. **Satisfy** no longer appears on a mine already at its extractors' ceiling, where
-  raising the quantity could not have helped — build more extractors, or a better mark.
-
 ## Beta v0.6 - The "Groundwork" Update
 
 _Released 19 August 2026._

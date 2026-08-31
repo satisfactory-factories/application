@@ -41,10 +41,7 @@ describe('collectGroupProducts', () => {
   })
 
   it('should report a surplus as a positive net', () => {
-    // The miners have to actually be there: an extraction item supplies what its groups extract,
-    // so raising the quantity alone would leave the mine on its original 240 (#624).
     mine.products[0].amount = 300
-    mine.products[0].buildingGroups[0].buildingCount = 5
     const products = collectGroupProducts(build([mine, smelter]))
 
     expect(products.find(product => product.partId === 'OreIron')?.net).toBe(60)

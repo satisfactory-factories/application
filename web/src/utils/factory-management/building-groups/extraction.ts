@@ -1,4 +1,4 @@
-import { BuildingGroup, FactoryItem } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup } from '@/interfaces/planner/FactoryInterface'
 import { NodePurity, RecipeExtraction, RecipeWell } from '@/interfaces/Recipes'
 import { getRecipe } from '@/utils/factory-management/common'
 import { fetchGameData } from '@/utils/gameDataService'
@@ -189,54 +189,6 @@ export const getExtractionOutputMultiplier = (group: BuildingGroup, recipeId?: s
   }
 
   return getGroupExtractionRate(group, recipeId) / referenceRate
-}
-
-// What an extraction item's building groups can actually deliver per minute.
-//
-// Extraction IS the supply — a mine cannot yield more than its extractors pull, whatever number
-// the item carries (#624). Groups apportion output by effective buildings against the item's
-// reference requirement (see calculateBuildingGroupParts), so the same ratio totals them.
-//
-// Null when there is nothing meaningful to measure against: not extraction, no groups, no
-// requirement derived yet, or a degenerate 0-building set. The item's own amount stands then.
-export const getExtractionGroupsOutput = (item: FactoryItem): number | null => {
-  if (!isExtractionRecipe(item.recipe)) {
-    return null
-  }
-
-  const groups = item.buildingGroups ?? []
-  const referenceBuildings = item.buildingRequirements?.amount ?? 0
-  if (groups.length === 0 || referenceBuildings <= 0) {
-    return null
-  }
-
-  // Read off the group's own configuration rather than its cached `parts`, which is only
-  // refreshed in the building-groups pass — after the parts ledger is built.
-  const effectiveBuildings = groups.reduce((total, group) =>
-    total + group.buildingCount *
-      ((group.overclockPercent ?? 100) / 100) *
-      getExtractionOutputMultiplier(group, item.recipe), 0)
-
-  if (effectiveBuildings <= 0) {
-    return null
-  }
-
-  return formatNumberFully(item.amount * effectiveBuildings / referenceBuildings, 3)
-}
-
-// What a product actually puts on the belt.
-//
-// #624: an extraction item unsynced from its groups can name any rate it likes, but the
-// extractors are the supply — a Crude Oil product set to 5385/min above pumps yielding 2850 was
-// counted at the full 5385, so the factory read as satisfied while 2535/min came from nowhere.
-//
-// A SYNCED item is left alone: its groups are rebalanced to match it later in the same pass, so
-// comparing against them here would measure a state about to be replaced.
-export const suppliedByProduct = (product: FactoryItem): number => {
-  if (product.buildingGroupItemSync) {
-    return product.amount
-  }
-  return Math.min(product.amount, getExtractionGroupsOutput(product) ?? product.amount)
 }
 
 // Purity to add satellites on when a well has to grow: whichever it already has most of, so a
