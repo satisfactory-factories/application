@@ -6,6 +6,7 @@ import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common
 import { getEndProducts } from '@/utils/factory-management/end-products'
 import { isSinkablePart } from '@/utils/factory-management/sinkable'
 import { isSunk } from '@/utils/factory-management/disposal'
+import { suppliedByProduct } from '@/utils/factory-management/building-groups/extraction'
 
 // A building group solved against a target has to express its clock in the four decimal places
 // the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
@@ -221,7 +222,7 @@ export const calculatePartSupply = (factory: Factory) => {
 
     // Add up product amounts
     createNewPart(factory, product.id)
-    factory.parts[product.id].amountSuppliedViaProduction += product.amount
+    factory.parts[product.id].amountSuppliedViaProduction += suppliedByProduct(product)
 
     // And byproducts
     product.byProducts?.forEach(byProduct => {

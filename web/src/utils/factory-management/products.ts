@@ -13,6 +13,7 @@ import {
 } from '@/utils/factory-management/common'
 import eventBus from '@/utils/eventBus'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
+import { getExtractionGroupsOutput, suppliedByProduct } from '@/utils/factory-management/building-groups/extraction'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateProductBuildings } from '@/utils/factory-management/buildings'
 import { syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
@@ -236,6 +237,14 @@ export const shouldShowFix = (product: FactoryItem, factory: Factory): string | 
 
   // It's in demand but not enough is being produced
   if (part.amountRemaining < 0) {
+    // An extraction item already at its extractors' ceiling cannot be fixed by typing a bigger
+    // number: supply is capped at what the groups pull, and that ceiling is buildings x rate,
+    // independent of the quantity (#624). Offering Satisfy here would be a button that does
+    // nothing — the group tray's own problem flag and the raw shortage are the real signals.
+    const ceiling = getExtractionGroupsOutput(product)
+    if (ceiling !== null && product.amount >= ceiling) {
+      return null
+    }
     return 'deficit'
   }
 
@@ -288,7 +297,10 @@ export const fixProductTarget = (product: FactoryItem, factory: Factory): number
   // + product.amount because this product's own output sits inside amountSuppliedViaProduction,
   // making the result a quantity to set rather than one to add. Floored at zero: with enough
   // imported or dropped as a byproduct the sum goes negative, and zero means stop making it.
-  return Math.max(0, diff + product.amount)
+  // The product's own contribution, which is what sits inside amountSuppliedViaProduction —
+  // not its typed amount. For a capped extraction item those differ, and using the typed amount
+  // would over-add by the amount the extractors cannot actually pull.
+  return Math.max(0, diff + suppliedByProduct(product))
 }
 
 export const fixProduct = (product: FactoryItem, factory: Factory): void => {

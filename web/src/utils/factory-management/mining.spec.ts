@@ -240,4 +240,69 @@ describe('mining scenarios', async () => {
       expect(factories[0].products[0].buildingGroups).toEqual(before)
     })
   })
+  // #624: an extraction item unsynced from its groups (which is every mine and well — see
+  // addProductBuildingGroup) could name any rate it liked and be believed. Extraction IS the
+  // supply, so the extractors have the final say and the gap reads as a raw shortage.
+  describe('an item claiming more than its extractors deliver', () => {
+    it('supplies only what the groups extract, and reports the rest short', () => {
+      const mine = newFactory('Iron Mine', 0, 1)
+      addProductToFactory(mine, { id: 'OreIron', amount: 240, recipe: 'Extract_OreIron' })
+      const smelter = newFactory('Iron Smelter', 1, 2)
+      addProductToFactory(smelter, { id: 'IronIngot', amount: 600, recipe: 'IngotIron' })
+      // The smelter genuinely wants 600, which is what makes the gap a shortage rather than
+      // just an inflated number.
+      addInputToFactory(smelter, { factoryId: mine.id, outputPart: 'OreIron', amount: 600 })
+      calculateFactories([mine, smelter], gameData)
+
+      // Four Mk.1 miners on normal nodes, then the quantity typed up to 600 without adding any.
+      expect(mine.products[0].buildingGroupItemSync).toBe(false)
+      expect(mine.products[0].buildingGroups[0].buildingCount).toBe(4)
+      mine.products[0].amount = 600
+      calculateFactories([mine, smelter], gameData)
+
+      expect(mine.parts.OreIron.amountRequiredExports).toBe(600)
+      expect(mine.parts.OreIron.amountSuppliedViaProduction).toBe(240) // not the typed 600
+      expect(mine.parts.OreIron.amountRemaining).toBe(-360)
+      expect(mine.parts.OreIron.satisfied).toBe(false)
+      expect(mine.rawResources.OreIron.amount).toBe(360) // the ore the miners cannot pull
+      expect(mine.dependencies.metrics.OreIron.isRequestSatisfied).toBe(false)
+    })
+
+    it('leaves an item its groups can cover alone', () => {
+      const mine = newFactory('Iron Mine', 0, 1)
+      addProductToFactory(mine, { id: 'OreIron', amount: 240, recipe: 'Extract_OreIron' })
+      calculateFactories([mine], gameData)
+
+      // Groups upgraded well past the item: the cap never inflates, it only ever holds back.
+      mine.products[0].buildingGroups[0].buildingCount = 20
+      calculateFactories([mine], gameData)
+
+      expect(mine.parts.OreIron.amountSuppliedViaProduction).toBe(240)
+    })
+
+    it('does not touch a manufactured product', () => {
+      const factory = newFactory('Iron Ingots', 0, 1)
+      addProductToFactory(factory, { id: 'IronIngot', amount: 240, recipe: 'IngotIron' })
+      calculateFactories([factory], gameData)
+
+      factory.products[0].buildingGroupItemSync = false
+      factory.products[0].buildingGroups[0].buildingCount = 1
+      calculateFactories([factory], gameData)
+
+      // A smelter's groups are a build plan, not the supply — only extraction is capped.
+      expect(factory.parts.IronIngot.amountSuppliedViaProduction).toBe(240)
+    })
+
+    it('does not starve an item whose groups total no buildings', () => {
+      const mine = newFactory('Iron Mine', 0, 1)
+      addProductToFactory(mine, { id: 'OreIron', amount: 240, recipe: 'Extract_OreIron' })
+      calculateFactories([mine], gameData)
+
+      // Degenerate rather than deliberate — there is no craft here to take as the truth.
+      mine.products[0].buildingGroups.forEach(group => { group.buildingCount = 0 })
+      calculateFactories([mine], gameData)
+
+      expect(mine.parts.OreIron.amountSuppliedViaProduction).toBe(240)
+    })
+  })
 })
