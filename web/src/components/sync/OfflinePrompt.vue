@@ -39,13 +39,6 @@
 </script>
 
 <style lang="scss" scoped>
-.offline-prompt {
-  bottom: 8px;
-  left: 50%;
-  max-width: 680px;
-  position: fixed;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  z-index: 2400;
-}
+// Placement is the bottom-notices stack in the default layout, so this and the
+// backend-health banner sit above one another rather than on top of one another.
 </style>

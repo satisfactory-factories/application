@@ -157,6 +157,19 @@ export const apiRequest = async <T> (path: string, options: RequestOptions = {})
   return body as T
 }
 
+// ===== Health =====
+
+/** The shape `/health` has always served; uptime monitoring reads it too. */
+export interface HealthResponse {
+  status: 'ok' | 'fail'
+  uptime: number
+  database: { status: 'ok' | 'fail', state: string, responseTime: number, error?: string }
+}
+
+/** Exempt from the version gate by design, so an out-of-date tab can still ask. */
+export const getHealth = (signal?: AbortSignal): Promise<HealthResponse> =>
+  apiRequest('/health', { auth: false, signal })
+
 // ===== Auth =====
 
 export const register = (username: string, password: string): Promise<MessageResponse> =>

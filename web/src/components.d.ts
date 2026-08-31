@@ -20,6 +20,7 @@ declare module 'vue' {
     Auth: typeof import('./components/Auth.vue')['default']
     AuthForm: typeof import('./components/sync/AuthForm.vue')['default']
     AwesomeSinkTutorial: typeof import('./components/planner/AwesomeSinkTutorial.vue')['default']
+    BackendHealthBanner: typeof import('./components/sync/BackendHealthBanner.vue')['default']
     BeltPipeCalculator: typeof import('./components/planner/satisfaction/calculator/BeltPipeCalculator.vue')['default']
     BuildingGroup: typeof import('./components/planner/products/BuildingGroup.vue')['default']
     BuildingGroups: typeof import('./components/planner/products/BuildingGroups.vue')['default']
