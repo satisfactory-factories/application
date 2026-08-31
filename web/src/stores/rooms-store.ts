@@ -3,6 +3,7 @@ import { ref, toRaw, watch } from 'vue'
 import type { RoomListEntry } from 'common'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError, VersionMismatchError } from '@/api/client'
+import { config } from '@/config/config'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
@@ -269,11 +270,19 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!tab) return false
 
     try {
+      // The room becomes the authoritative copy the moment it exists, and the first
+      // snapshot writes every content field back over the tab — absent as absent. So
+      // the payload must carry everything the tab knows, or adoption erases it: a
+      // dropped `plannerVersion` re-raises the raw-resources notice the user already
+      // answered, and dropped Depot tiers quietly read as fully researched.
       const { room } = await api.adoptRoom({
         roomId: tab.id,
         name,
         factories: toRaw(tab.factories),
         powerTarget: tab.powerTarget ?? 0,
+        depotUploadTier: tab.depotUploadTier,
+        depotExpansionTier: tab.depotExpansionTier,
+        plannerVersion: tab.plannerVersion,
         groups: toRaw(tab.groups ?? []),
       })
 
@@ -328,8 +337,18 @@ export const useRoomsStore = defineStore('rooms', () => {
     const roomId = crypto.randomUUID()
     try {
       // The tab is only created once the server has the room, so a failure
-      // leaves nothing half-made in the bar.
-      const { room } = await api.createRoom({ roomId, name, factories: [], powerTarget: 0, groups: [] })
+      // leaves nothing half-made in the bar. The room carries the answered-for
+      // stamp `addTab` gives every brand-new empty tab: the room is authoritative,
+      // so a room created without it would blank the tab's stamp on the first
+      // snapshot and raise the raw-resources notice on a plan born after v0.6.
+      const { room } = await api.createRoom({
+        roomId,
+        name,
+        factories: [],
+        powerTarget: 0,
+        plannerVersion: config.plannerVersion,
+        groups: [],
+      })
       appStore.addTab({ id: roomId, name, factories: [] })
       entries.value[room.roomId] = room
       appStore.setTabState(roomId, {

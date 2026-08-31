@@ -5,6 +5,7 @@ import { PROTOCOL_VERSION } from 'common'
 import type { RoomListEntry } from 'common'
 import * as api from '@/api/client'
 import { ApiError } from '@/api/client'
+import { config } from '@/config/config'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
@@ -361,6 +362,33 @@ describe('rooms-store', () => {
       expect(appStore.getTabState(tab.id).kind).toBe('synced')
     })
 
+    /**
+     * The room is authoritative from the moment it exists, and the first snapshot
+     * writes absent content fields back over the tab as absent. So the adopt payload
+     * must carry the answered-for stamp and the Depot tiers, or adoption erases them:
+     * the raw-resources notice the user already dismissed comes back, and the plan
+     * quietly reads as fully researched.
+     */
+    it('seeds the room with the answered-for stamp and Depot tiers', async () => {
+      const tab = localTab('Mine')
+      tab.plannerVersion = '0.5'
+      tab.depotUploadTier = 2
+      tab.depotExpansionTier = 3
+      vi.mocked(api.adoptRoom).mockResolvedValue({
+        status: 'created',
+        room: entry({ roomId: tab.id, name: 'Mine' }),
+      })
+      listReturns([entry({ roomId: tab.id, name: 'Mine' })])
+
+      await store.adoptTabs([tab.id])
+
+      expect(api.adoptRoom).toHaveBeenCalledWith(expect.objectContaining({
+        plannerVersion: '0.5',
+        depotUploadTier: 2,
+        depotExpansionTier: 3,
+      }))
+    })
+
     it('suffixes a name the account already uses', async () => {
       const tab = localTab('Plan')
       listReturns([entry({ roomId: 'other-room', name: 'Plan' })])
@@ -640,6 +668,27 @@ describe('rooms-store', () => {
       const created = appStore.getCurrentTab()
       expect(created.name).toBe('Fresh')
       expect(appStore.getTabState(created.id).kind).toBe('synced')
+    })
+
+    /**
+     * `addTab` stamps every brand-new empty tab as answered-for the raw-resources
+     * change. The room must be created already carrying the same stamp: the room is
+     * authoritative, so a room without it blanks the tab's stamp on the first
+     * snapshot — and the plan built in it raises a migration notice it was born
+     * too late to deserve.
+     */
+    it('creates the room already carrying the answered-for stamp', async () => {
+      vi.mocked(api.createRoom).mockImplementation(async body => ({
+        status: 'created',
+        room: entry({ roomId: body.roomId as string, name: body.name, revision: 0 }),
+      }))
+
+      expect(await store.createSyncedTab('Fresh')).toBe(true)
+
+      expect(api.createRoom).toHaveBeenCalledWith(expect.objectContaining({
+        plannerVersion: config.plannerVersion,
+      }))
+      expect(appStore.getCurrentTab().plannerVersion).toBe(config.plannerVersion)
     })
   })
 
