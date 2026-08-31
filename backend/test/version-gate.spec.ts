@@ -67,8 +67,11 @@ describe('the X-App-Version gate', () => {
     }
   })
 
-  it('exempts only GET /health and GET /share/:id', async () => {
+  // /version is exempt for the opposite reason to the others: it exists to tell a client the
+  // gate would refuse that a newer build is out.
+  it('exempts only GET /health, GET /version and GET /share/:id', async () => {
     expect((await request(server()).get('/health')).status).toBe(200)
+    expect((await request(server()).get('/version')).status).toBe(200)
     expect((await request(server()).get('/share/anything')).status).toBe(404)
   })
 })

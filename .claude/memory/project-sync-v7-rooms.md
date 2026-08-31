@@ -22,12 +22,13 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 272 vitest tests (23 files), common 75 (4), web 2736 unit tests (150 files, 1 skipped),
+backend 277 vitest tests (24 files), common 75 (4), web 2737 unit tests (150 files, 1 skipped),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 34 Playwright e2e tests passing — twice at full speed and once under
-`E2E_CPU_THROTTLE=6`, which is the run that earns its keep and is the one that found the last real
-bug. The e2e job in CI has never actually run: it is validated locally only, so the first PR is
-where it gets proved.
+`build` clean, and all 35 Playwright e2e tests passing. The 34 that predate the render-pacing fix
+ran twice at full speed and once under `E2E_CPU_THROTTLE=6`, which is the run that earns its keep
+and is the one that found the last real bug; the 35-test suite has had one full-speed run since.
+The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
+it gets proved.
 
 Two counting traps in that line, both of which have already misled a pass. The web figure
 includes the 8 files and 129 tests in `web/testing/tdd/`: they are **not** excluded by
@@ -349,8 +350,8 @@ raw fetch). The gate is the same news said harder — nothing this tab sends wil
 reloads — so both of upstream's stand down behind it: the toast and the dialog close on
 `versionMismatch` and refuse to open after one, and `startVersionCheck` stops polling. Ours wins
 placement deliberately; a modal over the banner would hide the notice the sync engine's own state is
-driving. Nothing was deleted, so if `GET /version` ever lands the release ping works as upstream
-intended.
+driving. Nothing was deleted, and `GET /version` has since landed (below), so upstream's release
+ping works as it was intended to.
 
 ## The load chain drives itself; the overlay is UI (2026-08-31)
 
@@ -416,6 +417,24 @@ overlay. Guards: `app-store.spec.ts` "a plan too big to render in one flush" (th
 spying on `calculateFactories` to prove nothing was calculated) and the e2e `sidebar-tabs` case
 "opening a big tab raises the loader, and opening a small one does not". Both were negative
 controlled by neutering `needsPacedRender`: three unit failures and the e2e overlay assertion.
+
+## `GET /version` came back (2026-08-31)
+
+The NestJS rewrite dropped it and nothing noticed until the preview, where every client polls it
+once a minute (`web/src/utils/version-check.ts`) and got a 404 each time. Restored as
+`backend/src/version/` — controller, module and `app-version.ts` — answering `{ version }` with
+`Cache-Control: no-store`, on its own throttle bucket of 30 a minute and outside the global one,
+which is what the Express original did.
+
+Two things about it are load-bearing. It is **exempt from the version gate**, unlike almost
+everything else: its entire job is telling an out-of-date client that a newer build exists, and
+the gate refuses exactly those clients. And the version is the **repo root manifest's**, found by
+walking up from `process.cwd()` (and from `__dirname` when the module is CommonJS) for the first
+manifest carrying a `version` field — only the root has one. A fixed `../package.json` happens to
+work in the image and under `pnpm dev`, both of which start in `backend/`, but the walk costs
+nothing and does not care. `APP_VERSION` still overrides, and an unreadable manifest degrades to
+`"unknown"`, which the planner's comparison rejects, so the failure mode is "no update offered"
+rather than a false one.
 
 ## The quiet-apply round (2026-08-31): three bugs the preview showed, and what they share
 
@@ -735,10 +754,9 @@ nothing routes through them. The first two below are from the round-three race a
   itself: `DroneCalculator.vue` (see below) and `updateProductSelection` in `Product.vue`,
   whose Uranium/Plutonium-waste branch clears the product and returns before `updateFactory`,
   so the clear is not even persisted until the next action.
-- **`GET /version` does not exist on the NestJS API.** `web/src/utils/version-check.ts` polls it,
-  so upstream's release notifier (#587) is inert — silently, by design. Adding the route also
-  means deciding whether it joins `/health` and `GET /share/:id` on the version-gate exemption
-  list, which is a reviewed contract, so it was left alone rather than decided in passing.
+- ~~**`GET /version` does not exist on the NestJS API.**~~ Closed 2026-08-31: the preview showed
+  every client 404ing on the poll, so the route is back (see "`GET /version` came back" above)
+  and it *is* on the version-gate exemption list, which was the open question here.
 - **The `?setupDemo=true` demo path must stay silent, unlike the button.** `app-store.ts` loads the
   same demo when that query string is present, and it deliberately declares nothing. It runs during
   store construction, before `room-sync-store` exists to hear an emit, and on a synced tab the join

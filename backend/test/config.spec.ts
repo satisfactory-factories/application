@@ -7,6 +7,7 @@ import {
   ROOM_AUTH_THROTTLE,
   SHARE_THROTTLE,
   THROTTLER_OPTIONS,
+  VERSION_THROTTLE,
 } from '../src/config/throttling'
 import { REQUIRED_ENV_VARS, validateEnv } from '../src/config/env'
 
@@ -45,9 +46,10 @@ describe('throttler configuration', () => {
     return throttler?.skipIf?.(context(method, path)) === false
   }
 
-  it('keeps the express-rate-limit buckets: 200 per 5 minutes, 10 per minute on health', () => {
+  it('keeps the express-rate-limit buckets: 200 per 5 minutes, 10 on health, 30 on version', () => {
     expect(GLOBAL_THROTTLE).toEqual({ name: 'global', ttl: 300_000, limit: 200 })
     expect(HEALTH_THROTTLE).toEqual({ name: 'health', ttl: 60_000, limit: 10 })
+    expect(VERSION_THROTTLE).toEqual({ name: 'version', ttl: 60_000, limit: 30 })
   })
 
   it('keeps share creation at 5 per 5 minutes and holds the password exchange to 10', () => {
@@ -58,7 +60,7 @@ describe('throttler configuration', () => {
   it('keys on the client alone, so routes share one allowance rather than each getting 200', () => {
     expect(options.generateKey?.({} as never, '127.0.0.1', 'global')).toBe('global-127.0.0.1')
     expect(options.throttlers.map(throttler => throttler.name))
-      .toEqual(['global', 'health', 'share', 'roomAuth'])
+      .toEqual(['global', 'health', 'version', 'share', 'roomAuth'])
     expect(options.throttlers.every(throttler => typeof throttler.skipIf === 'function')).toBe(true)
   })
 
@@ -71,5 +73,10 @@ describe('throttler configuration', () => {
     expect(applies('global', 'POST', '/share')).toBe(true)
     expect(applies('global', 'POST', '/rooms/abc-123/auth')).toBe(true)
     expect(applies('global', 'GET', '/health')).toBe(false)
+    // Polling for a release must not spend the allowance ordinary traffic needs, nor be
+    // stopped by it: /version keeps its own bucket and sits outside the global one.
+    expect(applies('version', 'GET', '/version')).toBe(true)
+    expect(applies('version', 'GET', '/health')).toBe(false)
+    expect(applies('global', 'GET', '/version')).toBe(false)
   })
 })

@@ -15,6 +15,7 @@ import { LegacyModule } from './legacy/legacy.module'
 import { PreferencesModule } from './preferences/preferences.module'
 import { RealtimeModule } from './realtime/realtime.module'
 import { RoomsModule } from './rooms/rooms.module'
+import { VersionModule } from './version/version.module'
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { RoomsModule } from './rooms/rooms.module'
     }),
     ThrottlerModule.forRoot(THROTTLER_OPTIONS),
     HealthModule,
+    VersionModule,
     AuthModule,
     LegacyModule,
     RoomsModule,
