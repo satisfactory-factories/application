@@ -21,7 +21,7 @@ import { refreshBuildingGroupProblems } from '@/utils/factory-management/buildin
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { generateFactoryItemId } from '@/utils/factory-management/common'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
-import { captureOrder, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
+import { captureOrder, markFactoryRemoved, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
 import { getHandGatheredParts } from '@/utils/factory-management/parts'
 import { needsPacedRender } from '@/utils/render-pacing'
@@ -1051,7 +1051,9 @@ export const useAppStore = defineStore('app', () => {
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
       const [removed] = factories.value.splice(index, 1)
-      eventBus.emit('factoryUpdated', removed)
+      // Declared, not just announced: deletes coalescing into one op behind a slow ack
+      // must still pass the server's bulk-removal threshold.
+      markFactoryRemoved(removed)
       schedulePersist()
     }
 
@@ -1097,6 +1099,9 @@ export const useAppStore = defineStore('app', () => {
     isLoaded.value = false
 
     try {
+      // A restore is a replacement: every id it displaces has to be declared, or restoring
+      // a small plan over a big one is refused on the wire as an undeclared bulk removal.
+      const outgoing = [...factories.value]
       if (Array.isArray(data)) {
         // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
         // has to be asked about — including on a fresh machine, whose tab was born answered for
@@ -1113,6 +1118,7 @@ export const useAppStore = defineStore('app', () => {
         // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
         // something different by it - raw resources were assumed supplied - so its stored ledger
         // is the one thing that cannot be believed, and it is exactly what the notice below reads.
+        markPlanReplaced(outgoing, data)
         setFactories(data, true)
         // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
         // nothing else calls this - the plan simply turned red with nothing on screen saying why.
@@ -1135,6 +1141,7 @@ export const useAppStore = defineStore('app', () => {
         tab.depotUploadTier = data.depotUploadTier
         tab.depotExpansionTier = data.depotExpansionTier
       }
+      markPlanReplaced(outgoing, data.factories ?? [])
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
       // are the user's own and its ledger means what it says. A forced recalculation treats
       // building groups as authoritative and writes them back over any item deliberately left out

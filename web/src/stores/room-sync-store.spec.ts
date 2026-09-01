@@ -1555,6 +1555,21 @@ describe('room-sync-store', () => {
       expect(lastOp().bulkRemoval).toBe(true)
     })
 
+    // Single deletes coalesce into one op behind a slow ack, and past the threshold that op
+    // needs the claim too — so each delete declares its own id at the site of the delete.
+    it('declares a burst of single deletes made through the store', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(big, 4)
+      appStore.currentFactoryTab = tab
+      appStore.inited = true
+
+      for (const id of big.slice(0, 6).map(entry => entry.id)) appStore.removeFactory(id)
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(lastOp().diff.removedFactoryIds).toHaveLength(6)
+      expect(lastOp().bulkRemoval).toBe(true)
+    })
+
     // The truncation shape, and the whole point of the flag: the array shrinks and no bulk
     // action ever said so, so the op goes without the claim and the server refuses it.
     it('claims nothing for a shrink no bulk action declared', () => {

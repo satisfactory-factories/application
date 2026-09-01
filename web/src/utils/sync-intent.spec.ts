@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { markPlanReplaced } from '@/utils/sync-intent'
+import { markFactoryRemoved, markPlanReplaced } from '@/utils/sync-intent'
 import { newFactory } from '@/utils/factory-management/factory'
 import eventBus from '@/utils/eventBus'
 
@@ -32,5 +32,21 @@ describe('markPlanReplaced', () => {
 
     expect(emit).toHaveBeenCalledWith('factoryEdited', cleared[0])
     expect(emit).toHaveBeenCalledWith('factoryEdited', cleared[1])
+  })
+})
+
+describe('markFactoryRemoved', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('declares the removed id and claims the record as the user\'s own edit', () => {
+    const emit = vi.spyOn(eventBus, 'emit')
+    const doomed = newFactory('Doomed', 0, 7)
+
+    markFactoryRemoved(doomed)
+
+    expect(emit).toHaveBeenCalledWith('factoryEdited', doomed)
+    expect(emit).toHaveBeenCalledWith('planReplaced', { removedIds: [7] })
   })
 })

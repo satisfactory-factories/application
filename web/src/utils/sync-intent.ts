@@ -61,3 +61,13 @@ export const markPlanReplaced = (before: Factory[], after: Factory[]) => {
   })
   eventBus.emit('planReplaced', { removedIds })
 }
+
+/**
+ * A single delete. The engine infers the removal from the diff on its own; what this adds
+ * is the declaration. Behind a slow ack several deletes coalesce into one op, and past the
+ * server's bulk threshold an undeclared burst is refused and the deletions come back.
+ */
+export const markFactoryRemoved = (factory: Factory) => {
+  markFactoryEdited(factory)
+  eventBus.emit('planReplaced', { removedIds: [factory.id] })
+}

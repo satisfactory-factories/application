@@ -115,9 +115,10 @@ interface RoomEngine {
   touchedFactories: Set<number>
   touchedFields: Set<TabField>
   /**
-   * Ids a bulk replacement removed and the server has not acknowledged yet. An op whose
-   * removals are all in here is sent as `bulkRemoval`, which is the only way past the
-   * server's threshold; anything else that shrinks the plan that far is refused.
+   * Ids a deliberate user removal — a bulk replacement or a single delete — took out and
+   * the server has not acknowledged yet. An op whose removals are all in here is sent as
+   * `bulkRemoval`, which is the only way past the server's threshold; anything else that
+   * shrinks the plan that far is refused.
    */
   declaredRemovals: Set<number>
   /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
@@ -387,8 +388,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   /**
    * Whether this op may claim `bulkRemoval`. Every removed id has to have been declared by a
-   * bulk replacement, so a diff that shrank for any other reason cannot borrow the claim from
-   * one that did — which is what keeps the server's threshold worth having.
+   * deliberate user removal, so a diff that shrank for any other reason cannot borrow the
+   * claim from one that did — which is what keeps the server's threshold worth having.
    */
   const declaresEveryRemoval = (engine: RoomEngine, diff: RoomDiff): boolean => {
     const removed = diff.removedFactoryIds ?? []
@@ -1206,9 +1207,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   /**
-   * The user emptied or replaced the whole plan. Recorded per id and persisted, because the
-   * op that carries these removals may be several minutes and a restart away — offline, or
-   * behind a pending op — and undeclared it would be refused and the plan handed back.
+   * The user removed records — one delete, or a whole-plan replacement. Recorded per id and
+   * persisted, because the op that carries these removals may be several minutes and a
+   * restart away — offline, or behind a pending op — and undeclared it would be refused and
+   * the plan handed back.
    */
   const onPlanReplaced = ({ removedIds }: { removedIds: number[] }) => {
     const tab = appStore.getCurrentTab()

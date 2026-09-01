@@ -147,7 +147,7 @@
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
-  import { captureOrder, markFactoryEdited, markReorderedFactories } from '@/utils/sync-intent'
+  import { captureOrder, markFactoryEdited, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
@@ -632,6 +632,9 @@
       removeFactoryDependants(factory, getFactories())
 
       getFactories().splice(index, 1) // Remove the factory at the found index
+      // Declared, not just inferred: deletes coalescing into one op behind a slow ack
+      // must still pass the server's bulk-removal threshold.
+      markFactoryRemoved(factory)
       updateWorldRawResources(gameData) // Recalculate the world resources
 
       // After deleting the factory, loop through all factories and update them as inputs / exports have likely changed.

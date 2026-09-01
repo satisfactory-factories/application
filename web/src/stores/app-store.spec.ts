@@ -1154,6 +1154,32 @@ describe('app-store', () => {
       expect(appStore.getCurrentTab()?.depotUploadTier).toBeUndefined()
       expect(appStore.getCurrentTab()?.depotExpansionTier).toBeUndefined()
     })
+
+    // A restore is a replacement: an op that shrinks the plan past the server's threshold
+    // is refused unless every displaced id was declared.
+    it('declares the ids a restored plan displaced', () => {
+      appStore.getFactories()
+      appStore.addFactory(newFactory('Old 1', 0, 41))
+      appStore.addFactory(newFactory('Old 2', 1, 42))
+
+      const emit = vi.spyOn(eventBus, 'emit')
+      emit.mockClear()
+      appStore.loadServerPlan({ id: 'x', name: 'Cloud', factories: [newFactory('New', 0, 43)] } as never)
+
+      expect(emit).toHaveBeenCalledWith('planReplaced', { removedIds: [41, 42] })
+    })
+
+    it('declares the displaced ids for a bare-array plan too', () => {
+      appStore.getFactories()
+      appStore.addFactory(newFactory('Old 1', 0, 41))
+      appStore.addFactory(newFactory('Old 2', 1, 42))
+
+      const emit = vi.spyOn(eventBus, 'emit')
+      emit.mockClear()
+      appStore.loadServerPlan([newFactory('New', 0, 43)])
+
+      expect(emit).toHaveBeenCalledWith('planReplaced', { removedIds: [41, 42] })
+    })
   })
 
   // JSON.stringify drops an undefined key, so a plan from before the change arrives through a
@@ -1397,6 +1423,19 @@ describe('app-store', () => {
         expect(last.displayOrder).toEqual(1)
         expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', last)
         expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', first)
+      })
+
+      // The engine infers the removal from the diff anyway; the declaration is what lets
+      // several deletes coalescing into one op pass the server's bulk-removal threshold.
+      it('declares the removed id', () => {
+        const factory = newFactory('Doomed', 0, 77)
+        appStore.addFactory(factory)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.removeFactory(factory.id)
+
+        expect(eventBus.emit).toHaveBeenCalledWith('planReplaced', { removedIds: [77] })
       })
     })
 

@@ -1259,17 +1259,20 @@ must carry `bulkRemoval: true`.** The gateway refuses one that does not, with
 onto the room's real state instead of emptying it for everybody in it. The check reads nothing
 about the sender: past that many, a diff is a whole-plan replacement rather than an edit.
 
-**Only the bulk paths declare, and they declare *which ids*.** `markPlanReplaced` in
+**Every deliberate removal declares, and it declares *which ids*.** `markPlanReplaced` in
 `web/src/utils/sync-intent.ts` emits `planReplaced { removedIds }`; the store holds them in
 `engine.declaredRemovals` and sets the flag only when every id in the diff's `removedFactoryIds`
-is one of them. Its callers are the whole list of bulk paths: `clearFactories` in `app-store.ts`,
-`Templates.vue`, `Introduction.vue`'s demo button and `RawResourcesWizard.vue` — and pasting a
-plan is covered because it clears first, through `clear-all`. A boolean latch would have covered
-all of them and not been honest: a latch set by a clear would launder the next accidental removal
-that happened to follow it. The set is persisted in the tab mirror meta,
+is one of them. The bulk paths call it: `clearFactories` and `loadServerPlan` (both branches) in
+`app-store.ts`, `Templates.vue`, `Introduction.vue`'s demo button and `RawResourcesWizard.vue` —
+and pasting a plan is covered because it clears first, through `clear-all`. Single deletes
+declare too, since 2026-09-01: `markFactoryRemoved` (same file) declares the one id, called from
+`removeFactory` in `app-store.ts` and `deleteFactory` in `Planner.vue`. A boolean latch would
+have covered all of them and not been honest: a latch set by a clear would launder the next
+accidental removal that happened to follow it. The set is persisted in the tab mirror meta,
 because the op can be a restart away — cleared while offline, or queued behind a pending op — and
 it is spent in `clearSatisfiedIntent`, where a record the baseline no longer holds can never be
-removed again.
+removed again. Any *new* site that shrinks the plan must declare, or its deletions silently stop
+syncing past the threshold.
 
 **The refusal has to converge, and it does not for free.** A rejected op is rebased and resent,
 and the rebase reads the missing records as intent — so a refused removal would be resent every
@@ -1279,10 +1282,12 @@ the intent for exactly the ids the refused op named when the reason is
 copy. Restoring is the safe direction: the plan is on the server, not in the client that just
 failed to explain itself.
 
-**The one honest cost of the threshold:** single deletes can coalesce into one op behind a slow
-ack, and past five of them that op is refused, so the user watches those deletions come back.
-Declaring at `removeFactory`/`deleteFactory` too would close it, which is the stage-one
-follow-up above done properly.
+**The one honest cost of the threshold — closed 2026-09-01:** single deletes could coalesce into
+one op behind a slow ack, and past five of them that op was refused, so the user watched those
+deletions come back. Closed by declaring at `removeFactory`/`deleteFactory` (and at
+`loadServerPlan`, the restore path, which replaced the plan wholesale and declared nothing).
+Guard: `room-sync-store.spec.ts` "declares a burst of single deletes made through the store",
+negative-controlled by the raw-splice test beside it.
 
 `PROTOCOL_VERSION` is deliberately unchanged: v0.7.0 is unreleased, so client and server ship
 together and no compatibility shim is owed. The one live consequence is on the shared preview
