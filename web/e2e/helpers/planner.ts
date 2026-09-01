@@ -556,18 +556,13 @@ export const addImport = async (
   const row = imports.locator('.selectors').last()
   await expect(row, 'the new import row never appeared').toBeVisible()
 
-  /**
-   * `dispatchEvent` rather than `click`: this menu renders where a real pointer event
-   * does not reach the option, and a forced click still lands on whatever is on top.
-   * The product picker's own menu opens higher up the card and has no such problem.
-   */
   const pick = async (label: string, value: string) => {
     const field = row.getByLabel(label, { exact: true })
     await field.click()
     await field.fill(value)
     const option = page.getByRole('option', { name: value, exact: true }).first()
     await expect(option, `the ${label} picker never offered ${value}`).toBeVisible()
-    await option.dispatchEvent('click')
+    await option.click()
   }
 
   await pick('Factory', sourceName)

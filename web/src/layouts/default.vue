@@ -78,6 +78,8 @@
 <style lang="scss" scoped>
 // The banners that live along the bottom edge. A column so two of them stack
 // rather than covering each other, and only as tall as whatever is showing.
+// Below 2000: Vuetify allocates overlays from there, and a select menu opened
+// near the bottom of a short viewport must paint (and click) over a banner.
 .bottom-notices {
   bottom: 8px;
   display: flex;
@@ -88,6 +90,6 @@
   position: fixed;
   transform: translateX(-50%);
   width: calc(100% - 32px);
-  z-index: 2400;
+  z-index: 1900;
 }
 </style>

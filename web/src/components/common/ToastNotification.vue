@@ -3,7 +3,7 @@
        is the top overlay and swallows the Escape that would have closed the dialog or
        tray behind it. A toast is never what Escape is aimed at. Leaving the stack also
        gives up the z-index it allocated, hence the explicit one: the bottom-edge banners
-       sit at 2400 and a toast that appeared behind them would not appear at all. -->
+       sit at 1900 and a toast that appeared behind them would not appear at all. -->
   <v-snackbar
     v-model="open"
     _disable-global-stack
