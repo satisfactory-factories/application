@@ -951,7 +951,13 @@ disabled with the reason beside it" everywhere it was asserted.
   `closeShareDialog` in `e2e/helpers/rooms.ts` now clicks `#close-share-dialog` the way
   `closeTabSettings` does rather than matching a button by the name "Close". The only dialogs
   still on raw chrome are the release splash decks and `StatisticsFactorySummary.vue`, both
-  deliberate.
+  deliberate (checked 2026-09-01: `<v-dialog` survives only in those three and in `AppDialog`).
+- **`expect(at('x')?.querySelector(...)).not.toBeNull()` cannot fail.** When `at('x')` is null the
+  optional chain yields `undefined`, and `undefined` is not null, so the assertion passes. The
+  first shell test written for the `AppDialog` move used that shape to pin the `share-dialog`
+  testid the e2e suite anchors on, and deleting the testid outright left all three shell tests
+  green. Assert the handle itself first (`expect(dialog).not.toBeNull()`), then use `!`. Worth
+  checking wherever a spec guards an anchor through `at(...)?.`.
 - **`shareBlurb` must not promise a link the pane cannot show.** Its first cut sent both
   non-owners down one branch saying "and the invite link for this plan", which is a lie for an
   anonymous visitor: `shareCapabilities` hardcodes `inviteLink: null` for `kind: 'joined'`
@@ -972,7 +978,10 @@ disabled with the reason beside it" everywhere it was asserted.
 - Counts after this round: web 2887 unit tests + 1 skipped across 154 files (2026-09-01, after
   the `AppDialog` move added 3 shell tests: TabSettingsDialog.spec 22, ShareDialog.spec 21,
   share-capabilities.spec 18, TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in 5.7m,
-  tab-lifecycle also standalone 5/5.
+  tab-lifecycle also standalone 5/5 — both measured *before* the `AppDialog` move. After it, the
+  seven specs that drive the share dialog were re-run green, 18/18 (invite, invite-password,
+  tab-lifecycle, unshare, snapshot-link, sidebar-tabs, field-locks); the full 42 has not been
+  re-run since.
 - Verified live against a local API (mongodb-memory-server on 3001, `CORS_EXTRA_ORIGINS`
   pointed at the vite dev origin, since the static allowlist only carries `localhost:3000`):
   local pencil shows Share Settings on the snapshot-only pane, convert to cloud flips the tab
