@@ -386,5 +386,29 @@ describe('TabSettingsDialog', () => {
       expect(shown('create-invite')).toBe(true)
       expect(shown('invite-blocked')).toBe(false)
     })
+
+    // A visitor has no membership row to read a slug from, so the dialog shows
+    // no link at all; the blurb must not promise one.
+    it('does not promise a visitor an invite link the dialog cannot show', async () => {
+      await render(joinedTab())
+
+      at('share-settings')!.click()
+      await flushPromises()
+
+      expect(shown('invite-link')).toBe(false)
+      expect(at('tab-settings-dialog')?.textContent).not.toContain('the invite link')
+    })
+
+    it('still promises a member the link, because their room has one', async () => {
+      const tabId = syncedTab({ role: 'member', shared: true })
+      roomsStore.entries[tabId]!.slug = 'a-b-c'
+      await render(tabId)
+
+      at('share-settings')!.click()
+      await flushPromises()
+
+      expect(shown('invite-link')).toBe(true)
+      expect(at('tab-settings-dialog')?.textContent).toContain('the invite link')
+    })
   })
 })

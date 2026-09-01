@@ -174,8 +174,10 @@
   const shareBlurb = computed(() => {
     if (kind.value === 'local') return 'Snapshot links for this plan. Sharing it live needs a cloud plan.'
     if (!collaborative.value) return 'Snapshot links, and the invite link that brings other people in.'
-    return isOwner.value
-      ? 'Invite links, passwords and who can join this plan.'
+    if (isOwner.value) return 'Invite links, passwords and who can join this plan.'
+    // A visitor joined by link and has no membership row, so no slug to show them.
+    return kind.value === 'joined'
+      ? 'Snapshot links. Only the owner can change how this plan is shared.'
       : 'Snapshot links, and the invite link for this plan.'
   })
 

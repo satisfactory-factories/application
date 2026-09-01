@@ -940,6 +940,13 @@ disabled with the reason beside it" everywhere it was asserted.
   point at the + button, which is not where the conversion lives any more), with the reasons in
   `blockedDetail` under it (`invite-blocked-detail`). Every other branch, offline included,
   leaves `blockedDetail` null. The snapshot half is untouched and works for all five kinds.
+- **`shareBlurb` must not promise a link the pane cannot show.** Its first cut sent both
+  non-owners down one branch saying "and the invite link for this plan", which is a lie for an
+  anonymous visitor: `shareCapabilities` hardcodes `inviteLink: null` for `kind: 'joined'`
+  (no membership row, so no slug), and `ShareDialog` renders the read-only link only when
+  `inviteLink` is non-null. A synced *member* does get one, because a room they belong to is
+  shared and therefore has a slug. The branch is split on `kind === 'joined'` and both halves
+  are pinned by a spec.
 - Icon swap: synced tabs now wear `fas fa-cloud` (was `fa-user`) in the tab bar and on the
   new-tab chooser's Synced card; local `fa-desktop` and collaborative `fa-users` unchanged.
   No spec asserted `fa-user` anywhere; assertions for the new icons were *added*
@@ -950,10 +957,15 @@ disabled with the reason beside it" everywhere it was asserted.
   `closeTabSettings` in `e2e/helpers/planner.ts`, and `renameCurrentTab` drives the dialog.
   tab-lifecycle's member test opens the dialog and asserts the disabled field before and
   after the owner's rename.
-- Counts after this round: web 2882 unit tests + 1 skipped across 154 files
-  (TabSettingsDialog.spec 20, ShareDialog.spec 18, share-capabilities.spec 18,
+- Counts after this round: web 2884 unit tests + 1 skipped across 154 files
+  (TabSettingsDialog.spec 22, ShareDialog.spec 18, share-capabilities.spec 18,
   TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in 5.7m, tab-lifecycle also
   standalone 5/5.
+- Verified live against a local API (mongodb-memory-server on 3001, `CORS_EXTRA_ORIGINS`
+  pointed at the vite dev origin, since the static allowlist only carries `localhost:3000`):
+  local pencil shows Share Settings on the snapshot-only pane, convert to cloud flips the tab
+  to `synced`/owner, and reopening the pencil gives Share Settings on the invite pane with the
+  notice gone. Creating the invite link from there minted a real room slug.
 
 ## Flagged follow-ups, none of them blocking
 
