@@ -17,12 +17,14 @@ import {
   mirroredProductAmount,
   mirroredTabNamed,
   openPlanner,
+  outstandingIntent,
   productAmountIn,
   readTabBar,
   selectTab,
   setFactoryNote,
   setProductAmount,
   settle,
+  settledAuthoredFactories,
   tabHolding,
 } from '../helpers/planner'
 
@@ -105,14 +107,19 @@ const divergeOffline = async (
     if (seed.live === null) continue
     await setProductAmount(owner, index, seed.itemId, seed.live)
     await setFactoryNote(owner, index, `owner wrote ${seed.factory}`)
-    await expect.poll(() => mirroredProductAmount(owner, roomId, seed.factory, seed.itemId), {
-      message: `the owner's edit to ${seed.factory} never reached the server`,
-      timeout: 30_000,
-    }).toBe(seed.live)
   }
 
-  const liveBefore = await authoredFactories(owner, roomId)
-  const mineBefore = await authoredFactories(away, roomId)
+  // The live side of the clash has to be a plan the owner finished making, and the server has
+  // to hold it before the away device comes back. Unsent intent reaching zero is that fact.
+  // Waiting on the amount instead read the debounced local save, which the note lands in ~400ms
+  // later: the wait passed on the record half-written and the snapshot below took it that way.
+  await expect.poll(() => outstandingIntent(owner, roomId), {
+    message: 'the owner still had edits the server had not taken',
+    timeout: 30_000,
+  }).toBe(0)
+
+  const liveBefore = await settledAuthoredFactories(owner, roomId)
+  const mineBefore = await settledAuthoredFactories(away, roomId)
 
   gate.restore()
   await comeBackOnline(away, user)

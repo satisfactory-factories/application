@@ -601,6 +601,36 @@ export const authoredFactories = (page: Page, tabId: string): Promise<Record<num
     return Object.fromEntries(entries) as Record<number, string>
   }, tabId)
 
+/**
+ * The same projection, once the device has stopped writing it. `factoryTabs` is saved on a
+ * 500ms debounce and a 5s interval saves whatever is current, so a read taken moments after an
+ * edit can hold a half-made plan — the amount applied and the note typed after it still
+ * missing. A snapshot a merge is judged against has to be a state the device settled on.
+ */
+export const settledAuthoredFactories = async (
+  page: Page,
+  tabId: string,
+): Promise<Record<number, string>> => {
+  let previous: Record<number, string> = {}
+  let samples = 0
+
+  await expect.poll(async () => {
+    const current = await authoredFactories(page, tabId)
+    const settled = samples > 0 && Object.keys(current).length > 0 &&
+      isDeepStrictEqual(current, previous)
+    previous = current
+    samples++
+    return settled
+  }, {
+    // Wider than the 500ms save debounce: two samples inside one window prove nothing.
+    intervals: [750],
+    timeout: 30_000,
+    message: 'the plan never stopped being written',
+  }).toBe(true)
+
+  return previous
+}
+
 /** How a tab is held on this device: a plain local plan carries no room and no sync metadata. */
 export const tabHolding = (page: Page, name: string): Promise<{ kind: string, hasMeta: boolean } | undefined> =>
   page.evaluate((wanted: string) => {

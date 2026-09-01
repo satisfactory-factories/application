@@ -1102,6 +1102,34 @@ Two traps found building it, both worth keeping:
   Escape reaches it, does nothing, and leaves the tray open; the e2e comes back online without
   closing the tray for exactly that reason.
 
+### A wait and the read it gates must not share a debounced source (2026-09-01)
+
+CI run 33542817015 failed the mixed-answer case with "Casting is a mixture of both versions", and
+the mixture was in the *expected* value, not the merged one. The merged record was a whole owner
+copy, every field of it. The snapshot it was compared against was half-written.
+
+`authoredFactories` reads `localStorage.factoryTabs`, and so does `mirroredProductAmount` — both
+are the plan as last *saved*, not as currently held. `app-store.ts` saves on a 500ms debounce with
+a 5s interval that writes whatever is current, finished burst or not. So `divergeOffline`'s wait,
+which claimed the owner's edit had reached the server, was reading the owner's own save and was
+satisfied the moment the amount landed in it. The note is typed after the amount and reaches the
+store at once, but the op carrying it is on `OP_DEBOUNCE_MS` (400ms) and the save that would hold
+it is 500ms out — so the wait passed on a record with the new amount and the old note, and the
+snapshot taken ~90ms later took it that way. The end comparison then held the merged plan against
+a version of the live plan that had never existed.
+
+Reproduced 9 times in 10 at `E2E_CPU_THROTTLE=6 --repeat-each=10`, every failure differing in the
+note alone. CI's save had landed one step earlier still, so its building group was stale too — one
+building at 100% against an amount of 75 — which is the same tear one field wider.
+
+Both fixes are in the harness, because nothing in the product ever mixed two versions: the owner's
+edits are now gated on `outstandingIntent` reaching zero, which is the server's word that it holds
+them rather than the local save's, and both pre-resolution snapshots go through
+`settledAuthoredFactories`, which reads the projection twice 750ms apart and requires them equal.
+The byte-identical assertion is untouched and there are no retries. The general lesson is the
+heading: a wait and the read it gates must not come from the same debounced source, or the wait is
+satisfied by exactly the partial write the read must not see.
+
 ## Flagged follow-ups, none of them blocking
 
 Re-checked line by line against the code on 2026-08-31, in the verification round. All still hold.
