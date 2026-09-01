@@ -948,6 +948,10 @@ disabled with the reason beside it" everywhere it was asserted.
   - Negative controls, all three run: freezing `isLoggedIn` to a snapshot fails the flip test
     only; dropping the `v-if="!isLoggedIn"` on the copy fails 2; wiring the button straight to
     `convertToCloud` fails 3. `tab-lifecycle.e2e.ts` covers the whole flip in a browser.
+  - The button's icon needed the keyed span and so did the dialog title's, which was missed
+    first time round: `AppDialog` rendered `<i :class="icon">`, so the title said "Sign in to
+    convert" beside a pencil until the wrapper was keyed there too. One fix in `AppDialog`
+    covers `NewTabDialog` as well. See [[fontawesome-dynamic-icons]].
 - **Share Settings is ungated (2026-09-01).** It used to render only under
   `isCollaborative(state)`, so a private synced tab (which is what a converted local tab
   becomes) and a local tab had no share entry point at all once the account panel's per-row
