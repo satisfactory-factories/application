@@ -94,9 +94,13 @@ describe('ShareDialog', () => {
     it('carries the dialog id the e2e suite anchors on, sections and all', async () => {
       await open({ kind: 'local' })
 
+      // Asserted before the sections: `dialog?.querySelector(...)` is `undefined` when the
+      // anchor is missing, and `undefined` passes `not.toBeNull()` — so without this the
+      // test survives the testid being deleted outright.
       const dialog = at('share-dialog')
-      expect(dialog?.querySelector('[data-testid="snapshot-section"]')).not.toBeNull()
-      expect(dialog?.querySelector('[data-testid="invite-section"]')).not.toBeNull()
+      expect(dialog).not.toBeNull()
+      expect(dialog!.querySelector('[data-testid="snapshot-section"]')).not.toBeNull()
+      expect(dialog!.querySelector('[data-testid="invite-section"]')).not.toBeNull()
     })
 
     it('names the plan in the title row', async () => {
