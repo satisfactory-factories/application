@@ -66,6 +66,15 @@ export class ConnectionRegistry {
   all (): Connection[] {
     return [...this.bySocket.values()]
   }
+
+  /**
+   * Live sockets. Read straight off the index rather than kept as a counter the gateway
+   * increments, because the index is already the thing add/remove maintain — a separate
+   * tally is one more thing that can drift, and a drifting gauge is worse than none.
+   */
+  size (): number {
+    return this.bySocket.size
+  }
 }
 
 const addTo = (index: Map<string, Set<Connection>>, key: string, connection: Connection): void => {
