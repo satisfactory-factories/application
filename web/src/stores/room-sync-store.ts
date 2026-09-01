@@ -898,6 +898,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (rooms.value[roomId] || engines.has(roomId)) return false
     if (Object.keys(conflicts.value).length > 0) return false
     if (!getTab(roomId)) return false
+    // A synced tab is untracked until the room list reaches this device, so `rooms` alone
+    // would let a demo stage over one — and ending it strips that tab's real mirror meta.
+    if (appStore.getTabState(roomId).kind !== 'local') return false
     // An answer given mid-load parks, and nothing retries a park for an untracked room.
     if (!appStore.isLoaded || roomIsMidLoad(roomId)) return false
 
@@ -1393,6 +1396,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const requestSnapshot = (roomId: string): boolean => {
     const engine = engines.get(roomId)
     if (!engine || isSuppressed.value) return false
+    // The one send site that was gated on the engine alone. Every caller happens to sit
+    // inside a `rooms` loop, but only this line makes "no room, no frame" true of the
+    // store rather than of its callers — which is what the staged demo relies on.
+    if (!rooms.value[roomId]) return false
     return ensureSocket().join(roomId, { visitorToken: engine.visitorToken })
   }
 

@@ -1171,7 +1171,7 @@ Two traps, both found by driving it rather than by a spec:
 Files: `web/src/sync/offline-conflict-demo.ts` (orchestration, the flag, the refusals),
 `web/src/utils/factory-setups/offline-conflict-demo-plan.ts` (the three versions of the plan),
 the `stageDemoConflict`/`endConflictDemo` pair in `room-sync-store.ts`, and the row in
-`Templates.vue` (a `run` callback on a template, so the row never reaches the loader). Guards: 12
+`Templates.vue` (a `run` callback on a template, so the row never reaches the loader). Guards: 15
 store specs, 8 module specs and 6 component specs, negative-controlled throughout — the row hidden
 on a normal build against shown on both switches, a wire spy proved to catch a real room's op
 before it is asserted silent on the demo, an ordinary template still reaching the loader, and
@@ -1179,6 +1179,36 @@ staging refused when the two versions agree. Verified live on a dev server: all 
 render, a mixed answer moves Iron Smelting to the live rate and brings Steel Smelting back while
 leaving the other two on this device's version, the offline copy tab appears, and the only requests
 in the network log are vite's own.
+
+#### "Structural" has to mean the function, not its callers (2026-09-01)
+
+The adversarial pass over the demo found the sandbox held in fact and not in structure, in two
+places. Both are now one line each, and each is proved by a spec that fails without it while every
+other spec passes with the line reverted — the guards are inert for real rooms by construction.
+
+- **`requestSnapshot` was gated on the engine, not the room.** It is the only send site in the
+  store besides `flushRoom`, it puts a `join` frame on the wire, and `if (!engine)` was its whole
+  test. Nothing could reach it — every caller (`healFromSnapshot`, `onOpApply`, the `probeTick` and
+  `onLoadingCompleted` loops) already sits inside a `rooms` scope — so "no room, no frame" was true
+  of the callers rather than of the store, and it is exported. `if (!rooms.value[roomId])` now says
+  it where the claim is made. `trackRoom` is the only other engine creator and it always makes the
+  `RoomState` too, so an engine without a room is the demo and nothing else.
+- **A synced tab is untracked until `GET /rooms` reaches this device.** Signed out, offline, or in
+  the window before the room list lands, a synced tab is absent from `rooms` — so the `rooms`
+  check alone would have let `stageDemoConflict` stage over a real one, and `endConflictDemo`
+  would then have stripped that tab's `tabMirrorMeta`, revision and baseline prints. Only the
+  orchestration's current-tab check stood between them, and it guards the caller rather than the
+  store. `stageDemoConflict` now refuses any tab `getTabState` does not call `local`.
+
+Verified against the real production build the e2e harness serves, which is the honest test of the
+flag: `import.meta.env.DEV` folds to `false` there and `devToolsEnabled` compiles down to the
+`localStorage` read alone. The row is absent with the ordinary Demo row still present, and appears
+once `sfDevTools` is set. Driven with a WebSocket route between the client and the gateway: an
+anonymous session ran the whole demo end to end having opened **zero** sockets, and a signed-in
+session with a live room sent no `op` and no frame naming the demo tab across staging, a mixed
+answer and a probe cycle — with the same spy proved beforehand to catch that room's own op, and
+the room still syncing an edit afterwards. The dialog is the single production mount in
+`layouts/default.vue`; the demo renders nothing of its own.
 
 ## Flagged follow-ups, none of them blocking
 

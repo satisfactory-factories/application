@@ -2214,6 +2214,32 @@ describe('room-sync-store', () => {
       expect(opsOf()).toHaveLength(1)
     })
 
+    /**
+     * `requestSnapshot` was the one send site gated on the engine rather than the room, so
+     * "no room, no frame" held because of where its callers sit rather than because of the
+     * store. Asked point blank, it now refuses.
+     */
+    it('cannot be asked for a snapshot: there is no room to ask about', () => {
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+      expect(stage()).toBe(true)
+
+      expect(store.requestSnapshot(DEMO)).toBe(false)
+      expect(send).not.toHaveBeenCalled()
+    })
+
+    // The control: a tracked room asks for its snapshot exactly as it always did.
+    it('leaves a real room able to ask for one', () => {
+      setTab(wire(fixture))
+      store.trackRoom(ROOM)
+      connect()
+      const before = joinsOf().length
+
+      expect(store.requestSnapshot(ROOM)).toBe(true)
+      expect(joinsOf().length).toBeGreaterThan(before)
+    })
+
     it('lands the winners in the demo tab, one factory at a time', () => {
       stage()
 
@@ -2282,6 +2308,30 @@ describe('room-sync-store', () => {
 
       expect(stage(ROOM)).toBe(false)
       expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    /**
+     * A synced tab is untracked until the room list reaches this device, so `rooms` alone
+     * does not say a tab is nobody's — and ending a demo staged over one would strip that
+     * tab's real mirror meta.
+     */
+    it('refuses a tab held as synced even before the room list arrives', () => {
+      appStore.setTabState(DEMO, { kind: 'synced', shared: false, role: 'owner', revision: 3 })
+      setTabMirrorMeta(DEMO, {
+        revision: 3,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: [1],
+        userTouchedFields: [],
+        declaredRemovals: [],
+      })
+      expect(store.rooms[DEMO], 'tracked, so `rooms` would have refused it anyway').toBeUndefined()
+
+      expect(stage()).toBe(false)
+      expect(readTabMirrorMeta()[DEMO]?.revision, 'a real tab\'s baseline was touched').toBe(3)
+
+      // The control: the same tab, held locally, stages.
+      appStore.markTabLocal(DEMO)
+      expect(stage()).toBe(true)
     })
 
     it('refuses while a real question is on screen', () => {
