@@ -1226,6 +1226,31 @@ its cause was different at each layer peeled. Keep these, in order of generality
 - CI installs need dependency-closure filters: `--filter web...` (three dots) in both
   `web/vercel.json` and `build-web.yml`, because web compiles `common`'s source.
 
+## `activePinia` is a global, and every action call re-points it (2026-09-01)
+
+Cost two CI runs. `TabNavigation.spec.ts` > "keeps copy, share and delete together in that
+order" failed in the full web suite and passed in isolation every time: `duplicate-tab` was
+missing, which reads as "the current tab is local". The store was right at the assertion —
+`currentFactoryTab` was `room-a` and its state was `synced`. The *component* was reading a
+different store.
+
+Pinia's action wrapper calls `setActivePinia(that store's pinia)` on **every** action call, and
+a component mounted without pinia in `global.plugins` resolves `useAppStore()` off that module
+global. Each test here mounts and never unmounts, so every render leaves a `plan-activity-store`
+behind (`LastUpdatedIndicator` creates it) whose `loadingCompleted` listener outlives the test.
+When the load chain that `activateTab` starts emits `loadingCompleted` inside the
+`await flushPromises()` window, those dead listeners call `appStore.getCurrentTab()` and take
+`activePinia` with them; the `mount()` on the next line then binds the whole component to a
+previous test's stores. Nothing in production can hit it — one page, one pinia.
+
+Reproduce on demand: `eventBus.emit('loadingCompleted')` immediately before the mount, 3/3 with
+the exact CI assertion. Contention alone reproduces it at roughly 1 in 30 with twenty copies of
+the file running at once, which is the recipe for any "CI-only" vitest flake here. The fix is
+to hand the mount its pinia (`plugins: [vuetify, pinia]`, already the pattern in every
+`components/sync/*.spec.ts`) and to dispose the plan-activity store in `afterEach`; either half
+alone closes it. Any spec mounting a store-backed component with `plugins: [vuetify]` alone is
+still exposed to this.
+
 ## Three defects found by the e2e suite, all fixed here
 
 Keep these: the shapes recur, and the second one bites twice.
