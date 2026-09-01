@@ -14,6 +14,7 @@ import {
 } from '../helpers/planner'
 import { showPlan } from '../helpers/rooms'
 import { closeAccountPanel, signIn } from '../helpers/session'
+import type { ChooserAnswer } from '../helpers/session'
 
 const adoptionDialog = async (page: Page) => {
   const dialog = page.getByTestId('adoption-dialog')
@@ -39,8 +40,9 @@ const localTabId = async (page: Page): Promise<string> => {
   return id
 }
 
-const adoptOn = async (page: Page, user: TestUser): Promise<void> => {
-  await signIn(page, user)
+/** Sign in and accept the adoption offer; the chooser fronts it once rooms exist. */
+const adoptOn = async (page: Page, user: TestUser, chooser: ChooserAnswer = 'none'): Promise<void> => {
+  await signIn(page, user, { chooser })
   await acceptAdoption(page)
   await closeAccountPanel(page)
 }
@@ -65,12 +67,13 @@ test('two browsers with different local plans both adopt into one account', asyn
   await expectTabKind(first, firstTab, 'synced')
 
   // The second device's plan collides on name, so adoption suffixes it rather
-  // than merging anything.
-  await adoptOn(second, user)
+  // than merging anything. The account holds a room by now, so its sign-in is
+  // fronted by the chooser, which opens the first device's plan here.
+  await adoptOn(second, user, 'open-all')
   await expectTabKind(second, secondTab, 'synced')
 
-  // Each device opens the plan the other adopted: rooms follow the account,
-  // but tabs only open where a device asks for them.
+  // Each device ends up holding the plan the other adopted: the first opts in
+  // through the panel, the second already opened it through the chooser.
   await showPlan(first, user, secondTab)
   await showPlan(second, user, firstTab)
 
@@ -111,7 +114,8 @@ test('unticking a plan leaves that one local and syncs the rest', async ({ clien
   }, { message: 'both local plans never reached the mirror' }).toBe(true)
   const [first, second] = ids
 
-  await signIn(page, user)
+  // A fresh account holds no rooms, so no chooser fronts this sign-in.
+  await signIn(page, user, { chooser: 'none' })
 
   const dialog = await adoptionDialog(page)
   const rows = dialog.getByTestId('adoption-candidate')

@@ -16,6 +16,8 @@
       <toast />
       <hover-tooltip />
       <plan-repair-dialog />
+      <!-- The login chooser first: adoption is parked until it is answered. -->
+      <plan-chooser-dialog />
       <adoption-dialog />
       <!-- One stack, because more than one of these can be up at once. -->
       <div class="bottom-notices">
@@ -35,6 +37,7 @@
   import { useDisplay } from 'vuetify'
   import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
   import BackendHealthBanner from '@/components/sync/BackendHealthBanner.vue'
+  import PlanChooserDialog from '@/components/sync/PlanChooserDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
   import { useBackendHealthStore } from '@/stores/backend-health-store'

@@ -317,6 +317,127 @@ describe('rooms-store', () => {
     })
   })
 
+  describe('the login plan chooser', () => {
+    /** An interactive sign-in against an account holding one unopened room. */
+    const interactiveLogin = async (rooms = [entry({ roomId: 'room-1', name: 'Cloudy' })]) => {
+      localTab('Anchor')
+      listReturns(rooms)
+      await store.begin({ interactive: true })
+    }
+
+    it('offers the account\'s unopened rooms on an interactive sign-in, opening none of them', async () => {
+      await interactiveLogin([
+        entry({ roomId: 'room-1', name: 'Cloudy' }),
+        entry({ roomId: 'room-2', name: 'Faraway' }),
+      ])
+
+      expect(store.chooserOpen).toBe(true)
+      expect(store.chooserCandidates).toEqual(['room-1', 'room-2'])
+      // The chooser lists; only an answer opens.
+      expect(appStore.getTab('room-1')).toBeUndefined()
+      expect(appStore.getTab('room-2')).toBeUndefined()
+    })
+
+    // The wiring under the dialog: only auth-store's login() emits this event.
+    it('runs off the loggedIn event, which only an interactive sign-in emits', async () => {
+      localTab('Anchor')
+      listReturns([entry({ roomId: 'room-1' })])
+
+      eventBus.emit('loggedIn')
+      await store.whenSessionReady()
+
+      expect(store.chooserOpen).toBe(true)
+    })
+
+    it('never asks on a page refresh with a persisted session', async () => {
+      localTab('Anchor')
+      listReturns([entry({ roomId: 'room-1' })])
+
+      // Auth.vue's onMounted path: the session already existed, nobody signed in.
+      await store.begin()
+
+      expect(store.chooserOpen).toBe(false)
+      expect(store.chooserCandidates).toEqual([])
+    })
+
+    it('never asks when the account has no rooms', async () => {
+      await interactiveLogin([])
+
+      expect(store.chooserOpen).toBe(false)
+    })
+
+    it('never asks when every account room is already open here', async () => {
+      const tab = localTab('Already open')
+      listReturns([entry({ roomId: tab.id })])
+
+      await store.begin({ interactive: true })
+
+      expect(store.chooserOpen).toBe(false)
+    })
+
+    it('opens exactly the ticked plans and leaves the rest hidden', async () => {
+      await interactiveLogin([
+        entry({ roomId: 'room-1', name: 'First' }),
+        entry({ roomId: 'room-2', name: 'Second' }),
+        entry({ roomId: 'room-3', name: 'Third' }),
+      ])
+
+      await store.openChosenPlans(['room-1', 'room-3'])
+
+      expect(appStore.getTab('room-1')?.name).toBe('First')
+      expect(appStore.getTab('room-2')).toBeUndefined()
+      expect(appStore.getTab('room-3')?.name).toBe('Third')
+      expect(store.chooserOpen).toBe(false)
+      expect(store.chooserCandidates).toEqual([])
+    })
+
+    it('"Not now" opens nothing and keeps every room on the account', async () => {
+      const before = appStore.getTabs().length
+      await interactiveLogin()
+
+      store.closeChooser()
+
+      expect(store.chooserOpen).toBe(false)
+      expect(appStore.getTabs()).toHaveLength(before)
+      expect(appStore.getTab('room-1')).toBeUndefined()
+      expect(store.entries['room-1']).toBeDefined()
+    })
+
+    // Both dialogs would otherwise stack on the same login: the chooser asks
+    // first, and the adoption offer follows once it is answered.
+    it('parks the adoption offer until the chooser is answered', async () => {
+      await interactiveLogin()
+      expect(store.chooserOpen).toBe(true)
+      expect(store.adoptionOpen).toBe(false)
+
+      store.closeChooser()
+      await Promise.resolve()
+
+      expect(store.adoptionOpen).toBe(true)
+      expect(store.adoptionCandidates).toHaveLength(1)
+    })
+
+    it('still offers adoption straight away when there is nothing to choose', async () => {
+      await interactiveLogin([])
+
+      expect(store.chooserOpen).toBe(false)
+      expect(store.adoptionOpen).toBe(true)
+    })
+
+    // signOut closes the dialog as cleanup; that is not the user answering, so
+    // the parked adoption offer is dropped with the session, not shown.
+    it('is cleared by a sign-out without counting as an answer', async () => {
+      await interactiveLogin()
+
+      store.signOut()
+      await Promise.resolve()
+
+      expect(store.chooserOpen).toBe(false)
+      expect(store.chooserCandidates).toEqual([])
+      expect(store.adoptionOpen).toBe(false)
+    })
+  })
+
   describe('revocation', () => {
     it('converts a synced tab the list no longer carries into a local copy', async () => {
       const tab = localTab('Shared with me')

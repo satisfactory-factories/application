@@ -37,6 +37,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive, and so does a rename left unsent by the drop. |
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
+| `login-chooser` | An interactive sign-in is fronted by the plan chooser; "Not now" opens nothing, and a reload with a persisted session never asks. |
 | `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
 | `field-locks` | A focused note disables the same field for the other client and keeps it disabled while its holder types; blur and a ten-second idle both hand it back, and a second factory's note is never covered. |
 | `loading-tab` | A client rendering a big plan makes no writes: no op it sends carries a removal, and both devices end holding every factory. Covered for a tab re-entered, a client with edits still unsent, and a return to the planner from another page. |

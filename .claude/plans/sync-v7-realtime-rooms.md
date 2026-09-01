@@ -92,7 +92,7 @@ per-browser open set; nothing extra is persisted, and hiding never touches the s
   never empties the bar
 - Stop `applyRoomList` creating tabs for rooms with no local tab, so a hidden room stays hidden
   across refreshes, reconnects and logins; login opens nothing on its own (the login chooser,
-  next stage, decides through `openPlan` — that is the seam)
+  delivered in the block below, decides through `openPlan` — that was the seam)
 - Rework the account panel's My Plans / Joined Plans rows to two lines — name plus Show/Hide on
   line one, factory count plus relative last-changed (absolute in the tooltip) on line two — and
   drop the per-row share buttons (`CloudPlanRow.vue`)
@@ -104,8 +104,25 @@ per-browser open set; nothing extra is persisted, and hiding never touches the s
   preferences, offline-manual, offline-detected, loading-tab and adoption open plans via the
   panel's Show button
 
-Still open for the next stage: the login chooser (pick which rooms to open on a fresh
-interactive login) and sharing controls in the tab settings modal.
+### The login plan chooser — delivered
+
+Only an interactive sign-in (the `loggedIn` event, emitted by auth-store's `login()` alone)
+asks; a page refresh with a persisted session restores the bar it already had and never does.
+
+- Thread `interactive: true` from the `loggedIn` listener through `begin()` into
+  `refresh({ offerChooser })`; the chooser lists the account rooms with no local tab, and an
+  account with zero unopened rooms asks nothing
+- Build `PlanChooserDialog.vue` on the `AdoptionDialog` pattern: one checkbox per plan (name,
+  factory count, relative last-changed), all ticked by default, "Open N plans" via
+  `openChosenPlans` (each through `openPlan`), "Not now" via `closeChooser`
+- Park the adoption offer while the chooser is up and run it once the chooser is answered, so
+  the two dialogs never stack; a sign-out clears the chooser without counting as an answer and
+  drops the parked offer
+- Teach the e2e session helper to answer the chooser (`signIn`'s `chooser` option, open-all as
+  the expected default), make `showPlan` ensure-open, and prove the "Not now" path plus the
+  reload suppression in `login-chooser.e2e.ts`
+
+Still open for the next stage: sharing controls in the tab settings modal.
 
 ## Locked decisions
 

@@ -11,14 +11,37 @@ import type { TestUser } from './accounts'
 const accountButton = (page: Page, name: string | RegExp): Locator =>
   page.getByRole('banner').getByRole('button', { name })
 
+/**
+ * How to answer the plan chooser an interactive sign-in raises whenever the
+ * account holds plans this browser has not opened. `open-all` and `not-now`
+ * both wait for the dialog; `none` is for signing into an account whose every
+ * room is already open here (or that has none), where it never appears.
+ */
+export type ChooserAnswer = 'open-all' | 'not-now' | 'none'
+
+export const answerPlanChooser = async (
+  page: Page,
+  answer: Exclude<ChooserAnswer, 'none'>,
+): Promise<void> => {
+  const dialog = page.getByTestId('plan-chooser-dialog')
+  await expect(dialog).toBeVisible({ timeout: 20_000 })
+  await dialog.getByTestId(answer === 'open-all' ? 'chooser-submit' : 'chooser-decline').click()
+  await expect(dialog).toBeHidden({ timeout: 20_000 })
+}
+
 /** Signs in through the real tray, which is what emits `loggedIn`. */
-export const signIn = async (page: Page, user: TestUser): Promise<void> => {
+export const signIn = async (
+  page: Page,
+  user: TestUser,
+  { chooser = 'open-all' }: { chooser?: ChooserAnswer } = {},
+): Promise<void> => {
   await accountButton(page, 'Sign In, Pioneer!').click()
   await page.getByLabel('Username').fill(user.username)
   await page.getByLabel('Password').fill(user.password)
   await page.getByRole('button', { name: 'Log in', exact: true }).click()
 
   await expect(accountButton(page, user.username)).toBeVisible()
+  if (chooser !== 'none') await answerPlanChooser(page, chooser)
 }
 
 /** The tray is already open straight after signing in, so this is idempotent. */

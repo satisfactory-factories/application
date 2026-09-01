@@ -51,6 +51,11 @@ export const useRoomsStore = defineStore('rooms', () => {
   const adoptionOpen = ref(false)
   const adopting = ref(false)
 
+  /** Room ids the login chooser is currently offering. */
+  const chooserCandidates = ref<string[]>([])
+  const chooserOpen = ref(false)
+  const chooserOpening = ref(false)
+
   /** The one gate every room mutation passes through; offline means no request at all. */
   const blocked = (): string | null => roomSync.isSuppressed ? OFFLINE_MESSAGE : null
 
@@ -82,7 +87,7 @@ export const useRoomsStore = defineStore('rooms', () => {
    * login, which is the same moment the login sequence asks for the list plus the
    * adoption offer. Turning the second one away lost the offer entirely.
    */
-  const refresh = async ({ offerAdoption = false } = {}): Promise<boolean> => {
+  const refresh = async ({ offerAdoption = false, offerChooser = false } = {}): Promise<boolean> => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn || roomSync.isSuppressed) return false
 
@@ -90,7 +95,13 @@ export const useRoomsStore = defineStore('rooms', () => {
     const rooms = await inFlight
     if (rooms === null) return false
 
-    if (offerAdoption) await openAdoptionOffer(rooms)
+    // The chooser fronts an interactive login; the adoption offer is parked and
+    // runs once it is answered, so the two dialogs never stack.
+    if (offerChooser && openPlanChooser(rooms)) {
+      if (offerAdoption) adoptionAfterChooser = rooms
+    } else if (offerAdoption) {
+      await openAdoptionOffer(rooms)
+    }
     return true
   }
 
@@ -207,6 +218,52 @@ export const useRoomsStore = defineStore('rooms', () => {
     roomSync.untrackRoom(roomId)
     appStore.removeTab(roomId)
     return true
+  }
+
+  // ===== The login chooser =====
+
+  /** The adoption offer parked while the chooser is up; runs once it is answered. */
+  let adoptionAfterChooser: RoomListEntry[] | null = null
+
+  /**
+   * Offers the account's rooms that have no tab here. Only an interactive
+   * sign-in reaches this (the `loggedIn` event path): a refresh with a
+   * persisted session keeps the bar it already had, and an account whose every
+   * room is already open has nothing to choose. Says whether it opened.
+   */
+  const openPlanChooser = (list: RoomListEntry[]): boolean => {
+    const unopened = list.filter(room => !appStore.getTab(room.roomId))
+    if (unopened.length === 0) return false
+
+    chooserCandidates.value = unopened.map(room => room.roomId)
+    chooserOpen.value = true
+    return true
+  }
+
+  /** Opens the ticked plans, in the order they were offered; the rest stay hidden. */
+  const openChosenPlans = async (roomIds: string[]): Promise<void> => {
+    chooserOpening.value = true
+    try {
+      for (const roomId of roomIds) {
+        await openPlan(roomId)
+      }
+    } finally {
+      chooserOpening.value = false
+      closeChooser()
+    }
+  }
+
+  /**
+   * "Not now", or the close after an open run: either way the question is
+   * answered and the parked adoption offer may follow. Cleanup closes like
+   * sign-out pass `answered: false` — nothing may follow those.
+   */
+  const closeChooser = (answered = true) => {
+    chooserOpen.value = false
+    chooserCandidates.value = []
+    const deferred = adoptionAfterChooser
+    adoptionAfterChooser = null
+    if (answered && deferred) void openAdoptionOffer(deferred)
   }
 
   // ===== Revocation =====
@@ -669,16 +726,18 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   /**
    * Called once the session is known good: connect, then pull the tab list.
-   * Deliberately opens no tabs — the bar this browser already holds is the open
-   * set. Which rooms to open on a fresh interactive login is the caller's
-   * decision, made through `openPlan` per room (the login chooser's seam).
+   * Deliberately opens no tabs on its own — the bar this browser already holds
+   * is the open set. `interactive` is true only on the `loggedIn` event path (a
+   * sign-in the user just performed), and is what lets the login chooser offer
+   * the account's unopened rooms; a page refresh with a persisted session
+   * arrives here without it and never asks.
    */
-  const begin = async (): Promise<void> => {
+  const begin = async ({ interactive = false } = {}): Promise<void> => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) return
     roomSync.start()
     await upgradeJoinedTabs()
-    await refresh({ offerAdoption: true })
+    await refresh({ offerAdoption: true, offerChooser: interactive })
   }
 
   /**
@@ -708,6 +767,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     entries.value = {}
     roomsRevision.value = null
     declineAdoption()
+    closeChooser(false)
     roomSync.stop()
     // Anonymous joined tabs are nobody's account, so they keep their live link.
     restoreJoinedTabs()
@@ -722,7 +782,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   const whenSessionReady = (): Promise<void> => session.catch(() => undefined)
 
   const onLoggedIn = () => {
-    session = begin()
+    session = begin({ interactive: true })
   }
 
   eventBus.on('loggedIn', onLoggedIn)
@@ -766,6 +826,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     adoptionCandidates,
     adoptionOpen,
     adopting,
+    chooserCandidates,
+    chooserOpen,
+    chooserOpening,
 
     // Room list
     refresh,
@@ -777,6 +840,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     // Adoption
     adoptTabs,
     declineAdoption,
+
+    // The login chooser
+    openChosenPlans,
+    closeChooser,
 
     // Tab actions
     openPlan,

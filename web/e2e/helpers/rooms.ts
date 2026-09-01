@@ -11,11 +11,15 @@ export type ClientFactory = (options?: { user?: TestUser }) => Promise<BrowserCo
  * Opens an account plan into this device's tab bar through the panel's Show
  * button. The tab bar is the per-browser open set now, so a room made or joined
  * elsewhere never opens a tab here on its own — this is how a device opts in.
+ * Ensure-open: a plan already opened (say, by the login chooser) is left be.
  */
 export const showPlan = async (page: Page, user: TestUser, roomId: string): Promise<void> => {
   await openAccountPanel(page, user)
   await page.getByTestId('plans-tab-cloud').click()
-  await page.locator(`[data-testid="show-plan"][data-room-id="${roomId}"]`).click()
+  const show = page.locator(`[data-testid="show-plan"][data-room-id="${roomId}"]`)
+  const hide = page.locator(`[data-testid="hide-plan"][data-room-id="${roomId}"]`)
+  await expect(show.or(hide)).toBeVisible()
+  if (await show.isVisible()) await show.click()
   await waitForTab(page, roomId)
   // Settled before the Escape: the loading overlay is persistent, and while it
   // is the topmost overlay the tray would swallow no keystrokes.

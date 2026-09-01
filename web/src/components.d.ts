@@ -68,6 +68,7 @@ declare module 'vue' {
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
     PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']
     Placeholder: typeof import('./components/planner/Placeholders/Placeholder.vue')['default']
+    PlanChooserDialog: typeof import('./components/sync/PlanChooserDialog.vue')['default']
     Planner: typeof import('./components/planner/Planner.vue')['default']
     PlannerFactory: typeof import('./components/planner/PlannerFactory.vue')['default']
     PlannerFactoryChecklist: typeof import('./components/planner/PlannerFactoryChecklist.vue')['default']

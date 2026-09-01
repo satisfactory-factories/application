@@ -870,6 +870,38 @@ Hiding never touches the server room or the membership.
 The share-button and last-changed sentences in the account-panel-split section above describe
 a state this section supersedes.
 
+## The login plan chooser (2026-09-01): interactive sign-ins pick their open set
+
+Only an interactive sign-in asks. The discriminator is the `loggedIn` event, which auth-store's
+`login()` alone emits: its listener runs `begin({ interactive: true })`, which becomes
+`refresh({ offerChooser: true })`. Auth.vue's onMounted path (persisted token validated on page
+load) calls `begin()` bare, so a refresh never shows the dialog — that suppression is
+negative-controlled in the spec (defaulting `interactive` to true fails exactly the
+"never asks on a page refresh" test).
+
+- `openPlanChooser(list)` in `rooms-store.ts` filters the room list to entries with no tab
+  (the hidden set) and opens `PlanChooserDialog.vue` (built on the `AdoptionDialog` pattern:
+  per-id checkboxes, all ticked, testids `plan-chooser-dialog`/`chooser-candidate`/
+  `chooser-submit`/`chooser-decline`). Zero unopened rooms means no dialog, which is also what
+  keeps a just-registered user out of it.
+- Submit runs `openChosenPlans` (each id through `openPlan`, so the WS join fills content);
+  "Not now" runs `closeChooser()`. Both count as an answer. **The adoption offer is parked
+  while the chooser is up** (`adoptionAfterChooser` in `refresh`) and runs on the answer, so
+  the two login dialogs never stack; `closeChooser(false)` — sign-out's cleanup — drops the
+  parked offer without answering, mirroring `declineAdoption()`'s remember split. There is no
+  answered-once flag for the chooser: every interactive login with hidden rooms asks again,
+  by design.
+- The dialog rows read name + `factoryCount` + relative `lastActivityAt` straight from
+  `entries`, and a candidate whose entry vanished mid-dialog is filtered out rather than
+  crashing the row.
+- e2e: `signIn` in `e2e/helpers/session.ts` grew a `chooser` option (`'open-all'` default,
+  `'not-now'`, `'none'` for accounts that cannot show it — the helper *waits* for the dialog
+  unless told `'none'`, so a roomless sign-in must say so). `showPlan` is now ensure-open (a
+  plan the chooser already opened is left be), which the adoption and preferences suites lean
+  on. `login-chooser.e2e.ts` proves "Not now" plus the reload suppression end to end.
+- Counts after this round: web 2850 unit tests (1 skipped) across 153 files; the store spec
+  holds 86 and the new dialog spec 10.
+
 ## Flagged follow-ups, none of them blocking
 
 Re-checked line by line against the code on 2026-08-31, in the verification round. All still hold.
