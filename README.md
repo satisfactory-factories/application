@@ -81,6 +81,7 @@ See [docs/deployment.md](docs/deployment.md) for the backend chain end to end �
 
 ### Further reading
 - [docs/architecture/](docs/architecture/README.md) — how the app is put together, the calculation engine, and the frontend data flow
+- [docs/telemetry.md](docs/telemetry.md): the anonymous usage heartbeat, every field it sends, and why the id in it cannot be tied to an account
 - [docs/conventions.md](docs/conventions.md) — commit and code conventions
 - [docs/how-do-we-release.md](docs/how-do-we-release.md) and [docs/versioning.md](docs/versioning.md) — the release and versioning strategy
 ___

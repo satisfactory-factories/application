@@ -426,6 +426,13 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
   asserts it (and `MONGODB_URI`) and exits with
   `Missing required environment variable(s)` rather than falling back to a
   default, which is what the old code did — it signed tokens anyone could forge.
+- **`METRICS_TOKEN` must be set in the env file before `/metrics` answers anything.**
+  Unlike the two above it is optional and boot does *not* assert it: with the variable
+  unset, `GET /metrics` returns **404**, which is deliberate so that a box nobody
+  configured cannot serve an open metrics endpoint. Generate a long random value
+  (`openssl rand -hex 32`), put it in the env file, and give the same value to the
+  Prometheus scrape job as a bearer token. Nothing else reads it, so rotating it means
+  editing those two places and restarting the container.
 - The tunnel in front of the API must forward WebSocket upgrades to `/ws` on the
   same origin as the REST routes. Nothing in the repo can prove this; check it
   from the production origin after the first v7 deploy.
@@ -437,7 +444,9 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
   must exist beside it, mode 600. It carries the same Mongo credentials as
   production with `factory_planner_preview` as the database and
   `?authSource=admin` appended, its own generated `JWT_SECRET`, `PORT=3002`,
-  `ENVIRONMENT=preview`, and `CORS_EXTRA_ORIGINS`.
+  `ENVIRONMENT=preview`, and `CORS_EXTRA_ORIGINS`. Give it **its own**
+  `METRICS_TOKEN` as well, different from production's, or leave it unset and accept
+  that preview `/metrics` answers 404.
 - The `satisfactory-factories-preview` hook must be loaded on the webhooks box
   (`cd /root/webhooks && ./sync.sh`). It needs no new secret here: the preview
   hook's URL is derived from `WEBHOOK_URL` by swapping the last path segment, and

@@ -84,6 +84,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.
 - Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.
 - `/save` and `/load` are retired. `/hello` is gone, since `/health` had already replaced it.
+- **The planner now sends an anonymous usage heartbeat**, because a plan that is never synced and a user who never signs in are both invisible to the server, and between them that is most of the planner's use. It reports six numbers and one flag: how many tabs are open, how many of those are synced, how many factories they hold in total, whether somebody is signed in, and which build is running. No names, no plan contents, no account details. The identifier attached to it is random, minted by your browser, and cannot be tied to an account. Offline mode stops it along with everything else, and so does any tracker blocker. The `telemetry` page in the repository documentation lists every field it can ever contain.
 
 ### Search the plan
 
