@@ -45,7 +45,8 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - Switching it on says so once and then gets out of the way. That you are still in offline mode is shown by the chip in the tab bar and by the account panel, which is also where you switch it back off.
 - If the connection drops on its own, a small bar asks whether you want to go offline rather than deciding for you. Say no and it keeps quietly retrying.
 - **Coming back online is manual, like a phone.** When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.
-- Nothing about this blocks the planner. There are no popups to dismiss and no dialog in the way of your plan.
+- **If somebody else changed the same factories while you were away, the planner asks before deciding for you.** Coming back raises one prompt listing every factory both sides edited, with the live plan's figures beside yours product by product, and you pick which version wins for each. Everything that does not clash syncs safely either way, and a tick box keeps this device's version as a separate local tab whatever you choose.
+- Nothing else about this interrupts you. There are no popups to dismiss while you plan, and that prompt is the only question offline work will ever raise.
 
 ### Your settings follow your account
 

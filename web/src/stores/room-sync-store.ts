@@ -28,6 +28,8 @@ import {
   UNKNOWN_SCALAR,
 } from '@/sync/room-state'
 import type { AckedState, RoomContent, TabField } from '@/sync/room-state'
+import { describeClash, fingerprint } from '@/sync/offline-conflict'
+import type { ConflictFactory } from '@/sync/offline-conflict'
 import { diffChangesContent } from '@/sync/plan-activity'
 import {
   pruneTabMirrorMeta,
@@ -121,9 +123,39 @@ interface RoomEngine {
    * shrinks the plan that far is refused.
    */
   declaredRemovals: Set<number>
+  /**
+   * Fingerprints of the baseline records for touched ids, read back from the mirror. The
+   * baseline itself does not survive a restart, so this is what a reopened device compares
+   * a snapshot against to tell a peer's edit from its own.
+   */
+  baselinePrints: Map<number, string>
+  /** Fingerprints are only re-taken when the record they describe actually moves. */
+  fingerprints: Map<number, { print: string, hash: string }>
+  /**
+   * Records this client put on the wire and never saw acked. A socket can die between the
+   * write and the ack, so the snapshot that comes back may be carrying this client's own
+   * edit — which is nobody else's change and must never be presented as one.
+   */
+  unacknowledged: Map<number, string>
   /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
   needsSnapshot: boolean
   visitorToken?: string
+}
+
+/** One room's unanswered offline clash: the sections the dialog is asking about. */
+export interface RoomConflict {
+  roomId: string
+  factories: ConflictFactory[]
+}
+
+/** Which version of a clashing factory the user picked. */
+export type ConflictWinner = 'mine' | 'live'
+
+export interface ResolveConflictOptions {
+  /** Factories the live plan wins: this client gives up its claim on exactly these. */
+  liveWinners?: number[]
+  /** Keep this device's whole version of the plan as a separate local tab. */
+  keepCopy?: boolean
 }
 
 /** One lock this client holds, and the timer that gives it up on the server's own line. */
@@ -162,6 +194,9 @@ const newEngine = (options: TrackRoomOptions): RoomEngine => ({
   touchedFactories: new Set(),
   touchedFields: new Set(),
   declaredRemovals: new Set(),
+  baselinePrints: new Map(),
+  fingerprints: new Map(),
+  unacknowledged: new Map(),
   needsSnapshot: false,
   visitorToken: options.visitorToken,
 })
@@ -183,6 +218,11 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const connectionId = ref<string | null>(null)
   /** Who is editing what, per room: `roomId -> fieldKey -> holder`. */
   const fieldLocks = ref<Record<string, Record<string, string>>>({})
+  /**
+   * Rooms waiting on the offline conflict prompt. A room in here holds its ops until the
+   * user has said which version of each clashing factory wins.
+   */
+  const conflicts = ref<Record<string, RoomConflict>>({})
 
   /** No socket, no REST, no retries. Preferences and adoption gate on this too. */
   const isOffline = computed(() => mode.value === 'offline')
@@ -313,11 +353,46 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }
   }
 
+  /**
+   * Give up this client's claim on named records, so the next overlay takes the server's
+   * copy of each. Intent is the only thing a rebase reads, and a declaration outliving the
+   * removal it was for would launder the next accidental one — so both go.
+   */
+  const releaseIntentFor = (engine: RoomEngine, factoryIds: number[]) => {
+    for (const id of factoryIds) {
+      engine.touchedFactories.delete(id)
+      engine.declaredRemovals.delete(id)
+    }
+  }
+
   // ===== Persistence =====
+
+  /**
+   * The baseline record's fingerprint, from the live baseline where there is one and from
+   * the mirror where a restart left none. Cached against the print itself, because a bulk
+   * edit can touch hundreds of records and every persist would otherwise re-hash them all.
+   */
+  const baselineFingerprint = (engine: RoomEngine, factoryId: number): string | undefined => {
+    const print = engine.acked.factories.get(factoryId)
+    if (print === undefined || print === UNKNOWN_CONTENT) return engine.baselinePrints.get(factoryId)
+
+    const cached = engine.fingerprints.get(factoryId)
+    if (cached?.print === print) return cached.hash
+
+    const hash = fingerprint(print)
+    engine.fingerprints.set(factoryId, { print, hash })
+    return hash
+  }
 
   const persistMeta = (roomId: string) => {
     const engine = engines.get(roomId)
     if (!engine) return
+
+    const baselinePrints: Record<string, string> = {}
+    for (const id of engine.touchedFactories) {
+      const print = baselineFingerprint(engine, id)
+      if (print !== undefined) baselinePrints[id] = print
+    }
 
     setTabMirrorMeta(roomId, {
       revision: engine.acked.revision,
@@ -325,6 +400,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       userTouchedIds: [...engine.touchedFactories],
       userTouchedFields: [...engine.touchedFields],
       declaredRemovals: [...engine.declaredRemovals],
+      baselinePrints,
     })
   }
 
@@ -404,6 +480,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // Mid-load the mirror is a half-filled array, and a diff built from it would
     // read as "delete everything". The load's completion re-schedules the flush.
     if (!appStore.isLoaded) return false
+    // An unanswered clash: what this op should carry is the question on screen, and
+    // sending our version first would answer it for the user.
+    if (conflicts.value[roomId]) return false
 
     const tab = getTab(roomId)
     if (!tab) return false
@@ -434,6 +513,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const flushAll = () => {
     for (const roomId of Object.keys(rooms.value)) {
+      applyParkedResolution(roomId)
       recordIntent(roomId)
       flushRoom(roomId)
     }
@@ -566,6 +646,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     engine.acked = ackedFromContent(server, revision)
     engine.seeded = true
     engine.pending = null
+    // Whatever the drop left in doubt, this snapshot has just settled.
+    engine.unacknowledged.clear()
     room.hasPendingOp = false
     room.revision = revision
     if (room.status !== 'paused') room.status = 'synced'
@@ -583,8 +665,193 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }
 
     persistMeta(roomId)
+    // The prompt is about the newest server content, so a room already asking has to be
+    // re-measured here: an op or a second snapshot may have settled the question.
+    if (conflicts.value[roomId]) refreshConflict(roomId, server)
     if (send) flushRoom(roomId)
     return recalculated
+  }
+
+  // ===== The offline conflict prompt =====
+
+  /**
+   * Did somebody else change this record since the baseline this client agreed on. The
+   * baseline print answers it outright; after a restart there is none, and the mirror's
+   * fingerprint is all there is. No fingerprint means no answer, and no answer is silence.
+   */
+  const changedRemotely = (engine: RoomEngine, factoryId: number, live: Factory | null): boolean => {
+    const baseline = engine.acked.factories.get(factoryId)
+    if (baseline === undefined) return false
+    if (live === null) return true
+    // Our own op, landing after the socket that carried it died.
+    if (engine.unacknowledged.get(factoryId) === stableStringify(live)) return false
+    if (baseline !== UNKNOWN_CONTENT) return stableStringify(live) !== baseline
+
+    const kept = engine.baselinePrints.get(factoryId)
+    return kept !== undefined && fingerprint(stableStringify(live)) !== kept
+  }
+
+  /**
+   * The clash this prompt exists for: a fresh snapshot carrying a room that moved past our
+   * baseline, holding records we edited here and somebody else edited too. Deliberately
+   * only from a snapshot — a reject during live editing is the routine 400ms race, which
+   * the field locks and last-write-wins already cover.
+   */
+  const findClashes = (roomId: string, server: RoomContent, revision: number): ConflictFactory[] => {
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!engine || !tab) return []
+    if (!engine.seeded && !engine.primed) return []
+    if (revision <= engine.acked.revision || engine.touchedFactories.size === 0) return []
+
+    const serverById = new Map(server.factories.map(factory => [factory.id, factory]))
+    const localById = new Map(contentOfTab(tab).factories.map(factory => [factory.id, factory]))
+
+    const clashes: ConflictFactory[] = []
+    for (const id of engine.touchedFactories) {
+      const live = serverById.get(id) ?? null
+      if (!changedRemotely(engine, id, live)) continue
+      const clash = describeClash(id, live, localById.get(id) ?? null)
+      if (clash) clashes.push(clash)
+    }
+    return clashes
+  }
+
+  /** Opens the prompt, or adds newly clashing records to one already asking. */
+  const noteClashes = (roomId: string, server: RoomContent, revision: number) => {
+    const fresh = findClashes(roomId, server, revision)
+    const open = conflicts.value[roomId]
+
+    if (!open) {
+      if (fresh.length > 0) conflicts.value[roomId] = { roomId, factories: fresh }
+      return
+    }
+
+    const known = new Set(open.factories.map(row => row.factoryId))
+    open.factories = [...open.factories, ...fresh.filter(row => !known.has(row.factoryId))]
+  }
+
+  /**
+   * Re-measures an open prompt against the newest server content, so nobody is asked
+   * about figures that have moved on. A row whose two versions now agree, or whose intent
+   * is spent, has nothing left to decide; with none left the dialog closes unprompted.
+   */
+  const refreshConflict = (roomId: string, server: RoomContent) => {
+    const conflict = conflicts.value[roomId]
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!conflict || !engine || !tab) return
+
+    const serverById = new Map(server.factories.map(factory => [factory.id, factory]))
+    const localById = new Map(contentOfTab(tab).factories.map(factory => [factory.id, factory]))
+
+    const rows = conflict.factories
+      .filter(row => engine.touchedFactories.has(row.factoryId))
+      .map(row => describeClash(
+        row.factoryId,
+        serverById.get(row.factoryId) ?? null,
+        localById.get(row.factoryId) ?? null,
+      ))
+      .filter((row): row is ConflictFactory => row !== null)
+
+    if (rows.length === 0) delete conflicts.value[roomId]
+    else conflict.factories = rows
+  }
+
+  /** Puts the server's copy of each named record back into the tab, absence included. */
+  const takeServerCopies = (tab: FactoryTab, engine: RoomEngine, factoryIds: number[]) => {
+    const wanted = new Set(factoryIds)
+    const kept = tab.factories.filter(factory => !wanted.has(factory.id))
+
+    for (const id of factoryIds) {
+      const print = engine.acked.factories.get(id)
+      if (print !== undefined && print !== UNKNOWN_CONTENT) kept.push(JSON.parse(print) as Factory)
+    }
+    tab.factories = inDisplayOrder(kept)
+  }
+
+  /**
+   * This device's plan, kept whatever the user picks. A plain local tab: never tracked,
+   * never activated, and carrying the tab-level fields too, since what is being kept is
+   * the plan rather than its factories alone.
+   */
+  const keepOfflineCopy = (tab: FactoryTab): string => {
+    const content = contentOfTab(tab)
+    const copy = JSON.parse(JSON.stringify(content)) as RoomContent
+
+    return appStore.addTab({
+      name: `${tab.name} (offline copy)`,
+      factories: copy.factories,
+      powerTarget: copy.powerTarget,
+      groups: copy.groups,
+      depotUploadTier: copy.depotUploadTier,
+      depotExpansionTier: copy.depotExpansionTier,
+      plannerVersion: copy.plannerVersion,
+    }, { activate: false })
+  }
+
+  /** Answers given while a load chain owned the plan, applied when it hands it back. */
+  const parkedResolutions = new Map<string, ResolveConflictOptions>()
+
+  /**
+   * The user's answer. Mine-winners keep the intent they already have, so they leave exactly
+   * as they always would; live-winners give theirs up and take the server's copy back, which
+   * is the same convergence a refused bulk removal runs.
+   *
+   * The rebase that raised the question hands the plan to the loader, so an answer can land
+   * while a chain owns the factory array. Writing into it then would be half-overwritten and
+   * then committed, so the answer parks — taken either way, applied when the chain is done.
+   */
+  const resolveConflict = (
+    roomId: string,
+    { liveWinners = [], keepCopy = false }: ResolveConflictOptions = {},
+  ): boolean => {
+    const conflict = conflicts.value[roomId]
+    if (!conflict) return false
+
+    const asked = new Set(conflict.factories.map(row => row.factoryId))
+    const answer = { liveWinners: liveWinners.filter(id => asked.has(id)), keepCopy }
+    delete conflicts.value[roomId]
+
+    if (roomIsMidLoad(roomId) || !appStore.isLoaded) {
+      parkedResolutions.set(roomId, answer)
+      return true
+    }
+    return applyResolution(roomId, answer)
+  }
+
+  const applyResolution = (
+    roomId: string,
+    { liveWinners = [], keepCopy = false }: ResolveConflictOptions,
+  ): boolean => {
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!engine || !tab) return false
+
+    if (keepCopy) keepOfflineCopy(tab)
+
+    if (liveWinners.length > 0) {
+      releaseIntentFor(engine, liveWinners)
+      takeServerCopies(tab, engine, liveWinners)
+      recalculate(tab)
+      appStore.schedulePersist()
+      clearSatisfiedIntent(roomId, engine.acked)
+      // A whole-plan replacement the user asked for takes the loader, as any other does.
+      void appStore.reloadTabFromMirror(roomId)
+    }
+
+    persistMeta(roomId)
+    flushRoom(roomId)
+    return true
+  }
+
+  /** Retried rather than scheduled: a queued load can own the plan again a tick later. */
+  const applyParkedResolution = (roomId: string) => {
+    const parked = parkedResolutions.get(roomId)
+    if (!parked || !appStore.isLoaded || roomIsMidLoad(roomId)) return
+
+    parkedResolutions.delete(roomId)
+    applyResolution(roomId, parked)
   }
 
   // ===== Reducer =====
@@ -662,8 +929,15 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
     if (!rooms.value[roomId]) return
+    // Parking wins: the check needs a whole plan to compare against, and the fresh
+    // snapshot the load asks for on the way out runs it properly.
     if (parkWhileLoading(roomId)) return
-    const recalculated = rebase(roomId, contentFromSnapshot(snapshot), revision)
+
+    const server = contentFromSnapshot(snapshot)
+    // Before the rebase, which replaces both halves of the comparison: the baseline this
+    // client agreed on, and the records it still holds.
+    noteClashes(roomId, server, revision)
+    const recalculated = rebase(roomId, server, revision)
     // Only a snapshot that recalculated needs the loader. The 10s revision probe answers
     // with a snapshot whenever it heals a missed op, and running the load funnel for those
     // blanked the planner and blocked flushing for the length of a chain, over and over.
@@ -739,6 +1013,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     engine.acked = sent
     engine.seeded = true
     engine.pending = null
+    engine.unacknowledged.clear()
     room.hasPendingOp = false
     room.revision = revision
     room.rejectStreak = 0
@@ -825,7 +1100,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
         'roomSyncStore: the server refused removals nothing declared, restoring them from its copy',
         { roomId, factoryIds: refusedRemovals },
       )
-      for (const id of refusedRemovals) engine.touchedFactories.delete(id)
+      releaseIntentFor(engine, refusedRemovals)
     }
 
     if (!snapshot) {
@@ -878,6 +1153,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.hasPendingOp = false
     engines.delete(roomId)
     dropRoomLocks(roomId)
+    delete conflicts.value[roomId]
+    parkedResolutions.delete(roomId)
     removeTabMirrorMeta(roomId)
   }
 
@@ -936,6 +1213,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const abandonPendingOps = () => {
     for (const [roomId, engine] of engines) {
+      // Sent, and its fate unknown: the reconnect's snapshot decides, and until then this
+      // is what tells our own edit coming back from somebody else's.
+      for (const factory of engine.pending?.diff.factories ?? []) {
+        const print = engine.pending?.sent.factories.get(factory.id)
+        if (print !== undefined) engine.unacknowledged.set(factory.id, print)
+      }
       engine.pending = null
       const room = rooms.value[roomId]
       if (!room) continue
@@ -996,6 +1279,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       for (const id of stored?.userTouchedIds ?? []) engine.touchedFactories.add(id)
       for (const field of stored?.userTouchedFields ?? []) engine.touchedFields.add(field)
       for (const id of stored?.declaredRemovals ?? []) engine.declaredRemovals.add(id)
+      for (const [id, print] of Object.entries(stored?.baselinePrints ?? {})) {
+        engine.baselinePrints.set(Number(id), print)
+      }
     } else if (options.visitorToken) {
       engine.visitorToken = options.visitorToken
     }
@@ -1009,6 +1295,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     delete rooms.value[roomId]
     engines.delete(roomId)
     dropRoomLocks(roomId)
+    // A question about a room this browser no longer holds has no answer worth taking.
+    delete conflicts.value[roomId]
+    parkedResolutions.delete(roomId)
     removeTabMirrorMeta(roomId)
   }
 
@@ -1048,6 +1337,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const probeTick = () => {
     for (const roomId of Object.keys(rooms.value)) {
+      // Nothing else would ask again if the flush the load scheduled was swallowed.
+      applyParkedResolution(roomId)
       // A room parked mid-load whose snapshot request could not be sent — offline, or the
       // socket down — has nothing else that would ever ask again.
       if (engines.get(roomId)?.needsSnapshot) healFromSnapshot(roomId)
@@ -1281,6 +1572,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     lastError,
     connectionId,
     fieldLocks,
+    conflicts,
     isOffline,
     isSuppressed,
     isConnected,
@@ -1306,6 +1598,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     flushRoom,
     flushAll,
     resumeRoom,
+
+    // The offline conflict prompt
+    resolveConflict,
 
     // Field locks
     lockedByOther,

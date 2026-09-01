@@ -30,7 +30,7 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2871 unit tests (154 files, 1 skipped) as of the tab-settings round (2026-09-01),
+web 2954 unit tests (156 files, 1 skipped) as of the offline conflict round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 42 Playwright e2e tests passing (the 42nd added in the login-chooser
 round). The whole suite ran twice at full speed
@@ -60,6 +60,7 @@ change to that file.
 | Tab list, adoption, share/unshare, join | `web/src/stores/rooms-store.ts` |
 | Socket, close-code policy, backoff | `web/src/sync/ws-client.ts` |
 | Sidecar sync metadata (`localStorage.factoryTabs` keeps its v6 shape) | `web/src/sync/tab-mirror-meta.ts`, `tab-sync-state.ts` |
+| Offline clash evidence, and the prompt that asks about it | `web/src/sync/offline-conflict.ts`, `components/sync/OfflineConflictDialog.vue` |
 | Version header and the 426 path | `web/src/api/client.ts`, `components/sync/VersionPrompt.vue` |
 | WS gateway, presence, fan-out, revocation | `backend/src/realtime/` |
 | Rooms domain, ensure-steps, sweeper, activity | `backend/src/rooms/` |
@@ -1010,6 +1011,73 @@ disabled with the reason beside it" everywhere it was asserted.
   local pencil shows Share Settings on the snapshot-only pane, convert to cloud flips the tab
   to `synced`/owner, and reopening the pencil gives Share Settings on the invite pane with the
   notice gone. Creating the invite link from there minted a real room slug.
+
+## The offline conflict prompt (2026-09-01): the one decision the engine hands back
+
+Until now an offline edit simply won: the rebase overlaid every touched record onto the server's
+copy and a peer's edit to the same factory was gone with no notice. That is still the default,
+but the user is now asked first, and only in the case that is genuinely a decision.
+
+**The trigger, and it is narrow on purpose.** A *snapshot* for a tracked room (join, reconnect,
+the probe's heal, leaving offline mode, reopening a device whose mirror meta carries touched ids),
+whose revision is past this client's acked baseline, carrying a factory in `touchedFactories`
+whose print differs from the acked one or which the room no longer holds. `findClashes` in
+`room-sync-store.ts` is the whole predicate and it runs *before* the rebase, because the rebase
+replaces both halves of the comparison. Deliberately silent everywhere else: an `op_reject` rebase
+during live editing (the 400ms race is routine and field locks cover it), a snapshot with no
+overlap, a room with no local intent, and a snapshot parked mid-load — parking wins, and the check
+runs when the parked snapshot is finally applied.
+
+Three things it took to make the predicate honest, each of which was a false prompt before it:
+
+- **A restart leaves no baseline to compare against.** `seedFromMirror` marks touched records
+  `UNKNOWN_CONTENT`, so "differs from the acked print" is true of every unsent edit. `TabMirrorMeta`
+  now carries `baselinePrints` — a 32-bit FNV-1a of the acked record, per touched id, cached against
+  the print itself so a 300-factory clear does not re-hash the plan on every persist. No fingerprint
+  means no answer, and no answer is silence.
+- **The snapshot after a drop can be this client's own op coming back.** A socket can die between
+  the write and the ack, and the reconnect's snapshot then carries our own edit. `abandonPendingOps`
+  keeps the sent prints in `engine.unacknowledged` and `changedRemotely` treats a match as ours;
+  the existing "loses nothing when the socket drops before the ack" spec is what caught this.
+- **Derived figures are not a disagreement.** `describeClash` returns null unless there is something
+  to show, because a peer editing a factory this one imports from moves `dependencies` and `parts`
+  on both sides. The "other changes" line compares an explicit whitelist of authored fields for the
+  same reason: a field missed there costs a summary line, never a wrong winner.
+
+**The answer is per factory, with per-product evidence.** The owner's requirement verbatim: "We do
+need a per product per factory level, clearly showing 'current plan is X, you changed it to Y,
+which wins'". Products are evidence only — the engine's unit of sync is the whole factory, and a
+per-product merge would be a second consistency model. Mine-winners are today's behaviour;
+live-winners go through `releaseIntentFor` (shared with the `undeclared_bulk_removal` reject path)
+and take the snapshot's record back, absence included. One op carries the mine-winners plus every
+non-clashing edit. The flush is held for that room while the question is open, and every newer
+snapshot or applied op re-measures the rows, closing the dialog unprompted if the overlap has gone.
+
+**An answer can land while a load chain owns the plan**, because the rebase that raised the question
+hands the plan to the loader. Written into the array then it would be half-overwritten and then
+committed — the truncation class this branch has been bitten by twice. The answer parks and is
+applied from `flushAll`/`probeTick` once `isLoaded` is back and the chain has let go; it is retried
+rather than scheduled, since a queued load can own the plan again a tick later.
+
+Files: `web/src/sync/offline-conflict.ts` (pure evidence + fingerprint),
+`web/src/components/sync/OfflineConflictDialog.vue` (AppDialog, persistent, `closable: false`,
+mounted in `layouts/default.vue`), the engine half in `room-sync-store.ts` (`conflicts`,
+`findClashes`, `noteClashes`, `refreshConflict`, `resolveConflict`), and
+`web/e2e/tests/offline-conflict.e2e.ts`. Guards: 21 store specs, 18 component specs, 16 pure specs,
+2 mirror-meta specs and 2 e2e tests, all negative-controlled by neutering one half at a time (the
+clash test, the flush hold, the mid-load park, the fingerprint, the server-copy take, the kept copy,
+the re-measure, the untrack, and both e2e cases). **The wire protocol is unchanged** and
+`PROTOCOL_VERSION` did not move: this is a client-side decision about which local records survive a
+rebase, and the server sees an ordinary op either way.
+
+Two traps found building it, both worth keeping:
+
+- **A fixture that sets `product.amount` and recalculates with `origin: 'recalculate'` edits
+  nothing.** Building groups are sacrosanct on that origin, so the typed amount is pulled straight
+  back to what the groups say. Use `origin: 'item'`, which is what the quantity field itself does.
+- **The account tray cannot be closed with Escape while this dialog is up.** It is persistent, so
+  Escape reaches it, does nothing, and leaves the tray open; the e2e comes back online without
+  closing the tray for exactly that reason.
 
 ## Flagged follow-ups, none of them blocking
 

@@ -510,6 +510,25 @@ export const addProduct = async (page: Page, index: number, item: string): Promi
   }).toContain(item)
 }
 
+/**
+ * Types a new quantity into one product's field. The id is `<factoryId>-<itemId>-amount`,
+ * which is the only client-local way to name a row without counting on its position.
+ */
+export const setProductAmount = async (
+  page: Page,
+  index: number,
+  item: string,
+  amount: number,
+): Promise<void> => {
+  const card = await factoryCard(page, index)
+  const field = card.locator(`input[id$="-${item}-amount"]`).first()
+  await expect(field, `no ${item} row to set an amount on`).toBeVisible()
+
+  await field.fill(String(amount))
+  await field.blur()
+  await expect(field).toHaveValue(String(amount))
+}
+
 /** Polled and visibility-honest: the row is on screen and it names the item. */
 export const expectProductVisible = async (
   page: Page,
@@ -536,6 +555,31 @@ export const mirroredProducts = async (
 ): Promise<string[]> =>
   ((await mirroredFactories(page, tabId)).find(factory => factory.name === factoryName)?.products ?? [])
     .map(product => product.id)
+
+export const productAmountIn = (
+  factories: MirroredFactory[],
+  factoryName: string,
+  item: string,
+): number | undefined =>
+  factories.find(factory => factory.name === factoryName)?.products.find(product => product.id === item)?.amount
+
+/** One product's quantity as it actually synced, which is what a convergence check reads. */
+export const mirroredProductAmount = async (
+  page: Page,
+  tabId: string,
+  factoryName: string,
+  item: string,
+): Promise<number | undefined> =>
+  productAmountIn(await mirroredFactories(page, tabId), factoryName, item)
+
+/** A tab found by its name rather than its id: the local copies have no id worth knowing. */
+export const mirroredTabNamed = async (
+  page: Page,
+  name: string,
+): Promise<{ id: string, factories: MirroredFactory[] } | undefined> => {
+  const tab = (await storedTabs(page)).find(entry => entry.name === name)
+  return tab && { id: tab.id, factories: tab.factories as MirroredFactory[] }
+}
 
 /**
  * Wires one factory to import an item from another. This is the link that makes a

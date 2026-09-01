@@ -63,6 +63,7 @@ declare module 'vue' {
     MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
+    OfflineConflictDialog: typeof import('./components/sync/OfflineConflictDialog.vue')['default']
     OfflinePrompt: typeof import('./components/sync/OfflinePrompt.vue')['default']
     OptionsDialog: typeof import('./components/OptionsDialog.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
