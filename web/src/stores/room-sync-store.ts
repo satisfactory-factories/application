@@ -158,6 +158,23 @@ export interface ResolveConflictOptions {
   keepCopy?: boolean
 }
 
+/**
+ * A fabricated clash, staged against a tab that is nobody's room. Dev-only, and the whole
+ * of its sandbox is that it never creates a `RoomState`: see `stageDemoConflict`.
+ */
+export interface StageDemoConflictOptions {
+  /** The local tab to stage against. Refused if anything already tracks it as a room. */
+  roomId: string
+  /** What both versions are pretended to have last agreed on. */
+  baseline: RoomContent
+  /** The plan the demo pretends the room moved on to. */
+  live: RoomContent
+  /** The ids the demo pretends were edited on this device. */
+  touchedFactories: number[]
+  /** The revision `live` stands at; the baseline sits one behind it. */
+  revision?: number
+}
+
 /** One lock this client holds, and the timer that gives it up on the server's own line. */
 interface HeldFieldLock {
   roomId: string
@@ -843,6 +860,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     persistMeta(roomId)
     flushRoom(roomId)
+    // A staged demo owns no room and has nothing to sync: hand the tab back as a plain
+    // local one. A no-op for every real room, which is never in the set.
+    endConflictDemo(roomId)
     return true
   }
 
@@ -853,6 +873,60 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     parkedResolutions.delete(roomId)
     applyResolution(roomId, parked)
+  }
+
+  // ===== The dev-only demo of that prompt =====
+
+  /** Tab ids the demo has staged a pretend room against. Empty in every real session. */
+  const demoRooms = new Set<string>()
+
+  /**
+   * Stage a fabricated clash so the real dialog can be seen without two devices.
+   *
+   * **The sandbox is structural**: this registers an engine and a question, and
+   * deliberately no `RoomState`. `flushRoom` returns on its first line for a room `rooms`
+   * does not hold, and it is the only thing in this store that puts an op on the wire, so
+   * the answer's `flushRoom` call is a no-op and no socket is ever asked for. Nothing here
+   * relaxes a guard a real room relies on; the demo simply has less state than one.
+   *
+   * Everything the user then sees is production code: `noteClashes` measures the rows and
+   * `resolveConflict` applies them, in the order a real snapshot runs them in.
+   */
+  const stageDemoConflict = (options: StageDemoConflictOptions): boolean => {
+    const { roomId, baseline, live, touchedFactories, revision = 2 } = options
+    // Never over a real room, and never over a question the user is already being asked.
+    if (rooms.value[roomId] || engines.has(roomId)) return false
+    if (Object.keys(conflicts.value).length > 0) return false
+    if (!getTab(roomId)) return false
+    // An answer given mid-load parks, and nothing retries a park for an untracked room.
+    if (!appStore.isLoaded || roomIsMidLoad(roomId)) return false
+
+    const engine = newEngine({})
+    engine.acked = ackedFromContent(baseline, revision - 1)
+    engine.seeded = true
+    for (const id of touchedFactories) engine.touchedFactories.add(id)
+    engines.set(roomId, engine)
+    demoRooms.add(roomId)
+
+    // A snapshot's own order: measure against the baseline, then adopt the newer copy, so
+    // the answer takes its live winners from `acked` exactly as it would after a rebase.
+    noteClashes(roomId, live, revision)
+    engine.acked = ackedFromContent(live, revision)
+
+    if (!conflicts.value[roomId]) {
+      endConflictDemo(roomId)
+      return false
+    }
+    return true
+  }
+
+  /** The pretend room goes the moment its question is answered, mirror meta included. */
+  const endConflictDemo = (roomId: string) => {
+    if (!demoRooms.delete(roomId)) return
+    engines.delete(roomId)
+    delete conflicts.value[roomId]
+    parkedResolutions.delete(roomId)
+    removeTabMirrorMeta(roomId)
   }
 
   // ===== Reducer =====
@@ -1337,6 +1411,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   const probeTick = () => {
+    // A demo has no room, so the loop below would never reach an answer of its own that
+    // parked behind a load chain. Empty in every session that has not staged one.
+    for (const roomId of demoRooms) applyParkedResolution(roomId)
+
     for (const roomId of Object.keys(rooms.value)) {
       // Nothing else would ask again if the flush the load scheduled was swallowed.
       applyParkedResolution(roomId)
@@ -1602,6 +1680,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     // The offline conflict prompt
     resolveConflict,
+    // Dev-only, and inert unless something calls it: see offline-conflict-demo.ts.
+    stageDemoConflict,
 
     // Field locks
     lockedByOther,

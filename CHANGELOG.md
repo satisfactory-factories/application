@@ -86,6 +86,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.
 - Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.
 - `/save` and `/load` are retired. `/hello` is gone, since `/health` had already replaced it.
+- **Developer tool: the offline conflict prompt can be staged from the Templates menu.** It builds a local tab of its own, fabricates a clash against a pretend live plan and opens the real dialog over it, so the prompt can be seen without two devices. Nothing is sent to the server and no plan is created on it. The entry shows on a development build, or anywhere once `sfDevTools` is set to `true` in the browser's local storage.
 
 ### Search the plan
 

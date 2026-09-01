@@ -27,7 +27,7 @@
       </thead>
       <tbody>
         <template v-for="template in sortedTemplates" :key="template.name">
-          <tr v-if="template.show">
+          <tr v-if="template.show" :data-template="template.name">
             <td class="text-center">
               <v-btn
                 class="mr-2"
@@ -69,6 +69,7 @@
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
   import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
+  import { devToolsEnabled, runOfflineConflictDemo } from '@/sync/offline-conflict-demo'
 
   const { prepareLoader, isDebugMode, getCurrentTab, getFactories, rearmRawBreakingNotice } = useAppStore()
 
@@ -77,13 +78,16 @@
   interface Template {
     name: string
     description: string
-    // JSON TemplatePayload — always serialize via planData()/scenarioData().
+    // JSON TemplatePayload — always serialize via planData()/scenarioData(). Empty for a
+    // row that runs something of its own instead of loading a plan.
     data: string
     show: boolean
     isDebug: boolean
     // Re-arms the one-time raw-resources breaking-change notice, which is otherwise
     // unreachable once dismissed.
     rearmNotice?: boolean
+    // A row that does its own thing rather than overwriting the current plan.
+    run?: () => unknown
   }
 
   interface TemplatePayload {
@@ -227,6 +231,14 @@
       isDebug: true,
     },
     {
+      name: 'Offline conflict demo',
+      description: 'Developer tool. Creates a local "Conflict demo" tab, seeds four factories and stages a fabricated clash against a pretend live plan, then opens the real offline conflict dialog over it. Nothing is sent to the server, no room is created, and the tab is an ordinary local tab once the question is answered. Shown on a dev build, or anywhere once localStorage.sfDevTools is set to "true".',
+      data: '',
+      show: devToolsEnabled(),
+      isDebug: true,
+      run: () => runOfflineConflictDemo(),
+    },
+    {
       name: '#375: Byproduct products handling',
       description: 'Contains a factory that has selected a byproduct as a product. In the issue, a ghost surplus was created as it was counting both the product quantity of 100, and the byproduct quantity of 100. The UI should show Rubber as the main recipe, and HOR as the byproduct.',
       data: scenarioData(create375Scenario().getFactories()),
@@ -258,6 +270,13 @@
   })
 
   const loadTemplate = (template: Template) => {
+    // A row that runs its own thing keeps the current plan: it never reaches the loader.
+    if (template.run) {
+      dialog.value = false
+      template.run()
+      return
+    }
+
     console.log('Template loaded:', template.name, 'starting load')
 
     // This is a workaround for the templating bug where the data was passed as a reference, and would refuse to load the same template until the page is refreshed.

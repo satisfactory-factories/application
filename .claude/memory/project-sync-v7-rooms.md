@@ -30,7 +30,7 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2961 unit tests (156 files, 1 skipped) as of the offline conflict round (2026-09-01),
+web 2987 unit tests (158 files, 1 skipped) as of the conflict demo round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
 conflict round). The whole suite ran twice at full speed
@@ -61,6 +61,7 @@ change to that file.
 | Socket, close-code policy, backoff | `web/src/sync/ws-client.ts` |
 | Sidecar sync metadata (`localStorage.factoryTabs` keeps its v6 shape) | `web/src/sync/tab-mirror-meta.ts`, `tab-sync-state.ts` |
 | Offline clash evidence, and the prompt that asks about it | `web/src/sync/offline-conflict.ts`, `components/sync/OfflineConflictDialog.vue` |
+| Dev-only staging of that prompt (no server, no second device) | `web/src/sync/offline-conflict-demo.ts`, `utils/factory-setups/offline-conflict-demo-plan.ts` |
 | Version header and the 426 path | `web/src/api/client.ts`, `components/sync/VersionPrompt.vue` |
 | WS gateway, presence, fan-out, revocation | `backend/src/realtime/` |
 | Rooms domain, ensure-steps, sweeper, activity | `backend/src/rooms/` |
@@ -1129,6 +1130,55 @@ them rather than the local save's, and both pre-resolution snapshots go through
 The byte-identical assertion is untouched and there are no retries. The general lesson is the
 heading: a wait and the read it gates must not come from the same debounced source, or the wait is
 satisfied by exactly the partial write the read must not see.
+
+### Seeing that prompt without two devices (2026-09-01)
+
+The owner asked to witness the dialog first hand, so there is now an **"Offline conflict demo" row
+in the Templates dialog**, shown only when `import.meta.env.DEV` is true or
+`localStorage.sfDevTools === 'true'` — one console command on a preview build. It makes its own
+local "Conflict demo" tab, seeds four raw-fed factories (Iron Smelting, Copper Smelting, Concrete
+Casting, Steel Smelting), and stages a fabricated clash covering every row shape at once: a moved
+product rate, a recipe change carrying the "other changes in this factory as well" line, a factory
+the pretend live plan deleted, and one removed on this device but edited there. What opens is the
+production `OfflineConflictDialog` reading the production `conflicts` entry, and answering it runs
+the real `resolveConflict`, so the demo is worth exactly as much as the code it drives.
+
+**The sandbox is structural, and that is the whole design.** `stageDemoConflict` registers an
+engine in `engines` and a question in `conflicts`, and deliberately **no `RoomState`**. `flushRoom`
+is the only thing in the store that puts an op on the wire, and its first line returns on a room
+`rooms` does not hold — so the answer's own `flushRoom` call is a no-op and `ensureSocket` is never
+reached. Nothing was relaxed to make this work; the pseudo-room simply has less state than a real
+one. `rooms-store`'s reconcile watcher keys off `roomSync.rooms` too, so it never sees the demo
+either. Staging refuses over a tracked room, over a question already on screen, and mid-load;
+`applyResolution` ends the demo (engine, question, mirror meta) so the tab is an ordinary local tab
+afterwards. The one place production code learned about the demo is a
+`for (const roomId of demoRooms) applyParkedResolution(roomId)` at the top of `probeTick`, over a
+set that is empty in every real session — without it an answer that parked behind a load chain
+would never be retried, because the loop below it is per room.
+
+Two traps, both found by driving it rather than by a spec:
+
+- **A hidden tab never paints, so `requestAnimationFrame` never fires.** The demo waits out the
+  load chain the tab activation queues (an answer given inside one parks), and that wait began with
+  two bare `requestAnimationFrame`s to let `app-store`'s own `afterPaint` run. In a backgrounded
+  tab it hung forever and the dialog simply never appeared. Every frame wait in app code wants a
+  timer racing it.
+- **`addTab` reads a tab arriving with factories as an imported plan.** It leaves `plannerVersion`
+  undefined for exactly that case, so the load raised the one-time raw-resources migration notice
+  on top of the dialog the demo exists to show. Stamp `config.plannerVersion`, the same thing
+  `Templates.vue` does for a template built by today's code.
+
+Files: `web/src/sync/offline-conflict-demo.ts` (orchestration, the flag, the refusals),
+`web/src/utils/factory-setups/offline-conflict-demo-plan.ts` (the three versions of the plan),
+the `stageDemoConflict`/`endConflictDemo` pair in `room-sync-store.ts`, and the row in
+`Templates.vue` (a `run` callback on a template, so the row never reaches the loader). Guards: 12
+store specs, 8 module specs and 6 component specs, negative-controlled throughout — the row hidden
+on a normal build against shown on both switches, a wire spy proved to catch a real room's op
+before it is asserted silent on the demo, an ordinary template still reaching the loader, and
+staging refused when the two versions agree. Verified live on a dev server: all four sections
+render, a mixed answer moves Iron Smelting to the live rate and brings Steel Smelting back while
+leaving the other two on this device's version, the offline copy tab appears, and the only requests
+in the network log are vite's own.
 
 ## Flagged follow-ups, none of them blocking
 

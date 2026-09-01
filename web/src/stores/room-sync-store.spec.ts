@@ -20,6 +20,7 @@ import { getDisposal, setDepotCount, setSinkCount } from '@/utils/factory-manage
 import { setChecklistEnabled, toggleChecklistProduct } from '@/utils/factory-management/checklist'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import { gameData } from '@/utils/gameData'
+import { DEMO_TOUCHED, offlineConflictDemoPlans } from '@/utils/factory-setups/offline-conflict-demo-plan'
 import { mergeFactories, stableStringify } from '@/sync/room-state'
 import { fingerprint } from '@/sync/offline-conflict'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
@@ -2095,6 +2096,219 @@ describe('room-sync-store', () => {
 
         expect(store.conflicts[ROOM]).toBeUndefined()
       })
+    })
+  })
+
+  /**
+   * The dev-only demo of that prompt. Its whole sandbox is that it registers an engine and
+   * a question and deliberately no room, so `flushRoom` refuses on its first line — these
+   * specs are mostly about proving that holds, and that nothing it does can reach a real one.
+   */
+  describe('the dev-only conflict demo', () => {
+    const DEMO = 'demo-tab'
+    let plans: ReturnType<typeof offlineConflictDemoPlans>
+
+    const contentOf = (factories: Factory[]) => ({
+      name: 'Conflict demo',
+      powerTarget: 0,
+      groups: [],
+      factories: wire(factories),
+    })
+
+    const stage = (roomId = DEMO, live = plans.live) => store.stageDemoConflict({
+      roomId,
+      baseline: contentOf(plans.baseline),
+      live: contentOf(live),
+      touchedFactories: DEMO_TOUCHED,
+    })
+
+    const demoTab = () => appStore.getTab(DEMO) as FactoryTab
+    const asked = (roomId = DEMO) => store.conflicts[roomId]?.factories ?? []
+    const rowFor = (factoryId: number) => asked().find(row => row.factoryId === factoryId)
+    const inDemo = (factoryId: number) => demoTab().factories.find(factory => factory.id === factoryId)
+    const productOf = (factoryId: number) => inDemo(factoryId)?.products[0]
+
+    beforeEach(() => {
+      // The answer hands a changed plan to the loader; these specs are about what it decided.
+      vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+      plans = offlineConflictDemoPlans()
+      for (const plan of [plans.baseline, plans.live, plans.mine]) {
+        calculateFactories(plan, gameData, { origin: 'item' })
+      }
+
+      // The tab the demo builds for itself: an ordinary local one holding this device's plan.
+      appStore.factoryTabs.splice(0, appStore.factoryTabs.length, {
+        id: DEMO,
+        name: 'Conflict demo',
+        factories: wire(plans.mine),
+        powerTarget: 0,
+        groups: [],
+      })
+    })
+
+    it('stages one section for every row shape the dialog can draw', () => {
+      expect(stage()).toBe(true)
+
+      expect(asked().map(row => row.factoryId)).toEqual([1, 2, 3, 4])
+
+      // A rate somebody else moved too.
+      expect(rowFor(1)).toMatchObject({
+        liveDeleted: false,
+        mineDeleted: false,
+        otherChanges: false,
+        products: [{ itemId: 'IronIngot', live: 120, mine: 100, recipeChanged: false }],
+      })
+      // The same rate built from a different recipe, plus a field the rows cannot show.
+      expect(rowFor(2)).toMatchObject({
+        otherChanges: true,
+        products: [{ itemId: 'CopperIngot', live: 60, mine: 60, recipeChanged: true }],
+      })
+      // Gone in the live plan, still here.
+      expect(rowFor(3)).toMatchObject({
+        liveDeleted: true,
+        products: [{ itemId: 'Cement', live: null, mine: 45, recipeChanged: false }],
+      })
+      // Removed here, edited there.
+      expect(rowFor(4)).toMatchObject({
+        mineDeleted: true,
+        products: [{ itemId: 'SteelIngot', live: 80, mine: null, recipeChanged: false }],
+      })
+    })
+
+    /**
+     * The mechanism, not the assertion: there is no `RoomState` for the pseudo-room, and
+     * `flushRoom` returns on its first line without one. `send` is the single choke point
+     * every frame goes through, join and op alike.
+     */
+    it('puts nothing on the wire, staging or answering', () => {
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+      const before = framesOf().length
+
+      expect(stage()).toBe(true)
+      store.resolveConflict(DEMO, { liveWinners: [1, 4], keepCopy: true })
+      store.flushAll()
+      store.probeTick()
+
+      expect(send).not.toHaveBeenCalled()
+      expect(framesOf()).toHaveLength(before)
+      expect(store.rooms[DEMO], 'the demo registered a room').toBeUndefined()
+    })
+
+    // The negative control for the spy above: it does see a frame when one is sent.
+    it('is watched by a spy that catches a real room\'s op', () => {
+      const tab = setTab(wire(fixture))
+      store.trackRoom(ROOM)
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+      store.flushRoom(ROOM)
+
+      expect(send).toHaveBeenCalled()
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    it('lands the winners in the demo tab, one factory at a time', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1, 4] })
+
+      // Live won: the rate it holds, and the factory this device had removed comes back.
+      expect(productOf(1)?.amount).toBe(120)
+      expect(productOf(4)?.amount).toBe(80)
+      // Mine won: the alternate recipe stays, and the factory live deleted is still here.
+      expect(productOf(2)?.recipe).toBe('Alternate_PureCopperIngot')
+      expect(productOf(3)?.amount).toBe(45)
+    })
+
+    /**
+     * The demo has no room, so the probe's per-room loop would never reach an answer of
+     * its own that parked. Reachable in earnest: a hidden tab does not paint, so the load
+     * the demo tab's activation queues can start late and still be running when it opens.
+     */
+    it('applies an answer that parked behind a load chain', () => {
+      stage()
+      appStore.currentFactoryTab = demoTab()
+      appStore.loadInFlight = true
+
+      store.resolveConflict(DEMO, { liveWinners: [1] })
+      expect(productOf(1)?.amount, 'the answer was applied under the load chain').toBe(100)
+
+      appStore.loadInFlight = false
+      store.probeTick()
+
+      expect(productOf(1)?.amount).toBe(120)
+    })
+
+    it('keeps this device\'s version as a local tab when the box is ticked', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1, 2, 3, 4], keepCopy: true })
+
+      const copy = appStore.getTabs().find(tab => tab.name === 'Conflict demo (offline copy)')
+      expect(copy, 'nothing kept this device\'s version').toBeDefined()
+      expect(copy?.factories.map(factory => factory.id)).toEqual([1, 2, 3])
+      expect(store.rooms[copy?.id ?? ''], 'the copy is a plain local tab').toBeUndefined()
+    })
+
+    it('keeps no copy when the box is cleared', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1], keepCopy: false })
+
+      expect(appStore.getTabs().map(tab => tab.name)).toEqual(['Conflict demo'])
+    })
+
+    /** Answered, the pretend room is gone: the tab is one nothing tracks any more. */
+    it('hands the tab back as an ordinary local tab once answered', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1] })
+
+      expect(store.conflicts[DEMO]).toBeUndefined()
+      expect(readTabMirrorMeta()[DEMO]).toBeUndefined()
+      // Staging refuses a tab an engine already holds, so a second one proves it was dropped.
+      expect(stage()).toBe(true)
+    })
+
+    it('refuses a tab that is already a room', () => {
+      syncAt(fixture, 4)
+
+      expect(stage(ROOM)).toBe(false)
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    it('refuses while a real question is on screen', () => {
+      store.conflicts['room-9'] = { roomId: 'room-9', factories: [] }
+
+      expect(stage()).toBe(false)
+      expect(store.conflicts[DEMO]).toBeUndefined()
+    })
+
+    // An answer given mid-load parks, and nothing retries a park for an untracked room.
+    it('refuses while a load chain owns the plan', () => {
+      appStore.isLoaded = false
+      expect(stage()).toBe(false)
+
+      appStore.isLoaded = true
+      appStore.currentFactoryTab = demoTab()
+      appStore.loadInFlight = true
+      expect(stage()).toBe(false)
+      expect(store.conflicts[DEMO]).toBeUndefined()
+    })
+
+    // Nothing to decide is not a demo: it leaves no engine and no question behind either.
+    it('stages nothing, and keeps nothing, when the two versions agree', () => {
+      expect(stage(DEMO, plans.baseline)).toBe(false)
+
+      expect(store.conflicts[DEMO]).toBeUndefined()
+      expect(stage()).toBe(true)
     })
   })
 
