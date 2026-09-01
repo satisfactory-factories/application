@@ -1,184 +1,184 @@
 <template>
-  <v-dialog v-model="open" max-width="760">
-    <v-card class="border-md" data-testid="share-dialog">
-      <v-card-title class="text-h5">Share "{{ tabName }}"</v-card-title>
-      <v-card-text>
-        <section class="share-section snapshot mb-6" data-testid="snapshot-section">
-          <h3 class="text-h6 mb-1">
-            <i class="fas fa-camera mr-2" />Copy snapshot link
-          </h3>
-          <p class="text-body-2 mb-3">
-            A frozen copy of this plan exactly as it is right now. Whoever opens it gets their
-            own separate copy to keep. It never updates and needs no account.
-          </p>
+  <app-dialog
+    v-model="open"
+    card-class="border-md"
+    close-id="close-share-dialog"
+    close-title="Close share settings"
+    data-testid="share-dialog"
+    icon="fas fa-share-alt"
+    max-width="760"
+    :title="dialogTitle"
+  >
+    <section class="share-section snapshot mb-6" data-testid="snapshot-section">
+      <h3 class="text-h6 mb-1">
+        <i class="fas fa-camera mr-2" />Copy snapshot link
+      </h3>
+      <p class="text-body-2 mb-3">
+        A frozen copy of this plan exactly as it is right now. Whoever opens it gets their
+        own separate copy to keep. It never updates and needs no account.
+      </p>
+      <v-btn
+        color="blue"
+        data-testid="create-snapshot"
+        :disabled="!capabilities.canSnapshot"
+        :loading="creatingSnapshot"
+        variant="flat"
+        @click="createSnapshot"
+      >
+        <i class="fas fa-camera mr-2" />Create snapshot link
+      </v-btn>
+      <div v-if="snapshotLink" class="mt-3">
+        <v-text-field
+          data-testid="snapshot-link"
+          hide-details
+          :model-value="snapshotLink"
+          readonly
+        />
+        <v-btn class="mt-2" color="blue" variant="tonal" @click="copy(snapshotLink)">
+          <i class="fas fa-copy mr-2" />Copy snapshot link
+        </v-btn>
+      </div>
+      <p v-if="snapshotError" class="mt-2 text-body-2 text-red">{{ snapshotError }}</p>
+    </section>
+
+    <v-divider class="mb-6" />
+
+    <section class="share-section invite" data-testid="invite-section">
+      <h3 class="text-h6 mb-1">
+        <i class="fas fa-users mr-2" />Invite collaborators
+      </h3>
+      <p class="text-body-2 mb-3">
+        A live link into <em>this</em> plan. Everyone who opens it edits the same plan as you,
+        as you work. Changes appear on both sides straight away.
+      </p>
+
+      <p
+        v-if="capabilities.blockedReason"
+        class="text-body-2 text-amber"
+        data-testid="invite-blocked"
+      >{{ capabilities.blockedReason }}</p>
+      <p
+        v-if="capabilities.blockedDetail"
+        class="mt-2 text-body-2"
+        data-testid="invite-blocked-detail"
+      >{{ capabilities.blockedDetail }}</p>
+
+      <template v-if="capabilities.canManageInvite">
+        <v-btn
+          v-if="!capabilities.isShared"
+          color="green"
+          data-testid="create-invite"
+          :loading="busy"
+          variant="flat"
+          @click="startSharing"
+        >
+          <i class="fas fa-user-plus mr-2" />Create invite link
+        </v-btn>
+
+        <template v-else>
+          <v-text-field
+            data-testid="invite-link"
+            hide-details
+            :model-value="capabilities.inviteLink ?? ''"
+            readonly
+          />
           <v-btn
-            color="blue"
-            data-testid="create-snapshot"
-            :disabled="!capabilities.canSnapshot"
-            :loading="creatingSnapshot"
-            variant="flat"
-            @click="createSnapshot"
+            class="mt-2"
+            color="green"
+            variant="tonal"
+            @click="copy(capabilities.inviteLink ?? '')"
           >
-            <i class="fas fa-camera mr-2" />Create snapshot link
+            <i class="fas fa-copy mr-2" />Copy invite link
           </v-btn>
-          <div v-if="snapshotLink" class="mt-3">
-            <v-text-field
-              data-testid="snapshot-link"
-              hide-details
-              :model-value="snapshotLink"
-              readonly
-            />
-            <v-btn class="mt-2" color="blue" variant="tonal" @click="copy(snapshotLink)">
-              <i class="fas fa-copy mr-2" />Copy snapshot link
-            </v-btn>
-          </div>
-          <p v-if="snapshotError" class="mt-2 text-body-2 text-red">{{ snapshotError }}</p>
-        </section>
 
-        <v-divider class="mb-6" />
+          <v-divider class="my-4" />
 
-        <section class="share-section invite" data-testid="invite-section">
-          <h3 class="text-h6 mb-1">
-            <i class="fas fa-users mr-2" />Invite collaborators
-          </h3>
-          <p class="text-body-2 mb-3">
-            A live link into <em>this</em> plan. Everyone who opens it edits the same plan as you,
-            as you work. Changes appear on both sides straight away.
+          <p class="text-body-2 mb-2 font-weight-bold">Custom link</p>
+          <v-text-field
+            v-model="slug"
+            data-testid="slug-input"
+            :error="slugStatus === 'invalid' || slugStatus === 'taken'"
+            :hint="slugMessage"
+            label="three-word-slug"
+            persistent-hint
+          />
+          <v-btn
+            class="mt-2"
+            color="green"
+            data-testid="apply-slug"
+            :disabled="!slugUsable"
+            :loading="busy"
+            variant="tonal"
+            @click="applySlug"
+          >Use this link</v-btn>
+
+          <v-divider class="my-4" />
+
+          <p class="text-body-2 mb-2 font-weight-bold">
+            <i class="fas fa-lock mr-2" />
+            {{ capabilities.hasPassword ? 'Password protected' : 'No password' }}
           </p>
-
-          <p
-            v-if="capabilities.blockedReason"
-            class="text-body-2 text-amber"
-            data-testid="invite-blocked"
-          >{{ capabilities.blockedReason }}</p>
-          <p
-            v-if="capabilities.blockedDetail"
-            class="mt-2 text-body-2"
-            data-testid="invite-blocked-detail"
-          >{{ capabilities.blockedDetail }}</p>
-
-          <template v-if="capabilities.canManageInvite">
+          <p class="text-body-2 mb-2">
+            A password is asked for once, when someone new opens the link. Changing it kicks
+            anyone who joined anonymously; people signed in keep their access.
+          </p>
+          <v-text-field
+            v-model="password"
+            data-testid="password-input"
+            :label="capabilities.hasPassword ? 'New password' : 'Password'"
+            type="password"
+          />
+          <div class="d-flex ga-2">
             <v-btn
-              v-if="!capabilities.isShared"
               color="green"
-              data-testid="create-invite"
+              data-testid="set-password"
+              :disabled="password.length === 0"
               :loading="busy"
-              variant="flat"
-              @click="startSharing"
-            >
-              <i class="fas fa-user-plus mr-2" />Create invite link
-            </v-btn>
-
-            <template v-else>
-              <v-text-field
-                data-testid="invite-link"
-                hide-details
-                :model-value="capabilities.inviteLink ?? ''"
-                readonly
-              />
-              <v-btn
-                class="mt-2"
-                color="green"
-                variant="tonal"
-                @click="copy(capabilities.inviteLink ?? '')"
-              >
-                <i class="fas fa-copy mr-2" />Copy invite link
-              </v-btn>
-
-              <v-divider class="my-4" />
-
-              <p class="text-body-2 mb-2 font-weight-bold">Custom link</p>
-              <v-text-field
-                v-model="slug"
-                data-testid="slug-input"
-                :error="slugStatus === 'invalid' || slugStatus === 'taken'"
-                :hint="slugMessage"
-                label="three-word-slug"
-                persistent-hint
-              />
-              <v-btn
-                class="mt-2"
-                color="green"
-                data-testid="apply-slug"
-                :disabled="!slugUsable"
-                :loading="busy"
-                variant="tonal"
-                @click="applySlug"
-              >Use this link</v-btn>
-
-              <v-divider class="my-4" />
-
-              <p class="text-body-2 mb-2 font-weight-bold">
-                <i class="fas fa-lock mr-2" />
-                {{ capabilities.hasPassword ? 'Password protected' : 'No password' }}
-              </p>
-              <p class="text-body-2 mb-2">
-                A password is asked for once, when someone new opens the link. Changing it kicks
-                anyone who joined anonymously; people signed in keep their access.
-              </p>
-              <v-text-field
-                v-model="password"
-                data-testid="password-input"
-                :label="capabilities.hasPassword ? 'New password' : 'Password'"
-                type="password"
-              />
-              <div class="d-flex ga-2">
-                <v-btn
-                  color="green"
-                  data-testid="set-password"
-                  :disabled="password.length === 0"
-                  :loading="busy"
-                  variant="tonal"
-                  @click="applyPassword"
-                >{{ capabilities.hasPassword ? 'Change password' : 'Set password' }}</v-btn>
-                <v-btn
-                  v-if="capabilities.hasPassword"
-                  data-testid="remove-password"
-                  :loading="busy"
-                  variant="text"
-                  @click="clearPassword"
-                >Remove password</v-btn>
-              </div>
-
-              <v-divider class="my-4" />
-
-              <v-btn
-                color="red"
-                data-testid="stop-sharing"
-                :loading="busy"
-                variant="tonal"
-                @click="stopSharing"
-              >
-                <i class="fas fa-user-slash mr-2" />Stop sharing
-              </v-btn>
-              <p class="text-body-2 mt-2">
-                Everyone else loses access and keeps their own local copy. The link dies; sharing
-                again restores the same one.
-              </p>
-            </template>
-          </template>
-
-          <div v-else-if="capabilities.inviteLink" class="mt-2">
-            <v-text-field
-              data-testid="invite-link"
-              hide-details
-              :model-value="capabilities.inviteLink"
-              readonly
-            />
-            <v-btn class="mt-2" color="green" variant="tonal" @click="copy(capabilities.inviteLink)">
-              <i class="fas fa-copy mr-2" />Copy invite link
-            </v-btn>
+              variant="tonal"
+              @click="applyPassword"
+            >{{ capabilities.hasPassword ? 'Change password' : 'Set password' }}</v-btn>
+            <v-btn
+              v-if="capabilities.hasPassword"
+              data-testid="remove-password"
+              :loading="busy"
+              variant="text"
+              @click="clearPassword"
+            >Remove password</v-btn>
           </div>
 
-          <p v-if="inviteError" class="mt-2 text-body-2 text-red">{{ inviteError }}</p>
-        </section>
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="text" @click="open = false">Close</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+          <v-divider class="my-4" />
+
+          <v-btn
+            color="red"
+            data-testid="stop-sharing"
+            :loading="busy"
+            variant="tonal"
+            @click="stopSharing"
+          >
+            <i class="fas fa-user-slash mr-2" />Stop sharing
+          </v-btn>
+          <p class="text-body-2 mt-2">
+            Everyone else loses access and keeps their own local copy. The link dies; sharing
+            again restores the same one.
+          </p>
+        </template>
+      </template>
+
+      <div v-else-if="capabilities.inviteLink" class="mt-2">
+        <v-text-field
+          data-testid="invite-link"
+          hide-details
+          :model-value="capabilities.inviteLink"
+          readonly
+        />
+        <v-btn class="mt-2" color="green" variant="tonal" @click="copy(capabilities.inviteLink)">
+          <i class="fas fa-copy mr-2" />Copy invite link
+        </v-btn>
+      </div>
+
+      <p v-if="inviteError" class="mt-2 text-body-2 text-red">{{ inviteError }}</p>
+    </section>
+  </app-dialog>
 </template>
 
 <script setup lang="ts">
@@ -215,6 +215,7 @@
   } = useSlugAvailability(() => props.tabId)
 
   const tabName = computed(() => appStore.getTab(props.tabId)?.name ?? 'this plan')
+  const dialogTitle = computed(() => `Share "${tabName.value}"`)
 
   const capabilities = computed(() => shareCapabilities(
     appStore.getTabState(props.tabId),

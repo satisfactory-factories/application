@@ -542,8 +542,10 @@ in-flight room list comes back without the new tab and converts it straight to l
 `RoomListEntry.lastActivityAt` (ISO string) now travels to the client and a rename stamps it
 as an op does; the tab bar's copy/share/delete buttons sit together with real `v-tooltip`s
 instead of `title` attributes; and `NewTabDialog`/`AdoptionDialog` moved onto `AppDialog`,
-where a `data-testid` on the component falls through to `.v-overlay__content` and stays
-reachable from the e2e suite.
+where a `data-testid` on the component falls through to the `.v-overlay.v-dialog` root that
+wraps the whole dialog (checked 2026-09-01: `VOverlay` merges fallthrough attrs onto its root
+div, not onto `.v-overlay__content`) and stays reachable from the e2e suite. That root is
+removed on the leave transition, so `toBeHidden()` on it still tracks a closed dialog.
 
 ## The UI round (2026-08-31): toasts that carry a timer, and three traps in them
 
@@ -940,6 +942,16 @@ disabled with the reason beside it" everywhere it was asserted.
   point at the + button, which is not where the conversion lives any more), with the reasons in
   `blockedDetail` under it (`invite-blocked-detail`). Every other branch, offline included,
   leaves `blockedDetail` null. The snapshot half is untouched and works for all five kinds.
+- **`ShareDialog` is on `AppDialog` now (2026-09-01).** The share-settings verify flagged it as
+  the last raw `v-dialog` + `v-card` on a sync path; it is `<app-dialog>` with
+  `card-class="border-md"`, `icon="fas fa-share-alt"`, `max-width="760"`, a computed
+  `Share "<tab name>"` title, `close-title="Close share settings"` and
+  `close-id="close-share-dialog"`. Body content is unchanged, so every testid held. The
+  bottom-row Close button is gone (the corner close replaces it), which is why
+  `closeShareDialog` in `e2e/helpers/rooms.ts` now clicks `#close-share-dialog` the way
+  `closeTabSettings` does rather than matching a button by the name "Close". The only dialogs
+  still on raw chrome are the release splash decks and `StatisticsFactorySummary.vue`, both
+  deliberate.
 - **`shareBlurb` must not promise a link the pane cannot show.** Its first cut sent both
   non-owners down one branch saying "and the invite link for this plan", which is a lie for an
   anonymous visitor: `shareCapabilities` hardcodes `inviteLink: null` for `kind: 'joined'`
@@ -957,10 +969,10 @@ disabled with the reason beside it" everywhere it was asserted.
   `closeTabSettings` in `e2e/helpers/planner.ts`, and `renameCurrentTab` drives the dialog.
   tab-lifecycle's member test opens the dialog and asserts the disabled field before and
   after the owner's rename.
-- Counts after this round: web 2884 unit tests + 1 skipped across 154 files
-  (TabSettingsDialog.spec 22, ShareDialog.spec 18, share-capabilities.spec 18,
-  TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in 5.7m, tab-lifecycle also
-  standalone 5/5.
+- Counts after this round: web 2887 unit tests + 1 skipped across 154 files (2026-09-01, after
+  the `AppDialog` move added 3 shell tests: TabSettingsDialog.spec 22, ShareDialog.spec 21,
+  share-capabilities.spec 18, TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in 5.7m,
+  tab-lifecycle also standalone 5/5.
 - Verified live against a local API (mongodb-memory-server on 3001, `CORS_EXTRA_ORIGINS`
   pointed at the vite dev origin, since the static allowlist only carries `localhost:3000`):
   local pencil shows Share Settings on the snapshot-only pane, convert to cloud flips the tab

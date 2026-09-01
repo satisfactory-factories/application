@@ -88,6 +88,37 @@ describe('ShareDialog', () => {
     appStore.getCurrentTab().name = 'Iron Plates'
   })
 
+  // The dialog rides on the shared `AppDialog` shell, which teleports its content and owns the
+  // title row and the corner close. Both anchors below are what the e2e suite reaches for.
+  describe('the shared dialog shell', () => {
+    it('carries the dialog id the e2e suite anchors on, sections and all', async () => {
+      await open({ kind: 'local' })
+
+      const dialog = at('share-dialog')
+      expect(dialog?.querySelector('[data-testid="snapshot-section"]')).not.toBeNull()
+      expect(dialog?.querySelector('[data-testid="invite-section"]')).not.toBeNull()
+    })
+
+    it('names the plan in the title row', async () => {
+      await open({ kind: 'local' })
+
+      const title = body().querySelector('.v-card-title')
+      expect(title?.textContent).toContain('Share "Iron Plates"')
+      expect(title?.querySelector('i')?.className).toContain('fa-share-alt')
+    })
+
+    it('closes from the corner button, which the e2e suite clicks by id', async () => {
+      const wrapper = await open({ kind: 'local' })
+
+      const close = body().querySelector<HTMLElement>('#close-share-dialog')
+      expect(close).not.toBeNull()
+      close!.click()
+      await flushPromises()
+
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    })
+  })
+
   describe('a local tab', () => {
     it('offers the snapshot half and nothing else', async () => {
       await open({ kind: 'local' })

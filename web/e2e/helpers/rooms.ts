@@ -72,8 +72,9 @@ export const openShareDialog = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('share-dialog')).toBeVisible()
 }
 
+/** The shared dialog shell puts the way out in the corner, reachable by its id. */
 export const closeShareDialog = async (page: Page): Promise<void> => {
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.locator('#close-share-dialog').click()
   await expect(page.getByTestId('share-dialog')).toBeHidden()
 }
 
