@@ -19,6 +19,8 @@ export interface ShareCapabilities {
   hasPassword: boolean
   /** Why the invite half is unavailable, or null when it is available. */
   blockedReason: string | null
+  /** The reasons behind `blockedReason`, where they are worth spelling out. */
+  blockedDetail: string | null
 }
 
 export const roomLink = (slug: string, origin: string): string => `${origin}/room/${slug}`
@@ -43,6 +45,7 @@ export const shareCapabilities = (
       // The existing link is still worth copying: it needs nothing from us.
       inviteLink: shared && slug ? roomLink(slug, origin) : null,
       blockedReason: 'You are in offline mode. Turn it off to change how this plan is shared.',
+      blockedDetail: null,
     }
   }
 
@@ -53,7 +56,9 @@ export const shareCapabilities = (
       canManageInvite: false,
       isShared: false,
       inviteLink: null,
-      blockedReason: 'This plan lives in this browser only. Sync it from the + button to invite people to edit it with you.',
+      blockedReason: 'You must convert this tab to a cloud tab before it is possible to share it.',
+      blockedDetail: 'The plan has to live on your account before anyone else can join it and receive your changes live. ' +
+        'You stay its owner and decide who has access.',
     }
   }
 
@@ -67,6 +72,7 @@ export const shareCapabilities = (
       isShared: true,
       inviteLink: null,
       blockedReason: 'You are editing this plan through an invite link. Only its owner can change how it is shared.',
+      blockedDetail: null,
     }
   }
 
@@ -81,5 +87,6 @@ export const shareCapabilities = (
     isShared: shared,
     inviteLink: shared && slug ? roomLink(slug, origin) : null,
     blockedReason: isOwner ? null : 'Only the owner can change how this plan is shared.',
+    blockedDetail: null,
   }
 }

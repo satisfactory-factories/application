@@ -927,6 +927,19 @@ disabled with the reason beside it" everywhere it was asserted.
   an account for this, please register using the Sign in Pioneer button top right of the
   planner") — the v-tooltip activator wraps the button in a span because a disabled button
   swallows the hover.
+- **Share Settings is ungated (2026-09-01).** It used to render only under
+  `isCollaborative(state)`, so a private synced tab (which is what a converted local tab
+  becomes) and a local tab had no share entry point at all once the account panel's per-row
+  share buttons went. The `<template v-if="collaborative">` is gone; the button always shows,
+  with a `shareBlurb` computed picking the sentence above it per kind. `ShareButton.vue` in the
+  tab bar was already ungated, so nothing there needed changing. Negative control: putting the
+  `v-if` back fails 4 TabSettingsDialog tests.
+- **A local tab is told why it cannot collaborate.** `share-capabilities.ts` grew
+  `blockedDetail` beside `blockedReason`, and the local branch's reason is now the verbatim
+  "You must convert this tab to a cloud tab before it is possible to share it." (it used to
+  point at the + button, which is not where the conversion lives any more), with the reasons in
+  `blockedDetail` under it (`invite-blocked-detail`). Every other branch, offline included,
+  leaves `blockedDetail` null. The snapshot half is untouched and works for all five kinds.
 - Icon swap: synced tabs now wear `fas fa-cloud` (was `fa-user`) in the tab bar and on the
   new-tab chooser's Synced card; local `fa-desktop` and collaborative `fa-users` unchanged.
   No spec asserted `fa-user` anywhere; assertions for the new icons were *added*
@@ -937,9 +950,10 @@ disabled with the reason beside it" everywhere it was asserted.
   `closeTabSettings` in `e2e/helpers/planner.ts`, and `renameCurrentTab` drives the dialog.
   tab-lifecycle's member test opens the dialog and asserts the disabled field before and
   after the owner's rename.
-- Counts after this round: web 2871 unit tests + 1 skipped across 154 files
-  (TabSettingsDialog.spec 18, TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in
-  5.7m, tab-lifecycle also standalone 5/5.
+- Counts after this round: web 2882 unit tests + 1 skipped across 154 files
+  (TabSettingsDialog.spec 20, ShareDialog.spec 18, share-capabilities.spec 18,
+  TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in 5.7m, tab-lifecycle also
+  standalone 5/5.
 
 ## Flagged follow-ups, none of them blocking
 

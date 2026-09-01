@@ -51,6 +51,11 @@
             class="text-body-2 text-amber"
             data-testid="invite-blocked"
           >{{ capabilities.blockedReason }}</p>
+          <p
+            v-if="capabilities.blockedDetail"
+            class="mt-2 text-body-2"
+            data-testid="invite-blocked-detail"
+          >{{ capabilities.blockedDetail }}</p>
 
           <template v-if="capabilities.canManageInvite">
             <v-btn

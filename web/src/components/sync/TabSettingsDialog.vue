@@ -36,20 +36,18 @@
       {{ renameError }}
     </p>
 
-    <template v-if="collaborative">
-      <v-divider class="my-4" />
-      <p class="mb-3 text-body-2">
-        Invite links, passwords and who can join this plan.
-      </p>
-      <v-btn
-        color="blue"
-        data-testid="share-settings"
-        variant="flat"
-        @click="shareOpen = true"
-      >
-        <i class="fas fa-share-alt mr-2" />Share Settings
-      </v-btn>
-    </template>
+    <!-- Every kind gets in: a snapshot link needs no room, and the dialog itself
+         explains what a local or non-owned tab cannot do. -->
+    <v-divider class="my-4" />
+    <p class="mb-3 text-body-2">{{ shareBlurb }}</p>
+    <v-btn
+      color="blue"
+      data-testid="share-settings"
+      variant="flat"
+      @click="shareOpen = true"
+    >
+      <i class="fas fa-share-alt mr-2" />Share Settings
+    </v-btn>
 
     <template v-if="kind === 'local'">
       <v-divider class="my-4" />
@@ -172,6 +170,14 @@
   const collaborative = computed(() => isCollaborative(state.value))
   const isLoggedIn = computed(() => authStore.isLoggedIn)
   const canRename = computed(() => roomsStore.canRename(props.tabId))
+
+  const shareBlurb = computed(() => {
+    if (kind.value === 'local') return 'Snapshot links for this plan. Sharing it live needs a cloud plan.'
+    if (!collaborative.value) return 'Snapshot links, and the invite link that brings other people in.'
+    return isOwner.value
+      ? 'Invite links, passwords and who can join this plan.'
+      : 'Snapshot links, and the invite link for this plan.'
+  })
 
   // ===== Rename =====
 

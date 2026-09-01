@@ -114,25 +114,25 @@ describe('TabSettingsDialog', () => {
   }
 
   describe('what each tab kind is offered', () => {
-    it('offers a local tab the cloud, and nothing destructive', async () => {
+    it('offers a local tab the cloud and share settings, and nothing destructive', async () => {
       await render(localTab())
 
       expect(shown('convert-to-cloud')).toBe(true)
       expect(shown('convert-to-local')).toBe(false)
-      expect(shown('share-settings')).toBe(false)
+      expect(shown('share-settings')).toBe(true)
       expect(shown('rename-refusal')).toBe(false)
     })
 
-    it('offers a private cloud plan its owner only the way back to local', async () => {
+    it('offers a private cloud plan its owner share settings and the way back to local', async () => {
       await render(syncedTab())
 
       expect(shown('convert-to-local')).toBe(true)
       expect(shown('convert-to-cloud')).toBe(false)
-      expect(shown('share-settings')).toBe(false)
+      expect(shown('share-settings')).toBe(true)
       expect(shown('rename-refusal')).toBe(false)
     })
 
-    it('adds share settings once the plan is shared', async () => {
+    it('keeps share settings once the plan is shared', async () => {
       await render(syncedTab({ shared: true }))
 
       expect(shown('share-settings')).toBe(true)
@@ -337,14 +337,54 @@ describe('TabSettingsDialog', () => {
     })
   })
 
-  it('opens the existing share dialog from Share Settings', async () => {
-    const tabId = syncedTab({ shared: true })
-    await render(tabId)
+  describe('share settings', () => {
+    it('opens the existing share dialog from Share Settings', async () => {
+      const tabId = syncedTab({ shared: true })
+      await render(tabId)
 
-    expect(shown('share-dialog')).toBe(false)
-    at('share-settings')!.click()
-    await flushPromises()
+      expect(shown('share-dialog')).toBe(false)
+      at('share-settings')!.click()
+      await flushPromises()
 
-    expect(shown('share-dialog')).toBe(true)
+      expect(shown('share-dialog')).toBe(true)
+    })
+
+    it('opens it for a local tab too, on the snapshot-only pane', async () => {
+      await render(localTab())
+
+      at('share-settings')!.click()
+      await flushPromises()
+
+      expect(shown('share-dialog')).toBe(true)
+      expect(shown('create-snapshot')).toBe(true)
+      expect(at('invite-blocked')?.textContent).toContain(
+        'You must convert this tab to a cloud tab before it is possible to share it'
+      )
+    })
+
+    it('keeps the button after a conversion, on the cloud capabilities', async () => {
+      const tabId = localTab()
+      vi.mocked(api.adoptRoom).mockResolvedValue({
+        status: 'created',
+        room: entry({ roomId: tabId, name: 'My plan' }),
+      })
+      vi.mocked(api.listRooms).mockResolvedValue({
+        roomsRevision: 2,
+        rooms: [entry({ roomId: tabId, name: 'My plan' })],
+      })
+      await render(tabId)
+
+      at('convert-to-cloud')!.click()
+      await flushPromises()
+
+      expect(appStore.getTabState(tabId).kind).toBe('synced')
+      expect(shown('share-settings')).toBe(true)
+
+      at('share-settings')!.click()
+      await flushPromises()
+
+      expect(shown('create-invite')).toBe(true)
+      expect(shown('invite-blocked')).toBe(false)
+    })
   })
 })

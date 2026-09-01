@@ -98,10 +98,21 @@ describe('ShareDialog', () => {
       expect(shows('slug-input')).toBe(false)
     })
 
-    it('says how to get the live half', async () => {
+    // The exact sentence is the requirement, so it is asserted as written.
+    it('says in as many words that it has to become a cloud tab first', async () => {
       await open({ kind: 'local' })
 
-      expect(at('invite-blocked')?.textContent).toContain('this browser only')
+      expect(at('invite-blocked')?.textContent).toContain(
+        'You must convert this tab to a cloud tab before it is possible to share it'
+      )
+    })
+
+    it('gives the reasons under it rather than leaving the refusal bare', async () => {
+      await open({ kind: 'local' })
+
+      const detail = at('invite-blocked-detail')?.textContent
+      expect(detail).toContain('has to live on your account')
+      expect(detail).toContain('You stay its owner')
     })
   })
 
@@ -215,6 +226,7 @@ describe('ShareDialog', () => {
       expect(shows('slug-input')).toBe(false)
       expect(shows('stop-sharing')).toBe(false)
       expect(at('invite-blocked')?.textContent).toContain('Only the owner')
+      expect(shows('invite-blocked-detail')).toBe(false)
     })
 
     it('keeps the snapshot half, which needs no rights at all', async () => {

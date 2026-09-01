@@ -138,7 +138,10 @@ explains anything it has to refuse.
   which keeps the tab's content as a local tab and leaves collaborators their copies
 - Joined tab (member or anonymous visitor): convert to local leaves the room through the same
   `removeTab` path (leave for a member, a purely local untrack for a visitor), no confirm
-- Collaborative tab: a Share Settings button opening the existing `ShareDialog` for that tab
+- Every tab kind: a Share Settings button opening the existing `ShareDialog` for that tab,
+  because a snapshot link needs no room. A local tab's dialog states "You must convert this tab
+  to a cloud tab before it is possible to share it." with the reasons under it, and the invite
+  half stays refused
 - Icon swap: the synced-tab marker is `fa-cloud` everywhere a tab-kind icon renders (tab bar,
   new-tab chooser); local stays `fa-desktop`, collaborative stays `fa-users`
 - Specs: `TabSettingsDialog.spec.ts` (18), pencil + icon coverage in `TabNavigation.spec.ts`

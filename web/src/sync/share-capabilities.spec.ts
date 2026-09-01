@@ -39,7 +39,18 @@ describe('shareCapabilities', () => {
       expect(local().isRoom).toBe(false)
       expect(local().canManageInvite).toBe(false)
       expect(local().inviteLink).toBeNull()
-      expect(local().blockedReason).toContain('this browser only')
+    })
+
+    // The exact sentence is the requirement, so it is asserted as written.
+    it('names the cloud conversion as the thing standing in the way', () => {
+      expect(local().blockedReason).toContain(
+        'You must convert this tab to a cloud tab before it is possible to share it'
+      )
+    })
+
+    it('says why a cloud plan is what collaboration needs', () => {
+      expect(local().blockedDetail).toContain('has to live on your account')
+      expect(local().blockedDetail).toContain('You stay its owner')
     })
   })
 
@@ -126,6 +137,16 @@ describe('shareCapabilities', () => {
     it('still hands over the link the room already has', () => {
       expect(offline().inviteLink).toBe('https://satisfactory-factories.app/room/a-b-c')
     })
+  })
+
+  // Only the local tab has a refusal worth explaining; the rest say it in one line.
+  it.each([
+    ['a synced owner', () => shareCapabilities(state(), entry(), ORIGIN)],
+    ['a member', () => shareCapabilities(state({ shared: true, role: 'member' }), entry({ role: 'member' }), ORIGIN)],
+    ['a visitor', () => shareCapabilities(state({ kind: 'joined', role: 'member' }), undefined, ORIGIN)],
+    ['offline', () => shareCapabilities(state(), entry(), ORIGIN, true)],
+  ])('spells out no extra detail for %s', (_label, build) => {
+    expect(build().blockedDetail).toBeNull()
   })
 
   it('builds the room link against whatever origin it is given', () => {
