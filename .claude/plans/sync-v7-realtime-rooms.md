@@ -132,7 +132,10 @@ explains anything it has to refuse.
   existing `renameTab` path (owner-only on rooms, refusals shown inline, a member's field is
   disabled with the reason beside it)
 - Local tab: a convert-to-cloud button (fa-cloud-upload-alt) through `adoptTabs([tabId])`;
-  signed out it is disabled with the exact register-first hover tooltip the requirements fix
+  signed out it is enabled, reads "Sign in to convert" and swaps the dialog body for the
+  planner's own `AuthForm`, with the owner's "you do not need an account" copy under it. The
+  button flips to the real conversion on the session landing, without the dialog reopening.
+  (Superseded the disabled button and its register-first hover tooltip.)
 - Cloud tab the user owns: convert to local behind an in-dialog confirm step (no server call
   before the confirm; negative-controlled in the spec) through `removeTab`'s owner delete path,
   which keeps the tab's content as a local tab and leaves collaborators their copies

@@ -925,10 +925,29 @@ disabled with the reason beside it" everywhere it was asserted.
   warning + `confirm-convert-to-local`/`cancel-convert-to-local`); the shared-plan copy says
   collaborators keep local copies. The gate is negative-controlled: wiring the button straight
   to `convertToLocal` fails 3 tests (the no-call-before-confirm one included).
-- Signed out, convert to cloud is disabled with the exact required tooltip ("You need to have
-  an account for this, please register using the Sign in Pioneer button top right of the
-  planner") — the v-tooltip activator wraps the button in a span because a disabled button
-  swallows the hover.
+- **Signed out, convert to cloud is the sign-in itself (2026-09-01).** Superseded: it used to be
+  a disabled button under a `v-tooltip` telling the visitor to go and use the account button in
+  the app bar ("You need to have an account for this, please register using the Sign in Pioneer
+  button top right of the planner"). That tooltip and its spec are gone. The button is enabled,
+  reads "Sign in to convert", and swaps the dialog body for `AuthForm.vue` (`signingIn` ref,
+  `cancel-sign-in` Back button in the actions slot) exactly as `NewTabDialog.vue` does.
+  - **There is no cross-component way to open the account tray, and adding one was not worth
+    it.** `Auth.vue` opens its tray from a local `trayOpen` ref on a `v-overlay` with
+    `activator="parent"`; nothing outside the component can set it, and the only inbound trigger
+    is `sessionExpired`, which fronts the "Session Expired!" dialog first. So the reusable half
+    of "the app's sign-in prompt" is `AuthForm.vue`, and there are now three hosts for it: the
+    tray, the new-tab chooser and tab settings. An `openSignIn` event would also have put a
+    tray overlay on top of an open dialog, which is a z-index and focus-trap gamble for nothing.
+  - After `@authenticated` the handler awaits `roomsStore.whenSessionReady()` before dropping
+    `signingIn`, for the reason `NewTabDialog` does it: adopting into a room list still in
+    flight comes back missing and is reverted. The button then flips on the `isLoggedIn`
+    computed alone, with the dialog never closed.
+  - The reassurance copy under the signed-out button (`convert-cloud-reassurance`) is the
+    owner's own wording with a `<strong>not</strong>`, and it is the first place in the planner
+    that mentions an account at all. Signed in it is not rendered.
+  - Negative controls, all three run: freezing `isLoggedIn` to a snapshot fails the flip test
+    only; dropping the `v-if="!isLoggedIn"` on the copy fails 2; wiring the button straight to
+    `convertToCloud` fails 3. `tab-lifecycle.e2e.ts` covers the whole flip in a browser.
 - **Share Settings is ungated (2026-09-01).** It used to render only under
   `isCollaborative(state)`, so a private synced tab (which is what a converted local tab
   becomes) and a local tab had no share entry point at all once the account panel's per-row

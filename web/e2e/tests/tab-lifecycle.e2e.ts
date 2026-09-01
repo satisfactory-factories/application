@@ -138,6 +138,38 @@ test('a tab order dragged after an idle soak still reaches the other', async ({
   }).toEqual(['Soak two', 'Soak one'])
 })
 
+/**
+ * Signed out, convert to cloud is the way in to the planner's own sign-in form rather
+ * than a greyed-out button, and the dialog that was open becomes the real conversion
+ * once the session lands.
+ */
+test('signing in from tab settings turns the convert button into the conversion', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+  const page = await openPlanner(await client())
+
+  const settings = await openTabSettings(page)
+  await expect(settings.getByTestId('convert-cloud-reassurance'))
+    .toContainText('You do not need an account to use this planner')
+
+  const convert = settings.getByTestId('convert-to-cloud')
+  await expect(convert).toContainText('Sign in to convert')
+  await convert.click()
+
+  await expect(settings.getByTestId('auth-form')).toBeVisible()
+  await settings.getByLabel('Username').fill(user.username)
+  await settings.getByLabel('Password').fill(user.password)
+  await settings.getByRole('button', { name: 'Log in', exact: true }).click()
+
+  // Nothing was reopened: the same dialog, with the button the account unlocks.
+  await expect(convert).toContainText('Convert to cloud', { timeout: 20_000 })
+  await expect(settings.getByTestId('convert-cloud-reassurance')).toBeHidden()
+  await expect(settings.locator('[data-testid="tab-name-field"]')).toBeVisible()
+  await closeTabSettings(page)
+})
+
 test('a member gets the owner\'s rename and is offered no rename of their own', async ({
   client,
   request,
