@@ -186,6 +186,52 @@ describe('Component: TabNavigation', () => {
     })
   })
 
+  describe('the tab settings pencil', () => {
+    it('marks local, synced and collaborative tabs with desktop, cloud and users icons', async () => {
+      const local = appStore.getCurrentTab()
+      local.name = 'Local'
+      appStore.addTab({ id: 'room-a', name: 'A', factories: [] }, { activate: false })
+      appStore.addTab({ id: 'room-b', name: 'B', factories: [] }, { activate: false })
+      vi.mocked(api.listRooms).mockResolvedValue({
+        roomsRevision: 1,
+        rooms: [entry('room-a', 'A', 0), { ...entry('room-b', 'B', 1), shared: true }],
+      })
+      await roomsStore.refresh()
+      const wrapper = render()
+
+      const icons = wrapper.findAll('[data-testid="factory-tab"] .tab-state i')
+        .map(icon => icon.classes().find(name => name.startsWith('fa-')))
+      expect(icons).toEqual(['fa-desktop', 'fa-cloud', 'fa-users'])
+    })
+
+    it('opens the tab settings dialog', async () => {
+      await mixedBar()
+      const wrapper = mount(TabNavigation, {
+        global: { plugins: [vuetify] },
+        attachTo: document.body,
+      })
+
+      expect(document.body.querySelector('[data-testid="tab-settings-dialog"] .v-card')).toBeNull()
+      await wrapper.find('[data-testid="tab-settings"]').trigger('click')
+      await flushPromises()
+
+      expect(document.body.querySelector('[data-testid="tab-settings-dialog"] .v-card')).not.toBeNull()
+      wrapper.unmount()
+    })
+
+    // The dialog holds more than the rename, so the role no longer gates the pencil:
+    // a member gets it too, and the dialog explains what their role may not do.
+    it('offers the pencil to a member as well', async () => {
+      await mixedBar()
+      appStore.setTabState('room-a', { role: 'member' })
+      appStore.activateTab('room-a')
+      await flushPromises()
+      const wrapper = render()
+
+      expect(wrapper.find('[data-testid="tab-settings"]').exists()).toBe(true)
+    })
+  })
+
   it('refuses the drag in offline mode, and says why', async () => {
     await mixedBar()
     roomSync.enterOffline()

@@ -68,10 +68,9 @@ const readTabElements = (page: Page): Promise<Omit<TabBarEntry, 'id'>[]> =>
 
     const clone = element.cloneNode(true) as HTMLElement
     for (const extra of clone.querySelectorAll('.tab-state, button')) extra.remove()
-    const editor = element.querySelector('input')
 
     return {
-      name: editor ? editor.value : (clone.textContent ?? '').trim(),
+      name: (clone.textContent ?? '').trim(),
       kind: kind as TabBarEntry['kind'],
       selected: element.classList.contains('v-tab--selected'),
     }
@@ -184,17 +183,28 @@ export const waitForTab = async (page: Page, tabId: string): Promise<void> => {
   }).toBe(true)
 }
 
-/** The pencil on the selected tab. Absent entirely for anyone who may not rename. */
-export const renameAffordance = (page: Page): Locator =>
-  page.locator('[data-testid="factory-tab"].v-tab--selected button')
+/** The pencil on the selected tab: opens the tab settings dialog for any role. */
+export const tabSettingsAffordance = (page: Page): Locator =>
+  page.locator('[data-testid="factory-tab"].v-tab--selected [data-testid="tab-settings"]')
 
+export const openTabSettings = async (page: Page): Promise<Locator> => {
+  const dialog = page.locator('[data-testid="tab-settings-dialog"]')
+  await tabSettingsAffordance(page).click()
+  await expect(dialog.locator('[data-testid="tab-name-field"]')).toBeVisible()
+  return dialog
+}
+
+export const closeTabSettings = async (page: Page): Promise<void> => {
+  await page.locator('#close-tab-settings').click()
+  await expect(page.locator('[data-testid="tab-name-field"]')).toBeHidden()
+}
+
+/** Renames through the settings dialog, the only rename the planner offers now. */
 export const renameCurrentTab = async (page: Page, name: string): Promise<void> => {
-  await renameAffordance(page).click()
-  const field = page.locator('[data-testid="factory-tab"].v-tab--selected input')
-  await expect(field).toBeVisible()
-  await field.fill(name)
-  await renameAffordance(page).click()
-  await expect(field).toBeHidden()
+  await openTabSettings(page)
+  await page.locator('[data-testid="tab-name-field"] input').fill(name)
+  await page.locator('[data-testid="tab-name-apply"]').click()
+  await closeTabSettings(page)
 }
 
 const tabBarButton = (page: Page, icon: string): Locator =>

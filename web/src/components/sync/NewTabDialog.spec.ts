@@ -77,6 +77,16 @@ describe('NewTabDialog', () => {
     expect(shown('choose-synced-tab')).toBe(true)
   })
 
+  // The tab-kind icons are one language everywhere: desktop for local, cloud for
+  // synced. The choice cards teach it, so they have to speak it.
+  it('marks the choices with the tab-kind icons', () => {
+    render()
+
+    expect(at('choose-local-tab')?.querySelector('.fa-desktop')).not.toBeNull()
+    expect(at('choose-synced-tab')?.querySelector('.fa-cloud')).not.toBeNull()
+    expect(at('choose-synced-tab')?.querySelector('.fa-user')).toBeNull()
+  })
+
   it('makes a local tab with no account at all', async () => {
     const wrapper = render()
 

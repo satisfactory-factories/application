@@ -5,13 +5,14 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import {
   addFactory,
+  closeTabSettings,
   createSyncedTab,
   deleteCurrentTab,
   dragTab,
   expectTabKind,
   openPlanner,
+  openTabSettings,
   readTabBar,
-  renameAffordance,
   renameCurrentTab,
   selectTab,
   settle,
@@ -148,13 +149,17 @@ test('a member gets the owner\'s rename and is offered no rename of their own', 
   await waitForTab(member, roomId)
   await selectTab(member, roomId)
 
-  // The UI's answer to "members may not rename" is that the control is absent.
-  // Polled: the pencil is derived from the role, which lands with the rooms
-  // refresh a beat after the join on a slow runner. The tab is already selected
-  // and rendered here, so a settled count of 0 is meaningful, not vacuous.
-  await expect.poll(() => renameAffordance(member).count(), {
-    message: 'the member still sees a rename control',
-  }).toBe(0)
+  // The pencil opens tab settings for every role now; the UI's answer to
+  // "members may not rename" is a disabled name field with the reason beside
+  // it. Playwright's retry covers the beat between the join and the role
+  // landing with the rooms refresh on a slow runner.
+  const settings = await openTabSettings(member)
+  await expect(settings.locator('[data-testid="tab-name-field"] input'), {
+    message: 'the member can still type into the rename field',
+  }).toBeDisabled()
+  await expect(settings.locator('[data-testid="rename-refusal"]'))
+    .toContainText('Only the owner can rename this plan.')
+  await closeTabSettings(member)
 
   await selectTab(owner, roomId)
   await renameCurrentTab(owner, 'Renamed by its owner')
@@ -162,5 +167,9 @@ test('a member gets the owner\'s rename and is offered no rename of their own', 
   await expect.poll(() => tabNames(member), {
     message: 'the owner\'s rename never reached the member',
   }).toContain('Renamed by its owner')
-  expect(await renameAffordance(member).count()).toBe(0)
+
+  // The rename granted the member nothing: the field is exactly as refused.
+  await openTabSettings(member)
+  await expect(member.locator('[data-testid="tab-name-field"] input')).toBeDisabled()
+  await closeTabSettings(member)
 })

@@ -32,7 +32,7 @@
           @click="chooseSynced"
         >
           <div class="text-h6 mb-2">
-            <span class="mr-2"><i class="fas fa-user" /></span>Synced tab
+            <span class="mr-2"><i class="fas fa-cloud" /></span>Synced tab
           </div>
           <p class="text-body-2">
             Saved to your account and kept in step across every device you sign in on.

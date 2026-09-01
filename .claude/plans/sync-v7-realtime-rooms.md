@@ -122,7 +122,31 @@ asks; a page refresh with a persisted session restores the bar it already had an
   the expected default), make `showPlan` ensure-open, and prove the "Not now" path plus the
   reload suppression in `login-chooser.e2e.ts`
 
-Still open for the next stage: sharing controls in the tab settings modal.
+### The tab settings dialog — delivered
+
+The pencil on the selected tab now opens `TabSettingsDialog.vue` (AppDialog); the inline
+rename it used to trigger is gone, and the pencil shows for every role because the dialog
+explains anything it has to refuse.
+
+- Always offer the tab name in a text field with Apply; Enter and blur apply too, through the
+  existing `renameTab` path (owner-only on rooms, refusals shown inline, a member's field is
+  disabled with the reason beside it)
+- Local tab: a convert-to-cloud button (fa-cloud-upload-alt) through `adoptTabs([tabId])`;
+  signed out it is disabled with the exact register-first hover tooltip the requirements fix
+- Cloud tab the user owns: convert to local behind an in-dialog confirm step (no server call
+  before the confirm; negative-controlled in the spec) through `removeTab`'s owner delete path,
+  which keeps the tab's content as a local tab and leaves collaborators their copies
+- Joined tab (member or anonymous visitor): convert to local leaves the room through the same
+  `removeTab` path (leave for a member, a purely local untrack for a visitor), no confirm
+- Collaborative tab: a Share Settings button opening the existing `ShareDialog` for that tab
+- Icon swap: the synced-tab marker is `fa-cloud` everywhere a tab-kind icon renders (tab bar,
+  new-tab chooser); local stays `fa-desktop`, collaborative stays `fa-users`
+- Specs: `TabSettingsDialog.spec.ts` (18), pencil + icon coverage in `TabNavigation.spec.ts`
+  and `NewTabDialog.spec.ts`; e2e renames drive the dialog (`openTabSettings`/
+  `closeTabSettings`/`renameCurrentTab` in `e2e/helpers/planner.ts`), and the member test
+  asserts the disabled field and reason instead of an absent pencil
+
+Nothing from the post-review round remains open.
 
 ## Locked decisions
 

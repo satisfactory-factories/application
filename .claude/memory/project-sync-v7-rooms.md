@@ -30,9 +30,9 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2830 unit tests (152 files, 1 skipped) as of the cloud-plan-offload round (2026-09-01),
+web 2871 unit tests (154 files, 1 skipped) as of the tab-settings round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 41 Playwright e2e tests passing (41st added in the cloud-plan-offload
+`build` clean, and all 42 Playwright e2e tests passing (the 42nd added in the login-chooser
 round). The whole suite ran twice at full speed
 and once under `E2E_CPU_THROTTLE=6` in the bulk-removal round below; the throttled run is the one
 that earns its keep, and it is the one that found the last real bug in an earlier round.
@@ -901,6 +901,45 @@ negative-controlled in the spec (defaulting `interactive` to true fails exactly 
   on. `login-chooser.e2e.ts` proves "Not now" plus the reload suppression end to end.
 - Counts after this round: web 2850 unit tests (1 skipped) across 153 files; the store spec
   holds 86 and the new dialog spec 10.
+
+## The tab settings dialog (2026-09-01): the pencil opens a dialog, and synced tabs wear a cloud
+
+The pencil on the selected tab (`TabNavigation.vue`) no longer renames in place; it opens
+`TabSettingsDialog.vue` (AppDialog, `sync/`, testid `tab-settings-dialog`, close button id
+`close-tab-settings`). The pencil shows for **every** role now — the dialog explains what a
+role may not do — so "a member is offered no rename" became "a member's name field is
+disabled with the reason beside it" everywhere it was asserted.
+
+- The name field always shows; Apply, Enter and blur all run the same `applyRename` (guarded:
+  an unchanged name is a no-op, so the blur that a close click fires never double-sends).
+  Everything goes through `roomsStore.renameTab`, refusals land inline (`rename-error`), and
+  a non-owner gets a disabled field plus `rename-refusal` text matching the store's message.
+- **No new store code was needed for the conversions.** Convert to cloud is
+  `adoptTabs([tabId])` (the panel's path). Convert to local is `roomsStore.removeTab(tabId)`,
+  which already does exactly the required semantics for all three roles: owner = server
+  delete + `markTabLocal` (content kept; `selfRemoved` silences the echo), member = leave +
+  keep, visitor = untrack + keep. The tab is never removed from the bar.
+- The owner's convert to local sits behind an in-dialog confirm (`convert-to-local` →
+  warning + `confirm-convert-to-local`/`cancel-convert-to-local`); the shared-plan copy says
+  collaborators keep local copies. The gate is negative-controlled: wiring the button straight
+  to `convertToLocal` fails 3 tests (the no-call-before-confirm one included).
+- Signed out, convert to cloud is disabled with the exact required tooltip ("You need to have
+  an account for this, please register using the Sign in Pioneer button top right of the
+  planner") — the v-tooltip activator wraps the button in a span because a disabled button
+  swallows the hover.
+- Icon swap: synced tabs now wear `fas fa-cloud` (was `fa-user`) in the tab bar and on the
+  new-tab chooser's Synced card; local `fa-desktop` and collaborative `fa-users` unchanged.
+  No spec asserted `fa-user` anywhere; assertions for the new icons were *added*
+  (TabNavigation.spec icon test, NewTabDialog.spec). The e2e tab-kind reader
+  (`readTabElements`) already treated "neither desktop nor users" as synced, so it needed no
+  change; the dead inline-editor read in it was dropped.
+- e2e: `renameAffordance` is gone; `tabSettingsAffordance`/`openTabSettings`/
+  `closeTabSettings` in `e2e/helpers/planner.ts`, and `renameCurrentTab` drives the dialog.
+  tab-lifecycle's member test opens the dialog and asserts the disabled field before and
+  after the owner's rename.
+- Counts after this round: web 2871 unit tests + 1 skipped across 154 files
+  (TabSettingsDialog.spec 18, TabNavigation.spec 12, NewTabDialog.spec 11); e2e 42/42 in
+  5.7m, tab-lifecycle also standalone 5/5.
 
 ## Flagged follow-ups, none of them blocking
 

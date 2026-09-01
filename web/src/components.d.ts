@@ -109,6 +109,7 @@ declare module 'vue' {
     StatisticsResources: typeof import('./components/planner/StatisticsResources.vue')['default']
     StatisticsShardsSloops: typeof import('./components/planner/StatisticsShardsSloops.vue')['default']
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
+    TabSettingsDialog: typeof import('./components/sync/TabSettingsDialog.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     ToastNotification: typeof import('./components/common/ToastNotification.vue')['default']

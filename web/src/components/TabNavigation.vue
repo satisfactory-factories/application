@@ -48,31 +48,31 @@
                 <span class="tab-state mr-2" :title="stateLabel(item.id)">
                   <span v-if="kindOf(item.id) === 'local'"><i class="fas fa-desktop" /></span>
                   <span v-else-if="kindOf(item.id) === 'collaborative'"><i class="fas fa-users" /></span>
-                  <span v-else><i class="fas fa-user" /></span>
+                  <span v-else><i class="fas fa-cloud" /></span>
                   <!-- The server already sends the occupancy count; showing it costs nothing. -->
                   <span v-if="othersOn(item.id) > 0" class="ml-1" data-testid="tab-presence">
                     {{ othersOn(item.id) + 1 }}
                   </span>
                 </span>
-                <input
-                  v-if="isCurrentTab(index) && isEditingName"
-                  v-model="currentTabName"
-                  class="pa-1 rounded border bg-grey-darken-2"
-                  @keyup.enter="onClickEditTabName"
-                >
-                <span v-else>
+                <span>
                   {{ item.name }}
                 </span>
-                <v-btn
-                  v-if="isCurrentTab(index) && canRename"
-                  :key="`${isEditingName}`"
-                  class="ml-2 tab-action"
-                  :icon="`fas ${isEditingName ? 'fa-check': 'fa-pen'}`"
-                  :loading="renaming"
-                  size="x-small"
-                  variant="text"
-                  @click="onClickEditTabName"
-                />
+                <!-- On every current tab whatever the role: the dialog holds more than
+                     the rename, and explains anything it has to refuse. -->
+                <v-tooltip v-if="isCurrentTab(index)" location="top">
+                  <template #activator="{ props: settingsProps }">
+                    <v-btn
+                      class="ml-2 tab-action"
+                      data-testid="tab-settings"
+                      icon="fas fa-pen"
+                      size="x-small"
+                      variant="text"
+                      v-bind="settingsProps"
+                      @click="settingsOpen = true"
+                    />
+                  </template>
+                  <span>Tab settings: rename, sharing, cloud</span>
+                </v-tooltip>
               </v-tab>
             </template>
           </draggable>
@@ -147,13 +147,15 @@
   </div>
 
   <new-tab-dialog v-model="newTabChooserOpen" />
+  <tab-settings-dialog v-model="settingsOpen" :tab-id="currentTabId" />
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue'
+  import { computed, ref } from 'vue'
   import { useDisplay } from 'vuetify'
   import draggable from 'vuedraggable'
   import NewTabDialog from '@/components/sync/NewTabDialog.vue'
+  import TabSettingsDialog from '@/components/sync/TabSettingsDialog.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { useRoomsStore } from '@/stores/rooms-store'
@@ -183,11 +185,9 @@
     return null
   })
 
-  const isEditingName = ref(false)
-  const currentTabName = ref(appStore.currentFactoryTab.name)
-  const renaming = ref(false)
   const deleting = ref(false)
   const newTabChooserOpen = ref(false)
+  const settingsOpen = ref(false)
   const showNudge = ref(localStorage.getItem(NUDGE_KEY) !== 'true')
 
   const isCurrentTab = (index: number) => index === appStore.currentFactoryTabIndex
@@ -213,8 +213,6 @@
     }
   }
 
-  const canRename = computed(() => roomsStore.canRename(currentTabId.value))
-
   const syncedTabCount = computed(() =>
     appStore.getTabs().filter(tab => appStore.getTabState(tab.id).kind === 'synced').length)
 
@@ -235,33 +233,6 @@
       eventBus.emit('toast', { message: `Could not save the tab order: ${result}`, type: 'error' })
     }
   }
-
-  const onClickEditTabName = async () => {
-    if (!isEditingName.value) {
-      isEditingName.value = true
-      return
-    }
-
-    renaming.value = true
-    const result = await roomsStore.renameTab(currentTabId.value, currentTabName.value)
-    renaming.value = false
-    isEditingName.value = false
-
-    if (result !== true) {
-      currentTabName.value = appStore.currentFactoryTab.name
-      eventBus.emit('toast', { message: `Rename failed: ${result}`, type: 'error' })
-    }
-  }
-
-  watch(() => appStore.currentFactoryTabIndex, () => {
-    isEditingName.value = false
-    currentTabName.value = appStore.currentFactoryTab.name
-  })
-
-  // A room rename from another device lands on the tab, so the edit field follows it.
-  watch(() => appStore.currentFactoryTab?.name, name => {
-    if (!isEditingName.value && name) currentTabName.value = name
-  })
 
   const openNewTabChooser = () => {
     newTabChooserOpen.value = true
