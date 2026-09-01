@@ -116,11 +116,13 @@
 
   // Mine by default: it is what the planner has always done with an offline edit, and it
   // is the choice that loses nothing until the user says otherwise. A row that survives a
-  // newer snapshot keeps whatever was picked for it.
+  // newer snapshot keeps whatever was picked for it; a fresh question starts over, box
+  // included, since keeping a copy is the answer that can destroy nothing.
   watch([active, factories], () => {
     if (active.value?.roomId !== winnersRoom) {
       winnersRoom = active.value?.roomId ?? null
       winners.value = {}
+      keepCopy.value = true
     }
     const next: Record<number, ConflictWinner> = {}
     for (const row of factories.value) next[row.factoryId] = winners.value[row.factoryId] ?? 'mine'

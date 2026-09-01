@@ -159,8 +159,10 @@ below. The wire protocol is untouched.
 
 - `web/src/sync/offline-conflict.ts` is the pure half: what two versions of one factory
   disagree about, as per-product evidence (amount, recipe, present on one side only) plus a
-  one-line admission for anything outside the products, and the fingerprint the mirror keeps
-  so a device reopened days later can still tell a peer's edit from its own
+  one-line admission for anything outside the rates — authored fields on the factory, and the
+  authored half of a product whose rate and recipe agree, which is where the building groups
+  live — and the fingerprint the mirror keeps so a device reopened days later can still tell a
+  peer's edit from its own
 - The engine (`room-sync-store.ts`) detects the clash on a fresh snapshot only, holds the
   room's op flush while the question is open, re-measures against every newer snapshot or
   applied op, and applies the answer as one op; an answer given while a load chain owns the

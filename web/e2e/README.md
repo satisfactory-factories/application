@@ -35,7 +35,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `bulk-clear` | "Clear all" on one device empties the other, with nothing left unsent on either. Seeded past `BULK_REMOVAL_THRESHOLD`, so the clear has to declare itself to be accepted. |
 | `offline-manual` | The airplane switch makes zero requests, the edits made behind it sync on the way back, and a task written offline survives a rebase onto a room that moved on. |
 | `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive, and so does a rename left unsent by the drop. |
-| `offline-conflict` | Edits made while one device was cut off, on factories the other device edited too, raise the conflict prompt naming exactly those factories with live-against-mine figures per product. Keeping both on "My version" carries them plus the untouched device's own edit; a mixed answer lands both clients on that hybrid, with the offline copy holding what was given up. |
+| `offline-conflict` | Edits made while one device was cut off, on factories the other device edited too, raise the conflict prompt naming exactly those factories with live-against-mine figures per product. Keeping both on "My version" carries them plus the untouched device's own edit; a mixed answer lands both clients on that hybrid, every factory whole on the side that won it rather than a blend of the two, with the offline copy holding what was given up as a plain local plan. |
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `login-chooser` | An interactive sign-in is fronted by the plan chooser; "Not now" opens nothing, and a reload with a persisted session never asks. |
@@ -68,7 +68,8 @@ per address.
   release splash from covering the page.
 - `helpers/planner.ts` drives the planner: create a synced tab, select one by room id,
   read the tab bar, drag a tab, wait for a revision, add a factory, set a product's
-  quantity, read the mirror (a tab by name, a product's amount).
+  quantity, read the mirror (a tab by name, a product's amount, one factory's authored
+  content, how a tab is held).
 - `helpers/rooms.ts` sets up the two-device and shared-room cases and drives the share
   dialog; `helpers/session.ts` drives the sign-in tray and the account panel.
 - `helpers/network.ts` counts REST traffic, and puts a gate on one client's WebSocket so

@@ -30,10 +30,10 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2954 unit tests (156 files, 1 skipped) as of the offline conflict round (2026-09-01),
+web 2961 unit tests (156 files, 1 skipped) as of the offline conflict round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 42 Playwright e2e tests passing (the 42nd added in the login-chooser
-round). The whole suite ran twice at full speed
+`build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
+conflict round). The whole suite ran twice at full speed
 and once under `E2E_CPU_THROTTLE=6` in the bulk-removal round below; the throttled run is the one
 that earns its keep, and it is the one that found the last real bug in an earlier round.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
@@ -1042,7 +1042,20 @@ Three things it took to make the predicate honest, each of which was a false pro
 - **Derived figures are not a disagreement.** `describeClash` returns null unless there is something
   to show, because a peer editing a factory this one imports from moves `dependencies` and `parts`
   on both sides. The "other changes" line compares an explicit whitelist of authored fields for the
-  same reason: a field missed there costs a summary line, never a wrong winner.
+  same reason.
+
+**The whitelist was the first review's finding, and it is the trap to remember.** "A field missed
+there only costs a summary line" was wrong: with no product row and no whitelisted field differing,
+`describeClash` returns *null*, the factory earns no section, and the overlay takes this device's
+version silently — the one thing the prompt exists to stop. The products were the hole. They are
+compared by rate and recipe alone, and everything a user dials in below that lives inside them:
+`buildingGroups` (overclocks, somersloops, miner marks, well satellites), the checklist ticks, the
+product order. Two versions asking 60/min and building it differently, one machine at 200% here and
+two at 100% there, read as no clash at all. `productsDifferBeyondRates` now compares the authored
+half of each product whose rate and recipe agree — the solver's own figures (`parts`, `powerUsage`,
+the problem flags) deliberately excluded, and only where the rates agree, so a moved rate still
+earns one row rather than a row plus a vague second line. When adding a field to a factory or a
+product, ask which of the two whitelists it belongs in; the cost of guessing wrong is silence.
 
 **The answer is per factory, with per-product evidence.** The owner's requirement verbatim: "We do
 need a per product per factory level, clearly showing 'current plan is X, you changed it to Y,
@@ -1057,16 +1070,26 @@ snapshot or applied op re-measures the rows, closing the dialog unprompted if th
 hands the plan to the loader. Written into the array then it would be half-overwritten and then
 committed — the truncation class this branch has been bitten by twice. The answer parks and is
 applied from `flushAll`/`probeTick` once `isLoaded` is back and the chain has let go; it is retried
-rather than scheduled, since a queued load can own the plan again a tick later.
+rather than scheduled, since a queued load can own the plan again a tick later. **The flush hold
+lasts until the answer is applied, not until the dialog closes** (the review's second finding):
+`flushRoom` refuses a room in `parkedResolutions` as well as one in `conflicts`. `isLoaded` almost
+covers it, but the tail of a chain has the array whole again with the load still owning the tab, and
+a paused room's `probeTick` retry could put this device's version of a factory on the wire after the
+user had handed that factory to the live plan.
+
+The prompt also resets the keep-a-copy box for each new question rather than remembering the last
+answer: clearing it answers one clash, and the next one starts from the choice that can destroy
+nothing.
 
 Files: `web/src/sync/offline-conflict.ts` (pure evidence + fingerprint),
 `web/src/components/sync/OfflineConflictDialog.vue` (AppDialog, persistent, `closable: false`,
 mounted in `layouts/default.vue`), the engine half in `room-sync-store.ts` (`conflicts`,
 `findClashes`, `noteClashes`, `refreshConflict`, `resolveConflict`), and
-`web/e2e/tests/offline-conflict.e2e.ts`. Guards: 21 store specs, 18 component specs, 16 pure specs,
+`web/e2e/tests/offline-conflict.e2e.ts`. Guards: 23 store specs, 19 component specs, 20 pure specs,
 2 mirror-meta specs and 2 e2e tests, all negative-controlled by neutering one half at a time (the
-clash test, the flush hold, the mid-load park, the fingerprint, the server-copy take, the kept copy,
-the re-measure, the untrack, and both e2e cases). **The wire protocol is unchanged** and
+clash test, the flush hold, the parked hold, the mid-load park, the fingerprint, the server-copy
+take, the kept copy and its reset, the re-measure, the untrack, the building-group comparison and
+both its guards, and both e2e cases). **The wire protocol is unchanged** and
 `PROTOCOL_VERSION` did not move: this is a client-side decision about which local records survive a
 rebase, and the server sees an ordinary op either way.
 

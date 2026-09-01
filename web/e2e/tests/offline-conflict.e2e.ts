@@ -11,6 +11,7 @@ import type { ClientFactory } from '../helpers/rooms'
 import {
   addFactory,
   addProduct,
+  authoredFactories,
   createSyncedTab,
   expectQuiesced,
   mirroredProductAmount,
@@ -19,8 +20,10 @@ import {
   productAmountIn,
   readTabBar,
   selectTab,
+  setFactoryNote,
   setProductAmount,
   settle,
+  tabHolding,
 } from '../helpers/planner'
 
 /**
@@ -58,6 +61,9 @@ interface Diverged {
   planName: string
   owner: Page
   away: Page
+  /** Each side's plan as it stood before the two met, for checking what the answer kept. */
+  liveBefore: Record<number, string>
+  mineBefore: Record<number, string>
 }
 
 /** Two devices on one plan, edited apart while one of them could not reach the server. */
@@ -88,18 +94,25 @@ const divergeOffline = async (
   await gate.kill()
   await setOfflineMode(away, user, true)
 
+  // The note goes with the rate: a factory carries more than its products, and a winner
+  // that took one and left the other would be a half-merged record.
   for (const [index, seed] of SEEDS.entries()) {
     await setProductAmount(away, index, seed.itemId, seed.mine)
+    await setFactoryNote(away, index, `away wrote ${seed.factory}`)
   }
 
   for (const [index, seed] of SEEDS.entries()) {
     if (seed.live === null) continue
     await setProductAmount(owner, index, seed.itemId, seed.live)
+    await setFactoryNote(owner, index, `owner wrote ${seed.factory}`)
     await expect.poll(() => mirroredProductAmount(owner, roomId, seed.factory, seed.itemId), {
       message: `the owner's edit to ${seed.factory} never reached the server`,
       timeout: 30_000,
     }).toBe(seed.live)
   }
+
+  const liveBefore = await authoredFactories(owner, roomId)
+  const mineBefore = await authoredFactories(away, roomId)
 
   gate.restore()
   await comeBackOnline(away, user)
@@ -107,7 +120,7 @@ const divergeOffline = async (
   const planName = (await readTabBar(away)).find(tab => tab.id === roomId)?.name ?? ''
   expect(planName, 'the synced tab has no name to copy').not.toBe('')
 
-  return { user, roomId, planName, owner, away }
+  return { user, roomId, planName, owner, away, liveBefore, mineBefore }
 }
 
 /** The two sections, with the figures a person would need to choose between. */
@@ -160,7 +173,8 @@ test('a mixed answer is honoured factory by factory, and the copy keeps what was
   client,
   request,
 }) => {
-  const { roomId, planName, owner, away } = await divergeOffline(client, request)
+  const { roomId, planName, owner, away, liveBefore, mineBefore } =
+    await divergeOffline(client, request)
 
   await expectTheClashIsShown(away)
 
@@ -184,6 +198,18 @@ test('a mixed answer is honoured factory by factory, and the copy keeps what was
     }
   }
 
+  // Whole factories, never a merge of two: every record is one side's, entire.
+  const chosen = { Smelting: mineBefore, Casting: liveBefore, Plating: mineBefore }
+  const merged = await authoredFactories(away, roomId)
+  for (const seed of SEEDS) {
+    const id = Number(Object.keys(merged).find(key =>
+      merged[Number(key)].includes(`"name":"${seed.factory}"`)))
+    expect(merged[id], `${seed.factory} is a mixture of both versions`)
+      .toBe(chosen[seed.factory as keyof typeof chosen][id])
+  }
+  expect(await authoredFactories(owner, roomId), 'the two devices kept different plans')
+    .toEqual(merged)
+
   // The copy is this device's plan as it stood before the answer, Casting included.
   const copyName = `${planName} (offline copy)`
   await expect.poll(async () => (await mirroredTabNamed(away, copyName)) !== undefined, {
@@ -195,4 +221,7 @@ test('a mixed answer is honoured factory by factory, and the copy keeps what was
   for (const seed of SEEDS) {
     expect(productAmountIn(copy?.factories ?? [], seed.factory, seed.itemId)).toBe(seed.mine)
   }
+
+  // A plain local plan: no room behind it and nothing for the sync engine to read.
+  expect(await tabHolding(away, copyName)).toEqual({ kind: 'local', hasMeta: false })
 })

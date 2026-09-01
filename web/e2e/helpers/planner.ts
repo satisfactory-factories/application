@@ -572,6 +572,46 @@ export const mirroredProductAmount = async (
 ): Promise<number | undefined> =>
   productAmountIn(await mirroredFactories(page, tabId), factoryName, item)
 
+/**
+ * Everything on a factory somebody typed, keyed by id. The engine syncs whole factories, so
+ * this is what a merge has to leave equal to one side or the other; the derived figures are
+ * the recalculation's and belong to neither.
+ */
+export const authoredFactories = (page: Page, tabId: string): Promise<Record<number, string>> =>
+  page.evaluate((id: string) => {
+    const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as { id: string }[]
+    const tab = tabs.find(entry => entry.id === id) as { factories?: unknown[] } | undefined
+    const pick = (source: Record<string, unknown>, keys: string[]) =>
+      Object.fromEntries(keys.map(key => [key, source[key]]))
+
+    const entries = (tab?.factories ?? []).map(raw => {
+      const factory = raw as Record<string, unknown>
+      return [factory.id as number, JSON.stringify({
+        name: factory.name,
+        notes: factory.notes,
+        tasks: factory.tasks,
+        inputs: factory.inputs,
+        products: (factory.products as Record<string, unknown>[] ?? []).map(product => ({
+          ...pick(product, ['id', 'recipe', 'amount', 'displayOrder', 'completed']),
+          groups: (product.buildingGroups as Record<string, unknown>[] ?? [])
+            .map(group => pick(group, ['id', 'buildingCount', 'overclockPercent', 'somersloops'])),
+        })),
+      })] as const
+    })
+    return Object.fromEntries(entries) as Record<number, string>
+  }, tabId)
+
+/** How a tab is held on this device: a plain local plan carries no room and no sync metadata. */
+export const tabHolding = (page: Page, name: string): Promise<{ kind: string, hasMeta: boolean } | undefined> =>
+  page.evaluate((wanted: string) => {
+    const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as { id: string, name: string }[]
+    const tab = tabs.find(entry => entry.name === wanted)
+    if (!tab) return undefined
+    const states = JSON.parse(localStorage.getItem('tabSyncStates') ?? '{}') as Record<string, { kind: string }>
+    const meta = JSON.parse(localStorage.getItem('tabMirrorMeta') ?? '{}') as Record<string, unknown>
+    return { kind: states[tab.id]?.kind ?? 'local', hasMeta: tab.id in meta }
+  }, name)
+
 /** A tab found by its name rather than its id: the local copies have no id worth knowing. */
 export const mirroredTabNamed = async (
   page: Page,

@@ -228,6 +228,27 @@ describe('OfflineConflictDialog', () => {
 
       expect(resolve).toHaveBeenCalledWith(ROOM, { liveWinners: [], keepCopy: false })
     })
+    // Clearing the box is an answer to one question, not a standing preference: the next
+    // one starts from the choice that can destroy nothing.
+    it('offers to keep a copy again the next time it asks', async () => {
+      const resolve = vi.spyOn(roomSync, 'resolveConflict').mockReturnValue(true)
+      await open([clash()])
+
+      const box = () => at('kept-copy')?.querySelector('input') as HTMLInputElement
+      box().checked = false
+      box().dispatchEvent(new Event('input', { bubbles: true }))
+      await flushPromises()
+      await click(at('apply-choices'))
+
+      delete roomSync.conflicts[ROOM]
+      await flushPromises()
+      roomSync.conflicts[ROOM] = { roomId: ROOM, factories: [clash()] }
+      await flushPromises()
+
+      expect(box().checked).toBe(true)
+      await click(at('apply-choices'))
+      expect(resolve).toHaveBeenLastCalledWith(ROOM, { liveWinners: [], keepCopy: true })
+    })
   })
 
   it('goes away on its own when the clash it was asking about does', async () => {
