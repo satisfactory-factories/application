@@ -1,4 +1,4 @@
-import type { Factory, FactoryItem } from 'common'
+import type { BuildingGroup, Factory, FactoryItem } from 'common'
 import { stableStringify } from '@/sync/room-state'
 
 /**
@@ -33,8 +33,8 @@ export interface ConflictFactory {
 /**
  * Authored fields, deliberately a whitelist: everything else on a factory is derived from
  * the products by the calculation engine, so comparing whole records would report "other
- * changes" for every changed amount. A field missing here costs a summary line, never a
- * wrong winner.
+ * changes" for every changed amount. What is left out is derived, or says only how the card
+ * is drawn — a genuinely authored field missing here would be decided silently.
  */
 const AUTHORED: (keyof Factory)[] = [
   'name',
@@ -50,6 +50,34 @@ const AUTHORED: (keyof Factory)[] = [
   'checklistEnabled',
   'checklistExports',
 ]
+
+/**
+ * Authored fields inside a product, other than the rate and the recipe the rows already
+ * show. The building groups are the ones that matter: overclocks, somersloops and miner
+ * marks are the user's own and nothing recalculates them.
+ */
+const AUTHORED_PRODUCT: (keyof FactoryItem)[] = [
+  'displayOrder',
+  'buildingGroupItemSync',
+  'completed',
+  'checklistSyncedAmount',
+]
+
+/** Authored fields inside a building group; the rest of the record is the solver's. */
+const AUTHORED_GROUP: (keyof BuildingGroup)[] = [
+  'id',
+  'buildingCount',
+  'overclockPercent',
+  'clockSetByUser',
+  'somersloops',
+  'supplyMatrixes',
+  'extractorBuilding',
+  'purity',
+  'satellites',
+]
+
+const pick = <T extends object>(source: T, fields: (keyof T)[]): Record<string, unknown> =>
+  Object.fromEntries(fields.map(field => [field, source[field]]))
 
 /** A blank row has no item, so it is nothing a reader could compare. */
 const productsById = (factory: Factory | null): Map<string, FactoryItem> =>
@@ -80,11 +108,32 @@ export const conflictProductRows = (live: Factory | null, mine: Factory | null):
   return rows
 }
 
-const authoredPrint = (factory: Factory): string =>
-  stableStringify(Object.fromEntries(AUTHORED.map(field => [field, factory[field]])))
+const authoredPrint = (factory: Factory): string => stableStringify(pick(factory, AUTHORED))
 
 export const differsOutsideProducts = (live: Factory | null, mine: Factory | null): boolean =>
   live !== null && mine !== null && authoredPrint(live) !== authoredPrint(mine)
+
+const authoredProductPrint = (product: FactoryItem): string =>
+  stableStringify({
+    ...pick(product, AUTHORED_PRODUCT),
+    buildingGroups: (product.buildingGroups ?? []).map(group => pick(group, AUTHORED_GROUP)),
+  })
+
+/**
+ * A product the two versions ask the same rate of, built differently: a somersloop or an
+ * overclock one side set and the other did not. Only where the rates agree, because a rate
+ * that moved already has a row of its own saying so.
+ */
+export const productsDifferBeyondRates = (live: Factory | null, mine: Factory | null): boolean => {
+  const mineById = productsById(mine)
+  for (const [itemId, liveProduct] of productsById(live)) {
+    const mineProduct = mineById.get(itemId)
+    if (!mineProduct) continue
+    if (mineProduct.amount !== liveProduct.amount || mineProduct.recipe !== liveProduct.recipe) continue
+    if (authoredProductPrint(mineProduct) !== authoredProductPrint(liveProduct)) return true
+  }
+  return false
+}
 
 /**
  * The section one clashing factory earns, or null when there is nothing to decide:
@@ -100,7 +149,7 @@ export const describeClash = (
   if (live && mine && stableStringify(live) === stableStringify(mine)) return null
 
   const products = conflictProductRows(live, mine)
-  const otherChanges = differsOutsideProducts(live, mine)
+  const otherChanges = differsOutsideProducts(live, mine) || productsDifferBeyondRates(live, mine)
   if (products.length === 0 && !otherChanges && live !== null && mine !== null) return null
 
   return {

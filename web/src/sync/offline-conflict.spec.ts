@@ -1,15 +1,28 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { Factory } from 'common'
+import type { BuildingGroup, Factory } from 'common'
+import { ItemType } from 'common'
 import {
   conflictProductRows,
   describeClash,
   differsOutsideProducts,
   fingerprint,
+  productsDifferBeyondRates,
 } from '@/sync/offline-conflict'
 import { newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+const group = (overrides: Partial<BuildingGroup> = {}): BuildingGroup => ({
+  id: 1,
+  buildingCount: 1,
+  overclockPercent: 100,
+  parts: {},
+  powerUsage: 0,
+  powerProduced: 0,
+  type: ItemType.Product,
+  ...overrides,
+})
 
 describe('offline conflict evidence', () => {
   let live: Factory
@@ -83,6 +96,41 @@ describe('offline conflict evidence', () => {
 
       expect(differsOutsideProducts(live, mine)).toBe(false)
       expect(describeClash(1, live, mine)).toBeNull()
+    })
+
+    // Overclocks and somersloops are the user's own, they live inside the product, and the
+    // rates say nothing about them: without this the peer's version goes with no prompt.
+    it('reports a building group the two versions built differently', () => {
+      live.products[0].buildingGroups = [group({ overclockPercent: 250, buildingCount: 1 })]
+      mine.products[0].buildingGroups = [group({ somersloops: 2 })]
+
+      expect(productsDifferBeyondRates(live, mine)).toBe(true)
+      expect(describeClash(1, live, mine)?.otherChanges).toBe(true)
+    })
+
+    it('ignores the group figures the solver derives from those', () => {
+      live.products[0].buildingGroups = [group()]
+      mine.products[0].buildingGroups = [group({ powerUsage: 999, parts: { IronOre: 30 } })]
+
+      expect(productsDifferBeyondRates(live, mine)).toBe(false)
+      expect(describeClash(1, live, mine)).toBeNull()
+    })
+
+    // A rate that moved rebuilds the groups underneath it, and it already has a row.
+    it('says nothing extra when the rate itself is what moved', () => {
+      live.products[0].amount = 60
+      live.products[0].buildingGroups = [group({ buildingCount: 2 })]
+      mine.products[0].amount = 45
+      mine.products[0].buildingGroups = [group({ buildingCount: 1 })]
+
+      expect(productsDifferBeyondRates(live, mine)).toBe(false)
+      expect(describeClash(1, live, mine)?.otherChanges).toBe(false)
+    })
+
+    it('reports a checklist tick only one version carries', () => {
+      mine.products[0].completed = true
+
+      expect(productsDifferBeyondRates(live, mine)).toBe(true)
     })
   })
 

@@ -1753,6 +1753,28 @@ describe('room-sync-store', () => {
       ])
     })
 
+    /**
+     * The rates agree and the buildings do not. Overclocks and somersloops are authored,
+     * they sit inside the product, and nothing recalculates them — so without this the
+     * peer's version of the build goes on the overlay with nobody asked.
+     */
+    it('asks about a building group the two versions built differently', () => {
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+
+      // Both sides ask for 60/min and build it differently: two machines at 100% there,
+      // one overclocked to 200% here. Nothing in the rates says so.
+      editHere(tab, 1, 'IronIngot', 60)
+      const mine = inTab(tab, 1)!.products[0]
+      mine.buildingGroups = [{ ...mine.buildingGroups[0], buildingCount: 1, overclockPercent: 200 }]
+
+      reconnectWith(serverPlan(plan => { plan[0].products[0].amount = 60 }), 6)
+
+      expect(asked().map(row => row.factoryId)).toEqual([1])
+      expect(asked()[0].products).toEqual([])
+      expect(asked()[0].otherChanges).toBe(true)
+    })
+
     // The negative control for the trigger: the room moved, this device has unsent edits,
     // and the two do not overlap. Nothing to decide, so nothing is asked.
     it('stays silent when the room moved a factory nobody here edited', () => {
@@ -1902,6 +1924,26 @@ describe('room-sync-store', () => {
 
       expect(amountOf(inTab(tab, 1), 'IronIngot')).toBe(444)
       expect(amountOf(inTab(tab, 3), 'IronPlate')).toBe(333)
+    })
+
+    // The dialog is gone the moment the answer is given, so nothing else would stop this
+    // device sending its own version of a factory it just handed to the live plan.
+    it('holds the room\'s ops while the answer waits for the load chain', () => {
+      const tab = clashOnReconnect()
+      appStore.currentFactoryTab = tab
+
+      // The tail of a chain: the array is whole again and `isLoaded` is back up, but the
+      // load still owns the tab, so the answer parks and nothing has applied it yet.
+      appStore.loadInFlight = true
+      store.resolveConflict(ROOM, { liveWinners: [1, 2] })
+      expect(appStore.isLoaded, 'the fixture never got the plan back').toBe(true)
+
+      expect(store.flushRoom(ROOM), 'sent an op the parked answer had not touched yet').toBe(false)
+
+      appStore.loadInFlight = false
+      store.flushAll()
+
+      expect(sentFactories().map(factory => factory.id)).toEqual([3])
     })
 
     it('keeps this device\'s plan as a local tab when asked', () => {

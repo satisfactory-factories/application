@@ -481,8 +481,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // read as "delete everything". The load's completion re-schedules the flush.
     if (!appStore.isLoaded) return false
     // An unanswered clash: what this op should carry is the question on screen, and
-    // sending our version first would answer it for the user.
-    if (conflicts.value[roomId]) return false
+    // sending our version first would answer it for the user. An answer parked behind a
+    // load chain holds it for the same reason: it is not on the plan yet.
+    if (conflicts.value[roomId] || parkedResolutions.has(roomId)) return false
 
     const tab = getTab(roomId)
     if (!tab) return false
