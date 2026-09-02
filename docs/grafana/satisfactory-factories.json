@@ -2476,7 +2476,7 @@
         "spec": {
           "id": 61,
           "title": "Edits, Last 24h",
-          "description": "The change over 24 hours, clamped at zero. A large deletion will read as a flat zero for a day; that is the known cost of sourcing this from a gauge.",
+          "description": "Edits added since the low point of the last 24 hours. Measured from the trough rather than from the value 24h ago, so it answers from the first scrape instead of reading No data for a day, and cannot go negative when a plan is deleted.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2494,7 +2494,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "clamp_min(sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(sf_room_revisions{job=\"satisfactory-factories\"} offset 24h), 0)",
+                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(min_over_time(sf_room_revisions{job=\"satisfactory-factories\"}[24h]))",
                         "legendFormat": "Edits",
                         "range": true
                       }
@@ -2677,7 +2677,7 @@
         "spec": {
           "id": 63,
           "title": "Edits per 24h, Over Time",
-          "description": "Rolling 24-hour edit count. Any window works by changing the offset in the query.",
+          "description": "Rolling 24-hour edit count. Any window works by changing the range in the query.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2695,7 +2695,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "clamp_min(sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(sf_room_revisions{job=\"satisfactory-factories\"} offset 24h), 0)",
+                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(min_over_time(sf_room_revisions{job=\"satisfactory-factories\"}[24h]))",
                         "legendFormat": "Edits in 24h",
                         "range": true
                       }
