@@ -68,7 +68,7 @@ Every route except `GET /health` and `GET /share/:id` requires an `X-App-Version
 | `GET /share/:id` | Reads a snapshot link and bumps its view counter |
 | `POST /save`, `GET /load` | **410 Gone.** Replaced by synced tabs |
 | `GET /health` | The one to monitor. Pings Mongo and returns **503** if it doesn't answer inside 3s. Rate limited to 10 requests a minute, in its own bucket |
-| `GET /metrics` | Prometheus scrape target. Needs `Authorization: Bearer $METRICS_TOKEN`; **404 when `METRICS_TOKEN` is unset**, so a box that never got the variable exposes nothing. 30 a minute, own bucket. Carries usernames and plan ids in the top-20 gauges, so the token is what keeps it private |
+| `GET /metrics` | Prometheus scrape target. Needs `Authorization: Bearer $METRICS_TOKEN`; **404 when `METRICS_TOKEN` is unset**, so a box that never got the variable exposes nothing. 30 a minute, own bucket. Carries usernames, plan ids and share link ids in the top-20 gauges, so the token is what keeps it private |
 | `POST /events` | Anonymous fault counts, batched. The reason is a closed enum in `common`, so nothing a caller sends can become a new metric label. 120 a minute per address in its own bucket, plus a 30s floor per instance |
 | `POST /telemetry` | The anonymous client heartbeat, unauthenticated by design. 60 a minute per address in its own bucket, plus a 30s floor per instance. See [docs/telemetry.md](../docs/telemetry.md) for exactly what it collects |
 

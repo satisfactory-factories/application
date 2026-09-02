@@ -10,7 +10,7 @@ The two dashboards that read `GET /metrics`, and the script that generates them.
 
 ## Why a generator rather than hand-edited JSON
 
-The dashboards are 41 panels each and identical apart from one label matcher. Keeping two
+The dashboards are 63 panels each and identical apart from one label matcher. Keeping two
 hand-written copies in step would not survive contact with a single edit.
 
 More importantly, **production and preview export the same metric names**. An unfiltered query

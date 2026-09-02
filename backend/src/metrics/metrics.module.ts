@@ -7,6 +7,7 @@ import { MetricsController } from './metrics.controller'
 import { MetricsService } from './metrics.service'
 import { MetricsTokenGuard } from './metrics-token.guard'
 import { RealtimeModule } from '../realtime/realtime.module'
+import { Share, ShareSchema } from '../legacy/share.schema'
 import { RoomsModule } from '../rooms/rooms.module'
 import { TelemetryController } from './telemetry.controller'
 import { TelemetryInstance, TelemetryInstanceSchema } from './telemetry-instance.schema'
@@ -28,8 +29,11 @@ import { UserActivityService } from '../user-activity/user-activity.service'
     AuthModule,
     RealtimeModule,
     UserActivityModule,
+    // The share schema is registered here rather than importing LegacyModule: this module
+    // reads other people's collections and must not depend on the modules that own them.
     MongooseModule.forFeature([
       { name: TelemetryInstance.name, schema: TelemetryInstanceSchema },
+      { name: Share.name, schema: ShareSchema },
     ]),
   ],
   controllers: [MetricsController, TelemetryController, EventsController],
