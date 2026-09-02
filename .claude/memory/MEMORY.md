@@ -45,3 +45,4 @@
 - [Overlay z-index bands](overlay-z-index-bands.md) — banners sit at 1900 below Vuetify menus (2000+), toasts at 2600 above dialogs; a banner above the overlay stack steals menu clicks
 - [prom-client is deprecated](prom-client-deprecated-successor.md) — the successor was days old and 0.x, so the metrics endpoint stayed put; what would change that, and the third package name context7 hands out
 - [Verify: hidden-pane menu freeze](verify-hidden-pane-menu-freeze.md) — a hidden browser pane leaves Vuetify menus stuck invisible with inline pointer-events:none; clear the inline props before hit-testing
+- [prom-client label lifecycle](prom-client-label-lifecycle.md) — seed bounded label sets at zero or panels read "No data"; reset ranked ones or dropped labels report forever
