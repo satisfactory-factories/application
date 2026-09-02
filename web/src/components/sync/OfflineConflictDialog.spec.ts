@@ -156,6 +156,18 @@ describe('OfflineConflictDialog', () => {
         .toContain('other changes in this factory as well')
     })
 
+    // The section is headed by this device's name for the factory, so a peer's rename
+    // has to be spelled out or "My version" reverts it with nothing having said so.
+    it('names the change when the evidence can name it', async () => {
+      await open([clash({
+        otherChanges: true,
+        otherChangesText: 'renamed to "Foundries" on the live plan',
+      })])
+
+      expect(within(sections()[0], 'conflict-other')[0].textContent)
+        .toContain('renamed to "Foundries" on the live plan')
+    })
+
     it('says nothing about other changes when there are none', async () => {
       await open([clash()])
 

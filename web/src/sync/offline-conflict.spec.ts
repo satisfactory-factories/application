@@ -171,6 +171,42 @@ describe('offline conflict evidence', () => {
     })
   })
 
+  /**
+   * The section is headed by this device's name for the factory, so a peer's rename is
+   * invisible: nothing on it says that "My version" would put the old name back.
+   */
+  describe('the admission line', () => {
+    it('names a rename, and the name it would be giving up', () => {
+      live.name = 'Foundries'
+
+      expect(describeClash(1, live, mine)?.otherChangesText)
+        .toBe('renamed to "Foundries" on the live plan')
+    })
+
+    it('names the fields that differ when nothing was renamed', () => {
+      live.notes = 'Second smelter going in'
+      live.inputs = [{ factoryId: 2, outputPart: 'IronOre', amount: 30 }]
+
+      expect(describeClash(1, live, mine)?.otherChangesText)
+        .toBe('the live plan differs in notes and imports')
+    })
+
+    it('says both when the rename came with other edits', () => {
+      live.name = 'Foundries'
+      live.notes = 'Second smelter going in'
+
+      expect(describeClash(1, live, mine)?.otherChangesText)
+        .toBe('renamed to "Foundries" on the live plan, which also differs in notes')
+    })
+
+    it('says nothing when the product rows already tell the whole story', () => {
+      live.products[0].amount = 60
+      mine.products[0].amount = 45
+
+      expect(describeClash(1, live, mine)?.otherChangesText).toBe('')
+    })
+  })
+
   describe('baseline fingerprints', () => {
     it('is stable for the same record', () => {
       expect(fingerprint(JSON.stringify(live))).toBe(fingerprint(JSON.stringify(clone(live))))

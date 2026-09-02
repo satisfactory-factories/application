@@ -28,6 +28,8 @@ export interface ConflictFactory {
   products: ConflictProductRow[]
   /** The two versions also differ somewhere the product rows cannot show. */
   otherChanges: boolean
+  /** That difference in words, naming a rename outright. Empty when there is none. */
+  otherChangesText?: string
 }
 
 /**
@@ -135,6 +137,47 @@ export const productsDifferBeyondRates = (live: Factory | null, mine: Factory | 
   return false
 }
 
+/** Plain words for the authored fields, so the admission line can name what moved. */
+const FIELD_LABELS: Partial<Record<keyof Factory, string>> = {
+  notes: 'notes',
+  tasks: 'tasks',
+  inputs: 'imports',
+  powerProducers: 'power producers',
+  customBuildings: 'custom buildings',
+  exportCalculator: 'the export calculator',
+  partDisposal: 'part disposal',
+  group: 'the folder it sits in',
+  icon: 'the icon',
+  checklistEnabled: 'the checklist',
+  checklistExports: 'the checklist',
+}
+
+const listOf = (labels: string[]): string =>
+  labels.length < 2 ? labels[0] ?? '' : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`
+
+/**
+ * One line naming what the product rows cannot show. The rename matters most: the
+ * section is headed by this device's name for the factory, so without this nothing
+ * says that picking "My version" puts the old name back.
+ */
+export const describeOtherChanges = (live: Factory | null, mine: Factory | null): string => {
+  if (!live || !mine) return ''
+
+  const labels: string[] = []
+  for (const field of AUTHORED) {
+    const label = FIELD_LABELS[field]
+    if (label === undefined || labels.includes(label)) continue
+    if (stableStringify(live[field]) === stableStringify(mine[field])) continue
+    labels.push(label)
+  }
+  if (productsDifferBeyondRates(live, mine)) labels.push('how its products are built')
+
+  const renamed = live.name !== mine.name ? `renamed to "${live.name}" on the live plan` : ''
+  if (renamed && labels.length > 0) return `${renamed}, which also differs in ${listOf(labels)}`
+  if (renamed) return renamed
+  return labels.length > 0 ? `the live plan differs in ${listOf(labels)}` : ''
+}
+
 /**
  * The section one clashing factory earns, or null when there is nothing to decide:
  * two versions that agree, or two that differ only in figures the recalculation
@@ -159,6 +202,7 @@ export const describeClash = (
     mineDeleted: mine === null,
     products,
     otherChanges,
+    otherChangesText: describeOtherChanges(live, mine),
   }
 }
 

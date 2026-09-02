@@ -70,7 +70,7 @@
       </div>
 
       <p v-if="row.otherChanges" class="mb-0 mt-2 text-grey" data-testid="conflict-other">
-        other changes in this factory as well
+        {{ row.otherChangesText || 'other changes in this factory as well' }}
       </p>
     </div>
 
