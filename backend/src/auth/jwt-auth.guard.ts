@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, createParamDecorator } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 
-import { AuthTokenPayload, AuthenticatedRequest } from './auth-token'
+import { AuthTokenPayload, AuthenticatedRequest, isAccountTokenPayload } from './auth-token'
 
 const unauthorized = (): HttpException =>
   new HttpException({ message: 'Unauthorized' }, HttpStatus.UNAUTHORIZED)
@@ -15,13 +15,18 @@ export class JwtAuthGuard implements CanActivate {
     const token = request.header('Authorization')?.replace('Bearer ', '')
     if (!token) throw unauthorized()
 
+    let payload: unknown
     try {
-      request.user = this.jwtService.verify<AuthTokenPayload>(token)
+      payload = this.jwtService.verify(token)
     } catch (error) {
       if (error instanceof Error && error.message) console.log(error.message)
       throw unauthorized()
     }
 
+    // A room visitor token verifies against the same secret and is not an account.
+    if (!isAccountTokenPayload(payload)) throw unauthorized()
+
+    request.user = payload
     return true
   }
 }
@@ -37,7 +42,9 @@ export class OptionalJwtAuthGuard implements CanActivate {
     if (!token) return true
 
     try {
-      request.user = this.jwtService.verify<AuthTokenPayload>(token)
+      const payload: unknown = this.jwtService.verify(token)
+      // Anything that is not an account token is treated as no token, visitor tokens included.
+      if (isAccountTokenPayload(payload)) request.user = payload
     } catch {
       // A bad token is treated as no token: this guard never rejects.
     }

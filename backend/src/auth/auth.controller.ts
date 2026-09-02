@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpException, HttpStatus, Post, UseGuards 
 import { JwtService } from '@nestjs/jwt'
 import type { LoginResponse, MessageResponse, ValidateTokenResponse } from 'common'
 
-import { AuthTokenPayload } from './auth-token'
+import { AuthTokenPayload, isAccountTokenPayload } from './auth-token'
 import { AuthService } from './auth.service'
 import { CurrentUser, JwtAuthGuard } from './jwt-auth.guard'
 
@@ -51,7 +51,10 @@ export class AuthController {
     if (!token) throw new HttpException({ message: 'Token is required' }, HttpStatus.BAD_REQUEST)
 
     try {
-      return { valid: true, decoded: this.jwtService.verify<AuthTokenPayload>(token) }
+      const payload: unknown = this.jwtService.verify(token)
+      // A room visitor token is signed with the same secret; it is not an account token.
+      if (!isAccountTokenPayload(payload)) throw new Error('not an account token')
+      return { valid: true, decoded: payload }
     } catch {
       throw new HttpException(
         { valid: false, message: 'Invalid or expired token' },
