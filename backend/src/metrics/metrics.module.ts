@@ -8,7 +8,8 @@ import { RealtimeModule } from '../realtime/realtime.module'
 import { RoomsModule } from '../rooms/rooms.module'
 import { TelemetryController } from './telemetry.controller'
 import { TelemetryService } from './telemetry.service'
-import { UserActivityService } from '../rooms/user-activity.service'
+import { UserActivityModule } from '../user-activity/user-activity.module'
+import { UserActivityService } from '../user-activity/user-activity.service'
 
 /**
  * Observability, reading everything and owning nothing. `/telemetry` lives here rather
@@ -19,7 +20,7 @@ import { UserActivityService } from '../rooms/user-activity.service'
  * RoomsModule, users from AuthModule, the live connection index from RealtimeModule.
  */
 @Module({
-  imports: [RoomsModule, AuthModule, RealtimeModule],
+  imports: [RoomsModule, AuthModule, RealtimeModule, UserActivityModule],
   controllers: [MetricsController, TelemetryController],
   providers: [MetricsService, TelemetryService, MetricsTokenGuard],
 })

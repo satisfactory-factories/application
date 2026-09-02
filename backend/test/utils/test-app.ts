@@ -11,7 +11,7 @@ import type { Connection } from 'mongoose'
 import { CLOCK, Clock } from '../../src/rooms/clock'
 import { EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
 import { RoomActivityService } from '../../src/rooms/room-activity.service'
-import { UserActivityService } from '../../src/rooms/user-activity.service'
+import { UserActivityService } from '../../src/user-activity/user-activity.service'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
@@ -30,7 +30,7 @@ export interface TestAppOptions {
   /** Replaces the activity log, so a post-commit write can be made to fail. */
   activity?: Pick<RoomActivityService, 'record' | 'recordOnce'>
   /** Replaces the editor stamp, the other post-commit write, for the same reason. */
-  userActivity?: Pick<UserActivityService, 'recordEdit'>
+  userActivity?: Pick<UserActivityService, 'recordEdit' | 'recordSignIn'>
   clock?: Clock
   /**
    * Suites that make hundreds of calls from one address would otherwise trip the

@@ -8,7 +8,7 @@ import { APPLIED_OPS_RING, Room } from '../rooms/schemas/room.schema'
 import { CLOCK, Clock } from '../rooms/clock'
 import { RoomAccess, RoomAccessRole } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
-import { UserActivityService } from '../rooms/user-activity.service'
+import { UserActivityService } from '../user-activity/user-activity.service'
 import { mergeFactories } from './room-snapshot'
 
 export type OpOutcome =

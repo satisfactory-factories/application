@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { Model } from 'mongoose'
 
 import { User, UserDocument } from './user.schema'
+import { UserActivityService } from '../user-activity/user-activity.service'
 
 /** Matches the Express API exactly; changing it changes who can register. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -23,6 +24,7 @@ export class AuthService {
   constructor (
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly jwtService: JwtService,
+    private readonly userActivity: UserActivityService,
   ) {}
 
   async register (username: string, password: string): Promise<{ message: string }> {
@@ -52,6 +54,14 @@ export class AuthService {
 
     const token = await this.jwtService.signAsync({ id: user._id, username: user.username })
     console.log(`Successfully signed in user ${username}`)
+
+    // Stamped after the token is issued and allowed to fail: a metrics write must never be
+    // the reason somebody cannot sign in.
+    try {
+      await this.userActivity.recordSignIn(String(user._id), new Date())
+    } catch (cause) {
+      console.error(`Failed to stamp the sign-in for ${username}`, cause)
+    }
 
     return { token }
   }

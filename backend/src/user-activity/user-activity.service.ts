@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import type { Model } from 'mongoose'
 
-import { RoomActivity } from './schemas/room-activity.schema'
+import { RoomActivity } from '../rooms/schemas/room-activity.schema'
 import { User } from '../auth/user.schema'
 
 /** `room_activity` records this for a write with no account behind it. */
@@ -16,9 +16,9 @@ export const ANONYMOUS_ACTOR = 'anon'
  * one, but the sweeper trims it to 200 rows per room, so it cannot answer anything older than
  * the busiest plans' recent history.
  *
- * Lives under `rooms/` rather than `metrics/` only to keep the module graph acyclic:
- * MetricsModule already imports RealtimeModule for the socket count, so RealtimeModule
- * cannot import MetricsModule back. Both import RoomsModule.
+ * In a module of its own because three unrelated places write to it — the op path, the
+ * sign-in path and the metrics reader — and any two of them sharing a module would put a
+ * cycle in the graph.
  */
 @Injectable()
 export class UserActivityService {
@@ -42,6 +42,18 @@ export class UserActivityService {
     await this.users.updateOne(
       { _id: userId },
       { $max: { lastActiveAt: at }, $inc: { editCount: 1 } },
+    )
+  }
+
+  /**
+   * Stamps a sign-in. Separate from an edit: signing in, reading a plan and changing nothing
+   * is a real thing people do, and conflating the two would overstate how many accounts are
+   * actually building something.
+   */
+  async recordSignIn (userId: string, at: Date): Promise<void> {
+    await this.users.updateOne(
+      { _id: userId },
+      { $max: { lastSignInAt: at }, $inc: { signInCount: 1 } },
     )
   }
 

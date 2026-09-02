@@ -379,6 +379,53 @@ add(66, "Stickiness",
     stat([{"value": 0, "color": "red"}, {"value": 0.1, "color": "#EAB839"}, {"value": 0.25, "color": "green"}],
          unit="percentunit", minmax=(0, 1)))
 
+# ------------------------------------------------------------------- growth
+add(80, "New Accounts",
+    "Registrations inside each rolling window. Read from the registration date accounts have always carried, so it is exact and correct all the way back, not just since this metric shipped.",
+    [query('sum(sf_new_accounts%s)' % sel('window="24h"'), "24 hours", "A"),
+     query('sum(sf_new_accounts%s)' % sel('window="7d"'), "7 days", "B"),
+     query('sum(sf_new_accounts%s)' % sel('window="30d"'), "30 days", "C")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
+
+add(81, "New Accounts This Week",
+    "Registrations in the last 7 days.",
+    [query('sum(sf_new_accounts%s)' % sel('window="7d"'), "New")],
+    stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], graph="area"))
+
+add(82, "New Accounts This Month",
+    "Registrations in the last 30 days.",
+    [query('sum(sf_new_accounts%s)' % sel('window="30d"'), "New")],
+    stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], graph="area"))
+
+add(83, "New Accounts Over Time",
+    "Each rolling window plotted. A step up in the 24h line is a signup; the wider lines are the trend.",
+    [query("sum by (window) (sf_new_accounts%s)" % J, "{{window}}")],
+    timeseries(fill=8))
+
+add(84, "Sign-ins",
+    "Accounts that signed in inside each window. Separate from editing: signing in, reading a plan and changing nothing is a real thing people do.",
+    [query('sum(sf_signed_in_accounts%s)' % sel('window="24h"'), "24 hours", "A"),
+     query('sum(sf_signed_in_accounts%s)' % sel('window="7d"'), "7 days", "B"),
+     query('sum(sf_signed_in_accounts%s)' % sel('window="30d"'), "30 days", "C")],
+    stat(BLUE, color_mode="value", text_mode="value_and_name"))
+
+add(85, "Sign-ins, All Time",
+    "Sign-ins summed across accounts. Approximate: the count is written after the token is issued and is allowed to fail, and it counts from release rather than being backfilled.",
+    [query("sum(sf_signins_total%s)" % J, "Sign-ins")],
+    stat(BLUE, graph="area", color_mode="background_solid"))
+
+add(86, "Sign-ins Over Time",
+    "Rolling sign-in windows. Compare against Active Accounts: a gap means people are signing in and not building.",
+    [query("sum by (window) (sf_signed_in_accounts%s)" % J, "{{window}}")],
+    timeseries(fill=8))
+
+add(87, "Of Those Who Signed In, How Many Edited",
+    "Active accounts over signed-in accounts, both on 7 days. Low means people arrive and do not build.",
+    [query('sum(sf_active_accounts%s) / sum(sf_signed_in_accounts%s)'
+           % (sel('window="7d"'), sel('window="7d"')), "Edited")],
+    stat([{"value": 0, "color": "red"}, {"value": 0.3, "color": "#EAB839"}, {"value": 0.6, "color": "green"}],
+         unit="percentunit", minmax=(0, 1)))
+
 # ------------------------------------------------------------- biggest and busiest
 add(70, "Biggest Plans",
     "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
@@ -464,6 +511,12 @@ rows = [
         item(14, 0, 10, 4, 64),
         item(0, 4, 12, 8, 62), item(12, 4, 12, 8, 63),
         item(0, 12, 24, 8, 65),
+    ]),
+    row("🌱 Growth · from the database", [
+        item(0, 0, 5, 4, 81), item(5, 0, 5, 4, 82), item(10, 0, 4, 4, 87),
+        item(14, 0, 10, 4, 80),
+        item(0, 4, 12, 8, 83), item(12, 4, 12, 8, 86),
+        item(0, 12, 5, 4, 85), item(5, 12, 19, 4, 84),
     ]),
     row("🏆 Biggest and Busiest · from the database", [
         item(0, 0, 4, 4, 73),

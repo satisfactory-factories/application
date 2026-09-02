@@ -27,6 +27,7 @@ interface CheapCounts {
   roomRevisions: number
   roomMembers: number
   users: number
+  signIns: number
 }
 
 interface OwnedTotal { name: string, value: number }
@@ -35,6 +36,8 @@ interface RoomTotal { roomId: string, owner: string, factories: number }
 /** The slow numbers: five window counts and three top-N aggregations. */
 interface SlowStats {
   activeAccounts: Array<readonly [string, number]>
+  newAccounts: Array<readonly [string, number]>
+  signedInAccounts: Array<readonly [string, number]>
   topRooms: RoomTotal[]
   topEditors: OwnedTotal[]
   topOwners: OwnedTotal[]
@@ -70,6 +73,9 @@ export class MetricsService {
   private readonly clientsByVersion: Gauge<'version'>
 
   private readonly activeAccounts: Gauge<'window'>
+  private readonly newAccounts: Gauge<'window'>
+  private readonly signedInAccounts: Gauge<'window'>
+  private readonly signInsTotal: Gauge<string>
   private readonly roomFactories: Gauge<'room_id' | 'owner'>
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
@@ -154,6 +160,23 @@ export class MetricsService {
       labelNames: ['window'],
       registers,
     })
+    this.newAccounts = new Gauge({
+      name: 'sf_new_accounts',
+      help: 'Accounts registered inside the window. Read from the registration date the account already carries, so it is exact and works back over the whole history.',
+      labelNames: ['window'],
+      registers,
+    })
+    this.signedInAccounts = new Gauge({
+      name: 'sf_signed_in_accounts',
+      help: 'Accounts that signed in inside the window. Distinct from sf_active_accounts, which counts editing: signing in and changing nothing is a different thing.',
+      labelNames: ['window'],
+      registers,
+    })
+    this.signInsTotal = new Gauge({
+      name: 'sf_signins_total',
+      help: 'Sign-ins summed across accounts. Approximate: the count is written after the token is issued and is allowed to fail. Counts from release, and falls if an account is deleted.',
+      registers,
+    })
     this.roomFactories = new Gauge({
       name: 'sf_room_factories',
       help: `The ${METRICS_TOP_N} largest synced tabs by factory count.`,
@@ -206,6 +229,7 @@ export class MetricsService {
       this.roomRevisions.set(cheap.value.roomRevisions)
       this.roomMembersTotal.set(cheap.value.roomMembers)
       this.usersTotal.set(cheap.value.users)
+      this.signInsTotal.set(cheap.value.signIns)
     }
 
     // Only on a real reload. prom-client remembers every label set it has been given, so a
@@ -234,6 +258,12 @@ export class MetricsService {
     for (const [window, accounts] of stats.activeAccounts) {
       this.activeAccounts.set({ window }, accounts)
     }
+    for (const [window, accounts] of stats.newAccounts) {
+      this.newAccounts.set({ window }, accounts)
+    }
+    for (const [window, accounts] of stats.signedInAccounts) {
+      this.signedInAccounts.set({ window }, accounts)
+    }
 
     this.roomFactories.reset()
     for (const room of stats.topRooms) {
@@ -252,7 +282,7 @@ export class MetricsService {
   }
 
   private async loadCheap (): Promise<CheapCounts> {
-    const [sharedRooms, privateRooms, totals, roomMembers, users] = await Promise.all([
+    const [sharedRooms, privateRooms, totals, roomMembers, users, signIns] = await Promise.all([
       this.rooms.countDocuments({ deletedAt: null, shared: true }),
       // `$ne: true` rather than `false`, so a document predating the field still counts
       // once rather than not at all.
@@ -260,21 +290,25 @@ export class MetricsService {
       this.sumRoomTotals(),
       this.memberships.countDocuments(),
       this.users.countDocuments(),
+      this.sumSignIns(),
     ])
 
-    return { sharedRooms, privateRooms, ...totals, roomMembers, users }
+    return { sharedRooms, privateRooms, ...totals, roomMembers, users, signIns }
   }
 
   private async loadSlow (): Promise<SlowStats> {
     const now = this.clock.now()
-    const [activeAccounts, topRooms, topEditors, topOwners] = await Promise.all([
-      this.countActiveAccounts(now),
-      this.findLargestRooms(),
-      this.findBusiestEditors(),
-      this.findLargestOwners(),
-    ])
+    const [activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners] =
+      await Promise.all([
+        this.countByWindow(now, 'lastActiveAt'),
+        this.countByWindow(now, 'registered'),
+        this.countByWindow(now, 'lastSignInAt'),
+        this.findLargestRooms(),
+        this.findBusiestEditors(),
+        this.findLargestOwners(),
+      ])
 
-    return { activeAccounts, topRooms, topEditors, topOwners }
+    return { activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners }
   }
 
   /** Factories and accepted edits in one pass, since both are sums over the same documents. */
@@ -292,11 +326,27 @@ export class MetricsService {
     return { roomFactories: row?.factories ?? 0, roomRevisions: row?.revisions ?? 0 }
   }
 
-  private async countActiveAccounts (now: Date): Promise<Array<readonly [string, number]>> {
+  /** Sign-ins across all accounts. Falls if an account is deleted, like the edit total. */
+  private async sumSignIns (): Promise<number> {
+    const [row] = await this.users.aggregate<{ total: number }>([
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$signInCount', 0] } } } },
+    ])
+    return row?.total ?? 0
+  }
+
+  /**
+   * One rolling-window count per configured window, over whichever date field is asked for.
+   * A timestamp rather than a bucket, so every window is exact with no boundary error, and
+   * `registered` needs no new writes at all: accounts have carried it since the beginning.
+   */
+  private async countByWindow (
+    now: Date,
+    field: 'lastActiveAt' | 'registered' | 'lastSignInAt',
+  ): Promise<Array<readonly [string, number]>> {
     return Promise.all(ACTIVE_ACCOUNT_WINDOWS.map(async ([label, ms]) => {
       const since = new Date(now.getTime() - ms)
-      const active = await this.users.countDocuments({ lastActiveAt: { $gt: since } })
-      return [label, active] as const
+      const matched = await this.users.countDocuments({ [field]: { $gt: since } })
+      return [label, matched] as const
     }))
   }
 
