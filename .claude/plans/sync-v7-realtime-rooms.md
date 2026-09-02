@@ -1,6 +1,10 @@
 # v0.7.0: Realtime sync, rooms, and the backend rewrite
 
-Status: revision 8. Reconciled with the built backend (2026-08-28): `POST /share` stays —
+Status: revision 9. Reconciled with the shipped build (2026-09-03): the opId ring guards ack
+replay rather than a client retry; bulk-removal declarations are per id and single deletes make
+them too; the loader gate is two questions, calculation on the plan's state and pacing on its
+size; and the metrics/telemetry subsystem, which postdates every earlier revision, has a section
+of its own. Revision 8 reconciled with the built backend (2026-08-28): `POST /share` stays —
 snapshot links must remain creatable, so "read-only" applies to existing legacy rows, not
 the collection; a deleted room sends `room_deleted` and drops that room from the socket
 without closing it (one socket carries many tabs); the opId ring is 50; an unshared room's
@@ -41,7 +45,7 @@ separate later session.
 - Add the `/room/:slug` page: resolve the slug, take the password when one is set, join (membership when logged in, visitor token when not), open the tab live
 - Build the share dialog with two clearly separated actions: "Copy snapshot link" (read-only copy, any tab, no account) and "Invite collaborators" (synced tabs; slug; optional password set/change/remove; copyable link)
 - Build login-time adoption as an offer per tab ("Sync your planner tabs now?"), "(local)" suffixes, and the "Recover server copy" button
-- Gate the staggered loader behind "calculation actually happened"; instant render when revision + app version match
+- Split the loader gate in two: whether to CALCULATE is answered by the plan's state, whether to PACE THE RENDER by its size (`PACED_RENDER_FACTORY_COUNT`); instant render only for a plan small enough to mount in one flush whose mirror matches the room's revision and this app version
 - Build the preferences sync store (enumerated semantic keys, debounced PUT with `baseRevision`)
 - Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
 - Add the fetch wrapper sending `X-App-Version` and the persistent refresh prompt on 426/4426
@@ -255,10 +259,15 @@ snapshot, rebase kept edits, recalc, send. User-touched ids are persisted, so of
 survive a browser restart. No blocking alerts anywhere; queued preference writes flush on
 exit.
 
-**Loading.** The staggered loader runs only when calculation actually happened. A tab switch
-where the revision matches the mirror and the mirror's app version is current renders
-instantly. Everything else goes through the full `initFactories` validation/migration path.
-Server data stops bypassing the loader funnel.
+**Loading.** Two separate questions, and conflating them is what made a tab switch hitch with
+no loader on screen. Whether to CALCULATE is answered by the plan's own state: an already
+calculated plan is recalculated for nothing. Whether to PACE THE RENDER is answered by its
+size: past `PACED_RENDER_FACTORY_COUNT` (10) the 75ms-per-factory stagger is what stops the
+tab freezing, and that cost is owed by every big plan however little there was to calculate.
+So the instant path needs both halves — a plan small enough to mount in one flush, whose
+mirror carries the room's current revision and this app version. Everything else goes through
+the full `initFactories` validation/migration path, and server data stops bypassing the loader
+funnel: the first snapshot of a tab opened empty is a plan load like any other.
 
 **Account tile** (replaces `Auth.vue` + `Sync.vue`): username, change-password, logout, live
 connection state, the offline switch, the synced-tab list with share controls and a
@@ -438,8 +447,11 @@ a re-join is told what a room holds only when it holds something.
 - One shared rebase path covers reject, reconnect, inbound-over-pending, offline exit, and
   disconnect-before-apply: adopt server state, overlay user-touched, recalc, resend — or
   send nothing if nothing differs (how "it applied before the drop" resolves).
-- Duplicate `opId`s in the ring return the original ack; the guarantee's honest scope is the
-  single in-flight retry window, the only op a client ever retries.
+- Duplicate `opId`s in the ring return the original ack instead of applying the op twice. As
+  built, **the client never retries an opId**: an op left unanswered is dropped and the room
+  re-baselines, and whatever still differs goes out as a fresh op with a new id. So the ring
+  guards ack replay — the same frame reaching the apply path twice — rather than a retry loop
+  the client does not have.
 - **The one case the user decides, and the only one: the offline clash.** A fresh snapshot for a
   tracked room (join, reconnect, the revision probe's heal, leaving offline mode, reopening a
   device whose mirror meta carries touched ids) whose revision is past this client's acked
@@ -457,9 +469,12 @@ a re-join is told what a room holds only when it holds something.
   re-measures the rows against it and closes the dialog unprompted if the overlap has gone. **The
   wire protocol is unchanged**: this is a client-side decision about which local records survive a
   rebase, and the server sees an ordinary op either way.
-- **Removals past `BULK_REMOVAL_THRESHOLD` (5) in one op must carry `bulkRemoval: true`**, which
-  only a whole-plan replacement sets (clear, paste, template, demo) and only for the ids that
-  replacement removed. Without it the server answers `op_reject {reason:
+- **Removals past `BULK_REMOVAL_THRESHOLD` (5) in one op must carry `bulkRemoval: true`.** As
+  built the declaration is per id and every deliberate user removal makes one, single deletes
+  included, not only a whole-plan replacement (clear, paste, template, demo): the ids go into
+  the engine's `declaredRemovals` and are persisted with the mirror meta, because the op that
+  carries them may be a restart away. The flag is set when *every* id the op removes was
+  declared that way. Without it the server answers `op_reject {reason:
   'undeclared_bulk_removal', snapshot}`, so a client whose plan is half-mounted re-baselines
   instead of emptying the room. An accepted bulk removal stashes the pre-op factory array on the
   room as `lastBulkRestore`, latest only, in the same guarded write.
@@ -530,6 +545,37 @@ confirm `JWT_SECRET` is set in the box's env file (boot now refuses to start wit
 **Accepted risks.** Deploys drop every socket (clients resync via snapshot). Single server
 process by design. Big-plan snapshots stay large, bounded by `maxPayload` and the per-client
 send queue.
+
+## Metrics and telemetry (shipped after this contract was written)
+
+None of this was in the contract; it was built alongside the rooms work and is recorded here
+so the plan describes what exists. Three unauthenticated-or-scraper surfaces, all
+`@SkipVersionGate()` for the same reason `/health` is — the callers are a scraper and the
+oldest, most broken clients, none of which can send a useful `X-App-Version`.
+
+- **`GET /metrics`** (`backend/src/metrics/`) serves the Prometheus text exposition format
+  behind a bearer token read from `METRICS_TOKEN` at request time. **Unset means the endpoint
+  does not exist**: it answers 404 rather than serving, so a new box cannot quietly publish an
+  open metrics endpoint. It has a rate-limit bucket of its own, so ordinary traffic can never
+  throttle a scrape into a gap in the graphs. Counts are cached (`METRICS_CACHE_MS` 15s, and a
+  slow tier at 120s) so two scrapers do not both run the same queries.
+- **`POST /telemetry`** is the anonymous usage heartbeat: unauthenticated by design, since the
+  users it exists to count are the ones with no account. The browser keeps an instance id in
+  `localStorage` and beats on `TELEMETRY_CAPS.intervalMs`, reporting version and build commit;
+  the server answers 204 always, and 429 for the per-instance floor
+  (`TELEMETRY_MIN_INTERVAL_MS`) or the instance ceiling (`TELEMETRY_MAX_INSTANCES`), both of
+  which the client treats as "drop it and wait for the next tick".
+- **`POST /events`** takes a batch of fault counts from one browser (`EVENT_REASONS` /
+  `EVENT_SOURCES` in `common`), which become prom-client counters in
+  `backend/src/event-counters/`. The web side is `record-event.ts` and `events-store.ts`, whose
+  hooks sit inside recovery paths and therefore may never throw.
+- Supporting stores: `backend/src/room-totals/` keeps the permanent count of room lifecycle
+  events (rooms ever created, and so on, which a live `countDocuments` cannot answer), and
+  `backend/src/user-activity/` derives active-account windows from `room_activity`.
+- Bodies are bounded twice, on `Content-Length` and on the parsed body, because the global JSON
+  parser is sized for a plan and the declared length is the sender's claim rather than a fact.
+- prom-client is deprecated and the backend stayed on it deliberately; read the metrics
+  entries in `.claude/memory/MEMORY.md` before adding or relabelling a metric.
 
 ## How we prove it
 

@@ -4,12 +4,12 @@ description: v0.7.0 realtime rooms sync — built and green on branch claude/syn
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-09-02
+  lastVerified: 2026-09-03
 ---
 
 The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
 10-second last-write-wins blob sync, plus a NestJS backend rewrite. The binding contract is
-`.claude/plans/sync-v7-realtime-rooms.md` (revision 8, reconciled with the built backend).
+`.claude/plans/sync-v7-realtime-rooms.md` (revision 9, reconciled with the shipped build).
 
 **Status: shipped for review as PR #620 (opened 2026-08-30) from branch
 `claude/sync-mechanism-refactor-7b021b`; not yet merged. Since 2026-08-31 the PR targets the
@@ -27,10 +27,10 @@ reset, the v0.7.0 changelog modal). Three adversarial Codex reviews of the finis
 seven findings between them; all are fixed, and the sections below are what they were. A
 verification pass over the round-two fixes found a further instance of the bulk-replacement
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
-restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
+restored: see "The merge from main" below. Green as of 2026-09-03, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2987 unit tests (158 files, 1 skipped) as of the conflict demo round (2026-09-01),
+backend 485 vitest tests (32 files), common 153 (6), web 3083 unit tests (163 files, 1
+skipped), all measured 2026-09-03 after the QA fix rounds,
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
 conflict round). The whole suite ran twice at full speed
@@ -65,6 +65,8 @@ change to that file.
 | Version header and the 426 path | `web/src/api/client.ts`, `components/sync/VersionPrompt.vue` |
 | WS gateway, presence, fan-out, revocation | `backend/src/realtime/` |
 | Rooms domain, ensure-steps, sweeper, activity | `backend/src/rooms/` |
+| Scrape endpoint, usage heartbeat, fault counters | `backend/src/metrics/`, `event-counters/`, `room-totals/`, `user-activity/` |
+| The browser half of those | `web/src/stores/telemetry-store.ts`, `events-store.ts`, `utils/record-event.ts` |
 | Playwright harness (builds and boots the real stack) | `web/e2e/`, `web/playwright.config.ts` |
 | CI job for that suite | `.github/workflows/e2e.yml` |
 
@@ -87,7 +89,9 @@ every zod-derived type collapses into a wall of unrelated-looking TS errors.
   (`/room/<slug>`, live, optional password; rotation kicks visitors, unshare kicks everyone
   and leaves each collaborator a local copy, keeping the slug reserved).
 - Consistency: one op in flight, exact-`baseRevision` acceptance, whole-changed-factory
-  diffs, client-side rebase (server never rebases), opId dedup ring of 50.
+  diffs, client-side rebase (server never rebases), opId dedup ring of 50. The ring guards
+  **ack replay**, not a client retry: an op the client gives up on is dropped, the room
+  re-baselines, and what still differs goes out under a fresh opId. Nothing ever resends one.
 - No Mongo transactions (production stays a standalone mongod): resume-aware ensure-steps,
   tombstone-first delete, hourly sweeper.
 - Version gate via `X-App-Version` (only `/health` and `GET /share/:id` exempt); `/hello`
@@ -1633,6 +1637,33 @@ Guards: `backend/test/ws-ops.spec.ts` "declared bulk removals" (5) and
 `room-sync-store.spec.ts` "declared bulk removals" (7), each negative-controlled by neutering
 one half at a time — the server check both ways, the restore point, its cap skip, the flag, the
 id set, its persistence and the convergence rule.
+
+## Metrics and telemetry, which postdate the contract (recorded 2026-09-03)
+
+Built alongside the rooms work and absent from the plan's original text, so the plan now carries
+a section for it too. Three surfaces, all `@SkipVersionGate()` for the reason `/health` is: the
+callers are a scraper and the oldest, most broken clients, none of which sends a useful
+`X-App-Version`.
+
+- **`GET /metrics`** serves Prometheus text behind a bearer token read from `METRICS_TOKEN` at
+  request time. **Unset means 404, not an open endpoint** — forgetting the variable on a new box
+  cannot publish one. Its own rate-limit bucket, so ordinary traffic cannot throttle a scrape
+  into a gap in the graphs; counts cached at `METRICS_CACHE_MS` (15s) with a 120s slow tier.
+- **`POST /telemetry`** is the anonymous usage heartbeat, unauthenticated by design because the
+  users it exists to count are the ones with no account. The browser keeps an instance id in
+  `localStorage` and beats on `TELEMETRY_CAPS.intervalMs` with version and build commit. Always
+  204; 429 for the per-instance floor or the `TELEMETRY_MAX_INSTANCES` ceiling, and the client's
+  answer to either is to drop it and wait for the next tick.
+- **`POST /events`** takes a batch of fault counts (`EVENT_REASONS` / `EVENT_SOURCES` in
+  `common`) which become prom-client counters. Its web hooks sit inside recovery paths, so
+  nothing in `record-event.ts` or `events-store.ts` may throw.
+- `room-totals/` keeps the permanent count of room lifecycle events, which a live
+  `countDocuments` cannot answer; `user-activity/` derives the active-account windows from
+  `room_activity`.
+- Both POST bodies are bounded twice, on `Content-Length` and on the parsed body: the global JSON
+  parser is sized for a plan, and a declared length is the sender's claim rather than a fact.
+- prom-client is deprecated and the backend stayed on it deliberately: see
+  [[prom-client-deprecated-successor]] before changing anything about a metric.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See
