@@ -28,6 +28,9 @@ const ALLOWED_FIELDS = [
   'tabCount',
 ]
 
+/** Sent only when the build knows its commit, so it is not in the always-present set. */
+const OPTIONAL_FIELDS = ['gitSha']
+
 /** Anything that would identify a person, however indirectly. None of it may appear. */
 const FORBIDDEN_FIELDS = [
   'username', 'user', 'userId', 'accountId', 'email', 'token', 'name',
@@ -62,7 +65,9 @@ describe('telemetry-store', () => {
     it('sends exactly the allowed fields and nothing else', async () => {
       await store.send()
 
-      expect(Object.keys(sent() ?? {}).sort()).toEqual(ALLOWED_FIELDS)
+      const keys = Object.keys(sent() ?? {}).sort()
+      expect(keys.filter(k => !OPTIONAL_FIELDS.includes(k))).toEqual(ALLOWED_FIELDS)
+      expect(keys.filter(k => !ALLOWED_FIELDS.includes(k) && !OPTIONAL_FIELDS.includes(k))).toEqual([])
     })
 
     it.each(FORBIDDEN_FIELDS)('never sends a %s', async field => {

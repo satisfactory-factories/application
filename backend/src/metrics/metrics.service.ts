@@ -17,6 +17,7 @@ import { ConnectionRegistry } from '../realtime/connection-registry'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
 import { TelemetryService } from './telemetry.service'
+import type { TelemetrySnapshot } from './telemetry.service'
 import { User } from '../auth/user.schema'
 
 /** The fast numbers: four counts and one aggregation over the rooms collection. */
@@ -71,6 +72,7 @@ export class MetricsService {
   private readonly clientTabs: Gauge<'kind'>
   private readonly clientFactoriesTotal: Gauge<string>
   private readonly clientsByVersion: Gauge<'version'>
+  private readonly clientsBySha: Gauge<'sha'>
 
   private readonly activeAccounts: Gauge<'window'>
   private readonly newAccounts: Gauge<'window'>
@@ -80,6 +82,7 @@ export class MetricsService {
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
 
+  private readonly census: CachedQuery<TelemetrySnapshot>
   private readonly cheap: CachedQuery<CheapCounts>
   private readonly slow: CachedQuery<SlowStats>
 
@@ -154,6 +157,12 @@ export class MetricsService {
       registers,
     })
 
+    this.clientsBySha = new Gauge({
+      name: 'sf_clients_by_sha',
+      help: 'Active browsers by the commit their bundle was built from. A build that reported no commit, such as a local one, counts under "unknown".',
+      labelNames: ['sha'],
+      registers,
+    })
     this.activeAccounts = new Gauge({
       name: 'sf_active_accounts',
       help: 'Accounts whose last accepted edit falls inside the window. Signing in, creating a tab and joining one are not edits and do not count.',
@@ -196,6 +205,9 @@ export class MetricsService {
       registers,
     })
 
+    // The census is a database read now too, so it gets the same last-good-value
+    // treatment: a Mongo outage must not blank the client panels either.
+    this.census = new CachedQuery(METRICS_CACHE_MS, () => this.telemetry.snapshot())
     this.cheap = new CachedQuery(METRICS_CACHE_MS, () => this.loadCheap())
     this.slow = new CachedQuery(METRICS_SLOW_CACHE_MS, () => this.loadSlow())
   }
@@ -212,15 +224,20 @@ export class MetricsService {
   private async refresh (): Promise<void> {
     // Free, so never cached: both come from memory this process already holds.
     this.wsConnections.set(this.connections.size())
-    this.setClientGauges()
 
     const nowMs = this.clock.now().getTime()
-    const [cheap, slow] = await Promise.all([this.cheap.get(nowMs), this.slow.get(nowMs)])
+    const [census, cheap, slow] = await Promise.all([
+      this.census.get(nowMs),
+      this.cheap.get(nowMs),
+      this.slow.get(nowMs),
+    ])
+
+    if (census.value) this.setClientGauges(census.value)
 
     // Either group failing means the database was unreadable this scrape. A 500 would cost
     // Prometheus every series here, the in-memory ones included, so the outage is reported
     // as a signal and the last good values stand.
-    this.databaseUp.set(cheap.failed || slow.failed ? 0 : 1)
+    this.databaseUp.set(census.failed || cheap.failed || slow.failed ? 0 : 1)
 
     if (cheap.value) {
       this.roomsTotal.set({ shared: 'true' }, cheap.value.sharedRooms)
@@ -239,9 +256,7 @@ export class MetricsService {
     if (slow.refreshed && slow.value) this.setSlowGauges(slow.value)
   }
 
-  private setClientGauges (): void {
-    const census = this.telemetry.snapshot()
-
+  private setClientGauges (census: TelemetrySnapshot): void {
     this.activeClients.set({ signed_in: 'true' }, census.activeSignedIn)
     this.activeClients.set({ signed_in: 'false' }, census.activeSignedOut)
     this.clientTabs.set({ kind: 'local' }, census.localTabs)
@@ -251,6 +266,11 @@ export class MetricsService {
     this.clientsByVersion.reset()
     for (const [version, clients] of census.byVersion) {
       this.clientsByVersion.set({ version }, clients)
+    }
+
+    this.clientsBySha.reset()
+    for (const [sha, clients] of census.bySha) {
+      this.clientsBySha.set({ sha }, clients)
     }
   }
 

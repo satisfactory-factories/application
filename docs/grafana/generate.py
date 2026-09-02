@@ -458,28 +458,25 @@ add(41, "Build Adoption Over Time",
     [query("sum by (version) (sf_clients_by_version%s)" % J, "{{version}}")],
     timeseries(fill=25, stack="normal"))
 
+add(43, "Browsers by Commit",
+    "Active browsers by the commit their bundle was built from. A build that reported no commit, such as a local one, counts under \"unknown\". Capped to the busiest 25 commits.",
+    [query("sort_desc(sf_clients_by_sha%s)" % J, "{{sha}}", instant=True)],
+    bargauge(display_name="${__field.labels.sha}"))
+
+add(44, "Commit Rollout Over Time",
+    "Stacked. After a deploy, watch the previous commit drain. This is the panel that says whether a rollout has actually reached people, which a version number cannot: several commits ship under one version.",
+    [query("sum by (sha) (sf_clients_by_sha%s)" % J, "{{sha}}")],
+    timeseries(fill=25, stack="normal"))
+
+add(45, "Browsers on an Unknown Commit",
+    "Builds reporting no usable commit. Expect this to be non-zero only for local development builds.",
+    [query('sum(sf_clients_by_sha%s) or vector(0)' % sel('sha="unknown"'), "Unknown")],
+    stat([{"value": 0, "color": "green"}, {"value": 1, "color": "#6a6a6a"}]))
+
 add(42, "On an Unrecognised Build",
     'Browsers reporting a version the label pattern refused. Expect zero. Anything sustained means either a bad build string or somebody poking the endpoint.',
     [query('sum(sf_clients_by_version%s) or vector(0)' % sel('version="other"'), "Other")],
     stat([{"value": 0, "color": "green"}, {"value": 1, "color": "#EAB839"}, {"value": 10, "color": "red"}]))
-
-# ------------------------------------------------------------ collection health
-add(50, "Scrape Up",
-    "Prometheus's own view of whether this target answered. 0 means the endpoint is unreachable, the token is wrong, or the build has no /metrics route.",
-    [query('min(up%s)' % J, "Up")],
-    stat([{"value": 0, "color": "red"}, {"value": 1, "color": "green"}]))
-
-add(51, "Scrape Duration",
-    "How long the endpoint takes to answer. The database gauges are cached for 10s, so most scrapes are cheap and one in every few does real work.",
-    [query('max(scrape_duration_seconds%s)' % J, "Duration")],
-    stat(GREEN, unit="s", color_mode="value", decimals=3))
-
-add(52, "Collection Health Over Time",
-    "Both lines should sit flat at 1. Scrape up dropping is a transport or auth problem; database readable dropping means Mongo is unreachable and the room and account gauges are stale rather than zero.",
-    [query('min(up%s)' % J, "Scrape up", "A"),
-     query("min(sf_metrics_database_up%s)" % J, "Database readable", "B")],
-    timeseries(fill=10, minmax=(0, 1), decimals=0))
-
 
 def item(x, y, w, h, pid):
     return {
@@ -537,11 +534,10 @@ rows = [
         item(18, 0, 3, 4, 23), item(21, 0, 3, 4, 24),
         item(0, 4, 12, 8, 25), item(12, 4, 12, 8, 26),
     ]),
-    row("🏷️ Client Builds · from browsers", [
-        item(0, 0, 12, 8, 40), item(12, 0, 12, 8, 41), item(0, 8, 6, 4, 42),
-    ]),
-    row("🩺 Collection Health", [
-        item(0, 0, 6, 4, 50), item(0, 4, 6, 4, 51), item(6, 0, 18, 8, 52),
+    row("🏷️ Client Builds and Commits · from browsers", [
+        item(0, 0, 12, 8, 40), item(12, 0, 12, 8, 41),
+        item(0, 8, 12, 10, 43), item(12, 8, 12, 10, 44),
+        item(0, 18, 6, 4, 42), item(6, 18, 6, 4, 45),
     ]),
 ]
 

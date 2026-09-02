@@ -104,6 +104,9 @@ export const useTelemetryStore = defineStore('telemetry', () => {
       cloudTabCount,
       factoriesTotal,
       appVersion: config.appVersion || UNKNOWN_VERSION,
+      // Omitted rather than sent empty when the build knows no commit: the field is optional
+      // and the server counts a missing one under `unknown` either way.
+      ...(config.gitSha ? { gitSha: config.gitSha } : {}),
     }
   }
 

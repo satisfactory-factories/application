@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
 
 import { AuthModule } from '../auth/auth.module'
 import { MetricsController } from './metrics.controller'
@@ -7,6 +8,7 @@ import { MetricsTokenGuard } from './metrics-token.guard'
 import { RealtimeModule } from '../realtime/realtime.module'
 import { RoomsModule } from '../rooms/rooms.module'
 import { TelemetryController } from './telemetry.controller'
+import { TelemetryInstance, TelemetryInstanceSchema } from './telemetry-instance.schema'
 import { TelemetryService } from './telemetry.service'
 import { UserActivityModule } from '../user-activity/user-activity.module'
 import { UserActivityService } from '../user-activity/user-activity.service'
@@ -20,7 +22,15 @@ import { UserActivityService } from '../user-activity/user-activity.service'
  * RoomsModule, users from AuthModule, the live connection index from RealtimeModule.
  */
 @Module({
-  imports: [RoomsModule, AuthModule, RealtimeModule, UserActivityModule],
+  imports: [
+    RoomsModule,
+    AuthModule,
+    RealtimeModule,
+    UserActivityModule,
+    MongooseModule.forFeature([
+      { name: TelemetryInstance.name, schema: TelemetryInstanceSchema },
+    ]),
+  ],
   controllers: [MetricsController, TelemetryController],
   providers: [MetricsService, TelemetryService, MetricsTokenGuard],
 })
