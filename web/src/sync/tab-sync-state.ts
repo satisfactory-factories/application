@@ -1,4 +1,5 @@
 import type { RoomRole } from 'common'
+import { writeLocalStorage } from '@/utils/safe-storage'
 
 /**
  * What a tab *is*, as opposed to what it holds. Kept in its own localStorage key
@@ -67,9 +68,8 @@ export const readTabSyncStates = (): TabSyncStateMap => {
   return map
 }
 
-export const writeTabSyncStates = (map: TabSyncStateMap): void => {
-  localStorage.setItem(TAB_SYNC_STATE_KEY, JSON.stringify(map))
-}
+export const writeTabSyncStates = (map: TabSyncStateMap): boolean =>
+  writeLocalStorage(TAB_SYNC_STATE_KEY, JSON.stringify(map))
 
 /** A tab the user can hand to someone else, as opposed to a private synced one. */
 export const isCollaborative = (state: TabSyncState): boolean =>

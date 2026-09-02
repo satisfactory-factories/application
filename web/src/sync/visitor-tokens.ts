@@ -1,3 +1,5 @@
+import { writeLocalStorage } from '@/utils/safe-storage'
+
 /**
  * Visitor tokens, kept per room. An anonymous joiner has no other credential, and
  * the server wants it re-sent on every join, so it has to outlive the page that
@@ -32,12 +34,12 @@ export const readVisitorToken = (roomId: string): string | undefined =>
 export const setVisitorToken = (roomId: string, token: string): void => {
   const map = readVisitorTokens()
   map[roomId] = token
-  localStorage.setItem(VISITOR_TOKEN_KEY, JSON.stringify(map))
+  writeLocalStorage(VISITOR_TOKEN_KEY, JSON.stringify(map))
 }
 
 export const removeVisitorToken = (roomId: string): void => {
   const map = readVisitorTokens()
   if (!(roomId in map)) return
   delete map[roomId]
-  localStorage.setItem(VISITOR_TOKEN_KEY, JSON.stringify(map))
+  writeLocalStorage(VISITOR_TOKEN_KEY, JSON.stringify(map))
 }

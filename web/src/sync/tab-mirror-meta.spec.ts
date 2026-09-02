@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROTOCOL_VERSION } from 'common'
 import {
   pruneTabMirrorMeta,
@@ -8,6 +8,7 @@ import {
   TAB_MIRROR_META_KEY,
   writeTabMirrorMeta,
 } from '@/sync/tab-mirror-meta'
+import { refuseLocalStorageWrites } from '../../testing/storage'
 
 const meta = (revision: number, ids: number[] = [], declaredRemovals: number[] = []) => ({
   revision,
@@ -21,6 +22,10 @@ const meta = (revision: number, ids: number[] = [], declaredRemovals: number[] =
 describe('tab mirror metadata', () => {
   beforeEach(() => {
     localStorage.removeItem(TAB_MIRROR_META_KEY)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('reads an empty map when nothing is stored', () => {
@@ -80,6 +85,17 @@ describe('tab mirror metadata', () => {
     setTabMirrorMeta('tab-1', { ...meta(4, [7]), baselinePrints: { 7: 12 as never, 8: 'ok' } })
 
     expect(readTabMirrorMeta()['tab-1']?.baselinePrints).toEqual({ 8: 'ok' })
+  })
+
+  // Every writer here is reached from inside a user edit: `markUserTouched` runs on the
+  // same stack as the keystroke that caused it, so a quota throw takes the edit with it.
+  it('survives a browser that refuses the write', () => {
+    const restore = refuseLocalStorageWrites()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(() => setTabMirrorMeta('tab-1', meta(7, [1]))).not.toThrow()
+    expect(writeTabMirrorMeta({})).toBe(false)
+    restore()
   })
 
   it('prunes tabs the mirror no longer holds', () => {

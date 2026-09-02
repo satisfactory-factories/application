@@ -1,5 +1,6 @@
 import { PROTOCOL_VERSION } from 'common'
 import type { TabField } from '@/sync/room-state'
+import { writeLocalStorage } from '@/utils/safe-storage'
 
 /**
  * Sync metadata for a synced tab, kept in a sidecar map so
@@ -70,9 +71,8 @@ export const readTabMirrorMeta = (): TabMirrorMetaMap => {
   return map
 }
 
-export const writeTabMirrorMeta = (map: TabMirrorMetaMap): void => {
-  localStorage.setItem(TAB_MIRROR_META_KEY, JSON.stringify(map))
-}
+export const writeTabMirrorMeta = (map: TabMirrorMetaMap): boolean =>
+  writeLocalStorage(TAB_MIRROR_META_KEY, JSON.stringify(map))
 
 export const setTabMirrorMeta = (tabId: string, meta: TabMirrorMeta): void => {
   const map = readTabMirrorMeta()
