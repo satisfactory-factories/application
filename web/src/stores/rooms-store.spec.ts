@@ -1226,5 +1226,34 @@ describe('rooms-store', () => {
       expect(appStore.getTab(tab.id)?.factories).toHaveLength(1)
       expect(store.entries).toEqual({})
     })
+
+    /**
+     * The mirror metadata is per tab, not per account, and it is the only record of what
+     * this browser edited and never sent. Dropped on sign-out, the next sign-in adopts the
+     * account's copy straight over those edits with nothing left to raise the prompt.
+     */
+    it('keeps the record of unsent edits, so signing back in can still ask about them', async () => {
+      const tab = localTab('Mine')
+      listReturns([entry({ roomId: tab.id, revision: 3 })])
+      await store.refresh()
+      setTabMirrorMeta(tab.id, {
+        revision: 3,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: [1],
+        userTouchedFields: [],
+        declaredRemovals: [],
+        baselinePrints: { 1: 'the-copy-both-sides-agreed-on' },
+      })
+
+      store.signOut()
+
+      expect(readTabMirrorMeta()[tab.id]?.userTouchedIds).toEqual([1])
+      expect(readTabMirrorMeta()[tab.id]?.baselinePrints).toEqual({ 1: 'the-copy-both-sides-agreed-on' })
+
+      listReturns([entry({ roomId: tab.id, revision: 3 })])
+      await store.refresh()
+
+      expect(roomSync.hasLocalEdits(tab.id), 'the conflict path has nothing left to fire on').toBe(true)
+    })
   })
 })

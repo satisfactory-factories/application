@@ -761,7 +761,10 @@ export const useRoomsStore = defineStore('rooms', () => {
   /** Signing out keeps every plan; they simply stop being rooms in this browser. */
   const signOut = () => {
     for (const roomId of Object.keys(entries.value)) {
-      roomSync.untrackRoom(roomId)
+      // The tab survives, and so must the record of what this browser edited and never
+      // sent: without it the next sign-in adopts the account's copy over those edits
+      // silently, with nothing to raise the conflict prompt. Pruning reaps it with the tab.
+      roomSync.untrackRoom(roomId, { keepMirrorMeta: true })
       appStore.markTabLocal(roomId)
     }
     entries.value = {}
