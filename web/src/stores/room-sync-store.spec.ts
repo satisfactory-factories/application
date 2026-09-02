@@ -206,7 +206,26 @@ describe('room-sync-store', () => {
     // whenever it heals a missed op. Running the load funnel for those blanked the planner
     // and stopped the client sending, over and over, for a plan that never changed here.
     it('applies a snapshot quietly when there was nothing local to rebase over', () => {
+      // A room already in sync: the probe's snapshot is the second one, over a plan the
+      // tab already holds. The very first snapshot is a plan load and takes the funnel.
+      const tab = syncAt(fixture, 4)
       const emit = vi.spyOn(eventBus, 'emit')
+      const reload = vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 5), revision: 5 })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      expect(reload).not.toHaveBeenCalled()
+      expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
+      emit.mockRestore()
+    })
+
+    /**
+     * `openPlan` makes the tab empty and the join fills it, so this snapshot IS the plan
+     * load — a recovered legacy blob arrives here and nowhere else. Written in quietly it
+     * would keep its pre-v0.6 shape: no migration patches, and no raw-resources notice.
+     */
+    it('sends the first snapshot of an empty tab through the loader funnel', () => {
       const reload = vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
       const tab = setTab([])
       store.trackRoom(ROOM)
@@ -215,9 +234,31 @@ describe('room-sync-store', () => {
       receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
 
       expect(names(tab)).toEqual(['Alpha', 'Beta'])
-      expect(reload).not.toHaveBeenCalled()
-      expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
-      emit.mockRestore()
+      expect(reload).toHaveBeenCalledWith(ROOM)
+    })
+
+    it('migrates a legacy-shaped plan the first snapshot brings in', async () => {
+      const legacy = wire(fixture)
+      for (const factory of legacy) {
+        delete (factory as Partial<Factory>).inSync
+        delete (factory as Partial<Factory>).syncState
+      }
+
+      const tab = setTab([])
+      appStore.currentFactoryTab = tab
+      store.trackRoom(ROOM)
+      connect()
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(legacy, 4), revision: 4 })
+      await vi.waitFor(() => {
+        if (appStore.loadInFlight) throw new Error('the load is still running')
+      })
+
+      expect(tab.factories).toHaveLength(2)
+      for (const factory of tab.factories) {
+        expect(factory.inSync).toBeNull()
+        expect(factory.syncState).toEqual({})
+      }
     })
 
     it('sends a snapshot that fought with a local edit through the loader funnel', () => {

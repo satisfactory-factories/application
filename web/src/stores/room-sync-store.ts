@@ -1078,6 +1078,16 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (dropStaleFrame(roomId, revision)) return
 
     const server = contentFromSnapshot(snapshot)
+    // The plan this tab was opened for, arriving for the first time. `openPlan` makes the
+    // tab empty and the join fills it, so a quiet apply would write a whole plan in behind
+    // initFactories: a recovered legacy blob would keep its pre-v0.6 shape and never raise
+    // the raw-resources notice. Read before the rebase, which seeds the engine.
+    const engine = engines.get(roomId)
+    const firstFill = engine !== undefined &&
+      !engine.seeded &&
+      (getTab(roomId)?.factories.length ?? 0) === 0 &&
+      server.factories.length > 0
+
     // Before the rebase, which replaces both halves of the comparison: the baseline this
     // client agreed on, and the records it still holds.
     noteClashes(roomId, server, revision)
@@ -1090,7 +1100,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // with a snapshot whenever it heals a missed op, and running the load funnel for those
     // blanked the planner and blocked flushing for the length of a chain, over and over.
     // The content is already written and persisted; a quiet apply is the whole difference.
-    if (!recalculated) return
+    if (!recalculated && !firstFill) return
     // A whole-plan replace the user's own edits fought with. That takes the same
     // validation and loader path a plan load does rather than being written in behind it.
     void appStore.reloadTabFromMirror(roomId)
