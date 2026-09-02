@@ -1196,7 +1196,7 @@ export const useAppStore = defineStore('app', () => {
 
   const addTab = (tab: Partial<FactoryTab> = {}, { activate = true }: { activate?: boolean } = {}) => {
     const {
-      id = crypto.randomUUID(),
+      id: requestedId = crypto.randomUUID(),
       name = 'New Tab',
       factories = [],
       powerTarget,
@@ -1204,6 +1204,15 @@ export const useAppStore = defineStore('app', () => {
       depotUploadTier,
       depotExpansionTier,
     } = tab
+
+    // A tab's id is its room id, so two tabs sharing one would have the room write into
+    // both and a join replace whichever it found first. An imported plan carrying an id
+    // this browser already holds gets a fresh one instead of colliding with it.
+    let id = requestedId
+    if (factoryTabs.value.some(existing => existing.id === id)) {
+      id = crypto.randomUUID()
+      console.warn(`appStore: addTab: a tab with id ${requestedId} already exists, re-keying the new one to ${id}.`)
+    }
 
     factoryTabs.value.push({
       id,
@@ -1292,11 +1301,17 @@ export const useAppStore = defineStore('app', () => {
     if (!tab) return null
 
     const copy = JSON.parse(JSON.stringify(toRaw(tab))) as FactoryTab
+    // Everything `keepOfflineCopy` carries, for its reasons: a dropped plannerVersion
+    // re-asks the raw-resources question the user answered on the original, and dropped
+    // Depot tiers read as fully researched and hide the copy's over-capacity warnings.
     return addTab({
       name: `${tab.name} (local)`,
       factories: copy.factories,
       powerTarget: copy.powerTarget,
       groups: copy.groups,
+      plannerVersion: copy.plannerVersion,
+      depotUploadTier: copy.depotUploadTier,
+      depotExpansionTier: copy.depotExpansionTier,
     })
   }
 

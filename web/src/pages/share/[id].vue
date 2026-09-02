@@ -39,7 +39,10 @@
 
       if (loadedFactoryData.value) {
         loadedFactoryData.value.name = `${loadedFactoryData.value.name} (shared)`
-        appStore.addTab(loadedFactoryData.value)
+        // The snapshot carries the tab id it was taken from, and a tab id is a room id:
+        // kept, the import would be replaced by the first join of that room, and an owner
+        // importing their own link would end up with two tabs claiming one plan.
+        appStore.addTab({ ...loadedFactoryData.value, id: crypto.randomUUID() })
       }
     }
 

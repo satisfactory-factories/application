@@ -1617,6 +1617,19 @@ describe('app-store', () => {
           { id: 'g1', name: 'Empty', color: '#4caf50', order: 0 },
         ])
       })
+
+      // A tab id IS a room id, so a share link importing the id it was taken from would
+      // hand two tabs to one room.
+      it('re-keys an incoming tab whose id this browser already holds', () => {
+        appStore.addTab({ id: 'room-1', name: 'Mine', factories: [] })
+
+        const importedId = appStore.addTab({ id: 'room-1', name: 'Theirs (shared)', factories: [] })
+
+        expect(importedId).not.toBe('room-1')
+        expect(appStore.getTabs().filter(tab => tab.id === 'room-1')).toHaveLength(1)
+        expect(appStore.getTab('room-1')?.name).toBe('Mine')
+        expect(appStore.getTab(importedId)?.name).toBe('Theirs (shared)')
+      })
     })
     describe('reorderTabs', () => {
       const threeTabs = () => {
@@ -1843,6 +1856,22 @@ describe('app-store', () => {
       expect(appStore.getTab(copyId)?.name).toBe(`${tab.name} (local)`)
       expect(appStore.getTabState(copyId).kind).toBe('local')
       expect(tab.factories[0].name).toBe('Original')
+    })
+
+    // Dropping these changes what the copy means: an unanswered raw-resources question
+    // and Depot tiers reading as fully researched.
+    it('should carry the planner version and the Depot tiers into the copy', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Original'))
+      tab.plannerVersion = '0.6'
+      tab.depotUploadTier = 3
+      tab.depotExpansionTier = 2
+
+      const copy = appStore.getTab(appStore.duplicateTab(tab.id) as string)
+
+      expect(copy?.plannerVersion).toBe('0.6')
+      expect(copy?.depotUploadTier).toBe(3)
+      expect(copy?.depotExpansionTier).toBe(2)
     })
 
     it('should drop state for tabs the bar no longer holds', () => {
