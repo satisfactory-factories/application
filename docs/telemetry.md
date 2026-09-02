@@ -18,7 +18,7 @@ case, and roughly how large plans get.
 ## Exactly what is collected
 
 One `POST /telemetry` on page load and one every five minutes after that. The body has
-seven fields and the server rejects it outright if it has any others:
+eight fields, one of them optional, and the server rejects it outright if it has any others:
 
 | Field | What it is |
 | --- | --- |
@@ -29,8 +29,9 @@ seven fields and the server rejects it outright if it has any others:
 | `cloudTabCount` | How many of those are synced. |
 | `factoriesTotal` | How many factories across all of those tabs. |
 | `appVersion` | Which build of the planner is running. |
+| `gitSha` | Which commit that build came from. Absent on builds that do not know, such as local ones. |
 
-Counts, one flag and a version string. That is the whole payload.
+Counts, one flag and two build identifiers. That is the whole payload.
 
 ## What is not collected
 
@@ -56,10 +57,16 @@ cannot be connected to the old one.
 
 ## How long it is kept
 
-Fifteen minutes, in memory, and never written to the database. An instance that stops
-sending is dropped entirely fifteen minutes later, and restarting the API forgets
-everything at once. There is no history: the metrics answer "how many right now", and
-nothing stores yesterday's answer.
+Fifteen minutes. A row that stops being updated is dropped entirely fifteen minutes after
+its last heartbeat, both by an expiry index and by every read filtering on the timestamp.
+
+It is stored in the database rather than in memory. That is a change from the first
+version, which held it in memory only: the practical effect was that every deployment threw
+the whole picture away, and the API deploys often. Nothing else about it changed, and the
+fifteen minute limit is enforced the same way either way.
+
+There is still no history. The metrics answer "how many right now"; nothing keeps
+yesterday's answer.
 
 ## Turning it off
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   TELEMETRY_CAPS,
+  TELEMETRY_SHA_LABEL_PATTERN,
   TELEMETRY_VERSION_LABEL_PATTERN,
   parseTelemetryHeartbeat,
   telemetryHeartbeatSchema,
@@ -33,6 +34,7 @@ const ALLOWED_FIELDS = [
   'cloudTabCount',
   'factoriesTotal',
   'appVersion',
+  'gitSha',
 ]
 
 describe('telemetryHeartbeatSchema', () => {
@@ -93,6 +95,32 @@ describe('telemetryHeartbeatSchema', () => {
     expect(parseTelemetryHeartbeat('0.7.0').success).toBe(false)
     expect(parseTelemetryHeartbeat([heartbeat()]).success).toBe(false)
   })
+})
+
+describe('the optional commit field', () => {
+  it('accepts a heartbeat carrying one', () => {
+    expect(parseTelemetryHeartbeat(heartbeat({ gitSha: 'a1b2c3d4e5f6' })).success).toBe(true)
+  })
+
+  // Optional so a tab loaded before the field existed is not rejected by the strict object.
+  it('accepts one without', () => {
+    expect(parseTelemetryHeartbeat(heartbeat()).success).toBe(true)
+  })
+
+  it('rejects one past the cap', () => {
+    expect(parseTelemetryHeartbeat(heartbeat({ gitSha: 'a'.repeat(41) })).success).toBe(false)
+  })
+})
+
+describe('TELEMETRY_SHA_LABEL_PATTERN', () => {
+  it.each(['a1b2c3d', 'a1b2c3d4e5f6', 'f'.repeat(40)])('allows %s', sha => {
+    expect(TELEMETRY_SHA_LABEL_PATTERN.test(sha)).toBe(true)
+  })
+
+  it.each(['main', 'A1B2C3D', 'abc', 'f'.repeat(41), '../../etc', 'a1b2c3d\n'])(
+    'refuses %s, so it buckets as unknown', sha => {
+      expect(TELEMETRY_SHA_LABEL_PATTERN.test(sha)).toBe(false)
+    })
 })
 
 describe('TELEMETRY_VERSION_LABEL_PATTERN', () => {

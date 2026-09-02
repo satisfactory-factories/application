@@ -10,6 +10,8 @@ import { z } from 'zod'
 export const TELEMETRY_CAPS = {
   /** A version string, and nothing longer. */
   appVersion: 32,
+  /** A git SHA, truncated by the build. Full 40 allowed so an untruncated one still parses. */
+  gitSha: 40,
   /** Every count field. */
   count: 100_000,
   /** The whole request body, in bytes. A real heartbeat is around 200. */
@@ -32,6 +34,16 @@ export const TELEMETRY_VERSION_LABEL_PATTERN = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A
 
 /** Where a version that fails the pattern, or overflows the label cap, is counted instead. */
 export const TELEMETRY_VERSION_FALLBACK = 'other'
+
+/**
+ * What may appear as the `sha` label on `sf_clients_by_sha`. Hex only, so nothing a client
+ * invents can become a label value, and the same cardinality argument as the version applies:
+ * one series per distinct commit, forever, unless the server caps it.
+ */
+export const TELEMETRY_SHA_LABEL_PATTERN = /^[0-9a-f]{7,40}$/
+
+/** Where a build that reported no usable commit is counted. */
+export const TELEMETRY_SHA_FALLBACK = 'unknown'
 
 const count = z.number().int().min(0).max(TELEMETRY_CAPS.count)
 
@@ -60,6 +72,12 @@ export const telemetryHeartbeatSchema = z.strictObject({
   cloudTabCount: count,
   factoriesTotal: count,
   appVersion: z.string().min(1).max(TELEMETRY_CAPS.appVersion),
+  /**
+   * Optional on purpose. A tab loaded before this field existed keeps reporting rather than
+   * being rejected by the strict object, and a local build that knows no commit sends nothing
+   * instead of inventing one. Both cases count under `unknown`.
+   */
+  gitSha: z.string().max(TELEMETRY_CAPS.gitSha).optional(),
 })
 
 export type TelemetryHeartbeat = z.infer<typeof telemetryHeartbeatSchema>

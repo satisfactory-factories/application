@@ -36,13 +36,13 @@ export class TelemetryController {
   @Post()
   @SkipVersionGate()
   @HttpCode(HttpStatus.NO_CONTENT)
-  heartbeat (@Req() request: Request, @Body() body: unknown): void {
+  async heartbeat (@Req() request: Request, @Body() body: unknown): Promise<void> {
     assertWithinCap(request, body)
 
     const parsed = parseTelemetryHeartbeat(body)
     if (!parsed.success) throw new BadRequestException('Malformed telemetry heartbeat.')
 
-    const outcome = this.telemetry.record(parsed.data)
+    const outcome = await this.telemetry.record(parsed.data)
     if (outcome !== 'accepted') {
       // Both the per-instance floor and the instance ceiling are "come back later", and
       // the client's answer to either is the same: drop it and wait for the next tick.

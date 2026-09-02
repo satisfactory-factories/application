@@ -31,6 +31,16 @@ process.env.VITE_APP_VERSION = JSON.parse(
   readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
 ).version
 
+// The exact commit this bundle was built from, so a rollout can be watched by commit and not
+// only by release. Vercel sets VERCEL_GIT_COMMIT_SHA on every build; GIT_SHA is the escape
+// hatch for building somewhere else. Truncated to 12 characters, which is unambiguous in
+// practice and short enough to read on a chart axis.
+//
+// Empty rather than a placeholder when unknown: the telemetry schema treats the field as
+// optional, so a local `pnpm dev` reports no commit rather than a fake one.
+process.env.VITE_GIT_SHA =
+  (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_SHA || '').slice(0, 12)
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   build: {

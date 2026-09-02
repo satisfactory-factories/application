@@ -234,6 +234,61 @@ describe('POST /telemetry', () => {
     })
   })
 
+  describe('the census survives a restart', () => {
+    // The whole reason this moved out of memory. The API redeploys often enough that losing
+    // the census on every deploy was the thing people actually noticed.
+    it('still counts a browser after the process is replaced', async () => {
+      const instanceId = randomUUID()
+      await post(heartbeat({ instanceId, localTabCount: 3, factoriesTotal: 21 }))
+      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false"')).toBe(1)
+
+      // A second app on the same database is what a redeploy looks like from Mongo's side.
+      const restarted = await createTestApp({ clock, unthrottled: true })
+      try {
+        const response = await scrapeMetrics(restarted.app)
+        expect(response.status).toBe(200)
+        expect(sample(response.text, 'sf_active_clients', 'signed_in="false"')).toBe(1)
+        expect(sample(response.text, 'sf_client_tabs', 'kind="local"')).toBe(3)
+        expect(sample(response.text, 'sf_client_factories_total')).toBe(21)
+      } finally {
+        await destroyTestApp(restarted)
+      }
+    })
+  })
+
+  describe('the commit label', () => {
+    it('groups browsers by the commit they were built from', async () => {
+      await post(heartbeat({ gitSha: 'a1b2c3d4e5f6' }))
+      await post(heartbeat({ gitSha: 'a1b2c3d4e5f6' }))
+      await post(heartbeat({ gitSha: 'ffffffffffff' }))
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_clients_by_sha', 'sha="a1b2c3d4e5f6"')).toBe(2)
+      expect(sample(body, 'sf_clients_by_sha', 'sha="ffffffffffff"')).toBe(1)
+    })
+
+    // Optional so a tab loaded before the field existed keeps reporting rather than being
+    // rejected by the strict object.
+    it('counts a heartbeat with no commit under unknown', async () => {
+      expect((await post(heartbeat())).status).toBe(204)
+
+      expect(sample(await scrape(), 'sf_clients_by_sha', 'sha="unknown"')).toBe(1)
+    })
+
+    it.each(['main', 'NOTHEX', '../etc', 'abc'])('buckets %s as unknown rather than labelling it', async sha => {
+      await post(heartbeat({ gitSha: sha }))
+
+      const body = await scrape()
+      expect(sample(body, 'sf_clients_by_sha', 'sha="unknown"')).toBe(1)
+      expect(sample(body, 'sf_clients_by_sha', `sha="${sha}"`)).toBeUndefined()
+    })
+
+    it('rejects a commit string past the cap', async () => {
+      expect((await post(heartbeat({ gitSha: 'a'.repeat(41) }))).status).toBe(400)
+    })
+  })
+
   describe('the cardinality cap', () => {
     it('buckets a version the pattern does not recognise', async () => {
       await post(heartbeat({ appVersion: 'main' }))
