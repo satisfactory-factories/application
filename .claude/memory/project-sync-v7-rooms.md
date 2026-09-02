@@ -4,7 +4,7 @@ description: v0.7.0 realtime rooms sync — built and green on branch claude/syn
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-09-01
+  lastVerified: 2026-09-02
 ---
 
 The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -1210,6 +1210,73 @@ answer and a probe cycle — with the same spy proved beforehand to catch that r
 the room still syncing an edit afterwards. The dialog is the single production mount in
 `layouts/default.vue`; the demo renders nothing of its own.
 
+## The QA hardening round (2026-09-02): what a cheap frame was allowed to cost
+
+Seven of these are one shape: **a message small enough to be free was answered with work
+proportional to the whole plan.** The room document *is* the plan, so any unprojected read of
+it is a plan fetch.
+
+- **Authorization read the room twice, unprojected, for every op, lock and revocation sweep.**
+  `RoomAccessService.authorize` now projects both reads down to the access fields plus
+  `revision` (`RoomAccessView`); `authorizeWithContent` is the opt-in for the paths that
+  actually serialise a snapshot — join, the op apply, and the unparsable-op reply. The first
+  read is projected even there: it is never the copy handed back, so it never needs content.
+- **Rejections that carry a snapshot get a budget of their own**
+  (`WS_SNAPSHOT_REJECT_LIMIT`, 60 a minute per socket). A ninety-byte malformed op bought a
+  document read and a serialisation, twelve times a second inside the message limiter. Past
+  the budget the socket is closed 1008 rather than served; its reconnect re-joins and gets one
+  snapshot per room. The budget cannot be spent below a snapshot-less reject, because a client
+  reads *no snapshot* as "the room is gone" and turns its tab local.
+- **`WS_MAX_PAYLOAD_BYTES` was 25MB against a largest legitimate frame of about 4.6MB** — a
+  300-factory room built entirely of the biggest factory a real plan holds (15KB, measured off
+  `maels-big-boi-plan-data.json`, whose 36 factories average 6.3KB). Now 8MB, and
+  `ws-limits.spec.ts` builds that frame and asserts the constant sits between it and three
+  times it, so the number stays derived rather than chosen.
+- **Nothing capped concurrent sockets.** The 60/minute rate limit says how fast they arrive and
+  nothing about how many are held. `ConcurrencyLimiter` in `ws-throttle.ts` caps per address
+  (at the rate limit) and process-wide (2000); the slot is released off `info.req.socket`'s
+  `close` in `verifyWsClient`, not off the gateway, so an upgrade that never completes gives
+  its slot back too.
+- **The sweeper loaded every room document to read its id**, and decided orphanhood from a
+  membership read taken before the delete. Both `find`s now project `{ roomId: 1 }`, and
+  `purgeOrphans` re-reads the memberships immediately before purging, so a join landing in the
+  gap keeps its room. `heldRoomIds` is `protected` for exactly that test.
+- **Every `z.record` in `common/src/schemas/factory.ts` was unbounded**, which is one op away
+  from a document Mongo will not store. zod has no `.max()` for records, so `boundedRecord`
+  refines on key count; the ceilings are new `CAPS` entries sized against the game's own totals
+  (157 parts + 24 raw resources, 24 buildings) with several updates' worth of headroom.
+- **Two unauthenticated routes leaked or invited guessing.** `GET /rooms/by-slug/:slug`
+  returned the plan's name to anyone who guessed a slug and now answers
+  `{ roomId, hasPassword }` only; the invite page's password prompt lost the name with it. It
+  and `POST /login` each got a bucket of their own (20/min and 10/5min) rather than sharing the
+  200/5min global. `auth.spec.ts` is `unthrottled` because it signs in a dozen times.
+- **`toRoomSnapshot` shipped `createdBy`** — the owner's account id — to every anonymous
+  visitor holding an invite link. Removed from `RoomSnapshot` outright.
+- **`join` and `leave` wrote their activity row before the membership write**, so a resumed
+  chain wrote it twice and counted one collaborator as two in `room_totals`. Both go through
+  `recordOnce(..., { perActor: true })` now, keyed on room + actor + kind. Ordering is
+  unchanged deliberately: the membership write staying last is what tells a retry the chain is
+  unfinished.
+- **Field locks live 10s and were swept on the 30s heartbeat**, so a field could show as
+  somebody else's for three times as long as it was held. The sweep has its own 5s interval.
+- **Both JWT guards verified the signature and nothing else**, and a room visitor token is
+  signed with the same secret — so one passed as an account with `id` and `username` both
+  undefined. `isAccountTokenPayload` in `auth-token.ts` is the shared shape check, now used by
+  `JwtAuthGuard`, `OptionalJwtAuthGuard`, `POST /validate-token` and the gateway's handshake.
+  Not exploitable on today's routes, which all key off `user.id` and find nothing; latent, and
+  four routes 500ed unauthenticated.
+
+**A "socket hang up" in the full run only, never in isolation.** Chased in
+`metrics-usage.spec.ts` ("still issues a token when the stamp fails", the one test that builds
+a second app inside a test body). Not reproducible here — three whole-suite runs and five
+standalone runs of that file, all green — so the cause is recorded rather than proven: Node's
+`http.globalAgent` has `keepAlive: true` with a 5s timeout since Node 19, supertest goes
+through it, and the suite builds and tears down dozens of servers on ephemeral ports in one
+process (`fileParallelism: false`). A pooled socket outliving its server, on a port the next
+app then binds, is exactly a hang-up on a request that reached nothing. `test/utils/env-setup.ts`
+now installs a non-pooling agent. If it recurs, that hypothesis is wrong and the next suspect
+is the nested app's teardown racing the enclosing suite's.
+
 ## Flagged follow-ups, none of them blocking
 
 Re-checked line by line against the code on 2026-08-31, in the verification round. All still hold.
@@ -1546,8 +1613,13 @@ version gate will not prompt for one because the protocol version did not move.
 `lastBulkRestore { factories, revision, at }` inside the same revision-guarded
 `findOneAndUpdate`, so it can only exist for a state that actually committed. Latest only, no UI,
 and it never leaves the server: `toRoomSnapshot` names its fields and this is not one. Skipped
-with a warning when the stored plan is already over `CAPS.factoriesPerRoom`, because a second
-copy of an oversized array is how a room document reaches Mongo's own 16MB limit.
+with a warning when the stored plan is too big to duplicate, because a second copy of an
+oversized array is how a room document reaches Mongo's own 16MB limit. **That guard is on
+bytes, not on the factory count** (`BULK_RESTORE_MAX_BYTES`, 4MB, in `room-op.service.ts`):
+a hundred big factories outweigh three hundred small ones, and only one of those two shapes
+was refused by a count. It is also skipped when the pre-op plan is empty, or a second declared
+bulk in a row would overwrite the stash with the emptiness the first clear produced — which is
+the state somebody would be restoring *from*.
 
 **The testing lesson, and it is why the truncation bug reached live at all.** Every sync fixture
 was two factories. Two mount in one flush, so the stagger the bug lives in never existed in a
