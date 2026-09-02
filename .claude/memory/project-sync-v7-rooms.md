@@ -30,10 +30,10 @@ class and fixed it (the demo-plan button, below). Main has since been merged in 
 restored: see "The merge from main" below. Green as of 2026-08-31, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
 backend 300 vitest tests (25 files, including the field locks below), common 80 (4),
-web 2871 unit tests (154 files, 1 skipped) as of the tab-settings round (2026-09-01),
+web 2987 unit tests (158 files, 1 skipped) as of the conflict demo round (2026-09-01),
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
-`build` clean, and all 42 Playwright e2e tests passing (the 42nd added in the login-chooser
-round). The whole suite ran twice at full speed
+`build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
+conflict round). The whole suite ran twice at full speed
 and once under `E2E_CPU_THROTTLE=6` in the bulk-removal round below; the throttled run is the one
 that earns its keep, and it is the one that found the last real bug in an earlier round.
 The e2e job in CI has never actually run: it is validated locally only, so the first PR is where
@@ -60,6 +60,8 @@ change to that file.
 | Tab list, adoption, share/unshare, join | `web/src/stores/rooms-store.ts` |
 | Socket, close-code policy, backoff | `web/src/sync/ws-client.ts` |
 | Sidecar sync metadata (`localStorage.factoryTabs` keeps its v6 shape) | `web/src/sync/tab-mirror-meta.ts`, `tab-sync-state.ts` |
+| Offline clash evidence, and the prompt that asks about it | `web/src/sync/offline-conflict.ts`, `components/sync/OfflineConflictDialog.vue` |
+| Dev-only staging of that prompt (no server, no second device) | `web/src/sync/offline-conflict-demo.ts`, `utils/factory-setups/offline-conflict-demo-plan.ts` |
 | Version header and the 426 path | `web/src/api/client.ts`, `components/sync/VersionPrompt.vue` |
 | WS gateway, presence, fan-out, revocation | `backend/src/realtime/` |
 | Rooms domain, ensure-steps, sweeper, activity | `backend/src/rooms/` |
@@ -925,10 +927,33 @@ disabled with the reason beside it" everywhere it was asserted.
   warning + `confirm-convert-to-local`/`cancel-convert-to-local`); the shared-plan copy says
   collaborators keep local copies. The gate is negative-controlled: wiring the button straight
   to `convertToLocal` fails 3 tests (the no-call-before-confirm one included).
-- Signed out, convert to cloud is disabled with the exact required tooltip ("You need to have
-  an account for this, please register using the Sign in Pioneer button top right of the
-  planner") — the v-tooltip activator wraps the button in a span because a disabled button
-  swallows the hover.
+- **Signed out, convert to cloud is the sign-in itself (2026-09-01).** Superseded: it used to be
+  a disabled button under a `v-tooltip` telling the visitor to go and use the account button in
+  the app bar ("You need to have an account for this, please register using the Sign in Pioneer
+  button top right of the planner"). That tooltip and its spec are gone. The button is enabled,
+  reads "Sign in to convert", and swaps the dialog body for `AuthForm.vue` (`signingIn` ref,
+  `cancel-sign-in` Back button in the actions slot) exactly as `NewTabDialog.vue` does.
+  - **There is no cross-component way to open the account tray, and adding one was not worth
+    it.** `Auth.vue` opens its tray from a local `trayOpen` ref on a `v-overlay` with
+    `activator="parent"`; nothing outside the component can set it, and the only inbound trigger
+    is `sessionExpired`, which fronts the "Session Expired!" dialog first. So the reusable half
+    of "the app's sign-in prompt" is `AuthForm.vue`, and there are now three hosts for it: the
+    tray, the new-tab chooser and tab settings. An `openSignIn` event would also have put a
+    tray overlay on top of an open dialog, which is a z-index and focus-trap gamble for nothing.
+  - After `@authenticated` the handler awaits `roomsStore.whenSessionReady()` before dropping
+    `signingIn`, for the reason `NewTabDialog` does it: adopting into a room list still in
+    flight comes back missing and is reverted. The button then flips on the `isLoggedIn`
+    computed alone, with the dialog never closed.
+  - The reassurance copy under the signed-out button (`convert-cloud-reassurance`) is the
+    owner's own wording with a `<strong>not</strong>`, and it is the first place in the planner
+    that mentions an account at all. Signed in it is not rendered.
+  - Negative controls, all three run: freezing `isLoggedIn` to a snapshot fails the flip test
+    only; dropping the `v-if="!isLoggedIn"` on the copy fails 2; wiring the button straight to
+    `convertToCloud` fails 3. `tab-lifecycle.e2e.ts` covers the whole flip in a browser.
+  - The button's icon needed the keyed span and so did the dialog title's, which was missed
+    first time round: `AppDialog` rendered `<i :class="icon">`, so the title said "Sign in to
+    convert" beside a pencil until the wrapper was keyed there too. One fix in `AppDialog`
+    covers `NewTabDialog` as well. See [[fontawesome-dynamic-icons]].
 - **Share Settings is ungated (2026-09-01).** It used to render only under
   `isCollaborative(state)`, so a private synced tab (which is what a converted local tab
   becomes) and a local tab had no share entry point at all once the account panel's per-row
@@ -987,6 +1012,203 @@ disabled with the reason beside it" everywhere it was asserted.
   local pencil shows Share Settings on the snapshot-only pane, convert to cloud flips the tab
   to `synced`/owner, and reopening the pencil gives Share Settings on the invite pane with the
   notice gone. Creating the invite link from there minted a real room slug.
+
+## The offline conflict prompt (2026-09-01): the one decision the engine hands back
+
+Until now an offline edit simply won: the rebase overlaid every touched record onto the server's
+copy and a peer's edit to the same factory was gone with no notice. That is still the default,
+but the user is now asked first, and only in the case that is genuinely a decision.
+
+**The trigger, and it is narrow on purpose.** A *snapshot* for a tracked room (join, reconnect,
+the probe's heal, leaving offline mode, reopening a device whose mirror meta carries touched ids),
+whose revision is past this client's acked baseline, carrying a factory in `touchedFactories`
+whose print differs from the acked one or which the room no longer holds. `findClashes` in
+`room-sync-store.ts` is the whole predicate and it runs *before* the rebase, because the rebase
+replaces both halves of the comparison. Deliberately silent everywhere else: an `op_reject` rebase
+during live editing (the 400ms race is routine and field locks cover it), a snapshot with no
+overlap, a room with no local intent, and a snapshot parked mid-load — parking wins, and the check
+runs when the parked snapshot is finally applied.
+
+Three things it took to make the predicate honest, each of which was a false prompt before it:
+
+- **A restart leaves no baseline to compare against.** `seedFromMirror` marks touched records
+  `UNKNOWN_CONTENT`, so "differs from the acked print" is true of every unsent edit. `TabMirrorMeta`
+  now carries `baselinePrints` — a 32-bit FNV-1a of the acked record, per touched id, cached against
+  the print itself so a 300-factory clear does not re-hash the plan on every persist. No fingerprint
+  means no answer, and no answer is silence.
+- **The snapshot after a drop can be this client's own op coming back.** A socket can die between
+  the write and the ack, and the reconnect's snapshot then carries our own edit. `abandonPendingOps`
+  keeps the sent prints in `engine.unacknowledged` and `changedRemotely` treats a match as ours;
+  the existing "loses nothing when the socket drops before the ack" spec is what caught this.
+- **Derived figures are not a disagreement.** `describeClash` returns null unless there is something
+  to show, because a peer editing a factory this one imports from moves `dependencies` and `parts`
+  on both sides. The "other changes" line compares an explicit whitelist of authored fields for the
+  same reason.
+
+**The whitelist was the first review's finding, and it is the trap to remember.** "A field missed
+there only costs a summary line" was wrong: with no product row and no whitelisted field differing,
+`describeClash` returns *null*, the factory earns no section, and the overlay takes this device's
+version silently — the one thing the prompt exists to stop. The products were the hole. They are
+compared by rate and recipe alone, and everything a user dials in below that lives inside them:
+`buildingGroups` (overclocks, somersloops, miner marks, well satellites), the checklist ticks, the
+product order. Two versions asking 60/min and building it differently, one machine at 200% here and
+two at 100% there, read as no clash at all. `productsDifferBeyondRates` now compares the authored
+half of each product whose rate and recipe agree — the solver's own figures (`parts`, `powerUsage`,
+the problem flags) deliberately excluded, and only where the rates agree, so a moved rate still
+earns one row rather than a row plus a vague second line. When adding a field to a factory or a
+product, ask which of the two whitelists it belongs in; the cost of guessing wrong is silence.
+
+**The answer is per factory, with per-product evidence.** The owner's requirement verbatim: "We do
+need a per product per factory level, clearly showing 'current plan is X, you changed it to Y,
+which wins'". Products are evidence only — the engine's unit of sync is the whole factory, and a
+per-product merge would be a second consistency model. Mine-winners are today's behaviour;
+live-winners go through `releaseIntentFor` (shared with the `undeclared_bulk_removal` reject path)
+and take the snapshot's record back, absence included. One op carries the mine-winners plus every
+non-clashing edit. The flush is held for that room while the question is open, and every newer
+snapshot or applied op re-measures the rows, closing the dialog unprompted if the overlap has gone.
+
+**An answer can land while a load chain owns the plan**, because the rebase that raised the question
+hands the plan to the loader. Written into the array then it would be half-overwritten and then
+committed — the truncation class this branch has been bitten by twice. The answer parks and is
+applied from `flushAll`/`probeTick` once `isLoaded` is back and the chain has let go; it is retried
+rather than scheduled, since a queued load can own the plan again a tick later. **The flush hold
+lasts until the answer is applied, not until the dialog closes** (the review's second finding):
+`flushRoom` refuses a room in `parkedResolutions` as well as one in `conflicts`. `isLoaded` almost
+covers it, but the tail of a chain has the array whole again with the load still owning the tab, and
+a paused room's `probeTick` retry could put this device's version of a factory on the wire after the
+user had handed that factory to the live plan.
+
+The prompt also resets the keep-a-copy box for each new question rather than remembering the last
+answer: clearing it answers one clash, and the next one starts from the choice that can destroy
+nothing.
+
+Files: `web/src/sync/offline-conflict.ts` (pure evidence + fingerprint),
+`web/src/components/sync/OfflineConflictDialog.vue` (AppDialog, persistent, `closable: false`,
+mounted in `layouts/default.vue`), the engine half in `room-sync-store.ts` (`conflicts`,
+`findClashes`, `noteClashes`, `refreshConflict`, `resolveConflict`), and
+`web/e2e/tests/offline-conflict.e2e.ts`. Guards: 23 store specs, 19 component specs, 20 pure specs,
+2 mirror-meta specs and 2 e2e tests, all negative-controlled by neutering one half at a time (the
+clash test, the flush hold, the parked hold, the mid-load park, the fingerprint, the server-copy
+take, the kept copy and its reset, the re-measure, the untrack, the building-group comparison and
+both its guards, and both e2e cases). **The wire protocol is unchanged** and
+`PROTOCOL_VERSION` did not move: this is a client-side decision about which local records survive a
+rebase, and the server sees an ordinary op either way.
+
+Two traps found building it, both worth keeping:
+
+- **A fixture that sets `product.amount` and recalculates with `origin: 'recalculate'` edits
+  nothing.** Building groups are sacrosanct on that origin, so the typed amount is pulled straight
+  back to what the groups say. Use `origin: 'item'`, which is what the quantity field itself does.
+- **The account tray cannot be closed with Escape while this dialog is up.** It is persistent, so
+  Escape reaches it, does nothing, and leaves the tray open; the e2e comes back online without
+  closing the tray for exactly that reason.
+
+### A wait and the read it gates must not share a debounced source (2026-09-01)
+
+CI run 33542817015 failed the mixed-answer case with "Casting is a mixture of both versions", and
+the mixture was in the *expected* value, not the merged one. The merged record was a whole owner
+copy, every field of it. The snapshot it was compared against was half-written.
+
+`authoredFactories` reads `localStorage.factoryTabs`, and so does `mirroredProductAmount` — both
+are the plan as last *saved*, not as currently held. `app-store.ts` saves on a 500ms debounce with
+a 5s interval that writes whatever is current, finished burst or not. So `divergeOffline`'s wait,
+which claimed the owner's edit had reached the server, was reading the owner's own save and was
+satisfied the moment the amount landed in it. The note is typed after the amount and reaches the
+store at once, but the op carrying it is on `OP_DEBOUNCE_MS` (400ms) and the save that would hold
+it is 500ms out — so the wait passed on a record with the new amount and the old note, and the
+snapshot taken ~90ms later took it that way. The end comparison then held the merged plan against
+a version of the live plan that had never existed.
+
+Reproduced 9 times in 10 at `E2E_CPU_THROTTLE=6 --repeat-each=10`, every failure differing in the
+note alone. CI's save had landed one step earlier still, so its building group was stale too — one
+building at 100% against an amount of 75 — which is the same tear one field wider.
+
+Both fixes are in the harness, because nothing in the product ever mixed two versions: the owner's
+edits are now gated on `outstandingIntent` reaching zero, which is the server's word that it holds
+them rather than the local save's, and both pre-resolution snapshots go through
+`settledAuthoredFactories`, which reads the projection twice 750ms apart and requires them equal.
+The byte-identical assertion is untouched and there are no retries. The general lesson is the
+heading: a wait and the read it gates must not come from the same debounced source, or the wait is
+satisfied by exactly the partial write the read must not see.
+
+### Seeing that prompt without two devices (2026-09-01)
+
+The owner asked to witness the dialog first hand, so there is now an **"Offline conflict demo" row
+in the Templates dialog**, shown only when `import.meta.env.DEV` is true or
+`localStorage.sfDevTools === 'true'` — one console command on a preview build. It makes its own
+local "Conflict demo" tab, seeds four raw-fed factories (Iron Smelting, Copper Smelting, Concrete
+Casting, Steel Smelting), and stages a fabricated clash covering every row shape at once: a moved
+product rate, a recipe change carrying the "other changes in this factory as well" line, a factory
+the pretend live plan deleted, and one removed on this device but edited there. What opens is the
+production `OfflineConflictDialog` reading the production `conflicts` entry, and answering it runs
+the real `resolveConflict`, so the demo is worth exactly as much as the code it drives.
+
+**The sandbox is structural, and that is the whole design.** `stageDemoConflict` registers an
+engine in `engines` and a question in `conflicts`, and deliberately **no `RoomState`**. `flushRoom`
+is the only thing in the store that puts an op on the wire, and its first line returns on a room
+`rooms` does not hold — so the answer's own `flushRoom` call is a no-op and `ensureSocket` is never
+reached. Nothing was relaxed to make this work; the pseudo-room simply has less state than a real
+one. `rooms-store`'s reconcile watcher keys off `roomSync.rooms` too, so it never sees the demo
+either. Staging refuses over a tracked room, over a question already on screen, and mid-load;
+`applyResolution` ends the demo (engine, question, mirror meta) so the tab is an ordinary local tab
+afterwards. The one place production code learned about the demo is a
+`for (const roomId of demoRooms) applyParkedResolution(roomId)` at the top of `probeTick`, over a
+set that is empty in every real session — without it an answer that parked behind a load chain
+would never be retried, because the loop below it is per room.
+
+Two traps, both found by driving it rather than by a spec:
+
+- **A hidden tab never paints, so `requestAnimationFrame` never fires.** The demo waits out the
+  load chain the tab activation queues (an answer given inside one parks), and that wait began with
+  two bare `requestAnimationFrame`s to let `app-store`'s own `afterPaint` run. In a backgrounded
+  tab it hung forever and the dialog simply never appeared. Every frame wait in app code wants a
+  timer racing it.
+- **`addTab` reads a tab arriving with factories as an imported plan.** It leaves `plannerVersion`
+  undefined for exactly that case, so the load raised the one-time raw-resources migration notice
+  on top of the dialog the demo exists to show. Stamp `config.plannerVersion`, the same thing
+  `Templates.vue` does for a template built by today's code.
+
+Files: `web/src/sync/offline-conflict-demo.ts` (orchestration, the flag, the refusals),
+`web/src/utils/factory-setups/offline-conflict-demo-plan.ts` (the three versions of the plan),
+the `stageDemoConflict`/`endConflictDemo` pair in `room-sync-store.ts`, and the row in
+`Templates.vue` (a `run` callback on a template, so the row never reaches the loader). Guards: 15
+store specs, 8 module specs and 6 component specs, negative-controlled throughout — the row hidden
+on a normal build against shown on both switches, a wire spy proved to catch a real room's op
+before it is asserted silent on the demo, an ordinary template still reaching the loader, and
+staging refused when the two versions agree. Verified live on a dev server: all four sections
+render, a mixed answer moves Iron Smelting to the live rate and brings Steel Smelting back while
+leaving the other two on this device's version, the offline copy tab appears, and the only requests
+in the network log are vite's own.
+
+#### "Structural" has to mean the function, not its callers (2026-09-01)
+
+The adversarial pass over the demo found the sandbox held in fact and not in structure, in two
+places. Both are now one line each, and each is proved by a spec that fails without it while every
+other spec passes with the line reverted — the guards are inert for real rooms by construction.
+
+- **`requestSnapshot` was gated on the engine, not the room.** It is the only send site in the
+  store besides `flushRoom`, it puts a `join` frame on the wire, and `if (!engine)` was its whole
+  test. Nothing could reach it — every caller (`healFromSnapshot`, `onOpApply`, the `probeTick` and
+  `onLoadingCompleted` loops) already sits inside a `rooms` scope — so "no room, no frame" was true
+  of the callers rather than of the store, and it is exported. `if (!rooms.value[roomId])` now says
+  it where the claim is made. `trackRoom` is the only other engine creator and it always makes the
+  `RoomState` too, so an engine without a room is the demo and nothing else.
+- **A synced tab is untracked until `GET /rooms` reaches this device.** Signed out, offline, or in
+  the window before the room list lands, a synced tab is absent from `rooms` — so the `rooms`
+  check alone would have let `stageDemoConflict` stage over a real one, and `endConflictDemo`
+  would then have stripped that tab's `tabMirrorMeta`, revision and baseline prints. Only the
+  orchestration's current-tab check stood between them, and it guards the caller rather than the
+  store. `stageDemoConflict` now refuses any tab `getTabState` does not call `local`.
+
+Verified against the real production build the e2e harness serves, which is the honest test of the
+flag: `import.meta.env.DEV` folds to `false` there and `devToolsEnabled` compiles down to the
+`localStorage` read alone. The row is absent with the ordinary Demo row still present, and appears
+once `sfDevTools` is set. Driven with a WebSocket route between the client and the gateway: an
+anonymous session ran the whole demo end to end having opened **zero** sockets, and a signed-in
+session with a live room sent no `op` and no frame naming the demo tab across staging, a mixed
+answer and a probe cycle — with the same spy proved beforehand to catch that room's own op, and
+the room still syncing an edit afterwards. The dialog is the single production mount in
+`layouts/default.vue`; the demo renders nothing of its own.
 
 ## Flagged follow-ups, none of them blocking
 
@@ -1111,6 +1333,31 @@ its cause was different at each layer peeled. Keep these, in order of generality
   config at import time and the committed `backend/.env` beat `process.env`.
 - CI installs need dependency-closure filters: `--filter web...` (three dots) in both
   `web/vercel.json` and `build-web.yml`, because web compiles `common`'s source.
+
+## `activePinia` is a global, and every action call re-points it (2026-09-01)
+
+Cost two CI runs. `TabNavigation.spec.ts` > "keeps copy, share and delete together in that
+order" failed in the full web suite and passed in isolation every time: `duplicate-tab` was
+missing, which reads as "the current tab is local". The store was right at the assertion —
+`currentFactoryTab` was `room-a` and its state was `synced`. The *component* was reading a
+different store.
+
+Pinia's action wrapper calls `setActivePinia(that store's pinia)` on **every** action call, and
+a component mounted without pinia in `global.plugins` resolves `useAppStore()` off that module
+global. Each test here mounts and never unmounts, so every render leaves a `plan-activity-store`
+behind (`LastUpdatedIndicator` creates it) whose `loadingCompleted` listener outlives the test.
+When the load chain that `activateTab` starts emits `loadingCompleted` inside the
+`await flushPromises()` window, those dead listeners call `appStore.getCurrentTab()` and take
+`activePinia` with them; the `mount()` on the next line then binds the whole component to a
+previous test's stores. Nothing in production can hit it — one page, one pinia.
+
+Reproduce on demand: `eventBus.emit('loadingCompleted')` immediately before the mount, 3/3 with
+the exact CI assertion. Contention alone reproduces it at roughly 1 in 30 with twenty copies of
+the file running at once, which is the recipe for any "CI-only" vitest flake here. The fix is
+to hand the mount its pinia (`plugins: [vuetify, pinia]`, already the pattern in every
+`components/sync/*.spec.ts`) and to dispose the plan-activity store in `afterEach`; either half
+alone closes it. Any spec mounting a store-backed component with `plugins: [vuetify]` alone is
+still exposed to this.
 
 ## Three defects found by the e2e suite, all fixed here
 

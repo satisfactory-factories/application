@@ -32,6 +32,25 @@ describe('AppDialog', () => {
     expect(title()?.textContent).toContain('Options')
   })
 
+  /**
+   * A dialog that changes its icon mid-flight (tab settings becoming a sign-in) kept the
+   * icon it opened with, because Font Awesome had already swapped the `<i>` for an `<svg>`
+   * and detached the element being patched. Only replacing the wrapper clears the old glyph,
+   * and jsdom runs no Font Awesome, so node identity is what can be asserted here.
+   */
+  it('should replace the icon element when the icon changes, not repaint it', async () => {
+    const { rerender } = open({ icon: 'fas fa-pen' })
+    await nextTick()
+    const before = title()?.querySelector('i')?.parentElement
+
+    await rerender({ icon: 'fas fa-sign-in' })
+    await nextTick()
+
+    const after = title()?.querySelector('i')?.parentElement
+    expect(after?.querySelector('i')?.className).toContain('fa-sign-in')
+    expect(after).not.toBe(before)
+  })
+
   it('should put the way out in the top-right corner, not the actions row', async () => {
     open()
     await nextTick()

@@ -510,6 +510,25 @@ export const addProduct = async (page: Page, index: number, item: string): Promi
   }).toContain(item)
 }
 
+/**
+ * Types a new quantity into one product's field. The id is `<factoryId>-<itemId>-amount`,
+ * which is the only client-local way to name a row without counting on its position.
+ */
+export const setProductAmount = async (
+  page: Page,
+  index: number,
+  item: string,
+  amount: number,
+): Promise<void> => {
+  const card = await factoryCard(page, index)
+  const field = card.locator(`input[id$="-${item}-amount"]`).first()
+  await expect(field, `no ${item} row to set an amount on`).toBeVisible()
+
+  await field.fill(String(amount))
+  await field.blur()
+  await expect(field).toHaveValue(String(amount))
+}
+
 /** Polled and visibility-honest: the row is on screen and it names the item. */
 export const expectProductVisible = async (
   page: Page,
@@ -536,6 +555,101 @@ export const mirroredProducts = async (
 ): Promise<string[]> =>
   ((await mirroredFactories(page, tabId)).find(factory => factory.name === factoryName)?.products ?? [])
     .map(product => product.id)
+
+export const productAmountIn = (
+  factories: MirroredFactory[],
+  factoryName: string,
+  item: string,
+): number | undefined =>
+  factories.find(factory => factory.name === factoryName)?.products.find(product => product.id === item)?.amount
+
+/** One product's quantity as it actually synced, which is what a convergence check reads. */
+export const mirroredProductAmount = async (
+  page: Page,
+  tabId: string,
+  factoryName: string,
+  item: string,
+): Promise<number | undefined> =>
+  productAmountIn(await mirroredFactories(page, tabId), factoryName, item)
+
+/**
+ * Everything on a factory somebody typed, keyed by id. The engine syncs whole factories, so
+ * this is what a merge has to leave equal to one side or the other; the derived figures are
+ * the recalculation's and belong to neither.
+ */
+export const authoredFactories = (page: Page, tabId: string): Promise<Record<number, string>> =>
+  page.evaluate((id: string) => {
+    const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as { id: string }[]
+    const tab = tabs.find(entry => entry.id === id) as { factories?: unknown[] } | undefined
+    const pick = (source: Record<string, unknown>, keys: string[]) =>
+      Object.fromEntries(keys.map(key => [key, source[key]]))
+
+    const entries = (tab?.factories ?? []).map(raw => {
+      const factory = raw as Record<string, unknown>
+      return [factory.id as number, JSON.stringify({
+        name: factory.name,
+        notes: factory.notes,
+        tasks: factory.tasks,
+        inputs: factory.inputs,
+        products: (factory.products as Record<string, unknown>[] ?? []).map(product => ({
+          ...pick(product, ['id', 'recipe', 'amount', 'displayOrder', 'completed']),
+          groups: (product.buildingGroups as Record<string, unknown>[] ?? [])
+            .map(group => pick(group, ['id', 'buildingCount', 'overclockPercent', 'somersloops'])),
+        })),
+      })] as const
+    })
+    return Object.fromEntries(entries) as Record<number, string>
+  }, tabId)
+
+/**
+ * The same projection, once the device has stopped writing it. `factoryTabs` is saved on a
+ * 500ms debounce and a 5s interval saves whatever is current, so a read taken moments after an
+ * edit can hold a half-made plan — the amount applied and the note typed after it still
+ * missing. A snapshot a merge is judged against has to be a state the device settled on.
+ */
+export const settledAuthoredFactories = async (
+  page: Page,
+  tabId: string,
+): Promise<Record<number, string>> => {
+  let previous: Record<number, string> = {}
+  let samples = 0
+
+  await expect.poll(async () => {
+    const current = await authoredFactories(page, tabId)
+    const settled = samples > 0 && Object.keys(current).length > 0 &&
+      isDeepStrictEqual(current, previous)
+    previous = current
+    samples++
+    return settled
+  }, {
+    // Wider than the 500ms save debounce: two samples inside one window prove nothing.
+    intervals: [750],
+    timeout: 30_000,
+    message: 'the plan never stopped being written',
+  }).toBe(true)
+
+  return previous
+}
+
+/** How a tab is held on this device: a plain local plan carries no room and no sync metadata. */
+export const tabHolding = (page: Page, name: string): Promise<{ kind: string, hasMeta: boolean } | undefined> =>
+  page.evaluate((wanted: string) => {
+    const tabs = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as { id: string, name: string }[]
+    const tab = tabs.find(entry => entry.name === wanted)
+    if (!tab) return undefined
+    const states = JSON.parse(localStorage.getItem('tabSyncStates') ?? '{}') as Record<string, { kind: string }>
+    const meta = JSON.parse(localStorage.getItem('tabMirrorMeta') ?? '{}') as Record<string, unknown>
+    return { kind: states[tab.id]?.kind ?? 'local', hasMeta: tab.id in meta }
+  }, name)
+
+/** A tab found by its name rather than its id: the local copies have no id worth knowing. */
+export const mirroredTabNamed = async (
+  page: Page,
+  name: string,
+): Promise<{ id: string, factories: MirroredFactory[] } | undefined> => {
+  const tab = (await storedTabs(page)).find(entry => entry.name === name)
+  return tab && { id: tab.id, factories: tab.factories as MirroredFactory[] }
+}
 
 /**
  * Wires one factory to import an item from another. This is the link that makes a

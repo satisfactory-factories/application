@@ -21,9 +21,22 @@ export interface TabMirrorMeta {
    * otherwise send them undeclared and have the whole plan handed back.
    */
   declaredRemovals: number[]
+  /**
+   * Factory id to a fingerprint of the acked record, for the edited ones only. The
+   * baseline itself does not survive a restart, and without these a device reopened
+   * later cannot tell a factory somebody else changed from one only it changed.
+   */
+  baselinePrints?: Record<string, string>
 }
 
 export type TabMirrorMetaMap = Record<string, TabMirrorMeta>
+
+const readPrints = (value: unknown): Record<string, string> => {
+  if (typeof value !== 'object' || value === null) return {}
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(([, print]) => typeof print === 'string'),
+  ) as Record<string, string>
+}
 
 const isMeta = (value: unknown): value is TabMirrorMeta =>
   typeof value === 'object' && value !== null && typeof (value as TabMirrorMeta).revision === 'number'
@@ -51,6 +64,7 @@ export const readTabMirrorMeta = (): TabMirrorMetaMap => {
       declaredRemovals: Array.isArray(value.declaredRemovals)
         ? value.declaredRemovals.filter(id => typeof id === 'number')
         : [],
+      baselinePrints: readPrints(value.baselinePrints),
     }
   }
   return map

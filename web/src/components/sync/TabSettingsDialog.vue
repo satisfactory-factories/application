@@ -4,135 +4,153 @@
     card-class="border-md"
     close-id="close-tab-settings"
     data-testid="tab-settings-dialog"
-    icon="fas fa-pen"
+    :icon="signingIn ? 'fas fa-sign-in' : 'fas fa-pen'"
     max-width="560"
-    title="Tab settings"
+    :title="signingIn ? 'Sign in to convert' : 'Tab settings'"
   >
-    <div class="align-center d-flex ga-2">
-      <v-text-field
-        v-model="name"
-        data-testid="tab-name-field"
-        density="compact"
-        :disabled="!canRename"
-        hide-details
-        label="Tab name"
-        @blur="applyRename"
-        @input="dirty = true"
-        @keydown.enter="applyRename"
-      />
-      <v-btn
-        color="primary"
-        data-testid="tab-name-apply"
-        :disabled="!canRename"
-        :loading="renaming"
-        variant="flat"
-        @click="applyRename"
-      >Apply</v-btn>
-    </div>
-    <p v-if="!canRename" class="mt-2 text-body-2 text-grey" data-testid="rename-refusal">
-      Only the owner can rename this plan.
-    </p>
-    <p v-if="renameError" class="mt-2 text-body-2 text-red" data-testid="rename-error">
-      {{ renameError }}
-    </p>
+    <!-- The account tray's own form, so there is one sign-in in the planner and this
+         dialog never has to close to reach it. -->
+    <auth-form
+      v-if="signingIn"
+      intro="Sign in or register, and this plan can then be sent to the cloud."
+      @authenticated="onAuthenticated"
+    />
 
-    <!-- Every kind gets in: a snapshot link needs no room, and the dialog itself
-         explains what a local or non-owned tab cannot do. -->
-    <v-divider class="my-4" />
-    <p class="mb-3 text-body-2">{{ shareBlurb }}</p>
-    <v-btn
-      color="blue"
-      data-testid="share-settings"
-      variant="flat"
-      @click="shareOpen = true"
-    >
-      <i class="fas fa-share-alt mr-2" />Share Settings
-    </v-btn>
-
-    <template v-if="kind === 'local'">
-      <v-divider class="my-4" />
-      <p class="mb-3 text-body-2">
-        This plan lives in this browser only. Convert it to a cloud plan and it follows
-        your account to every device you sign in on.
+    <template v-else>
+      <div class="align-center d-flex ga-2">
+        <v-text-field
+          v-model="name"
+          data-testid="tab-name-field"
+          density="compact"
+          :disabled="!canRename"
+          hide-details
+          label="Tab name"
+          @blur="applyRename"
+          @input="dirty = true"
+          @keydown.enter="applyRename"
+        />
+        <v-btn
+          color="primary"
+          data-testid="tab-name-apply"
+          :disabled="!canRename"
+          :loading="renaming"
+          variant="flat"
+          @click="applyRename"
+        >Apply</v-btn>
+      </div>
+      <p v-if="!canRename" class="mt-2 text-body-2 text-grey" data-testid="rename-refusal">
+        Only the owner can rename this plan.
       </p>
-      <!-- The activator wraps the button: a disabled button swallows pointer events,
-           and the signed-out state is exactly when the tooltip has to show. -->
-      <v-tooltip :disabled="isLoggedIn" location="top">
-        <template #activator="{ props: cloudProps }">
-          <span class="d-inline-block" v-bind="cloudProps">
+      <p v-if="renameError" class="mt-2 text-body-2 text-red" data-testid="rename-error">
+        {{ renameError }}
+      </p>
+
+      <!-- Every kind gets in: a snapshot link needs no room, and the dialog itself
+           explains what a local or non-owned tab cannot do. -->
+      <v-divider class="my-4" />
+      <p class="mb-3 text-body-2">{{ shareBlurb }}</p>
+      <v-btn
+        color="blue"
+        data-testid="share-settings"
+        variant="flat"
+        @click="shareOpen = true"
+      >
+        <i class="fas fa-share-alt mr-2" />Share Settings
+      </v-btn>
+
+      <template v-if="kind === 'local'">
+        <v-divider class="my-4" />
+        <p class="mb-3 text-body-2">
+          This plan lives in this browser only. Convert it to a cloud plan and it follows
+          your account to every device you sign in on.
+        </p>
+        <!-- Signed out this is the way in to the sign-in form rather than a dead button.
+             Keyed span: FA swaps the <i> for an SVG, so the icon has to be replaced
+             wholesale rather than have its classes flipped. -->
+        <v-btn
+          color="green"
+          data-testid="convert-to-cloud"
+          :loading="converting"
+          variant="flat"
+          @click="startConvertToCloud"
+        >
+          <span :key="isLoggedIn ? 'cloud' : 'sign-in'" class="mr-2">
+            <i :class="isLoggedIn ? 'fas fa-cloud-upload-alt' : 'fas fa-sign-in'" />
+          </span>{{ isLoggedIn ? 'Convert to cloud' : 'Sign in to convert' }}
+        </v-btn>
+        <p
+          v-if="!isLoggedIn"
+          class="mt-3 text-body-2 text-grey"
+          data-testid="convert-cloud-reassurance"
+        >
+          You do <strong>not</strong> need an account to use this planner. It is there should
+          you wish to have a saved copy of your plan, or to share it with others. It is not
+          mandatory.
+        </p>
+      </template>
+
+      <template v-else-if="isOwner">
+        <v-divider class="my-4" />
+        <template v-if="!confirmingLocal">
+          <p class="mb-3 text-body-2">
+            Convert this plan to a local tab and it comes off your account, staying in
+            this browser only.
+          </p>
+          <v-btn
+            color="orange"
+            data-testid="convert-to-local"
+            variant="flat"
+            @click="confirmingLocal = true"
+          >
+            <i class="fas fa-desktop mr-2" />Convert to local
+          </v-btn>
+        </template>
+        <template v-else>
+          <p class="mb-3 text-amber text-body-2" data-testid="convert-to-local-warning">
+            {{ ownerWarning }}
+          </p>
+          <div class="d-flex ga-2 justify-end">
             <v-btn
-              color="green"
-              data-testid="convert-to-cloud"
-              :disabled="!isLoggedIn"
+              data-testid="cancel-convert-to-local"
+              variant="text"
+              @click="confirmingLocal = false"
+            >Cancel</v-btn>
+            <v-btn
+              color="orange"
+              data-testid="confirm-convert-to-local"
               :loading="converting"
               variant="flat"
-              @click="convertToCloud"
-            >
-              <i class="fas fa-cloud-upload-alt mr-2" />Convert to cloud
-            </v-btn>
-          </span>
+              @click="convertToLocal"
+            >Yes, convert to local</v-btn>
+          </div>
         </template>
-        <span>You need to have an account for this, please register using the Sign in Pioneer button top right of the planner</span>
-      </v-tooltip>
-    </template>
+      </template>
 
-    <template v-else-if="isOwner">
-      <v-divider class="my-4" />
-      <template v-if="!confirmingLocal">
+      <template v-else-if="isJoinedLike">
+        <v-divider class="my-4" />
         <p class="mb-3 text-body-2">
-          Convert this plan to a local tab and it comes off your account, staying in
-          this browser only.
+          This is someone else's shared plan. Convert it to local and you leave the plan;
+          your copy stays in this browser as a local tab.
         </p>
         <v-btn
           color="orange"
           data-testid="convert-to-local"
+          :loading="converting"
           variant="flat"
-          @click="confirmingLocal = true"
+          @click="convertToLocal"
         >
           <i class="fas fa-desktop mr-2" />Convert to local
         </v-btn>
       </template>
-      <template v-else>
-        <p class="mb-3 text-amber text-body-2" data-testid="convert-to-local-warning">
-          {{ ownerWarning }}
-        </p>
-        <div class="d-flex ga-2 justify-end">
-          <v-btn
-            data-testid="cancel-convert-to-local"
-            variant="text"
-            @click="confirmingLocal = false"
-          >Cancel</v-btn>
-          <v-btn
-            color="orange"
-            data-testid="confirm-convert-to-local"
-            :loading="converting"
-            variant="flat"
-            @click="convertToLocal"
-          >Yes, convert to local</v-btn>
-        </div>
-      </template>
-    </template>
 
-    <template v-else-if="isJoinedLike">
-      <v-divider class="my-4" />
-      <p class="mb-3 text-body-2">
-        This is someone else's shared plan. Convert it to local and you leave the plan;
-        your copy stays in this browser as a local tab.
+      <p v-if="convertError" class="mt-3 text-body-2 text-red" data-testid="convert-error">
+        {{ convertError }}
       </p>
-      <v-btn
-        color="orange"
-        data-testid="convert-to-local"
-        :loading="converting"
-        variant="flat"
-        @click="convertToLocal"
-      >
-        <i class="fas fa-desktop mr-2" />Convert to local
-      </v-btn>
     </template>
 
-    <p v-if="convertError" class="mt-3 text-body-2 text-red" data-testid="convert-error">
-      {{ convertError }}
-    </p>
+    <template v-if="signingIn" #actions>
+      <v-btn data-testid="cancel-sign-in" variant="text" @click="signingIn = false">Back</v-btn>
+    </template>
   </app-dialog>
 
   <share-dialog v-model="shareOpen" :tab-id="tabId" />
@@ -141,6 +159,7 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import AppDialog from '@/components/common/AppDialog.vue'
+  import AuthForm from '@/components/sync/AuthForm.vue'
   import ShareDialog from '@/components/sync/ShareDialog.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
@@ -191,6 +210,7 @@
   const convertError = ref('')
   const confirmingLocal = ref(false)
   const shareOpen = ref(false)
+  const signingIn = ref(false)
 
   watch(open, isOpen => {
     if (!isOpen) return
@@ -199,6 +219,7 @@
     renameError.value = ''
     convertError.value = ''
     confirmingLocal.value = false
+    signingIn.value = false
   }, { immediate: true })
 
   // A rename landing from another device follows into an untouched field.
@@ -232,6 +253,25 @@
       'Everyone you shared it with keeps their copy as a local tab, and so do you.'
     : 'This removes the plan from your account on every device. ' +
       'The plan stays in this browser as a local tab.')
+
+  /** Signed out, the button asks for the account it needs instead of sitting greyed out. */
+  const startConvertToCloud = async () => {
+    if (!isLoggedIn.value) {
+      signingIn.value = true
+      return
+    }
+    await convertToCloud()
+  }
+
+  /**
+   * Sign-in starts the room list fetch, and adopting a tab while that is in flight
+   * comes back missing from the list and is reverted. So the settings body only
+   * returns, with its now-live convert button, once the session has landed.
+   */
+  const onAuthenticated = async () => {
+    await roomsStore.whenSessionReady()
+    signingIn.value = false
+  }
 
   /** The adoption path: the same server call the sign-in offer uses, for one tab. */
   const convertToCloud = async () => {

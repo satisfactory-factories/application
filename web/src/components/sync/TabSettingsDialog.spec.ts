@@ -15,6 +15,7 @@ vi.mock('@/api/client', async importOriginal => {
   const actual = await importOriginal<typeof import('@/api/client')>()
   return {
     ...actual,
+    login: vi.fn(),
     listRooms: vi.fn(),
     adoptRoom: vi.fn(),
     renameRoom: vi.fn(),
@@ -104,6 +105,28 @@ describe('TabSettingsDialog', () => {
     })
     await flushPromises()
     return wrapper
+  }
+
+  /** No token and no user: the state a first-time visitor opens the dialog in. */
+  const signOut = () => {
+    authStore.setToken('')
+    authStore.setLoggedInUser('')
+  }
+
+  /** Signs in through the form the dialog offers, exactly as a person would. */
+  const signIn = async () => {
+    vi.mocked(api.login).mockResolvedValue({ token: 'fresh-token' })
+
+    const fields = body().querySelectorAll<HTMLInputElement>('[data-testid="auth-form"] input')
+    for (const [index, value] of ['pioneer', 'ficsit'].entries()) {
+      fields[index].value = value
+      fields[index].dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    await flushPromises()
+
+    body().querySelector<HTMLFormElement>('[data-testid="auth-form"] form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flushPromises()
   }
 
   const typeName = async (value: string) => {
@@ -247,22 +270,92 @@ describe('TabSettingsDialog', () => {
       expect(appStore.getTab(tabId)?.factories).toHaveLength(1)
     })
 
-    it('is disabled signed out, and the tooltip says what to do about it', async () => {
-      authStore.setToken('')
-      authStore.setLoggedInUser('')
-      const tabId = localTab()
-      await render(tabId)
+    it('shows the conversion under its own name with an account', async () => {
+      await render(localTab())
+
+      expect(at('convert-to-cloud')?.textContent).toContain('Convert to cloud')
+      expect(shown('convert-cloud-reassurance')).toBe(false)
+    })
+  })
+
+  describe('convert to cloud, signed out', () => {
+    // The button used to be greyed out with a tooltip pointing at the account button
+    // in the app bar; it is the way in to the same sign-in form now.
+    it('is offered as the way in to the sign-in form rather than a dead button', async () => {
+      signOut()
+      await render(localTab())
 
       const button = at('convert-to-cloud')!
-      expect(button.hasAttribute('disabled')).toBe(true)
+      expect(button.hasAttribute('disabled')).toBe(false)
+      expect(button.textContent).toContain('Sign in to convert')
 
-      button.closest('span')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
+      button.click()
       await flushPromises()
 
-      expect(body().textContent).toContain(
-        'You need to have an account for this, please register using the Sign in Pioneer button top right of the planner'
-      )
+      expect(shown('auth-form')).toBe(true)
       expect(api.adoptRoom).not.toHaveBeenCalled()
+    })
+
+    it('says an account is optional, in the words that say so plainly', async () => {
+      signOut()
+      await render(localTab())
+
+      const copy = at('convert-cloud-reassurance')!
+      expect(copy).not.toBeNull()
+      expect(copy.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'You do not need an account to use this planner. It is there should you wish to have ' +
+        'a saved copy of your plan, or to share it with others. It is not mandatory.'
+      )
+      expect(copy.querySelector('strong')?.textContent).toBe('not')
+    })
+
+    it('leaves the sign-in form without signing in', async () => {
+      signOut()
+      await render(localTab())
+
+      at('convert-to-cloud')!.click()
+      await flushPromises()
+      at('cancel-sign-in')!.click()
+      await flushPromises()
+
+      expect(shown('auth-form')).toBe(false)
+      expect(at('convert-to-cloud')?.textContent).toContain('Sign in to convert')
+    })
+
+    /**
+     * The flip is the whole point: the same open dialog has to become the real
+     * conversion the moment the session lands, with nothing reopened.
+     */
+    it('flips the button to the real conversion once the sign-in lands', async () => {
+      signOut()
+      const tabId = localTab()
+      vi.mocked(api.adoptRoom).mockResolvedValue({
+        status: 'created',
+        room: entry({ roomId: tabId, name: 'My plan' }),
+      })
+      await render(tabId)
+
+      at('convert-to-cloud')!.click()
+      await flushPromises()
+      await signIn()
+
+      expect(api.login).toHaveBeenCalledWith('pioneer', 'ficsit')
+      // The dialog never closed: its name field is still the one that was open.
+      expect(shown('tab-name-field')).toBe(true)
+      expect(shown('auth-form')).toBe(false)
+      expect(shown('convert-cloud-reassurance')).toBe(false)
+      expect(at('convert-to-cloud')?.textContent).toContain('Convert to cloud')
+
+      // Adoption refreshes the list, and a synced tab the list omits is revoked.
+      vi.mocked(api.listRooms).mockResolvedValue({
+        roomsRevision: 2,
+        rooms: [entry({ roomId: tabId, name: 'My plan' })],
+      })
+      at('convert-to-cloud')!.click()
+      await flushPromises()
+
+      expect(api.adoptRoom).toHaveBeenCalledWith(expect.objectContaining({ roomId: tabId }))
+      expect(appStore.getTabState(tabId).kind).toBe('synced')
     })
   })
 

@@ -20,7 +20,9 @@ import { getDisposal, setDepotCount, setSinkCount } from '@/utils/factory-manage
 import { setChecklistEnabled, toggleChecklistProduct } from '@/utils/factory-management/checklist'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import { gameData } from '@/utils/gameData'
-import { mergeFactories } from '@/sync/room-state'
+import { DEMO_TOUCHED, offlineConflictDemoPlans } from '@/utils/factory-setups/offline-conflict-demo-plan'
+import { mergeFactories, stableStringify } from '@/sync/room-state'
+import { fingerprint } from '@/sync/offline-conflict'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import eventBus from '@/utils/eventBus'
 
@@ -1665,6 +1667,698 @@ describe('room-sync-store', () => {
 
       expect(names(tab)).toHaveLength(BIG)
       expect(lastOp().opId).toBe(refused.opId)
+    })
+  })
+
+  /**
+   * The one case nothing else covers: this device edited factories while it was away,
+   * somebody else edited the same ones, and the two only meet when a fresh snapshot lands.
+   * Live editing is not this — a reject there is the routine 400ms race.
+   */
+  describe('the offline conflict prompt', () => {
+    let producing: Factory[]
+
+    const asked = () => store.conflicts[ROOM]?.factories ?? []
+
+    const inTab = (tab: FactoryTab, id: number) => tab.factories.find(factory => factory.id === id)
+
+    const amountOf = (factory: Factory | undefined, item: string) =>
+      factory?.products.find(product => product.id === item)?.amount
+
+    const sentFactories = () => (lastOp().diff.factories ?? []) as Factory[]
+
+    /**
+     * The origin the product field itself uses. On a plain `recalculate` the building
+     * groups are sacrosanct and a typed amount is pulled straight back to them, so a
+     * fixture that edits an amount any other way silently edits nothing.
+     */
+    const recalc = (plan: Factory[]) => calculateFactories(plan, gameData, { origin: 'item' })
+
+    /** A whole plan as another client would have calculated it before storing it. */
+    const serverPlan = (mutate: (plan: Factory[]) => void): Factory[] => {
+      const plan = wire(producing)
+      mutate(plan)
+      recalc(plan)
+      return wire(plan)
+    }
+
+    /** An edit made here, declared the way every UI edit declares itself. */
+    const editHere = (tab: FactoryTab, id: number, item: string, amount: number) => {
+      const product = inTab(tab, id)?.products.find(entry => entry.id === item)
+      if (product) product.amount = amount
+      recalc(tab.factories)
+      store.markUserTouched(ROOM, id)
+    }
+
+    const reconnectWith = (server: Factory[], revision: number) => {
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, revision), revision })
+    }
+
+    /** Alpha and Beta edited on both sides while away; Gamma only here. */
+    const clashOnReconnect = () => {
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+      editHere(tab, 1, 'IronIngot', 111)
+      editHere(tab, 2, 'CopperIngot', 222)
+      editHere(tab, 3, 'IronPlate', 333)
+
+      reconnectWith(serverPlan(plan => {
+        plan[0].products[0].amount = 444
+        plan[1].products[0].amount = 555
+      }), 6)
+      return tab
+    }
+
+    beforeEach(() => {
+      // The resolution hands a changed plan back to the loader; these specs are about
+      // what it decided, not about the staggered render that follows.
+      vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+      producing = [newFactory('Alpha', 0, 1), newFactory('Beta', 1, 2), newFactory('Gamma', 2, 3)]
+      addProductToFactory(producing[0], { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      addProductToFactory(producing[1], { id: 'CopperIngot', amount: 40, recipe: 'IngotCopper' })
+      addProductToFactory(producing[2], { id: 'IronPlate', amount: 20, recipe: 'IronPlate' })
+      recalc(producing)
+      producing = wire(producing)
+    })
+
+    it('asks about the factories both sides edited, and about nothing else', () => {
+      clashOnReconnect()
+
+      expect(asked().map(row => row.factoryId)).toEqual([1, 2])
+      expect(asked()[0].products).toEqual([
+        { itemId: 'IronIngot', live: 444, mine: 111, recipeChanged: false },
+      ])
+    })
+
+    /**
+     * The rates agree and the buildings do not. Overclocks and somersloops are authored,
+     * they sit inside the product, and nothing recalculates them — so without this the
+     * peer's version of the build goes on the overlay with nobody asked.
+     */
+    it('asks about a building group the two versions built differently', () => {
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+
+      // Both sides ask for 60/min and build it differently: two machines at 100% there,
+      // one overclocked to 200% here. Nothing in the rates says so.
+      editHere(tab, 1, 'IronIngot', 60)
+      const mine = inTab(tab, 1)!.products[0]
+      mine.buildingGroups = [{ ...mine.buildingGroups[0], buildingCount: 1, overclockPercent: 200 }]
+
+      reconnectWith(serverPlan(plan => { plan[0].products[0].amount = 60 }), 6)
+
+      expect(asked().map(row => row.factoryId)).toEqual([1])
+      expect(asked()[0].products).toEqual([])
+      expect(asked()[0].otherChanges).toBe(true)
+    })
+
+    // The negative control for the trigger: the room moved, this device has unsent edits,
+    // and the two do not overlap. Nothing to decide, so nothing is asked.
+    it('stays silent when the room moved a factory nobody here edited', () => {
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+      editHere(tab, 3, 'IronPlate', 333)
+
+      reconnectWith(serverPlan(plan => { plan[0].products[0].amount = 444 }), 6)
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+      expect(sentFactories().map(factory => factory.id)).toContain(3)
+    })
+
+    /**
+     * A socket can die between the write and the ack, so the snapshot that comes back may
+     * be carrying this device's own op. Asking about that is asking the user to choose
+     * between two moments of their own typing.
+     */
+    it('stays silent when the snapshot is this device\'s own op coming back', () => {
+      vi.useFakeTimers()
+      const tab = syncAt(producing, 4)
+      editHere(tab, 1, 'IronIngot', 111)
+      store.flushRoom(ROOM)
+
+      editHere(tab, 1, 'IronIngot', 222)
+      latest().serverClose(1011)
+      vi.advanceTimersByTime(1_000)
+      latest().open()
+      receive(helloOk)
+
+      // The op had in fact landed: the room is a revision ahead, carrying our own 111.
+      const server = serverPlan(plan => { plan[0].products[0].amount = 111 })
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 5), revision: 5 })
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+      expect(amountOf(inTab(tab, 1), 'IronIngot')).toBe(222)
+    })
+
+    it('stays silent for a rejected op rebased mid-edit, however much it clashes', () => {
+      const tab = syncAt(producing, 4)
+      editHere(tab, 1, 'IronIngot', 111)
+      store.flushRoom(ROOM)
+
+      receive({
+        type: 'op_reject',
+        roomId: ROOM,
+        opId: lastOp().opId,
+        reason: 'stale_base',
+        snapshot: snapshotOf(serverPlan(plan => { plan[0].products[0].amount = 444 }), 5),
+      })
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    // The load chain owns the plan array, so mid-chain there is no version of "mine" worth
+    // showing anyone. The parked snapshot is what the question is finally asked about.
+    it('asks nothing until the snapshot parked by a load is applied', async () => {
+      const tab = syncAt(producing, 4)
+      appStore.currentFactoryTab = tab
+      store.enterOffline()
+      editHere(tab, 1, 'IronIngot', 111)
+
+      const server = serverPlan(plan => { plan[0].products[0].amount = 444 })
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+
+      const loading = appStore.prepareLoader(tab.factories)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+      expect(store.conflicts[ROOM], 'asked about a plan the loader was still staging').toBeUndefined()
+
+      await loading
+      await vi.waitFor(() => {
+        if (appStore.loadInFlight) throw new Error('the queued load is still running')
+      })
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+      expect(asked().map(row => row.factoryId)).toEqual([1])
+    })
+
+    it('holds the room\'s ops until the clash is answered', () => {
+      clashOnReconnect()
+
+      expect(opsOf(), 'this device\'s version went out before anyone chose it').toHaveLength(0)
+      expect(store.flushRoom(ROOM)).toBe(false)
+      store.flushAll()
+      expect(opsOf()).toHaveLength(0)
+    })
+
+    it('sends this device\'s version of everything when mine wins throughout', () => {
+      const tab = clashOnReconnect()
+
+      store.resolveConflict(ROOM, { liveWinners: [] })
+
+      expect(amountOf(inTab(tab, 1), 'IronIngot')).toBe(111)
+      expect(amountOf(sentFactories().find(factory => factory.id === 1), 'IronIngot')).toBe(111)
+      expect(amountOf(sentFactories().find(factory => factory.id === 2), 'CopperIngot')).toBe(222)
+      expect(amountOf(sentFactories().find(factory => factory.id === 3), 'IronPlate')).toBe(333)
+    })
+
+    it('gives up the clashing records when the live plan wins, and keeps the rest', () => {
+      const tab = clashOnReconnect()
+
+      store.resolveConflict(ROOM, { liveWinners: [1, 2] })
+
+      expect(amountOf(inTab(tab, 1), 'IronIngot')).toBe(444)
+      expect(amountOf(inTab(tab, 2), 'CopperIngot')).toBe(555)
+      expect(amountOf(inTab(tab, 3), 'IronPlate')).toBe(333)
+      // Intent goes for exactly the ids the user handed over, and no others.
+      expect(readTabMirrorMeta()[ROOM]?.userTouchedIds).toEqual([3])
+      expect(amountOf(sentFactories().find(factory => factory.id === 3), 'IronPlate')).toBe(333)
+    })
+
+    it('produces one op carrying the mine-winners and the edits nobody fought over', () => {
+      const tab = clashOnReconnect()
+
+      store.resolveConflict(ROOM, { liveWinners: [2] })
+
+      expect(opsOf()).toHaveLength(1)
+      expect(amountOf(sentFactories().find(factory => factory.id === 1), 'IronIngot')).toBe(111)
+      expect(amountOf(sentFactories().find(factory => factory.id === 3), 'IronPlate')).toBe(333)
+      expect(sentFactories().map(factory => factory.id)).not.toContain(2)
+      expect(amountOf(inTab(tab, 2), 'CopperIngot')).toBe(555)
+    })
+
+    /**
+     * The rebase that raised the question hands the plan to the loader, so an answer can
+     * land while a chain owns the factory array. Written into it then it would be
+     * half-overwritten and then committed, so the answer waits for the chain instead.
+     */
+    it('parks an answer given while a load chain owns the plan', async () => {
+      const tab = clashOnReconnect()
+      appStore.currentFactoryTab = tab
+
+      const loading = appStore.prepareLoader(tab.factories)
+      store.resolveConflict(ROOM, { liveWinners: [1, 2] })
+
+      expect(store.conflicts[ROOM], 'the question was left open').toBeUndefined()
+      expect(amountOf(inTab(tab, 1), 'IronIngot'), 'written into the fragment anyway').not.toBe(444)
+
+      await loading
+      await vi.waitFor(() => {
+        if (appStore.loadInFlight) throw new Error('the queued load is still running')
+      })
+      // The flush the load schedules is what picks the parked answer back up.
+      store.flushAll()
+
+      expect(amountOf(inTab(tab, 1), 'IronIngot')).toBe(444)
+      expect(amountOf(inTab(tab, 3), 'IronPlate')).toBe(333)
+    })
+
+    // The dialog is gone the moment the answer is given, so nothing else would stop this
+    // device sending its own version of a factory it just handed to the live plan.
+    it('holds the room\'s ops while the answer waits for the load chain', () => {
+      const tab = clashOnReconnect()
+      appStore.currentFactoryTab = tab
+
+      // The tail of a chain: the array is whole again and `isLoaded` is back up, but the
+      // load still owns the tab, so the answer parks and nothing has applied it yet.
+      appStore.loadInFlight = true
+      store.resolveConflict(ROOM, { liveWinners: [1, 2] })
+      expect(appStore.isLoaded, 'the fixture never got the plan back').toBe(true)
+
+      expect(store.flushRoom(ROOM), 'sent an op the parked answer had not touched yet').toBe(false)
+
+      appStore.loadInFlight = false
+      store.flushAll()
+
+      expect(sentFactories().map(factory => factory.id)).toEqual([3])
+    })
+
+    it('keeps this device\'s plan as a local tab when asked', () => {
+      clashOnReconnect()
+
+      store.resolveConflict(ROOM, { liveWinners: [1, 2], keepCopy: true })
+
+      const copy = appStore.getTabs().find(tab => tab.name === 'Plan (offline copy)')
+      expect(copy, 'nothing kept this device\'s version').toBeDefined()
+      expect(amountOf(copy?.factories.find(factory => factory.id === 1), 'IronIngot')).toBe(111)
+      expect(amountOf(copy?.factories.find(factory => factory.id === 2), 'CopperIngot')).toBe(222)
+      // A plain local tab: nobody is moved off what they were looking at, and it syncs nothing.
+      expect(appStore.getCurrentTab()?.id).toBe(ROOM)
+      expect(store.rooms[copy?.id ?? '']).toBeUndefined()
+    })
+
+    it('keeps no copy when the box is cleared', () => {
+      clashOnReconnect()
+
+      store.resolveConflict(ROOM, { liveWinners: [1, 2], keepCopy: false })
+
+      expect(appStore.getTabs().map(tab => tab.name)).toEqual(['Plan'])
+    })
+
+    it('re-measures an open question against a newer snapshot', () => {
+      clashOnReconnect()
+
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(serverPlan(plan => {
+          plan[0].products[0].amount = 999
+          plan[1].products[0].amount = 555
+        }), 7),
+        revision: 7,
+      })
+
+      expect(asked()[0].products[0].live).toBe(999)
+    })
+
+    it('closes the question unprompted when the overlap disappears', () => {
+      clashOnReconnect()
+
+      // The room lands on what this device holds: there is nothing left to pick between.
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf(serverPlan(plan => {
+          plan[0].products[0].amount = 111
+          plan[1].products[0].amount = 222
+        }), 7),
+        revision: 7,
+      })
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    it('drops the question when the room stops being tracked', () => {
+      clashOnReconnect()
+
+      store.untrackRoom(ROOM)
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    it('drops the question when the room is deleted under it', () => {
+      clashOnReconnect()
+
+      receive({ type: 'room_deleted', roomId: ROOM })
+
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    describe('a factory the live plan deleted', () => {
+      const deletedThere = () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        editHere(tab, 1, 'IronIngot', 111)
+        reconnectWith(serverPlan(plan => { plan.splice(0, 1) }), 6)
+        return tab
+      }
+
+      it('is asked about with this device\'s products as the mine side', () => {
+        deletedThere()
+
+        expect(asked()[0].liveDeleted).toBe(true)
+        expect(asked()[0].products).toEqual([
+          { itemId: 'IronIngot', live: null, mine: 111, recipeChanged: false },
+        ])
+      })
+
+      it('is restored, and sent back, when mine wins', () => {
+        const tab = deletedThere()
+
+        store.resolveConflict(ROOM, { liveWinners: [] })
+
+        expect(inTab(tab, 1)).toBeDefined()
+        expect(sentFactories().map(factory => factory.id)).toContain(1)
+      })
+
+      it('stays deleted when the live plan wins', () => {
+        const tab = deletedThere()
+
+        store.resolveConflict(ROOM, { liveWinners: [1] })
+
+        expect(inTab(tab, 1)).toBeUndefined()
+        expect(readTabMirrorMeta()[ROOM]?.userTouchedIds).toEqual([])
+      })
+    })
+
+    /**
+     * A device reopened days later has no baseline at all: the mirror carries the plan, the
+     * ids it edited, and a fingerprint of what the server held for each. Without the
+     * fingerprint every unsent edit would read as a clash.
+     */
+    describe('a device reopened with edits it never sent', () => {
+      const reopenWith = (server: Factory[]) => {
+        const mine = wire(producing)
+        mine[0].products[0].amount = 111
+        recalc(mine)
+        const tab = setTab(mine)
+
+        setTabMirrorMeta(ROOM, {
+          revision: 4,
+          appVersion: PROTOCOL_VERSION,
+          userTouchedIds: [1],
+          userTouchedFields: [],
+          declaredRemovals: [],
+          baselinePrints: { 1: fingerprint(stableStringify(producing[0])) },
+        })
+
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+        return tab
+      }
+
+      it('asks about the record a peer changed while it was closed', () => {
+        reopenWith(serverPlan(plan => { plan[0].products[0].amount = 444 }))
+
+        expect(asked().map(row => row.factoryId)).toEqual([1])
+        expect(asked()[0].products).toEqual([
+          { itemId: 'IronIngot', live: 444, mine: 111, recipeChanged: false },
+        ])
+      })
+
+      it('stays silent when the server still holds what it was left holding', () => {
+        reopenWith(serverPlan(plan => { plan[1].products[0].amount = 555 }))
+
+        expect(store.conflicts[ROOM]).toBeUndefined()
+      })
+    })
+  })
+
+  /**
+   * The dev-only demo of that prompt. Its whole sandbox is that it registers an engine and
+   * a question and deliberately no room, so `flushRoom` refuses on its first line — these
+   * specs are mostly about proving that holds, and that nothing it does can reach a real one.
+   */
+  describe('the dev-only conflict demo', () => {
+    const DEMO = 'demo-tab'
+    let plans: ReturnType<typeof offlineConflictDemoPlans>
+
+    const contentOf = (factories: Factory[]) => ({
+      name: 'Conflict demo',
+      powerTarget: 0,
+      groups: [],
+      factories: wire(factories),
+    })
+
+    const stage = (roomId = DEMO, live = plans.live) => store.stageDemoConflict({
+      roomId,
+      baseline: contentOf(plans.baseline),
+      live: contentOf(live),
+      touchedFactories: DEMO_TOUCHED,
+    })
+
+    const demoTab = () => appStore.getTab(DEMO) as FactoryTab
+    const asked = (roomId = DEMO) => store.conflicts[roomId]?.factories ?? []
+    const rowFor = (factoryId: number) => asked().find(row => row.factoryId === factoryId)
+    const inDemo = (factoryId: number) => demoTab().factories.find(factory => factory.id === factoryId)
+    const productOf = (factoryId: number) => inDemo(factoryId)?.products[0]
+
+    beforeEach(() => {
+      // The answer hands a changed plan to the loader; these specs are about what it decided.
+      vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+      plans = offlineConflictDemoPlans()
+      for (const plan of [plans.baseline, plans.live, plans.mine]) {
+        calculateFactories(plan, gameData, { origin: 'item' })
+      }
+
+      // The tab the demo builds for itself: an ordinary local one holding this device's plan.
+      appStore.factoryTabs.splice(0, appStore.factoryTabs.length, {
+        id: DEMO,
+        name: 'Conflict demo',
+        factories: wire(plans.mine),
+        powerTarget: 0,
+        groups: [],
+      })
+    })
+
+    it('stages one section for every row shape the dialog can draw', () => {
+      expect(stage()).toBe(true)
+
+      expect(asked().map(row => row.factoryId)).toEqual([1, 2, 3, 4])
+
+      // A rate somebody else moved too.
+      expect(rowFor(1)).toMatchObject({
+        liveDeleted: false,
+        mineDeleted: false,
+        otherChanges: false,
+        products: [{ itemId: 'IronIngot', live: 120, mine: 100, recipeChanged: false }],
+      })
+      // The same rate built from a different recipe, plus a field the rows cannot show.
+      expect(rowFor(2)).toMatchObject({
+        otherChanges: true,
+        products: [{ itemId: 'CopperIngot', live: 60, mine: 60, recipeChanged: true }],
+      })
+      // Gone in the live plan, still here.
+      expect(rowFor(3)).toMatchObject({
+        liveDeleted: true,
+        products: [{ itemId: 'Cement', live: null, mine: 45, recipeChanged: false }],
+      })
+      // Removed here, edited there.
+      expect(rowFor(4)).toMatchObject({
+        mineDeleted: true,
+        products: [{ itemId: 'SteelIngot', live: 80, mine: null, recipeChanged: false }],
+      })
+    })
+
+    /**
+     * The mechanism, not the assertion: there is no `RoomState` for the pseudo-room, and
+     * `flushRoom` returns on its first line without one. `send` is the single choke point
+     * every frame goes through, join and op alike.
+     */
+    it('puts nothing on the wire, staging or answering', () => {
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+      const before = framesOf().length
+
+      expect(stage()).toBe(true)
+      store.resolveConflict(DEMO, { liveWinners: [1, 4], keepCopy: true })
+      store.flushAll()
+      store.probeTick()
+
+      expect(send).not.toHaveBeenCalled()
+      expect(framesOf()).toHaveLength(before)
+      expect(store.rooms[DEMO], 'the demo registered a room').toBeUndefined()
+    })
+
+    // The negative control for the spy above: it does see a frame when one is sent.
+    it('is watched by a spy that catches a real room\'s op', () => {
+      const tab = setTab(wire(fixture))
+      store.trackRoom(ROOM)
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 4), revision: 4 })
+      tab.factories[0].name = 'Mine'
+      store.markUserTouched(ROOM, 1)
+      store.flushRoom(ROOM)
+
+      expect(send).toHaveBeenCalled()
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    /**
+     * `requestSnapshot` was the one send site gated on the engine rather than the room, so
+     * "no room, no frame" held because of where its callers sit rather than because of the
+     * store. Asked point blank, it now refuses.
+     */
+    it('cannot be asked for a snapshot: there is no room to ask about', () => {
+      connect()
+      const socket = store.configure() as SyncSocket
+      const send = vi.spyOn(socket, 'send')
+      expect(stage()).toBe(true)
+
+      expect(store.requestSnapshot(DEMO)).toBe(false)
+      expect(send).not.toHaveBeenCalled()
+    })
+
+    // The control: a tracked room asks for its snapshot exactly as it always did.
+    it('leaves a real room able to ask for one', () => {
+      setTab(wire(fixture))
+      store.trackRoom(ROOM)
+      connect()
+      const before = joinsOf().length
+
+      expect(store.requestSnapshot(ROOM)).toBe(true)
+      expect(joinsOf().length).toBeGreaterThan(before)
+    })
+
+    it('lands the winners in the demo tab, one factory at a time', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1, 4] })
+
+      // Live won: the rate it holds, and the factory this device had removed comes back.
+      expect(productOf(1)?.amount).toBe(120)
+      expect(productOf(4)?.amount).toBe(80)
+      // Mine won: the alternate recipe stays, and the factory live deleted is still here.
+      expect(productOf(2)?.recipe).toBe('Alternate_PureCopperIngot')
+      expect(productOf(3)?.amount).toBe(45)
+    })
+
+    /**
+     * The demo has no room, so the probe's per-room loop would never reach an answer of
+     * its own that parked. Reachable in earnest: a hidden tab does not paint, so the load
+     * the demo tab's activation queues can start late and still be running when it opens.
+     */
+    it('applies an answer that parked behind a load chain', () => {
+      stage()
+      appStore.currentFactoryTab = demoTab()
+      appStore.loadInFlight = true
+
+      store.resolveConflict(DEMO, { liveWinners: [1] })
+      expect(productOf(1)?.amount, 'the answer was applied under the load chain').toBe(100)
+
+      appStore.loadInFlight = false
+      store.probeTick()
+
+      expect(productOf(1)?.amount).toBe(120)
+    })
+
+    it('keeps this device\'s version as a local tab when the box is ticked', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1, 2, 3, 4], keepCopy: true })
+
+      const copy = appStore.getTabs().find(tab => tab.name === 'Conflict demo (offline copy)')
+      expect(copy, 'nothing kept this device\'s version').toBeDefined()
+      expect(copy?.factories.map(factory => factory.id)).toEqual([1, 2, 3])
+      expect(store.rooms[copy?.id ?? ''], 'the copy is a plain local tab').toBeUndefined()
+    })
+
+    it('keeps no copy when the box is cleared', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1], keepCopy: false })
+
+      expect(appStore.getTabs().map(tab => tab.name)).toEqual(['Conflict demo'])
+    })
+
+    /** Answered, the pretend room is gone: the tab is one nothing tracks any more. */
+    it('hands the tab back as an ordinary local tab once answered', () => {
+      stage()
+
+      store.resolveConflict(DEMO, { liveWinners: [1] })
+
+      expect(store.conflicts[DEMO]).toBeUndefined()
+      expect(readTabMirrorMeta()[DEMO]).toBeUndefined()
+      // Staging refuses a tab an engine already holds, so a second one proves it was dropped.
+      expect(stage()).toBe(true)
+    })
+
+    it('refuses a tab that is already a room', () => {
+      syncAt(fixture, 4)
+
+      expect(stage(ROOM)).toBe(false)
+      expect(store.conflicts[ROOM]).toBeUndefined()
+    })
+
+    /**
+     * A synced tab is untracked until the room list reaches this device, so `rooms` alone
+     * does not say a tab is nobody's — and ending a demo staged over one would strip that
+     * tab's real mirror meta.
+     */
+    it('refuses a tab held as synced even before the room list arrives', () => {
+      appStore.setTabState(DEMO, { kind: 'synced', shared: false, role: 'owner', revision: 3 })
+      setTabMirrorMeta(DEMO, {
+        revision: 3,
+        appVersion: PROTOCOL_VERSION,
+        userTouchedIds: [1],
+        userTouchedFields: [],
+        declaredRemovals: [],
+      })
+      expect(store.rooms[DEMO], 'tracked, so `rooms` would have refused it anyway').toBeUndefined()
+
+      expect(stage()).toBe(false)
+      expect(readTabMirrorMeta()[DEMO]?.revision, 'a real tab\'s baseline was touched').toBe(3)
+
+      // The control: the same tab, held locally, stages.
+      appStore.markTabLocal(DEMO)
+      expect(stage()).toBe(true)
+    })
+
+    it('refuses while a real question is on screen', () => {
+      store.conflicts['room-9'] = { roomId: 'room-9', factories: [] }
+
+      expect(stage()).toBe(false)
+      expect(store.conflicts[DEMO]).toBeUndefined()
+    })
+
+    // An answer given mid-load parks, and nothing retries a park for an untracked room.
+    it('refuses while a load chain owns the plan', () => {
+      appStore.isLoaded = false
+      expect(stage()).toBe(false)
+
+      appStore.isLoaded = true
+      appStore.currentFactoryTab = demoTab()
+      appStore.loadInFlight = true
+      expect(stage()).toBe(false)
+      expect(store.conflicts[DEMO]).toBeUndefined()
+    })
+
+    // Nothing to decide is not a demo: it leaves no engine and no question behind either.
+    it('stages nothing, and keeps nothing, when the two versions agree', () => {
+      expect(stage(DEMO, plans.baseline)).toBe(false)
+
+      expect(store.conflicts[DEMO]).toBeUndefined()
+      expect(stage()).toBe(true)
     })
   })
 

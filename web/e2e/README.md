@@ -25,7 +25,7 @@ The harness refuses to start if either port is taken rather than picking another
 | --- | --- |
 | `two-devices` | An edit reaches the account's other device inside 2s; both mirrors end deep-equal. |
 | `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive, whether the edit is an add or a note. |
-| `tab-lifecycle` | Create, rename (through the tab settings dialog), delete and drag-reorder all reach a second device once it opens the plan from the panel; a hidden plan stays hidden across a reload and Show restores it; a member's rename field is disabled with the reason shown. |
+| `tab-lifecycle` | Create, rename (through the tab settings dialog), delete and drag-reorder all reach a second device once it opens the plan from the panel; a hidden plan stays hidden across a reload and Show restores it; a member's rename field is disabled with the reason shown; signing in from the signed-out convert button turns it into the real conversion on the same open dialog. |
 | `sidebar-tabs` | The docked sidebar lists the tab you are on, whether local, synced or joined; a tab too big to render in one flush opens behind the loading overlay, and a small one opens instantly. |
 | `new-tab-chooser` | Local is offered to anyone; picking synced without an account signs in on the same dialog and still makes the tab. |
 | `invite` | An anonymous visitor joins by link and edits back; a signed-in joiner's plan follows their account and opens from the panel on a second device. |
@@ -35,6 +35,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `bulk-clear` | "Clear all" on one device empties the other, with nothing left unsent on either. Seeded past `BULK_REMOVAL_THRESHOLD`, so the clear has to declare itself to be accepted. |
 | `offline-manual` | The airplane switch makes zero requests, the edits made behind it sync on the way back, and a task written offline survives a rebase onto a room that moved on. |
 | `offline-detected` | A dropped socket raises the prompt; the op in flight at the drop and the edits made offline both survive, and so does a rename left unsent by the drop. |
+| `offline-conflict` | Edits made while one device was cut off, on factories the other device edited too, raise the conflict prompt naming exactly those factories with live-against-mine figures per product. Keeping both on "My version" carries them plus the untouched device's own edit; a mixed answer lands both clients on that hybrid, every factory whole on the side that won it rather than a blend of the two, with the offline copy holding what was given up as a plain local plan. |
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `login-chooser` | An interactive sign-in is fronted by the plan chooser; "Not now" opens nothing, and a reload with a persisted session never asks. |
@@ -66,7 +67,9 @@ per address.
   through storage state, along with the flags that keep the welcome dialog and the
   release splash from covering the page.
 - `helpers/planner.ts` drives the planner: create a synced tab, select one by room id,
-  read the tab bar, drag a tab, wait for a revision, add a factory, read the mirror.
+  read the tab bar, drag a tab, wait for a revision, add a factory, set a product's
+  quantity, read the mirror (a tab by name, a product's amount, one factory's authored
+  content, how a tab is held).
 - `helpers/rooms.ts` sets up the two-device and shared-room cases and drives the share
   dialog; `helpers/session.ts` drives the sign-in tray and the account panel.
 - `helpers/network.ts` counts REST traffic, and puts a gate on one client's WebSocket so

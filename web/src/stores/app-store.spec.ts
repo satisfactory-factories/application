@@ -49,6 +49,23 @@ describe('app-store', () => {
     resetAppStore()
   })
 
+  // The debounced persist can fire after a test file's jsdom is torn down, where
+  // localStorage no longer exists. That must be a silent no-op: it failed a whole
+  // green CI run as an unhandled ReferenceError before the guard existed.
+  describe('the persist debounce outliving its environment', () => {
+    it('should drop a persist quietly when localStorage is gone', async () => {
+      vi.useFakeTimers()
+      try {
+        eventBus.emit('factoryUpdated', newFactory('Leaky'))
+        vi.stubGlobal('localStorage', undefined)
+        expect(() => vi.advanceTimersByTime(600)).not.toThrow()
+      } finally {
+        vi.unstubAllGlobals()
+        vi.useRealTimers()
+      }
+    })
+  })
+
   describe('initFactories', () => {
     let factories: Factory[]
     let factory: Factory

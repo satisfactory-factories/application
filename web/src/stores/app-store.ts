@@ -238,6 +238,9 @@ export const useAppStore = defineStore('app', () => {
    */
   const persistPlan = (fromLoad = !isLoaded.value) => {
     clearTimeout(persistTimer)
+    // The debounce can outlive a test's DOM environment; a persist with nowhere to
+    // write is a no-op, not a crash.
+    if (typeof localStorage === 'undefined') return
     // A user edit that is still waiting to be written stamps the plan even if the write itself was
     // ordered by a load. Renaming a factory and switching tab inside the 500ms window used to lose
     // the timestamp: the load's schedulePersist cancelled the user's timer and inherited the write,

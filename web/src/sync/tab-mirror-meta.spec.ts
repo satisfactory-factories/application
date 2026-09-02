@@ -15,6 +15,7 @@ const meta = (revision: number, ids: number[] = [], declaredRemovals: number[] =
   userTouchedIds: ids,
   userTouchedFields: [] as never[],
   declaredRemovals,
+  baselinePrints: {} as Record<string, string>,
 })
 
 describe('tab mirror metadata', () => {
@@ -63,7 +64,22 @@ describe('tab mirror metadata', () => {
       userTouchedIds: [],
       userTouchedFields: [],
       declaredRemovals: [],
+      baselinePrints: {},
     })
+  })
+
+  // What a reopened device compares a snapshot against: the baseline is gone, and these
+  // are the only way it can still tell a peer's edit from its own.
+  it('round-trips the baseline fingerprints of edited factories', () => {
+    setTabMirrorMeta('tab-1', { ...meta(4, [7]), baselinePrints: { 7: 'abc123' } })
+
+    expect(readTabMirrorMeta()['tab-1']?.baselinePrints).toEqual({ 7: 'abc123' })
+  })
+
+  it('discards fingerprints that are not strings', () => {
+    setTabMirrorMeta('tab-1', { ...meta(4, [7]), baselinePrints: { 7: 12 as never, 8: 'ok' } })
+
+    expect(readTabMirrorMeta()['tab-1']?.baselinePrints).toEqual({ 8: 'ok' })
   })
 
   it('prunes tabs the mirror no longer holds', () => {

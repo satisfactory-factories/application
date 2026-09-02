@@ -9,6 +9,7 @@ import * as api from '@/api/client'
 import { ApiError } from '@/api/client'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { usePlanActivityStore } from '@/stores/plan-activity-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
 import eventBus from '@/utils/eventBus'
@@ -32,6 +33,7 @@ const entry = (roomId: string, name: string, order: number): RoomListEntry => ({
 })
 
 describe('Component: TabNavigation', () => {
+  let pinia: ReturnType<typeof createPinia>
   let appStore: ReturnType<typeof useAppStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
   let roomSync: ReturnType<typeof useRoomSyncStore>
@@ -55,12 +57,16 @@ describe('Component: TabNavigation', () => {
   const drag = (wrapper: VueWrapper, oldIndex: number, newIndex: number) =>
     wrapper.findComponent(draggable).vm.$emit('change', { moved: { oldIndex, newIndex } })
 
-  const render = () => mount(TabNavigation, { global: { plugins: [vuetify] } })
+  // Handed the pinia rather than left to pick up `activePinia`: every store action
+  // call re-points that global, so a listener or timer left behind by an earlier
+  // test can hand this mount that test's dead stores instead of these ones.
+  const render = () => mount(TabNavigation, { global: { plugins: [vuetify, pinia] } })
 
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
-    setActivePinia(createPinia())
+    pinia = createPinia()
+    setActivePinia(pinia)
 
     appStore = useAppStore()
     appStore.isLoaded = true
@@ -77,6 +83,9 @@ describe('Component: TabNavigation', () => {
   afterEach(() => {
     roomsStore.dispose()
     roomSync.dispose()
+    // Mounted by the last-updated indicator, so it is this file that has to let it go:
+    // its bus listeners outlive the test and keep poking a store nothing else can reach.
+    usePlanActivityStore().dispose()
   })
 
   it('renders one tab per tab in the bar', async () => {
@@ -207,7 +216,7 @@ describe('Component: TabNavigation', () => {
     it('opens the tab settings dialog', async () => {
       await mixedBar()
       const wrapper = mount(TabNavigation, {
-        global: { plugins: [vuetify] },
+        global: { plugins: [vuetify, pinia] },
         attachTo: document.body,
       })
 

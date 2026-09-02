@@ -19,6 +19,8 @@
       <!-- The login chooser first: adoption is parked until it is answered. -->
       <plan-chooser-dialog />
       <adoption-dialog />
+      <!-- Only ever up after a reconnect finds the room moved under this device's edits. -->
+      <offline-conflict-dialog />
       <!-- One stack, because more than one of these can be up at once. -->
       <div class="bottom-notices">
         <backend-health-banner />
@@ -38,6 +40,7 @@
   import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
   import BackendHealthBanner from '@/components/sync/BackendHealthBanner.vue'
   import PlanChooserDialog from '@/components/sync/PlanChooserDialog.vue'
+  import OfflineConflictDialog from '@/components/sync/OfflineConflictDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
   import { useBackendHealthStore } from '@/stores/backend-health-store'

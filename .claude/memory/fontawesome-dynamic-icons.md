@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   volatility: durable
-  lastVerified: 2026-08-31
+  lastVerified: 2026-09-01
   originSessionId: 18072cbd-acce-416d-82ea-5233fe13a88f
 ---
 
@@ -54,5 +54,17 @@ component's *default* state, where that branch of the `switch` is unreachable. T
 over every connection state, and the state table names each state's icon beside its label. The
 generalisation: a per-state icon lives behind a conditional, so a guard that mounts once proves
 one branch and quietly certifies the rest.
+
+**`AppDialog`'s `icon` prop was one of these, and is now keyed (2026-09-01).** The title row rendered
+`<i v-if="icon" :class="icon" />`, so a dialog that changes its icon mid-flight kept the one it opened
+with: tab settings read "Sign in to convert" beside a pencil, and `NewTabDialog` had the same latent
+bug. The `<i>` now sits in `<span v-if="icon" :key="icon">`, so a changed icon replaces the element and
+takes the stale `<svg>` with it. `AppDialog.spec.ts` asserts node identity across the change, which is
+all jsdom can see with no FA running; removing the key fails that test alone.
+
+**Checking an icon in a headless browser needs the tab painting.** FA schedules its replacement off
+`requestAnimationFrame`, which a hidden tab never runs, so freshly inserted `<i>`s stay unconverted and
+every icon reads as missing, untouched ones included. Force a paint with a screenshot before believing
+a "the icon did not render" result.
 
 **How to apply:** Toggle a wrapping element Vue owns, with static icon classes inside: `<span v-if="cond"><i class="fas fa-bullseye" /></span><span v-else><i class="fas fa-check-square" /></span>`. Removing the wrapper removes the nested svg; the freshly mounted one gets converted by FA's MutationObserver. Same pattern as the sync-state icons in `PlannerFactoryList.vue`. See also [[verify-tab-navigation]] for browser-driving; dismiss both modals first via localStorage `dismissed-introduction='true'` and `seenV51Splash='true'` or clicks land on the overlay.

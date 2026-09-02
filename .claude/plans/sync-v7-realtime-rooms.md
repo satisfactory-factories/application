@@ -132,7 +132,10 @@ explains anything it has to refuse.
   existing `renameTab` path (owner-only on rooms, refusals shown inline, a member's field is
   disabled with the reason beside it)
 - Local tab: a convert-to-cloud button (fa-cloud-upload-alt) through `adoptTabs([tabId])`;
-  signed out it is disabled with the exact register-first hover tooltip the requirements fix
+  signed out it is enabled, reads "Sign in to convert" and swaps the dialog body for the
+  planner's own `AuthForm`, with the owner's "you do not need an account" copy under it. The
+  button flips to the real conversion on the session landing, without the dialog reopening.
+  (Superseded the disabled button and its register-first hover tooltip.)
 - Cloud tab the user owns: convert to local behind an in-dialog confirm step (no server call
   before the confirm; negative-controlled in the spec) through `removeTab`'s owner delete path,
   which keeps the tab's content as a local tab and leaves collaborators their copies
@@ -148,6 +151,28 @@ explains anything it has to refuse.
   and `NewTabDialog.spec.ts`; e2e renames drive the dialog (`openTabSettings`/
   `closeTabSettings`/`renameCurrentTab` in `e2e/helpers/planner.ts`), and the member test
   asserts the disabled field and reason instead of an absent pencil
+
+### The offline conflict prompt — delivered
+
+The consistency contract's one user-facing decision, stated in full in the contract section
+below. The wire protocol is untouched.
+
+- `web/src/sync/offline-conflict.ts` is the pure half: what two versions of one factory
+  disagree about, as per-product evidence (amount, recipe, present on one side only) plus a
+  one-line admission for anything outside the rates — authored fields on the factory, and the
+  authored half of a product whose rate and recipe agree, which is where the building groups
+  live — and the fingerprint the mirror keeps so a device reopened days later can still tell a
+  peer's edit from its own
+- The engine (`room-sync-store.ts`) detects the clash on a fresh snapshot only, holds the
+  room's op flush while the question is open, re-measures against every newer snapshot or
+  applied op, and applies the answer as one op; an answer given while a load chain owns the
+  plan parks and is applied when the chain hands it back
+- `OfflineConflictDialog.vue` (AppDialog, persistent, answer-only) is the question: one
+  bordered section per clashing factory, a Live plan / My version control per section
+  defaulting to mine, "Use mine for all" / "Keep live for all", and a ticked-by-default box
+  keeping this device's version as a `<name> (offline copy)` local tab
+- `TabMirrorMeta.baselinePrints` carries the fingerprints; `unacknowledged` in the engine
+  keeps a dropped socket's own op from being presented as somebody else's edit
 
 Nothing from the post-review round remains open.
 
@@ -415,6 +440,23 @@ a re-join is told what a room holds only when it holds something.
   send nothing if nothing differs (how "it applied before the drop" resolves).
 - Duplicate `opId`s in the ring return the original ack; the guarantee's honest scope is the
   single in-flight retry window, the only op a client ever retries.
+- **The one case the user decides, and the only one: the offline clash.** A fresh snapshot for a
+  tracked room (join, reconnect, the revision probe's heal, leaving offline mode, reopening a
+  device whose mirror meta carries touched ids) whose revision is past this client's acked
+  baseline, carrying a factory in `touchedFactories` that was *also* changed there (its print
+  differs from the acked one) or deleted there, raises `OfflineConflictDialog`. The user picks a
+  winner **per factory**, with per-product evidence — live X/min against mine Y/min — because the
+  engine's unit of sync is the whole factory; products are evidence and never a merge. Mine-winners
+  are today's behaviour (the overlay, then one op); live-winners drop intent for exactly those ids
+  and take the snapshot's record back, reusing the convergence the `undeclared_bulk_removal` reject
+  path already had. One op carries the mine-winners plus every non-clashing edit. Explicitly **not**
+  raised by an `op_reject` rebase during live editing (the 400ms race is routine, and field locks
+  cover it), by a snapshot with no overlap, by a room with no local intent, or by a snapshot parked
+  mid-load — the `roomIsMidLoad` machinery wins, and the check runs when the parked snapshot is
+  finally applied. While the dialog is open the room's ops are held; a newer snapshot or `op_apply`
+  re-measures the rows against it and closes the dialog unprompted if the overlap has gone. **The
+  wire protocol is unchanged**: this is a client-side decision about which local records survive a
+  rebase, and the server sees an ordinary op either way.
 - **Removals past `BULK_REMOVAL_THRESHOLD` (5) in one op must carry `bulkRemoval: true`**, which
   only a whole-plan replacement sets (clear, paste, template, demo) and only for the ids that
   replacement removed. Without it the server answers `op_reject {reason:
@@ -443,8 +485,10 @@ exists on both sides carries no structural signal. The rule, and it is not negot
   member's diff, `room_meta` overwrites it), so no UI declares name intent.
 
 **Offline, protocol-side.** Offline mode is purely a client stance; the backend needs
-nothing special. Coming back is the reconnect case of the rebase path. Stated honestly:
-others' edits to the same factories you edited while away lose to yours.
+nothing special. Coming back is the reconnect case of the rebase path. Where the two sides
+edited the same factories, the user is asked which version wins rather than the overlay
+deciding silently (the offline clash, above); everything that does not overlap syncs either
+way, and the wire is the same op it always was.
 
 **Version gate.** All API routes except `/health` and `GET /share/:id` require a
 valid `X-App-Version`; WS requires `protocolVersion`. Mismatch → 426 / close 4426 → the
