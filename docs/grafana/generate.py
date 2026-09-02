@@ -325,11 +325,18 @@ add(37, "Accounts and Access Over Time",
     timeseries(fill=10))
 
 # ------------------------------------------------------------- edits and activity
-# Note the shape of the 24h expression. sf_room_revisions is a gauge, not a counter,
-# because deleting a plan removes its edits from the sum, so increase() is invalid
-# here. The offset difference is the gauge-appropriate form, clamped because a
-# deletion can otherwise make it negative.
-EDITS_24H = "clamp_min(sum(sf_room_revisions%s) - sum(sf_room_revisions%s offset 24h), 0)" % (J, J)
+# The shape of this one is deliberate and took two attempts.
+#
+# sf_room_revisions is a gauge, not a counter: deleting a plan removes its edits from
+# the sum. So increase() is invalid, and the obvious alternative — subtracting the
+# value from 24h ago — has two faults. It reads "No data" for the first 24 hours after
+# release, because there is no sample to offset to; and a deletion makes it negative.
+#
+# Measuring from the low point of the window fixes both. min_over_time includes the
+# current sample, so the result can never be negative and needs no clamp, and it has an
+# answer from the very first scrape. With no deletions it is exactly the 24h growth;
+# with one, it is growth since the trough, which is the more useful reading anyway.
+EDITS_24H = "sum(sf_room_revisions%s) - sum(min_over_time(sf_room_revisions%s[24h]))" % (J, J)
 
 add(60, "Edits, All Time",
     "Accepted edits summed across live plans. Falls when a plan is deleted, because those edits no longer exist; that is why it is a gauge rather than a counter.",
@@ -337,7 +344,7 @@ add(60, "Edits, All Time",
     stat(BLUE, graph="area", color_mode="background_solid"))
 
 add(61, "Edits, Last 24h",
-    "The change over 24 hours, clamped at zero. A large deletion will read as a flat zero for a day; that is the known cost of sourcing this from a gauge.",
+    "Edits added since the low point of the last 24 hours. Measured from the trough rather than from the value 24h ago, so it answers from the first scrape instead of reading No data for a day, and cannot go negative when a plan is deleted.",
     [query(EDITS_24H, "Edits")],
     stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], graph="area"))
 
@@ -347,7 +354,7 @@ add(62, "Edits Over Time",
     timeseries(fill=18, fixed="blue", points="never", width=3))
 
 add(63, "Edits per 24h, Over Time",
-    "Rolling 24-hour edit count. Any window works by changing the offset in the query.",
+    "Rolling 24-hour edit count. Any window works by changing the range in the query.",
     [query(EDITS_24H, "Edits in 24h")],
     timeseries(fill=25, fixed="green", points="never"))
 
