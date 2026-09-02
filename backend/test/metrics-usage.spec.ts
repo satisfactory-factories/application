@@ -12,6 +12,7 @@ import {
 } from '../src/metrics/metrics.constants'
 import { ANONYMOUS_ACTOR, UserActivityService } from '../src/user-activity/user-activity.service'
 import { Room } from '../src/rooms/schemas/room.schema'
+import { ROOM_ACTIVITY_KINDS } from '../src/rooms/schemas/room-activity.schema'
 import { RoomMembership } from '../src/rooms/schemas/room-membership.schema'
 import { Share } from '../src/legacy/share.schema'
 import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
@@ -279,6 +280,20 @@ describe('the database-backed usage metrics', () => {
      * numbers here have to survive both. These cases go through the real API so the counting
      * hook is exercised where it actually sits.
      */
+    /**
+     * prom-client emits a series only once it has been set, so without seeding, a kind that
+     * has not happened yet is absent from the scrape entirely and its panel reads "No data".
+     * That is what the whole metric did on release, when the tally was empty.
+     */
+    it('exports every kind at zero before anything has happened', async () => {
+      const body = await scrape()
+
+      for (const kind of ROOM_ACTIVITY_KINDS) {
+        if (kind === 'op') continue
+        expect(action(body, kind)).toBe(0)
+      }
+    })
+
     it('counts a room being created', async () => {
       const mael = await registerAndLogin(context.app, 'maker')
       await createRoom(mael)

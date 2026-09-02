@@ -49,6 +49,24 @@ def query(expr, legend, ref="A", instant=False):
     }
 
 
+# Ascending, matching ACTIVE_ACCOUNT_WINDOWS in the backend.
+WINDOWS = ["1h", "24h", "7d", "14d", "30d"]
+
+
+def window_queries(metric):
+    """One query per window, ascending.
+
+    Not `sum by (window) (metric)`. Grafana renders series in query order, but a single
+    grouped query returns one frame whose series are ordered as *text* — which puts 14d
+    first, then 1h, 24h, 30d, and 7d last. Splitting it is what fixes the legend order,
+    and it is what the matching stat panels already do.
+    """
+    return [
+        query("sum(%s%s)" % (metric, sel('window="%s"' % window)), window, "ABCDE"[index])
+        for index, window in enumerate(WINDOWS)
+    ]
+
+
 def panel(pid, title, description, queries, viz):
     return {
         "kind": "Panel",
@@ -369,7 +387,7 @@ add(64, "Active Accounts",
 
 add(65, "Active Accounts Over Time",
     "The windows plotted together. The 30-day line is thin for the first month after release: it is seeded from an activity log that is trimmed per plan, so early history is partial.",
-    [query("sum by (window) (sf_active_accounts%s)" % J, "{{window}}")],
+    window_queries("sf_active_accounts"),
     timeseries(fill=8))
 
 add(66, "Stickiness",
@@ -458,7 +476,7 @@ add(82, "New Accounts This Month",
 
 add(83, "New Accounts Over Time",
     "Each rolling window plotted. A step up in the 24h line is a signup; the wider lines are the trend.",
-    [query("sum by (window) (sf_new_accounts%s)" % J, "{{window}}")],
+    window_queries("sf_new_accounts"),
     timeseries(fill=8))
 
 add(84, "Sign-ins",
@@ -475,7 +493,7 @@ add(85, "Sign-ins, All Time",
 
 add(86, "Sign-ins Over Time",
     "Rolling sign-in windows. Compare against Active Accounts: a gap means people are signing in and not building.",
-    [query("sum by (window) (sf_signed_in_accounts%s)" % J, "{{window}}")],
+    window_queries("sf_signed_in_accounts"),
     timeseries(fill=8))
 
 add(87, "Of Those Who Signed In, How Many Edited",
@@ -558,7 +576,7 @@ add(103, "New Share Links",
 
 add(104, "Share Links Created Over Time",
     "Each rolling window plotted. A step up in the 24h line is somebody making a link.",
-    [query("sum by (window) (sf_new_shares%s)" % J, "{{window}}")],
+    window_queries("sf_new_shares"),
     timeseries(fill=8))
 
 add(105, "Most Opened Share Links",
