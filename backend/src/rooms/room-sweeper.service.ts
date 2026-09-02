@@ -59,7 +59,8 @@ export class RoomSweeperService implements OnApplicationBootstrap, OnModuleDestr
 
   /** Tombstoned rooms go regardless of shared state: the tombstone already made them inert. */
   private async purgeTombstoned (): Promise<number> {
-    const roomIds = (await this.rooms.find({ deletedAt: { $ne: null } }).lean())
+    // Projected: the sweep needs the ids and nothing else, and a room document is a plan.
+    const roomIds = (await this.rooms.find({ deletedAt: { $ne: null } }, { roomId: 1 }).lean())
       .map(room => room.roomId)
 
     return this.purge(roomIds)
@@ -72,15 +73,25 @@ export class RoomSweeperService implements OnApplicationBootstrap, OnModuleDestr
   private async purgeOrphans (): Promise<number> {
     const cutoff = new Date(this.clock.now().getTime() - ORPHAN_GRACE_MS)
     const candidates = await this.rooms
-      .find({ shared: false, deletedAt: null, createdAt: { $lte: cutoff } })
+      .find({ shared: false, deletedAt: null, createdAt: { $lte: cutoff } }, { roomId: 1 })
       .lean()
     if (candidates.length === 0) return 0
 
-    const ids = candidates.map(room => room.roomId)
-    const held = new Set((await this.memberships.find({ roomId: { $in: ids } }).lean())
-      .map(membership => membership.roomId))
+    const held = await this.heldRoomIds(candidates.map(room => room.roomId))
+    const orphans = candidates.map(room => room.roomId).filter(roomId => !held.has(roomId))
+    if (orphans.length === 0) return 0
 
-    return this.purge(ids.filter(roomId => !held.has(roomId)))
+    // Read again immediately before the delete. The decision above is minutes of sweeping
+    // old, and a join that landed in between must not have its room destroyed under it.
+    const granted = await this.heldRoomIds(orphans)
+
+    return this.purge(orphans.filter(roomId => !granted.has(roomId)))
+  }
+
+  /** Which of these rooms still has a member. Overridable so a test can race a join into it. */
+  protected async heldRoomIds (roomIds: string[]): Promise<Set<string>> {
+    const rows = await this.memberships.find({ roomId: { $in: roomIds } }, { roomId: 1 }).lean()
+    return new Set(rows.map(membership => membership.roomId))
   }
 
   private async purge (roomIds: string[]): Promise<number> {

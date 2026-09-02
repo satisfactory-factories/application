@@ -110,6 +110,21 @@ describe('ensure-step resumption', () => {
           ?.roomsRevision).toBeGreaterThanOrEqual(1)
       },
     )
+
+    // The row is written before the membership, so a resumed join runs it a second time.
+    // Logging the same arrival twice also counts one collaborator as two in the totals.
+    it('logs one arrival however many times the chain is resumed', async () => {
+      runner.failAt = 'ensure-membership'
+      expect((await post(`/rooms/${roomId}/join`, member).send({})).status).toBe(500)
+
+      runner.reset()
+      expect((await post(`/rooms/${roomId}/join`, member).send({})).status).toBe(200)
+
+      expect(await connection.collection('room_activity')
+        .countDocuments({ roomId, kind: 'joined', actor: member.userId })).toBe(1)
+      expect((await connection.collection('room_totals').findOne({ kind: 'joined' }))?.value)
+        .toBe(1)
+    })
   })
 
   describe('leave', () => {
@@ -136,6 +151,18 @@ describe('ensure-step resumption', () => {
           .countDocuments({ roomId, userId: member.userId })).toBe(0)
       },
     )
+
+    it('logs one departure however many times the chain is resumed', async () => {
+      runner.failAt = 'remove-membership'
+      expect((await post(`/rooms/${roomId}/leave`, member).send({})).status).toBe(500)
+
+      runner.reset()
+      expect((await post(`/rooms/${roomId}/leave`, member).send({})).status).toBe(200)
+
+      expect(await connection.collection('room_activity')
+        .countDocuments({ roomId, kind: 'left', actor: member.userId })).toBe(1)
+      expect((await connection.collection('room_totals').findOne({ kind: 'left' }))?.value).toBe(1)
+    })
   })
 
   describe('unshare', () => {

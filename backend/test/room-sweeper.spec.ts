@@ -1,11 +1,30 @@
 import { randomUUID } from 'node:crypto'
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import type { Connection } from 'mongoose'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getModelToken } from '@nestjs/mongoose'
+import type { Connection, Model } from 'mongoose'
 
 import { ACTIVITY_PER_ROOM, ORPHAN_GRACE_MS, RoomSweeperService, SWEEP_INTERVAL_MS } from '../src/rooms/room-sweeper.service'
+import { CLOCK } from '../src/rooms/clock'
+import { EventCountersService } from '../src/event-counters/event-counters.service'
 import { FakeClock, TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
+import { Room } from '../src/rooms/schemas/room.schema'
+import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
+import { RoomMembership } from '../src/rooms/schemas/room-membership.schema'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
+
+/** Grants the membership between the sweep's two membership reads, and only once. */
+class RacingSweeper extends RoomSweeperService {
+  grant: (() => Promise<void>) | null = null
+
+  protected override async heldRoomIds (roomIds: string[]): Promise<Set<string>> {
+    const held = await super.heldRoomIds(roomIds)
+    const grant = this.grant
+    this.grant = null
+    if (grant) await grant()
+    return held
+  }
+}
 
 describe('the hourly room sweeper', () => {
   let context: TestContext
@@ -44,6 +63,10 @@ describe('the hourly room sweeper', () => {
     clock.reset()
     await resetRooms(context.app)
     owner = await registerAndLogin(context.app, 'owner')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('runs on the hour and grants orphans a day', () => {
@@ -136,6 +159,51 @@ describe('the hourly room sweeper', () => {
     const oldest = await connection.collection('room_activity')
       .find({ roomId: kept }).sort({ at: 1 }).limit(1).toArray()
     expect(oldest[0].summary).toBe('op 5')
+  })
+
+  /**
+   * The read that decides a room is an orphan is minutes of sweeping old by the time the
+   * delete runs, and a join in that gap would otherwise have its room destroyed under it.
+   */
+  it('spares a room somebody joined between the decision and the delete', async () => {
+    const roomId = await createRoom('Nearly abandoned')
+    await dropMemberships(roomId)
+    clock.advance(ORPHAN_GRACE_MS + 60_000)
+
+    const racing = new RacingSweeper(
+      context.app.get<Model<Room>>(getModelToken(Room.name)),
+      context.app.get<Model<RoomMembership>>(getModelToken(RoomMembership.name)),
+      context.app.get<Model<RoomActivity>>(getModelToken(RoomActivity.name)),
+      context.app.get(CLOCK),
+      context.app.get(EventCountersService),
+    )
+    racing.grant = async () => {
+      await connection.collection('room_memberships').insertOne({
+        roomId, userId: owner.userId, role: 'member', order: 0, epoch: 0, joinedAt: new Date(),
+      })
+    }
+
+    expect((await racing.sweep()).orphanRooms).toBe(0)
+    expect(await roomExists(roomId)).toBe(true)
+  })
+
+  // A room document is a whole plan, and the sweep wants nothing from it but the id.
+  it('reads only the ids it is about to delete', async () => {
+    const roomId = await createRoom('Doomed')
+    await del(`/rooms/${roomId}`, owner)
+
+    const model = context.app.get<Model<Room>>(getModelToken(Room.name))
+    const original = model.find.bind(model) as (...args: unknown[]) => unknown
+    const projections: unknown[] = []
+    vi.spyOn(model, 'find').mockImplementation(((...args: unknown[]) => {
+      projections.push(args[1])
+      return original(...args)
+    }) as never)
+
+    await sweeper.sweep()
+
+    expect(projections.length).toBeGreaterThan(0)
+    for (const projection of projections) expect(projection).toEqual({ roomId: 1 })
   })
 
   it('is safe to run twice over the same data', async () => {

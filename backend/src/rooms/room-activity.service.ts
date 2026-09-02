@@ -39,12 +39,18 @@ export class RoomActivityService {
   }
 
   /**
-   * For the kinds that can only happen once in a room's life (creation, deletion).
-   * An upsert keeps a resumed chain from logging the same event twice.
+   * For the kinds that can only happen once in a room's life (creation, deletion), or with
+   * `perActor`, once per person in it (joining, leaving). An upsert keeps a resumed chain
+   * from logging the same event twice and tallying it twice with it.
    */
-  async recordOnce (roomId: string, actor: string, kind: RoomActivityKind): Promise<void> {
+  async recordOnce (
+    roomId: string,
+    actor: string,
+    kind: RoomActivityKind,
+    options: { perActor?: boolean } = {},
+  ): Promise<void> {
     const { upsertedCount } = await this.activity.updateOne(
-      { roomId, kind },
+      options.perActor ? { roomId, kind, actor } : { roomId, kind },
       { $setOnInsert: { roomId, kind, actor, at: this.clock.now() } },
       { upsert: true },
     )
