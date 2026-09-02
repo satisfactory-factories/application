@@ -122,6 +122,7 @@
 </template>
 
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
@@ -268,6 +269,7 @@
       } catch (err) {
         if (err instanceof Error) {
           alert(`Invalid plan. Error: ${err.message}`)
+          recordEvent('plan_import_invalid')
         }
       }
     })

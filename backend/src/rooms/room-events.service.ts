@@ -2,6 +2,8 @@ import { EventEmitter } from 'node:events'
 
 import { Injectable } from '@nestjs/common'
 
+import { EventCountersService } from '../event-counters/event-counters.service'
+
 /**
  * Who an access change kicks: password holders, everyone but the owner, or one
  * account that walked out of its own accord.
@@ -34,7 +36,7 @@ export type RoomEventListener<K extends RoomEventName> = (payload: RoomEventMap[
 export class RoomEventsService {
   private readonly emitter = new EventEmitter()
 
-  constructor () {
+  constructor (private readonly counters: EventCountersService) {
     this.emitter.setMaxListeners(0)
   }
 
@@ -44,6 +46,7 @@ export class RoomEventsService {
       this.emitter.emit(name, payload)
     } catch (error) {
       console.error(`Room event listener threw on ${name}:`, error)
+      this.counters.record('server', 'room_event_listener_threw')
     }
   }
 

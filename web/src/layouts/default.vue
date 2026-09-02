@@ -46,6 +46,7 @@
   import { useBackendHealthStore } from '@/stores/backend-health-store'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
+  import { useEventsStore } from '@/stores/events-store'
   import { useTelemetryStore } from '@/stores/telemetry-store'
   import { startVersionCheck } from '@/utils/version-check'
 
@@ -66,6 +67,7 @@
   let stopVersionCheck: (() => void) | undefined
   const backendHealth = useBackendHealthStore()
   const telemetry = useTelemetryStore()
+  const events = useEventsStore()
 
   onMounted(() => {
     // An anonymous joined tab has no membership on the server, so nothing in the
@@ -74,11 +76,13 @@
     stopVersionCheck = startVersionCheck()
     backendHealth.start()
     telemetry.start()
+    events.start()
   })
   onUnmounted(() => {
     stopVersionCheck?.()
     backendHealth.stop()
     telemetry.stop()
+    events.stop()
   })
 </script>
 

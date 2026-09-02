@@ -4,6 +4,7 @@ import mongoose, { Connection } from 'mongoose'
 import type { Response } from 'express'
 
 import { SkipVersionGate } from '../common/decorators/skip-version-gate.decorator'
+import { EventCountersService } from '../event-counters/event-counters.service'
 
 /**
  * How long /health waits on Mongo before calling it dead. Well under the 5s
@@ -24,7 +25,10 @@ export interface HealthResponse {
 
 @Controller('health')
 export class HealthController {
-  constructor (@InjectConnection() private readonly connection: Connection) {}
+  constructor (
+    @InjectConnection() private readonly connection: Connection,
+    private readonly counters: EventCountersService,
+  ) {}
 
   // 200 only if Mongo answers, 503 otherwise, so uptime monitoring sees a
   // database outage instead of a cheerful process. Shape is load-bearing:
@@ -51,6 +55,7 @@ export class HealthController {
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
       console.error(`Health check failed: ${error}`)
+      this.counters.record('server', 'health_db_ping_failed')
     } finally {
       clearTimeout(timer)
     }

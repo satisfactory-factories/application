@@ -590,6 +590,7 @@
 </template>
 
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { computed, inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
@@ -887,6 +888,7 @@
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')
+      recordEvent('calc_fix_product_missing')
       console.error(`Could not find product for part ${partId}`)
       return
     }
@@ -900,6 +902,7 @@
 
     if (!generator) {
       alert('Could not fix the generator due to there not being a generator! Please report this to Discord with a share link, quoting the factory in question.')
+      recordEvent('calc_fix_generator_missing')
       console.error(`Could not find generator for part ${part}`)
       return
     }

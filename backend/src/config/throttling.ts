@@ -7,6 +7,7 @@ export const VERSION_PATH = '/version'
 export const SHARE_PATH = '/share'
 export const METRICS_PATH = '/metrics'
 export const TELEMETRY_PATH = '/telemetry'
+export const EVENTS_PATH = '/events'
 /** `POST /rooms/:roomId/auth`, the only endpoint that takes an invite password. */
 export const ROOM_AUTH_PATTERN = /^\/rooms\/[^/]+\/auth\/?$/
 
@@ -32,6 +33,13 @@ export const METRICS_THROTTLE = { name: 'metrics', ttl: 60 * 1000, limit: 30 } a
  * heartbeating must never rate-limit the planner behind it.
  */
 export const TELEMETRY_THROTTLE = { name: 'telemetry', ttl: 60 * 1000, limit: 60 } as const
+/**
+ * Twice the telemetry bucket, because events flush every minute rather than every five, and
+ * because a shared office address should not start 429ing the moment a handful of browsers hit
+ * the same bug. It is affordable only because a browser with nothing to report sends nothing
+ * at all: on a good day this route sees no traffic.
+ */
+export const EVENTS_THROTTLE = { name: 'events', ttl: 60 * 1000, limit: 120 } as const
 
 const httpRequest = (context: ExecutionContext): Request | null =>
   context.getType() === 'http' ? context.switchToHttp().getRequest<Request>() : null
@@ -48,6 +56,9 @@ const isMetricsRequest = (context: ExecutionContext): boolean =>
 const isTelemetryRequest = (context: ExecutionContext): boolean =>
   httpRequest(context)?.path === TELEMETRY_PATH
 
+const isEventsRequest = (context: ExecutionContext): boolean =>
+  httpRequest(context)?.path === EVENTS_PATH
+
 const isShareCreation = (context: ExecutionContext): boolean => {
   const request = httpRequest(context)
   return request?.method === 'POST' && request.path === SHARE_PATH
@@ -59,8 +70,8 @@ const isRoomAuth = (context: ExecutionContext): boolean => {
 }
 
 /**
- * Seven buckets, in two groups. Four of them — /health, /version, /metrics and /telemetry
- * — are exempt from the global bucket and carry their own, so ordinary traffic can never
+ * Eight buckets, in two groups. Five of them — /health, /version, /metrics, /telemetry and
+ * /events — are exempt from the global bucket and carry their own, so ordinary traffic can never
  * rate-limit the uptime monitor into a false outage, stop a browser hearing about a
  * release, or open a gap in the metrics; and equally, none of those four can spend the
  * allowance that plan syncing shares. The last two stack on top of the global bucket
@@ -77,12 +88,14 @@ export const THROTTLER_OPTIONS: ThrottlerModuleOptions = {
         isHealthRequest(context) ||
         isVersionRequest(context) ||
         isMetricsRequest(context) ||
-        isTelemetryRequest(context),
+        isTelemetryRequest(context) ||
+        isEventsRequest(context),
     },
     { ...HEALTH_THROTTLE, skipIf: context => !isHealthRequest(context) },
     { ...VERSION_THROTTLE, skipIf: context => !isVersionRequest(context) },
     { ...METRICS_THROTTLE, skipIf: context => !isMetricsRequest(context) },
     { ...TELEMETRY_THROTTLE, skipIf: context => !isTelemetryRequest(context) },
+    { ...EVENTS_THROTTLE, skipIf: context => !isEventsRequest(context) },
     { ...SHARE_THROTTLE, skipIf: context => !isShareCreation(context) },
     { ...ROOM_AUTH_THROTTLE, skipIf: context => !isRoomAuth(context) },
   ],

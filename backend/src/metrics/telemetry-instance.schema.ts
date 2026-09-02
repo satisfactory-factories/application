@@ -41,6 +41,13 @@ export class TelemetryInstance {
 
   @Prop({ type: String, default: '' })
   sha!: string
+
+  /**
+   * Separate from `lastSeenAt` so an event flush and a heartbeat do not consume each other's
+   * allowance. They run on different intervals and answer different questions.
+   */
+  @Prop({ type: Date, default: null })
+  lastEventReportAt!: Date | null
 }
 
 export type TelemetryInstanceDocument = HydratedDocument<TelemetryInstance>

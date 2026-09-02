@@ -22,6 +22,7 @@ import { ConnectionRegistry } from './connection-registry'
 import { FieldLockService } from './field-lock.service'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomAccess, RoomAccessService } from './room-access.service'
+import { EventCountersService } from '../event-counters/event-counters.service'
 import { RoomEventsService } from '../rooms/room-events.service'
 import type { RoomEventMap } from '../rooms/room-events.service'
 import { RoomOpService } from './room-op.service'
@@ -64,6 +65,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     private readonly rooms: RoomsService,
     private readonly events: RoomEventsService,
     private readonly jwt: JwtService,
+    private readonly counters: EventCountersService,
   ) {}
 
   onModuleInit (): void {
@@ -188,6 +190,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       }
     } catch (cause) {
       this.logger.error('Failed to handle a client message', cause)
+      this.counters.record('server', 'ws_message_handler_error')
       connection.send(error('internal_error', 'The server could not handle that message.'))
     }
   }
@@ -226,6 +229,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       if (user) roomsRevision = await this.rooms.roomsRevisionOf(user.id)
     } catch (cause) {
       this.logger.error('Handshake failed while reading the account', cause)
+      this.counters.record('server', 'ws_handshake_internal_error')
       connection.close(WS_INTERNAL_ERROR, 'handshake failed')
       return
     }

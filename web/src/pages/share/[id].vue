@@ -2,6 +2,7 @@
   <h1 class="text-center">Loading share data...</h1>
 </template>
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { ref } from 'vue'
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
@@ -62,6 +63,7 @@
 
         if (!data.data) {
           alert('Failed to load share link, it contained invalid data.')
+          recordEvent('share_load_invalid')
           return
         }
 
@@ -78,11 +80,13 @@
       } else {
         console.error('Loading share data failed:', data)
         alert(`Failed to load share link. Please report this error to GitHub! "${data}" `)
+        recordEvent('share_load_failed')
       }
     } catch (error) {
       if (error instanceof Error) {
         console.error('Error:', error)
         alert(`Failed to load share link. Please report this error to GitHub! "${error.message}"`)
+        recordEvent('share_load_failed')
       }
     }
   }
