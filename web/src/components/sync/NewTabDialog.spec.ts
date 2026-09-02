@@ -87,6 +87,40 @@ describe('NewTabDialog', () => {
     expect(at('choose-synced-tab')?.querySelector('.fa-user')).toBeNull()
   })
 
+  // The two cards are the whole dialog, and a v-card with a click handler is not a
+  // button: without these a keyboard cycles straight past both choices to Cancel.
+  describe('reaching the choices from the keyboard', () => {
+    const press = async (testId: string, key: string) => {
+      at(testId)?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+      await flushPromises()
+    }
+
+    it('puts both choices in the tab order and announces them as buttons', () => {
+      render()
+
+      for (const testId of ['choose-local-tab', 'choose-synced-tab']) {
+        expect(at(testId)?.getAttribute('tabindex')).toBe('0')
+        expect(at(testId)?.getAttribute('role')).toBe('button')
+      }
+    })
+
+    it('takes the local choice on Enter', async () => {
+      render()
+
+      await press('choose-local-tab', 'Enter')
+
+      expect(appStore.addTab).toHaveBeenCalled()
+    })
+
+    it('takes the synced choice on Space', async () => {
+      render({ loggedIn: true })
+
+      await press('choose-synced-tab', ' ')
+
+      expect(roomsStore.createSyncedTab).toHaveBeenCalledWith('New Tab')
+    })
+  })
+
   it('makes a local tab with no account at all', async () => {
     const wrapper = render()
 

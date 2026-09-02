@@ -13,8 +13,12 @@
           class="choice flex-1-1 pa-4"
           data-testid="choose-local-tab"
           :disabled="busy"
+          role="button"
+          :tabindex="busy ? -1 : 0"
           variant="tonal"
           @click="chooseLocal"
+          @keydown.enter.prevent="chooseLocal"
+          @keydown.space.prevent="chooseLocal"
         >
           <div class="text-h6 mb-2">
             <span class="mr-2"><i class="fas fa-desktop" /></span>Local tab
@@ -28,8 +32,12 @@
           class="choice flex-1-1 pa-4"
           data-testid="choose-synced-tab"
           :disabled="busy"
+          role="button"
+          :tabindex="busy ? -1 : 0"
           variant="tonal"
           @click="chooseSynced"
+          @keydown.enter.prevent="chooseSynced"
+          @keydown.space.prevent="chooseSynced"
         >
           <div class="text-h6 mb-2">
             <span class="mr-2"><i class="fas fa-cloud" /></span>Synced tab
@@ -127,5 +135,12 @@
 <style lang="scss" scoped>
 .choice {
   cursor: pointer;
+}
+
+// The cards are the only controls in the dialog, so a keyboard user has to be able
+// to see which one they are on.
+.choice:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
 }
 </style>

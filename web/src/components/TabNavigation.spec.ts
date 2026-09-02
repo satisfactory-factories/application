@@ -183,6 +183,21 @@ describe('Component: TabNavigation', () => {
       expect(document.body.textContent).toContain(wording)
     })
 
+    // The one icon control on the bar that never explained itself.
+    it('explains the plus button on hover, and keeps it a direct child of the strip', async () => {
+      const wrapper = render()
+
+      const button = wrapper.find('[data-testid="add-tab"]')
+      expect(button.attributes('title')).toBeUndefined()
+      expect(wrapper.element.querySelector(':scope > div > div > .tab-strip > button[data-testid="add-tab"]'))
+        .not.toBeNull()
+
+      await button.trigger('mouseenter')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('New tab: local to this browser, or synced to your account')
+    })
+
     it('says the milder thing for a local tab, which nobody else can lose', async () => {
       appStore.addTab({ id: 'second', name: 'Second', factories: [] }, { activate: false })
       const wrapper = render()

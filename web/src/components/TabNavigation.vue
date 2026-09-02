@@ -77,15 +77,22 @@
             </template>
           </draggable>
         </v-tabs>
-        <!-- Kept a direct child of the strip: browser checks find it as `:scope > button.v-btn--icon`. -->
-        <v-btn
-          class="tab-action"
-          data-testid="add-tab"
-          icon="fas fa-plus"
-          size="x-small"
-          variant="text"
-          @click="openNewTabChooser"
-        />
+        <!-- The button is kept a direct child of the strip: browser checks find it as
+             `:scope > button.v-btn--icon`, and v-tooltip renders its activator in place. -->
+        <v-tooltip location="top">
+          <template #activator="{ props: addProps }">
+            <v-btn
+              class="tab-action"
+              data-testid="add-tab"
+              icon="fas fa-plus"
+              size="x-small"
+              variant="text"
+              v-bind="addProps"
+              @click="openNewTabChooser"
+            />
+          </template>
+          <span>New tab: local to this browser, or synced to your account</span>
+        </v-tooltip>
         <!-- Advertises the local/synced choice exactly once per browser. -->
         <span v-if="showNudge" class="nudge-dot" data-testid="new-tab-nudge" />
       </div>
