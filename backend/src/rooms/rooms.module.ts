@@ -14,6 +14,7 @@ import { RoomMembership, RoomMembershipSchema } from './schemas/room-membership.
 import { RoomSweeperService } from './room-sweeper.service'
 import { RoomsController } from './rooms.controller'
 import { RoomsService } from './rooms.service'
+import { UserActivityService } from './user-activity.service'
 
 @Module({
   imports: [
@@ -32,10 +33,20 @@ import { RoomsService } from './rooms.service'
     RoomEventsService,
     RoomSweeperService,
     LegacyImportService,
+    UserActivityService,
     EnsureStepRunner,
     { provide: CLOCK, useValue: systemClock },
   ],
-  // Exported for the WS gateway, which reads rooms and listens for fan-out.
-  exports: [RoomsService, RoomActivityService, RoomEventsService, MongooseModule, CLOCK],
+  // Exported for the WS gateway, which reads rooms and listens for fan-out, and for the
+  // metrics module. UserActivityService lives here rather than in metrics/ so that
+  // RealtimeModule can reach it without the two modules importing each other.
+  exports: [
+    RoomsService,
+    RoomActivityService,
+    RoomEventsService,
+    UserActivityService,
+    MongooseModule,
+    CLOCK,
+  ],
 })
 export class RoomsModule {}

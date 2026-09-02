@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, OnModuleInit } from '@nestjs/common'
 
 import { AuthModule } from '../auth/auth.module'
 import { MetricsController } from './metrics.controller'
@@ -8,6 +8,7 @@ import { RealtimeModule } from '../realtime/realtime.module'
 import { RoomsModule } from '../rooms/rooms.module'
 import { TelemetryController } from './telemetry.controller'
 import { TelemetryService } from './telemetry.service'
+import { UserActivityService } from '../rooms/user-activity.service'
 
 /**
  * Observability, reading everything and owning nothing. `/telemetry` lives here rather
@@ -22,4 +23,18 @@ import { TelemetryService } from './telemetry.service'
   controllers: [MetricsController, TelemetryController],
   providers: [MetricsService, TelemetryService, MetricsTokenGuard],
 })
-export class MetricsModule {}
+export class MetricsModule implements OnModuleInit {
+  constructor (private readonly userActivity: UserActivityService) {}
+
+  /**
+   * Seeds `lastActiveAt` from what the activity log still holds, so the account windows are
+   * not blank for a month after release. Needs no marker: the backfill writes with `$max`,
+   * so running it on every boot cannot lower a value or double anything.
+   *
+   * Not awaited. Boot must not block on it, and a failure is logged rather than thrown —
+   * `/health` answering is worth more than a seeded gauge.
+   */
+  onModuleInit (): void {
+    void this.userActivity.backfillSafely()
+  }
+}

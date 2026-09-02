@@ -433,6 +433,24 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
   (`openssl rand -hex 32`), put it in the env file, and give the same value to the
   Prometheus scrape job as a bearer token. Nothing else reads it, so rotating it means
   editing those two places and restarting the container.
+
+  **The token is the access control, and it is worth being honest about why.**
+  `/metrics` carries usernames and plan ids in its top-20 gauges, so it is not a
+  page to leave open. Two things people assume protect it and do not:
+
+  - The compose files publish `3001:3001` (and `3002:3002` for preview) on **all**
+    host interfaces. Excluding `/metrics` at the tunnel removes the public route but
+    does not close the host port. Anything that can reach the box on the LAN can
+    reach `/metrics`, and only the token stops it.
+  - An application-level "private addresses only" check was considered and rejected.
+    Behind Docker port publishing with a tunnel in front, the container sees the
+    tunnel as its peer rather than the caller, so such a guard can pass public
+    traffic while looking like it blocks it. A guard that fails open is worse than
+    none, because it invites trust.
+
+  What actually keeps it private today is that the box holds a private address behind
+  NAT with no port forward, plus the token. The first of those is a property of the
+  network and is not enforced by anything in this repository.
 - The tunnel in front of the API must forward WebSocket upgrades to `/ws` on the
   same origin as the REST routes. Nothing in the repo can prove this; check it
   from the production origin after the first v7 deploy.

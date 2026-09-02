@@ -11,6 +11,7 @@ import type { Connection } from 'mongoose'
 import { CLOCK, Clock } from '../../src/rooms/clock'
 import { EnsureStepRunner } from '../../src/rooms/ensure-step.runner'
 import { RoomActivityService } from '../../src/rooms/room-activity.service'
+import { UserActivityService } from '../../src/rooms/user-activity.service'
 import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
@@ -28,6 +29,8 @@ export interface TestAppOptions {
   stepRunner?: EnsureStepRunner
   /** Replaces the activity log, so a post-commit write can be made to fail. */
   activity?: Pick<RoomActivityService, 'record' | 'recordOnce'>
+  /** Replaces the editor stamp, the other post-commit write, for the same reason. */
+  userActivity?: Pick<UserActivityService, 'recordEdit'>
   clock?: Clock
   /**
    * Suites that make hundreds of calls from one address would otherwise trip the
@@ -50,6 +53,11 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   const builder = Test.createTestingModule({ imports: [AppModule] })
   if (options.stepRunner) builder.overrideProvider(EnsureStepRunner).useValue(options.stepRunner)
   if (options.activity) builder.overrideProvider(RoomActivityService).useValue(options.activity)
+  if (options.userActivity) {
+    builder.overrideProvider(UserActivityService)
+      // The boot backfill is a no-op here: these suites assert the seam, not the seeding.
+      .useValue({ ...options.userActivity, backfillSafely: async () => undefined })
+  }
   if (options.clock) builder.overrideProvider(CLOCK).useValue(options.clock)
   if (options.unthrottled) builder.overrideProvider(ThrottlerStorage).useValue(NEVER_THROTTLED)
 
