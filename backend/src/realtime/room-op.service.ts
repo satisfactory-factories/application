@@ -8,6 +8,7 @@ import { APPLIED_OPS_RING, Room } from '../rooms/schemas/room.schema'
 import { CLOCK, Clock } from '../rooms/clock'
 import { RoomAccess, RoomAccessRole } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
+import { UserActivityService } from '../rooms/user-activity.service'
 import { mergeFactories } from './room-snapshot'
 
 export type OpOutcome =
@@ -36,6 +37,7 @@ export class RoomOpService {
   constructor (
     @InjectModel(Room.name) private readonly rooms: Model<Room>,
     private readonly activity: RoomActivityService,
+    private readonly userActivity: UserActivityService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -103,10 +105,17 @@ export class RoomOpService {
 
     // Past this line the content is committed, so nothing may deny the sender its
     // ack or the peers their broadcast: a wedged client is worse than a lost row.
+    // Two separate attempts on purpose — one failing must not skip the other.
     try {
       await this.activity.record(op.roomId, actor, 'op')
     } catch (cause) {
       this.logger.error(`Failed to record op activity for room ${op.roomId}`, cause)
+    }
+
+    try {
+      await this.userActivity.recordEdit(actor, this.clock.now())
+    } catch (cause) {
+      this.logger.error(`Failed to stamp editor activity for ${op.roomId}`, cause)
     }
 
     return { status: 'applied', revision: updated.revision }

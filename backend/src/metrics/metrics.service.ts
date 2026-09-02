@@ -1,31 +1,43 @@
 import { Gauge, Registry } from 'prom-client'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { Types } from 'mongoose'
 import type { Model } from 'mongoose'
 
+import {
+  ACTIVE_ACCOUNT_WINDOWS,
+  DELETED_OWNER,
+  METRICS_CACHE_MS,
+  METRICS_SLOW_CACHE_MS,
+  METRICS_TOP_N,
+} from './metrics.constants'
 import { CLOCK, Clock } from '../rooms/clock'
+import { CachedQuery } from './cached-query'
 import { ConnectionRegistry } from '../realtime/connection-registry'
-import { METRICS_CACHE_MS } from './metrics.constants'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
 import { TelemetryService } from './telemetry.service'
 import { User } from '../auth/user.schema'
 
-/** The five numbers that cost a database round trip, and are therefore cached together. */
-interface DatabaseCounts {
+/** The fast numbers: four counts and one aggregation over the rooms collection. */
+interface CheapCounts {
   sharedRooms: number
   privateRooms: number
   roomFactories: number
+  roomRevisions: number
   roomMembers: number
   users: number
 }
 
-const ZERO_COUNTS: DatabaseCounts = {
-  sharedRooms: 0,
-  privateRooms: 0,
-  roomFactories: 0,
-  roomMembers: 0,
-  users: 0,
+interface OwnedTotal { name: string, value: number }
+interface RoomTotal { roomId: string, owner: string, factories: number }
+
+/** The slow numbers: five window counts and three top-N aggregations. */
+interface SlowStats {
+  activeAccounts: Array<readonly [string, number]>
+  topRooms: RoomTotal[]
+  topEditors: OwnedTotal[]
+  topOwners: OwnedTotal[]
 }
 
 /**
@@ -35,16 +47,18 @@ const ZERO_COUNTS: DatabaseCounts = {
  * Two Nest apps in one process — which is every backend spec file — would otherwise fight
  * over the same metric names, and one app's numbers would show up in the other's scrape.
  *
- * Gauges throughout. Every one of these is a level that can go down as well as up (rooms
- * are deleted, clients go away), which is what separates a gauge from a counter; nothing
- * here is a monotonic event tally.
+ * Gauges throughout, including the edit total. `sf_room_revisions` is a sum over live rooms,
+ * so it falls when a plan is deleted and is therefore not a counter, whatever its shape
+ * suggests. That is the honest number: it is the edits that still exist.
  */
 @Injectable()
 export class MetricsService {
+  private readonly logger = new Logger(MetricsService.name)
   private readonly registry = new Registry()
 
   private readonly roomsTotal: Gauge<'shared'>
   private readonly roomFactoriesTotal: Gauge<string>
+  private readonly roomRevisions: Gauge<string>
   private readonly roomMembersTotal: Gauge<string>
   private readonly usersTotal: Gauge<string>
   private readonly wsConnections: Gauge<string>
@@ -55,9 +69,13 @@ export class MetricsService {
   private readonly clientFactoriesTotal: Gauge<string>
   private readonly clientsByVersion: Gauge<'version'>
 
-  private cached: DatabaseCounts = ZERO_COUNTS
-  private cachedAtMs = 0
-  private everRead = false
+  private readonly activeAccounts: Gauge<'window'>
+  private readonly roomFactories: Gauge<'room_id' | 'owner'>
+  private readonly userEdits: Gauge<'username'>
+  private readonly userFactories: Gauge<'username'>
+
+  private readonly cheap: CachedQuery<CheapCounts>
+  private readonly slow: CachedQuery<SlowStats>
 
   constructor (
     @InjectModel(Room.name) private readonly rooms: Model<Room>,
@@ -80,9 +98,14 @@ export class MetricsService {
       help: 'Factories summed across every live synced tab.',
       registers,
     })
+    this.roomRevisions = new Gauge({
+      name: 'sf_room_revisions',
+      help: 'Accepted edits summed across live synced tabs. Falls when a tab is deleted, because those edits no longer exist, so it is a gauge and not a counter.',
+      registers,
+    })
     this.roomMembersTotal = new Gauge({
       name: 'sf_room_members_total',
-      help: 'Membership rows across all synced tabs, owners included. The sweeper deletes a room\'s rows with it.',
+      help: 'Person-to-tab access grants, owners included. One per tab plus one per extra collaborator.',
       registers,
     })
     this.usersTotal = new Gauge({
@@ -97,7 +120,7 @@ export class MetricsService {
     })
     this.databaseUp = new Gauge({
       name: 'sf_metrics_database_up',
-      help: '1 when the last scrape read the database. At 0 the sf_rooms/members/users gauges are stale, not zero.',
+      help: '1 when the last scrape read the database. At 0 the database-backed gauges are stale, not zero.',
       registers,
     })
 
@@ -124,6 +147,34 @@ export class MetricsService {
       labelNames: ['version'],
       registers,
     })
+
+    this.activeAccounts = new Gauge({
+      name: 'sf_active_accounts',
+      help: 'Accounts whose last accepted edit falls inside the window. Signing in, creating a tab and joining one are not edits and do not count.',
+      labelNames: ['window'],
+      registers,
+    })
+    this.roomFactories = new Gauge({
+      name: 'sf_room_factories',
+      help: `The ${METRICS_TOP_N} largest synced tabs by factory count.`,
+      labelNames: ['room_id', 'owner'],
+      registers,
+    })
+    this.userEdits = new Gauge({
+      name: 'sf_user_edits',
+      help: `The ${METRICS_TOP_N} busiest accounts by accepted edits. Approximate: the count is written after the edit commits and is allowed to fail. Starts from zero at release rather than being backfilled.`,
+      labelNames: ['username'],
+      registers,
+    })
+    this.userFactories = new Gauge({
+      name: 'sf_user_factories',
+      help: `The ${METRICS_TOP_N} accounts owning the most factories, summed over the synced tabs they created.`,
+      labelNames: ['username'],
+      registers,
+    })
+
+    this.cheap = new CachedQuery(METRICS_CACHE_MS, () => this.loadCheap())
+    this.slow = new CachedQuery(METRICS_SLOW_CACHE_MS, () => this.loadSlow())
   }
 
   get contentType (): string {
@@ -140,14 +191,28 @@ export class MetricsService {
     this.wsConnections.set(this.connections.size())
     this.setClientGauges()
 
-    const counts = await this.databaseCounts()
-    if (!counts) return
+    const nowMs = this.clock.now().getTime()
+    const [cheap, slow] = await Promise.all([this.cheap.get(nowMs), this.slow.get(nowMs)])
 
-    this.roomsTotal.set({ shared: 'true' }, counts.sharedRooms)
-    this.roomsTotal.set({ shared: 'false' }, counts.privateRooms)
-    this.roomFactoriesTotal.set(counts.roomFactories)
-    this.roomMembersTotal.set(counts.roomMembers)
-    this.usersTotal.set(counts.users)
+    // Either group failing means the database was unreadable this scrape. A 500 would cost
+    // Prometheus every series here, the in-memory ones included, so the outage is reported
+    // as a signal and the last good values stand.
+    this.databaseUp.set(cheap.failed || slow.failed ? 0 : 1)
+
+    if (cheap.value) {
+      this.roomsTotal.set({ shared: 'true' }, cheap.value.sharedRooms)
+      this.roomsTotal.set({ shared: 'false' }, cheap.value.privateRooms)
+      this.roomFactoriesTotal.set(cheap.value.roomFactories)
+      this.roomRevisions.set(cheap.value.roomRevisions)
+      this.roomMembersTotal.set(cheap.value.roomMembers)
+      this.usersTotal.set(cheap.value.users)
+    }
+
+    // Only on a real reload. prom-client remembers every label set it has been given, so a
+    // room or account that has dropped out of the top N would keep reporting its last value
+    // forever unless the gauge is cleared first. Equally, a failed reload must leave the
+    // previous set intact rather than blanking the panel.
+    if (slow.refreshed && slow.value) this.setSlowGauges(slow.value)
   }
 
   private setClientGauges (): void {
@@ -159,56 +224,137 @@ export class MetricsService {
     this.clientTabs.set({ kind: 'cloud' }, census.cloudTabs)
     this.clientFactoriesTotal.set(census.factories)
 
-    // Reset first: a version nobody runs any more would otherwise keep reporting its last
-    // count for the life of the process, because prom-client remembers every label set it
-    // has been given.
     this.clientsByVersion.reset()
     for (const [version, clients] of census.byVersion) {
       this.clientsByVersion.set({ version }, clients)
     }
   }
 
-  /**
-   * Cached, and on a database failure the previous answer stands rather than the scrape
-   * failing. A 500 here would cost Prometheus every metric on the endpoint, including the
-   * client ones that were still perfectly readable — so the outage is reported as
-   * `sf_metrics_database_up 0` instead, which is a signal rather than a gap. Returns null
-   * when there is nothing new to write.
-   */
-  private async databaseCounts (): Promise<DatabaseCounts | null> {
-    const nowMs = this.clock.now().getTime()
-    if (this.everRead && nowMs - this.cachedAtMs < METRICS_CACHE_MS) return null
+  private setSlowGauges (stats: SlowStats): void {
+    for (const [window, accounts] of stats.activeAccounts) {
+      this.activeAccounts.set({ window }, accounts)
+    }
 
-    try {
-      const [sharedRooms, privateRooms, roomFactories, roomMembers, users] = await Promise.all([
-        this.rooms.countDocuments({ deletedAt: null, shared: true }),
-        // `$ne: true` rather than `false`, so a document predating the field still counts
-        // once rather than not at all.
-        this.rooms.countDocuments({ deletedAt: null, shared: { $ne: true } }),
-        this.sumRoomFactories(),
-        this.memberships.countDocuments(),
-        this.users.countDocuments(),
-      ])
+    this.roomFactories.reset()
+    for (const room of stats.topRooms) {
+      this.roomFactories.set({ room_id: room.roomId, owner: room.owner }, room.factories)
+    }
 
-      this.cached = { sharedRooms, privateRooms, roomFactories, roomMembers, users }
-      this.cachedAtMs = nowMs
-      this.everRead = true
-      this.databaseUp.set(1)
-      return this.cached
-    } catch (error) {
-      console.error(`Metrics database read failed: ${error instanceof Error ? error.message : String(error)}`)
-      this.databaseUp.set(0)
-      // Nothing on the first failure: reporting zero rooms would read as an empty
-      // database rather than an unreachable one.
-      return this.everRead ? this.cached : null
+    this.userEdits.reset()
+    for (const editor of stats.topEditors) {
+      this.userEdits.set({ username: editor.name }, editor.value)
+    }
+
+    this.userFactories.reset()
+    for (const owner of stats.topOwners) {
+      this.userFactories.set({ username: owner.name }, owner.value)
     }
   }
 
-  private async sumRoomFactories (): Promise<number> {
-    const [row] = await this.rooms.aggregate<{ total: number }>([
-      { $match: { deletedAt: null } },
-      { $group: { _id: null, total: { $sum: { $size: { $ifNull: ['$factories', []] } } } } },
+  private async loadCheap (): Promise<CheapCounts> {
+    const [sharedRooms, privateRooms, totals, roomMembers, users] = await Promise.all([
+      this.rooms.countDocuments({ deletedAt: null, shared: true }),
+      // `$ne: true` rather than `false`, so a document predating the field still counts
+      // once rather than not at all.
+      this.rooms.countDocuments({ deletedAt: null, shared: { $ne: true } }),
+      this.sumRoomTotals(),
+      this.memberships.countDocuments(),
+      this.users.countDocuments(),
     ])
-    return row?.total ?? 0
+
+    return { sharedRooms, privateRooms, ...totals, roomMembers, users }
+  }
+
+  private async loadSlow (): Promise<SlowStats> {
+    const now = this.clock.now()
+    const [activeAccounts, topRooms, topEditors, topOwners] = await Promise.all([
+      this.countActiveAccounts(now),
+      this.findLargestRooms(),
+      this.findBusiestEditors(),
+      this.findLargestOwners(),
+    ])
+
+    return { activeAccounts, topRooms, topEditors, topOwners }
+  }
+
+  /** Factories and accepted edits in one pass, since both are sums over the same documents. */
+  private async sumRoomTotals (): Promise<{ roomFactories: number, roomRevisions: number }> {
+    const [row] = await this.rooms.aggregate<{ factories: number, revisions: number }>([
+      { $match: { deletedAt: null } },
+      {
+        $group: {
+          _id: null,
+          factories: { $sum: { $size: { $ifNull: ['$factories', []] } } },
+          revisions: { $sum: { $ifNull: ['$revision', 0] } },
+        },
+      },
+    ])
+    return { roomFactories: row?.factories ?? 0, roomRevisions: row?.revisions ?? 0 }
+  }
+
+  private async countActiveAccounts (now: Date): Promise<Array<readonly [string, number]>> {
+    return Promise.all(ACTIVE_ACCOUNT_WINDOWS.map(async ([label, ms]) => {
+      const since = new Date(now.getTime() - ms)
+      const active = await this.users.countDocuments({ lastActiveAt: { $gt: since } })
+      return [label, active] as const
+    }))
+  }
+
+  /** Sorted by size then by id, so equal-sized rooms do not swap places between scrapes. */
+  private async findLargestRooms (): Promise<RoomTotal[]> {
+    const rows = await this.rooms.aggregate<{ roomId: string, createdBy: string, factories: number }>([
+      { $match: { deletedAt: null } },
+      {
+        $project: {
+          roomId: 1,
+          createdBy: 1,
+          factories: { $size: { $ifNull: ['$factories', []] } },
+        },
+      },
+      { $sort: { factories: -1, roomId: 1 } },
+      { $limit: METRICS_TOP_N },
+    ])
+
+    const owners = await this.resolveUsernames(rows.map(row => row.createdBy))
+    return rows.map(row => ({
+      roomId: row.roomId,
+      owner: owners.get(row.createdBy) ?? DELETED_OWNER,
+      factories: row.factories,
+    }))
+  }
+
+  private async findBusiestEditors (): Promise<OwnedTotal[]> {
+    const rows = await this.users
+      .find({ editCount: { $gt: 0 } }, { username: 1, editCount: 1 })
+      .sort({ editCount: -1, _id: 1 })
+      .limit(METRICS_TOP_N)
+      .lean()
+
+    return rows.map(row => ({ name: row.username, value: row.editCount }))
+  }
+
+  private async findLargestOwners (): Promise<OwnedTotal[]> {
+    const rows = await this.rooms.aggregate<{ _id: string, factories: number }>([
+      { $match: { deletedAt: null } },
+      { $group: { _id: '$createdBy', factories: { $sum: { $size: { $ifNull: ['$factories', []] } } } } },
+      { $sort: { factories: -1, _id: 1 } },
+      { $limit: METRICS_TOP_N },
+    ])
+
+    const owners = await this.resolveUsernames(rows.map(row => row._id))
+    return rows.map(row => ({ name: owners.get(row._id) ?? DELETED_OWNER, value: row.factories }))
+  }
+
+  /**
+   * `Room.createdBy` holds a user id, not a username, so the top-N rows have to be joined
+   * back to accounts. Ids that are not valid ObjectIds are skipped rather than passed to
+   * Mongo, which would throw a cast error and fail the whole scrape over one bad row.
+   */
+  private async resolveUsernames (ids: string[]): Promise<Map<string, string>> {
+    const valid = [...new Set(ids)].filter(id => Types.ObjectId.isValid(id))
+    if (valid.length === 0) return new Map()
+
+    const accounts = await this.users.find({ _id: { $in: valid } }, { username: 1 }).lean()
+    return new Map(accounts.map(account => [String(account._id), account.username]))
   }
 }
