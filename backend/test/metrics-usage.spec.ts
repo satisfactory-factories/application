@@ -12,12 +12,13 @@ import {
 } from '../src/metrics/metrics.constants'
 import { ANONYMOUS_ACTOR, UserActivityService } from '../src/user-activity/user-activity.service'
 import { Room } from '../src/rooms/schemas/room.schema'
+import { RoomMembership } from '../src/rooms/schemas/room-membership.schema'
 import { Share } from '../src/legacy/share.schema'
 import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
 import { RoomOpService } from '../src/realtime/room-op.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { User } from '../src/auth/user.schema'
-import { FakeClock, call, registerAndLogin, resetRooms } from './utils/rooms'
+import { FakeClock, TestUser, call, registerAndLogin, resetRooms } from './utils/rooms'
 import { clearMetricsToken, labelValues, sample, scrapeMetrics, useMetricsToken } from './utils/metrics'
 
 const HOUR = 60 * 60 * 1000
@@ -257,6 +258,149 @@ describe('the database-backed usage metrics', () => {
       const second = labelValues(await scrape(), 'sf_room_factories', 'room_id')
 
       expect(first).toEqual(second)
+    })
+  })
+
+  describe('the room lifecycle metrics', () => {
+    const memberships = () => context.app.get<Model<RoomMembership>>(getModelToken(RoomMembership.name))
+
+    const createRoom = async (as: TestUser, name = 'Iron Line') => {
+      const roomId = randomUUID()
+      await call(context.app, 'post', '/rooms', as).send({ roomId, name })
+      return roomId
+    }
+
+    const action = (body: string, name: string) =>
+      sample(body, 'sf_room_actions_total', `action="${name}"`)
+
+    /**
+     * The whole reason this metric is a stored tally rather than a count over room_activity:
+     * that log is trimmed to 200 rows a room and deleted outright with the room, so the
+     * numbers here have to survive both. These cases go through the real API so the counting
+     * hook is exercised where it actually sits.
+     */
+    it('counts a room being created', async () => {
+      const mael = await registerAndLogin(context.app, 'maker')
+      await createRoom(mael)
+      await createRoom(mael)
+
+      expect(action(await scrape(), 'created')).toBe(2)
+    })
+
+    it('counts a room being shared, separately from it being created', async () => {
+      const mael = await registerAndLogin(context.app, 'sharer')
+      const roomId = await createRoom(mael)
+      await createRoom(mael)
+      await call(context.app, 'post', `/rooms/${roomId}/share`, mael).send({})
+
+      const body = await scrape()
+      expect(action(body, 'created')).toBe(2)
+      expect(action(body, 'shared')).toBe(1)
+    })
+
+    it('counts an invite being accepted', async () => {
+      const host = await registerAndLogin(context.app, 'host')
+      const guest = await registerAndLogin(context.app, 'guest')
+      const roomId = await createRoom(host)
+      await call(context.app, 'post', `/rooms/${roomId}/share`, host).send({})
+      await call(context.app, 'post', `/rooms/${roomId}/join`, guest).send({})
+
+      expect(action(await scrape(), 'joined')).toBe(1)
+    })
+
+    /**
+     * A logged-in joiner clears a password-protected room with /auth and then calls /join,
+     * and both write a "joined" activity row. Tallying both would report one collaborator
+     * as two, so the visitor-token step is logged and not counted.
+     */
+    it('counts a password-protected join once, not once per step', async () => {
+      const host = await registerAndLogin(context.app, 'pwhost')
+      const guest = await registerAndLogin(context.app, 'pwguest')
+      const roomId = await createRoom(host)
+      await call(context.app, 'post', `/rooms/${roomId}/share`, host).send({})
+      await call(context.app, 'put', `/rooms/${roomId}/password`, host).send({ password: 'ficsit-forever' })
+
+      const auth = await call(context.app, 'post', `/rooms/${roomId}/auth`)
+        .send({ password: 'ficsit-forever' })
+      expect(auth.status).toBe(200)
+      const joined = await call(context.app, 'post', `/rooms/${roomId}/join`, guest)
+        .send({ visitorToken: auth.body.visitorToken })
+      expect(joined.status).toBe(200)
+
+      expect(action(await scrape(), 'joined')).toBe(1)
+    })
+
+    // The point of the tally. Deleting the room purges its activity rows, and counting
+    // those would make the number fall back down.
+    it('keeps counting a room that has since been deleted', async () => {
+      const mael = await registerAndLogin(context.app, 'deleter')
+      const roomId = await createRoom(mael)
+      await call(context.app, 'delete', `/rooms/${roomId}`, mael)
+
+      const body = await scrape()
+      expect(action(body, 'created')).toBe(1)
+      expect(action(body, 'deleted')).toBe(1)
+      // The room itself is gone from the live count, which is the contrast being drawn.
+      expect(sample(body, 'sf_rooms_total', 'shared="false"')).toBe(0)
+    })
+
+    // recordOnce upserts, so a resumed ensure-chain calls it again on a row that already
+    // exists. Counting that would report one creation as two.
+    it('does not count a creation twice when the chain is resumed', async () => {
+      const mael = await registerAndLogin(context.app, 'resumer')
+      const roomId = randomUUID()
+      await call(context.app, 'post', '/rooms', mael).send({ roomId, name: 'Iron Line' })
+      await call(context.app, 'post', '/rooms', mael).send({ roomId, name: 'Iron Line' })
+
+      expect(action(await scrape(), 'created')).toBe(1)
+    })
+
+    // One per accepted edit would be the hottest write in the service, and sf_room_revisions
+    // already sums them off the room documents for nothing.
+    it('leaves ops out of the tally', async () => {
+      const mael = await registerAndLogin(context.app, 'editor')
+      await createRoom(mael)
+
+      expect(action(await scrape(), 'op')).toBeUndefined()
+    })
+
+    describe('the rolling windows', () => {
+      it('counts rooms created in each window from the room documents', async () => {
+        const now = clock.now().getTime()
+        await seedRoom(1, { createdAt: new Date(now - 2 * HOUR) })
+        await seedRoom(1, { createdAt: new Date(now - 4 * DAY) })
+        await seedRoom(1, { createdAt: new Date(now - 300 * DAY) })
+
+        const body = await scrape()
+
+        expect(sample(body, 'sf_new_rooms', 'window="24h"')).toBe(1)
+        expect(sample(body, 'sf_new_rooms', 'window="7d"')).toBe(2)
+        expect(sample(body, 'sf_new_rooms', 'window="30d"')).toBe(2)
+      })
+
+      it('counts accepted invites in each window, and never the owner', async () => {
+        const now = clock.now().getTime()
+        const roomId = randomUUID()
+        await memberships().create({ userId: 'a', roomId, role: 'owner', joinedAt: new Date(now - 1 * HOUR) })
+        await memberships().create({ userId: 'b', roomId, role: 'member', joinedAt: new Date(now - 2 * HOUR) })
+        await memberships().create({ userId: 'c', roomId, role: 'member', joinedAt: new Date(now - 4 * DAY) })
+
+        const body = await scrape()
+
+        // The owner's row is written by the create, so counting it would report every new
+        // room as an invite somebody accepted.
+        expect(sample(body, 'sf_new_memberships', 'window="24h"')).toBe(1)
+        expect(sample(body, 'sf_new_memberships', 'window="7d"')).toBe(2)
+      })
+
+      it('exports every window for both even with nothing at all', async () => {
+        const body = await scrape()
+
+        for (const [label] of ACTIVE_ACCOUNT_WINDOWS) {
+          expect(sample(body, 'sf_new_rooms', `window="${label}"`)).toBe(0)
+          expect(sample(body, 'sf_new_memberships', `window="${label}"`)).toBe(0)
+        }
+      })
     })
   })
 

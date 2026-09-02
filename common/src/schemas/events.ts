@@ -70,6 +70,7 @@ export const EVENT_REASONS = [
   'post_commit_editor_stamp_lost',
   'post_commit_signin_stamp_lost',
   'post_commit_room_activity_lost',
+  'post_commit_room_total_lost',
 ] as const
 
 export type EventReason = typeof EVENT_REASONS[number]

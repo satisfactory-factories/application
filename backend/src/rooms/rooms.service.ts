@@ -329,7 +329,12 @@ export class RoomsService {
       role: 'visitor',
     }
 
-    await this.activity.record(roomId, ANONYMOUS_ACTOR, 'joined', 'visitor token issued')
+    // Logged in the history but deliberately not tallied. Clearing the password is an
+    // authentication step, not an acceptance: the joiner calls /join straight after with
+    // the token, and counting both would report one collaborator as two.
+    await this.activity.record(
+      roomId, ANONYMOUS_ACTOR, 'joined', 'visitor token issued', { tally: false },
+    )
 
     return this.jwt.signAsync(payload, { expiresIn: VISITOR_TOKEN_TTL })
   }
