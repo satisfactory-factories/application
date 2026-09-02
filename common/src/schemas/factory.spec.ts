@@ -189,6 +189,91 @@ describe('factoryTabSchema', () => {
   })
 })
 
+/**
+ * `Room.factories` is Mixed in Mongo, so an uncapped record or array here is a document
+ * one op can grow until the database refuses to store it. The ceilings are sized off the
+ * game's own totals with several updates' worth of room, so nothing a plan legitimately
+ * holds comes close to one.
+ */
+describe('element ceilings', () => {
+  const keyed = (count: number, value: unknown): Record<string, unknown> =>
+    Object.fromEntries(Array.from({ length: count }, (_unused, index) => [`Part${index}`, value]))
+
+  const metrics = () => makeFactory().parts.IronIngot
+
+  it('accepts item maps up to the cap and refuses one past it', () => {
+    const atCap = makeFactory({ parts: keyed(CAPS.itemKeys, metrics()) as never })
+    const overCap = makeFactory({ parts: keyed(CAPS.itemKeys + 1, metrics()) as never })
+
+    expect(factorySchema.safeParse(atCap).success).toBe(true)
+    expect(factorySchema.safeParse(overCap).success).toBe(false)
+  })
+
+  it('caps the building-keyed maps separately from the item ones', () => {
+    const requirement = { name: 'smeltermk1', amount: 1 }
+    const overCap = makeFactory({
+      buildingRequirements: keyed(CAPS.buildingKeys + 1, requirement) as never,
+    })
+
+    expect(factorySchema.safeParse(overCap).success).toBe(false)
+  })
+
+  // One case per record that carries a different ceiling, each with a value the schema
+  // accepts, so the count is the only reason the parse fails.
+  it.each([
+    { field: 'rawResources', cap: CAPS.itemKeys, value: { id: 'x', name: 'X', amount: 1 } },
+    {
+      field: 'exportCalculator',
+      cap: CAPS.itemKeys,
+      value: { selected: null, factorySettings: {} },
+    },
+    {
+      field: 'buildingMaterialCosts',
+      cap: CAPS.itemKeys,
+      value: { amount: 1, buildings: {} },
+    },
+    { field: 'syncState', cap: CAPS.factoryRows, value: { amount: 1, recipe: 'IngotIron' } },
+    { field: 'checklistExports', cap: CAPS.checklistKeys, value: true },
+  ])('caps $field at $cap keys', ({ field, cap, value }) => {
+    const atCap = makeFactory({ [field]: keyed(cap, value) } as never)
+    const overCap = makeFactory({ [field]: keyed(cap + 1, value) } as never)
+
+    expect(factorySchema.safeParse(atCap).success).toBe(true)
+    expect(factorySchema.safeParse(overCap).success).toBe(false)
+  })
+
+  it('caps a factory\'s row lists', () => {
+    const input = { factoryId: 2, outputPart: 'IronIngot', amount: 10 }
+    const overCap = makeFactory({
+      inputs: Array.from({ length: CAPS.factoryRows + 1 }, () => input),
+    })
+
+    expect(factorySchema.safeParse(overCap).success).toBe(false)
+  })
+
+  it('caps the lists nested on one row', () => {
+    const factory = makeFactory()
+    const [product] = factory.products
+    const overCap = makeFactory({
+      products: [{
+        ...product,
+        buildingGroups: Array.from({ length: CAPS.rowEntries + 1 }, () => product.buildingGroups[0]),
+      }],
+    })
+
+    expect(factorySchema.safeParse(overCap).success).toBe(false)
+  })
+
+  it('caps a plan\'s group registry', () => {
+    const group = { id: 'g1', name: 'Group', color: '#fff', order: 0 }
+    const overCap = makeFactoryTab({
+      groups: Array.from({ length: CAPS.groupsPerPlan + 1 }, () => group),
+    })
+
+    expect(factoryTabSchema.safeParse(overCap).success).toBe(false)
+  })
+})
+
 describe('slugSchema', () => {
   it('lowercases before matching', () => {
     expect(slugSchema.parse('Three-Word-Slug')).toBe('three-word-slug')

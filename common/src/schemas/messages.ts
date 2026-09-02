@@ -18,7 +18,7 @@ export const roomDiffSchema = z.object({
   depotUploadTier: num.optional(),
   depotExpansionTier: num.optional(),
   plannerVersion: str.optional(),
-  groups: z.array(factoryGroupSchema).optional(),
+  groups: z.array(factoryGroupSchema).max(CAPS.groupsPerPlan).optional(),
   factories: z.array(factorySchema).max(CAPS.factoriesPerRoom).optional(),
   removedFactoryIds: z.array(num).max(CAPS.factoriesPerRoom).optional(),
 })

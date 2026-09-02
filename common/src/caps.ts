@@ -29,4 +29,23 @@ export const CAPS = {
   fieldLocksPerConnection: 32,
   /** Every string with no cap of its own. */
   string: 10_000,
+
+  // Element ceilings inside one factory record. Sized against the game's own totals —
+  // 181 items, 24 buildings, 306 recipes — with room for several updates' worth of
+  // growth, so a plan is only ever refused when its shape is impossible rather than large.
+
+  /** Item-keyed maps: parts, raw resources, disposal, export calculator, dependencies. */
+  itemKeys: 1_000,
+  /** Building-keyed maps: building requirements and their material costs. */
+  buildingKeys: 200,
+  /** Rows in one of a factory's lists: imports, products, producers, custom buildings. */
+  factoryRows: 500,
+  /** Nested lists on one row: building groups, ingredients, by-products, transport groups. */
+  rowEntries: 200,
+  /** Checklist export keys, one per `<factoryId>:<part>` pair the plan ticks. */
+  checklistKeys: 2_000,
+  /** Dependency requests recorded against one part, one per requesting factory. */
+  requestsPerPart: 300,
+  /** Factory groups one plan may define. */
+  groupsPerPlan: 300,
 } as const

@@ -15,6 +15,15 @@ const key = z.string().max(CAPS.string)
 const name = z.string().max(CAPS.name)
 const id = z.string().min(1).max(CAPS.string)
 
+/**
+ * A key-capped record. zod has no `.max()` for records, and an uncapped one is how a
+ * single op grows a room document past the size Mongo will store it at.
+ */
+const boundedRecord = <T extends z.ZodType>(values: T, max: number) =>
+  z.record(key, values).refine(entries => Object.keys(entries).length <= max, {
+    error: `Too many entries: at most ${max}`,
+  })
+
 export const powerItemSchema = z.object({
   part: str,
   perMin: num,
@@ -77,14 +86,14 @@ export const byProductItemSchema = z.object({
 
 export const buildingMaterialCostSchema = z.object({
   amount: num,
-  buildings: z.record(key, num),
+  buildings: boundedRecord(num, CAPS.buildingKeys),
 })
 
 export const factoryCustomBuildingSchema = z.object({
   id: str,
   building: str,
   amount: num,
-  ingredients: z.array(z.object({ part: str, perMin: num })),
+  ingredients: z.array(z.object({ part: str, perMin: num })).max(CAPS.rowEntries),
   powerConsumed: num,
   displayOrder: num,
 })
@@ -113,7 +122,7 @@ export const buildingGroupSchema = z.object({
   buildingCount: num,
   overclockPercent: num,
   clockSetByUser: z.boolean().optional(),
-  parts: z.record(key, num),
+  parts: boundedRecord(num, CAPS.rowEntries),
   powerUsage: num,
   powerUsageMin: num.optional(),
   powerUsageMax: num.optional(),
@@ -144,10 +153,10 @@ export const factoryItemSchema = z.object({
   recipe: str,
   amount: num,
   displayOrder: num,
-  requirements: z.record(key, z.object({ amount: num })),
+  requirements: boundedRecord(z.object({ amount: num }), CAPS.rowEntries),
   buildingRequirements: productBuildingRequirementSchema,
-  byProducts: z.array(byProductItemSchema).optional(),
-  buildingGroups: z.array(buildingGroupSchema),
+  byProducts: z.array(byProductItemSchema).max(CAPS.rowEntries).optional(),
+  buildingGroups: z.array(buildingGroupSchema).max(CAPS.rowEntries),
   buildingGroupsTrayOpen: z.boolean(),
   buildingGroupsHaveProblem: z.boolean(),
   buildingGroupItemSync: z.boolean(),
@@ -169,8 +178,11 @@ export const factoryDependencyMetricsSchema = z.object({
 })
 
 export const factoryDependencySchema = z.object({
-  requests: z.record(key, z.array(factoryDependencyRequestSchema)),
-  metrics: z.record(key, factoryDependencyMetricsSchema),
+  requests: boundedRecord(
+    z.array(factoryDependencyRequestSchema).max(CAPS.requestsPerPart),
+    CAPS.itemKeys,
+  ),
+  metrics: boundedRecord(factoryDependencyMetricsSchema, CAPS.itemKeys),
 })
 
 export const exportCalculatorTransportGroupSchema = z.object({
@@ -184,13 +196,13 @@ export const exportCalculatorFactorySettingsSchema = z.object({
   droneTime: num,
   truckTime: num,
   tractorTime: num,
-  beltGroups: z.array(exportCalculatorTransportGroupSchema).optional(),
-  pipeGroups: z.array(exportCalculatorTransportGroupSchema).optional(),
+  beltGroups: z.array(exportCalculatorTransportGroupSchema).max(CAPS.rowEntries).optional(),
+  pipeGroups: z.array(exportCalculatorTransportGroupSchema).max(CAPS.rowEntries).optional(),
 })
 
 export const exportCalculatorSettingsSchema = z.object({
   selected: str.nullable(),
-  factorySettings: z.record(key, exportCalculatorFactorySettingsSchema),
+  factorySettings: boundedRecord(exportCalculatorFactorySettingsSchema, CAPS.factoriesPerRoom),
 })
 
 export const worldRawResourceSchema = z.object({
@@ -231,7 +243,7 @@ export const factoryPowerProducerSchema = z.object({
   building: str,
   buildingAmount: num,
   buildingCount: num,
-  ingredients: z.array(powerItemSchema),
+  ingredients: z.array(powerItemSchema).max(CAPS.rowEntries),
   fuelAmount: num,
   byproduct: z.object({ part: str, amount: num }).nullable(),
   powerAmount: num,
@@ -239,7 +251,7 @@ export const factoryPowerProducerSchema = z.object({
   recipe: str,
   displayOrder: num,
   updated: z.enum(FactoryPowerChangeType).nullable(),
-  buildingGroups: z.array(buildingGroupSchema),
+  buildingGroups: z.array(buildingGroupSchema).max(CAPS.rowEntries),
   buildingGroupsTrayOpen: z.boolean(),
   buildingGroupsHaveProblem: z.boolean(),
   buildingGroupItemSync: z.boolean(),
@@ -286,40 +298,41 @@ export const factoryPartDisposalSchema = z.object({
 export const factorySchema = z.object({
   id: num,
   name,
-  inputs: z.array(factoryInputSchema),
-  previousInputs: z.array(factoryInputSchema),
-  products: z.array(factoryItemSchema),
-  byProducts: z.array(byProductItemSchema),
-  powerProducers: z.array(factoryPowerProducerSchema),
+  inputs: z.array(factoryInputSchema).max(CAPS.factoryRows),
+  previousInputs: z.array(factoryInputSchema).max(CAPS.factoryRows),
+  products: z.array(factoryItemSchema).max(CAPS.factoryRows),
+  byProducts: z.array(byProductItemSchema).max(CAPS.factoryRows),
+  powerProducers: z.array(factoryPowerProducerSchema).max(CAPS.factoryRows),
   // Everything below carrying a default arrived with the merge of main and is defaulted for
   // the same reason `power` is: plans without it are already stored, on the server and in
   // browsers alike, and a rejection there costs an op per factory.
-  customBuildings: z.array(factoryCustomBuildingSchema).default(() => []),
-  parts: z.record(key, partMetricsSchema),
-  buildingRequirements: z.record(key, buildingRequirementSchema),
-  buildingMaterialCosts: z.record(key, buildingMaterialCostSchema).default(() => ({})),
+  customBuildings: z.array(factoryCustomBuildingSchema).max(CAPS.factoryRows).default(() => []),
+  parts: boundedRecord(partMetricsSchema, CAPS.itemKeys),
+  buildingRequirements: boundedRecord(buildingRequirementSchema, CAPS.buildingKeys),
+  buildingMaterialCosts: boundedRecord(buildingMaterialCostSchema, CAPS.itemKeys).default(() => ({})),
   requirementsSatisfied: z.boolean(),
-  exportCalculator: z.record(key, exportCalculatorSettingsSchema),
+  exportCalculator: boundedRecord(exportCalculatorSettingsSchema, CAPS.itemKeys),
   // Optional, with no default: the map is sticky and a plan that never placed a sink or an
   // uploader has no key at all, which is a different thing from having placed none.
-  partDisposal: z.record(key, factoryPartDisposalSchema).optional(),
+  partDisposal: boundedRecord(factoryPartDisposalSchema, CAPS.itemKeys).optional(),
   dependencies: factoryDependencySchema,
-  rawResources: z.record(key, worldRawResourceSchema),
+  rawResources: boundedRecord(worldRawResourceSchema, CAPS.itemKeys),
   power: factoryPowerSchema.default(emptyFactoryPower),
   usingRawResourcesOnly: z.boolean(),
   hidden: z.boolean(),
   hasProblem: z.boolean(),
   inSync: z.boolean().nullable(),
-  syncState: z.record(key, factorySyncStateSchema),
-  syncStatePower: z.record(key, factoryPowerSyncStateSchema),
-  syncStateCustomBuildings: z.record(key, factoryCustomBuildingSyncStateSchema).default(() => ({})),
+  syncState: boundedRecord(factorySyncStateSchema, CAPS.factoryRows),
+  syncStatePower: boundedRecord(factoryPowerSyncStateSchema, CAPS.factoryRows),
+  syncStateCustomBuildings: boundedRecord(factoryCustomBuildingSyncStateSchema, CAPS.factoryRows)
+    .default(() => ({})),
   displayOrder: num,
   tasks: z.array(factoryTaskSchema).max(CAPS.tasks),
   notes: z.string().max(CAPS.notes),
   checklistEnabled: z.boolean().default(false),
   checklistPanelHidden: z.boolean().default(false),
-  checklistExports: z.record(key, z.boolean()).default(() => ({})),
-  checklistExportSyncedAmounts: z.record(key, num).default(() => ({})),
+  checklistExports: boundedRecord(z.boolean(), CAPS.checklistKeys).default(() => ({})),
+  checklistExportSyncedAmounts: boundedRecord(num, CAPS.checklistKeys).default(() => ({})),
   icon: str.optional(),
   group: factoryGroupSchema.optional(),
   dataVersion: str,
@@ -340,7 +353,7 @@ export const factoryTabSchema = z.object({
   depotUploadTier: num.optional(),
   depotExpansionTier: num.optional(),
   plannerVersion: str.optional(),
-  groups: z.array(factoryGroupSchema).optional(),
+  groups: z.array(factoryGroupSchema).max(CAPS.groupsPerPlan).optional(),
 })
 
 /** Reject unless it matches `^[a-z0-9-]{1,100}$` once lowercased. */
