@@ -10,9 +10,9 @@
     "pnpm": ">=11.3.0"
   },
   "scripts": {
-    "dev": "pnpm db:up && pnpm --parallel --filter web --filter backend run dev",
-    "dev:web": "pnpm --filter web run dev",
-    "dev:backend": "pnpm db:up && pnpm --filter backend run dev",
+    "dev": "node scripts/dev.mjs all",
+    "dev:web": "node scripts/dev.mjs web",
+    "dev:backend": "node scripts/dev.mjs backend",
     "dev:parsing": "pnpm --filter parsing run dev",
     "db:up": "pnpm --filter backend run db:up",
     "db:down": "pnpm --filter backend run db:down",

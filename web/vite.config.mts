@@ -122,7 +122,12 @@ export default defineConfig(() => ({
     ],
   },
   server: {
-    port: 3000,
+    // 3000 unless a dev moved it for one run with `pnpm dev --port`; see
+    // scripts/dev.mjs. Playwright passes --port on the CLI, which wins over this.
+    port: Number(process.env.WEB_PORT) || 3000,
+    // A moved port was also handed to the API as an allowed origin, so drifting
+    // to the next free one would silently cost CORS. Fail instead.
+    strictPort: Boolean(process.env.WEB_PORT),
   },
   test: {
     globals: true,
