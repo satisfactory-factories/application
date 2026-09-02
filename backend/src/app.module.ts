@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { APP_GUARD } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { JwtModule } from '@nestjs/jwt'
 import { MongooseModule } from '@nestjs/mongoose'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
@@ -10,7 +10,9 @@ import { AuthModule } from './auth/auth.module'
 import { VersionGateGuard } from './common/guards/version-gate.guard'
 import { validateEnv } from './config/env'
 import { THROTTLER_OPTIONS } from './config/throttling'
+import { EventCountersModule } from './event-counters/event-counters.module'
 import { HealthModule } from './health/health.module'
+import { HttpErrorFilter } from './event-counters/http-error.filter'
 import { LegacyModule } from './legacy/legacy.module'
 import { MetricsModule } from './metrics/metrics.module'
 import { PreferencesModule } from './preferences/preferences.module'
@@ -56,6 +58,8 @@ import { VersionModule } from './version/version.module'
       }),
     }),
     ThrottlerModule.forRoot(THROTTLER_OPTIONS),
+    // Global, and imported first: everything below may need to report a fault.
+    EventCountersModule,
     HealthModule,
     VersionModule,
     AuthModule,
@@ -71,6 +75,9 @@ import { VersionModule } from './version/version.module'
     // everything the version gate can reject.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: VersionGateGuard },
+    // Counts every HTTP error response and hands the exception straight back to Nest, so no
+    // status or body changes. Without it an unhandled 500 is counted by nothing at all.
+    { provide: APP_FILTER, useClass: HttpErrorFilter },
   ],
 })
 export class AppModule {}

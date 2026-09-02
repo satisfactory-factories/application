@@ -4,6 +4,7 @@ import type { ExecutionContext } from '@nestjs/common'
 import {
   GLOBAL_THROTTLE,
   HEALTH_THROTTLE,
+  EVENTS_THROTTLE,
   METRICS_THROTTLE,
   ROOM_AUTH_THROTTLE,
   SHARE_THROTTLE,
@@ -64,10 +65,17 @@ describe('throttler configuration', () => {
     expect(TELEMETRY_THROTTLE).toEqual({ name: 'telemetry', ttl: 60_000, limit: 60 })
   })
 
+  // Events flush every minute rather than every five, so the same bucket would start 429ing a
+  // shared office address the moment a handful of browsers hit one bug.
+  it('gives events a bucket sized for a shared address', () => {
+    expect(EVENTS_THROTTLE).toEqual({ name: 'events', ttl: 60_000, limit: 120 })
+    expect(EVENTS_THROTTLE.limit).toBeGreaterThan(TELEMETRY_THROTTLE.limit)
+  })
+
   it('keys on the client alone, so routes share one allowance rather than each getting 200', () => {
     expect(options.generateKey?.({} as never, '127.0.0.1', 'global')).toBe('global-127.0.0.1')
     expect(options.throttlers.map(throttler => throttler.name))
-      .toEqual(['global', 'health', 'version', 'metrics', 'telemetry', 'share', 'roomAuth'])
+      .toEqual(['global', 'health', 'version', 'metrics', 'telemetry', 'events', 'share', 'roomAuth'])
     expect(options.throttlers.every(throttler => typeof throttler.skipIf === 'function')).toBe(true)
   })
 
@@ -94,5 +102,8 @@ describe('throttler configuration', () => {
     expect(applies('telemetry', 'POST', '/telemetry')).toBe(true)
     expect(applies('telemetry', 'GET', '/metrics')).toBe(false)
     expect(applies('global', 'POST', '/telemetry')).toBe(false)
+    expect(applies('events', 'POST', '/events')).toBe(true)
+    expect(applies('events', 'POST', '/telemetry')).toBe(false)
+    expect(applies('global', 'POST', '/events')).toBe(false)
   })
 })

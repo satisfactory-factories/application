@@ -6,12 +6,17 @@ import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/u
 import { StructuralRepair } from '@/utils/factory-management/repair'
 import { cleanDisposalCount } from '@/utils/factory-management/disposal'
 import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
+import type { EventReason } from 'common'
+import { recordEvent } from '@/utils/record-event'
 
-const repair = (factory: Factory, summary: string): StructuralRepair => {
+const repair = (factory: Factory, reason: EventReason, summary: string): StructuralRepair => {
   // Kept alongside the dialog: the console line carries the IDs, which are noise to the
   // user but the first thing anyone debugging a shared plan asks for.
   console.error(`VALIDATION ERROR: "${factory.name}" (${factory.id}): ${summary}`)
-  return { kind: 'structural', factoryName: factory.name, summary }
+  // Counted here rather than at each call site, so a repair added later is counted whether
+  // or not whoever adds it remembers to. Never throws; see record-event.
+  recordEvent(reason)
+  return { kind: 'structural', factoryName: factory.name, summary, reason }
 }
 
 // Two factories sharing an ID make every dependency between them ambiguous: requests are
@@ -31,7 +36,7 @@ export const repairDuplicateFactoryIds = (factories: Factory[]): StructuralRepai
 
     factory.id = generateFactoryId(factories)
     seen.add(factory.id)
-    repairs.push(repair(factory, `Shared an internal ID with another factory, which mixes up their imports and exports. It has been given an ID of its own; check its imports still point where you expect.`))
+    repairs.push(repair(factory, 'plan_repair_duplicate_factory_id', `Shared an internal ID with another factory, which mixes up their imports and exports. It has been given an ID of its own; check its imports still point where you expect.`))
   })
 
   return repairs
@@ -57,7 +62,7 @@ export const repairPartDisposal = (factories: Factory[]): StructuralRepair[] => 
       // Not an object at all: nothing to salvage, and every reader assumes it can be indexed.
       if (disposal !== undefined) {
         delete factory.partDisposal
-        repairs.push(repair(factory, `Had unreadable sink and Depot settings, which have been cleared. Set them again on the items you were disposing of.`))
+        repairs.push(repair(factory, 'plan_repair_disposal_unreadable', `Had unreadable sink and Depot settings, which have been cleared. Set them again on the items you were disposing of.`))
       }
       return
     }
@@ -88,7 +93,7 @@ export const repairPartDisposal = (factories: Factory[]): StructuralRepair[] => 
     })
 
     if (damaged) {
-      repairs.push(repair(factory, `Had sink or Depot counts that could not be read as whole numbers. They have been corrected; check the Storage column on its items.`))
+      repairs.push(repair(factory, 'plan_repair_disposal_count_invalid', `Had sink or Depot counts that could not be read as whole numbers. They have been corrected; check the Storage column on its items.`))
     }
   })
 
@@ -119,7 +124,7 @@ export const mergeDuplicateInputs = (factories: Factory[], gameData: DataInterfa
 
       if (existing) {
         existing.amount += input.amount
-        repairs.push(repair(factory, `Imported ${partName(input.outputPart)} from ${nameFor(input.factoryId)} on more than one row, which understated what that factory had to make. The rows have been merged into one asking for ${existing.amount}/min.`))
+        repairs.push(repair(factory, 'plan_repair_duplicate_input_merged', `Imported ${partName(input.outputPart)} from ${nameFor(input.factoryId)} on more than one row, which understated what that factory had to make. The rows have been merged into one asking for ${existing.amount}/min.`))
         return
       }
 
@@ -156,7 +161,7 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
 
       if (!requester) {
         delete provider.dependencies.requests[requesterId]
-        repairs.push(repair(provider, `Was exporting to a factory the plan can no longer identify. The export has been removed.`))
+        repairs.push(repair(provider, 'plan_repair_export_orphaned', `Was exporting to a factory the plan can no longer identify. The export has been removed.`))
         return
       }
 
@@ -166,13 +171,13 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
         )
 
         if (inputs.length === 0) {
-          repairs.push(repair(provider, `Was exporting ${partName(request.part)} to "${requester.name}", which is not importing it. The export has been removed.`))
+          repairs.push(repair(provider, 'plan_repair_export_unrequested', `Was exporting ${partName(request.part)} to "${requester.name}", which is not importing it. The export has been removed.`))
           return false
         }
 
         const expected = inputs.reduce((total, input) => total + input.amount, 0)
         if (request.amount !== expected) {
-          repairs.push(repair(provider, `Was set to export ${request.amount}/min of ${partName(request.part)} to "${requester.name}" while that factory asks for ${expected}/min. The export has been corrected.`))
+          repairs.push(repair(provider, 'plan_repair_export_amount_mismatch', `Was set to export ${request.amount}/min of ${partName(request.part)} to "${requester.name}" while that factory asks for ${expected}/min. The export has been corrected.`))
           request.amount = expected
         }
 
@@ -214,7 +219,7 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
         ?.some(request => request.part === input.outputPart)
 
       if (!hasRequest) {
-        repairs.push(repair(requester, `Imports ${partName(input.outputPart)} from "${provider.name}", which had no record of supplying it. The export has been restored.`))
+        repairs.push(repair(requester, 'plan_repair_import_export_missing', `Imports ${partName(input.outputPart)} from "${provider.name}", which had no record of supplying it. The export has been restored.`))
       }
     })
   })
@@ -247,7 +252,7 @@ export const validateFactories = (
     // removes whichever input happens to match first and skips the next one along.
     factory.inputs = rawArray(factory.inputs.filter(input => {
       if (input.amount <= 0) {
-        repairs.push(repair(factory, `Had an import of ${input.outputPart ? partName(input.outputPart) : 'an item'} set to ${input.amount}/min, which cannot be planned against. It has been set to 1/min.`))
+        repairs.push(repair(factory, 'plan_repair_import_amount_nonpositive', `Had an import of ${input.outputPart ? partName(input.outputPart) : 'an item'} set to ${input.amount}/min, which cannot be planned against. It has been set to 1/min.`))
         input.amount = 1
       }
 
@@ -259,12 +264,12 @@ export const validateFactories = (
 
       const inputFac = findFac(input.factoryId, factories)
       if (!inputFac?.id) {
-        repairs.push(repair(factory, `Imported ${input.outputPart ? partName(input.outputPart) : 'an item'} from a factory the plan can no longer identify. The import has been removed — add it again if you still need it.`))
+        repairs.push(repair(factory, 'plan_repair_import_orphaned', `Imported ${input.outputPart ? partName(input.outputPart) : 'an item'} from a factory the plan can no longer identify. The import has been removed — add it again if you still need it.`))
         return false
       }
 
       if (inputFac.id === factory.id) {
-        repairs.push(repair(factory, `Was importing ${input.outputPart ? partName(input.outputPart) : 'an item'} from itself, which is not possible. The import has been removed.`))
+        repairs.push(repair(factory, 'plan_repair_import_self_reference', `Was importing ${input.outputPart ? partName(input.outputPart) : 'an item'} from itself, which is not possible. The import has been removed.`))
         return false
       }
 
@@ -276,13 +281,13 @@ export const validateFactories = (
     factory.products.forEach((product, productIndex) => {
       let needsRecalc = false
       if (product === null) {
-        repairs.push(repair(factory, `Had an empty product entry, which has been removed.`))
+        repairs.push(repair(factory, 'plan_repair_product_entry_null', `Had an empty product entry, which has been removed.`))
         factory.products.splice(productIndex, 1)
         needsRecalc = true
       }
 
       if (product && product.amount <= 0) {
-        repairs.push(repair(factory, `Was making ${partName(product.id)} at ${product.amount}/min, which cannot be planned against. It has been set to 0.1/min.`))
+        repairs.push(repair(factory, 'plan_repair_product_amount_nonpositive', `Was making ${partName(product.id)} at ${product.amount}/min, which cannot be planned against. It has been set to 0.1/min.`))
         product.amount = 0.1
         needsRecalc = true
       }
@@ -291,7 +296,7 @@ export const validateFactories = (
       if (product?.requirements) {
         Object.keys(product.requirements).forEach(part => {
           if (!factory.parts[part]) {
-            repairs.push(repair(factory, `Was missing the satisfaction entry for ${partName(part)}, an ingredient of ${partName(product.id)}. It has been added back.`))
+            repairs.push(repair(factory, 'plan_repair_part_entry_missing', `Was missing the satisfaction entry for ${partName(part)}, an ingredient of ${partName(product.id)}. It has been added back.`))
             createNewPart(factory, part)
           }
         })

@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 
 import { AuthModule } from '../auth/auth.module'
+import { EventsController } from './events.controller'
 import { MetricsController } from './metrics.controller'
 import { MetricsService } from './metrics.service'
 import { MetricsTokenGuard } from './metrics-token.guard'
@@ -31,7 +32,7 @@ import { UserActivityService } from '../user-activity/user-activity.service'
       { name: TelemetryInstance.name, schema: TelemetryInstanceSchema },
     ]),
   ],
-  controllers: [MetricsController, TelemetryController],
+  controllers: [MetricsController, TelemetryController, EventsController],
   providers: [MetricsService, TelemetryService, MetricsTokenGuard],
 })
 export class MetricsModule implements OnModuleInit {

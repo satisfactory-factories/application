@@ -26,6 +26,7 @@ import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
 import { getHandGatheredParts } from '@/utils/factory-management/parts'
 import { needsPacedRender } from '@/utils/render-pacing'
 import { config } from '@/config/config'
+import { recordEvent } from '@/utils/record-event'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -72,6 +73,7 @@ export const useAppStore = defineStore('app', () => {
     currentFactoryTabIndex.value = 0
     localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
     alert('Your planner has been reverted to SAFE MODE, because your factory tab data was heavily corrupted. Sign in to bring back any plans synced to your account. Anything that only lived in this browser is lost, unless you copied it to a file.')
+    recordEvent('plan_repair_safe_mode_reset')
   }
 
   const currentFactoryTab = ref(factoryTabs.value[currentFactoryTabIndex.value])
@@ -683,6 +685,7 @@ export const useAppStore = defineStore('app', () => {
       // If err is type of Error
       if (err instanceof Error) {
         alert('Error validating factories: ' + err.message)
+        recordEvent('plan_validation_threw')
       }
       console.error('appStore: initFactories: Error validating factories:', err)
     }

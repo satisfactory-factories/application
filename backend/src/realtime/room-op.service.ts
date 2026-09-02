@@ -10,6 +10,7 @@ import { RoomAccess, RoomAccessRole } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
 import { UserActivityService } from '../user-activity/user-activity.service'
 import { mergeFactories } from './room-snapshot'
+import { EventCountersService } from '../event-counters/event-counters.service'
 
 export type OpOutcome =
   | { status: 'applied', revision: number }
@@ -39,7 +40,7 @@ export class RoomOpService {
     private readonly activity: RoomActivityService,
     private readonly userActivity: UserActivityService,
     @Inject(CLOCK) private readonly clock: Clock,
-  ) {}
+    private readonly counters: EventCountersService,) {}
 
   apply (op: ClientOpMessage, actor: string, authorize: OpAuthorizer): Promise<OpOutcome> {
     return this.enqueue(op.roomId, () => this.applyNow(op, actor, authorize))
@@ -110,12 +111,14 @@ export class RoomOpService {
       await this.activity.record(op.roomId, actor, 'op')
     } catch (cause) {
       this.logger.error(`Failed to record op activity for room ${op.roomId}`, cause)
+      this.counters.record('server', 'post_commit_activity_lost')
     }
 
     try {
       await this.userActivity.recordEdit(actor, this.clock.now())
     } catch (cause) {
       this.logger.error(`Failed to stamp editor activity for ${op.roomId}`, cause)
+      this.counters.record('server', 'post_commit_editor_stamp_lost')
     }
 
     return { status: 'applied', revision: updated.revision }

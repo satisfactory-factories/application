@@ -6,6 +6,7 @@ import { CLOCK, Clock } from './clock'
 import { Room } from './schemas/room.schema'
 import { RoomActivity } from './schemas/room-activity.schema'
 import { RoomMembership } from './schemas/room-membership.schema'
+import { EventCountersService } from '../event-counters/event-counters.service'
 
 export const SWEEP_INTERVAL_MS = 60 * 60 * 1000
 /** An adoption resumes at the next login, well inside this. */
@@ -27,7 +28,7 @@ export class RoomSweeperService implements OnApplicationBootstrap, OnModuleDestr
     @InjectModel(RoomMembership.name) private readonly memberships: Model<RoomMembership>,
     @InjectModel(RoomActivity.name) private readonly activity: Model<RoomActivity>,
     @Inject(CLOCK) private readonly clock: Clock,
-  ) {}
+    private readonly counters: EventCountersService,) {}
 
   onApplicationBootstrap (): void {
     this.timer = setInterval(() => void this.sweepSafely(), SWEEP_INTERVAL_MS)
@@ -44,6 +45,7 @@ export class RoomSweeperService implements OnApplicationBootstrap, OnModuleDestr
       console.log('Room sweep:', summary)
     } catch (error) {
       console.error('Room sweep failed:', error)
+      this.counters.record('server', 'room_sweep_failed')
     }
   }
 

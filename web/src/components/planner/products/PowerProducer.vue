@@ -295,6 +295,7 @@
   </div>
 </template>
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
@@ -435,6 +436,7 @@
     if (!originalRecipe) {
       console.error('No recipe found for power producer!', producer)
       alert('Unable to find recipe for power generator! Please report this to Discord!')
+      recordEvent('calc_power_recipe_missing')
       return
     }
 

@@ -4,6 +4,7 @@ import type {
   CreateRoomBody,
   DeleteRoomResult,
   EnsureRoomResult,
+  EventReport,
   FactoryTab,
   JoinRoomResult,
   LeaveRoomResult,
@@ -273,6 +274,38 @@ export const getSnapshotShare = (shareId: string): Promise<ShareResponse> =>
  * The response is not read: a 429 or a 400 is as final as a 204 and there is nothing to
  * do about either. Only a request that never lands rejects, and the caller swallows that.
  */
+/**
+ * The outcome of an event flush, reduced to the only distinction the caller acts on: whether
+ * the batch can be dropped, or has to be kept for the next tick.
+ *
+ * `rejected` means the server refused the batch itself (400, 413). Retrying that forever is a
+ * loop, so it counts as disposed. `deferred` is everything else, including a 429 and a
+ * transport failure, all of which may succeed later.
+ */
+export type EventReportOutcome = 'accepted' | 'rejected' | 'deferred'
+
+/**
+ * Unlike the heartbeat, this one reads the response, because the caller has a real decision
+ * to make about the buffer. Same reasons for bypassing `apiRequest`: a fire-and-forget beacon
+ * must never be able to raise the reload dialog a 426 would trigger there.
+ */
+export const sendEventReport = async (report: EventReport): Promise<EventReportOutcome> => {
+  let response: Response
+  try {
+    response = await fetch(`${config.apiUrl}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+      keepalive: true,
+    })
+  } catch {
+    return 'deferred'
+  }
+
+  if (response.ok) return 'accepted'
+  return response.status === 400 || response.status === 413 ? 'rejected' : 'deferred'
+}
+
 export const sendTelemetryHeartbeat = async (heartbeat: TelemetryHeartbeat): Promise<void> => {
   await fetch(`${config.apiUrl}/telemetry`, {
     method: 'POST',

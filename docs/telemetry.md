@@ -33,13 +33,39 @@ eight fields, one of them optional, and the server rejects it outright if it has
 
 Counts, one flag and two build identifiers. That is the whole payload.
 
+## The second endpoint: fault counts
+
+There is one other thing the planner sends, `POST /events`, and it carries even less.
+
+When the app corrects a broken plan on load, or shows you an error it had to admit defeat
+over, it counts that. Once a minute, if and only if it has anything to report, it sends the
+counts:
+
+| Field | What it is |
+| --- | --- |
+| `instanceId` | The same random browser identifier as above |
+| `appVersion`, `gitSha` | The same build identifiers as above |
+| `events` | A list of `{ reason, count }` |
+
+**`reason` is one of a fixed list written into the code.** The app cannot invent one, and the
+server refuses anything not on the list. A reason is a short slug like
+`plan_repair_export_orphaned`, and that is genuinely all it says.
+
+**There is no message, no stack trace, no plan or factory name, and no identifier of any
+kind beyond the browser id.** That is what makes it safe to send anonymously, and it is why
+this is not error reporting: it can tell a maintainer that eleven plans needed the same
+repair yesterday, and nothing whatsoever about whose.
+
+Counts are kept in the server's memory and scraped away; nothing is written to the database.
+Offline mode stops this too.
+
 ## What is not collected
 
 No names of any kind: not your username, not plan names, not tab names, not factory names.
 No account id, no email address, no token, no room id or invite link. No IP address is
 stored (the request has one, as every request does, and nothing writes it down). No page
-addresses, no clicks, no timings, no recipes, no plan contents. Nothing that is not in the
-table above.
+addresses, no clicks, no timings, no recipes, no plan contents. No error messages and no
+stack traces. Nothing that is not in the two tables above.
 
 ## The instance id
 

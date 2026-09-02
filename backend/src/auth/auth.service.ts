@@ -6,6 +6,7 @@ import { Model } from 'mongoose'
 
 import { User, UserDocument } from './user.schema'
 import { UserActivityService } from '../user-activity/user-activity.service'
+import { EventCountersService } from '../event-counters/event-counters.service'
 
 /** Matches the Express API exactly; changing it changes who can register. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -25,7 +26,7 @@ export class AuthService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly jwtService: JwtService,
     private readonly userActivity: UserActivityService,
-  ) {}
+    private readonly counters: EventCountersService,) {}
 
   async register (username: string, password: string): Promise<{ message: string }> {
     if (username.length > MAX_USERNAME_LENGTH) throw badRequest('Username too long.')
@@ -61,6 +62,7 @@ export class AuthService {
       await this.userActivity.recordSignIn(String(user._id), new Date())
     } catch (cause) {
       console.error(`Failed to stamp the sign-in for ${username}`, cause)
+      this.counters.record('server', 'post_commit_signin_stamp_lost')
     }
 
     return { token }

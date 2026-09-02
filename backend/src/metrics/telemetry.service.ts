@@ -134,6 +134,31 @@ export class TelemetryService {
     return snapshot
   }
 
+  /**
+   * The per-instance floor for `POST /events`, on its own timestamp so a flush and a heartbeat
+   * cannot spend each other's allowance.
+   *
+   * Upserts rather than requiring an existing row: a browser can hit an error before it has
+   * ever heartbeated, and that is exactly the report worth keeping.
+   */
+  async allowEventReport (instanceId: string): Promise<boolean> {
+    const now = this.clock.now()
+    const floor = new Date(now.getTime() - TELEMETRY_MIN_INTERVAL_MS)
+
+    try {
+      const result = await this.instances.updateOne(
+        { instanceId, $or: [{ lastEventReportAt: null }, { lastEventReportAt: { $lte: floor } }] },
+        { $set: { lastEventReportAt: now }, $setOnInsert: { lastSeenAt: new Date(0) } },
+        { upsert: true },
+      )
+      return result.matchedCount > 0 || result.upsertedCount > 0
+    } catch (cause) {
+      // A duplicate key means the row exists and was too recent for the filter to match.
+      if (isDuplicateKey(cause)) return false
+      throw cause
+    }
+  }
+
   /** Instances still inside the window, for the specs and for nothing else. */
   async size (): Promise<number> {
     const since = new Date(this.clock.now().getTime() - TELEMETRY_CAPS.activeWindowMs)

@@ -14,6 +14,7 @@ import {
 import { CLOCK, Clock } from '../rooms/clock'
 import { CachedQuery } from './cached-query'
 import { ConnectionRegistry } from '../realtime/connection-registry'
+import { EventCountersService } from '../event-counters/event-counters.service'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
 import { TelemetryService } from './telemetry.service'
@@ -92,6 +93,7 @@ export class MetricsService {
     @InjectModel(User.name) private readonly users: Model<User>,
     private readonly connections: ConnectionRegistry,
     private readonly telemetry: TelemetryService,
+    private readonly counters: EventCountersService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     const registers = [this.registry]
@@ -218,7 +220,10 @@ export class MetricsService {
 
   async render (): Promise<string> {
     await this.refresh()
-    return this.registry.metrics()
+    // The counters live in their own registry, owned by a service that depends on nothing, so
+    // that the modules reporting faults do not have to import this one. Merging is how the two
+    // arrive in a single scrape.
+    return Registry.merge([this.registry, this.counters.registry]).metrics()
   }
 
   private async refresh (): Promise<void> {

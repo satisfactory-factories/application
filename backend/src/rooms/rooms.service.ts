@@ -30,6 +30,7 @@ import { VISITOR_TOKEN_TTL, VisitorTokenPayload, isVisitorTokenPayload } from '.
 import { forbidden, isDuplicateKey, notFound, roomError } from './room-errors'
 import { generateSlug } from './slug'
 import { membershipGrantsAccess, roomEpoch } from './membership-epoch'
+import { EventCountersService } from '../event-counters/event-counters.service'
 
 /** Invite-password hashing cost. Higher than the account cost: a room password is short. */
 export const INVITE_BCRYPT_ROUNDS = 12
@@ -50,7 +51,7 @@ export class RoomsService {
     private readonly activity: RoomActivityService,
     private readonly jwt: JwtService,
     @Inject(CLOCK) private readonly clock: Clock,
-  ) {}
+    private readonly counters: EventCountersService,) {}
 
   // ===== Reads =====
 
@@ -540,6 +541,7 @@ export class RoomsService {
       await this.steps.run('record-activity', () => this.activity.record(roomId, userId, kind))
     } catch (cause) {
       this.logger.error(`Failed to record "${kind}" activity for room ${roomId}`, cause)
+      this.counters.record('server', 'post_commit_room_activity_lost')
     }
   }
 
