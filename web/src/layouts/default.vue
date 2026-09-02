@@ -46,6 +46,7 @@
   import { useBackendHealthStore } from '@/stores/backend-health-store'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
+  import { useTelemetryStore } from '@/stores/telemetry-store'
   import { startVersionCheck } from '@/utils/version-check'
 
   const { smAndDown } = useDisplay()
@@ -64,6 +65,7 @@
   // Started here rather than as an import side effect, so it has somewhere to be stopped.
   let stopVersionCheck: (() => void) | undefined
   const backendHealth = useBackendHealthStore()
+  const telemetry = useTelemetryStore()
 
   onMounted(() => {
     // An anonymous joined tab has no membership on the server, so nothing in the
@@ -71,10 +73,12 @@
     useRoomsStore().restoreJoinedTabs()
     stopVersionCheck = startVersionCheck()
     backendHealth.start()
+    telemetry.start()
   })
   onUnmounted(() => {
     stopVersionCheck?.()
     backendHealth.stop()
+    telemetry.stop()
   })
 </script>
 

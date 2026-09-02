@@ -12,6 +12,7 @@ import { validateEnv } from './config/env'
 import { THROTTLER_OPTIONS } from './config/throttling'
 import { HealthModule } from './health/health.module'
 import { LegacyModule } from './legacy/legacy.module'
+import { MetricsModule } from './metrics/metrics.module'
 import { PreferencesModule } from './preferences/preferences.module'
 import { RealtimeModule } from './realtime/realtime.module'
 import { RoomsModule } from './rooms/rooms.module'
@@ -62,6 +63,8 @@ import { VersionModule } from './version/version.module'
     RoomsModule,
     RealtimeModule,
     PreferencesModule,
+    // Last: it reads the models and the socket index the modules above own.
+    MetricsModule,
   ],
   providers: [
     // Order matters: rate limiting ran as the first express middleware, ahead of

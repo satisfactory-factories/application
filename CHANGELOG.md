@@ -87,6 +87,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.
 - `/save` and `/load` are retired. `/hello` is gone, since `/health` had already replaced it.
 - **Developer tool: the offline conflict prompt can be staged from the Templates menu.** It builds a local tab of its own, fabricates a clash against a pretend live plan and opens the real dialog over it, so the prompt can be seen without two devices. Nothing is sent to the server and no plan is created on it. The entry shows on a development build, or anywhere once `sfDevTools` is set to `true` in the browser's local storage.
+- **The planner now sends an anonymous usage heartbeat**, because a plan that is never synced and a user who never signs in are both invisible to the server, and between them that is most of the planner's use. It reports six numbers and one flag: how many tabs are open, how many of those are synced, how many factories they hold in total, whether somebody is signed in, and which build is running. No names, no plan contents, no account details. The identifier attached to it is random, minted by your browser, and cannot be tied to an account. Offline mode stops it along with everything else, and so does any tracker blocker. The `telemetry` page in the repository documentation lists every field it can ever contain.
 
 ### Search the plan
 

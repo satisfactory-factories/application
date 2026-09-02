@@ -19,6 +19,7 @@ import type {
   ShareCreatedResponse,
   ShareResponse,
   SyncedPreferences,
+  TelemetryHeartbeat,
   ValidateTokenResponse,
   VersionMismatchBody,
 } from 'common'
@@ -258,3 +259,26 @@ export const createSnapshotShare = (tab: FactoryTab): Promise<ShareCreatedRespon
 
 export const getSnapshotShare = (shareId: string): Promise<ShareResponse> =>
   apiRequest(`/share/${encodeURIComponent(shareId)}`, { auth: false })
+
+// ===== Telemetry =====
+
+/**
+ * The anonymous usage heartbeat. See `docs/telemetry.md` for what is in it and why.
+ *
+ * Deliberately not routed through `apiRequest`. That emits `versionMismatch` on a 426,
+ * which puts a "please reload" dialog in front of the reader — and a fire-and-forget
+ * beacon must never be able to do that, however unlikely a proxy rewriting the status is.
+ * The route skips the version gate server-side, so no version header is sent either.
+ *
+ * The response is not read: a 429 or a 400 is as final as a 204 and there is nothing to
+ * do about either. Only a request that never lands rejects, and the caller swallows that.
+ */
+export const sendTelemetryHeartbeat = async (heartbeat: TelemetryHeartbeat): Promise<void> => {
+  await fetch(`${config.apiUrl}/telemetry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(heartbeat),
+    // Lets the heartbeat outlive the page being closed under it.
+    keepalive: true,
+  })
+}

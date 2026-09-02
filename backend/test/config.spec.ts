@@ -4,8 +4,10 @@ import type { ExecutionContext } from '@nestjs/common'
 import {
   GLOBAL_THROTTLE,
   HEALTH_THROTTLE,
+  METRICS_THROTTLE,
   ROOM_AUTH_THROTTLE,
   SHARE_THROTTLE,
+  TELEMETRY_THROTTLE,
   THROTTLER_OPTIONS,
   VERSION_THROTTLE,
 } from '../src/config/throttling'
@@ -57,10 +59,15 @@ describe('throttler configuration', () => {
     expect(ROOM_AUTH_THROTTLE).toEqual({ name: 'roomAuth', ttl: 300_000, limit: 10 })
   })
 
+  it('gives the scrape target and the heartbeat buckets of their own', () => {
+    expect(METRICS_THROTTLE).toEqual({ name: 'metrics', ttl: 60_000, limit: 30 })
+    expect(TELEMETRY_THROTTLE).toEqual({ name: 'telemetry', ttl: 60_000, limit: 60 })
+  })
+
   it('keys on the client alone, so routes share one allowance rather than each getting 200', () => {
     expect(options.generateKey?.({} as never, '127.0.0.1', 'global')).toBe('global-127.0.0.1')
     expect(options.throttlers.map(throttler => throttler.name))
-      .toEqual(['global', 'health', 'version', 'share', 'roomAuth'])
+      .toEqual(['global', 'health', 'version', 'metrics', 'telemetry', 'share', 'roomAuth'])
     expect(options.throttlers.every(throttler => typeof throttler.skipIf === 'function')).toBe(true)
   })
 
@@ -78,5 +85,14 @@ describe('throttler configuration', () => {
     expect(applies('version', 'GET', '/version')).toBe(true)
     expect(applies('version', 'GET', '/health')).toBe(false)
     expect(applies('global', 'GET', '/version')).toBe(false)
+    // Both sides of the metrics pair sit outside the global bucket: a scrape or a
+    // heartbeat storm must not rate-limit the planner, and traffic must not open a gap
+    // in the graphs.
+    expect(applies('metrics', 'GET', '/metrics')).toBe(true)
+    expect(applies('metrics', 'POST', '/telemetry')).toBe(false)
+    expect(applies('global', 'GET', '/metrics')).toBe(false)
+    expect(applies('telemetry', 'POST', '/telemetry')).toBe(true)
+    expect(applies('telemetry', 'GET', '/metrics')).toBe(false)
+    expect(applies('global', 'POST', '/telemetry')).toBe(false)
   })
 })
