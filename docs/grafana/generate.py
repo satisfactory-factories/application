@@ -380,48 +380,62 @@ add(66, "Stickiness",
          unit="percentunit", minmax=(0, 1)))
 
 # ------------------------------------------------------------------------ faults
-# Counters, so every panel here is a rate or an increase rather than a level. Two metrics
-# on purpose: sf_events_total is per cause, sf_http_errors_total is per response, and one
-# incident can legitimately appear in both. Never add them together.
+# Counters, so every panel here is an increase over a window rather than a level. Two
+# metrics on purpose: sf_events_total is per cause, sf_http_errors_total is per response,
+# and one incident can legitimately appear in both. Never add them together.
+#
+# Every count is wrapped in round(), and that is not cosmetic. increase() extrapolates to
+# the range boundaries, so a counter that jumped once and went flat reports a drifting
+# non-integer: measured live at 4.05, 4.11, 4.05 over ninety seconds while the underlying
+# value never left 4. On a stat panel that reads as continuous activity when nothing at all
+# is happening, which is exactly how this was first reported as a bug.
+#
+# round(increase(...)) rather than the offset trick used for edits: these counters reset on
+# every deploy, increase() handles a reset natively, and an offset or min_over_time would
+# measure from the post-restart low and undercount. Edits come from the database and never
+# reset, so they can afford the other form.
+#
+# Round the outermost aggregate, then filter with `> 0`, so an extrapolated fraction drops
+# out instead of appearing as a phantom series.
 add(90, "Faults, Last 24h",
     "Every counted fault in the last day, client and server together. Indicative rather than authoritative: the client half arrives over an unauthenticated endpoint.",
-    [query("sum(increase(sf_events_total%s[24h]))" % J, "Faults")],
+    [query("round(sum(increase(sf_events_total%s[24h])))" % J, "Faults")],
     stat([{"value": 0, "color": "green"}, {"value": 1, "color": "#EAB839"}, {"value": 50, "color": "red"}],
          graph="area"))
 
 add(91, "Server Errors, Last 24h",
     "HTTP 5xx responses. The line that matters most, because a 500 means the server itself failed rather than refusing something.",
-    [query('sum(increase(sf_http_errors_total%s[24h]))' % sel('status=~"5.."'), "5xx")],
+    [query('round(sum(increase(sf_http_errors_total%s[24h])))' % sel('status=~"5.."'), "5xx")],
     stat([{"value": 0, "color": "green"}, {"value": 1, "color": "red"}], graph="area"))
 
 add(92, "Plan Repairs, Last 24h",
     "Loaded plans that had to be corrected before they could be used. Each one is a plan that was saved wrong at some point.",
-    [query('sum(increase(sf_events_total%s[24h]))' % sel('reason=~"plan_repair_.*"'), "Repairs")],
+    [query('round(sum(increase(sf_events_total%s[24h])))' % sel('reason=~"plan_repair_.*"'), "Repairs")],
     stat([{"value": 0, "color": "green"}, {"value": 1, "color": "#EAB839"}], graph="area"))
 
 add(93, "Faults by Reason, Last 24h",
     "Every reason with at least one occurrence in the last day, largest first. A reason at zero is absent from this panel by design; that is the good news.",
-    [query("sort_desc(sum by (reason) (increase(sf_events_total%s[24h])) > 0)" % J, "{{reason}}", instant=True)],
+    [query("sort_desc(round(sum by (reason) (increase(sf_events_total%s[24h]))) > 0)" % J, "{{reason}}", instant=True)],
     bargauge(display_name="${__field.labels.reason}"))
 
 add(94, "Faults Over Time",
-    "Per-minute fault rate by reason. A flat line at zero is what this should normally look like.",
-    [query("sum by (reason) (rate(sf_events_total%s[5m]) * 60) > 0" % J, "{{reason}}")],
+    "A rolling one-hour count per reason. An hour rather than a five-minute rate because faults are rare: at five minutes a single one is a pixel-wide blip on a day-long axis and you would never see it.",
+    [query("round(sum by (reason) (increase(sf_events_total%s[1h]))) > 0" % J, "{{reason}}")],
     timeseries(fill=15))
 
 add(95, "Client and Server",
     "Which half of the app is reporting. A spike on one side only usually says where to look first.",
-    [query("sum by (source) (increase(sf_events_total%s[24h]))" % J, "{{source}}")],
+    [query("round(sum by (source) (increase(sf_events_total%s[24h])))" % J, "{{source}}")],
     timeseries(fill=25, stack="normal"))
 
 add(96, "HTTP Errors by Status",
     "Per-response view. 4xx is dominated by ordinary refusals and is mostly noise; 5xx is not.",
-    [query("sum by (status) (increase(sf_http_errors_total%s[24h])) > 0" % J, "{{status}}")],
+    [query("round(sum by (status) (increase(sf_http_errors_total%s[24h]))) > 0" % J, "{{status}}")],
     timeseries(fill=15))
 
 add(97, "Records Lost After a Commit",
     "Times somebody's change was saved and the record of it was not. Each one is a silent gap in the activity log or the account stamps.",
-    [query('sum(increase(sf_events_total%s[24h]))' % sel('reason=~"post_commit_.*"'), "Lost"),],
+    [query('round(sum(increase(sf_events_total%s[24h])))' % sel('reason=~"post_commit_.*"'), "Lost"),],
     stat([{"value": 0, "color": "green"}, {"value": 1, "color": "#EAB839"}, {"value": 10, "color": "red"}]))
 
 # ------------------------------------------------------------------- growth

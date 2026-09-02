@@ -3182,7 +3182,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h]))",
+                        "expr": "round(sum(increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h])))",
                         "legendFormat": "Faults",
                         "range": true
                       }
@@ -3271,7 +3271,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(increase(sf_http_errors_total{job=\"satisfactory-factories-preview\",status=~\"5..\"}[24h]))",
+                        "expr": "round(sum(increase(sf_http_errors_total{job=\"satisfactory-factories-preview\",status=~\"5..\"}[24h])))",
                         "legendFormat": "5xx",
                         "range": true
                       }
@@ -3356,7 +3356,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(increase(sf_events_total{job=\"satisfactory-factories-preview\",reason=~\"plan_repair_.*\"}[24h]))",
+                        "expr": "round(sum(increase(sf_events_total{job=\"satisfactory-factories-preview\",reason=~\"plan_repair_.*\"}[24h])))",
                         "legendFormat": "Repairs",
                         "range": true
                       }
@@ -3441,7 +3441,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sort_desc(sum by (reason) (increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h])) > 0)",
+                        "expr": "sort_desc(round(sum by (reason) (increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h]))) > 0)",
                         "legendFormat": "{{reason}}",
                         "instant": true,
                         "range": false
@@ -3513,7 +3513,7 @@
         "spec": {
           "id": 94,
           "title": "Faults Over Time",
-          "description": "Per-minute fault rate by reason. A flat line at zero is what this should normally look like.",
+          "description": "A rolling one-hour count per reason. An hour rather than a five-minute rate because faults are rare: at five minutes a single one is a pixel-wide blip on a day-long axis and you would never see it.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3531,7 +3531,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (reason) (rate(sf_events_total{job=\"satisfactory-factories-preview\"}[5m]) * 60) > 0",
+                        "expr": "round(sum by (reason) (increase(sf_events_total{job=\"satisfactory-factories-preview\"}[1h]))) > 0",
                         "legendFormat": "{{reason}}",
                         "range": true
                       }
@@ -3646,7 +3646,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (source) (increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h]))",
+                        "expr": "round(sum by (source) (increase(sf_events_total{job=\"satisfactory-factories-preview\"}[24h])))",
                         "legendFormat": "{{source}}",
                         "range": true
                       }
@@ -3761,7 +3761,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (status) (increase(sf_http_errors_total{job=\"satisfactory-factories-preview\"}[24h])) > 0",
+                        "expr": "round(sum by (status) (increase(sf_http_errors_total{job=\"satisfactory-factories-preview\"}[24h]))) > 0",
                         "legendFormat": "{{status}}",
                         "range": true
                       }
@@ -3876,7 +3876,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(increase(sf_events_total{job=\"satisfactory-factories-preview\",reason=~\"post_commit_.*\"}[24h]))",
+                        "expr": "round(sum(increase(sf_events_total{job=\"satisfactory-factories-preview\",reason=~\"post_commit_.*\"}[24h])))",
                         "legendFormat": "Lost",
                         "range": true
                       }
