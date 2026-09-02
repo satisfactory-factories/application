@@ -10,13 +10,13 @@ import {
   METRICS_SLOW_CACHE_MS,
   METRICS_TOP_N,
 } from '../src/metrics/metrics.constants'
-import { ANONYMOUS_ACTOR, UserActivityService } from '../src/rooms/user-activity.service'
+import { ANONYMOUS_ACTOR, UserActivityService } from '../src/user-activity/user-activity.service'
 import { Room } from '../src/rooms/schemas/room.schema'
 import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
 import { RoomOpService } from '../src/realtime/room-op.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { User } from '../src/auth/user.schema'
-import { FakeClock, resetRooms } from './utils/rooms'
+import { FakeClock, call, registerAndLogin, resetRooms } from './utils/rooms'
 import { clearMetricsToken, labelValues, sample, scrapeMetrics, useMetricsToken } from './utils/metrics'
 
 const HOUR = 60 * 60 * 1000
@@ -128,6 +128,78 @@ describe('the database-backed usage metrics', () => {
       await seedUser('lurker')
 
       expect(sample(await scrape(), 'sf_active_accounts', 'window="30d"')).toBe(0)
+    })
+  })
+
+  describe('sf_new_accounts', () => {
+    // No new writes for this one: User.registered has always been there, so the windows
+    // are correct for every account that already existed before the metric did.
+    it('counts registrations in each rolling window', async () => {
+      const now = clock.now().getTime()
+      await seedUser('today', { registered: new Date(now - 2 * HOUR) })
+      await seedUser('thisweek', { registered: new Date(now - 4 * DAY) })
+      await seedUser('thismonth', { registered: new Date(now - 20 * DAY) })
+      await seedUser('ancient', { registered: new Date(now - 300 * DAY) })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_new_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_new_accounts', 'window="7d"')).toBe(2)
+      expect(sample(body, 'sf_new_accounts', 'window="30d"')).toBe(3)
+    })
+
+    it('exports every window even with no accounts at all', async () => {
+      const body = await scrape()
+
+      for (const [label] of ACTIVE_ACCOUNT_WINDOWS) {
+        expect(sample(body, 'sf_new_accounts', `window="${label}"`)).toBe(0)
+      }
+    })
+
+    it('counts an account that registered but never signed in or edited', async () => {
+      await seedUser('signed-up-only', { registered: clock.now() })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_new_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(0)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(0)
+    })
+  })
+
+  describe('sf_signed_in_accounts and sf_signins_total', () => {
+    it('counts sign-ins in each rolling window', async () => {
+      const now = clock.now().getTime()
+      await seedUser('today', { lastSignInAt: new Date(now - 2 * HOUR) })
+      await seedUser('lastweek', { lastSignInAt: new Date(now - 5 * DAY) })
+      await seedUser('never')
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="7d"')).toBe(2)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="30d"')).toBe(2)
+    })
+
+    it('sums sign-ins across accounts', async () => {
+      await seedUser('one', { signInCount: 12 })
+      await seedUser('two', { signInCount: 3 })
+      await seedUser('three')
+
+      expect(sample(await scrape(), 'sf_signins_total')).toBe(15)
+    })
+
+    // Signing in and changing nothing is a real thing people do, and conflating the two
+    // would overstate how many accounts are actually building something.
+    it('is separate from editing', async () => {
+      const now = clock.now()
+      await seedUser('reader', { lastSignInAt: now })
+      await seedUser('builder', { lastActiveAt: now, lastSignInAt: now })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(2)
+      expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
     })
   })
 
@@ -293,6 +365,42 @@ describe('UserActivityService', () => {
     it('ignores anonymous visitors, who have no account to stamp', async () => {
       await expect(service().recordEdit(ANONYMOUS_ACTOR, new Date())).resolves.toBeUndefined()
     })
+  })
+
+  describe('recordSignIn', () => {
+    it('stamps the sign-in and counts it', async () => {
+      const user = await seedUser('returning')
+      const at = new Date('2026-09-02T10:00:00Z')
+
+      await service().recordSignIn(String(user._id), at)
+
+      const stored = await reload(user._id)
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.signInCount).toBe(1)
+    })
+
+    // Two devices signing in at once have no ordering, same as edits across two rooms.
+    it('never moves lastSignInAt backwards', async () => {
+      const user = await seedUser('returning')
+      const later = new Date('2026-09-02T12:00:00Z')
+
+      await service().recordSignIn(String(user._id), later)
+      await service().recordSignIn(String(user._id), new Date('2026-09-02T09:00:00Z'))
+
+      const stored = await reload(user._id)
+      expect(stored?.lastSignInAt?.toISOString()).toBe(later.toISOString())
+      expect(stored?.signInCount).toBe(2)
+    })
+
+    it('leaves the edit stamp alone', async () => {
+      const user = await seedUser('reader')
+
+      await service().recordSignIn(String(user._id), new Date())
+
+      const stored = await reload(user._id)
+      expect(stored?.lastActiveAt).toBeNull()
+      expect(stored?.editCount).toBe(0)
+    })
 
     it('does not create an account for an id that no longer exists', async () => {
       await service().recordEdit('507f1f77bcf86cd799439011', new Date())
@@ -378,6 +486,62 @@ describe('UserActivityService', () => {
   })
 })
 
+describe('signing in through the API stamps the account', () => {
+  let context: TestContext
+  const clock = new FakeClock()
+
+  const users = () => context.app.get<Model<User>>(getModelToken(User.name))
+
+  beforeAll(async () => {
+    context = await createTestApp({ clock, unthrottled: true })
+    await awaitConnection(context.app)
+  })
+
+  afterAll(async () => {
+    await destroyTestApp(context)
+  })
+
+  beforeEach(async () => {
+    await resetRooms(context.app)
+  })
+
+  it('records the sign-in on a real POST /login', async () => {
+    await registerAndLogin(context.app, 'signer')
+
+    const stored = await users().findOne({ username: 'signer' }).lean()
+    expect(stored?.signInCount).toBe(1)
+    expect(stored?.lastSignInAt).toBeInstanceOf(Date)
+    // Registering is not signing in, and neither is editing.
+    expect(stored?.lastActiveAt).toBeNull()
+  })
+
+  it('counts a second sign-in without moving the account into the editors', async () => {
+    const user = await registerAndLogin(context.app, 'signer')
+    await call(context.app, 'post', '/login').send({ username: 'signer', password: 'ficsit-forever' })
+
+    const stored = await users().findById(user.userId).lean()
+    expect(stored?.signInCount).toBe(2)
+    expect(stored?.editCount).toBe(0)
+  })
+
+  it('still issues a token when the stamp fails', async () => {
+    const failing = await createTestApp({
+      unthrottled: true,
+      userActivity: {
+        recordEdit: async () => undefined,
+        recordSignIn: async () => { throw new Error('injected sign-in stamp failure') },
+      },
+    })
+    try {
+      await awaitConnection(failing.app)
+      const user = await registerAndLogin(failing.app, 'resilient')
+      expect(user.token).toBeTruthy()
+    } finally {
+      await destroyTestApp(failing)
+    }
+  })
+})
+
 /**
  * The invariant the whole design bends around: an edit is committed before any metric is
  * written, and no metric failure may take it back. `RoomOpService` keeps the two post-commit
@@ -399,6 +563,7 @@ describe('an accepted edit survives the metrics write failing', () => {
           failures.push(userId)
           throw new Error('injected editor-stamp failure')
         },
+        recordSignIn: async () => undefined,
       },
     })
     await awaitConnection(context.app)

@@ -42,10 +42,26 @@ export class User {
    */
   @Prop({ type: Number, default: 0 })
   editCount!: number
+
+  /**
+   * When this account last signed in. Separate from `lastActiveAt`, which is about editing:
+   * somebody can sign in, read their plan and change nothing, and that is a different fact.
+   *
+   * `$max` for the same reason as `lastActiveAt`: two devices signing in at once have no
+   * ordering, and a plain set would let the earlier one land last.
+   */
+  @Prop({ type: Date, default: null })
+  lastSignInAt!: Date | null
+
+  /** Sign-ins by this account. Approximate for the same reason as {@link editCount}. */
+  @Prop({ type: Number, default: 0 })
+  signInCount!: number
 }
 
 export type UserDocument = HydratedDocument<User>
 export const UserSchema = SchemaFactory.createForClass(User)
 
-// Every sf_active_accounts window is a range scan on this.
+// Every rolling-window count is a range scan on one of these.
 UserSchema.index({ lastActiveAt: -1 })
+UserSchema.index({ lastSignInAt: -1 })
+UserSchema.index({ registered: -1 })

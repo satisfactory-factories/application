@@ -14,7 +14,7 @@ import { RoomMembership, RoomMembershipSchema } from './schemas/room-membership.
 import { RoomSweeperService } from './room-sweeper.service'
 import { RoomsController } from './rooms.controller'
 import { RoomsService } from './rooms.service'
-import { UserActivityService } from './user-activity.service'
+import { UserActivityModule } from '../user-activity/user-activity.module'
 
 @Module({
   imports: [
@@ -24,6 +24,7 @@ import { UserActivityService } from './user-activity.service'
       { name: RoomActivity.name, schema: RoomActivitySchema },
     ]),
     AuthModule, // The User model, for roomsRevision and the legacy import stamp.
+    UserActivityModule, // Re-exported so the WS gateway can stamp an editor.
     LegacyModule, // The read-only FactoryData blob.
   ],
   controllers: [RoomsController],
@@ -33,7 +34,6 @@ import { UserActivityService } from './user-activity.service'
     RoomEventsService,
     RoomSweeperService,
     LegacyImportService,
-    UserActivityService,
     EnsureStepRunner,
     { provide: CLOCK, useValue: systemClock },
   ],
@@ -44,7 +44,7 @@ import { UserActivityService } from './user-activity.service'
     RoomsService,
     RoomActivityService,
     RoomEventsService,
-    UserActivityService,
+    UserActivityModule,
     MongooseModule,
     CLOCK,
   ],
