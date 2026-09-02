@@ -42,7 +42,6 @@ describe('/room/:slug', () => {
   const roomIsShared = (hasPassword = false) => {
     vi.mocked(api.lookupRoomBySlug).mockResolvedValue({
       roomId: ROOM_ID,
-      name: 'Iron Plates',
       hasPassword,
     })
   }
@@ -117,7 +116,6 @@ describe('/room/:slug', () => {
       await open()
 
       expect(roomsStore.trackJoinedRoom).toHaveBeenCalledWith(ROOM_ID, {
-        name: 'Iron Plates',
         visitorToken: undefined,
       })
       expect(routing.replace).toHaveBeenCalledWith('/')
@@ -127,7 +125,6 @@ describe('/room/:slug', () => {
       await open({ loggedIn: true })
 
       expect(roomsStore.joinSharedRoom).toHaveBeenCalledWith(ROOM_ID, {
-        name: 'Iron Plates',
         visitorToken: undefined,
       })
       expect(roomsStore.trackJoinedRoom).not.toHaveBeenCalled()
@@ -157,7 +154,6 @@ describe('/room/:slug', () => {
       expect(api.authenticateRoom).toHaveBeenCalledWith(ROOM_ID, 'correct horse')
       expect(readVisitorToken(ROOM_ID)).toBe('visitor-jwt')
       expect(roomsStore.trackJoinedRoom).toHaveBeenCalledWith(ROOM_ID, {
-        name: 'Iron Plates',
         visitorToken: 'visitor-jwt',
       })
       expect(routing.replace).toHaveBeenCalledWith('/')
@@ -182,7 +178,6 @@ describe('/room/:slug', () => {
       expect(shows(wrapper, 'room-password')).toBe(false)
       expect(api.authenticateRoom).not.toHaveBeenCalled()
       expect(roomsStore.trackJoinedRoom).toHaveBeenCalledWith(ROOM_ID, {
-        name: 'Iron Plates',
         visitorToken: 'stored-jwt',
       })
     })
@@ -209,7 +204,6 @@ describe('/room/:slug', () => {
       await enterPassword(wrapper, 'correct horse')
 
       expect(roomsStore.joinSharedRoom).toHaveBeenLastCalledWith(ROOM_ID, {
-        name: 'Iron Plates',
         visitorToken: 'visitor-jwt',
       })
       expect(routing.replace).toHaveBeenCalledWith('/')

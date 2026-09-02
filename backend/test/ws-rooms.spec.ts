@@ -60,6 +60,11 @@ describe('ws join, snapshots and presence', () => {
       expect(snapshot.revision).toBe(0)
       expect(snapshot.room).toMatchObject({ roomId, name: 'Iron Line', shared: false })
       expect(snapshot.room).not.toHaveProperty('passwordHash')
+      // An anonymous visitor holding the invite link reads this too, and the owner's
+      // account id is not theirs to have.
+      expect(snapshot.room).not.toHaveProperty('createdBy')
+      expect(snapshot.room).not.toHaveProperty('appliedOps')
+      expect(snapshot.room).not.toHaveProperty('lastBulkRestore')
     })
 
     it('answers up_to_date when the client already holds the revision', async () => {

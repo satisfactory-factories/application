@@ -2,7 +2,11 @@ import type { Factory, RoomDiff, RoomSnapshot } from 'common'
 
 import { Room } from '../rooms/schemas/room.schema'
 
-/** The room as the wire sees it: never `passwordHash`, never `appliedOps`. */
+/**
+ * The room as the wire sees it: never `passwordHash`, never `appliedOps`, and never
+ * `createdBy` — an anonymous visitor holding the invite link reads every snapshot, and
+ * the owner's account id is not theirs to have.
+ */
 export const toRoomSnapshot = (room: Room): RoomSnapshot => ({
   roomId: room.roomId,
   name: room.name,
@@ -16,7 +20,6 @@ export const toRoomSnapshot = (room: Room): RoomSnapshot => ({
   plannerVersion: room.plannerVersion,
   groups: room.groups,
   revision: room.revision,
-  createdBy: room.createdBy,
 })
 
 /**

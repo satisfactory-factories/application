@@ -16,7 +16,9 @@ describe('auth', () => {
     request(context.app.getHttpServer()).post(path).set(VERSION_HEADERS)
 
   beforeAll(async () => {
-    context = await createTestApp()
+    // The suite logs in a dozen times from one address, which is more than the login
+    // bucket allows on purpose. config.spec asserts the bucket itself.
+    context = await createTestApp({ unthrottled: true })
     connection = await awaitConnection(context.app)
   })
 

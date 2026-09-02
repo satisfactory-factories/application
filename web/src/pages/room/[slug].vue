@@ -22,7 +22,7 @@
     </v-card>
 
     <v-card v-else-if="phase === 'password'" class="border-md" data-testid="room-password">
-      <v-card-title class="text-h5">"{{ roomName }}" needs a password</v-card-title>
+      <v-card-title class="text-h5">This plan needs a password</v-card-title>
       <v-card-text>
         <p class="mb-4">Whoever shared this plan set a password on it. Enter it to join.</p>
         <v-form @submit.prevent="submitPassword">
@@ -75,7 +75,6 @@
 
   const phase = ref<Phase>('loading')
   const roomId = ref('')
-  const roomName = ref('')
   const hasPassword = ref(false)
   const password = ref('')
   const error = ref('')
@@ -106,7 +105,6 @@
     try {
       const lookup = await lookupRoomBySlug(slug)
       roomId.value = lookup.roomId
-      roomName.value = lookup.name
       hasPassword.value = lookup.hasPassword
     } catch (cause) {
       // The lookup only resolves shared, live rooms, so a 404 is the honest answer
@@ -125,10 +123,7 @@
    */
   const enter = async (visitorToken?: string) => {
     if (authStore.isLoggedIn) {
-      const outcome = await roomsStore.joinSharedRoom(roomId.value, {
-        name: roomName.value,
-        visitorToken,
-      })
+      const outcome = await roomsStore.joinSharedRoom(roomId.value, { visitorToken })
       if (outcome.ok) return goHome()
 
       if (outcome.code === 'password_required') {
@@ -146,7 +141,7 @@
       return
     }
 
-    roomsStore.trackJoinedRoom(roomId.value, { name: roomName.value, visitorToken })
+    roomsStore.trackJoinedRoom(roomId.value, { visitorToken })
     goHome()
   }
 

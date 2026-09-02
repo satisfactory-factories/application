@@ -77,10 +77,13 @@ export interface RoomListResponse {
   rooms: RoomListEntry[]
 }
 
-/** `GET /rooms/by-slug/:slug`: enough to show the join prompt, no content. */
+/**
+ * `GET /rooms/by-slug/:slug`: enough to answer "is this link live, and does it want a
+ * password". Deliberately no name: the route is unauthenticated, and a plan's name is
+ * the owner's to hand out rather than something a slug guess should return.
+ */
 export interface RoomSlugLookup {
   roomId: string
-  name: string
   hasPassword: boolean
 }
 
@@ -104,7 +107,6 @@ export interface RoomSnapshot {
   plannerVersion?: string
   groups: FactoryGroup[]
   revision: number
-  createdBy: string
 }
 
 /**

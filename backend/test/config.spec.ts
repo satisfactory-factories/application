@@ -5,9 +5,11 @@ import {
   GLOBAL_THROTTLE,
   HEALTH_THROTTLE,
   EVENTS_THROTTLE,
+  LOGIN_THROTTLE,
   METRICS_THROTTLE,
   ROOM_AUTH_THROTTLE,
   SHARE_THROTTLE,
+  SLUG_LOOKUP_THROTTLE,
   TELEMETRY_THROTTLE,
   THROTTLER_OPTIONS,
   VERSION_THROTTLE,
@@ -74,9 +76,20 @@ describe('throttler configuration', () => {
 
   it('keys on the client alone, so routes share one allowance rather than each getting 200', () => {
     expect(options.generateKey?.({} as never, '127.0.0.1', 'global')).toBe('global-127.0.0.1')
-    expect(options.throttlers.map(throttler => throttler.name))
-      .toEqual(['global', 'health', 'version', 'metrics', 'telemetry', 'events', 'share', 'roomAuth'])
+    expect(options.throttlers.map(throttler => throttler.name)).toEqual([
+      'global', 'health', 'version', 'metrics', 'telemetry', 'events',
+      'share', 'roomAuth', 'login', 'slugLookup',
+    ])
     expect(options.throttlers.every(throttler => typeof throttler.skipIf === 'function')).toBe(true)
+  })
+
+  // Both are unauthenticated and both are guessable: one takes an account password, the
+  // other says whether a given invite link is live.
+  it('holds the login form and the invite-link probe to buckets of their own', () => {
+    expect(LOGIN_THROTTLE).toEqual({ name: 'login', ttl: 300_000, limit: 10 })
+    expect(SLUG_LOOKUP_THROTTLE).toEqual({ name: 'slugLookup', ttl: 60_000, limit: 20 })
+    expect(LOGIN_THROTTLE.limit).toBeLessThan(GLOBAL_THROTTLE.limit)
+    expect(SLUG_LOOKUP_THROTTLE.limit).toBeLessThan(GLOBAL_THROTTLE.limit)
   })
 
   it('narrows each extra bucket to the one route it protects', () => {
@@ -84,6 +97,13 @@ describe('throttler configuration', () => {
     expect(applies('share', 'GET', '/share/some-link')).toBe(false)
     expect(applies('roomAuth', 'POST', '/rooms/abc-123/auth')).toBe(true)
     expect(applies('roomAuth', 'POST', '/rooms/abc-123/join')).toBe(false)
+    expect(applies('login', 'POST', '/login')).toBe(true)
+    expect(applies('login', 'POST', '/register')).toBe(false)
+    expect(applies('slugLookup', 'GET', '/rooms/by-slug/iron-plate-hub')).toBe(true)
+    expect(applies('slugLookup', 'GET', '/rooms')).toBe(false)
+    // Both stack on the global bucket rather than replacing it.
+    expect(applies('global', 'POST', '/login')).toBe(true)
+    expect(applies('global', 'GET', '/rooms/by-slug/iron-plate-hub')).toBe(true)
     // The narrow buckets stack on the global one rather than replacing it.
     expect(applies('global', 'POST', '/share')).toBe(true)
     expect(applies('global', 'POST', '/rooms/abc-123/auth')).toBe(true)

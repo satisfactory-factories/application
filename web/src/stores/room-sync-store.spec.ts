@@ -122,7 +122,6 @@ describe('room-sync-store', () => {
     powerTarget: 0,
     groups: [],
     revision,
-    createdBy: 'user-1',
     ...overrides,
   })
 

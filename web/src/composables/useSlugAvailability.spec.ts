@@ -60,7 +60,6 @@ describe('useSlugAvailability', () => {
   it('reports a slug someone else holds as taken', async () => {
     vi.mocked(api.lookupRoomBySlug).mockResolvedValue({
       roomId: 'someone-else',
-      name: 'Their plan',
       hasPassword: false,
     })
 
@@ -74,7 +73,6 @@ describe('useSlugAvailability', () => {
   it('recognises the room\'s own link rather than calling it taken', async () => {
     vi.mocked(api.lookupRoomBySlug).mockResolvedValue({
       roomId: 'my-room',
-      name: 'My plan',
       hasPassword: false,
     })
 

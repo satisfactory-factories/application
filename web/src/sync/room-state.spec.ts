@@ -189,7 +189,6 @@ describe('contentFromSnapshot', () => {
       hasPassword: false,
       factories: [],
       revision: 1,
-      createdBy: 'user-1',
     } as unknown as RoomSnapshot
 
     expect(contentFromSnapshot(snapshot)).toMatchObject({ powerTarget: 0, groups: [] })

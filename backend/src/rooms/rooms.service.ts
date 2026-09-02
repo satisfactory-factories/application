@@ -76,11 +76,18 @@ export class RoomsService {
     }
   }
 
+  /**
+   * Unauthenticated, so it answers with the least it can: whether the link is live and
+   * whether it wants a password. The room's name arrives with the snapshot, once the
+   * caller has actually been let in.
+   */
   async lookupBySlug (slug: string): Promise<RoomSlugLookup> {
-    const room = await this.rooms.findOne({ slug, shared: true, deletedAt: null }).lean()
+    const room = await this.rooms
+      .findOne({ slug, shared: true, deletedAt: null }, { roomId: 1, passwordHash: 1 })
+      .lean()
     if (!room) throw notFound()
 
-    return { roomId: room.roomId, name: room.name, hasPassword: room.passwordHash !== null }
+    return { roomId: room.roomId, hasPassword: room.passwordHash !== null }
   }
 
   // ===== Create and adopt =====
@@ -266,7 +273,10 @@ export class RoomsService {
     // The membership row goes last: while it survives, a retry can still tell that
     // the leave is unfinished and replay the bump.
     await this.steps.run('bump-rooms-revision', () => this.bumpRoomsRevision([userId]))
-    await this.steps.run('record-activity', () => this.activity.record(roomId, userId, 'left'))
+    // Idempotent per person: the row is written before the membership goes, so a resumed
+    // leave would otherwise log the same departure twice and count it twice in the totals.
+    await this.steps.run('record-activity', () =>
+      this.activity.recordOnce(roomId, userId, 'left', { perActor: true }))
     await this.steps.run('remove-membership', async () => {
       await this.memberships.deleteOne({ userId, roomId })
     })
@@ -301,7 +311,10 @@ export class RoomsService {
     // Same reasoning as leave, inverted: the membership row is written last, so
     // its absence is what tells a retry the join is unfinished.
     await this.steps.run('bump-rooms-revision', () => this.bumpRoomsRevision([userId]))
-    await this.steps.run('record-activity', () => this.activity.record(roomId, userId, 'joined'))
+    // Same reasoning as leave: the row precedes the membership write, so a retry after a
+    // failure at that write must find its own row rather than add a second one.
+    await this.steps.run('record-activity', () =>
+      this.activity.recordOnce(roomId, userId, 'joined', { perActor: true }))
     await this.steps.run('ensure-membership', () =>
       this.grantMembership(userId, roomId, 'member', roomEpoch(room)))
 

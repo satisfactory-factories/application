@@ -219,8 +219,9 @@ describe('invite passwords and visitor tokens', () => {
     it('reports hasPassword through the slug lookup and the room list', async () => {
       await setPassword('first')
 
-      expect((await get(`/rooms/by-slug/${slug}`)).body)
-        .toEqual({ roomId, name: 'Shared plan', hasPassword: true })
+      // No name: the route is unauthenticated, so it answers whether the link is live
+      // and whether it wants a password, and nothing else.
+      expect((await get(`/rooms/by-slug/${slug}`)).body).toEqual({ roomId, hasPassword: true })
       expect((await get('/rooms', owner)).body.rooms[0].hasPassword).toBe(true)
     })
 

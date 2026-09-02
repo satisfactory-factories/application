@@ -308,7 +308,7 @@ describe('rooms', () => {
 
       const lookup = await get(`/rooms/by-slug/${response.body.room.slug}`)
       expect(lookup.status).toBe(200)
-      expect(lookup.body).toEqual({ roomId: room.roomId, name: 'Iron Line', hasPassword: false })
+      expect(lookup.body).toEqual({ roomId: room.roomId, hasPassword: false })
     })
 
     it('accepts a custom slug and refuses one already taken', async () => {
