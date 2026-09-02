@@ -27,6 +27,7 @@ import { getHandGatheredParts } from '@/utils/factory-management/parts'
 import { needsPacedRender } from '@/utils/render-pacing'
 import { config } from '@/config/config'
 import { recordEvent } from '@/utils/record-event'
+import { writeLocalStorage } from '@/utils/safe-storage'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -238,25 +239,43 @@ export const useAppStore = defineStore('app', () => {
    * 5-second interval fires during any load that takes longer than that, and switching browser tabs
    * mid-load fires visibilitychange. Treating those as user work stamped a plan nobody had edited.
    */
-  const persistPlan = (fromLoad = !isLoaded.value) => {
+  /**
+   * @param evenWhileLoading only ever true for loadingCompleted's own flush, which is the
+   * one write that happens while the chain still holds the tab and the only one that has
+   * the whole plan to write.
+   *
+   * @returns whether the disk now holds the current plan. False says the write was skipped
+   * or refused, which is what the sync engine reads before advancing the mirror's revision.
+   */
+  const persistPlan = (fromLoad = !isLoaded.value, evenWhileLoading = false): boolean => {
+    // A load chain empties the tab's factory array and refills it one record at a time, so
+    // mid-chain it is a fragment. Writing that leaves a truncated plan on disk until the
+    // chain ends; loadingCompleted's own flush is what lands the whole thing.
+    if (loadInFlight.value && !evenWhileLoading) return false
     clearTimeout(persistTimer)
     // The debounce can outlive a test's DOM environment; a persist with nowhere to
     // write is a no-op, not a crash.
-    if (typeof localStorage === 'undefined') return
+    if (typeof localStorage === 'undefined') return false
+    // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
+    const json = JSON.stringify(toRaw(factoryTabs.value))
+    if (json === lastPersistedPlan) {
+      pendingUserEdit = false
+      return true
+    }
+    // Advanced only on a write that actually happened: a quota refusal that moved this on
+    // would make every later save think the disk already held the plan.
+    if (!writeLocalStorage('factoryTabs', json)) return false
+    lastPersistedPlan = json
     // A user edit that is still waiting to be written stamps the plan even if the write itself was
     // ordered by a load. Renaming a factory and switching tab inside the 500ms window used to lose
     // the timestamp: the load's schedulePersist cancelled the user's timer and inherited the write,
     // so the rename reached localStorage while lastEdit still described the plan before it.
     const userEditPending = pendingUserEdit
     pendingUserEdit = false
-    // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
-    const json = JSON.stringify(toRaw(factoryTabs.value))
-    if (json === lastPersistedPlan) return
-    lastPersistedPlan = json
-    localStorage.setItem('factoryTabs', json)
     if (!fromLoad || userEditPending) {
       setLastEdit() // Update last edit time whenever the data changes, from any source.
     }
+    return true
   }
 
   // Sticky until the write actually happens. schedulePersist cancels and replaces the pending
@@ -453,9 +472,18 @@ export const useAppStore = defineStore('app', () => {
   /** Nothing reaches loadingCompleted now, so release the chain or every later load queues behind a dead one. */
   const abandonLoad = (error: unknown) => {
     console.error('appStore: the load chain failed, releasing it', error)
+    // The chain left the tab holding a fragment, and releasing it below hands that fragment
+    // back to the sync engine as the user's plan. `preLoadFactories` is the whole thing.
+    const owner = (loadOwnerTabId ? getTab(loadOwnerTabId) : currentFactoryTab.value) as FactoryTab | undefined
+    const recovery = JSON.parse(localStorage.getItem('preLoadFactories') ?? '[]') as Factory[]
+    if (owner && recovery.length > 0) owner.factories = recovery
+
     loadInFlight.value = false
     loadOwnerTabId = null
     queuedLoad = null
+    // runLoad lowered it and only loadingCompleted raises it. Left down, this client
+    // persists nothing and sends nothing for the rest of the session.
+    isLoaded.value = true
   }
 
   /**
@@ -647,7 +675,7 @@ export const useAppStore = defineStore('app', () => {
     // pending load-origin write and save the migration as though the user had made it, stamping
     // lastEdit. Writing it here leaves that later write with nothing to do, since persistPlan
     // returns early when the plan has not changed since the last one.
-    persistPlan(true)
+    persistPlan(true, true)
     isLoaded.value = true
 
     // Reset the saved factories

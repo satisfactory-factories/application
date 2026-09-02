@@ -18,6 +18,8 @@ import { config } from '@/config/config'
 import { PACED_RENDER_FACTORY_COUNT } from '@/utils/render-pacing'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
+import { refuseLocalStorageWrites } from '../../testing/storage'
+import { resetStorageWarning } from '@/utils/safe-storage'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -893,6 +895,82 @@ describe('app-store', () => {
           expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
         })
       })
+    })
+  })
+
+  describe('persisting the plan when things go wrong', () => {
+    const bigPlan = () =>
+      Array.from({ length: PACED_RENDER_FACTORY_COUNT + 1 }, (_, index) => newFactory(`Factory ${index}`))
+
+    let restoreWrites: (() => void) | null = null
+
+    beforeEach(() => {
+      resetStorageWarning()
+      appStore.getFactories()
+    })
+
+    afterEach(async () => {
+      restoreWrites?.()
+      restoreWrites = null
+      vi.restoreAllMocks()
+      await settleLoads()
+    })
+
+    /**
+     * The chain empties the tab's factory array and refills it one record at a time, so
+     * anything written mid-chain is a truncated plan. A rebase reload left one on disk for
+     * the length of the stagger, and a crash inside that window kept it.
+     */
+    it('refuses to save the plan while a load chain owns the tab', async () => {
+      const plan = bigPlan()
+      const chain = appStore.prepareLoader(plan, true)
+      expect(appStore.loadInFlight, 'the chain under test').toBe(true)
+
+      expect(appStore.persistPlan()).toBe(false)
+
+      await chain
+      const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+      expect(stored[0]?.factories, 'the skipped save has to land when the chain ends').toHaveLength(plan.length)
+    })
+
+    /**
+     * `runLoad` lowers `isLoaded` and only `loadingCompleted` raises it, so a chain that
+     * dies leaves the client persisting nothing and sending nothing for the session.
+     */
+    it('re-arms the client and puts the plan back when a load chain dies', async () => {
+      const plan = bigPlan()
+      const emit = eventBus.emit.bind(eventBus)
+      vi.spyOn(eventBus, 'emit').mockImplementation(((event: string, payload: unknown) => {
+        if (event === 'incrementLoad') throw new Error('the chain died')
+        return emit(event as never, payload as never)
+      }) as typeof eventBus.emit)
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(appStore.prepareLoader(plan, true)).rejects.toThrow('the chain died')
+
+      expect(appStore.loadInFlight).toBe(false)
+      expect(appStore.isLoaded).toBe(true)
+      expect(appStore.getFactories(), 'the tab was left holding a fragment').toHaveLength(plan.length)
+    })
+
+    /**
+     * `lastPersistedPlan` is the "nothing has changed since" shortcut. Advanced on a write
+     * that never happened, every later save takes the shortcut and the plan is never saved
+     * again — and the throw itself unwound whatever edit asked for the save.
+     */
+    it('leaves the plan unsaved rather than recording a save that was refused', () => {
+      appStore.getCurrentTab().name = 'Renamed'
+      restoreWrites = refuseLocalStorageWrites(key => key === 'factoryTabs')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect(() => appStore.persistPlan()).not.toThrow()
+      expect(appStore.persistPlan()).toBe(false)
+
+      restoreWrites()
+      restoreWrites = null
+      expect(appStore.persistPlan()).toBe(true)
+      const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+      expect(stored[0]?.name).toBe('Renamed')
     })
   })
 
