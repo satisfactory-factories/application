@@ -16,6 +16,7 @@ import { CachedQuery } from './cached-query'
 import { ConnectionRegistry } from '../realtime/connection-registry'
 import { EventCountersService } from '../event-counters/event-counters.service'
 import { Room } from '../rooms/schemas/room.schema'
+import { ROOM_ACTIVITY_KINDS } from '../rooms/schemas/room-activity.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
 import { RoomTotalsService } from '../room-totals/room-totals.service'
 import { Share } from '../legacy/share.schema'
@@ -318,11 +319,7 @@ export class MetricsService {
       this.sharesTotal.set(cheap.value.shares)
       this.shareOpensTotal.set(cheap.value.shareOpens)
 
-      // Not reset first: the tally only ever grows and a kind never leaves it, so there is
-      // no stale label set to clear the way the top-N gauges have.
-      for (const [action, count] of cheap.value.roomActions) {
-        this.roomActions.set({ action }, count)
-      }
+      this.setRoomActionGauges(cheap.value.roomActions)
     }
 
     // Only on a real reload. prom-client remembers every label set it has been given, so a
@@ -330,6 +327,26 @@ export class MetricsService {
     // forever unless the gauge is cleared first. Equally, a failed reload must leave the
     // previous set intact rather than blanking the panel.
     if (slow.refreshed && slow.value) this.setSlowGauges(slow.value)
+  }
+
+  /**
+   * Every kind is exported, whether or not it has ever happened. prom-client emits a series
+   * only once it has been set, so a kind nobody has done yet would be absent entirely and
+   * its panel would read "No data" rather than a green zero — which is what the tally said
+   * on release, when nothing had been counted at all.
+   *
+   * Not reset first: the tally only rises and a kind never leaves it, so unlike the top-N
+   * gauges there is no stale label set to clear.
+   */
+  private setRoomActionGauges (stored: Map<string, number>): void {
+    // Seeded first, then overlaid, so a kind held in the database but no longer in the enum
+    // still reports rather than being silently dropped.
+    const actions = new Map<string, number>(
+      ROOM_ACTIVITY_KINDS.filter(kind => kind !== 'op').map(kind => [kind, 0]),
+    )
+    for (const [action, count] of stored) actions.set(action, count)
+
+    for (const [action, count] of actions) this.roomActions.set({ action }, count)
   }
 
   private setClientGauges (census: TelemetrySnapshot): void {

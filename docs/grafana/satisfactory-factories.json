@@ -2976,12 +2976,96 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (window) (sf_active_accounts{job=\"satisfactory-factories\"})",
-                        "legendFormat": "{{window}}",
+                        "expr": "sum(sf_active_accounts{job=\"satisfactory-factories\",window=\"1h\"})",
+                        "legendFormat": "1h",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_active_accounts{job=\"satisfactory-factories\",window=\"24h\"})",
+                        "legendFormat": "24h",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_active_accounts{job=\"satisfactory-factories\",window=\"7d\"})",
+                        "legendFormat": "7d",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_active_accounts{job=\"satisfactory-factories\",window=\"14d\"})",
+                        "legendFormat": "14d",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_active_accounts{job=\"satisfactory-factories\",window=\"30d\"})",
+                        "legendFormat": "30d",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
                     "hidden": false
                   }
                 }
@@ -4258,12 +4342,96 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (window) (sf_new_accounts{job=\"satisfactory-factories\"})",
-                        "legendFormat": "{{window}}",
+                        "expr": "sum(sf_new_accounts{job=\"satisfactory-factories\",window=\"1h\"})",
+                        "legendFormat": "1h",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_accounts{job=\"satisfactory-factories\",window=\"24h\"})",
+                        "legendFormat": "24h",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_accounts{job=\"satisfactory-factories\",window=\"7d\"})",
+                        "legendFormat": "7d",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_accounts{job=\"satisfactory-factories\",window=\"14d\"})",
+                        "legendFormat": "14d",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_accounts{job=\"satisfactory-factories\",window=\"30d\"})",
+                        "legendFormat": "30d",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
                     "hidden": false
                   }
                 }
@@ -4577,12 +4745,96 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (window) (sf_signed_in_accounts{job=\"satisfactory-factories\"})",
-                        "legendFormat": "{{window}}",
+                        "expr": "sum(sf_signed_in_accounts{job=\"satisfactory-factories\",window=\"1h\"})",
+                        "legendFormat": "1h",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_signed_in_accounts{job=\"satisfactory-factories\",window=\"24h\"})",
+                        "legendFormat": "24h",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_signed_in_accounts{job=\"satisfactory-factories\",window=\"7d\"})",
+                        "legendFormat": "7d",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_signed_in_accounts{job=\"satisfactory-factories\",window=\"14d\"})",
+                        "legendFormat": "14d",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_signed_in_accounts{job=\"satisfactory-factories\",window=\"30d\"})",
+                        "legendFormat": "30d",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
                     "hidden": false
                   }
                 }
@@ -5843,12 +6095,96 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (window) (sf_new_shares{job=\"satisfactory-factories\"})",
-                        "legendFormat": "{{window}}",
+                        "expr": "sum(sf_new_shares{job=\"satisfactory-factories\",window=\"1h\"})",
+                        "legendFormat": "1h",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_shares{job=\"satisfactory-factories\",window=\"24h\"})",
+                        "legendFormat": "24h",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_shares{job=\"satisfactory-factories\",window=\"7d\"})",
+                        "legendFormat": "7d",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_shares{job=\"satisfactory-factories\",window=\"14d\"})",
+                        "legendFormat": "14d",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_new_shares{job=\"satisfactory-factories\",window=\"30d\"})",
+                        "legendFormat": "30d",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
                     "hidden": false
                   }
                 }
