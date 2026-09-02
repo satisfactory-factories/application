@@ -11,6 +11,13 @@ const shortDate = (at: Date): string => {
 }
 
 /**
+ * How far a stamp may sit in the future before the clamp below stops being a
+ * rounding allowance and starts being a lie. Beyond it the browser's clock is
+ * wrong rather than a moment behind, and the date is the honest answer.
+ */
+const SKEW_TOLERANCE = 90
+
+/**
  * "1s ago" counting up through "59s ago", "1m ago", "59m ago", "1hr ago",
  * "23hr ago", then the date. Never "now": a stamp always reads as at least one
  * second old, so the text visibly counts. Empty string for anything unreadable,
@@ -20,9 +27,14 @@ export const relativeTime = (iso: string | undefined, now: Date = new Date()): s
   const then = iso === undefined ? Number.NaN : new Date(iso).getTime()
   if (Number.isNaN(then)) return ''
 
+  const seconds = (now.getTime() - then) / 1000
+  // A browser clock days behind the server's would otherwise clamp every stamp it
+  // has to "1s ago", reading a week-old plan as just edited.
+  if (seconds < -SKEW_TOLERANCE) return shortDate(new Date(then))
+
   // Clamped to 1: a server clock a second ahead of the browser's must not say a
   // plan you just edited changes in the future.
-  const elapsed = Math.max(1, Math.round((now.getTime() - then) / 1000))
+  const elapsed = Math.max(1, Math.round(seconds))
   if (elapsed < 60) return `${elapsed}s ago`
   if (elapsed < HOUR) return `${Math.floor(elapsed / 60)}m ago`
   if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}hr ago`

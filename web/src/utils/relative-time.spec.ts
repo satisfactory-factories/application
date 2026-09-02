@@ -27,8 +27,19 @@ describe('relativeTime', () => {
   })
 
   // A server clock a moment ahead of the browser's must not read as the future.
-  it('clamps a stamp from the future to "1s ago"', () => {
+  it('clamps a stamp from the near future to "1s ago"', () => {
     expect(relativeTime(new Date(now.getTime() + 5000).toISOString(), now)).toBe('1s ago')
+    expect(relativeTime(ago(-89), now)).toBe('1s ago')
+  })
+
+  /**
+   * A browser whose clock is days behind puts every real stamp in its future. Clamped,
+   * a plan last touched a week ago reads as edited a second ago; the date at least
+   * says something true.
+   */
+  it('shows the date rather than "1s ago" for a stamp far in the future', () => {
+    expect(relativeTime(ago(-91), now)).toBe('31/Aug/26')
+    expect(relativeTime(ago(-60 * 60 * 24 * 7), now)).toBe('07/Sep/26')
   })
 
   it('shows nothing at all for a missing or unreadable stamp', () => {
