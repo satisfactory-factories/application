@@ -25,6 +25,7 @@ import { mergeFactories, stableStringify } from '@/sync/room-state'
 import { fingerprint } from '@/sync/offline-conflict'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import eventBus from '@/utils/eventBus'
+import { refuseLocalStorageWrites } from '../../testing/storage'
 
 const ROOM = 'room-1'
 const SOCKET_OPEN = 1
@@ -2529,6 +2530,36 @@ describe('room-sync-store', () => {
       expect(meta.userTouchedIds).toEqual([1])
     })
 
+    /**
+     * The plan is persisted on a 500ms debounce and the metadata beside it was not, so a
+     * crash in that window left the metadata claiming a revision the render mirror was
+     * behind. Boot believes it: `canRenderInstantly` skips the load and `seedFromMirror`
+     * takes the stale records as the agreed baseline, which then go back to the room.
+     */
+    it('writes the plan before the metadata that claims its revision', () => {
+      const tab = syncAt(fixture, 4)
+
+      // No timer is advanced anywhere here, so only a synchronous write can land this.
+      receive({ type: 'op_apply', roomId: ROOM, diff: { powerTarget: 900 }, revision: 5 })
+
+      const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+      expect(tab.powerTarget).toBe(900)
+      expect(stored[0]?.powerTarget, 'the metadata below describes this').toBe(900)
+      expect(readTabMirrorMeta()[ROOM]?.revision).toBe(5)
+    })
+
+    it('holds the metadata revision back when the plan cannot be written', () => {
+      syncAt(fixture, 4)
+      const restore = refuseLocalStorageWrites(key => key === 'factoryTabs')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      receive({ type: 'op_apply', roomId: ROOM, diff: { powerTarget: 900 }, revision: 5 })
+      restore()
+      vi.restoreAllMocks()
+
+      expect(readTabMirrorMeta()[ROOM]?.revision, 'claimed a plan the disk never took').toBe(4)
+    })
+
     it('prunes metadata for tabs the mirror no longer holds', () => {
       syncAt(fixture, 4)
       setTabMirrorMeta('a-dead-tab', {
@@ -2552,6 +2583,121 @@ describe('room-sync-store', () => {
       expect(store.rooms[ROOM]).toBeUndefined()
       expect(readTabMirrorMeta()[ROOM]).toBeUndefined()
       expect(framesOf().at(-1)).toEqual({ type: 'leave', roomId: ROOM })
+    })
+  })
+
+  describe('healing a room the server has moved on without', () => {
+    /**
+     * Post-commit broadcasts are best-effort. The rebase path has always refused a diff
+     * built against a revision it never held; the quiet path took it, and the probe then
+     * reported the room up to date for the rest of the session.
+     */
+    it('asks for a snapshot rather than swallowing a broadcast that skipped a revision', () => {
+      const tab = syncAt(fixture, 4)
+      const before = joinsOf().length
+
+      receive({ type: 'op_apply', roomId: ROOM, diff: { powerTarget: 900 }, revision: 6 })
+
+      expect(tab.powerTarget, 'a diff built on a baseline this client never held').toBe(0)
+      expect(store.rooms[ROOM].revision).toBe(4)
+      expect(joinsOf().length).toBe(before + 1)
+      expect(joinsOf().at(-1)).toEqual({ type: 'join', roomId: ROOM })
+    })
+
+    it('still takes the very next revision quietly', () => {
+      const tab = syncAt(fixture, 4)
+      const before = joinsOf().length
+
+      receive({ type: 'op_apply', roomId: ROOM, diff: { powerTarget: 900 }, revision: 5 })
+
+      expect(tab.powerTarget).toBe(900)
+      expect(store.rooms[ROOM].revision).toBe(5)
+      expect(joinsOf().length, 'nothing to heal').toBe(before)
+    })
+
+    // The gateway documents this outcome for internal_error: the op is gone and no ack
+    // follows it. Left pending, the room sends nothing more until the socket drops.
+    it('drops the op an error frame answers and re-baselines the room', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].name = 'Alpha renamed'
+      store.flushRoom(ROOM)
+      expect(store.rooms[ROOM].hasPendingOp, 'the op under test').toBe(true)
+      const before = joinsOf().length
+
+      receive({ type: 'error', code: 'internal_error', message: 'boom', roomId: ROOM })
+
+      expect(store.rooms[ROOM].hasPendingOp).toBe(false)
+      expect(joinsOf().length).toBe(before + 1)
+      expect(joinsOf().at(-1)).toEqual({ type: 'join', roomId: ROOM })
+    })
+
+    it('re-joins for a bare not_joined that names no room', () => {
+      syncAt(fixture, 4)
+      const before = joinsOf().length
+
+      receive({ type: 'error', code: 'not_joined', message: 'Join the room before sending ops.' })
+
+      expect(joinsOf().length).toBe(before + 1)
+      expect(joinsOf().at(-1)).toEqual({ type: 'join', roomId: ROOM })
+    })
+
+    // A hard purge answers every join with this, so the tab used to sit at `joining`
+    // for the rest of the session with nothing on screen saying why.
+    it('hands the tab back as a local copy when the room is not there any more', () => {
+      syncAt(fixture, 4)
+
+      receive({ type: 'error', code: 'room_not_found', message: 'That room does not exist.', roomId: ROOM })
+
+      expect(store.rooms[ROOM].status).toBe('deleted')
+      expect(readTabMirrorMeta()[ROOM]).toBeUndefined()
+    })
+
+    it('ignores a reject nothing is waiting on', () => {
+      syncAt(fixture, 4)
+
+      receive({ type: 'op_reject', roomId: ROOM, opId: 'never-sent', reason: 'stale_base' })
+
+      expect(store.rooms[ROOM].rejectStreak).toBe(0)
+      expect(store.rooms[ROOM].status).toBe('synced')
+    })
+
+    it('clears a reject streak once a snapshot has re-baselined the room', () => {
+      syncAt(fixture, 4)
+      store.rooms[ROOM].rejectStreak = 2
+
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 5), revision: 5 })
+
+      expect(store.rooms[ROOM].rejectStreak).toBe(0)
+    })
+
+    /**
+     * A join is answered from a read that can predate this client's last ack, so the
+     * server's own reply can carry a revision the client has already moved past.
+     */
+    it('ignores a snapshot taken before the revision this client has proved', () => {
+      const tab = syncAt(fixture, 6)
+
+      receive({
+        type: 'snapshot',
+        roomId: ROOM,
+        room: snapshotOf([newFactory('Ancient', 9, 9)], 5),
+        revision: 5,
+      })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      expect(store.rooms[ROOM].revision).toBe(6)
+      expect(store.rooms[ROOM].status).toBe('synced')
+    })
+
+    it('ignores an up_to_date below the baseline the server already acked', () => {
+      syncAt(fixture, 6)
+
+      receive({ type: 'up_to_date', roomId: ROOM, revision: 4 })
+      store.probeRevision(ROOM)
+
+      expect(store.rooms[ROOM].revision).toBe(6)
+      expect(store.rooms[ROOM].status).toBe('synced')
+      expect(joinsOf().at(-1)?.lastRevision, 'the baseline was rewound').toBe(6)
     })
   })
 

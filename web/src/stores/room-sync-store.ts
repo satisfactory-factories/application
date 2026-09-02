@@ -139,6 +139,12 @@ interface RoomEngine {
   unacknowledged: Map<number, string>
   /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
   needsSnapshot: boolean
+  /**
+   * The revision of the content the disk actually holds. The plan is persisted on a 500ms
+   * debounce and the mirror's metadata is not, so this is what stops the metadata claiming
+   * a revision the render mirror is still behind — which boot would believe.
+   */
+  mirroredRevision: number
   visitorToken?: string
 }
 
@@ -188,6 +194,11 @@ export interface TrackRoomOptions {
   visitorToken?: string
 }
 
+export interface UntrackRoomOptions {
+  /** The tab stays in this browser, so its sync metadata is still about something. */
+  keepMirrorMeta?: boolean
+}
+
 export interface ConfigureOptions {
   socket?: SyncSocket
 }
@@ -215,6 +226,7 @@ const newEngine = (options: TrackRoomOptions): RoomEngine => ({
   fingerprints: new Map(),
   unacknowledged: new Map(),
   needsSnapshot: false,
+  mirroredRevision: 0,
   visitorToken: options.visitorToken,
 })
 
@@ -412,13 +424,26 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }
 
     setTabMirrorMeta(roomId, {
-      revision: engine.acked.revision,
+      // The revision the mirror is at, which is not the baseline until the plan is written.
+      revision: engine.mirroredRevision,
       appVersion: PROTOCOL_VERSION,
       userTouchedIds: [...engine.touchedFactories],
       userTouchedFields: [...engine.touchedFields],
       declaredRemovals: [...engine.declaredRemovals],
       baselinePrints,
     })
+  }
+
+  /**
+   * Content first, metadata second, for every path that moves the baseline. A metadata
+   * revision ahead of the plan on disk is believed on the next boot — `canRenderInstantly`
+   * skips the load and `seedFromMirror` takes the stale records as the baseline, which are
+   * then pushed back at the room as this client's own edits.
+   */
+  const persistBaseline = (roomId: string) => {
+    const engine = engines.get(roomId)
+    if (engine && appStore.persistPlan()) engine.mirroredRevision = engine.acked.revision
+    persistMeta(roomId)
   }
 
   const pruneMirrorMeta = () => {
@@ -682,7 +707,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       clearSatisfiedIntent(roomId, engine.acked)
     }
 
-    persistMeta(roomId)
+    persistBaseline(roomId)
     // The prompt is about the newest server content, so a room already asking has to be
     // re-measured here: an op or a second snapshot may have settled the question.
     if (conflicts.value[roomId]) refreshConflict(roomId, server)
@@ -999,10 +1024,50 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
         if (message.code === 'forbidden' && message.roomId && room) {
           revokedSinceConnect = true
           markRoomGone(message.roomId, 'revoked')
+          break
         }
+        // A hard-purged room answers every join with this, so the tab would sit at
+        // `joining` for the rest of the session. It is as gone as a deleted one.
+        if (message.code === 'room_not_found' && message.roomId && room) {
+          markRoomGone(message.roomId, 'deleted')
+          break
+        }
+        clearPendingAfterError(message.roomId, message.code)
         break
       }
     }
+  }
+
+  /**
+   * An error frame answers the last thing this client sent, so the op it was carrying is
+   * dead whatever the code says. Left pending, the room sends nothing more until the socket
+   * drops, and there is no knowing whether the op landed: re-baseline rather than guess.
+   */
+  const clearPendingAfterError = (roomId: string | undefined, code: string) => {
+    for (const id of roomId ? [roomId] : Object.keys(rooms.value)) {
+      const room = rooms.value[id]
+      const engine = engines.get(id)
+      if (!room || !engine) continue
+
+      const hadPending = engine.pending !== null
+      engine.pending = null
+      room.hasPendingOp = false
+      // `not_joined` can arrive bare, for a room the server dropped underneath us.
+      if (hadPending || code === 'not_joined') requestSnapshot(id)
+    }
+  }
+
+  /**
+   * A join is answered from a read that can predate this client's last ack, so a snapshot
+   * or `up_to_date` below the baseline is old news and adopting it would rewind the room.
+   * The frame still proves the join landed, which is what the status follows.
+   */
+  const dropStaleFrame = (roomId: string, revision: number): boolean => {
+    const room = rooms.value[roomId]
+    const engine = engines.get(roomId)
+    if (!room || !engine || !engine.seeded || revision >= engine.acked.revision) return false
+    if (room.status !== 'paused') room.status = 'synced'
+    return true
   }
 
   const onSnapshot = (roomId: string, snapshot: RoomSnapshot, revision: number) => {
@@ -1010,12 +1075,17 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // Parking wins: the check needs a whole plan to compare against, and the fresh
     // snapshot the load asks for on the way out runs it properly.
     if (parkWhileLoading(roomId)) return
+    if (dropStaleFrame(roomId, revision)) return
 
     const server = contentFromSnapshot(snapshot)
     // Before the rebase, which replaces both halves of the comparison: the baseline this
     // client agreed on, and the records it still holds.
     noteClashes(roomId, server, revision)
     const recalculated = rebase(roomId, server, revision)
+    // A clean adopt is proof the room is healthy, so an old streak must not carry into
+    // the pause decision on the next refused op.
+    const adopted = rooms.value[roomId]
+    if (adopted && adopted.status !== 'paused') adopted.rejectStreak = 0
     // Only a snapshot that recalculated needs the loader. The 10s revision probe answers
     // with a snapshot whenever it heals a missed op, and running the load funnel for those
     // blanked the planner and blocked flushing for the length of a chain, over and over.
@@ -1032,6 +1102,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!room || !engine) return
     // The baseline this would seed comes off the tab, which is a fragment right now.
     if (parkWhileLoading(roomId)) return
+    if (dropStaleFrame(roomId, revision)) return
 
     room.status = 'synced'
     room.revision = revision
@@ -1042,7 +1113,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     engine.acked.revision = revision
     engine.seeded = true
 
-    persistMeta(roomId)
+    persistBaseline(roomId)
     flushRoom(roomId)
   }
 
@@ -1097,7 +1168,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.rejectStreak = 0
 
     clearSatisfiedIntent(roomId, sent)
-    persistMeta(roomId)
+    persistBaseline(roomId)
     // Edits made after the send are still unsent; they go out as the next op.
     flushRoom(roomId)
   }
@@ -1123,8 +1194,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       eventBus.emit('planContentApplied', { tabId: roomId })
     }
 
+    // The same gap guard the rebase below runs. Without it a dropped broadcast is
+    // swallowed: the diff lands on a baseline it was never built against, and the probe
+    // then reports the room up to date forever.
     if (!hasLocalEdits(roomId)) {
-      applyRemote(roomId, diff, revision)
+      if (revision === engine.acked.revision + 1) applyRemote(roomId, diff, revision)
+      else requestSnapshot(roomId)
       return
     }
 
@@ -1150,7 +1225,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       writeContentToTab(tab, applyDiffToContent(contentOfTab(tab), diff))
       appStore.schedulePersist()
     }
-    persistMeta(roomId)
+    persistBaseline(roomId)
   }
 
   const onOpReject = (
@@ -1162,7 +1237,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const room = rooms.value[roomId]
     const engine = engines.get(roomId)
     if (!room || !engine) return
-    if (engine.pending && engine.pending.opId !== opId) return
+    // A reject nothing is waiting on is a stale frame, and counting it would pause a
+    // healthy room. `onOpAck` has always read it this way.
+    if (engine.pending?.opId !== opId) return
 
     const refusedRemovals = engine.pending?.diff.removedFactoryIds ?? []
     engine.pending = null
@@ -1360,6 +1437,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       for (const [id, print] of Object.entries(stored?.baselinePrints ?? {})) {
         engine.baselinePrints.set(Number(id), print)
       }
+      engine.mirroredRevision = stored?.revision ?? 0
     } else if (options.visitorToken) {
       engine.visitorToken = options.visitorToken
     }
@@ -1368,7 +1446,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (isConnected.value) join(roomId)
   }
 
-  const untrackRoom = (roomId: string) => {
+  /**
+   * @param keepMirrorMeta for a tab this browser still holds. The metadata is per tab
+   * rather than per account, and it carries the unsent edits a sign-out has to survive:
+   * dropped, the next sign-in adopts the server's copy over them without asking.
+   */
+  const untrackRoom = (roomId: string, { keepMirrorMeta = false }: UntrackRoomOptions = {}) => {
     if (rooms.value[roomId]) socket?.leave(roomId)
     delete rooms.value[roomId]
     engines.delete(roomId)
@@ -1376,7 +1459,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // A question about a room this browser no longer holds has no answer worth taking.
     delete conflicts.value[roomId]
     parkedResolutions.delete(roomId)
-    removeTabMirrorMeta(roomId)
+    if (!keepMirrorMeta) removeTabMirrorMeta(roomId)
   }
 
   const join = (roomId: string): boolean => {
