@@ -485,6 +485,42 @@ add(87, "Of Those Who Signed In, How Many Edited",
     stat([{"value": 0, "color": "red"}, {"value": 0.3, "color": "#EAB839"}, {"value": 0.6, "color": "green"}],
          unit="percentunit", minmax=(0, 1)))
 
+# ----------------------------------------------------------------- share links
+# Snapshot links, the "copy a link to this plan" feature. Every number here comes from the
+# shares collection, which nothing purges, so all of it is complete back to the feature
+# shipping rather than starting at whenever these panels did.
+add(100, "Share Links Created",
+    "Snapshot links that exist, all time. Counted from the rows themselves, so it is exact and complete, and falls only if a row is deleted by hand.",
+    [query("sum(sf_shares_total%s)" % J, "Links")],
+    stat(BLUE, graph="area", color_mode="background_solid"))
+
+add(101, "Share Links Opened",
+    "Opens summed across every link. Counted when the link is fetched, which is the same moment the planner adds the plan as a tab.",
+    [query("sum(sf_share_opens_total%s)" % J, "Opens")],
+    stat(GREEN, graph="area", color_mode="background_solid"))
+
+add(102, "Opens per Link",
+    "Average opens per link. Around 1 means links are made and read once; well above means they are being passed around.",
+    [query("sum(sf_share_opens_total%s) / sum(sf_shares_total%s)" % (J, J), "Opens")],
+    stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], decimals=1))
+
+add(103, "New Share Links",
+    "Links created inside each rolling window. Read from the creation date the rows have always carried, so it is correct all the way back, not just since this metric shipped.",
+    [query('sum(sf_new_shares%s)' % sel('window="24h"'), "24 hours", "A"),
+     query('sum(sf_new_shares%s)' % sel('window="7d"'), "7 days", "B"),
+     query('sum(sf_new_shares%s)' % sel('window="30d"'), "30 days", "C")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
+
+add(104, "Share Links Created Over Time",
+    "Each rolling window plotted. A step up in the 24h line is somebody making a link.",
+    [query("sum by (window) (sf_new_shares%s)" % J, "{{window}}")],
+    timeseries(fill=8))
+
+add(105, "Most Opened Share Links",
+    "The links people actually pass around. Top 20 only, and a link that has never been opened is left out rather than shown at zero.",
+    [query("sort_desc(sf_share_opens%s)" % J, "{{share_id}}", instant=True)],
+    bargauge(display_name="${__field.labels.share_id}"))
+
 # ------------------------------------------------------------- biggest and busiest
 add(70, "Biggest Plans",
     "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
@@ -579,6 +615,11 @@ rows = [
         item(14, 0, 10, 4, 80),
         item(0, 4, 12, 8, 83), item(12, 4, 12, 8, 86),
         item(0, 12, 5, 4, 85), item(5, 12, 19, 4, 84),
+    ]),
+    row("🔗 Share Links · from the database", [
+        item(0, 0, 5, 4, 100), item(5, 0, 5, 4, 101), item(10, 0, 4, 4, 102),
+        item(14, 0, 10, 4, 103),
+        item(0, 4, 12, 8, 104), item(12, 4, 12, 8, 105),
     ]),
     row("🏆 Biggest and Busiest · from the database", [
         item(0, 0, 4, 4, 73),

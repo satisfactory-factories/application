@@ -17,6 +17,7 @@ import { ConnectionRegistry } from '../realtime/connection-registry'
 import { EventCountersService } from '../event-counters/event-counters.service'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
+import { Share } from '../legacy/share.schema'
 import { TelemetryService } from './telemetry.service'
 import type { TelemetrySnapshot } from './telemetry.service'
 import { User } from '../auth/user.schema'
@@ -30,10 +31,13 @@ interface CheapCounts {
   roomMembers: number
   users: number
   signIns: number
+  shares: number
+  shareOpens: number
 }
 
 interface OwnedTotal { name: string, value: number }
 interface RoomTotal { roomId: string, owner: string, factories: number }
+interface ShareTotal { shareId: string, opens: number }
 
 /** The slow numbers: five window counts and three top-N aggregations. */
 interface SlowStats {
@@ -43,6 +47,8 @@ interface SlowStats {
   topRooms: RoomTotal[]
   topEditors: OwnedTotal[]
   topOwners: OwnedTotal[]
+  newShares: Array<readonly [string, number]>
+  topShares: ShareTotal[]
 }
 
 /**
@@ -83,6 +89,11 @@ export class MetricsService {
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
 
+  private readonly sharesTotal: Gauge<string>
+  private readonly shareOpensTotal: Gauge<string>
+  private readonly newShares: Gauge<'window'>
+  private readonly shareOpens: Gauge<'share_id'>
+
   private readonly census: CachedQuery<TelemetrySnapshot>
   private readonly cheap: CachedQuery<CheapCounts>
   private readonly slow: CachedQuery<SlowStats>
@@ -91,6 +102,7 @@ export class MetricsService {
     @InjectModel(Room.name) private readonly rooms: Model<Room>,
     @InjectModel(RoomMembership.name) private readonly memberships: Model<RoomMembership>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(Share.name) private readonly shares: Model<Share>,
     private readonly connections: ConnectionRegistry,
     private readonly telemetry: TelemetryService,
     private readonly counters: EventCountersService,
@@ -207,6 +219,29 @@ export class MetricsService {
       registers,
     })
 
+    this.sharesTotal = new Gauge({
+      name: 'sf_shares_total',
+      help: 'Snapshot share links that exist. Complete back to the feature shipping, since nothing purges the collection, and it falls only if a row is removed by hand.',
+      registers,
+    })
+    this.shareOpensTotal = new Gauge({
+      name: 'sf_share_opens_total',
+      help: 'Snapshot link opens, summed across links. Counted when the link is fetched, which is the same moment the planner adds the tab.',
+      registers,
+    })
+    this.newShares = new Gauge({
+      name: 'sf_new_shares',
+      help: 'Snapshot links created inside each rolling window. Retroactive: the creation date has always been stored.',
+      labelNames: ['window'],
+      registers,
+    })
+    this.shareOpens = new Gauge({
+      name: 'sf_share_opens',
+      help: `The ${METRICS_TOP_N} most-opened snapshot links.`,
+      labelNames: ['share_id'],
+      registers,
+    })
+
     // The census is a database read now too, so it gets the same last-good-value
     // treatment: a Mongo outage must not blank the client panels either.
     this.census = new CachedQuery(METRICS_CACHE_MS, () => this.telemetry.snapshot())
@@ -252,6 +287,8 @@ export class MetricsService {
       this.roomMembersTotal.set(cheap.value.roomMembers)
       this.usersTotal.set(cheap.value.users)
       this.signInsTotal.set(cheap.value.signIns)
+      this.sharesTotal.set(cheap.value.shares)
+      this.shareOpensTotal.set(cheap.value.shareOpens)
     }
 
     // Only on a real reload. prom-client remembers every label set it has been given, so a
@@ -304,36 +341,52 @@ export class MetricsService {
     for (const owner of stats.topOwners) {
       this.userFactories.set({ username: owner.name }, owner.value)
     }
+
+    for (const [window, shares] of stats.newShares) {
+      this.newShares.set({ window }, shares)
+    }
+
+    this.shareOpens.reset()
+    for (const share of stats.topShares) {
+      this.shareOpens.set({ share_id: share.shareId }, share.opens)
+    }
   }
 
   private async loadCheap (): Promise<CheapCounts> {
-    const [sharedRooms, privateRooms, totals, roomMembers, users, signIns] = await Promise.all([
-      this.rooms.countDocuments({ deletedAt: null, shared: true }),
-      // `$ne: true` rather than `false`, so a document predating the field still counts
-      // once rather than not at all.
-      this.rooms.countDocuments({ deletedAt: null, shared: { $ne: true } }),
-      this.sumRoomTotals(),
-      this.memberships.countDocuments(),
-      this.users.countDocuments(),
-      this.sumSignIns(),
-    ])
+    const [sharedRooms, privateRooms, totals, roomMembers, users, signIns, shares, shareOpens] =
+      await Promise.all([
+        this.rooms.countDocuments({ deletedAt: null, shared: true }),
+        // `$ne: true` rather than `false`, so a document predating the field still counts
+        // once rather than not at all.
+        this.rooms.countDocuments({ deletedAt: null, shared: { $ne: true } }),
+        this.sumRoomTotals(),
+        this.memberships.countDocuments(),
+        this.users.countDocuments(),
+        this.sumSignIns(),
+        this.shares.countDocuments(),
+        this.sumShareOpens(),
+      ])
 
-    return { sharedRooms, privateRooms, ...totals, roomMembers, users, signIns }
+    return { sharedRooms, privateRooms, ...totals, roomMembers, users, signIns, shares, shareOpens }
   }
 
   private async loadSlow (): Promise<SlowStats> {
     const now = this.clock.now()
-    const [activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners] =
+    const [activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares] =
       await Promise.all([
-        this.countByWindow(now, 'lastActiveAt'),
-        this.countByWindow(now, 'registered'),
-        this.countByWindow(now, 'lastSignInAt'),
+        this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
+        this.countByWindow(now, since => this.users.countDocuments({ registered: { $gt: since } })),
+        this.countByWindow(now, since => this.users.countDocuments({ lastSignInAt: { $gt: since } })),
         this.findLargestRooms(),
         this.findBusiestEditors(),
         this.findLargestOwners(),
+        this.countByWindow(now, since => this.shares.countDocuments({ created: { $gt: since } })),
+        this.findMostOpenedShares(),
       ])
 
-    return { activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners }
+    return {
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares,
+    }
   }
 
   /** Factories and accepted edits in one pass, since both are sums over the same documents. */
@@ -360,17 +413,39 @@ export class MetricsService {
   }
 
   /**
-   * One rolling-window count per configured window, over whichever date field is asked for.
+   * Opens across every link. `views` is bumped by `GET /share/:id`, which the planner calls
+   * immediately before adding the tab, so this counts links actually opened into a plan.
+   */
+  private async sumShareOpens (): Promise<number> {
+    const [row] = await this.shares.aggregate<{ total: number }>([
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$views', 0] } } } },
+    ])
+    return row?.total ?? 0
+  }
+
+  /** Tie-broken on the id, so equally popular links do not swap places between scrapes. */
+  private async findMostOpenedShares (): Promise<ShareTotal[]> {
+    const rows = await this.shares
+      .find({ views: { $gt: 0 } }, { id: 1, views: 1 })
+      .sort({ views: -1, id: 1 })
+      .limit(METRICS_TOP_N)
+      .lean()
+
+    return rows.map(row => ({ shareId: row.id, opens: row.views }))
+  }
+
+  /**
+   * One rolling-window count per configured window, for whatever the caller counts.
    * A timestamp rather than a bucket, so every window is exact with no boundary error, and
-   * `registered` needs no new writes at all: accounts have carried it since the beginning.
+   * most of the fields need no new writes at all: accounts have carried `registered` and
+   * shares their creation date since the beginning, so these windows are true retroactively.
    */
   private async countByWindow (
     now: Date,
-    field: 'lastActiveAt' | 'registered' | 'lastSignInAt',
+    count: (since: Date) => Promise<number>,
   ): Promise<Array<readonly [string, number]>> {
     return Promise.all(ACTIVE_ACCOUNT_WINDOWS.map(async ([label, ms]) => {
-      const since = new Date(now.getTime() - ms)
-      const matched = await this.users.countDocuments({ [field]: { $gt: since } })
+      const matched = await count(new Date(now.getTime() - ms))
       return [label, matched] as const
     }))
   }

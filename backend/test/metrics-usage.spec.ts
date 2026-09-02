@@ -12,6 +12,7 @@ import {
 } from '../src/metrics/metrics.constants'
 import { ANONYMOUS_ACTOR, UserActivityService } from '../src/user-activity/user-activity.service'
 import { Room } from '../src/rooms/schemas/room.schema'
+import { Share } from '../src/legacy/share.schema'
 import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
 import { RoomOpService } from '../src/realtime/room-op.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
@@ -256,6 +257,128 @@ describe('the database-backed usage metrics', () => {
       const second = labelValues(await scrape(), 'sf_room_factories', 'room_id')
 
       expect(first).toEqual(second)
+    })
+  })
+
+  describe('the share link metrics', () => {
+    const shares = () => context.app.get<Model<Share>>(getModelToken(Share.name))
+
+    let minted = 0
+    const seedShare = async (overrides: Partial<Share> = {}) =>
+      shares().create({
+        id: `link-${minted++}`,
+        data: '[]',
+        createdBy: 'Anonymous',
+        ...overrides,
+      })
+
+    // resetRooms leaves the shares collection alone, since every other suite owns its own.
+    beforeEach(async () => {
+      await shares().deleteMany({})
+    })
+
+    it('counts the links that exist, and the opens summed across them', async () => {
+      await seedShare({ views: 3 })
+      await seedShare({ views: 11 })
+      await seedShare()
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_shares_total')).toBe(3)
+      expect(sample(body, 'sf_share_opens_total')).toBe(14)
+    })
+
+    it('reads a row predating the view counter as zero rather than failing', async () => {
+      await shares().collection.insertOne({ id: 'ancient', data: '[]', createdBy: 'Anonymous' })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_shares_total')).toBe(1)
+      expect(sample(body, 'sf_share_opens_total')).toBe(0)
+    })
+
+    it('reports zero for both when no link has ever been made', async () => {
+      const body = await scrape()
+
+      expect(sample(body, 'sf_shares_total')).toBe(0)
+      expect(sample(body, 'sf_share_opens_total')).toBe(0)
+    })
+
+    // Retroactive, like sf_new_accounts: the creation date has always been stored, so these
+    // windows are correct for every link made before the metric existed.
+    it('counts links created in each rolling window', async () => {
+      const now = clock.now().getTime()
+      await seedShare({ created: new Date(now - 2 * HOUR) })
+      await seedShare({ created: new Date(now - 4 * DAY) })
+      await seedShare({ created: new Date(now - 20 * DAY) })
+      await seedShare({ created: new Date(now - 300 * DAY) })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_new_shares', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_new_shares', 'window="7d"')).toBe(2)
+      expect(sample(body, 'sf_new_shares', 'window="30d"')).toBe(3)
+    })
+
+    it('exports every window even with no links at all', async () => {
+      const body = await scrape()
+
+      for (const [label] of ACTIVE_ACCOUNT_WINDOWS) {
+        expect(sample(body, 'sf_new_shares', `window="${label}"`)).toBe(0)
+      }
+    })
+
+    it('names the most-opened links', async () => {
+      await seedShare({ id: 'popular-copper-belt', views: 42 })
+      await seedShare({ id: 'quiet-iron-rod', views: 1 })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_share_opens', 'share_id="popular-copper-belt"')).toBe(42)
+      expect(sample(body, 'sf_share_opens', 'share_id="quiet-iron-rod"')).toBe(1)
+    })
+
+    it('leaves a never-opened link out of the top N rather than listing it at zero', async () => {
+      await seedShare({ id: 'never-opened', views: 0 })
+
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="never-opened"')).toBeUndefined()
+    })
+
+    it(`exports at most ${METRICS_TOP_N} links however many exist`, async () => {
+      for (let index = 0; index < METRICS_TOP_N + 8; index++) await seedShare({ views: index + 1 })
+
+      expect(labelValues(await scrape(), 'sf_share_opens', 'share_id').length).toBe(METRICS_TOP_N)
+    })
+
+    it('drops a link that has fallen out of the top N', async () => {
+      await seedShare({ id: 'one-open', views: 1 })
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open"')).toBe(1)
+
+      for (let index = 0; index < METRICS_TOP_N; index++) await seedShare({ views: 50 + index })
+
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open"')).toBeUndefined()
+    })
+
+    it('breaks ties on the link id, so equal links keep their order between scrapes', async () => {
+      for (let index = 0; index < METRICS_TOP_N + 5; index++) await seedShare({ views: 7 })
+
+      expect(labelValues(await scrape(), 'sf_share_opens', 'share_id'))
+        .toEqual(labelValues(await scrape(), 'sf_share_opens', 'share_id'))
+    })
+
+    /**
+     * The whole chain, since the count is a side effect of a route nothing else asserts
+     * against the metrics: opening the link is what moves the number.
+     */
+    it('rises when a link is actually opened', async () => {
+      await seedShare({ id: 'opened-for-real', views: 0 })
+
+      await call(context.app, 'get', '/share/opened-for-real')
+      await call(context.app, 'get', '/share/opened-for-real')
+
+      const body = await scrape()
+      expect(sample(body, 'sf_share_opens', 'share_id="opened-for-real"')).toBe(2)
+      expect(sample(body, 'sf_share_opens_total')).toBe(2)
     })
   })
 
