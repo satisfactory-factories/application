@@ -485,6 +485,51 @@ add(87, "Of Those Who Signed In, How Many Edited",
     stat([{"value": 0, "color": "red"}, {"value": 0.3, "color": "#EAB839"}, {"value": 0.6, "color": "green"}],
          unit="percentunit", minmax=(0, 1)))
 
+# ---------------------------------------------------------------- collaboration
+# Everything above about rooms is a live count: it falls when a plan is deleted. This row
+# is the opposite — a stored tally that only ever rises, so a plan made and then deleted
+# still counts. It starts at zero when this shipped, because the activity log it would
+# otherwise be read from is trimmed to 200 rows a plan and deleted with the plan.
+add(110, "Plans Ever Created",
+    "Synced plans made, all time. Unlike Synced Plans above, deleting a plan does not take it back off this number. Counts from when this metric shipped.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="created"'), "Created")],
+    stat(BLUE, graph="area", color_mode="background_solid"))
+
+add(111, "Plans Ever Shared",
+    "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan shared, unshared and shared again counts twice, because that is two decisions to share.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="shared"'), "Shared")],
+    stat(GREEN, graph="area", color_mode="background_solid"))
+
+add(112, "Invites Accepted",
+    "Times somebody joined a plan they did not create. The number that says collaboration is actually happening rather than merely being switched on.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="joined"'), "Accepted")],
+    stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}],
+         graph="area", color_mode="background_solid"))
+
+add(113, "Plans Ever Deleted",
+    "Deletions, all time. Read against Plans Ever Created: the gap is roughly what is still live.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="deleted"'), "Deleted")],
+    stat(GREY, graph="area", color_mode="background_solid"))
+
+add(114, "New Plans",
+    "Synced plans created inside each rolling window, counted off the plan documents rather than the tally, so it was answerable the day it shipped. It sees only plans that still exist, so a plan created and deleted inside the window is missing from it.",
+    [query('sum(sf_new_rooms%s)' % sel('window="24h"'), "24 hours", "A"),
+     query('sum(sf_new_rooms%s)' % sel('window="7d"'), "7 days", "B"),
+     query('sum(sf_new_rooms%s)' % sel('window="30d"'), "30 days", "C")],
+    stat(BLUE, color_mode="value", text_mode="value_and_name"))
+
+add(115, "Invites Accepted Recently",
+    "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner unshared, is not in it.",
+    [query('sum(sf_new_memberships%s)' % sel('window="24h"'), "24 hours", "A"),
+     query('sum(sf_new_memberships%s)' % sel('window="7d"'), "7 days", "B"),
+     query('sum(sf_new_memberships%s)' % sel('window="30d"'), "30 days", "C")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
+
+add(116, "Plan Lifecycle Over Time",
+    "Every tallied action. Flat lines are the normal state; a step is somebody doing that thing. Ops are deliberately absent, since Edits and Activity already covers them.",
+    [query("sum by (action) (sf_room_actions_total%s)" % J, "{{action}}")],
+    timeseries(fill=8))
+
 # ----------------------------------------------------------------- share links
 # Snapshot links, the "copy a link to this plan" feature. Every number here comes from the
 # shares collection, which nothing purges, so all of it is complete back to the feature
@@ -615,6 +660,12 @@ rows = [
         item(14, 0, 10, 4, 80),
         item(0, 4, 12, 8, 83), item(12, 4, 12, 8, 86),
         item(0, 12, 5, 4, 85), item(5, 12, 19, 4, 84),
+    ]),
+    row("🤝 Collaboration · from the database, all time", [
+        item(0, 0, 6, 4, 110), item(6, 0, 6, 4, 111),
+        item(12, 0, 6, 4, 112), item(18, 0, 6, 4, 113),
+        item(0, 4, 12, 4, 114), item(12, 4, 12, 4, 115),
+        item(0, 8, 24, 8, 116),
     ]),
     row("🔗 Share Links · from the database", [
         item(0, 0, 5, 4, 100), item(5, 0, 5, 4, 101), item(10, 0, 4, 4, 102),

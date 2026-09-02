@@ -17,6 +17,7 @@ import { ConnectionRegistry } from '../realtime/connection-registry'
 import { EventCountersService } from '../event-counters/event-counters.service'
 import { Room } from '../rooms/schemas/room.schema'
 import { RoomMembership } from '../rooms/schemas/room-membership.schema'
+import { RoomTotalsService } from '../room-totals/room-totals.service'
 import { Share } from '../legacy/share.schema'
 import { TelemetryService } from './telemetry.service'
 import type { TelemetrySnapshot } from './telemetry.service'
@@ -33,6 +34,7 @@ interface CheapCounts {
   signIns: number
   shares: number
   shareOpens: number
+  roomActions: Map<string, number>
 }
 
 interface OwnedTotal { name: string, value: number }
@@ -49,6 +51,8 @@ interface SlowStats {
   topOwners: OwnedTotal[]
   newShares: Array<readonly [string, number]>
   topShares: ShareTotal[]
+  newRooms: Array<readonly [string, number]>
+  newMemberships: Array<readonly [string, number]>
 }
 
 /**
@@ -94,6 +98,10 @@ export class MetricsService {
   private readonly newShares: Gauge<'window'>
   private readonly shareOpens: Gauge<'share_id'>
 
+  private readonly roomActions: Gauge<'action'>
+  private readonly newRooms: Gauge<'window'>
+  private readonly newMemberships: Gauge<'window'>
+
   private readonly census: CachedQuery<TelemetrySnapshot>
   private readonly cheap: CachedQuery<CheapCounts>
   private readonly slow: CachedQuery<SlowStats>
@@ -105,6 +113,7 @@ export class MetricsService {
     @InjectModel(Share.name) private readonly shares: Model<Share>,
     private readonly connections: ConnectionRegistry,
     private readonly telemetry: TelemetryService,
+    private readonly roomTotals: RoomTotalsService,
     private readonly counters: EventCountersService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
@@ -242,6 +251,25 @@ export class MetricsService {
       registers,
     })
 
+    this.roomActions = new Gauge({
+      name: 'sf_room_actions_total',
+      help: 'Room lifecycle events that have ever happened, by kind: rooms created, rooms shared, invites accepted, and the rest. Only ever rises, and survives the room being deleted. Counts from this metric shipping rather than being backfilled, because the activity log it would have been read from is trimmed and purged. Excludes `op`, which sf_room_revisions already sums.',
+      labelNames: ['action'],
+      registers,
+    })
+    this.newRooms = new Gauge({
+      name: 'sf_new_rooms',
+      help: 'Rooms created inside each rolling window, counted from the room documents. Retroactive, so it is answerable immediately, but it sees only rooms that still exist: a room deleted inside the window is not in it.',
+      labelNames: ['window'],
+      registers,
+    })
+    this.newMemberships = new Gauge({
+      name: 'sf_new_memberships',
+      help: 'Invites accepted inside each rolling window, counted from the membership rows. Retroactive like sf_new_rooms, and with the same caveat: someone who joined and then left, or was dropped by an unshare, is not in it.',
+      labelNames: ['window'],
+      registers,
+    })
+
     // The census is a database read now too, so it gets the same last-good-value
     // treatment: a Mongo outage must not blank the client panels either.
     this.census = new CachedQuery(METRICS_CACHE_MS, () => this.telemetry.snapshot())
@@ -289,6 +317,12 @@ export class MetricsService {
       this.signInsTotal.set(cheap.value.signIns)
       this.sharesTotal.set(cheap.value.shares)
       this.shareOpensTotal.set(cheap.value.shareOpens)
+
+      // Not reset first: the tally only ever grows and a kind never leaves it, so there is
+      // no stale label set to clear the way the top-N gauges have.
+      for (const [action, count] of cheap.value.roomActions) {
+        this.roomActions.set({ action }, count)
+      }
     }
 
     // Only on a real reload. prom-client remembers every label set it has been given, so a
@@ -350,10 +384,17 @@ export class MetricsService {
     for (const share of stats.topShares) {
       this.shareOpens.set({ share_id: share.shareId }, share.opens)
     }
+
+    for (const [window, rooms] of stats.newRooms) {
+      this.newRooms.set({ window }, rooms)
+    }
+    for (const [window, memberships] of stats.newMemberships) {
+      this.newMemberships.set({ window }, memberships)
+    }
   }
 
   private async loadCheap (): Promise<CheapCounts> {
-    const [sharedRooms, privateRooms, totals, roomMembers, users, signIns, shares, shareOpens] =
+    const [sharedRooms, privateRooms, totals, roomMembers, users, signIns, shares, shareOpens, roomActions] =
       await Promise.all([
         this.rooms.countDocuments({ deletedAt: null, shared: true }),
         // `$ne: true` rather than `false`, so a document predating the field still counts
@@ -365,14 +406,20 @@ export class MetricsService {
         this.sumSignIns(),
         this.shares.countDocuments(),
         this.sumShareOpens(),
+        this.roomTotals.all(),
       ])
 
-    return { sharedRooms, privateRooms, ...totals, roomMembers, users, signIns, shares, shareOpens }
+    return {
+      sharedRooms, privateRooms, ...totals, roomMembers, users, signIns, shares, shareOpens, roomActions,
+    }
   }
 
   private async loadSlow (): Promise<SlowStats> {
     const now = this.clock.now()
-    const [activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares] =
+    const [
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares,
+      newRooms, newMemberships,
+    ] =
       await Promise.all([
         this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
         this.countByWindow(now, since => this.users.countDocuments({ registered: { $gt: since } })),
@@ -382,10 +429,16 @@ export class MetricsService {
         this.findLargestOwners(),
         this.countByWindow(now, since => this.shares.countDocuments({ created: { $gt: since } })),
         this.findMostOpenedShares(),
+        this.countByWindow(now, since => this.rooms.countDocuments({ createdAt: { $gt: since } })),
+        // Owners are excluded: the owner's row is written by the create, so counting it
+        // would report every new room as an invite somebody accepted.
+        this.countByWindow(now, since =>
+          this.memberships.countDocuments({ role: 'member', joinedAt: { $gt: since } })),
       ])
 
     return {
       activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares,
+      newRooms, newMemberships,
     }
   }
 

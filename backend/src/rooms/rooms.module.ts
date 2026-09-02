@@ -12,6 +12,7 @@ import { RoomActivityService } from './room-activity.service'
 import { RoomEventsService } from './room-events.service'
 import { RoomMembership, RoomMembershipSchema } from './schemas/room-membership.schema'
 import { RoomSweeperService } from './room-sweeper.service'
+import { RoomTotalsModule } from '../room-totals/room-totals.module'
 import { RoomsController } from './rooms.controller'
 import { RoomsService } from './rooms.service'
 import { UserActivityModule } from '../user-activity/user-activity.module'
@@ -26,6 +27,7 @@ import { UserActivityModule } from '../user-activity/user-activity.module'
     AuthModule, // The User model, for roomsRevision and the legacy import stamp.
     UserActivityModule, // Re-exported so the WS gateway can stamp an editor.
     LegacyModule, // The read-only FactoryData blob.
+    RoomTotalsModule, // The permanent lifecycle tally RoomActivityService bumps.
   ],
   controllers: [RoomsController],
   providers: [

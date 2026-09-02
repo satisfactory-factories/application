@@ -18,7 +18,7 @@ export interface TestUser {
   token: string
 }
 
-const ROOM_COLLECTIONS = ['rooms', 'room_memberships', 'room_activity', 'user_preferences']
+const ROOM_COLLECTIONS = ['rooms', 'room_memberships', 'room_activity', 'room_totals', 'user_preferences']
 
 type Method = 'get' | 'post' | 'put' | 'delete'
 
