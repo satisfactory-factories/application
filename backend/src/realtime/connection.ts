@@ -7,6 +7,8 @@ import {
   WS_MAX_BUFFERED_BYTES,
   WS_MESSAGE_LIMIT,
   WS_MESSAGE_WINDOW_MS,
+  WS_SNAPSHOT_REJECT_LIMIT,
+  WS_SNAPSHOT_REJECT_WINDOW_MS,
   WS_TRY_AGAIN_LATER,
 } from './realtime.constants'
 import { FixedWindow } from './ws-throttle'
@@ -31,11 +33,18 @@ export class Connection {
 
   private closed = false
   private readonly messages = new FixedWindow(WS_MESSAGE_LIMIT, WS_MESSAGE_WINDOW_MS)
+  private readonly snapshotRejections =
+    new FixedWindow(WS_SNAPSHOT_REJECT_LIMIT, WS_SNAPSHOT_REJECT_WINDOW_MS)
 
   constructor (readonly socket: WebSocket, readonly ip: string) {}
 
   allowMessage (): boolean {
     return this.messages.allow()
+  }
+
+  /** A refusal that answers with the whole plan costs far more than the frame that asked. */
+  allowSnapshotRejection (): boolean {
+    return this.snapshotRejections.allow()
   }
 
   send (message: ServerMessage): void {

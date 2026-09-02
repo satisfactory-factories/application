@@ -62,6 +62,8 @@ export const EVENT_REASONS = [
   'share_id_allocation_exhausted',
   'ws_handshake_internal_error',
   'ws_message_handler_error',
+  /** A socket asked to be answered with a whole plan more often than any client needs to. */
+  'ws_snapshot_reject_rate_exceeded',
   'room_access_unstable_race',
   'room_event_listener_threw',
   // Each of these marks a place where the user's change committed and the record of it did

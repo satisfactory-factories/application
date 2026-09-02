@@ -7,10 +7,15 @@ import type { ClientOpMessage, Factory, RoomDiff } from 'common'
 import type { Connection } from 'mongoose'
 
 import { APPLIED_OPS_RING } from '../src/rooms/schemas/room.schema'
+import { BULK_RESTORE_MAX_BYTES } from '../src/realtime/room-op.service'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
 import { wsConnectionLimiter } from '../src/realtime/ws-throttle'
+import {
+  WS_POLICY_VIOLATION,
+  WS_SNAPSHOT_REJECT_LIMIT,
+} from '../src/realtime/realtime.constants'
 
 describe('ws ops: the consistency contract', () => {
   let context: TestContext
@@ -440,22 +445,43 @@ describe('ws ops: the consistency contract', () => {
     })
 
     // A second copy of an oversized array is how a room document reaches Mongo's own limit,
-    // so the write goes ahead and only the stash is dropped.
-    it('skips the restore point when the stored plan is already over the cap', async () => {
+    // so the write goes ahead and only the stash is dropped. Sized in bytes rather than in
+    // factories: a hundred big ones outweigh three hundred small ones, and only one of
+    // those two shapes is refused by a count.
+    it('skips the restore point when the stored plan is too big to duplicate', async () => {
       const a = await joined(owner.token)
-      const oversized = Array.from(
-        { length: CAPS.factoriesPerRoom + 1 },
-        (_unused, index) => named(index + 1, `Extra ${index}`),
-      )
-      await connection.collection('rooms').updateOne({ roomId }, { $set: { factories: oversized } })
+      const padding = 'x'.repeat(20_000)
+      const heavy = Array.from({ length: 250 }, (_unused, index) =>
+        ({ ...named(index + 1, `Extra ${index}`), notes: padding }))
+      expect(JSON.stringify(heavy).length).toBeGreaterThan(BULK_RESTORE_MAX_BYTES)
+      await connection.collection('rooms').updateOne({ roomId }, { $set: { factories: heavy } })
 
       a.client.send(declared({ removedFactoryIds: overThreshold }, 0))
       await a.client.next('op_ack')
 
       const room = await readRoom()
-      expect(room?.factories).toHaveLength(CAPS.factoriesPerRoom + 1 - overThreshold.length)
+      expect(room?.factories).toHaveLength(heavy.length - overThreshold.length)
       expect(room?.lastBulkRestore).toBeNull()
     }, 30_000)
+
+    // The stash is the one copy of what a clear removed, and a client that clears twice
+    // would otherwise overwrite it with the emptiness the first clear produced.
+    it('keeps the first stash when a second bulk arrives on an emptied plan', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: ids }, 1))
+      await a.client.next('op_ack')
+
+      // Nothing left to remove, and the sender declares it a bulk all the same.
+      a.client.send(declared({ removedFactoryIds: ids }, 2))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toEqual([])
+      expect(room?.lastBulkRestore.revision).toBe(1)
+      expect(room?.lastBulkRestore.factories.map((factory: Factory) => factory.id)).toEqual(ids)
+    })
   })
 
   describe('refusals', () => {
@@ -504,6 +530,27 @@ describe('ws ops: the consistency contract', () => {
       expect(rejected.snapshot?.revision).toBe(0)
       expect((await readRoom())?.revision).toBe(0)
     })
+
+    /**
+     * The cheapest frame a client can send and the most expensive the server can answer:
+     * a malformed op is ninety bytes and buys a whole-plan read and serialisation. Past
+     * the budget the socket is closed rather than served, and its reconnect gets one
+     * snapshot per room instead.
+     */
+    it('closes a socket that keeps buying whole-plan rejections', async () => {
+      const a = await joined(owner.token)
+      const malformed = { type: 'op', roomId, opId: randomUUID(), baseRevision: 'not a number' }
+
+      for (let sent = 0; sent < WS_SNAPSHOT_REJECT_LIMIT; sent++) a.client.sendRaw(malformed)
+      for (let seen = 0; seen < WS_SNAPSHOT_REJECT_LIMIT; seen++) {
+        await expect(a.client.next('op_reject')).resolves.toMatchObject({ reason: 'invalid' })
+      }
+
+      a.client.sendRaw(malformed)
+
+      await expect(a.client.next('error')).resolves.toMatchObject({ code: 'rate_limited' })
+      await expect(a.client.waitForClose()).resolves.toMatchObject({ code: WS_POLICY_VIOLATION })
+    }, 30_000)
 
     // The first op after "Add Factory" carries `power: {}`, because nothing
     // recalculates on add. It used to be refused, costing a round trip every time.

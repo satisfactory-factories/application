@@ -214,7 +214,7 @@ describe('authorization against a room that moved under the check', () => {
           return { status: 'granted', role, room: stale }
         }
         // The re-read the guard miss is meant to be distinguished by.
-        return access.authorize(roomId, credentials)
+        return access.authorizeWithContent(roomId, credentials)
       }
     }
 

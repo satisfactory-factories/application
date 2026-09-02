@@ -16,7 +16,7 @@ import type {
 } from 'common'
 
 import { ANONYMOUS_ACTOR } from '../rooms/room-activity.service'
-import { AuthTokenPayload } from '../auth/auth-token'
+import { AuthTokenPayload, isAccountTokenPayload } from '../auth/auth-token'
 import { Connection } from './connection'
 import { ConnectionRegistry } from './connection-registry'
 import { FieldLockService } from './field-lock.service'
@@ -33,6 +33,7 @@ import {
   WS_HEARTBEAT_INTERVAL_MS,
   WS_HELLO_TIMEOUT_MS,
   WS_INTERNAL_ERROR,
+  WS_LOCK_SWEEP_INTERVAL_MS,
   WS_MAX_PAYLOAD_BYTES,
   WS_POLICY_VIOLATION,
 } from './realtime.constants'
@@ -55,6 +56,7 @@ interface OpEnvelope {
 export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RoomGateway.name)
   private heartbeat: NodeJS.Timeout | null = null
+  private lockSweep: NodeJS.Timeout | null = null
 
   constructor (
     @InjectModel(Room.name) private readonly roomModel: Model<Room>,
@@ -74,11 +76,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.events.on('room_deleted', this.onRoomDeleted)
     this.events.on('access_revoked', this.onAccessRevoked)
 
-    this.heartbeat = setInterval(() => {
-      this.pingAll()
-      this.sweepFieldLocks()
-    }, WS_HEARTBEAT_INTERVAL_MS)
+    this.heartbeat = setInterval(() => this.pingAll(), WS_HEARTBEAT_INTERVAL_MS)
     this.heartbeat.unref()
+
+    // Its own timer: a lock lives 10s, and sweeping it on the 30s heartbeat left a
+    // field showing as somebody else's for up to three times as long as it was held.
+    this.lockSweep = setInterval(() => this.sweepFieldLocks(), WS_LOCK_SWEEP_INTERVAL_MS)
+    this.lockSweep.unref()
   }
 
   onModuleDestroy (): void {
@@ -89,6 +93,8 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     if (this.heartbeat) clearInterval(this.heartbeat)
     this.heartbeat = null
+    if (this.lockSweep) clearInterval(this.lockSweep)
+    this.lockSweep = null
   }
 
   // ===== Socket lifecycle =====
@@ -133,9 +139,9 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   /**
-   * Rides the heartbeat rather than a timer of its own. A lock nobody renewed is
-   * already refused to its holder and granted to the next claimant on sight, so the
-   * sweep only decides how soon the room is *told*; public so tests can drive it.
+   * A lock nobody renewed is already refused to its holder and granted to the next
+   * claimant on sight, so the sweep only decides how soon the room is *told*. Public
+   * so tests can drive it without waiting on the interval.
    */
   sweepFieldLocks (): void {
     for (const roomId of this.locks.sweep()) this.broadcastFieldLocks(roomId)
@@ -251,9 +257,8 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   /** A visitor token is signed with the same secret, so the shape is the check. */
   private verifyAccountToken (token: string): AuthTokenPayload | null {
     try {
-      const payload = this.jwt.verify<AuthTokenPayload>(token)
-      const valid = typeof payload?.id === 'string' && typeof payload?.username === 'string'
-      return valid ? payload : null
+      const payload: unknown = this.jwt.verify(token)
+      return isAccountTokenPayload(payload) ? payload : null
     } catch {
       return null
     }
@@ -262,7 +267,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // ===== join / leave =====
 
   private async handleJoin (connection: Connection, message: ClientJoinMessage): Promise<void> {
-    const access = await this.access.authorize(message.roomId, {
+    const access = await this.access.authorizeWithContent(message.roomId, {
       userId: connection.userId,
       visitorToken: message.visitorToken,
     })
@@ -356,7 +361,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const actor = connection.userId ?? ANONYMOUS_ACTOR
     const outcome = await this.ops.apply(message, actor, () =>
-      this.access.authorize(message.roomId, {
+      this.access.authorizeWithContent(message.roomId, {
         userId: connection.userId,
         visitorToken: session.visitorToken,
       }))
@@ -389,6 +394,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         break
 
       case 'stale':
+        if (!this.allowsSnapshot(connection)) break
         connection.send({
           type: 'op_reject',
           roomId: message.roomId,
@@ -401,6 +407,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       // Both refuse this op but leave the socket in the room: the sender still has
       // access, so the shared rebase path resolves it from the snapshot.
       case 'not_owner':
+        if (!this.allowsSnapshot(connection)) break
         connection.send({
           type: 'op_reject',
           roomId: message.roomId,
@@ -411,6 +418,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         break
 
       case 'too_large':
+        if (!this.allowsSnapshot(connection)) break
         connection.send({
           type: 'op_reject',
           roomId: message.roomId,
@@ -423,6 +431,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       // The room keeps its plan and the sender rebases onto it, which is the whole
       // point: a client that shrank by accident is corrected rather than obeyed.
       case 'undeclared_bulk_removal':
+        if (!this.allowsSnapshot(connection)) break
         connection.send({
           type: 'op_reject',
           roomId: message.roomId,
@@ -468,10 +477,14 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return
     }
 
+    // Checked before the read, not after: this is the one snapshot path where a
+    // frame the schema refused would otherwise buy a whole document read.
+    if (!this.allowsSnapshot(connection)) return
+
     // The reply carries the whole room, so membership of `connection.rooms` is not
     // enough: it is set at join time and outlives a revocation until the kick lands.
     // Re-run the same check the parsed op path runs before handing the snapshot over.
-    const access = await this.access.authorize(envelope.roomId, {
+    const access = await this.access.authorizeWithContent(envelope.roomId, {
       userId: connection.userId,
       visitorToken: session.visitorToken,
     })
@@ -493,6 +506,21 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       reason: 'invalid',
       snapshot: toRoomSnapshot(access.room),
     })
+  }
+
+  /**
+   * Whether this socket may be answered with a whole plan. A rejection carrying one is
+   * the cheapest frame a client can send and the most expensive the server can answer,
+   * so a socket past its budget is closed rather than served: reconnecting re-joins,
+   * which hands it one snapshot per room and nothing more.
+   */
+  private allowsSnapshot (connection: Connection): boolean {
+    if (connection.allowSnapshotRejection()) return true
+
+    this.counters.record('server', 'ws_snapshot_reject_rate_exceeded')
+    connection.send(error('rate_limited', 'Too many refused messages.'))
+    connection.close(WS_POLICY_VIOLATION, 'snapshot rejection rate exceeded')
+    return false
   }
 
   private broadcastOp (sender: Connection, message: ClientOpMessage, revision: number): void {

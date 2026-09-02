@@ -3,7 +3,7 @@ import type { IncomingMessage } from 'node:http'
 import type WebSocket from 'ws'
 
 import { isAllowedWsOrigin } from '../config/cors'
-import { wsConnectionLimiter } from './ws-throttle'
+import { wsConcurrencyLimiter, wsConnectionLimiter } from './ws-throttle'
 
 export { isAllowedWsOrigin }
 
@@ -20,9 +20,18 @@ export const verifyWsClient: WebSocket.VerifyClientCallbackAsync = (info, done) 
     done(false, 403, 'Origin not allowed')
     return
   }
-  if (!wsConnectionLimiter.allow(wsClientIp(info.req))) {
+  const ip = wsClientIp(info.req)
+  if (!wsConnectionLimiter.allow(ip)) {
     done(false, 429, 'Too many connection attempts')
     return
   }
+  if (!wsConcurrencyLimiter.acquire(ip)) {
+    done(false, 503, 'Too many open connections')
+    return
+  }
+
+  // Released off the TCP socket rather than the gateway, so a slot is given back even
+  // when the upgrade never completes and no connection is ever handed over.
+  info.req.socket.once('close', () => { wsConcurrencyLimiter.release(ip) })
   done(true)
 }

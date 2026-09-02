@@ -17,16 +17,37 @@ export interface RoomAccessCredentials {
 }
 
 /**
+ * Every field an access decision reads, plus the revision a caller needs to tell a
+ * client it is up to date. Deliberately not the plan: most authorizations answer a
+ * message that never serialises one, and `factories` is the whole document's weight.
+ */
+export type RoomAccessView =
+  Pick<Room, 'roomId' | 'shared' | 'deletedAt' | 'passwordHash' | 'passwordVersion' | 'membershipEpoch' | 'revision'>
+
+const ACCESS_PROJECTION = {
+  roomId: 1,
+  shared: 1,
+  deletedAt: 1,
+  passwordHash: 1,
+  passwordVersion: 1,
+  membershipEpoch: 1,
+  revision: 1,
+} as const
+
+/**
  * The decision and the room it is valid for, together. A snapshot may only ever be
  * built from `room`: a copy read before the check is a copy the check did not see.
  */
-export type RoomAccess =
-  | { status: 'granted', role: RoomAccessRole, room: Room }
+export type RoomAccess<TRoom = RoomAccessView> =
+  | { status: 'granted', role: RoomAccessRole, room: TRoom }
   | { status: 'missing' }
   | { status: 'deleted' }
   | { status: 'denied' }
   /** The room kept moving under the check. Refusing is the only safe answer. */
   | { status: 'unstable' }
+
+/** The same decision, carrying the whole plan. Only the paths that serialise one ask for it. */
+export type RoomContentAccess = RoomAccess<Room>
 
 /** Re-reads before an unstable room is refused rather than guessed at. */
 const CONSISTENT_READ_ATTEMPTS = 3
@@ -51,15 +72,32 @@ export class RoomAccessService {
    * decision consumed closes that window, and the room handed back is the one the
    * decision is true of.
    */
-  async authorize (roomId: string, credentials: RoomAccessCredentials): Promise<RoomAccess> {
+  authorize (roomId: string, credentials: RoomAccessCredentials): Promise<RoomAccess> {
+    return this.decide(roomId, credentials, false)
+  }
+
+  /** For join, op apply and every rejection that answers with a snapshot. */
+  authorizeWithContent (roomId: string, credentials: RoomAccessCredentials): Promise<RoomContentAccess> {
+    return this.decide(roomId, credentials, true) as Promise<RoomContentAccess>
+  }
+
+  private async decide (
+    roomId: string,
+    credentials: RoomAccessCredentials,
+    withContent: boolean,
+  ): Promise<RoomAccess> {
     for (let attempt = 0; attempt < CONSISTENT_READ_ATTEMPTS; attempt++) {
-      const before = await this.rooms.findOne({ roomId }).lean()
+      // Always projected: the rules read access fields alone, and this copy is never
+      // the one handed back.
+      const before = await this.rooms.findOne({ roomId }, ACCESS_PROJECTION).lean()
       if (!before) return { status: 'missing' }
       if (before.deletedAt !== null) return { status: 'deleted' }
 
       const role = await this.resolve(before, credentials)
 
-      const after = await this.rooms.findOne({ roomId }).lean()
+      const after = withContent
+        ? await this.rooms.findOne({ roomId }).lean()
+        : await this.rooms.findOne({ roomId }, ACCESS_PROJECTION).lean()
       if (!after) return { status: 'missing' }
       if (!sameAccessState(before, after)) continue
 
@@ -75,7 +113,7 @@ export class RoomAccessService {
    * own — only `authorize` knows whether that copy still stands — so callers go
    * through it rather than here.
    */
-  async resolve (room: Room, credentials: RoomAccessCredentials): Promise<RoomAccessRole | null> {
+  async resolve (room: RoomAccessView, credentials: RoomAccessCredentials): Promise<RoomAccessRole | null> {
     if (room.deletedAt !== null) return null
 
     if (credentials.userId !== null) {
@@ -102,7 +140,7 @@ export class RoomAccessService {
 }
 
 /** Every field an access decision reads. A change to any of them voids the decision. */
-const sameAccessState = (before: Room, after: Room): boolean =>
+const sameAccessState = (before: RoomAccessView, after: RoomAccessView): boolean =>
   before.membershipEpoch === after.membershipEpoch &&
   before.passwordVersion === after.passwordVersion &&
   before.shared === after.shared &&

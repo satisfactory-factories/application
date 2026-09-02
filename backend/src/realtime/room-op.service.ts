@@ -6,11 +6,18 @@ import type { ClientOpMessage, Factory, RoomDiff } from 'common'
 
 import { APPLIED_OPS_RING, Room } from '../rooms/schemas/room.schema'
 import { CLOCK, Clock } from '../rooms/clock'
-import { RoomAccess, RoomAccessRole } from './room-access.service'
+import { RoomAccessRole, RoomContentAccess } from './room-access.service'
 import { RoomActivityService } from '../rooms/room-activity.service'
 import { UserActivityService } from '../user-activity/user-activity.service'
 import { mergeFactories } from './room-snapshot'
 import { EventCountersService } from '../event-counters/event-counters.service'
+
+/**
+ * The most a bulk restore point may duplicate. The room document holds the live plan and the
+ * stash side by side and Mongo refuses a document over 16MB, so a quarter of that each leaves
+ * room for both plus everything else the room carries.
+ */
+export const BULK_RESTORE_MAX_BYTES = 4 * 1024 * 1024
 
 export type OpOutcome =
   | { status: 'applied', revision: number }
@@ -27,7 +34,7 @@ export type OpOutcome =
   | { status: 'gone' }
 
 /** One consistent read: the sender's access and the room copy it is valid for. */
-export type OpAuthorizer = () => Promise<RoomAccess>
+export type OpAuthorizer = () => Promise<RoomContentAccess>
 
 @Injectable()
 export class RoomOpService {
@@ -125,18 +132,23 @@ export class RoomOpService {
   }
 
   /**
-   * The plan as it stood before a bulk removal, stashed in the same guarded write so it can
-   * only exist for a state that committed. Skipped above the factory cap: a second copy of an
-   * oversized array is how a room document reaches Mongo's own 16MB limit.
+   * The plan as it stood before a bulk removal, stashed in the same guarded write so it
+   * can only exist for a state that committed.
    */
   private restorePoint (bulk: boolean, room: Room): Record<string, unknown> {
     if (!bulk) return {}
-    if (room.factories.length > CAPS.factoriesPerRoom) {
-      this.logger.warn(
-        `Skipping the bulk restore point for room ${room.roomId}: ${room.factories.length} factories`,
-      )
+    // A second bulk in a row would otherwise stash the emptiness the first one produced,
+    // over the copy somebody would be restoring from.
+    if (room.factories.length === 0) return {}
+
+    // On bytes, not factories: the stash and the live plan share one document, and a
+    // hundred big factories outweigh three hundred small ones.
+    const bytes = JSON.stringify(room.factories).length
+    if (bytes > BULK_RESTORE_MAX_BYTES) {
+      this.logger.warn(`Skipping the bulk restore point for room ${room.roomId}: ${bytes} bytes`)
       return {}
     }
+
     return {
       lastBulkRestore: { factories: room.factories, revision: room.revision, at: this.clock.now() },
     }
@@ -157,7 +169,7 @@ export class RoomOpService {
 }
 
 /** A refused read, as an outcome. A room nobody may read is `gone` either way. */
-const refuse = (access: Exclude<RoomAccess, { status: 'granted' }>): OpOutcome =>
+const refuse = (access: Exclude<RoomContentAccess, { status: 'granted' }>): OpOutcome =>
   access.status === 'missing' || access.status === 'deleted'
     ? { status: 'gone' }
     : { status: 'forbidden' }

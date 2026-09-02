@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { CAPS, CLOSE_CODES, FIELD_LOCK_TTL_MS } from 'common'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Connection } from 'mongoose'
 import type { FieldLock } from 'common'
 
@@ -10,6 +10,7 @@ import { RoomGateway } from '../src/realtime/room.gateway'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { wsConnectionLimiter } from '../src/realtime/ws-throttle'
+import { WS_LOCK_SWEEP_INTERVAL_MS } from '../src/realtime/realtime.constants'
 
 /**
  * Advisory locks: one editor per input, announced to the room and enforced nowhere.
@@ -256,6 +257,34 @@ describe('ws field locks', () => {
       gateway.sweepFieldLocks()
 
       await expect(ownerClient.next('field_locks')).resolves.toMatchObject({ locks: [] })
+    })
+
+    /**
+     * A lock lives ten seconds. Riding the thirty-second heartbeat meant a field could show
+     * as somebody else's for three times as long as they actually held it.
+     */
+    it('sweeps on a timer of its own rather than on the heartbeat', async () => {
+      const ownerClient = await joined(owner.token)
+      const memberClient = await joined(member.token)
+
+      memberClient.send({ type: 'lock', roomId, fieldKey: NOTES })
+      await ownerClient.next('field_locks')
+      clock.advance(FIELD_LOCK_TTL_MS)
+
+      expect(WS_LOCK_SWEEP_INTERVAL_MS).toBeLessThan(FIELD_LOCK_TTL_MS)
+      // Re-armed under fake timers so the interval can be driven without waiting on it.
+      vi.useFakeTimers()
+      try {
+        gateway.onModuleDestroy()
+        gateway.onModuleInit()
+        vi.advanceTimersByTime(WS_LOCK_SWEEP_INTERVAL_MS)
+      } finally {
+        gateway.onModuleDestroy()
+        vi.useRealTimers()
+        gateway.onModuleInit()
+      }
+
+      await expect(ownerClient.next('field_locks')).resolves.toMatchObject({ roomId, locks: [] })
     })
 
     it('hands an expired field to the next claimant without waiting for the sweep', async () => {

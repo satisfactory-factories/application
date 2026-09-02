@@ -1,18 +1,23 @@
-import { PROTOCOL_VERSION } from 'common'
+import { CAPS, PROTOCOL_VERSION } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { makeFactory } from 'common/testing'
 
 import { ConnectionRegistry } from '../src/realtime/connection-registry'
 import { RoomGateway } from '../src/realtime/room.gateway'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, createTestApp, destroyTestApp } from './utils/test-app'
 import { buildIndexes, resetRooms } from './utils/rooms'
-import { wsConnectionLimiter } from '../src/realtime/ws-throttle'
+import { wsConcurrencyLimiter, wsConnectionLimiter } from '../src/realtime/ws-throttle'
 import {
   WS_CONNECTION_LIMIT,
   WS_MAX_PAYLOAD_BYTES,
+  WS_MAX_SOCKETS_PER_IP,
   WS_MESSAGE_LIMIT,
   WS_POLICY_VIOLATION,
 } from '../src/realtime/realtime.constants'
+
+/** The biggest factory a real 36-factory plan holds, measured off it. */
+const LARGEST_REAL_FACTORY_BYTES = 15_314
 
 /** ws answers an over-long message with this before any handler sees it. */
 const WS_MESSAGE_TOO_BIG = 1009
@@ -43,12 +48,14 @@ describe('ws limits and heartbeat', () => {
   beforeEach(async () => {
     clients = []
     wsConnectionLimiter.reset()
+    wsConcurrencyLimiter.reset()
     await resetRooms(context.app)
   })
 
   afterEach(() => {
     closeAll(clients)
     wsConnectionLimiter.reset()
+    wsConcurrencyLimiter.reset()
   })
 
   it('closes 1009 on a message past maxPayload', async () => {
@@ -70,6 +77,42 @@ describe('ws limits and heartbeat', () => {
 
     await expect(client.next('error')).resolves.toMatchObject({ code: 'rate_limited' })
     await expect(client.waitForClose()).resolves.toMatchObject({ code: WS_POLICY_VIOLATION })
+  })
+
+  /**
+   * The frame ceiling has to be derived from the largest thing a client legitimately
+   * sends, or it is just a number: 25MB let one socket hand the process three times the
+   * biggest plan the room cap allows.
+   */
+  it('takes a room-cap op built from the biggest factories a real plan holds', () => {
+    const padding = 'x'.repeat(LARGEST_REAL_FACTORY_BYTES - JSON.stringify(makeFactory()).length)
+    const factories = Array.from({ length: CAPS.factoriesPerRoom }, (_unused, index) =>
+      ({ ...makeFactory({ id: index + 1, name: `Factory ${index}` }), notes: padding }))
+    const frame = JSON.stringify({
+      type: 'op', roomId: 'a-room', opId: 'an-op', baseRevision: 0, diff: { factories },
+    })
+
+    expect(frame.length).toBeLessThan(WS_MAX_PAYLOAD_BYTES)
+    // Headroom, not an order of magnitude: twice the largest legitimate frame.
+    expect(WS_MAX_PAYLOAD_BYTES).toBeLessThan(frame.length * 3)
+  })
+
+  it('refuses a socket past the per-address concurrent ceiling', async () => {
+    for (let opened = 0; opened < WS_MAX_SOCKETS_PER_IP; opened++) {
+      clients.push(await TestClient.open(url))
+    }
+    // The rate window rolling over must not hand back a slot: these are still open.
+    wsConnectionLimiter.reset()
+
+    await expect(TestClient.open(url)).rejects.toThrow(/503/)
+  }, 30_000)
+
+  it('gives a slot back when a socket closes', async () => {
+    const client = await TestClient.open(url)
+    const held = wsConcurrencyLimiter.size()
+    client.close()
+
+    await expect.poll(() => wsConcurrencyLimiter.size()).toBe(held - 1)
   })
 
   it('refuses the upgrade past the connection rate limit', async () => {
