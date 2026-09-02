@@ -954,6 +954,23 @@ describe('app-store', () => {
     })
 
     /**
+     * The recovery copy is read by `beginLoading` too, so an unreadable one is the reason
+     * the chain dies and then the reason the release is skipped. The tab is left wedged
+     * with `isLoaded` false, which is the very state this release exists to prevent.
+     */
+    it('releases a dead chain even when the recovery copy cannot be read', async () => {
+      localStorage.setItem('preLoadFactories', '{not json')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(appStore.prepareLoader(bigPlan(), true)).rejects.toThrow()
+
+      expect(appStore.loadInFlight, 'the chain never released').toBe(false)
+      expect(appStore.isLoaded, 'the client would persist and send nothing').toBe(true)
+
+      localStorage.removeItem('preLoadFactories')
+    })
+
+    /**
      * `lastPersistedPlan` is the "nothing has changed since" shortcut. Advanced on a write
      * that never happened, every later save takes the shortcut and the plan is never saved
      * again — and the throw itself unwound whatever edit asked for the save.

@@ -474,9 +474,15 @@ export const useAppStore = defineStore('app', () => {
     console.error('appStore: the load chain failed, releasing it', error)
     // The chain left the tab holding a fragment, and releasing it below hands that fragment
     // back to the sync engine as the user's plan. `preLoadFactories` is the whole thing.
-    const owner = (loadOwnerTabId ? getTab(loadOwnerTabId) : currentFactoryTab.value) as FactoryTab | undefined
-    const recovery = JSON.parse(localStorage.getItem('preLoadFactories') ?? '[]') as Factory[]
-    if (owner && recovery.length > 0) owner.factories = recovery
+    // Guarded because an unreadable copy is itself a reason the chain died, and throwing
+    // here would skip the release this function exists to guarantee.
+    try {
+      const owner = (loadOwnerTabId ? getTab(loadOwnerTabId) : currentFactoryTab.value) as FactoryTab | undefined
+      const recovery = JSON.parse(localStorage.getItem('preLoadFactories') ?? '[]') as Factory[]
+      if (owner && Array.isArray(recovery) && recovery.length > 0) owner.factories = recovery
+    } catch (cause) {
+      console.error('appStore: the recovery copy could not be read, releasing anyway', cause)
+    }
 
     loadInFlight.value = false
     loadOwnerTabId = null
