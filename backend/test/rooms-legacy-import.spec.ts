@@ -117,6 +117,28 @@ describe('legacy blob import', () => {
       expect(factories[0].name).toHaveLength(CAPS.name)
       expect(factories[0].notes).toHaveLength(CAPS.notes)
     })
+
+    // The client cannot work this out for itself: it never sees the blob.
+    it('reports how many factories the cap left behind', async () => {
+      await seedBlob(user.username, Array.from(
+        { length: CAPS.factoriesPerRoom + 12 },
+        (_unused, id) => ({ id: id + 1, name: 'f' }),
+      ))
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      expect(body.imported).toBe(true)
+      expect(body.dropped).toBe(12)
+    })
+
+    it('says nothing about drops for a blob that fitted', async () => {
+      await seedBlob(user.username)
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      expect(body.imported).toBe(true)
+      expect(body.dropped).toBeUndefined()
+    })
   })
 
   describe('POST /rooms/legacy/auto-import', () => {

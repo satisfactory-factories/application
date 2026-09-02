@@ -730,6 +730,26 @@ describe('rooms-store', () => {
       expect(api.legacyAutoImport).not.toHaveBeenCalled()
     })
 
+    // The blob can hold more factories than a cloud plan takes, and the browser has no
+    // way of knowing that happened.
+    it('says how much of an oversized legacy plan was left behind', async () => {
+      const toast = vi.spyOn(eventBus, 'emit')
+      localTab('Empty', 0)
+      vi.mocked(api.legacyAutoImport).mockResolvedValue({
+        imported: true,
+        room: entry({ roomId: 'recovered' }),
+        dropped: 12,
+      })
+
+      await store.refresh({ offerAdoption: true })
+
+      expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
+        message: expect.stringContaining('the last 12 factories could not be brought over'),
+        type: 'warning',
+      }))
+      toast.mockRestore()
+    })
+
     it('does not auto-import when the browser holds a plan', async () => {
       localTab('Mine')
 

@@ -118,6 +118,8 @@ export interface LegacyImportResult {
   imported: boolean
   reason?: LegacyImportSkipReason
   room?: RoomListEntry
+  /** Factories the blob held beyond the per-room cap, so the client can say so. */
+  dropped?: number
 }
 
 // ===== Preferences =====

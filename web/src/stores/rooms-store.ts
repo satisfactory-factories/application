@@ -356,9 +356,16 @@ export const useRoomsStore = defineStore('rooms', () => {
       // Sent rather than hardcoded so the server's own eligibility gate is real.
       const result = await api.legacyAutoImport(localTabCount)
       if (!result.imported) return
+      // A cloud plan holds 300 factories, and an old save could be bigger. Saying how
+      // many were left behind is the difference between a partial recovery and a
+      // silent one.
+      const dropped = result.dropped ?? 0
       eventBus.emit('toast', {
-        message: 'Recovered the plan previously saved to your account.',
-        type: 'success',
+        message: dropped > 0
+          ? `Recovered the plan previously saved to your account. It was too big for a cloud plan, so the last ${dropped} ${dropped === 1 ? 'factory' : 'factories'} could not be brought over.`
+          : 'Recovered the plan previously saved to your account.',
+        type: dropped > 0 ? 'warning' : 'success',
+        variant: dropped > 0 ? 'permanent' : 'timed',
         timeout: NOTICE_MS,
       })
       await refresh()

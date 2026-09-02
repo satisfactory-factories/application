@@ -55,8 +55,9 @@ export class LegacyImportService {
       return { imported: false, reason: 'already_imported' }
     }
 
-    const factories = await this.loadBlob(username)
-    if (!factories) return { imported: false, reason: 'no_legacy_data' }
+    const blob = await this.loadBlob(username)
+    if (!blob) return { imported: false, reason: 'no_legacy_data' }
+    const { factories, dropped } = blob
 
     const roomId = legacyImportRoomId(userId)
     const result = await this.roomsService.ensureRoom(
@@ -71,7 +72,9 @@ export class LegacyImportService {
       await this.users.updateOne({ _id: userId }, { $set: { legacyImportRoomId: roomId } })
     })
 
-    return { imported: true, room: result.room }
+    return dropped > 0
+      ? { imported: true, room: result.room, dropped }
+      : { imported: true, room: result.room }
   }
 
   /**
@@ -79,16 +82,22 @@ export class LegacyImportService {
    * zod schema, so it is truncated and capped but not shape-validated: rejecting
    * it would make "Recover server copy" fail for exactly the saves it exists for.
    * The client's own migration path fills in whatever the record is missing.
+   *
+   * `dropped` is what the cap cost, reported so the recovery is not silently partial.
    */
-  private async loadBlob (username: string): Promise<Factory[] | null> {
+  private async loadBlob (username: string): Promise<{ factories: Factory[], dropped: number } | null> {
     const blob = await this.blobs.findOne({ user: username }).lean()
     if (!blob || !Array.isArray(blob.data)) return null
 
-    const factories = (blob.data as unknown[])
+    const usable = (blob.data as unknown[])
       .filter((entry): entry is Factory => typeof entry === 'object' && entry !== null)
+
+    const factories = usable
       .slice(0, CAPS.factoriesPerRoom)
       .map(factory => truncateFactory(factory))
 
-    return factories.length > 0 ? factories : null
+    return factories.length > 0
+      ? { factories, dropped: usable.length - factories.length }
+      : null
   }
 }
