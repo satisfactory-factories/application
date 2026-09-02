@@ -70,8 +70,8 @@ const resolvePorts = (argv, env, { servesApi }) => {
  * has to be told the web app moved, or every request fails preflight and every
  * WS upgrade 403s against WEB_ORIGINS in backend/src/config/cors.ts.
  *
- * Both are left alone on the default ports, so an unflagged run hands the child
- * processes exactly the environment they got before this script existed.
+ * Both are left alone on the default ports, so an unflagged run reaches the same
+ * API URL and the same origin allowlist it did before this script existed.
  */
 const devEnv = (ports, env, { servesApi }) => {
   const next = { ...env, WEB_PORT: String(ports.web), API_PORT: String(ports.api) }

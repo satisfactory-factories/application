@@ -82,7 +82,9 @@ pnpm dev --port 3100         # web on 3100, API left on 3001
 pnpm dev:web --port 3100     # same flag on the single-server scripts
 ```
 
-`WEB_PORT` and `API_PORT` do the same job as environment variables, and the flag wins over them. Under the hood `scripts/dev.mjs` also has to tell each half where the other went: the web app gets `VITE_API_URL` so its API calls and its sync socket follow, and the API gets the new web origin appended to `CORS_EXTRA_ORIGINS`, without which every request fails preflight and every socket upgrade 403s. Nothing outside local dev reads either of those two ports.
+`WEB_PORT` and `API_PORT` do the same job as environment variables, and the flag wins over them. One behaviour change comes with this on the default ports too: a dev server launched through `pnpm dev` now fails if its port is taken instead of quietly moving to the next free one, which for the web app is the API's.
+
+Under the hood `scripts/dev.mjs` also has to tell each half where the other went: the web app gets `VITE_API_URL` so its API calls and its sync socket follow, and the API gets the new web origin appended to `CORS_EXTRA_ORIGINS`, without which every request fails preflight and every socket upgrade 403s. Nothing outside local dev reads either of those two ports.
 
 The e2e suite (`pnpm test:e2e`) is deliberately **not** movable and asserts 3000/3001 are free before it starts. It builds the real client, and a built client bakes its API URL in.
 
