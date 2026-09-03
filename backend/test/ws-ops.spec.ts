@@ -446,12 +446,12 @@ describe('ws ops: the consistency contract', () => {
 
     // A second copy of an oversized array is how a room document reaches Mongo's own limit,
     // so the write goes ahead and only the stash is dropped. Sized in bytes rather than in
-    // factories: a hundred big ones outweigh three hundred small ones, and only one of
-    // those two shapes is refused by a count.
+    // factories: a room-cap plan of outsized records outweighs one of ordinary ones, and
+    // only one of those two shapes is refused by a count.
     it('skips the restore point when the stored plan is too big to duplicate', async () => {
       const a = await joined(owner.token)
-      const padding = 'x'.repeat(20_000)
-      const heavy = Array.from({ length: 250 }, (_unused, index) =>
+      const padding = 'x'.repeat(30_000)
+      const heavy = Array.from({ length: CAPS.factoriesPerRoom }, (_unused, index) =>
         ({ ...named(index + 1, `Extra ${index}`), notes: padding }))
       expect(JSON.stringify(heavy).length).toBeGreaterThan(BULK_RESTORE_MAX_BYTES)
       await connection.collection('rooms').updateOne({ roomId }, { $set: { factories: heavy } })

@@ -421,7 +421,7 @@ describe('rooms', () => {
         .toBe(201)
     })
 
-    it('rejects more than 300 factories in one room', async () => {
+    it('rejects more factories in one room than the cap allows', async () => {
       const factories = Array.from({ length: CAPS.factoriesPerRoom + 1 }, (_unused, id) =>
         makeFactory({ id }))
 

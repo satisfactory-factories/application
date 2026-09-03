@@ -99,8 +99,14 @@ every zod-derived type collapses into a wall of unrelated-looking TS errors.
 - Adoption replaces migration: per-login, per-browser, create-only; the legacy blob and the
   shares collection are never rewritten.
 - Offline mode is first-class (manual airplane switch + detection prompt).
-- Caps: 10 owned rooms, 25 memberships per user. Activity is recorded (who/when per op) but
-  has no UI in v0.7.0.
+- Caps: **150 factories per room** (2026-09-03, was 300), 10 owned rooms, 25 memberships per
+  user. Activity is recorded (who/when per op) but has no UI in v0.7.0.
+- **Invite slugs stay three words from the 72-word list** (2026-09-03). 72³ is 373,248, so a
+  determined enumeration finds shared rooms; the throttle on the slug lookup is the accepted
+  defence and the maths is acknowledged rather than disputed. Revisit if abuse appears.
+- **The revocation fan-out window is accepted, tracked as issue #640** (2026-09-03). Closing it
+  properly costs a room read per peer per op on the hottest path, which is not worth what
+  escapes: the edits made in the milliseconds between the unshare write and the async sweep.
 - **Revocation is a single write, not a chain.** Unshare clears `shared` and bumps the room's
   `membershipEpoch` in one update; a `RoomMembership` whose `epoch` is below it grants nothing
   anywhere (REST list, WS join, every op), owner rows exempt. The deletions, revision bumps
@@ -1232,10 +1238,11 @@ it is a plan fetch.
   snapshot per room. The budget cannot be spent below a snapshot-less reject, because a client
   reads *no snapshot* as "the room is gone" and turns its tab local.
 - **`WS_MAX_PAYLOAD_BYTES` was 25MB against a largest legitimate frame of about 4.6MB** — a
-  300-factory room built entirely of the biggest factory a real plan holds (15KB, measured off
-  `maels-big-boi-plan-data.json`, whose 36 factories average 6.3KB). Now 8MB, and
-  `ws-limits.spec.ts` builds that frame and asserts the constant sits between it and three
-  times it, so the number stays derived rather than chosen.
+  room built entirely of the biggest factory a real plan holds (15KB, measured off
+  `maels-big-boi-plan-data.json`, whose 36 factories average 6.3KB). It went to 8MB, and to
+  **4MB** when the room cap dropped to 150 (below), because that frame is now 2.2MB.
+  `ws-limits.spec.ts` builds it and asserts the constant sits between it and three times it,
+  so the number stays derived rather than chosen.
 - **Nothing capped concurrent sockets.** The 60/minute rate limit says how fast they arrive and
   nothing about how many are held. `ConcurrencyLimiter` in `ws-throttle.ts` caps per address
   (at the rate limit) and process-wide (2000); the slot is released off `info.req.socket`'s
@@ -1313,7 +1320,8 @@ nothing routes through them. The first two below are from the round-three race a
   room from its own join, so what escapes is the edits made in those milliseconds, not the plan.
   Re-authorizing per peer per op would cost a room read on the hottest path, which is why it was
   left; dropping the room from the registry synchronously at the emit, rather than in the async
-  sweep, is the cheap version of the fix.
+  sweep, is the cheap version of the fix. **Accepted on 2026-09-03 and tracked as issue #640**,
+  so this is settled rather than outstanding: reopen it against that issue, not as a new find.
 - **`share()` does not carry `deletedAt: null` into its write.** A share racing its own room's
   delete can set `shared: true` and a slug back onto a tombstoned room. Nothing is disclosed —
   every read path either filters the tombstone or refuses on it, so the room stays inert — but
@@ -1633,10 +1641,13 @@ and it never leaves the server: `toRoomSnapshot` names its fields and this is no
 with a warning when the stored plan is too big to duplicate, because a second copy of an
 oversized array is how a room document reaches Mongo's own 16MB limit. **That guard is on
 bytes, not on the factory count** (`BULK_RESTORE_MAX_BYTES`, 4MB, in `room-op.service.ts`):
-a hundred big factories outweigh three hundred small ones, and only one of those two shapes
-was refused by a count. It is also skipped when the pre-op plan is empty, or a second declared
-bulk in a row would overwrite the stash with the emptiness the first clear produced — which is
-the state somebody would be restoring *from*.
+a room-cap plan of outsized records outweighs a room-cap plan of ordinary ones, and only one of
+those two shapes was refused by a count. Since the cap dropped to 150 the guard clears every
+plan the cap allows (2.2MB at the largest), so it now fires only on records the schema never
+saw: `ws-limits.spec.ts` pins that, and `ws-ops.spec.ts` reaches the skip with 30KB notes.
+It is also skipped when the pre-op plan is empty, or a second declared bulk in a row would
+overwrite the stash with the emptiness the first clear produced — which is the state somebody
+would be restoring *from*.
 
 **The testing lesson, and it is why the truncation bug reached live at all.** Every sync fixture
 was two factories. Two mount in one flush, so the stagger the bug lives in never existed in a
@@ -1677,6 +1688,34 @@ callers are a scraper and the oldest, most broken clients, none of which sends a
   parser is sized for a plan, and a declared length is the sender's claim rather than a fact.
 - prom-client is deprecated and the backend stayed on it deliberately: see
   [[prom-client-deprecated-successor]] before changing anything about a metric.
+
+## The room cap drops to 150 (2026-09-03)
+
+`CAPS.factoriesPerRoom` was 300 and is now 150. The reason is measured rather than theoretical:
+the client crashes opening plans of 175-250 factories, so a room the server accepts is one no
+client can open, and the server must not hold data the app cannot show. Raising it again is a
+one-line change once the client can take it, which is why the conservative number was the easy
+call to make.
+
+**Everything downstream is derived, so sweep by grep, not by memory.** Nearly every site reads
+`CAPS.factoriesPerRoom` and moved on its own: the zod plan and op schemas, `rooms.dto.ts`, the
+legacy-import truncation, `boundedRecord` on the export calculator's per-factory settings, and
+the backend tests that seed `cap + 1` or `cap - 1`. Four things did not, and each is the kind of
+number that goes stale silently:
+
+- **`WS_MAX_PAYLOAD_BYTES`, re-derived from 150 and now 4MB** (was 8MB). The largest legitimate
+  frame is a full room of the biggest factory a real plan holds (15,314 bytes): 2,297,568 bytes
+  measured, so 4MB is the same "roughly double" the 8MB was against 300.
+- **`BULK_RESTORE_MAX_BYTES` (4MB) now clears every plan the cap allows**, since the same room
+  serialises to 2.2MB. The stash is no longer skippable by a legitimate plan, so the guard is
+  defence in depth against a document that got large by some other route. `ws-limits.spec.ts`
+  asserts the room-cap plan fits inside it, which is also the cap change's negative control.
+- **`ws-ops.spec.ts` seeded 250 factories** to reach the skip, which is now over the cap and
+  would be refused `too_large` before the restore point was ever considered. It seeds a full
+  room of 30KB records instead, written straight to Mongo so nothing schema-checks them.
+- **Prose repeats the number**: `backend/README.md` (twice, plus the 25MB `maxPayload` line it
+  still carried), the v0.7 `CHANGELOG.md` entry, the plan's caps table, and a comment in
+  `rooms-store.ts` explaining the legacy-import overflow toast.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See

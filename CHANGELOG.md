@@ -81,7 +81,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 
 - **The backend is a new application.** It has been rewritten in NestJS with a real module structure, typed configuration, graceful shutdown, and a test suite covering the routes, the live connection, concurrent edits, passwords, revocation, deletion and the hourly cleanup.
 - A new shared package holds the message formats, the plan schema and the protocol version that the planner and the server both build against, so the two can no longer drift apart.
-- Every plan that reaches the server is validated against one schema with explicit limits: 300 factories per plan, 10 plans of your own, 25 plans in your tab bar, and the same name and note truncation the planner has always applied.
+- Every plan that reaches the server is validated against one schema with explicit limits: 150 factories per plan, 10 plans of your own, 25 plans in your tab bar, and the same name and note truncation the planner has always applied.
 - Multi-step changes are built as steps that can each be repeated safely, so a request that fails halfway leaves nothing stranded and simply resumes. Deleting a plan marks it dead first, which makes it inert instantly, and clears up afterwards.
 - Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.
 - Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.

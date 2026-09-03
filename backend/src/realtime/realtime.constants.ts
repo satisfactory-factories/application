@@ -1,10 +1,10 @@
 /**
- * The largest frame a client has any business sending: a room-cap plan of 300 factories,
+ * The largest frame a client has any business sending: a room-cap plan of 150 factories,
  * every one of them as big as the biggest factory a real plan holds (~15KB), is around
- * 4.6MB. Doubling that is the headroom; anything past it is not a plan.
- * `ws-limits.spec.ts` measures a 300-factory op against this.
+ * 2.2MB. Doubling that is the headroom; anything past it is not a plan.
+ * `ws-limits.spec.ts` measures a room-cap op against this.
  */
-export const WS_MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
+export const WS_MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
 
 /** A socket that has not said `hello` by then is closed 4401. */
 export const WS_HELLO_TIMEOUT_MS = 5_000

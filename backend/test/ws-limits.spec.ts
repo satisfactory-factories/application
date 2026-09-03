@@ -2,6 +2,7 @@ import { CAPS, PROTOCOL_VERSION } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { makeFactory } from 'common/testing'
 
+import { BULK_RESTORE_MAX_BYTES } from '../src/realtime/room-op.service'
 import { ConnectionRegistry } from '../src/realtime/connection-registry'
 import { RoomGateway } from '../src/realtime/room.gateway'
 import { TestClient, closeAll } from './utils/ws-client'
@@ -18,6 +19,13 @@ import {
 
 /** The biggest factory a real 36-factory plan holds, measured off it. */
 const LARGEST_REAL_FACTORY_BYTES = 15_314
+
+/** A full room of those: the largest plan the caps table allows anyone to hold. */
+const roomCapPlan = () => {
+  const padding = 'x'.repeat(LARGEST_REAL_FACTORY_BYTES - JSON.stringify(makeFactory()).length)
+  return Array.from({ length: CAPS.factoriesPerRoom }, (_unused, index) =>
+    ({ ...makeFactory({ id: index + 1, name: `Factory ${index}` }), notes: padding }))
+}
 
 /** ws answers an over-long message with this before any handler sees it. */
 const WS_MESSAGE_TOO_BIG = 1009
@@ -85,16 +93,21 @@ describe('ws limits and heartbeat', () => {
    * biggest plan the room cap allows.
    */
   it('takes a room-cap op built from the biggest factories a real plan holds', () => {
-    const padding = 'x'.repeat(LARGEST_REAL_FACTORY_BYTES - JSON.stringify(makeFactory()).length)
-    const factories = Array.from({ length: CAPS.factoriesPerRoom }, (_unused, index) =>
-      ({ ...makeFactory({ id: index + 1, name: `Factory ${index}` }), notes: padding }))
     const frame = JSON.stringify({
-      type: 'op', roomId: 'a-room', opId: 'an-op', baseRevision: 0, diff: { factories },
+      type: 'op', roomId: 'a-room', opId: 'an-op', baseRevision: 0, diff: { factories: roomCapPlan() },
     })
 
     expect(frame.length).toBeLessThan(WS_MAX_PAYLOAD_BYTES)
     // Headroom, not an order of magnitude: twice the largest legitimate frame.
     expect(WS_MAX_PAYLOAD_BYTES).toBeLessThan(frame.length * 3)
+  })
+
+  /**
+   * The stash duplicates the plan inside the one room document, so the budget has to clear
+   * the biggest plan the cap allows or an ordinary bulk clear silently loses its undo.
+   */
+  it('leaves room to stash a room-cap plan as a bulk restore point', () => {
+    expect(JSON.stringify(roomCapPlan()).length).toBeLessThan(BULK_RESTORE_MAX_BYTES)
   })
 
   it('refuses a socket past the per-address concurrent ceiling', async () => {

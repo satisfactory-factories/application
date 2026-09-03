@@ -356,7 +356,7 @@ export const useRoomsStore = defineStore('rooms', () => {
       // Sent rather than hardcoded so the server's own eligibility gate is real.
       const result = await api.legacyAutoImport(localTabCount)
       if (!result.imported) return
-      // A cloud plan holds 300 factories, and an old save could be bigger. Saying how
+      // A cloud plan holds 150 factories, and an old save could be bigger. Saying how
       // many were left behind is the difference between a partial recovery and a
       // silent one.
       const dropped = result.dropped ?? 0

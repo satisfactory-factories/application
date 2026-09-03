@@ -19,7 +19,11 @@ export const CAPS = {
   passwordMax: 100,
   /** Hex or a named colour; long enough for `rgba(...)` and nothing more. */
   groupColor: 32,
-  factoriesPerRoom: 300,
+  /**
+   * Measured: the client crashes opening a plan of 175-250 factories, so the server must
+   * not accept a room no client can open. Raising it later is painless.
+   */
+  factoriesPerRoom: 150,
   ownedRoomsPerUser: 10,
   /** Owned plus joined. */
   membershipsPerUser: 25,

@@ -214,6 +214,15 @@ Nothing from the post-review round remains open.
     the history UI is a follow-up.
 13. **Playwright** for the live two-browser tests; one v0.7.0 headline release; `main` stays
     shippable until the branch lands; `tab-sync-v2` is a design reference only.
+14. **A room holds 150 factories, not 300** (2026-09-03). The client is measured crashing on
+    plans of 175-250 factories, so the server must not accept a room nobody can open. Raising
+    the number later is painless, and everything derived from it moves with it.
+15. **Invite slugs stay three words from the 72-word list** (2026-09-03). That is 373,248
+    combinations, which is guessable given enough requests, and throttling the slug lookup is
+    the accepted defence. Revisit if abuse actually appears.
+16. **The revocation fan-out window is accepted as it stands** (2026-09-03). A peer's op can
+    still reach a socket in the milliseconds between the unshare write and the async sweep;
+    it is tracked as issue #640 rather than paid for with a room read on the hottest path.
 
 ---
 
@@ -380,7 +389,7 @@ data boundary — full `Factory`/`FactoryTab` shape, unknown keys stripped, numb
 | Slug | reject unless `^[a-z0-9-]{1,100}$` after lowercasing |
 | Invite password | reject outside 1–100 chars (bcrypt-hashed at rest) |
 | Group color | reject over 32 chars |
-| Factories per room | reject over 300 |
+| Factories per room | reject over 150 |
 | Rooms per user (owned) | reject over 10 |
 | Memberships per user (owned + joined) | reject over 25 |
 | Any other string | reject over 10k |
@@ -620,4 +629,5 @@ CI gets a new job running the e2e suite headless.
 Email password reset (Mailgun), the v0.7.0 changelog modal, the activity/history UI (data is
 recorded from day one), on-select factory rendering rework, room read-only lock, presence
 cursors/avatars (bare occupancy count only if free), the Vue Flow graph rebuild
-(`graphPosition` is already optional in the payload schema), horizontal backend scaling.
+(`graphPosition` is already optional in the payload schema), horizontal backend scaling, and
+the revocation fan-out window (issue #640, decision 16).

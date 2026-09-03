@@ -15,7 +15,8 @@ import { EventCountersService } from '../event-counters/event-counters.service'
 /**
  * The most a bulk restore point may duplicate. The room document holds the live plan and the
  * stash side by side and Mongo refuses a document over 16MB, so a quarter of that each leaves
- * room for both plus everything else the room carries.
+ * room for both plus everything else the room carries. At a 150-factory cap it clears every
+ * plan the cap allows (`ws-limits.spec.ts`), so it fires only on records the schema never saw.
  */
 export const BULK_RESTORE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -142,7 +143,7 @@ export class RoomOpService {
     if (room.factories.length === 0) return {}
 
     // On bytes, not factories: the stash and the live plan share one document, and a
-    // hundred big factories outweigh three hundred small ones.
+    // room-cap plan of outsized records outweighs a room-cap plan of ordinary ones.
     const bytes = JSON.stringify(room.factories).length
     if (bytes > BULK_RESTORE_MAX_BYTES) {
       this.logger.warn(`Skipping the bulk restore point for room ${room.roomId}: ${bytes} bytes`)
