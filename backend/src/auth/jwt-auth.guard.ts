@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, createParamDecorator } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 
+import { AccountTokenService } from './account-token.service'
 import { AuthTokenPayload, AuthenticatedRequest, isAccountTokenPayload } from './auth-token'
 
 const unauthorized = (): HttpException =>
@@ -8,9 +9,12 @@ const unauthorized = (): HttpException =>
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor (private readonly jwtService: JwtService) {}
+  constructor (
+    private readonly jwtService: JwtService,
+    private readonly accounts: AccountTokenService,
+  ) {}
 
-  canActivate (context: ExecutionContext): boolean {
+  async canActivate (context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
     const token = request.header('Authorization')?.replace('Bearer ', '')
     if (!token) throw unauthorized()
@@ -26,6 +30,10 @@ export class JwtAuthGuard implements CanActivate {
     // A room visitor token verifies against the same secret and is not an account.
     if (!isAccountTokenPayload(payload)) throw unauthorized()
 
+    // A signature alone cannot say the token is still wanted: a password change bumps the
+    // account's generation, and one projected `_id` read per request is what enforces it.
+    if (!await this.accounts.isCurrent(payload)) throw unauthorized()
+
     request.user = payload
     return true
   }
@@ -34,17 +42,23 @@ export class JwtAuthGuard implements CanActivate {
 /** Attaches the user when a valid token is present, and lets anonymous through. */
 @Injectable()
 export class OptionalJwtAuthGuard implements CanActivate {
-  constructor (private readonly jwtService: JwtService) {}
+  constructor (
+    private readonly jwtService: JwtService,
+    private readonly accounts: AccountTokenService,
+  ) {}
 
-  canActivate (context: ExecutionContext): boolean {
+  async canActivate (context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
     const token = request.header('Authorization')?.replace('Bearer ', '')
     if (!token) return true
 
     try {
       const payload: unknown = this.jwtService.verify(token)
-      // Anything that is not an account token is treated as no token, visitor tokens included.
-      if (isAccountTokenPayload(payload)) request.user = payload
+      // Anything that is not an account token is treated as no token, visitor tokens and
+      // superseded ones included.
+      if (isAccountTokenPayload(payload) && await this.accounts.isCurrent(payload)) {
+        request.user = payload
+      }
     } catch {
       // A bad token is treated as no token: this guard never rejects.
     }

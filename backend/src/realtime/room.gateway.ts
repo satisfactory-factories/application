@@ -16,6 +16,9 @@ import type {
 } from 'common'
 
 import { ANONYMOUS_ACTOR } from '../rooms/room-activity.service'
+import { AccountEventsService } from '../auth/account-events.service'
+import type { AccountEventMap } from '../auth/account-events.service'
+import { AccountState, AccountTokenService, tokenVersionMatches } from '../auth/account-token.service'
 import { AuthTokenPayload, isAccountTokenPayload } from '../auth/auth-token'
 import { Connection } from './connection'
 import { ConnectionRegistry } from './connection-registry'
@@ -68,6 +71,8 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     private readonly events: RoomEventsService,
     private readonly jwt: JwtService,
     private readonly counters: EventCountersService,
+    private readonly accounts: AccountTokenService,
+    private readonly accountEvents: AccountEventsService,
   ) {}
 
   onModuleInit (): void {
@@ -75,6 +80,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.events.on('room_meta', this.onRoomMeta)
     this.events.on('room_deleted', this.onRoomDeleted)
     this.events.on('access_revoked', this.onAccessRevoked)
+    this.accountEvents.on('account_tokens_revoked', this.onAccountTokensRevoked)
 
     this.heartbeat = setInterval(() => this.pingAll(), WS_HEARTBEAT_INTERVAL_MS)
     this.heartbeat.unref()
@@ -90,6 +96,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     this.events.off('room_meta', this.onRoomMeta)
     this.events.off('room_deleted', this.onRoomDeleted)
     this.events.off('access_revoked', this.onAccessRevoked)
+    this.accountEvents.off('account_tokens_revoked', this.onAccountTokensRevoked)
 
     if (this.heartbeat) clearInterval(this.heartbeat)
     this.heartbeat = null
@@ -230,15 +237,26 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       }
     }
 
-    let roomsRevision: number | null = null
+    // The one read the handshake makes, and it answers both questions: whether the token
+    // has been superseded, and what the account's rooms revision is.
+    let account: AccountState | null = null
     try {
-      if (user) roomsRevision = await this.rooms.roomsRevisionOf(user.id)
+      if (user) account = await this.accounts.accountState(user.id)
     } catch (cause) {
       this.logger.error('Handshake failed while reading the account', cause)
       this.counters.record('server', 'ws_handshake_internal_error')
       connection.close(WS_INTERNAL_ERROR, 'handshake failed')
       return
     }
+
+    // A token the account has superseded is refused exactly as an unsigned one is: 4401 is
+    // what puts the client through its sign-in-again path.
+    if (user && (account === null || !tokenVersionMatches(user.tokenVersion, account.tokenVersion))) {
+      connection.close(CLOSE_CODES.unauthorized, 'token revoked')
+      return
+    }
+
+    const roomsRevision = account?.roomsRevision ?? null
 
     connection.userId = user?.id ?? null
     connection.username = user?.username ?? null
@@ -578,6 +596,17 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
     // Nobody is told: the room they held locks in has stopped existing.
     this.locks.releaseRoom(roomId)
+  }
+
+  /**
+   * A password change kills every token the account holds, this socket's included, so the
+   * whole connection goes rather than one room: 4401 is the code the client already answers
+   * by signing out, which is the only way back from a token that will never be accepted again.
+   */
+  private readonly onAccountTokensRevoked = ({ userId }: AccountEventMap['account_tokens_revoked']): void => {
+    for (const connection of this.registry.userConnections(userId)) {
+      connection.close(CLOSE_CODES.unauthorized, 'token revoked')
+    }
   }
 
   private readonly onAccessRevoked = (event: RoomEventMap['access_revoked']): void => {

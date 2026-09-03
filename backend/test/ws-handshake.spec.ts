@@ -1,7 +1,7 @@
 import { CLOSE_CODES, PROTOCOL_VERSION } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RoomsService } from '../src/rooms/rooms.service'
+import { AccountTokenService } from '../src/auth/account-token.service'
 import { TestClient, closeAll } from './utils/ws-client'
 import { TestContext, createTestApp, destroyTestApp } from './utils/test-app'
 import { TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
@@ -161,8 +161,8 @@ describe('ws handshake', () => {
 
   describe('a database failure during the handshake', () => {
     it('closes retryable (1011), never 4401', async () => {
-      const rooms = context.app.get(RoomsService)
-      const spy = vi.spyOn(rooms, 'roomsRevisionOf').mockRejectedValue(new Error('mongo is down'))
+      const accounts = context.app.get(AccountTokenService)
+      const spy = vi.spyOn(accounts, 'accountState').mockRejectedValue(new Error('mongo is down'))
 
       const client = await open()
       client.send({ type: 'hello', protocolVersion: PROTOCOL_VERSION, token: user.token })

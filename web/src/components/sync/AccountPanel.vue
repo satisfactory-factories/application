@@ -316,7 +316,8 @@
       passwordError.value = result
       return
     }
-    passwordSuccess.value = 'Password changed.'
+    // Every session ends with the change, this one included, so say so before it happens.
+    passwordSuccess.value = 'Password changed. Every device signed in on the old password, including this one, has to sign in again.'
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''

@@ -17,6 +17,17 @@ export class User {
   @Prop({ type: Number, default: 0 })
   roomsRevision!: number
 
+  /**
+   * The account's token generation. Every JWT carries the value it was minted at, and a
+   * password change bumps this, so every token issued before it stops being accepted.
+   *
+   * Absent on documents written before this field existed, which reads as 0 and matches a
+   * token carrying no claim: the deploy logs nobody out, and the first password change
+   * after it starts the versioning for that account.
+   */
+  @Prop({ type: Number, default: 0 })
+  tokenVersion!: number
+
   /** Set once, by the legacy blob import. Its presence is what makes the import idempotent. */
   @Prop({ type: String, default: null })
   legacyImportRoomId!: string | null

@@ -52,9 +52,9 @@ Every route except `GET /health` and `GET /share/:id` requires an `X-App-Version
 
 | Route | Notes |
 | --- | --- |
-| `POST /register`, `POST /login` | Account creation and JWT issuing (HS256, `{ id, username }`, 30 days) |
-| `POST /validate-token` | Token check |
-| `POST /me/password` | Change password while logged in; verifies the current one first |
+| `POST /register`, `POST /login` | Account creation and JWT issuing (HS256, `{ id, username, tokenVersion }`, 30 days) |
+| `POST /validate-token` | Token check. A token below the account's `tokenVersion` is reported invalid |
+| `POST /me/password` | Change password while logged in; verifies the current one first. Bumps `tokenVersion` in the same update, which 401s every existing token and closes that account's sockets `4401` |
 | `GET /rooms`, `POST /rooms`, `POST /rooms/adopt` | The synced-tab list, and the create-only ensure chains behind it |
 | `PUT /rooms/order`, `PUT /rooms/:id/name`, `DELETE /rooms/:id` | Owner-only, except reorder, which is each member's own tab-bar position |
 | `POST /rooms/:id/share`, `POST /rooms/:id/unshare` | Allocates or retires the three-word invite slug. Unshare drops every non-owner membership |

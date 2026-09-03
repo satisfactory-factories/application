@@ -29,8 +29,8 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-09-03, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 494 vitest tests (32 files), common 153 (6), web 3105 unit tests (164 files, 1
-skipped), all measured 2026-09-03 after the account-recovery offer, rebased onto `747d9616`,
+backend 512 vitest tests (34 files), common 153 (6), web 3106 unit tests (164 files, 1
+skipped), all measured 2026-09-03 after account token revocation, rebased onto `747d9616`,
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
 conflict round). The whole suite ran twice at full speed
@@ -64,6 +64,7 @@ change to that file.
 | Dev-only staging of that prompt (no server, no second device) | `web/src/sync/offline-conflict-demo.ts`, `utils/factory-setups/offline-conflict-demo-plan.ts` |
 | Version header and the 426 path | `web/src/api/client.ts`, `components/sync/VersionPrompt.vue` |
 | WS gateway, presence, fan-out, revocation | `backend/src/realtime/` |
+| Account tokens, their generation and the bus that revokes them | `backend/src/auth/` (`account-token.service.ts`, `account-events.service.ts`) |
 | Rooms domain, ensure-steps, sweeper, activity | `backend/src/rooms/` |
 | Scrape endpoint, usage heartbeat, fault counters | `backend/src/metrics/`, `event-counters/`, `room-totals/`, `user-activity/` |
 | The browser half of those | `web/src/stores/telemetry-store.ts`, `events-store.ts`, `utils/record-event.ts` |
@@ -107,6 +108,10 @@ every zod-derived type collapses into a wall of unrelated-looking TS errors.
 - **The revocation fan-out window is accepted, tracked as issue #640** (2026-09-03). Closing it
   properly costs a room read per peer per op on the hottest path, which is not worth what
   escapes: the edits made in the milliseconds between the unshare write and the async sweep.
+- **A password change ends every session on the account** (2026-09-03), the browser that made
+  it included: no fresh token is handed back and no device is spared, because half a
+  revocation is not one. `User.tokenVersion` in the claim is how a stateless JWT gets there,
+  at one projected `_id` read per authenticated request.
 - **Revocation is a single write, not a chain.** Unshare clears `shared` and bumps the room's
   `membershipEpoch` in one update; a `RoomMembership` whose `epoch` is below it grants nothing
   anywhere (REST list, WS join, every op), owner rows exempt. The deletions, revision bumps
@@ -1766,6 +1771,43 @@ number that goes stale silently:
 - **Prose repeats the number**: `backend/README.md` (twice, plus the 25MB `maxPayload` line it
   still carried), the v0.7 `CHANGELOG.md` entry, the plan's caps table, and a comment in
   `rooms-store.ts` explaining the legacy-import overflow toast.
+
+## Account tokens are versioned, and a password change revokes them (2026-09-03)
+
+Before this a stolen 30-day JWT kept full access after the password it was minted under was
+changed, because nothing on the account said which generation of token was still wanted.
+
+**`User.tokenVersion` is that generation.** `login` mints it into the claim, `POST /me/password`
+writes the new hash and `$inc`s the field in **one document update**, and both REST guards, the
+WS `hello` and `validate-token` compare claim against stored. The single update is the whole
+atomicity story: one document needs no ensure-step chain, and splitting it would leave a window
+where the password had moved and the old tokens still verified.
+
+**The backward-compatibility rule is the part to keep.** `tokenVersionMatches` reads an absent
+claim and an absent stored field as the same 0, so the deploy signs nobody out: every token in
+the wild carries no claim and every user document has no field. The account's first password
+change after the deploy is what starts its versioning. Any comparison stricter than
+`(claim ?? 0) === (stored ?? 0)` logs out the entire user base at deploy, which is why four
+tests cover exactly that shape.
+
+**What the check costs, and where it was not paid twice.** `AccountTokenService.tokenVersionOf`
+is one `_id` lookup projected to a single field, ~0.08ms warm against the suite's mongod, on
+every authenticated request. The WS handshake already read the user for `roomsRevision`, so it
+calls `accountState` instead and gets both numbers from one projection. `GET /rooms` still makes
+a second, unprojected user read inside `RoomsService.list` — the guard has no channel to hand
+its read down to a service, and that read predates this work.
+
+**The revocation event has its own bus.** `AccountEventsService` in `auth/` mirrors
+`RoomEventsService` rather than adding an event to it: the rooms domain imports auth, so an auth
+service emitting on the rooms bus is a module cycle. The gateway closes that account's sockets
+`4401` off the registry's existing `byUser` index — per account, never per room, because the
+token is dead everywhere — and `4401` is the close code the client has always answered by
+signing out, so nothing in the web app changed but the success message.
+
+**The device that changes the password is signed out with the others.** No fresh token comes
+back from `/me/password`; sparing the acting session would mean a password changed *because*
+somebody else knows it leaves that browser's own stolen copy alive one lever short of dead.
+`AccountPanel.vue` says so on success, which is the only user-facing change.
 
 Why any of this exists: the old sync uploaded only the active tab as a bare `Factory[]`
 (dropping tab-level fields) and any client could clobber the account's data. See

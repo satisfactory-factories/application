@@ -66,6 +66,8 @@ export const EVENT_REASONS = [
   'ws_snapshot_reject_rate_exceeded',
   'room_access_unstable_race',
   'room_event_listener_threw',
+  /** A revoked account's sockets were not closed, because the listener threw. */
+  'account_event_listener_threw',
   // Each of these marks a place where the user's change committed and the record of it did
   // not. Today every one is a log line nobody reads.
   'post_commit_activity_lost',

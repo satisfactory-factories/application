@@ -96,6 +96,15 @@ describe('AccountPanel', () => {
       expect(at(wrapper, 'password-success').text()).toContain('Password changed')
     })
 
+    it('says the other devices have to sign in again', async () => {
+      const wrapper = render()
+      vi.mocked(authStore.changePassword).mockResolvedValue(true)
+
+      await fillPasswordForm(wrapper, 'old-one', 'new-one')
+
+      expect(at(wrapper, 'password-success').text()).toContain('sign in again')
+    })
+
     it('clears the fields once it worked, so nothing is left lying around', async () => {
       const wrapper = render()
       vi.mocked(authStore.changePassword).mockResolvedValue(true)

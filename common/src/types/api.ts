@@ -10,10 +10,16 @@ import type { SyncedPreferences } from '../schemas/preferences'
 
 // ===== Auth =====
 
-/** The JWT payload: `{ id, username }`, HS256, 30d. */
+/** The JWT payload: `{ id, username, tokenVersion }`, HS256, 30d. */
 export interface AuthTokenClaims {
   id: string
   username: string
+  /**
+   * The account's token generation when this was minted; a password change bumps it and
+   * every token below it stops working. Optional because tokens minted before versioning
+   * existed carry no claim, and those count as generation 0.
+   */
+  tokenVersion?: number
   iat?: number
   exp?: number
 }

@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import bcrypt from 'bcryptjs'
 import { Model } from 'mongoose'
 
+import { AccountEventsService } from './account-events.service'
 import { User, UserDocument } from './user.schema'
 import { UserActivityService } from '../user-activity/user-activity.service'
 import { EventCountersService } from '../event-counters/event-counters.service'
@@ -26,7 +27,8 @@ export class AuthService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly jwtService: JwtService,
     private readonly userActivity: UserActivityService,
-    private readonly counters: EventCountersService,) {}
+    private readonly counters: EventCountersService,
+    private readonly accountEvents: AccountEventsService,) {}
 
   async register (username: string, password: string): Promise<{ message: string }> {
     if (username.length > MAX_USERNAME_LENGTH) throw badRequest('Username too long.')
@@ -53,7 +55,11 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) throw badRequest('Invalid credentials')
 
-    const token = await this.jwtService.signAsync({ id: user._id, username: user.username })
+    const token = await this.jwtService.signAsync({
+      id: user._id,
+      username: user.username,
+      tokenVersion: user.tokenVersion ?? 0,
+    })
     console.log(`Successfully signed in user ${username}`)
 
     // Stamped after the token is issued and allowed to fail: a metrics write must never be
@@ -78,9 +84,18 @@ export class AuthService {
     const isMatch = await bcrypt.compare(currentPassword, user.password)
     if (!isMatch) throw badRequest('Invalid credentials')
 
-    user.password = await bcrypt.hash(newPassword, BCRYPT_ROUNDS)
-    await user.save()
+    // One document, one update: the new hash and the generation bump land together, so no
+    // window exists where the password has moved and the old tokens still verify. The
+    // ensure-step doctrine is for chains across documents and does not apply here.
+    await this.userModel.updateOne(
+      { _id: user._id },
+      { $set: { password: await bcrypt.hash(newPassword, BCRYPT_ROUNDS) }, $inc: { tokenVersion: 1 } },
+    )
     console.log(`Password changed for ${user.username}`)
+
+    // Sockets are closed off the back of this; the REST side is already refusing the old
+    // tokens on the read the guards make, so a listener that throws costs no access.
+    this.accountEvents.emit('account_tokens_revoked', { userId: String(user._id) })
 
     return { message: 'Password changed successfully!' }
   }

@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpException, HttpStatus, Post, UseGuards 
 import { JwtService } from '@nestjs/jwt'
 import type { LoginResponse, MessageResponse, ValidateTokenResponse } from 'common'
 
+import { AccountTokenService } from './account-token.service'
 import { AuthTokenPayload, isAccountTokenPayload } from './auth-token'
 import { AuthService } from './auth.service'
 import { CurrentUser, JwtAuthGuard } from './jwt-auth.guard'
@@ -19,6 +20,7 @@ export class AuthController {
   constructor (
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
+    private readonly accounts: AccountTokenService,
   ) {}
 
   @Post('register')
@@ -46,7 +48,7 @@ export class AuthController {
 
   @Post('validate-token')
   @HttpCode(HttpStatus.OK)
-  validateToken (@Body() body: TokenBody): ValidateTokenResponse {
+  async validateToken (@Body() body: TokenBody): Promise<ValidateTokenResponse> {
     const token = body?.token
     if (!token) throw new HttpException({ message: 'Token is required' }, HttpStatus.BAD_REQUEST)
 
@@ -54,6 +56,9 @@ export class AuthController {
       const payload: unknown = this.jwtService.verify(token)
       // A room visitor token is signed with the same secret; it is not an account token.
       if (!isAccountTokenPayload(payload)) throw new Error('not an account token')
+      // A token the account has since superseded is as invalid as an expired one, and the
+      // client reads this route's answer to decide whether it is still signed in.
+      if (!await this.accounts.isCurrent(payload)) throw new Error('token superseded')
       return { valid: true, decoded: payload }
     } catch {
       throw new HttpException(

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 
+import { AccountEventsService } from './account-events.service'
+import { AccountTokenService } from './account-token.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { JwtAuthGuard, OptionalJwtAuthGuard } from './jwt-auth.guard'
@@ -13,7 +15,16 @@ import { UserActivityModule } from '../user-activity/user-activity.module'
     UserActivityModule, // The sign-in stamp.
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard, MongooseModule],
+  providers: [AuthService, AccountTokenService, AccountEventsService, JwtAuthGuard, OptionalJwtAuthGuard],
+  // AccountTokenService and the account bus are exported for the WS gateway: the handshake
+  // makes the same staleness check the guards do, and the sockets are what a revocation kicks.
+  exports: [
+    AuthService,
+    AccountTokenService,
+    AccountEventsService,
+    JwtAuthGuard,
+    OptionalJwtAuthGuard,
+    MongooseModule,
+  ],
 })
 export class AuthModule {}

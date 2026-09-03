@@ -56,6 +56,7 @@ separate later session.
 
 - Scaffold NestJS: Mongo via `@nestjs/mongoose`, config, `/health` byte-identical, SIGTERM graceful shutdown; `/hello` is dropped (it duplicates `/health`)
 - Port auth: `/register`, `/login`, `/validate-token`, new `/me/password`; JWT guard; boot assertion on `JWT_SECRET`
+- Version account tokens: `User.tokenVersion` in the claim, bumped with the password write, checked by both guards and the WS hello, absent claim equal to absent-or-zero stored
 - Build `Room` (revision, tombstone, opId ring, `passwordHash`, `passwordVersion`), `RoomMembership`, `UserPreferences`, and capped `RoomActivity` schemas
 - Build rooms REST as resume-aware ensure-steps: list, create, rename, tombstone-first delete, leave, reorder, share/unshare, slug lookup, `POST /rooms/:id/auth` (password → visitor token), join, create-only adopt, password set/rotate/remove
 - Build the WS gateway: hello/join → snapshot-or-up-to-date, serialized per-room apply with revision-guarded writes and opId dedup, live access re-checks (membership, shared flag, visitor-token `passwordVersion`), Origin check, heartbeat, throttles, `maxPayload`
@@ -200,7 +201,31 @@ could never reach their old account save. The owner's choice: offer it on login.
   them instead. The silent auto-import still wins for the empty account in an empty browser,
   and the offer stands down when it has just taken the plan
 
-Nothing from the post-review round remains open.
+### Account token revocation — delivered
+
+A stolen 30-day JWT used to outlive the password change made because of it: nothing versioned
+tokens, so the only way to end a session was to wait a month.
+
+- `User.tokenVersion` (default 0) is the account's token generation, and every JWT `login`
+  mints carries the value it was minted at. `POST /me/password` writes the new hash and
+  `$inc`s the generation in **one document update**, so no window exists where the password
+  has moved and the old tokens still verify
+- Both REST guards and the WS `hello` compare the claim against the stored generation.
+  `AccountTokenService.tokenVersionOf` is one `_id` lookup projected to that single field
+  (~0.08ms warm, measured against the suite's mongod); the handshake uses `accountState`,
+  which reads the rooms revision in the same projection rather than adding a second read.
+  `validate-token` reports a superseded token invalid, the optional guard treats one as no
+  token, and an account that no longer exists is refused
+- **An absent claim equals an absent-or-zero stored generation**, so the deploy signs nobody
+  out: every token in the wild has no claim and every user document has no field, both read
+  as 0, and the account's first password change after the deploy starts its versioning
+- The change emits `account_tokens_revoked` on `AccountEventsService` — its own bus, because
+  the rooms domain already imports auth and emitting on the rooms bus would put a cycle in the
+  module graph — and the gateway closes that account's sockets `4401` off the registry's
+  account index. Per account, never per room: the token is dead everywhere. `4401` is the code
+  the client already answers by signing out, so no client change was needed
+- The device that changes the password is signed out with the rest, and the account panel says
+  so on success
 
 ## Locked decisions
 
@@ -245,6 +270,11 @@ Nothing from the post-review round remains open.
 16. **The revocation fan-out window is accepted as it stands** (2026-09-03). A peer's op can
     still reach a socket in the milliseconds between the unshare write and the async sweep;
     it is tracked as issue #640 rather than paid for with a room read on the hottest path.
+17. **A password change ends every session on the account, the acting one included**
+    (2026-09-03). No fresh token is handed back and no device is spared: half a revocation is
+    not a revocation, and the point of the feature is that a token somebody else holds stops
+    working. The cost is one projected `_id` read per authenticated request, which is what
+    buys revocation inside a stateless JWT without a session store.
 
 ---
 
@@ -326,8 +356,8 @@ persistent "new version available — refresh" prompt.
 - `RoomActivity`: `{ roomId, at, actor (userId or 'anon'), kind, summary? }`, capped per
   room (~200; the sweeper trims). Written on every accepted op and meta change. **No UI in
   v0.7.0** — the data is simply ready for the history feature later.
-- `User`: + `roomsRevision`, `legacyImportRoomId`. `UserPreferences`: `{ userId, prefs,
-  revision }`.
+- `User`: + `roomsRevision`, `legacyImportRoomId`, `tokenVersion` (the token generation a
+  password change bumps). `UserPreferences`: `{ userId, prefs, revision }`.
 - Legacy `FactoryData` (keyed by username) stays read-only forever. `Share` keeps accepting
   new snapshot rows via `POST /share` (zod-validated, version-gated, 5-per-5-min throttled);
   existing rows are never rewritten. New data keys on userId; the JWT carries both.
