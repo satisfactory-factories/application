@@ -12,7 +12,8 @@ import { configureApp } from './bootstrap'
 // reason production survived is that it was still running an older image.
 //
 // Overridable because web's vitest fixture server also binds 3001
-// (web/testing/global-setup.ts). Nothing deployed sets it.
+// (web/testing/global-setup.ts), and because `pnpm dev --port` sets it to move
+// local dev off the default pair. Nothing deployed sets it.
 const PORT = Number(process.env.PORT) || 3001
 
 const bootstrap = async (): Promise<void> => {

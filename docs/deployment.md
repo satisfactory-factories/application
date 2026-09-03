@@ -72,7 +72,8 @@ still there as a break-glass path and says so at the top.
   and the only reason production survived is that it was still running an image
   from before that commit; the first rebuild would have published a container
   nothing upstream could reach. `PORT` can override the app's port for local work
-  (web's vitest fixture also binds 3001), but nothing deployed sets it.
+  (web's vitest fixture also binds 3001, and `pnpm dev --port` sets it to move a
+  local run off the default pair), but nothing deployed sets it.
 - **The WebSocket gateway shares that same port and process.** Realtime sync is
   served at `/ws` on 3001 — no second port, no second container, no extra compose
   entry. What it does need is a tunnel that forwards the `Upgrade` header;

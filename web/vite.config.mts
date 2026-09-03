@@ -122,7 +122,14 @@ export default defineConfig(() => ({
     ],
   },
   server: {
-    port: 3000,
+    // 3000 unless a dev moved it for one run with `pnpm dev --port`. Playwright
+    // passes --port on the CLI, which wins over this.
+    port: Number(process.env.WEB_PORT) || 3000,
+    // scripts/dev.mjs always sets WEB_PORT, so every scripted dev run fails on a
+    // taken port rather than drifting to the next free one. A moved port was
+    // handed to the API as an allowed origin, and on the default pair the next
+    // free port is the API's own.
+    strictPort: Boolean(process.env.WEB_PORT),
   },
   test: {
     globals: true,
