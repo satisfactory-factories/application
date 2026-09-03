@@ -22,7 +22,10 @@ export class Share {
   @Prop({ type: Number, default: 0 })
   views!: number
 
-  /** Feeds the purge of old shares, so the collection cannot grow forever. */
+  /**
+   * When the link was last opened. No purge of old shares is implemented,
+   * so this is written on every view and never read back.
+   */
   @Prop({ type: Date, default: Date.now })
   lastViewed!: Date
 }
