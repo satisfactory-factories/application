@@ -29,8 +29,8 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-09-03, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 485 vitest tests (32 files), common 153 (6), web 3083 unit tests (163 files, 1
-skipped), all measured 2026-09-03 after the QA fix rounds,
+backend 486 vitest tests (32 files), common 153 (6), web 3084 unit tests (163 files, 1
+skipped), all measured 2026-09-03 on the final QA gate, rebased onto `747d9616`,
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
 conflict round). The whole suite ran twice at full speed
@@ -1280,6 +1280,19 @@ process (`fileParallelism: false`). A pooled socket outliving its server, on a p
 app then binds, is exactly a hang-up on a request that reached nothing. `test/utils/env-setup.ts`
 now installs a non-pooling agent. If it recurs, that hypothesis is wrong and the next suspect
 is the nested app's teardown racing the enclosing suite's.
+
+**The final gate saw the same shape in the other harness**, which is the best corroboration
+that hypothesis has: the full-speed Playwright run failed one test on `read ECONNRESET` against
+`POST /register` after 10ms, and it passed alone, passed under `E2E_CPU_THROTTLE=6`, and left no
+crash in the API log. Playwright's `APIRequestContext` pools keep-alive connections the same way
+supertest does. Two harnesses, one symptom, neither reproducible in isolation. Left unfixed on
+purpose: a Playwright retry would hide real failures, and the context exposes no agent to swap.
+
+**A guarded read is not optional in a release path.** The recovery copy `abandonLoad` restores
+is read by `beginLoading` too, so a `preLoadFactories` that will not parse is both why the chain
+dies and why the release is skipped — the tab wedges with `isLoaded` false and the client
+persists and sends nothing for the session, which is the exact state that release exists to
+prevent. Anything inside a catch-all handler has to be incapable of throwing.
 
 ## Flagged follow-ups, none of them blocking
 
