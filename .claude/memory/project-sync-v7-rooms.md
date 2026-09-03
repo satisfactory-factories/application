@@ -1343,6 +1343,13 @@ app then binds, is exactly a hang-up on a request that reached nothing. `test/ut
 now installs a non-pooling agent. If it recurs, that hypothesis is wrong and the next suspect
 is the nested app's teardown racing the enclosing suite's.
 
+**It did recur on the release gate, once, and its identity was lost.** One backend run came back
+`1 failed | 511 passed`; the command had grepped the summary lines only, so the test name went
+with the discarded output, and ten consecutive full runs afterwards — three of them reproducing
+the same shell chain — were all 512. So the non-pooling agent narrowed the class without closing
+it, and the next pass should keep the full output of every suite run rather than its last two
+lines. The two-in-one-gate rate across both harnesses is the real signal here.
+
 **The final gate saw the same shape in the other harness**, which is the best corroboration
 that hypothesis has: the full-speed Playwright run failed one test on `read ECONNRESET` against
 `POST /register` after 10ms, and it passed alone, passed under `E2E_CPU_THROTTLE=6`, and left no
@@ -1350,11 +1357,39 @@ crash in the API log. Playwright's `APIRequestContext` pools keep-alive connecti
 supertest does. Two harnesses, one symptom, neither reproducible in isolation. Left unfixed on
 purpose: a Playwright retry would hide real failures, and the context exposes no agent to swap.
 
+It happened again on the release gate (2026-09-03), on the same route, in the same test
+(`new-tab-chooser.e2e.ts` "an account opens the synced half of the same chooser"), and again
+passed alone and on a clean re-run. Same route twice is worth knowing but is not yet a cause:
+`registerUser` is the first API call most tests make, so it is where a bad socket surfaces
+rather than where one is made. Rate so far is about one test in ninety. Still unfixed, for the
+reason above and because `retries: 0` is a deliberate house rule in `playwright.config.ts`.
+
 **A guarded read is not optional in a release path.** The recovery copy `abandonLoad` restores
 is read by `beginLoading` too, so a `preLoadFactories` that will not parse is both why the chain
 dies and why the release is skipped — the tab wedges with `isLoaded` false and the client
 persists and sends nothing for the session, which is the exact state that release exists to
 prevent. Anything inside a catch-all handler has to be incapable of throwing.
+
+## The release gate (2026-09-03): CLAUDE.md is a place stale numbers hide
+
+The gate that closed the cap drop, the account-recovery offer and account token revocation.
+Every claim was negative-controlled rather than read: the cap by flipping `caps.ts` back to 300
+(`caps.spec.ts` "matches the plan" fails, and after a `common` rebuild `ws-limits.spec.ts` fails
+twice on `expected 4595268 to be less than 4194304`), the recovery offer by deleting the
+`role === 'owner'` filter (`rooms-store.spec.ts` "asks nothing, and does not even check, when
+the account owns a plan" fails), and the legacy-token guarantee by narrowing
+`tokenVersionMatches` to `claim === stored` (four tests across two files fail, all of them the
+no-claim cases). Numbers: common 153 (6 files), backend 512 (34) twice, web 3106 unit + 1
+skipped (164), parser 80 (4), `tsc`/`vue-tsc`/`lint-check`/`build` clean, Playwright 45 at full
+speed and 45 under `E2E_CPU_THROTTLE=6`. Two intermittents, both in the connection-pooling
+family above and both green on re-run: the Playwright `ECONNRESET`, and one unidentified backend
+failure in twelve full runs.
+
+**The one finding was in `CLAUDE.md`, not in the code.** It still said the merge cap was 300
+and the JWT payload was `{ id, username }`. Nothing tests that file, every session loads it, and
+a wrong always-loaded fact is worse than an absent one. Both corrected here. The lesson for the
+next number change: grep `CLAUDE.md` and `backend/README.md` alongside the source, because the
+constant sweep that catches every call site catches neither of them.
 
 ## Flagged follow-ups, none of them blocking
 

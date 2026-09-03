@@ -275,6 +275,10 @@ tokens, so the only way to end a session was to wait a month.
     not a revocation, and the point of the feature is that a token somebody else holds stops
     working. The cost is one projected `_id` read per authenticated request, which is what
     buys revocation inside a stateless JWT without a session store.
+18. **A cap or a claim shape changes `CLAUDE.md` too** (2026-09-03). The release gate found it
+    still promising a 300-factory merge cap and a `{ id, username }` payload, because it is the
+    one always-loaded file no test and no constant sweep reaches. `backend/README.md` sits in
+    the same blind spot.
 
 ---
 
@@ -678,6 +682,14 @@ mirror shape stays v6-readable; preferences merge.
 - Version bump → refresh prompt. Preferences set in A appear on fresh login in B.
 
 CI gets a new job running the e2e suite headless.
+
+**The release gate (2026-09-03).** common 153 (6 files), backend 512 (34) run twice, web 3106
+unit + 1 skipped (164), parser 80 (4), `tsc` and `vue-tsc` clean, root `lint-check` clean (64
+pre-existing `parsing/` warnings, 0 errors), root `build` clean, Playwright 45 at full speed and
+45 under `E2E_CPU_THROTTLE=6`. The three headline guarantees were each proved by reverting them
+and watching a named test fail; the memory records which. Two intermittents, both known and both
+green on re-run: the `ECONNRESET` on `POST /register`, and one backend failure in twelve full
+runs. Both are documented rather than retried away.
 
 ## Out of scope (v0.7.0 follow-ups)
 
