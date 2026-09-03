@@ -137,6 +137,12 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 
 ### Fixes
 
+- **Enter accepts a task you are editing** instead of dropping a newline into it. Task titles are
+  edited in an auto-growing textarea, so pressing enter grew the row and left the edit sitting
+  there uncommitted, while the new-task field right above it has always taken enter as "add this".
+  Enter now commits the edit and leaves the field, the same as clicking away; shift+enter still
+  types a second line for anyone who wants one.
+
 - **Checklist mode: ticks on the Products, Imports and export-chip checkboxes are reliable again**
   (#592, #593). The export tick sat inside the chip's own clickable area, so the chip's click
   handler and ripple layer could win the click before it ever reached the checkbox; it's now a

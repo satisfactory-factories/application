@@ -54,6 +54,7 @@
                   rows="1"
                   variant="plain"
                   @change="validateTaskLength(task)"
+                  @keydown.enter.exact.prevent="commitTaskEdit"
                 />
                 <p v-if="task.completed" class="text-done">{{ task.title }}</p>
               </td>
@@ -146,6 +147,13 @@
 
   const removeTask = (index: number) => {
     props.factory.tasks.splice(index, 1)
+  }
+
+  // Tasks are one-liners, so enter accepts the edit instead of dropping a newline into the
+  // title. Blurring is the accept: it commits through the field's own change handler, which is
+  // what clicking away already did. Shift+enter is left alone for a deliberate second line.
+  const commitTaskEdit = (event: KeyboardEvent) => {
+    (event.target as HTMLTextAreaElement).blur()
   }
 
   const validateTaskLength = (task: { title: string }) => {

@@ -10,10 +10,11 @@ import { newFactory } from '@/utils/factory-management/factory'
 describe('Component: PlannerFactoryTasks', () => {
   let factory: Factory
 
-  const mountSubject = () =>
+  const mountSubject = (options: Record<string, unknown> = {}) =>
     mount(PlannerFactoryTasks, {
       propsData: { factory },
       global: { plugins: [vuetify] },
+      ...options,
     })
 
   // Sortable has already moved the DOM by the time it reports; the component's job is to
@@ -73,6 +74,48 @@ describe('Component: PlannerFactoryTasks', () => {
     await subject.findAll('tbody tr')[1].find('textarea').setValue('Bravo edited')
 
     expect(factory.tasks.map(task => task.title)).toEqual(['Alpha', 'Bravo edited', 'Charlie'])
+  })
+
+  describe('editing a task title', () => {
+    const titleField = (subject: VueWrapper, index: number) =>
+      subject.findAll('tbody tr')[index].find('textarea')
+
+    // A task is a one-liner: enter accepts it, the way it does in the new-task field above.
+    it('accepts the edit on enter rather than adding a newline', async () => {
+      const subject = mountSubject()
+      const field = titleField(subject, 1)
+      await field.setValue('Bravo edited')
+
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      field.element.dispatchEvent(event)
+      await subject.vm.$nextTick()
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(factory.tasks[1].title).toBe('Bravo edited')
+    })
+
+    it('blurs the field on enter so the edit is committed', async () => {
+      const subject = mountSubject({ attachTo: document.body })
+      const field = titleField(subject, 1)
+      field.element.focus()
+      expect(document.activeElement).toBe(field.element)
+
+      await field.trigger('keydown', { key: 'Enter' })
+
+      expect(document.activeElement).not.toBe(field.element)
+      subject.unmount()
+    })
+
+    it('leaves shift+enter alone so a second line is still possible', async () => {
+      const subject = mountSubject()
+      const field = titleField(subject, 1)
+
+      const event = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true })
+      field.element.dispatchEvent(event)
+      await subject.vm.$nextTick()
+
+      expect(event.defaultPrevented).toBe(false)
+    })
   })
 
   it('ticking a task only touches that task', async () => {
