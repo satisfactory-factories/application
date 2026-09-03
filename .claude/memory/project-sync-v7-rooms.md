@@ -29,8 +29,8 @@ verification pass over the round-two fixes found a further instance of the bulk-
 class and fixed it (the demo-plan button, below). Main has since been merged in (66 commits) and the two guarantees that merge could break were
 restored: see "The merge from main" below. Green as of 2026-09-03, after the preview-testing rounds
 below (load chain, quiet applies, the UI round) and the verification round that closed them:
-backend 486 vitest tests (32 files), common 153 (6), web 3084 unit tests (163 files, 1
-skipped), all measured 2026-09-03 on the final QA gate, rebased onto `747d9616`,
+backend 494 vitest tests (32 files), common 153 (6), web 3105 unit tests (164 files, 1
+skipped), all measured 2026-09-03 after the account-recovery offer, rebased onto `747d9616`,
 `vue-tsc` clean, root `lint-check` clean (64 pre-existing warnings in `parsing/`, 0 errors), root
 `build` clean, and all 45 Playwright e2e tests passing (the 44th and 45th added in the offline
 conflict round). The whole suite ran twice at full speed
@@ -900,9 +900,10 @@ negative-controlled in the spec (defaulting `interactive` to true fails exactly 
   keeps a just-registered user out of it.
 - Submit runs `openChosenPlans` (each id through `openPlan`, so the WS join fills content);
   "Not now" runs `closeChooser()`. Both count as an answer. **The adoption offer is parked
-  while the chooser is up** (`adoptionAfterChooser` in `refresh`) and runs on the answer, so
-  the two login dialogs never stack; `closeChooser(false)` — sign-out's cleanup — drops the
-  parked offer without answering, mirroring `declineAdoption()`'s remember split. There is no
+  while the chooser is up** (`parked` in `refresh`, which since the recovery offer below holds
+  two offers rather than one) and runs on the answer, so the login dialogs never stack;
+  `closeChooser(false)` — sign-out's cleanup — drops what was parked without answering,
+  mirroring `declineAdoption()`'s remember split. There is no
   answered-once flag for the chooser: every interactive login with hidden rooms asks again,
   by design.
 - The dialog rows read name + `factoryCount` + relative `lastActivityAt` straight from
@@ -915,6 +916,55 @@ negative-controlled in the spec (defaulting `interactive` to true fails exactly 
   on. `login-chooser.e2e.ts` proves "Not now" plus the reload suppression end to end.
 - Counts after this round: web 2850 unit tests (1 skipped) across 153 files; the store spec
   holds 86 and the new dialog spec 10.
+
+## The account-recovery offer (2026-09-03): the old save, offered on sign-in
+
+The blob import has existed server-side since the first backend commit, but `autoImport` fires
+only for an account with no rooms **in a browser with no local tabs** — so the returning user
+who already has plans in this browser, which is most of them, could never reach the plan their
+account saved before v0.7. There was no UI for it at all: the plan's "Recover server copy"
+button was never built. The owner chose the offer-on-login shape over a button in the panel.
+
+- **`GET /rooms/legacy/status` → `{ exists, factoryCount }`** (`legacy-import.service.ts`
+  `status()`, route in `rooms.controller.ts`). Guarded, version-gated, and on the **global**
+  throttle bucket exactly like `legacy/auto-import` and `legacy/recover`; it gets no bucket of
+  its own because it is one authenticated projection per sign-in. The count comes out of an
+  aggregation (`$cond` on `$isArray`, then `$size` over a `$filter` for object-shaped entries,
+  which is what `loadBlob` keeps), so **the blob body never leaves Mongo** — the saves this
+  exists for are megabytes. `exists` is false once `User.legacyImportRoomId` is stamped,
+  because a stamped account is all `recover` would refuse: offering an import that can only
+  fail is worse than not offering.
+- **Eligibility is the account's, not the browser's.** An interactive sign-in whose room list
+  holds no room this user owns (`role === 'owner'`), which is `offerLegacy` threaded from the
+  same `interactive` flag the chooser uses. A page refresh with a persisted session asks
+  nothing and does not even call the endpoint. Local plans are irrelevant, which is the whole
+  point of the feature.
+- **`LegacyRecoveryDialog.vue`** (AppDialog, testids `legacy-recovery-dialog` /
+  `legacy-factory-count` / `legacy-submit` / `legacy-decline`, `fas fa-cloud-download-alt` —
+  FA5, the v6 `cloud-arrow-down` name draws the dashed placeholder). It names the size and
+  imports through the existing `POST /rooms/legacy/recover`, then `openPlan`s the room. That
+  is what makes the migration work: `openPlan` mounts an **empty** tab and the socket join
+  fills it, which is the `firstFill` branch in `onSnapshot` — the first snapshot of an empty
+  tab goes through `reloadTabFromMirror` and the loader funnel rather than being written in
+  quietly. Verified against the existing guards rather than reimplemented
+  (`room-sync-store.spec.ts` "sends the first snapshot of an empty tab through the loader
+  funnel" and "migrates a legacy-shaped plan the first snapshot brings in").
+- **One dialog at a time.** `parked` in `rooms-store.ts` now carries both the adoption offer
+  and this one; `runParkedOffers` releases the next one still due on every real answer, and a
+  cleanup close (sign-out) drops them. The silent auto-import still owns the empty-account,
+  empty-browser case, and `legacyImported` stops the offer asking for a plan it has just taken
+  in the same sign-in. "Not now" writes nothing at all, so the next sign-in asks again — there
+  is deliberately no answered-once flag, unlike adoption.
+- **One cost worth knowing:** the check is awaited inside `refresh`, so for an account owning
+  no cloud plan, `whenSessionReady()` now resolves one request later. That is what
+  `TabSettingsDialog.spec.ts` had to mock `legacyStatus` for — its convert-to-cloud button
+  waits on exactly that promise, and an unmocked call left the dialog stuck in its signing-in
+  state.
+- **No e2e case.** The harness cannot seed a blob: `MongoMemoryServer` lives in `global-setup`
+  and its URI never reaches the workers, and no route writes `factorydatas`. Covered by unit
+  tests instead (12 in `rooms-store.spec.ts`, 7 in `LegacyRecoveryDialog.spec.ts`, 7 in
+  `backend/test/rooms-legacy-import.spec.ts`). Exposing the URI to the workers is what an e2e
+  case would cost, and it would buy one dialog click.
 
 ## The tab settings dialog (2026-09-01): the pencil opens a dialog, and synced tabs wear a cloud
 

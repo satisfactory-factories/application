@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw, watch } from 'vue'
-import type { RoomListEntry } from 'common'
+import type { LegacyImportResult, RoomListEntry } from 'common'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError, VersionMismatchError } from '@/api/client'
 import { config } from '@/config/config'
@@ -56,6 +56,11 @@ export const useRoomsStore = defineStore('rooms', () => {
   const chooserOpen = ref(false)
   const chooserOpening = ref(false)
 
+  /** The pre-v0.7 save this account still holds, once a sign-in has found one. */
+  const legacyOpen = ref(false)
+  const legacyFactoryCount = ref(0)
+  const legacyImporting = ref(false)
+
   /** The one gate every room mutation passes through; offline means no request at all. */
   const blocked = (): string | null => roomSync.isSuppressed ? OFFLINE_MESSAGE : null
 
@@ -87,7 +92,9 @@ export const useRoomsStore = defineStore('rooms', () => {
    * login, which is the same moment the login sequence asks for the list plus the
    * adoption offer. Turning the second one away lost the offer entirely.
    */
-  const refresh = async ({ offerAdoption = false, offerChooser = false } = {}): Promise<boolean> => {
+  const refresh = async (
+    { offerAdoption = false, offerChooser = false, offerLegacy = false } = {},
+  ): Promise<boolean> => {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn || roomSync.isSuppressed) return false
 
@@ -95,12 +102,20 @@ export const useRoomsStore = defineStore('rooms', () => {
     const rooms = await inFlight
     if (rooms === null) return false
 
-    // The chooser fronts an interactive login; the adoption offer is parked and
-    // runs once it is answered, so the two dialogs never stack.
+    // Only an account that owns no cloud plan is offered its old save, so the
+    // question costs a request on the logins that could act on it and no other.
+    const legacy = offerLegacy && !rooms.some(room => room.role === 'owner')
+      ? await findLegacyPlan()
+      : null
+
+    // One dialog at a time. The chooser fronts an interactive login and the rest
+    // are parked; every answer releases the next offer that is still due.
     if (offerChooser && openPlanChooser(rooms)) {
-      if (offerAdoption) adoptionAfterChooser = rooms
-    } else if (offerAdoption) {
-      await openAdoptionOffer(rooms)
+      parked = { adoption: offerAdoption ? rooms : null, legacy }
+    } else if (offerAdoption && await openAdoptionOffer(rooms)) {
+      parked = { adoption: null, legacy }
+    } else if (legacy !== null) {
+      openLegacyOffer(legacy)
     }
     return true
   }
@@ -222,8 +237,28 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   // ===== The login chooser =====
 
-  /** The adoption offer parked while the chooser is up; runs once it is answered. */
-  let adoptionAfterChooser: RoomListEntry[] | null = null
+  /**
+   * The offers waiting behind whichever dialog is up: the room list the adoption
+   * offer would be made from, and the size of the old save the recovery offer
+   * would name. Cleared without running by a cleanup close like a sign-out.
+   */
+  let parked: { adoption: RoomListEntry[] | null, legacy: number | null } =
+    { adoption: null, legacy: null }
+
+  const dropParked = () => {
+    parked = { adoption: null, legacy: null }
+  }
+
+  /** An answered dialog hands the floor to the next offer that is still due. */
+  const runParkedOffers = async () => {
+    const due = parked
+    dropParked()
+    if (due.adoption && await openAdoptionOffer(due.adoption)) {
+      parked = { adoption: null, legacy: due.legacy }
+      return
+    }
+    if (due.legacy !== null) openLegacyOffer(due.legacy)
+  }
 
   /**
    * Offers the account's rooms that have no tab here. Only an interactive
@@ -255,15 +290,14 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   /**
    * "Not now", or the close after an open run: either way the question is
-   * answered and the parked adoption offer may follow. Cleanup closes like
-   * sign-out pass `answered: false` — nothing may follow those.
+   * answered and the parked offers may follow. Cleanup closes like sign-out pass
+   * `answered: false` — nothing may follow those.
    */
   const closeChooser = (answered = true) => {
     chooserOpen.value = false
     chooserCandidates.value = []
-    const deferred = adoptionAfterChooser
-    adoptionAfterChooser = null
-    if (answered && deferred) void openAdoptionOffer(deferred)
+    if (answered) void runParkedOffers()
+    else dropParked()
   }
 
   // ===== Revocation =====
@@ -325,7 +359,8 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   // ===== Adoption =====
 
-  const openAdoptionOffer = async (list: RoomListEntry[]) => {
+  /** Says whether it put the dialog on screen, so the caller knows the floor is taken. */
+  const openAdoptionOffer = async (list: RoomListEntry[]): Promise<boolean> => {
     const known = new Set(list.map(entry => entry.roomId))
     // The bar always holds at least the "Default" tab, so an empty one is not a
     // plan: "zero local tabs" means nothing here is worth keeping.
@@ -337,17 +372,21 @@ export const useRoomsStore = defineStore('rooms', () => {
 
     if (list.length === 0 && candidates.length === 0) {
       await autoImportLegacy(candidates.length)
-      return
+      return false
     }
-    if (candidates.length === 0) return
+    if (candidates.length === 0) return false
 
     // Asked and answered: one prompt per browser, however many refreshes follow.
     // The plus button stays the way to sync a plan after a "No thanks".
-    if (localStorage.getItem(ADOPTION_ANSWERED_KEY) === 'true') return
+    if (localStorage.getItem(ADOPTION_ANSWERED_KEY) === 'true') return false
 
     adoptionCandidates.value = candidates.map(tab => tab.id)
     adoptionOpen.value = true
+    return true
   }
+
+  /** Set the moment an import lands, so the offer cannot ask for it a second time. */
+  let legacyImported = false
 
   /** Only an account with no rooms in a browser with no plans; anything else asks. */
   const autoImportLegacy = async (localTabCount: number) => {
@@ -356,24 +395,89 @@ export const useRoomsStore = defineStore('rooms', () => {
       // Sent rather than hardcoded so the server's own eligibility gate is real.
       const result = await api.legacyAutoImport(localTabCount)
       if (!result.imported) return
-      // A cloud plan holds 150 factories, and an old save could be bigger. Saying how
-      // many were left behind is the difference between a partial recovery and a
-      // silent one.
-      const dropped = result.dropped ?? 0
-      eventBus.emit('toast', {
-        message: dropped > 0
-          ? `Recovered the plan previously saved to your account. It was too big for a cloud plan, so the last ${dropped} ${dropped === 1 ? 'factory' : 'factories'} could not be brought over.`
-          : 'Recovered the plan previously saved to your account.',
-        type: dropped > 0 ? 'warning' : 'success',
-        variant: dropped > 0 ? 'permanent' : 'timed',
-        timeout: NOTICE_MS,
-      })
-      await refresh()
-      // The list never opens tabs, and a recovered plan announced by a toast
-      // must actually be on screen.
-      if (result.room) await openPlan(result.room.roomId)
+      await landRecoveredPlan(result)
     } catch (error) {
       lastError.value = describe(error)
+    }
+  }
+
+  /** The toast, the list refresh and the mount every recovered plan needs. */
+  const landRecoveredPlan = async (result: LegacyImportResult) => {
+    legacyImported = true
+    // A cloud plan holds 150 factories, and an old save could be bigger. Saying how
+    // many were left behind is the difference between a partial recovery and a
+    // silent one.
+    const dropped = result.dropped ?? 0
+    eventBus.emit('toast', {
+      message: dropped > 0
+        ? `Recovered the plan previously saved to your account. It was too big for a cloud plan, so the last ${dropped} ${dropped === 1 ? 'factory' : 'factories'} could not be brought over.`
+        : 'Recovered the plan previously saved to your account.',
+      type: dropped > 0 ? 'warning' : 'success',
+      variant: dropped > 0 ? 'permanent' : 'timed',
+      timeout: NOTICE_MS,
+    })
+    await refresh()
+    // The list never opens tabs, and a recovered plan announced by a toast
+    // must actually be on screen.
+    if (result.room) await openPlan(result.room.roomId)
+  }
+
+  // ===== The account-recovery offer =====
+
+  /**
+   * How big the account's old save is, or null when there is nothing to offer.
+   * A failed check simply offers nothing: the plan is not going anywhere, and the
+   * next sign-in asks again.
+   */
+  const findLegacyPlan = async (): Promise<number | null> => {
+    if (blocked()) return null
+    try {
+      const status = await api.legacyStatus()
+      return status.exists ? status.factoryCount : null
+    } catch (error) {
+      lastError.value = describe(error)
+      return null
+    }
+  }
+
+  const openLegacyOffer = (factoryCount: number) => {
+    // The auto-import can have taken it during the same sign-in, and recovering
+    // twice is exactly what the server refuses.
+    if (legacyImported) return
+    legacyFactoryCount.value = factoryCount
+    legacyOpen.value = true
+  }
+
+  /** "Not now" writes nothing at all, so the next sign-in finds the save and asks again. */
+  const closeLegacyOffer = () => {
+    legacyOpen.value = false
+    legacyFactoryCount.value = 0
+  }
+
+  /**
+   * The offer's yes. The tab it mounts starts empty and the socket join fills it,
+   * so a pre-v0.6 plan arrives through the loader's validation and migration path
+   * exactly as any other plan load does.
+   */
+  const importLegacyPlan = async (): Promise<true | string> => {
+    const offline = blocked()
+    if (offline) {
+      closeLegacyOffer()
+      return refuse(offline)
+    }
+
+    legacyImporting.value = true
+    try {
+      const result = await api.legacyRecover()
+      if (!result.imported) return refuse('That plan could not be recovered.')
+      await landRecoveredPlan(result)
+      return true
+    } catch (error) {
+      lastError.value = describe(error)
+      return refuse(describe(error))
+    } finally {
+      legacyImporting.value = false
+      closeLegacyOffer()
     }
   }
 
@@ -461,6 +565,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (remember) localStorage.setItem(ADOPTION_ANSWERED_KEY, 'true')
     adoptionOpen.value = false
     adoptionCandidates.value = []
+    // Same rule as the chooser: a real answer hands the floor on, a cleanup close
+    // drops what was waiting behind it.
+    if (remember) void runParkedOffers()
+    else dropParked()
   }
 
   // ===== Tab actions =====
@@ -744,7 +852,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!authStore.isLoggedIn) return
     roomSync.start()
     await upgradeJoinedTabs()
-    await refresh({ offerAdoption: true, offerChooser: interactive })
+    // The recovery offer rides on the same flag as the chooser: a returning user
+    // is asked about their old save when they sign in, never on a page refresh.
+    await refresh({ offerAdoption: true, offerChooser: interactive, offerLegacy: interactive })
   }
 
   /**
@@ -778,6 +888,8 @@ export const useRoomsStore = defineStore('rooms', () => {
     roomsRevision.value = null
     declineAdoption()
     closeChooser(false)
+    closeLegacyOffer()
+    legacyImported = false
     roomSync.stop()
     // Anonymous joined tabs are nobody's account, so they keep their live link.
     restoreJoinedTabs()
@@ -839,6 +951,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     chooserCandidates,
     chooserOpen,
     chooserOpening,
+    legacyOpen,
+    legacyFactoryCount,
+    legacyImporting,
 
     // Room list
     refresh,
@@ -854,6 +969,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     // The login chooser
     openChosenPlans,
     closeChooser,
+
+    // The account-recovery offer
+    importLegacyPlan,
+    closeLegacyOffer,
 
     // Tab actions
     openPlan,

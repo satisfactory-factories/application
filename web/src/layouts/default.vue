@@ -16,9 +16,11 @@
       <toast />
       <hover-tooltip />
       <plan-repair-dialog />
-      <!-- The login chooser first: adoption is parked until it is answered. -->
+      <!-- The login chooser first: adoption is parked until it is answered, and
+           the pre-v0.7 recovery offer behind both of those. -->
       <plan-chooser-dialog />
       <adoption-dialog />
+      <legacy-recovery-dialog />
       <!-- Only ever up after a reconnect finds the room moved under this device's edits. -->
       <offline-conflict-dialog />
       <!-- One stack, because more than one of these can be up at once. -->
@@ -39,6 +41,7 @@
   import { useDisplay } from 'vuetify'
   import AdoptionDialog from '@/components/sync/AdoptionDialog.vue'
   import BackendHealthBanner from '@/components/sync/BackendHealthBanner.vue'
+  import LegacyRecoveryDialog from '@/components/sync/LegacyRecoveryDialog.vue'
   import PlanChooserDialog from '@/components/sync/PlanChooserDialog.vue'
   import OfflineConflictDialog from '@/components/sync/OfflineConflictDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'

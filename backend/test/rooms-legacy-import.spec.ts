@@ -141,6 +141,59 @@ describe('legacy blob import', () => {
     })
   })
 
+  describe('GET /rooms/legacy/status', () => {
+    it('reports the old save and how big it is', async () => {
+      await seedBlob(user.username)
+
+      const response = await get('/rooms/legacy/status', user)
+
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({ exists: true, factoryCount: 2 })
+    })
+
+    it('reports nothing for an account that never saved one', async () => {
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: false, factoryCount: 0 })
+    })
+
+    // The offer would otherwise be made for an import that can only be refused.
+    it('reports nothing once the blob has been imported', async () => {
+      await seedBlob(user.username)
+      await post('/rooms/legacy/recover', user).send({})
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: false, factoryCount: 0 })
+    })
+
+    it('counts the whole save, above the per-room cap', async () => {
+      await seedBlob(user.username, Array.from(
+        { length: CAPS.factoriesPerRoom + 7 },
+        (_unused, id) => ({ id: id + 1, name: 'f' }),
+      ))
+
+      expect((await get('/rooms/legacy/status', user)).body.factoryCount)
+        .toBe(CAPS.factoriesPerRoom + 7)
+    })
+
+    it('counts only what the import would keep', async () => {
+      await seedBlob(user.username, [{ id: 1, name: 'Real' }, 'junk', 7, null])
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: true, factoryCount: 1 })
+    })
+
+    it('survives a blob whose data is not a list at all', async () => {
+      await seedBlob(user.username, { factories: [] })
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: false, factoryCount: 0 })
+    })
+
+    it('needs an account', async () => {
+      expect((await get('/rooms/legacy/status')).status).toBe(401)
+    })
+  })
+
   describe('POST /rooms/legacy/auto-import', () => {
     it('imports for a zero-room account whose browser has no local tabs', async () => {
       await seedBlob(user.username)

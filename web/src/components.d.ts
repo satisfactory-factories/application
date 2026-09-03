@@ -59,6 +59,7 @@ declare module 'vue' {
     JoinDiscord: typeof import('./components/JoinDiscord.vue')['default']
     KoFi: typeof import('./components/ko-fi.vue')['default']
     LastUpdatedIndicator: typeof import('./components/planner/LastUpdatedIndicator.vue')['default']
+    LegacyRecoveryDialog: typeof import('./components/sync/LegacyRecoveryDialog.vue')['default']
     Loading: typeof import('./components/Loading.vue')['default']
     MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']

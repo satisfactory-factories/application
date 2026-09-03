@@ -4,7 +4,7 @@ import { CAPS, truncateFactory } from 'common'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import type { Factory, LegacyImportResult } from 'common'
+import type { Factory, LegacyImportResult, LegacyStatusResult } from 'common'
 
 import { EnsureStepRunner } from './ensure-step.runner'
 import { FactoryData } from '../legacy/factory-data.schema'
@@ -49,9 +49,45 @@ export class LegacyImportService {
     return this.recover(userId, username)
   }
 
+  /**
+   * Whether the account still has an old save to offer, and how big it is. The
+   * count is computed inside the aggregation, so a multi-megabyte blob costs one
+   * integer and never crosses the wire. Already imported reads as nothing to
+   * offer, because that is all `recover` would answer.
+   */
+  async status (userId: string, username: string): Promise<LegacyStatusResult> {
+    if (await this.alreadyImported(userId)) return { exists: false, factoryCount: 0 }
+
+    const [row] = await this.blobs.aggregate<{ factoryCount: number }>([
+      { $match: { user: username } },
+      {
+        $project: {
+          _id: 0,
+          // Only the record-shaped entries, matching what `loadBlob` would keep.
+          factoryCount: {
+            $cond: [
+              { $isArray: '$data' },
+              {
+                $size: {
+                  $filter: {
+                    input: '$data',
+                    cond: { $eq: [{ $type: '$$this' }, 'object'] },
+                  },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+    ])
+
+    const factoryCount = row?.factoryCount ?? 0
+    return { exists: factoryCount > 0, factoryCount }
+  }
+
   async recover (userId: string, username: string): Promise<LegacyImportResult> {
-    const user = Types.ObjectId.isValid(userId) ? await this.users.findById(userId).lean() : null
-    if (user?.legacyImportRoomId) {
+    if (await this.alreadyImported(userId)) {
       return { imported: false, reason: 'already_imported' }
     }
 
@@ -75,6 +111,13 @@ export class LegacyImportService {
     return dropped > 0
       ? { imported: true, room: result.room, dropped }
       : { imported: true, room: result.room }
+  }
+
+  /** The stamp outlives the room it made, so a deleted import is never redone. */
+  private async alreadyImported (userId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(userId)) return false
+    const user = await this.users.findById(userId, { legacyImportRoomId: 1 }).lean()
+    return Boolean(user?.legacyImportRoomId)
   }
 
   /**

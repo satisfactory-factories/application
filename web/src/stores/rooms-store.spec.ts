@@ -32,6 +32,8 @@ vi.mock('@/api/client', async importOriginal => {
     leaveRoom: vi.fn(),
     reorderRooms: vi.fn(),
     legacyAutoImport: vi.fn(),
+    legacyStatus: vi.fn(),
+    legacyRecover: vi.fn(),
   }
 })
 
@@ -75,6 +77,7 @@ describe('rooms-store', () => {
     authStore.setLoggedInUser('pioneer')
 
     listReturns([])
+    vi.mocked(api.legacyStatus).mockResolvedValue({ exists: false, factoryCount: 0 })
   })
 
   afterEach(() => {
@@ -533,6 +536,212 @@ describe('rooms-store', () => {
       store.reconcileRooms()
 
       expect(appStore.getTabState(tab.id).revision).toBe(11)
+    })
+  })
+
+  /**
+   * The pre-v0.7 blob is reachable server-side, but the auto-import only fires for
+   * an empty account in an empty browser — so a returning user with local plans
+   * could never get at their old save. This is the offer that fixes that.
+   */
+  describe('the account-recovery offer', () => {
+    const holdsLegacyPlan = (factoryCount = 42) => {
+      vi.mocked(api.legacyStatus).mockResolvedValue({ exists: true, factoryCount })
+    }
+
+    // A returning user has answered the adoption offer long ago, so the recovery
+    // offer is the only dialog due; the parking tests below clear this again.
+    beforeEach(() => {
+      localStorage.setItem(ADOPTION_ANSWERED_KEY, 'true')
+    })
+
+    const recovers = (roomId = 'recovered', dropped?: number) => {
+      vi.mocked(api.legacyRecover).mockResolvedValue({
+        imported: true,
+        room: entry({ roomId, name: 'Recovered plan', factoryCount: 42 }),
+        ...(dropped === undefined ? {} : { dropped }),
+      })
+    }
+
+    it('offers the old save to an account that owns no cloud plan', async () => {
+      localTab('Mine')
+      holdsLegacyPlan(42)
+
+      await store.begin({ interactive: true })
+
+      expect(store.legacyOpen).toBe(true)
+      expect(store.legacyFactoryCount).toBe(42)
+    })
+
+    // Local plans say nothing about whether the account has an old save to recover.
+    it('offers it even though this browser holds plans of its own', async () => {
+      localTab('Mine', 3)
+      holdsLegacyPlan()
+
+      await store.begin({ interactive: true })
+
+      expect(store.legacyOpen).toBe(true)
+    })
+
+    it('asks nothing, and does not even check, when the account owns a plan', async () => {
+      const tab = localTab('Mine')
+      listReturns([entry({ roomId: tab.id, role: 'owner' })])
+
+      await store.begin({ interactive: true })
+
+      expect(api.legacyStatus).not.toHaveBeenCalled()
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    it('asks nothing when the account has no old save', async () => {
+      localTab('Mine')
+
+      await store.begin({ interactive: true })
+
+      expect(api.legacyStatus).toHaveBeenCalled()
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    // Auth.vue's onMounted path: the session already existed, nobody signed in.
+    it('never asks on a page refresh with a persisted session', async () => {
+      localTab('Mine')
+      holdsLegacyPlan()
+
+      await store.begin()
+
+      expect(api.legacyStatus).not.toHaveBeenCalled()
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    it('imports the plan and mounts it as a cloud tab', async () => {
+      localTab('Mine')
+      holdsLegacyPlan()
+      recovers('recovered')
+      await store.begin({ interactive: true })
+      listReturns([entry({ roomId: 'recovered', name: 'Recovered plan' })])
+
+      expect(await store.importLegacyPlan()).toBe(true)
+
+      expect(appStore.getTab('recovered')?.name).toBe('Recovered plan')
+      expect(appStore.getTabState('recovered').kind).toBe('synced')
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    it('says how much of an oversized old save was left behind', async () => {
+      const toast = vi.spyOn(eventBus, 'emit')
+      localTab('Mine')
+      holdsLegacyPlan(162)
+      recovers('recovered', 12)
+      await store.begin({ interactive: true })
+
+      await store.importLegacyPlan()
+
+      expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
+        message: expect.stringContaining('the last 12 factories could not be brought over'),
+        type: 'warning',
+      }))
+      toast.mockRestore()
+    })
+
+    it('leaves the save reachable when the answer is "Not now"', async () => {
+      localTab('Mine')
+      holdsLegacyPlan()
+      await store.begin({ interactive: true })
+
+      store.closeLegacyOffer()
+
+      expect(store.legacyOpen).toBe(false)
+      expect(api.legacyRecover).not.toHaveBeenCalled()
+
+      await store.begin({ interactive: true })
+
+      expect(store.legacyOpen).toBe(true)
+    })
+
+    it('refuses to import while offline', async () => {
+      localTab('Mine')
+      holdsLegacyPlan()
+      await store.begin({ interactive: true })
+      roomSync.enterOffline()
+
+      expect(await store.importLegacyPlan()).toBe(OFFLINE_MESSAGE)
+
+      expect(api.legacyRecover).not.toHaveBeenCalled()
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    it('is cleared by a sign-out', async () => {
+      localTab('Mine')
+      holdsLegacyPlan()
+      await store.begin({ interactive: true })
+
+      store.signOut()
+
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    // Both would otherwise be up at once on the same sign-in.
+    it('waits behind the adoption offer and follows the answer', async () => {
+      // No room the chooser could offer, so the adoption offer is the dialog up.
+      localStorage.removeItem(ADOPTION_ANSWERED_KEY)
+      localTab('Mine', 2)
+      holdsLegacyPlan()
+
+      await store.begin({ interactive: true })
+
+      expect(store.adoptionOpen).toBe(true)
+      expect(store.legacyOpen).toBe(false)
+
+      store.declineAdoption(true)
+      await Promise.resolve()
+
+      expect(store.legacyOpen).toBe(true)
+    })
+
+    it('waits behind the login chooser as well', async () => {
+      localTab('Mine', 0)
+      listReturns([entry({ roomId: 'joined-room', role: 'member' })])
+      holdsLegacyPlan()
+
+      await store.begin({ interactive: true })
+
+      expect(store.chooserOpen).toBe(true)
+      expect(store.legacyOpen).toBe(false)
+
+      store.closeChooser()
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(store.legacyOpen).toBe(true)
+    })
+
+    // A cleanup close is not an answer, so nothing may follow it onto the screen.
+    it('is dropped, not shown, when a sign-out closes the chooser', async () => {
+      localTab('Mine', 0)
+      listReturns([entry({ roomId: 'joined-room', role: 'member' })])
+      holdsLegacyPlan()
+      await store.begin({ interactive: true })
+
+      store.signOut()
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(store.legacyOpen).toBe(false)
+    })
+
+    // The empty account in an empty browser still imports silently; asking about a
+    // plan that is already on screen would be nonsense.
+    it('does not offer what the auto-import has just taken', async () => {
+      localTab('Empty', 0)
+      holdsLegacyPlan()
+      vi.mocked(api.legacyAutoImport).mockResolvedValue({
+        imported: true,
+        room: entry({ roomId: 'recovered' }),
+      })
+
+      await store.begin({ interactive: true })
+
+      expect(store.legacyOpen).toBe(false)
     })
   })
 

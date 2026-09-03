@@ -122,6 +122,14 @@ export interface LegacyImportResult {
   dropped?: number
 }
 
+/** What `GET /rooms/legacy/status` answers: enough to offer the import, never the plan. */
+export interface LegacyStatusResult {
+  /** True only while `POST /rooms/legacy/recover` would still import something. */
+  exists: boolean
+  /** What the old save holds, before the per-room cap trims it. Zero when there is none. */
+  factoryCount: number
+}
+
 // ===== Preferences =====
 
 export interface PreferencesState {

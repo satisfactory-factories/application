@@ -5,6 +5,7 @@ import type {
   JoinRoomResult,
   LeaveRoomResult,
   LegacyImportResult,
+  LegacyStatusResult,
   RoomAuthResult,
   RoomEnvelope,
   RoomListResponse,
@@ -69,6 +70,16 @@ export class RoomsController {
     @Body() body: unknown,
   ): Promise<EnsureRoomResult> {
     return this.rooms.ensureRoom(user.id, parseContentBody(adoptRoomSchema, body), 'adopted')
+  }
+
+  /**
+   * The login offer's eligibility question. Cheap on purpose: a projection over the
+   * blob, never its body, so a client can ask on every sign-in.
+   */
+  @Get('legacy/status')
+  @UseGuards(JwtAuthGuard)
+  legacyStatus (@CurrentUser() user: AuthTokenPayload): Promise<LegacyStatusResult> {
+    return this.legacy.status(user.id, user.username)
   }
 
   @Post('legacy/auto-import')

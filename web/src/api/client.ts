@@ -9,6 +9,7 @@ import type {
   JoinRoomResult,
   LeaveRoomResult,
   LegacyImportResult,
+  LegacyStatusResult,
   LoginResponse,
   MessageResponse,
   PreferencesState,
@@ -241,6 +242,13 @@ export const lookupRoomBySlug = (slug: string): Promise<RoomSlugLookup> =>
 
 export const legacyAutoImport = (localTabCount: number): Promise<LegacyImportResult> =>
   apiRequest('/rooms/legacy/auto-import', { method: 'POST', body: { localTabCount } })
+
+/** Does this account still hold a pre-v0.7 save, and how big is it? No blob body. */
+export const legacyStatus = (): Promise<LegacyStatusResult> => apiRequest('/rooms/legacy/status')
+
+/** The on-demand import behind the login offer; the auto-import is its silent twin. */
+export const legacyRecover = (): Promise<LegacyImportResult> =>
+  apiRequest('/rooms/legacy/recover', { method: 'POST', body: {} })
 
 // ===== Preferences =====
 

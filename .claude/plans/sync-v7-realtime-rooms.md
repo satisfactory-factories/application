@@ -44,7 +44,7 @@ separate later session.
 - Add "Duplicate as local tab" and the revocation handler (membership lost or room deleted → the tab quietly becomes a local copy)
 - Add the `/room/:slug` page: resolve the slug, take the password when one is set, join (membership when logged in, visitor token when not), open the tab live
 - Build the share dialog with two clearly separated actions: "Copy snapshot link" (read-only copy, any tab, no account) and "Invite collaborators" (synced tabs; slug; optional password set/change/remove; copyable link)
-- Build login-time adoption as an offer per tab ("Sync your planner tabs now?"), "(local)" suffixes, and the "Recover server copy" button
+- Build login-time adoption as an offer per tab ("Sync your planner tabs now?"), "(local)" suffixes, and the recovery of an old account save (shipped as the login offer below, in place of a "Recover server copy" button)
 - Split the loader gate in two: whether to CALCULATE is answered by the plan's state, whether to PACE THE RENDER by its size (`PACED_RENDER_FACTORY_COUNT`); instant render only for a plan small enough to mount in one flush whose mirror matches the room's revision and this app version
 - Build the preferences sync store (enumerated semantic keys, debounced PUT with `baseRevision`)
 - Overhaul the account tile: change-password, connection state, offline switch, synced-tab list + share controls
@@ -177,6 +177,28 @@ below. The wire protocol is untouched.
   keeping this device's version as a `<name> (offline copy)` local tab
 - `TabMirrorMeta.baselinePrints` carries the fingerprints; `unacknowledged` in the engine
   keeps a dropped socket's own op from being presented as somebody else's edit
+
+### The account-recovery offer — delivered
+
+The blob import existed server-side from the start, but `autoImport` only fires for an account
+with no rooms in a browser with no local tabs, so a returning user with plans in this browser
+could never reach their old account save. The owner's choice: offer it on login.
+
+- `GET /rooms/legacy/status` → `{ exists, factoryCount }`, guarded, on the global bucket like
+  its two `legacy/` siblings. The count is computed in the aggregation, so the blob body never
+  leaves Mongo, and `exists` is false once the import stamp is written, because that is all
+  `recover` would answer
+- Eligibility is the account's, never the browser's: an interactive sign-in (`offerLegacy`,
+  threaded from the same `interactive` flag as the chooser) whose room list holds no room this
+  user owns. A page refresh with a persisted session asks nothing and does not even check
+- `LegacyRecoveryDialog.vue` (AppDialog) names the size — "a plan with N factories from before
+  v0.7" — and imports through the existing `POST /rooms/legacy/recover`, mounting the result
+  with `openPlan`, so the plan lands in an empty tab and the first snapshot takes the loader's
+  validation and migration path. "Not now" writes nothing, so the next sign-in offers it again
+- One dialog at a time: the parking machinery now holds both the adoption offer and this one,
+  and every real answer releases the next offer still due. A cleanup close (sign-out) drops
+  them instead. The silent auto-import still wins for the empty account in an empty browser,
+  and the offer stands down when it has just taken the plan
 
 Nothing from the post-review round remains open.
 
@@ -314,7 +336,9 @@ persistent "new version available — refresh" prompt.
 create, rename, delete, leave, reorder, share/unshare, password set/rotate/remove,
 `GET /rooms/by-slug/:slug` — internal API only, users see `/room/<slug>` —
 `POST /rooms/:id/auth` exchanging a correct password for a visitor token,
-`POST /rooms/:roomId/join`, `POST /rooms/adopt`), preferences (GET/PUT), legacy
+`POST /rooms/:roomId/join`, `POST /rooms/adopt`, `GET /rooms/legacy/status` — does this
+account still hold a pre-v0.7 save, and how big — `POST /rooms/legacy/auto-import` and
+`POST /rooms/legacy/recover`), preferences (GET/PUT), legacy
 (`GET /share/:id` and `POST /share` for creating snapshot links; 410 on `/save`//`/load`),
 `/health` unchanged. `/hello` is dropped — it duplicates `/health` and should have gone
 when `/health` landed.
@@ -521,9 +545,10 @@ exists today).
 
 **Adoption and legacy data.** Adoption is per-login, per-tab, and create-only. The legacy
 blob auto-imports as one room only for an account with zero rooms and a browser with zero
-local tabs, under a deterministic import id; otherwise "Recover server copy" imports it on
-demand. The blob is never written again; the shares collection only ever gains new snapshot
-rows.
+local tabs, under a deterministic import id; every other account that owns no room is offered
+it on sign-in instead (the account-recovery offer above), and the import is the same
+`POST /rooms/legacy/recover` either way. The blob is never written again; the shares
+collection only ever gains new snapshot rows.
 
 ## Infrastructure
 

@@ -61,6 +61,7 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - **Signing in asks which of your plans to open.** The dialog lists every account plan this browser does not have open, all ticked, each with its size and when it last changed. Untick what you want left in the panel, or choose "Not now" to open none. A page refresh never asks, and neither does an account with no plans.
 - The panel's per-plan share buttons are gone; sharing lives on the planner toolbar's share button.
 - The plan the old planner saved to your account comes back on its own: sign in with an account holding one into a browser with nothing in it, and it appears as a new synced tab. There is only ever one of these, and it only happens once.
+- **Sign in with plans already in this browser and the planner offers that old save instead of skipping it.** A dialog says how many factories it holds and brings it over as a cloud plan of its own if you want it, leaving everything already open untouched. Say "Not now" and the offer comes back the next time you sign in.
 - Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Say no and they stay exactly as they are. Names that would collide get a "(local)" suffix rather than being merged.
 - The out-of-sync dialog and the force download button are gone. Neither has anything to do now.
 
