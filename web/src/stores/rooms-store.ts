@@ -48,6 +48,12 @@ export const useRoomsStore = defineStore('rooms', () => {
   const adoptionCandidates = ref<string[]>([])
   const adoptionOpen = ref(false)
   const adopting = ref(false)
+  /**
+   * Why the offer is up. `sign-in` is the sweep of everything this browser holds,
+   * answered once per account; `landed` is one plan that has just arrived in a
+   * local tab, which is a question in its own right and records no answer.
+   */
+  const adoptionReason = ref<'sign-in' | 'landed'>('sign-in')
 
   /** Room ids the login chooser is currently offering. */
   const chooserCandidates = ref<string[]>([])
@@ -380,6 +386,29 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (hasAnsweredAdoption(useAuthStore().getLoggedInUser())) return false
 
     adoptionCandidates.value = candidates.map(tab => tab.id)
+    adoptionReason.value = 'sign-in'
+    adoptionOpen.value = true
+    return true
+  }
+
+  /**
+   * One plan, offered the moment it lands in a local tab — a paste, an import, a
+   * template. The sign-in sweep is made once and then the browser stops asking,
+   * which leaves a plan that arrives afterwards with nothing to point at the
+   * cloud; this is that pointer. Silent when there is nothing to offer or a
+   * dialog is already up, and it records no answer either way: declining "sync
+   * this one" is not an answer about everything else this browser holds.
+   */
+  const offerTabToCloud = (tabId: string): boolean => {
+    if (!useAuthStore().isLoggedIn || blocked()) return false
+    if (adoptionOpen.value || chooserOpen.value || legacyOpen.value) return false
+
+    const tab = appStore.getTab(tabId)
+    if (!tab || tab.factories.length === 0) return false
+    if (appStore.getTabState(tabId).kind !== 'local') return false
+
+    adoptionCandidates.value = [tabId]
+    adoptionReason.value = 'landed'
     adoptionOpen.value = true
     return true
   }
@@ -561,7 +590,11 @@ export const useRoomsStore = defineStore('rooms', () => {
    * never for cleanup closes like sign-out, which must not silence the offer.
    */
   const declineAdoption = (remember = false) => {
-    if (remember) rememberAdoptionAnswer(useAuthStore().getLoggedInUser())
+    // Only the sweep's answer is the browser's: "not this one" says nothing about
+    // the plans the sign-in offer would ask about.
+    if (remember && adoptionReason.value === 'sign-in') {
+      rememberAdoptionAnswer(useAuthStore().getLoggedInUser())
+    }
     adoptionOpen.value = false
     adoptionCandidates.value = []
     // Same rule as the chooser: a real answer hands the floor on, a cleanup close
@@ -906,8 +939,12 @@ export const useRoomsStore = defineStore('rooms', () => {
     session = begin({ interactive: true })
   }
 
+  /** A plan pasted or imported into a tab: the one moment its own cloud offer is due. */
+  const onPlanLanded = (tabId: string) => { offerTabToCloud(tabId) }
+
   eventBus.on('loggedIn', onLoggedIn)
   eventBus.on('sessionExpired', signOut)
+  eventBus.on('planLanded', onPlanLanded)
 
   /**
    * `hello_ok` carries the account-wide counter, so every connect re-checks the tab
@@ -934,6 +971,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   const dispose = () => {
     eventBus.off('loggedIn', onLoggedIn)
     eventBus.off('sessionExpired', signOut)
+    eventBus.off('planLanded', onPlanLanded)
     stopStale()
     stopRooms()
   }
@@ -946,6 +984,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     lastError,
     adoptionCandidates,
     adoptionOpen,
+    adoptionReason,
     adopting,
     chooserCandidates,
     chooserOpen,
@@ -963,6 +1002,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
     // Adoption
     adoptTabs,
+    offerTabToCloud,
     declineAdoption,
 
     // The login chooser

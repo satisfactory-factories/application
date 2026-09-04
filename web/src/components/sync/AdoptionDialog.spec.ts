@@ -140,6 +140,41 @@ describe('AdoptionDialog', () => {
     expect(wrapper?.className).toContain('text-primary')
   })
 
+  /**
+   * The same dialog answers two questions: the sweep of everything this browser
+   * holds, at sign-in, and one plan that has just landed in it. The plural reads
+   * badly for the second, and the second is the one a pasted plan raises.
+   */
+  describe('one plan that has just landed', () => {
+    const openLanded = async () => {
+      const result = await open(['Pasted from prod'])
+      roomsStore.adoptionReason = 'landed'
+      await flushPromises()
+      return result
+    }
+
+    it('asks about that plan in the singular', async () => {
+      await openLanded()
+
+      expect(body().textContent).toContain('Send this plan to your account?')
+      expect(body().textContent).toContain('This plan lives only in this browser')
+      expect(body().textContent).not.toContain('These plans live only in this browser')
+    })
+
+    it('points at tab settings for the way back, not the plus button', async () => {
+      await openLanded()
+
+      expect(body().textContent).toContain('send it up any time from tab settings')
+    })
+
+    it('still asks in the plural for the sign-in sweep', async () => {
+      await open(['Alpha', 'Beta'])
+
+      expect(body().textContent).toContain('Sync your planner tabs now?')
+      expect(body().textContent).toContain('These plans live only in this browser')
+    })
+  })
+
   it('leaves every plan local when declined, and remembers the answer', async () => {
     const decline = vi.spyOn(roomsStore, 'declineAdoption')
     await open(['Alpha'])

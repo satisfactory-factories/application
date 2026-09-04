@@ -843,6 +843,83 @@ describe('rooms-store', () => {
     })
 
     /**
+     * The sweep is made at sign-in and then the browser stops asking, which leaves a
+     * plan pasted or imported afterwards with nothing pointing at the cloud. This is
+     * that pointer, and it is a question about one plan rather than about the browser.
+     */
+    describe('a plan that lands after the sweep', () => {
+      const pastedInto = (name = 'Pasted from prod') => {
+        const tab = localTab(name)
+        return tab.id
+      }
+
+      it('offers the one plan, whatever the browser answered at sign-in', async () => {
+        rememberAdoptionAnswer('pioneer')
+        const tabId = pastedInto()
+
+        expect(store.offerTabToCloud(tabId)).toBe(true)
+
+        expect(store.adoptionOpen).toBe(true)
+        expect(store.adoptionCandidates).toEqual([tabId])
+        expect(store.adoptionReason).toBe('landed')
+      })
+
+      // Declining "sync this one" says nothing about the plans the sign-in sweep asks
+      // about, so it must not silence that offer.
+      it('records no answer when it is declined', () => {
+        const tabId = pastedInto()
+        store.offerTabToCloud(tabId)
+
+        store.declineAdoption(true)
+
+        expect(store.adoptionOpen).toBe(false)
+        expect(hasAnsweredAdoption('pioneer')).toBe(false)
+      })
+
+      it('says nothing about an empty tab, a cloud tab, or a signed-out browser', () => {
+        const empty = localTab('Empty', 0)
+        expect(store.offerTabToCloud(empty.id)).toBe(false)
+
+        const filled = localTab('Filled')
+        appStore.setTabState(filled.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+        expect(store.offerTabToCloud(filled.id)).toBe(false)
+
+        appStore.setTabState(filled.id, { kind: 'local' })
+        useAuthStore().setToken('')
+        expect(store.offerTabToCloud(filled.id)).toBe(false)
+        expect(store.adoptionOpen).toBe(false)
+      })
+
+      it('waits rather than stacking on a dialog already up', async () => {
+        const tabId = pastedInto()
+        listReturns([entry({ roomId: 'room-1' })])
+        await store.begin({ interactive: true })
+        expect(store.chooserOpen).toBe(true)
+
+        expect(store.offerTabToCloud(tabId)).toBe(false)
+        expect(store.adoptionOpen).toBe(false)
+      })
+
+      // The paste is in a planner component and the offer is here; the bus is the seam.
+      it('is what the planLanded event asks for', async () => {
+        const tabId = pastedInto()
+
+        eventBus.emit('planLanded', tabId)
+        await nextTick()
+
+        expect(store.adoptionOpen).toBe(true)
+        expect(store.adoptionCandidates).toEqual([tabId])
+      })
+
+      it('refuses to ask at all in offline mode', () => {
+        const tabId = pastedInto()
+        roomSync.enterOffline()
+
+        expect(store.offerTabToCloud(tabId)).toBe(false)
+      })
+    })
+
+    /**
      * The answer belongs to the account that gave it. Declining on one account and
      * then registering a second one in the same browser is a question that has
      * never been put to that account, and a browser-wide flag swallowed it.

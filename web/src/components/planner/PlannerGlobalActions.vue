@@ -235,6 +235,10 @@
         }
 
         emit('clear-all')
+        // The plan is about to land in whatever tab is open, and that is announced
+        // once the load finishes so whoever cares can act on it — the rooms store
+        // offers a local tab to the cloud, which nothing else would.
+        announceWhenLoaded = true
 
         setTimeout(() => {
           // Replace the current tab's settings with the pasted plan's (keeps its id) before
@@ -293,8 +297,19 @@
     eventBus.emit('toast', { message: 'Recalculations completed.', type: 'success' })
   }
 
+  /**
+   * Set by a paste, spent by the load it starts. Waiting for the calculations means
+   * anything raised over the landing — the cloud offer — opens over the plan rather
+   * than over the loading overlay, which is persistent and would sit on top of it.
+   */
+  let announceWhenLoaded = false
+
   eventBus.on('calculationsCompleted', () => {
     disableRecalc.value = false
+    if (!announceWhenLoaded) return
+    announceWhenLoaded = false
+    const tab = getCurrentTab()
+    if (tab) eventBus.emit('planLanded', tab.id)
   })
 </script>
 

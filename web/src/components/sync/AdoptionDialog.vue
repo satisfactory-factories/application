@@ -7,9 +7,15 @@
     icon="fas fa-cloud-upload-alt"
     max-width="640"
     persistent
-    title="Sync your planner tabs now?"
+    :title="landed ? 'Send this plan to your account?' : 'Sync your planner tabs now?'"
   >
-    <p class="mb-4 text-body-1">
+    <!-- One plan that has just landed is a different question from the sweep of
+         everything this browser holds, and reads badly in the plural. -->
+    <p v-if="landed" class="mb-4 text-body-1">
+      This plan lives only in this browser. Send it to your account and it follows you to
+      every device you sign in on, and can be shared with friends later.
+    </p>
+    <p v-else class="mb-4 text-body-1">
       These plans live only in this browser. Sync them to your account and they follow
       you to every device, and can be shared with friends later. Nothing is merged and
       nothing is overwritten.
@@ -30,7 +36,9 @@
     </div>
 
     <p class="mt-4 text-body-2 text-grey">
-      Say no and they simply stay local. You can sync them any time from the plus button.
+      {{ landed
+        ? 'Say no and it simply stays local. You can send it up any time from tab settings.'
+        : 'Say no and they simply stay local. You can sync them any time from the plus button.' }}
     </p>
 
     <template #actions>
@@ -65,7 +73,10 @@
 
   const appStore = useAppStore()
   const roomsStore = useRoomsStore()
-  const { adoptionOpen, adoptionCandidates } = storeToRefs(roomsStore)
+  const { adoptionOpen, adoptionCandidates, adoptionReason } = storeToRefs(roomsStore)
+
+  /** One plan that just arrived, rather than the sign-in sweep of the whole browser. */
+  const landed = computed(() => adoptionReason.value === 'landed')
 
   const chosen = ref<string[]>([])
 

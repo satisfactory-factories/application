@@ -1864,6 +1864,32 @@ device since the last refresh is there. Reopening a plan you hid no longer means
 account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
 proves the content comes back down, then finds the section gone.
 
+## A plan that lands after the sweep gets its own offer (2026-09-04)
+
+Reported from the preview: signed in first, pasted a plan from the live site into the local
+tab afterwards, then had to work out how to get it onto the account. Nothing was wrong —
+tab settings, the account panel's Local list and the plus button all convert a local tab —
+but nothing *said* so at the moment the plan landed, because `openAdoptionOffer` is the
+sign-in sweep and it had already run (and, on a first sign-in with an empty Default tab,
+found nothing and recorded no answer).
+
+- `offerTabToCloud(tabId)` in `rooms-store.ts` raises the adoption dialog for one tab,
+  regardless of the stored sign-in answer. Refuses silently when signed out, offline, when
+  the tab is empty or already a room, or when another dialog (chooser, adoption, legacy) is
+  up — the login dialogs are a queue and this must not jump it.
+- `adoptionReason` (`'sign-in' | 'landed'`) rides alongside the candidates. `declineAdoption`
+  writes the per-account answer **only** for the sweep: "not this one" says nothing about the
+  plans the sign-in offer asks about. `AdoptionDialog.vue` reads it for the wording — singular,
+  "Send this plan to your account?", pointing at tab settings rather than the plus button.
+- The seam is the bus: `PlannerGlobalActions.vue` sets a flag on paste and emits
+  `planLanded` with the tab id on the next `calculationsCompleted`, which the rooms store
+  answers. Waiting for the calculations is deliberate — the loading overlay is persistent and
+  would sit on top of the dialog. Emitting rather than calling the store keeps a planner
+  component from booting the rooms store on mount, which broke two unrelated clipboard specs
+  when it was tried the direct way.
+- Any future landing (a template, a share import) can raise the same offer by emitting the
+  same event.
+
 ## The tab bar's actions move into tab settings (2026-09-04)
 
 Copy, share and delete were three icons at the right of the tab bar. The share one opened the

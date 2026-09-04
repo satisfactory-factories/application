@@ -1,6 +1,6 @@
 import vuetify from '@/plugins/vuetify'
 import { createPinia, setActivePinia } from 'pinia'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlannerGlobalActions from './PlannerGlobalActions.vue'
 import Tooltip from '@/components/tooltip.vue'
@@ -8,6 +8,7 @@ import { useAppStore } from '@/stores/app-store'
 import { usePowerTarget } from '@/composables/usePowerTarget'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import { newFactory } from '@/utils/factory-management/factory'
+import eventBus from '@/utils/eventBus'
 
 // The copy/paste plan buttons must carry the plan's power target (a tab-level
 // field) alongside the factories, while still accepting the legacy array-only blob.
@@ -123,6 +124,45 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(prepareLoader.mock.calls[0][0]).toHaveLength(1)
     expect(appStore.getCurrentTab().powerTarget).toBe(1234)
     expect(appStore.getCurrentTab().name).toBe('Pasted Plan')
+  })
+
+  /**
+   * A plan pasted in after signing in used to have nothing pointing at the cloud:
+   * the offer to sync what this browser holds is made at sign-in and then the
+   * browser stops asking. The paste raises it for the plan that just landed, once
+   * the load is done — the loading overlay is persistent and would sit over it.
+   */
+  it('announces the pasted plan once it has finished loading, not before', async () => {
+    const landed = vi.fn()
+    eventBus.on('planLanded', landed)
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ name: 'Pasted Plan', factories: [newFactory('Pasted')] }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    // Nothing yet: the plan is still being drawn, and the loading overlay would
+    // sit on top of anything raised over it.
+    expect(landed).not.toHaveBeenCalled()
+
+    eventBus.emit('calculationsCompleted')
+    await flushPromises()
+
+    expect(landed).toHaveBeenCalledWith(appStore.getCurrentTab().id)
+    eventBus.off('planLanded', landed)
+  })
+
+  it('announces nothing when the calculations were not a paste landing', async () => {
+    const landed = vi.fn()
+    eventBus.on('planLanded', landed)
+    mountSubject()
+
+    eventBus.emit('calculationsCompleted')
+    await flushPromises()
+
+    expect(landed).not.toHaveBeenCalled()
+    eventBus.off('planLanded', landed)
   })
 
   // Groups with members ride on the factories and need no help. Memberless ones live only on the

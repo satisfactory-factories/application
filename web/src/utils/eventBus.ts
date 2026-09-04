@@ -48,6 +48,13 @@ type Events = {
   readyForData: undefined;
   plannerShow: boolean;
   calculationsCompleted: undefined
+  /**
+   * A whole plan has just arrived in a tab from outside — a paste today, an import
+   * tomorrow. Carries the tab it landed in. The rooms store answers it by offering
+   * that tab to the cloud, which nothing else would: the sweep of what this browser
+   * holds is made at sign-in, and a plan that turns up afterwards misses it.
+   */
+  planLanded: string
 
   // Intro
   introToggle: boolean;
