@@ -5,6 +5,20 @@
         <v-row class="header">
           <v-col class="text-h4 flex-grow-1 d-flex align-center" cols="8">
             <span class="stats-heading-icon"><i class="fas fa-chart-line" /></span>Statistics
+            <!-- The section is collapsed by choice on a returning visitor, and a plan that cannot
+                 be built on the map must not depend on them expanding it to find out. -->
+            <v-chip
+              v-if="worldProblems.blockers > 0"
+              id="stats-world-problems"
+              class="sf-chip status-problem ml-3"
+              variant="flat"
+            >
+              <i class="fas fa-exclamation-triangle" />
+              <span class="ml-2">
+                {{ worldProblems.blockers }}
+                {{ worldProblems.blockers === 1 ? 'resource' : 'resources' }} beyond map allowances
+              </span>
+            </v-chip>
           </v-col>
           <v-col class="text-right" cols="4">
             <v-btn
@@ -99,6 +113,7 @@
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
   import { calculateTotalPower } from '@/utils/statistics'
+  import { calculateWorldResourceProblems } from '@/utils/world-resources'
   import { formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import eventBus from '@/utils/eventBus'
@@ -111,6 +126,10 @@
   // the expanded section: vs target when one is set, vs the plan otherwise.
   const { powerTarget, hasTarget } = usePowerTarget()
   const totalPower = computed(() => calculateTotalPower(props.factories))
+
+  // Raw resources the map cannot supply, surfaced on the header so the Raw Resources section
+  // below can say it even while the whole of Statistics is collapsed.
+  const worldProblems = computed(() => calculateWorldResourceProblems(props.factories))
   const balanceDifference = computed(() => hasTarget.value
     ? totalPower.value.totalPowerProduced - powerTarget.value
     : totalPower.value.totalPowerDifference)

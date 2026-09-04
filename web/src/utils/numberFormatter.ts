@@ -108,3 +108,20 @@ export function formatCompact (value: number): string {
   // 320.0001 does not become "320.0".
   return formatNumber(value, 1)
 }
+
+// Like formatCompact, but keeps one decimal at every magnitude. formatCompact spends a
+// four-character budget because it sits under a 36px icon, so it rounds 92,100 to "92k" and
+// 12,300 to "12k" — fine at that size, and a real loss in a table where the figure is read as a
+// number against another one. Here 92,100/min stays "92.1k".
+export function formatCompactPrecise (value: number): string {
+  for (const [divisor, suffix] of [[1_000_000, 'M'], [1000, 'k']] as const) {
+    const scaled = value / divisor
+    // Promote only what would actually overflow into "1000k" at ONE decimal place — a tenth of
+    // formatCompact's threshold, which is set for its own rounding. 999,900 reads 999.9k here
+    // and would read "1000k" there.
+    if (Math.abs(scaled) < 0.99995) continue
+    return `${formatNumber(scaled, 1)}${suffix}`
+  }
+
+  return formatNumber(value, 1)
+}
