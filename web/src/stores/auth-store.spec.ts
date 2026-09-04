@@ -233,6 +233,9 @@ describe('auth-store', () => {
       expect(authStore.getToken()).toBe('mock-token')
       expect(mockFetch.mock.calls[0][0]).toBe(`${apiUrl}/register`)
       expect(mockFetch.mock.calls[1][0]).toBe(`${apiUrl}/login`)
+      // Registering is an interactive sign-in like any other, and that event is
+      // what offers a brand-new account the local plans it is holding.
+      expect(emitSpy).toHaveBeenCalledWith('loggedIn')
     })
 
     it('surfaces the backend message on a 400', async () => {

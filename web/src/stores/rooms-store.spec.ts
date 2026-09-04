@@ -787,6 +787,28 @@ describe('rooms-store', () => {
       expect(store.adoptionCandidates).toEqual([tab.id])
     })
 
+    /**
+     * The signed-out cloud tab: this browser kept the plan when it signed out, so
+     * the same id is both a tab here and a room on the account. The list is what
+     * puts the two back together — offering to upload it would make a second copy.
+     */
+    it('re-marks a signed-out cloud tab as synced rather than offering to upload it', async () => {
+      const tab = localTab('Was cloudy')
+      listReturns([entry({ roomId: tab.id, name: 'Was cloudy', revision: 12 })])
+
+      await store.begin()
+
+      expect(appStore.getTabState(tab.id)).toEqual({
+        kind: 'synced',
+        shared: false,
+        role: 'owner',
+        revision: 12,
+      })
+      expect(roomSync.rooms[tab.id]).toBeDefined()
+      expect(store.adoptionOpen).toBe(false)
+      expect(api.adoptRoom).not.toHaveBeenCalled()
+    })
+
     it('never offers an empty tab', async () => {
       localTab('Empty', 0)
 

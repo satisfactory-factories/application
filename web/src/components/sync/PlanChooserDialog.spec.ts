@@ -149,4 +149,65 @@ describe('PlanChooserDialog', () => {
     expect(close).toHaveBeenCalledWith()
     expect(openChosen).not.toHaveBeenCalled()
   })
+
+  // Ticking or unticking a dozen plans one at a time is the difference between a
+  // welcome and a chore, so both ends of the range are one click.
+  describe('the bulk controls', () => {
+    const press = async (testId: string) => {
+      body().querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.click()
+      await flushPromises()
+    }
+
+    it('clears every tick with Select none', async () => {
+      await open([entry('room-1'), entry('room-2')])
+
+      await press('chooser-select-none')
+
+      expect(ticked()).toEqual([false, false])
+      expect(boxes().map(box => box.checked)).toEqual([false, false])
+    })
+
+    it('puts every tick back with Select all', async () => {
+      await open([entry('room-1'), entry('room-2'), entry('room-3')])
+
+      await press('chooser-select-none')
+      await toggle(1)
+      await press('chooser-select-all')
+
+      expect(ticked()).toEqual([true, true, true])
+    })
+
+    it('submits what the buttons left behind', async () => {
+      const openChosen = vi.spyOn(roomsStore, 'openChosenPlans').mockResolvedValue()
+      await open([entry('room-1'), entry('room-2'), entry('room-3')])
+
+      await press('chooser-select-none')
+      await toggle(2)
+      await press('chooser-submit')
+
+      expect(openChosen).toHaveBeenCalledWith(['room-3'])
+    })
+
+    // Each one is spent at its own end of the range; a disabled button says so.
+    it('disables whichever button would change nothing', async () => {
+      await open([entry('room-1'), entry('room-2')])
+      const button = (testId: string) =>
+        body().querySelector<HTMLButtonElement>(`button[data-testid="${testId}"]`)
+
+      expect(button('chooser-select-all')?.disabled).toBe(true)
+      expect(button('chooser-select-none')?.disabled).toBe(false)
+
+      await press('chooser-select-none')
+
+      expect(button('chooser-select-all')?.disabled).toBe(false)
+      expect(button('chooser-select-none')?.disabled).toBe(true)
+    })
+
+    it('leaves them off a single plan, which has no "all" to speak of', async () => {
+      await open([entry('room-1')])
+
+      expect(body().querySelector('[data-testid="chooser-select-all"]')).toBeNull()
+      expect(body().querySelector('[data-testid="chooser-select-none"]')).toBeNull()
+    })
+  })
 })

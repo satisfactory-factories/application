@@ -1,18 +1,44 @@
 <template>
   <app-dialog
     v-model="open"
+    body-max-height="60vh"
     card-class="border-md"
     :closable="false"
     data-testid="plan-chooser-dialog"
     icon="fas fa-cloud"
     max-width="640"
     persistent
+    scrollable
     title="Open your cloud plans?"
   >
     <p class="mb-4 text-body-1">
       Your account holds plans that are not open in this browser. Pick the ones
       to open here; the rest stay on your account, ready whenever you want them.
     </p>
+
+    <!-- Ticking a dozen boxes one at a time is nobody's idea of a welcome, so the two
+         ends of the range are one click each. Hidden for a single plan, which has no
+         "all" to speak of. -->
+    <div v-if="candidates.length > 1" class="d-flex ga-1 mb-1">
+      <v-btn
+        data-testid="chooser-select-all"
+        :disabled="chosen.length === candidates.length"
+        size="small"
+        variant="text"
+        @click="selectAll"
+      >
+        Select all
+      </v-btn>
+      <v-btn
+        data-testid="chooser-select-none"
+        :disabled="chosen.length === 0"
+        size="small"
+        variant="text"
+        @click="selectNone"
+      >
+        Select none
+      </v-btn>
+    </div>
 
     <!-- One checkbox per plan, each driven by its own id rather than by an array model, so a
          row can never end up drawn out of step with what the button will submit. -->
@@ -100,6 +126,14 @@
     `${plan.factoryCount} ${plan.factoryCount === 1 ? 'factory' : 'factories'}`
 
   const isChosen = (roomId: string) => chosen.value.includes(roomId)
+
+  const selectAll = () => {
+    chosen.value = candidates.value.map(plan => plan.roomId)
+  }
+
+  const selectNone = () => {
+    chosen.value = []
+  }
 
   const choose = (roomId: string, wanted: boolean) => {
     chosen.value = wanted

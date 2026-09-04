@@ -1,10 +1,12 @@
 <template>
   <app-dialog
     v-model="open"
+    body-max-height="60vh"
     card-class="border-md"
     data-testid="new-tab-dialog"
     :icon="signingIn ? 'fas fa-sign-in' : 'fas fa-plus'"
     :max-width="signingIn ? 520 : 720"
+    scrollable
     :title="signingIn ? 'Sign in for a synced tab' : 'New tab'"
   >
     <div v-if="!signingIn">
@@ -53,6 +55,26 @@
         A synced tab needs an account. Pick it and you can sign in or register right here.
         Local tabs stay exactly as they are.
       </p>
+
+      <!-- Reopening a plan you hid is a "new tab" move as far as the user is concerned, so
+           it belongs on this button rather than three clicks away in the account panel. The
+           rows are the panel's own, Show button and all. -->
+      <div v-if="unopened.length > 0" class="mt-4" data-testid="open-existing-plans">
+        <v-divider class="mb-3" />
+        <p class="mb-2 text-body-2">
+          Or open a plan already on your account. It is closed in this browser, not gone.
+        </p>
+        <cloud-plan-row
+          v-for="plan in unopened"
+          :key="plan.roomId"
+          data-testid="unopened-plan"
+          :loading="openingId === plan.roomId"
+          :now="now"
+          :open="false"
+          :room="plan"
+          @toggle="openExisting"
+        />
+      </div>
       <p v-if="error" class="mt-4 text-body-2 text-red" data-testid="new-tab-error">{{ error }}</p>
     </div>
 
@@ -72,9 +94,10 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import AuthForm from '@/components/sync/AuthForm.vue'
+  import CloudPlanRow from '@/components/sync/CloudPlanRow.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomsStore } from '@/stores/rooms-store'
@@ -83,11 +106,39 @@
 
   const appStore = useAppStore()
   const roomsStore = useRoomsStore()
+  const { entries } = storeToRefs(roomsStore)
   const { isLoggedIn } = storeToRefs(useAuthStore())
 
   const busy = ref(false)
   const error = ref('')
   const signingIn = ref(false)
+
+  /**
+   * The account's plans with no tab in this browser — hidden, in other words.
+   * Showing and hiding stays per-browser, so this list is the one place that
+   * says what this device is missing out on. Membership order, as everywhere.
+   */
+  const unopened = computed(() => isLoggedIn.value
+    ? Object.values(entries.value)
+      .filter(plan => !appStore.getTab(plan.roomId))
+      .sort((first, second) => first.order - second.order)
+    : [])
+
+  /** Read when the dialog opened, so "3m ago" is measured from then. */
+  const now = ref(new Date())
+  const openingId = ref('')
+
+  const openExisting = async (roomId: string) => {
+    openingId.value = roomId
+    error.value = ''
+    const result = await roomsStore.openPlan(roomId)
+    openingId.value = ''
+    if (result !== true) {
+      error.value = result
+      return
+    }
+    open.value = false
+  }
 
   const chooseLocal = () => {
     appStore.addTab()
@@ -129,7 +180,11 @@
     if (!value) return
     error.value = ''
     signingIn.value = false
-  })
+    now.value = new Date()
+    // The list is only as fresh as the last refresh, and a plan made on another
+    // device since then is exactly what someone opening this dialog is after.
+    if (isLoggedIn.value) void roomsStore.refresh()
+  }, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

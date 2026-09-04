@@ -2,7 +2,16 @@ import type { Page } from '@playwright/test'
 
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
-import { openPlanner, readTabBar, settle } from '../helpers/planner'
+import {
+  addFactory,
+  createSyncedTab,
+  mirroredFactories,
+  openPlanner,
+  readTabBar,
+  settle,
+  waitForTab,
+} from '../helpers/planner'
+import { hidePlan } from '../helpers/rooms'
 
 const openChooser = async (page: Page) => {
   await page.getByTestId('add-tab').click()
@@ -64,4 +73,43 @@ test('signing in inside the chooser still gets the synced tab that was asked for
     timeout: 30_000,
     message: 'the synced tab never appeared in the bar',
   }).toContain('synced')
+})
+
+/**
+ * The way back in. Hiding a plan is a per-browser move, so getting it back has to
+ * be one too — and the button someone reaches for when they want a tab they have
+ * not got is the plus, not the account panel three clicks away.
+ */
+test('the plus button offers the account plans this browser has closed', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+  const page = await openPlanner(await client({ user }))
+
+  const roomId = await createSyncedTab(page)
+  await addFactory(page, { name: 'Put away for now', note: 'made before hiding it' })
+  await hidePlan(page, user, roomId)
+
+  await openChooser(page)
+
+  // Listed here because it is closed here; the row is the panel's own.
+  const row = page.locator(`[data-testid="show-plan"][data-room-id="${roomId}"]`)
+  await expect(page.getByTestId('open-existing-plans')).toBeVisible()
+  await expect(row).toBeVisible()
+
+  await row.click()
+  await expect(page.getByTestId('choose-local-tab')).toBeHidden()
+  await waitForTab(page, roomId)
+  await settle(page)
+
+  // Opened, and filled: the plan comes back whole rather than as an empty tab.
+  await expect.poll(
+    async () => (await mirroredFactories(page, roomId)).map(entry => entry.name),
+    { message: 'the reopened plan never got its content back' },
+  ).toEqual(['Put away for now'])
+
+  // And with it open, the dialog has nothing left to offer.
+  await openChooser(page)
+  await expect(page.getByTestId('open-existing-plans')).toBeHidden()
 })

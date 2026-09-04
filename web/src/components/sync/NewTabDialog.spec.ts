@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
+import type { RoomListEntry } from 'common'
 import NewTabDialog from './NewTabDialog.vue'
 import vuetify from '@/plugins/vuetify'
 import { useAppStore } from '@/stores/app-store'
@@ -12,14 +13,29 @@ import { useRoomsStore } from '@/stores/rooms-store'
 // the body, exactly as a person sees it.
 const body = () => document.body
 const at = (testId: string) => body().querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+const all = (testId: string) => [...body().querySelectorAll<HTMLElement>(`[data-testid="${testId}"]`)]
 const shown = (testId: string) => at(testId) !== null
+
+const entry = (roomId: string, overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
+  roomId,
+  name: 'Plan',
+  slug: null,
+  shared: false,
+  hasPassword: false,
+  revision: 3,
+  role: 'owner',
+  order: 0,
+  lastActivityAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+  factoryCount: 2,
+  ...overrides,
+})
 
 describe('NewTabDialog', () => {
   let appStore: ReturnType<typeof useAppStore>
   let authStore: ReturnType<typeof useAuthStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
 
-  const render = ({ loggedIn = false } = {}) => {
+  const render = ({ loggedIn = false, rooms = [] as RoomListEntry[], openTabs = [] as string[] } = {}) => {
     const pinia = createTestingPinia({ createSpy: vi.fn })
     setActivePinia(pinia)
 
@@ -31,6 +47,14 @@ describe('NewTabDialog', () => {
 
     vi.mocked(roomsStore.createSyncedTab).mockResolvedValue(true)
     vi.mocked(roomsStore.whenSessionReady).mockResolvedValue(undefined)
+    vi.mocked(roomsStore.openPlan).mockResolvedValue(true)
+    vi.mocked(roomsStore.refresh).mockResolvedValue(true)
+    // The bar is the open set: a plan with a tab here is not on offer.
+    const open = new Set(openTabs)
+    vi.mocked(appStore.getTab).mockImplementation(
+      id => open.has(id) ? { id, name: 'Open', factories: [] } as never : undefined as never,
+    )
+    for (const room of rooms) roomsStore.entries[room.roomId] = room
 
     return mount(NewTabDialog, {
       global: { plugins: [vuetify, pinia] },
@@ -199,6 +223,78 @@ describe('NewTabDialog', () => {
 
       expect(at('new-tab-error')?.textContent).toContain('too many synced plans')
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+  })
+
+  /**
+   * The third way into a cloud plan, after the login chooser and the account
+   * panel: the plus button lists what this browser has closed, because that is
+   * where someone goes when they want a tab they have not got.
+   */
+  describe('opening a plan already on the account', () => {
+    it('lists the plans with no tab in this browser, in membership order', () => {
+      render({
+        loggedIn: true,
+        rooms: [entry('room-2', { name: 'Second', order: 1 }), entry('room-1', { name: 'First', order: 0 })],
+      })
+
+      // The row's first span is the plan's name; the rest of it is the Show
+      // button and the size/last-changed line.
+      expect(all('unopened-plan').map(row => row.querySelector('span')?.textContent))
+        .toEqual(['First', 'Second'])
+    })
+
+    it('leaves out the plans this browser already holds', () => {
+      render({
+        loggedIn: true,
+        rooms: [entry('room-1', { name: 'Open here' }), entry('room-2', { name: 'Closed here' })],
+        openTabs: ['room-1'],
+      })
+
+      expect(all('unopened-plan')).toHaveLength(1)
+      expect(at('unopened-plan')?.textContent).toContain('Closed here')
+    })
+
+    it('opens the one whose Show button is pressed, and gets out of the way', async () => {
+      const wrapper = render({ loggedIn: true, rooms: [entry('room-1'), entry('room-2')] })
+
+      body().querySelector<HTMLElement>('[data-testid="show-plan"][data-room-id="room-2"]')?.click()
+      await flushPromises()
+
+      expect(roomsStore.openPlan).toHaveBeenCalledWith('room-2')
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    })
+
+    it('stays open and says why when the plan cannot be opened', async () => {
+      const wrapper = render({ loggedIn: true, rooms: [entry('room-1')] })
+      vi.mocked(roomsStore.openPlan).mockResolvedValue('That plan is not on your account.')
+
+      body().querySelector<HTMLElement>('[data-testid="show-plan"][data-room-id="room-1"]')?.click()
+      await flushPromises()
+
+      expect(at('new-tab-error')?.textContent).toContain('not on your account')
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+
+    // A plan made on another device since the last refresh is exactly what the
+    // person opening this dialog is reaching for.
+    it('refreshes the account list as it opens', () => {
+      render({ loggedIn: true, rooms: [entry('room-1')] })
+
+      expect(roomsStore.refresh).toHaveBeenCalled()
+    })
+
+    it('offers nothing of the sort to a signed-out browser', () => {
+      render({ rooms: [entry('room-1')] })
+
+      expect(shown('open-existing-plans')).toBe(false)
+      expect(roomsStore.refresh).not.toHaveBeenCalled()
+    })
+
+    it('says nothing at all when every account plan is already open here', () => {
+      render({ loggedIn: true, rooms: [entry('room-1')], openTabs: ['room-1'] })
+
+      expect(shown('open-existing-plans')).toBe(false)
     })
   })
 })

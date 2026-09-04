@@ -27,7 +27,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive, whether the edit is an add or a note. |
 | `tab-lifecycle` | Create, rename (through the tab settings dialog), delete and drag-reorder all reach a second device once it opens the plan from the panel; a hidden plan stays hidden across a reload and Show restores it; a member's rename field is disabled with the reason shown; signing in from the signed-out convert button turns it into the real conversion on the same open dialog. |
 | `sidebar-tabs` | The docked sidebar lists the tab you are on, whether local, synced or joined; a tab too big to render in one flush opens behind the loading overlay, and a small one opens instantly. |
-| `new-tab-chooser` | Local is offered to anyone; picking synced without an account signs in on the same dialog and still makes the tab. |
+| `new-tab-chooser` | Local is offered to anyone; picking synced without an account signs in on the same dialog and still makes the tab. A plan hidden in this browser is listed on the plus button and comes back whole when opened from there. |
 | `invite` | An anonymous visitor joins by link and edits back; a signed-in joiner's plan follows their account and opens from the panel on a second device. |
 | `snapshot-link` | `/share/:id` still imports a frozen local copy, and the owner's later edits do not reach it. |
 | `invite-password` | A wrong password is refused inline, the right one joins, and a rotation kicks the visitor while the member stays. |

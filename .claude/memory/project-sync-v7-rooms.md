@@ -1814,6 +1814,39 @@ number that goes stale silently:
   still carried), the v0.7 `CHANGELOG.md` entry, the plan's caps table, and a comment in
   `rooms-store.ts` explaining the legacy-import overflow toast.
 
+## The three ways into an account's plans (2026-09-04)
+
+Matt's framing of the sign-in journey, and the shape the UI now matches. Three arrivals, one
+dialog each, all off the same `loggedIn` event:
+
+1. **A new account.** No rooms, so no chooser; what asks is the adoption offer — upload the
+   local plans this browser is holding (`openAdoptionOffer`, create-only, once per browser
+   through `ADOPTION_ANSWERED_KEY`). `register()` finishes by calling `login()`, so it emits
+   `loggedIn` and takes the interactive path like any other sign-in; asserted in
+   `auth-store.spec.ts`'s "registers then logs the user straight in".
+2. **A browser that already holds the plan, signed out.** `signOut` keeps every tab and marks
+   it local, so the same id is a tab here *and* a room on the account. `applyRoomList` re-marks
+   it synced and joins it, and adoption never sees it — `!known.has(tab.id)` plus the
+   `kind === 'local'` filter, and `applyRoomList` has already run by the time the offer is
+   made. Test: "re-marks a signed-out cloud tab as synced rather than offering to upload it".
+   Nothing is uploaded, so there is never a second copy.
+3. **A fresh browser.** Nothing local to adopt, so the chooser offers the account's rooms.
+
+**Hide/show stays per-browser, by decision (2026-09-04).** Account-wide hiding would force a
+plan onto a device that does not want it, and the tab bar being the open set is what stops a
+plan opened on one machine popping into another's bar. What the chooser gained instead is
+**Select all / Select none** (`chooser-select-all` / `chooser-select-none`, each disabled at
+its own end of the range, both absent for a single candidate), so a long list is one click
+either way rather than a dozen.
+
+**The plus button is the way back in.** `NewTabDialog` now lists the account's rooms with no
+tab here under the two choice cards (`open-existing-plans`, one `unopened-plan` row each —
+they are `CloudPlanRow`, so the Show button, the size and the last-changed line are the
+account panel's own), and refreshes the room list as it opens so a plan made on another
+device since the last refresh is there. Reopening a plan you hid no longer means a trip to the
+account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
+proves the content comes back down, then finds the section gone.
+
 ## Account tokens are versioned, and a password change revokes them (2026-09-03)
 
 Before this a stolen 30-day JWT kept full access after the password it was minted under was
