@@ -146,6 +146,13 @@ number used to be.
 - **The factory's Checklist chip counts them** — `Checklist: 12/14 · 2 to reconfirm` — instead of
   saying `(desynced)`, so a collapsed factory card tells you whether it is one stale row or nine.
   The sidebar's checklist tooltip counts them the same way.
+- **A desynced checklist is now a factory status of its own**, so it wears an amber **Checklist
+  desync** chip everywhere the other statuses appear — the card header, the sidebar entry, the
+  Factories Summary and the plan- and group-level tallies — carrying the icons of the items that
+  moved, and turning the factory amber like any other warning. Previously the only clue in the
+  sidebar was a counter quietly changing colour, which said a factory was amber without saying why.
+- **The sidebar's checklist counter takes a chip's outline when it is amber**, rather than only
+  changing colour, so it reads as a state to act on rather than a recoloured icon.
 - **The checkboxes on the Products, Imports, Power and Satisfaction rows** carry the same two
   numbers in their hover text, where there is no room for a chip.
 
