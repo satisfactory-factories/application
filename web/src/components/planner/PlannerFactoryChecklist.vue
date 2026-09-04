@@ -6,7 +6,8 @@
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
         <v-chip class="sf-chip small no-margin" :class="checklistChipClass(factory)">
-          {{ completedCount }}/{{ totalCount }} {{ hasChecklistDesync(factory) ? 'ticked, needs reconfirming' : 'complete' }}
+          {{ completedCount }}/{{ totalCount }}
+          {{ desyncs.length > 0 ? `ticked, ${desyncs.length} to reconfirm` : 'complete' }}
         </v-chip>
       </v-col>
       <v-col class="text-right" cols="4">
@@ -29,6 +30,34 @@
       </v-col>
     </v-row>
     <v-card-text v-if="!factory.checklistPanelHidden" class="text-body-1">
+      <!-- The one place that says what to DO about a desync. The per-row chips below say what
+           changed on each row; this says why the factory is amber at all, and offers the bulk
+           acknowledgement for the common case of "I already rebuilt the lot". -->
+      <div v-if="desyncs.length > 0" class="desync-banner mb-4">
+        <div class="d-flex align-center flex-wrap ga-2">
+          <i class="fas fa-exclamation-triangle" />
+          <span>
+            <b>{{ desyncs.length }}</b>
+            {{ desyncs.length === 1 ? 'ticked item has' : 'ticked items have' }}
+            changed since you marked
+            {{ desyncs.length === 1 ? 'it' : 'them' }} as built.
+          </span>
+          <v-btn
+            class="ml-auto"
+            color="primary"
+            prepend-icon="fas fa-check-double"
+            size="small"
+            variant="flat"
+            @click="acknowledgeChecklistDesyncs(factory)"
+          >Reconfirm all
+          </v-btn>
+        </div>
+        <p class="text-body-2 mt-2 mb-0">
+          Each one is flagged below with the number it was ticked at and the number the plan asks
+          for now. Build the difference and reconfirm it, or change the plan back to match what you
+          have already built.
+        </p>
+      </div>
       <p v-if="totalCount === 0" class="text-body-2">
         Nothing to check off yet: add products, power producers, imports or exports to this factory.
       </p>
@@ -54,7 +83,11 @@
               width="24"
             />
             <span class="ml-2">{{ getPartDisplayName(product.id) }}</span>
-            <v-chip v-if="isProductChecklistDesynced(product)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+            <checklist-desync-chip
+              v-if="productChecklistDesync(product)"
+              :desync="productChecklistDesync(product)!"
+              @acknowledge="toggleChecklistProduct(factory, product)"
+            />
           </div>
         </div>
         <div v-if="factory.powerProducers.length > 0" class="checklist-group">
@@ -78,7 +111,11 @@
               width="24"
             />
             <span class="ml-2">{{ getPowerProducerDisplayName(producer) }}</span>
-            <v-chip v-if="isPowerProducerChecklistDesynced(producer)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+            <checklist-desync-chip
+              v-if="powerProducerChecklistDesync(producer)"
+              :desync="powerProducerChecklistDesync(producer)!"
+              @acknowledge="toggleChecklistPowerProducer(factory, producer)"
+            />
           </div>
         </div>
         <div v-if="factory.inputs.length > 0" class="checklist-group">
@@ -119,7 +156,11 @@
                 @click.stop="navigateToFactory(input.factoryId)"
               />
             </v-chip>
-            <v-chip v-if="isInputChecklistDesynced(input)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+            <checklist-desync-chip
+              v-if="inputChecklistDesync(input)"
+              :desync="inputChecklistDesync(input)!"
+              @acknowledge="toggleChecklistInput(factory, input)"
+            />
           </div>
         </div>
         <div v-if="exportRequests.length > 0" class="checklist-group">
@@ -162,10 +203,11 @@
                 @click.stop="navigateToFactory(request.requestingFactoryId)"
               />
             </v-chip>
-            <v-chip
-              v-if="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
-              class="sf-chip x-small status-warning no-margin"
-            >Desynced</v-chip>
+            <checklist-desync-chip
+              v-if="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)"
+              :desync="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)!"
+              @acknowledge="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
+            />
           </div>
         </div>
       </template>
@@ -180,15 +222,20 @@
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import {
+    acknowledgeChecklistDesyncs,
     checklistChipClass,
+    checklistExportDesync,
     countChecklistCompleted,
     countChecklistTotal,
-    hasChecklistDesync,
+    inputChecklistDesync,
     isChecklistExportComplete,
     isChecklistExportDesynced,
     isInputChecklistDesynced,
     isPowerProducerChecklistDesynced,
     isProductChecklistDesynced,
+    listChecklistDesyncs,
+    powerProducerChecklistDesync,
+    productChecklistDesync,
     setChecklistPanelHidden,
     toggleChecklistExport,
     toggleChecklistInput,
@@ -210,9 +257,23 @@
   const totalCount = computed(() => countChecklistTotal(props.factory))
   const completedCount = computed(() => countChecklistCompleted(props.factory))
   const exportRequests = computed(() => getRequestsForFactory(props.factory))
+  const desyncs = computed(() => listChecklistDesyncs(props.factory))
 </script>
 
 <style lang="scss" scoped>
+// Amber card rather than a chip: it holds a sentence, a paragraph and a button, and reads as the
+// panel's own state instead of one more label in the row of them above.
+.desync-banner {
+  background-color: var(--sf-status-warning-bg);
+  border: 1px solid var(--sf-status-warning-border);
+  border-radius: 4px;
+  padding: 12px;
+
+  > div > i {
+    color: var(--sf-status-warning);
+  }
+}
+
 .checklist-group {
   margin-bottom: 16px;
 

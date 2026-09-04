@@ -69,7 +69,9 @@
           </template>
           <span>
             Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}
-            {{ hasChecklistDesync(factory) ? 'ticked, but some numbers have changed since' : 'complete' }}
+            {{ checklistDesyncCount > 0
+              ? `ticked, ${checklistDesyncCount} of them at a number that has since changed`
+              : 'complete' }}
           </span>
         </v-tooltip>
         <v-tooltip right>
@@ -134,8 +136,8 @@
   import {
     checklistTextClass,
     countChecklistCompleted,
+    countChecklistDesynced,
     countChecklistTotal,
-    hasChecklistDesync,
   } from '@/utils/factory-management/checklist'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
@@ -164,6 +166,8 @@
   const { dragEnabled } = useFactoryDrag()
 
   const iconDialogOpen = ref(false)
+
+  const checklistDesyncCount = computed(() => countChecklistDesynced(props.factory))
 
   const rowClass = computed(() => ({
     'factory-card': true,

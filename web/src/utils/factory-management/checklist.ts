@@ -9,9 +9,12 @@
 // Desync tracking: every checked item also stamps a `checklistSyncedAmount` baseline (the export
 // equivalent lives in factory.checklistExportSyncedAmounts, same keying as checklistExports). If
 // the plan's own number for that item later drifts away from the baseline, the item is "desynced"
-// — ticked as built, but the plan has since asked for something different. Toggling an item back
-// to checked re-stamps the baseline, which is how a player acknowledges the new number. Marking
-// the whole factory in sync with the game (setSyncState) re-stamps every baseline at once.
+// — ticked as built, but the plan has since asked for something different. Because the baseline is
+// kept, the flag can say what actually changed rather than only that something did: the pair of
+// numbers is the primitive (ChecklistDesync), and "is it desynced" derives from it. Toggling an
+// item back to checked re-stamps the baseline, which is how a player acknowledges the new number;
+// acknowledgeChecklistDesyncs does the same for every moved row at once. Marking the whole factory
+// in sync with the game (setSyncState) re-stamps every baseline, moved or not.
 //
 // Every mutation here emits `factoryUpdated`. That is the only thing that sets the cloud-sync
 // dirty flag and schedules a local persist, and checklist mode is the one feature where a whole
@@ -21,6 +24,7 @@
 import { Factory, FactoryInput, FactoryItem, FactoryPowerProducer } from '@/interfaces/planner/FactoryInterface'
 import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { setSyncState } from '@/utils/factory-management/syncState'
+import { formatNumber } from '@/utils/numberFormatter'
 import eventBus from '@/utils/eventBus'
 
 export const checklistExportKey = (requestingFactoryId: number | string, part: string): string =>
@@ -120,30 +124,171 @@ export const setChecklistPanelHidden = (factory: Factory, hidden: boolean): void
   eventBus.emit('factoryUpdated', factory)
 }
 
-// Desynced: ticked as built, but the number it was ticked against has since moved. An absent
-// baseline (never ticked since this existed) must read as "not desynced" rather than firing on
-// every old save the first time it loads.
+// Desynced: ticked as built, but the number it was ticked against has since moved. What the
+// player needs is not that something moved but WHAT moved and by how much, so the primitive here
+// is the pair of numbers, and "is it desynced" is derived from it. An absent baseline (never
+// ticked since this existed) must read as "not desynced" rather than firing on every old save the
+// first time it loads.
+//
+// Products, imports and exports are rates; a power producer's baseline is a building count. The
+// unit rides along so a chip 200 lines away cannot mislabel 40 generators as 40/min.
+export type ChecklistDesyncUnit = 'perMin' | 'buildings'
+
+export interface ChecklistDesync {
+  // The number this item was ticked against.
+  from: number
+  // What the plan asks for now.
+  to: number
+  unit: ChecklistDesyncUnit
+}
+
+const desyncBetween = (
+  completed: boolean,
+  baseline: number | undefined,
+  current: number,
+  unit: ChecklistDesyncUnit
+): ChecklistDesync | null =>
+  completed && baseline !== undefined && baseline !== current
+    ? { from: baseline, to: current, unit }
+    : null
+
+export const productChecklistDesync = (product: FactoryItem): ChecklistDesync | null =>
+  desyncBetween(!!product.completed, product.checklistSyncedAmount, product.amount, 'perMin')
+
+export const inputChecklistDesync = (input: FactoryInput): ChecklistDesync | null =>
+  desyncBetween(!!input.completed, input.checklistSyncedAmount, input.amount, 'perMin')
+
+export const powerProducerChecklistDesync = (producer: FactoryPowerProducer): ChecklistDesync | null =>
+  desyncBetween(
+    !!producer.completed,
+    producer.checklistSyncedAmount,
+    producer.buildingAmount,
+    'buildings'
+  )
+
+export const checklistExportDesync = (
+  factory: Factory,
+  requestingFactoryId: number | string,
+  part: string,
+  amount: number
+): ChecklistDesync | null =>
+  desyncBetween(
+    isChecklistExportComplete(factory, requestingFactoryId, part),
+    factory.checklistExportSyncedAmounts[checklistExportKey(requestingFactoryId, part)],
+    amount,
+    'perMin'
+  )
+
 export const isProductChecklistDesynced = (product: FactoryItem): boolean =>
-  !!product.completed && product.checklistSyncedAmount !== undefined &&
-  product.checklistSyncedAmount !== product.amount
+  productChecklistDesync(product) !== null
 
 export const isInputChecklistDesynced = (input: FactoryInput): boolean =>
-  !!input.completed && input.checklistSyncedAmount !== undefined &&
-  input.checklistSyncedAmount !== input.amount
+  inputChecklistDesync(input) !== null
 
 export const isPowerProducerChecklistDesynced = (producer: FactoryPowerProducer): boolean =>
-  !!producer.completed && producer.checklistSyncedAmount !== undefined &&
-  producer.checklistSyncedAmount !== producer.buildingAmount
+  powerProducerChecklistDesync(producer) !== null
 
 export const isChecklistExportDesynced = (
   factory: Factory,
   requestingFactoryId: number | string,
   part: string,
   amount: number
-): boolean => {
-  if (!isChecklistExportComplete(factory, requestingFactoryId, part)) return false
-  const synced = factory.checklistExportSyncedAmounts[checklistExportKey(requestingFactoryId, part)]
-  return synced !== undefined && synced !== amount
+): boolean => checklistExportDesync(factory, requestingFactoryId, part, amount) !== null
+
+const desyncValue = (value: number, unit: ChecklistDesyncUnit): string =>
+  unit === 'buildings'
+    ? `${formatNumber(value)} ${value === 1 ? 'building' : 'buildings'}`
+    : `${formatNumber(value)}/min`
+
+// "560 → 720/min". Short enough to sit on the chip beside the row it belongs to, and specific
+// enough that the player can tell at a glance whether the change is worth walking to the factory
+// for. The unit is stated once, on the number that is now true.
+export const checklistDesyncChange = (desync: ChecklistDesync): string =>
+  `${formatNumber(desync.from)} → ${desyncValue(desync.to, desync.unit)}`
+
+// The long form, for tooltips: what changed, and the two things the player can do about it. Both
+// are legitimate — the plan may have moved because they changed their mind, in which case the
+// build is what is wrong, not the tick.
+export const checklistDesyncReason = (desync: ChecklistDesync): string =>
+  `Ticked as built at ${desyncValue(desync.from, desync.unit)}, but the plan now says ` +
+  `${desyncValue(desync.to, desync.unit)}. Build the difference and click to confirm, or change ` +
+  'the plan back.'
+
+// The checklist ticks scattered through the product, import, power and satisfaction rows have no
+// room for a chip beside them, so their native `title` carries the same two numbers the chip in
+// the checklist panel would have shown.
+export const checklistTickTitle = (desync: ChecklistDesync | null, fallback: string): string =>
+  desync ? checklistDesyncReason(desync) : fallback
+
+// One desynced row, named well enough for a summary to list it without re-deriving which of the
+// four lists it came from. Part / building / factory ids stay raw: turning them into display
+// names needs the game data, which is a component's job rather than this module's.
+export type ChecklistDesyncKind = 'product' | 'power' | 'import' | 'export'
+
+export interface ChecklistDesyncEntry {
+  kind: ChecklistDesyncKind
+  desync: ChecklistDesync
+  part?: string
+  building?: string
+  // Imports: the factory supplying it. Exports: the factory asking for it.
+  factoryId?: number | string | null
+}
+
+// Every desynced row in the factory, in the order the checklist panel lists them. Separate from
+// hasChecklistDesync, which stays a short-circuiting `.some()` because it runs for every factory
+// card and sidebar row on every recalculation, whether or not anything is desynced at all.
+export const listChecklistDesyncs = (factory: Factory): ChecklistDesyncEntry[] => {
+  const entries: ChecklistDesyncEntry[] = []
+
+  factory.products.forEach(product => {
+    const desync = productChecklistDesync(product)
+    if (desync) entries.push({ kind: 'product', desync, part: product.id })
+  })
+  factory.powerProducers.forEach(producer => {
+    const desync = powerProducerChecklistDesync(producer)
+    if (desync) entries.push({ kind: 'power', desync, building: producer.building })
+  })
+  factory.inputs.forEach(input => {
+    const desync = inputChecklistDesync(input)
+    if (desync) {
+      entries.push({ kind: 'import', desync, part: input.outputPart ?? undefined, factoryId: input.factoryId })
+    }
+  })
+  getRequestsForFactory(factory).forEach(request => {
+    const desync = checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)
+    if (desync) {
+      entries.push({ kind: 'export', desync, part: request.part, factoryId: request.requestingFactoryId })
+    }
+  })
+
+  return entries
+}
+
+export const countChecklistDesynced = (factory: Factory): number => listChecklistDesyncs(factory).length
+
+// Acknowledge every desynced row at once: the same "yes, I have built that change" a re-tick
+// makes, applied to all of them. Only rows that have actually moved are re-stamped, so this can
+// never quietly baseline something the player has not ticked. Deliberately lighter than
+// setSyncState, which also claims the whole factory matches the game.
+export const acknowledgeChecklistDesyncs = (factory: Factory): void => {
+  factory.products.forEach(product => {
+    if (productChecklistDesync(product)) product.checklistSyncedAmount = product.amount
+  })
+  factory.powerProducers.forEach(producer => {
+    if (powerProducerChecklistDesync(producer)) producer.checklistSyncedAmount = producer.buildingAmount
+  })
+  factory.inputs.forEach(input => {
+    if (inputChecklistDesync(input)) input.checklistSyncedAmount = input.amount
+  })
+  getRequestsForFactory(factory).forEach(request => {
+    if (checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)) {
+      factory.checklistExportSyncedAmounts[checklistExportKey(request.requestingFactoryId, request.part)] =
+        request.amount
+    }
+  })
+
+  reconcileFactoryInSyncWithGame(factory)
+  eventBus.emit('factoryUpdated', factory)
 }
 
 // Does anything in this factory read as ticked-but-moved? The per-row "Desynced" chips only

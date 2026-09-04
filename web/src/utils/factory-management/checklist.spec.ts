@@ -6,17 +6,27 @@ import { setSyncState } from '@/utils/factory-management/syncState'
 import { mockPowerProducer } from '@/utils/factory-management/status-fixtures'
 import eventBus from '@/utils/eventBus'
 import {
+  acknowledgeChecklistDesyncs,
+  checklistDesyncChange,
+  checklistDesyncReason,
+  checklistExportDesync,
   checklistExportKey,
   checklistSummaryState,
+  checklistTickTitle,
   countChecklistCompleted,
+  countChecklistDesynced,
   countChecklistTotal,
   hasChecklistDesync,
+  inputChecklistDesync,
   isChecklistComplete,
   isChecklistExportComplete,
   isChecklistExportDesynced,
   isInputChecklistDesynced,
   isPowerProducerChecklistDesynced,
   isProductChecklistDesynced,
+  listChecklistDesyncs,
+  powerProducerChecklistDesync,
+  productChecklistDesync,
   resetChecklistState,
   setChecklistEnabled,
   setChecklistPanelHidden,
@@ -183,6 +193,118 @@ describe('checklist', () => {
       expect(isChecklistExportComplete(provider, consumer.id, 'IronPlate')).toBe(true)
     })
   })
+  // The point of keeping the baseline is being able to say WHAT moved, not just that something
+  // did: "Coal export 560 -> 720/min" is actionable, "desynced" is not.
+  describe('desync reasons', () => {
+    it('reports the pair of numbers behind each kind of desync, with the right unit', () => {
+      const factory = newFactory('Provider', 0, 1)
+
+      const product: FactoryItem = { id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true }
+      toggleChecklistProduct(factory, product)
+      expect(productChecklistDesync(product)).toBeNull()
+      product.amount = 150
+      expect(productChecklistDesync(product)).toEqual({ from: 100, to: 150, unit: 'perMin' })
+
+      const input = { factoryId: 99, outputPart: 'IronIngot', amount: 400 }
+      toggleChecklistInput(factory, input)
+      input.amount = 380
+      expect(inputChecklistDesync(input)).toEqual({ from: 400, to: 380, unit: 'perMin' })
+
+      // A generator's baseline is a building count, not a rate. The unit travels with the numbers
+      // so a chip cannot label four generators as 4/min.
+      const producer = mockPowerProducer('generatorcoal', { buildingAmount: 4 })
+      toggleChecklistPowerProducer(factory, producer)
+      producer.buildingAmount = 6
+      expect(powerProducerChecklistDesync(producer)).toEqual({ from: 4, to: 6, unit: 'buildings' })
+
+      toggleChecklistExport(factory, 2, 'Coal', 560)
+      expect(checklistExportDesync(factory, 2, 'Coal', 560)).toBeNull()
+      expect(checklistExportDesync(factory, 2, 'Coal', 720)).toEqual({ from: 560, to: 720, unit: 'perMin' })
+      // Never ticked: no reason to report, whatever the amount does.
+      expect(checklistExportDesync(factory, 3, 'Coal', 720)).toBeNull()
+    })
+
+    it('phrases the change for a chip and the reason for a tooltip', () => {
+      expect(checklistDesyncChange({ from: 560, to: 720, unit: 'perMin' })).toBe('560 → 720/min')
+      expect(checklistDesyncChange({ from: 4, to: 6, unit: 'buildings' })).toBe('4 → 6 buildings')
+      expect(checklistDesyncChange({ from: 2, to: 1, unit: 'buildings' })).toBe('2 → 1 building')
+
+      const reason = checklistDesyncReason({ from: 560, to: 720, unit: 'perMin' })
+      expect(reason).toContain('560/min')
+      expect(reason).toContain('720/min')
+
+      // The inline ticks have no room for a chip, so they carry the same sentence — and their
+      // ordinary label when there is nothing to say.
+      expect(checklistTickTitle(null, 'Mark this product as built')).toBe('Mark this product as built')
+      expect(checklistTickTitle({ from: 560, to: 720, unit: 'perMin' }, 'Mark this product as built')).toBe(reason)
+    })
+
+    it('lists every desynced row in the factory, tagged with what it is and what it points at', () => {
+      const provider = newFactory('Provider', 0, 1)
+      const consumer = newFactory('Consumer', 1, 2)
+
+      provider.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+      provider.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
+      provider.powerProducers.push(mockPowerProducer('generatorcoal', { buildingAmount: 4 }))
+      updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronPlate', amount: 60 })
+
+      toggleChecklistProduct(provider, provider.products[0])
+      toggleChecklistInput(provider, provider.inputs[0])
+      toggleChecklistPowerProducer(provider, provider.powerProducers[0])
+      toggleChecklistExport(provider, consumer.id, 'IronPlate', 60)
+
+      expect(listChecklistDesyncs(provider)).toEqual([])
+      expect(countChecklistDesynced(provider)).toBe(0)
+
+      provider.products[0].amount = 120
+      provider.inputs[0].amount = 240
+      provider.powerProducers[0].buildingAmount = 5
+      provider.dependencies.requests[consumer.id][0].amount = 45
+
+      expect(listChecklistDesyncs(provider)).toEqual([
+        { kind: 'product', part: 'IronPlate', desync: { from: 100, to: 120, unit: 'perMin' } },
+        { kind: 'power', building: 'generatorcoal', desync: { from: 4, to: 5, unit: 'buildings' } },
+        { kind: 'import', part: 'IronIngot', factoryId: 99, desync: { from: 200, to: 240, unit: 'perMin' } },
+        { kind: 'export', part: 'IronPlate', factoryId: consumer.id, desync: { from: 60, to: 45, unit: 'perMin' } },
+      ])
+      expect(countChecklistDesynced(provider)).toBe(4)
+    })
+
+    it('acknowledgeChecklistDesyncs re-baselines every moved row and leaves untouched ones alone', () => {
+      const provider = newFactory('Provider', 0, 1)
+      const consumer = newFactory('Consumer', 1, 2)
+
+      provider.products.push(
+        { id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true },
+        { id: 'IronRod', recipe: 'IronRod', amount: 50, displayOrder: 1, requirements: {}, buildingRequirements: { name: 'constructormk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true },
+      )
+      provider.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
+      provider.powerProducers.push(mockPowerProducer('generatorcoal', { buildingAmount: 4 }))
+      updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronPlate', amount: 60 })
+
+      toggleChecklistProduct(provider, provider.products[0])
+      toggleChecklistInput(provider, provider.inputs[0])
+      toggleChecklistPowerProducer(provider, provider.powerProducers[0])
+      toggleChecklistExport(provider, consumer.id, 'IronPlate', 60)
+
+      provider.products[0].amount = 120
+      provider.inputs[0].amount = 240
+      provider.powerProducers[0].buildingAmount = 5
+      provider.dependencies.requests[consumer.id][0].amount = 45
+
+      acknowledgeChecklistDesyncs(provider)
+
+      expect(hasChecklistDesync(provider)).toBe(false)
+      // Acknowledging is not ticking: the never-ticked product stays unticked and unbaselined, so
+      // it cannot start reading as desynced later off a baseline it never asked for.
+      expect(provider.products[1].completed).toBeFalsy()
+      expect(provider.products[1].checklistSyncedAmount).toBeUndefined()
+      // And the ticks that were already there stay ticked.
+      expect(provider.products[0].completed).toBe(true)
+      expect(isChecklistExportComplete(provider, consumer.id, 'IronPlate')).toBe(true)
+    })
+  })
+
   // Every checklist mutation has to dirty the plan. Nothing else does it for them: the cloud
   // dirty flag and the local persist both hang off `factoryUpdated`, and checklist mode is the
   // one feature where a whole session can be nothing but ticks. Without this a build session

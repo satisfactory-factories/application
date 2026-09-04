@@ -44,7 +44,7 @@
           :checked="!!producer.completed"
           class="checklist-tick"
           :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
-          :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
+          :title="checklistTickTitle(powerProducerChecklistDesync(producer), 'Mark this generator as built')"
           type="checkbox"
           @click.prevent="toggleChecklistPowerProducer(factory, producer)"
         >
@@ -304,7 +304,12 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isPowerProducerChecklistDesynced, toggleChecklistPowerProducer } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isPowerProducerChecklistDesynced,
+    powerProducerChecklistDesync,
+    toggleChecklistPowerProducer,
+  } from '@/utils/factory-management/checklist'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
