@@ -939,8 +939,28 @@ export const useRoomsStore = defineStore('rooms', () => {
     session = begin({ interactive: true })
   }
 
-  /** A plan pasted or imported into a tab: the one moment its own cloud offer is due. */
-  const onPlanLanded = (tabId: string) => { offerTabToCloud(tabId) }
+  /**
+   * A plan pasted or imported into a tab: the one moment its own cloud offer is due.
+   * The offer waits for the load that draws the plan — the loading overlay is
+   * persistent and would sit on top of the dialog — so this arms a listener for
+   * exactly that load and takes it down again on the way out. Between pastes nothing
+   * is listening, which is the point: every other load is not this store's business.
+   */
+  let pastedTab: string | null = null
+
+  const offerPastedTab = () => {
+    eventBus.off('loadingCompleted', offerPastedTab)
+    const tabId = pastedTab
+    pastedTab = null
+    if (tabId !== null) offerTabToCloud(tabId)
+  }
+
+  const onPlanLanded = (tabId: string) => {
+    // Re-aimed rather than stacked: a second paste before the first has drawn is one
+    // load away from one offer, and it is the newer tab that is being asked about.
+    if (pastedTab === null) eventBus.on('loadingCompleted', offerPastedTab)
+    pastedTab = tabId
+  }
 
   eventBus.on('loggedIn', onLoggedIn)
   eventBus.on('sessionExpired', signOut)
@@ -972,6 +992,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     eventBus.off('loggedIn', onLoggedIn)
     eventBus.off('sessionExpired', signOut)
     eventBus.off('planLanded', onPlanLanded)
+    eventBus.off('loadingCompleted', offerPastedTab)
     stopStale()
     stopRooms()
   }

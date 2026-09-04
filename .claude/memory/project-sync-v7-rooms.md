@@ -1881,20 +1881,29 @@ found nothing and recorded no answer).
   writes the per-account answer **only** for the sweep: "not this one" says nothing about the
   plans the sign-in offer asks about. `AdoptionDialog.vue` reads it for the wording — singular,
   "Send this plan to your account?", pointing at tab settings rather than the plus button.
-- The seam is the bus: `PlannerGlobalActions.vue` sets a flag on paste and emits
-  `planLanded` with the tab id on the next **`loadingCompleted`**, which the rooms store
-  answers. Waiting for the load is deliberate — the loading overlay is persistent and would
-  sit on top of the dialog. Emitting rather than calling the store keeps a planner component
-  from booting the rooms store on mount, which broke two unrelated clipboard specs when it
-  was tried the direct way.
+- The seam is the bus, and each half knows only its own business. `PlannerGlobalActions.vue`
+  emits `planLanded` with the tab id **as the plan is dropped in**, before the load that
+  draws it: it knows a plan arrived and where, and nothing else. The rooms store owns the
+  wait — `onPlanLanded` arms a one-shot `loadingCompleted` listener and takes it down again
+  in `offerPastedTab`, so between pastes nothing is listening and every other load in the
+  session is nobody's business. A second paste before the first has drawn re-aims the pending
+  tab rather than stacking a second listener. Emitting rather than calling the store also
+  keeps a planner component from booting the rooms store on mount, which broke two unrelated
+  clipboard specs when it was tried the direct way.
 - **`calculationsCompleted` was the wrong signal, and only a browser caught it.** A small
   plan that has never been calculated takes app-store's straight-through path ("Nothing was
   calculated and the plan is small"), which emits `loadingCompleted` and never calculates, so
   the offer appeared for a big plan and silently not for a little one. The unit spec had
-  emitted the event by hand and so agreed with the bug; it now proves the negative
-  (`calculationsCompleted` alone announces nothing) and `adoption.e2e.ts` drives the whole
+  emitted the event by hand and so agreed with the bug. `adoption.e2e.ts` now drives the whole
   thing through the real clipboard, with `clipboard-read`/`clipboard-write` granted on the
   context and `copy-plan`/`paste-plan` testids on the sidebar buttons.
+- While proving it, two things in `PlannerGlobalActions.spec.ts` came out: every paste test
+  waited out the handler's own 250ms timer with a 300ms sleep, which loses the race as soon
+  as anything shifts the file's timing (`pasteApplied()` waits on the landing instead); and a
+  test that drove the parse-failure path poisoned the *next* test's paste, because
+  `recordEvent` on that path starts the events store's flush timer and it outlives the
+  test's pinia. That assertion was dropped rather than chased: the emit sits inside the
+  `try`, after the parse, so an unparseable blob cannot reach it.
 - Any future landing (a template, a share import) can raise the same offer by emitting the
   same event.
 

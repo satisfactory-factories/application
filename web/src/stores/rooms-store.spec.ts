@@ -900,15 +900,48 @@ describe('rooms-store', () => {
         expect(store.adoptionOpen).toBe(false)
       })
 
-      // The paste is in a planner component and the offer is here; the bus is the seam.
-      it('is what the planLanded event asks for', async () => {
+      /**
+     * The paste is in a planner component and the offer is here; the bus is the seam.
+     * The component says a plan landed and in which tab, as it lands; the wait for the
+     * load that draws it belongs here, because the dialog is what the loading overlay
+     * would otherwise cover.
+     */
+      it('waits for the load the paste starts, then offers that tab', async () => {
         const tabId = pastedInto()
 
         eventBus.emit('planLanded', tabId)
         await nextTick()
+        // Not yet: the plan is still being drawn.
+        expect(store.adoptionOpen).toBe(false)
+
+        eventBus.emit('loadingCompleted')
+        await nextTick()
 
         expect(store.adoptionOpen).toBe(true)
         expect(store.adoptionCandidates).toEqual([tabId])
+      })
+
+      // Nothing is listening between pastes: every other load in the session — a tab
+      // switch, a template, the boot — is not this store's business.
+      it('listens for that one load and no other', async () => {
+        pastedInto()
+
+        eventBus.emit('loadingCompleted')
+        await nextTick()
+
+        expect(store.adoptionOpen).toBe(false)
+      })
+
+      it('aims at the newest paste when a second one lands first', async () => {
+        const first = localTab('First pasted')
+        const second = appStore.addTab({ name: 'Second pasted', factories: [newFactory('Steel')] })
+
+        eventBus.emit('planLanded', first.id)
+        eventBus.emit('planLanded', second)
+        eventBus.emit('loadingCompleted')
+        await nextTick()
+
+        expect(store.adoptionCandidates).toEqual([second])
       })
 
       it('refuses to ask at all in offline mode', () => {

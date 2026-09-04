@@ -31,6 +31,19 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     return button.trigger('click')
   }
 
+  /**
+   * The paste handler reads the clipboard and then applies the plan behind a 250ms
+   * timer, so every test here used to wait 300ms and hope. The plan landing is the
+   * thing to wait for, and `prepareLoader` is where it lands — spied in every test
+   * that pastes, and the last call the handler makes.
+   */
+  const pasteApplied = async () => {
+    await vi.waitFor(() => {
+      expect(vi.mocked(appStore.prepareLoader)).toHaveBeenCalled()
+    }, { timeout: 2000 })
+    await flushPromises()
+  }
+
   const seedFactory = () => {
     // Give the current tab a factory so the (disabled-when-empty) Copy button is live,
     // then trigger init so getFactories() returns it.
@@ -118,7 +131,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(prepareLoader).toHaveBeenCalledTimes(1)
     expect(prepareLoader.mock.calls[0][0]).toHaveLength(1)
@@ -132,7 +145,12 @@ describe('Component: PlannerGlobalActions clipboard', () => {
    * browser stops asking. The paste raises it for the plan that just landed, once
    * the load is done — the loading overlay is persistent and would sit over it.
    */
-  it('announces the pasted plan once it has finished loading, not before', async () => {
+  /**
+   * Announced as the plan is dropped in, naming the tab it went into. That is all
+   * this component knows; waiting for the load that draws it belongs to whoever
+   * acts on it, so nothing here listens to loads it did not start.
+   */
+  it('announces the pasted plan, naming the tab it landed in', async () => {
     const landed = vi.fn()
     eventBus.on('planLanded', landed)
     vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
@@ -140,43 +158,14 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
-
-    // Nothing yet: the plan is still being drawn, and the loading overlay would
-    // sit on top of anything raised over it.
-    expect(landed).not.toHaveBeenCalled()
-
-    eventBus.emit('loadingCompleted')
-    await flushPromises()
+    await pasteApplied()
 
     expect(landed).toHaveBeenCalledWith(appStore.getCurrentTab().id)
     eventBus.off('planLanded', landed)
+    subject.unmount()
   })
 
-  // The event a small, never-calculated plan actually ends on. Hanging this off
-  // `calculationsCompleted` instead meant the offer only ever appeared for a plan
-  // big enough to need calculating, which the browser caught and the spec had not.
-  it('waits for the load to finish, not for a calculation that may never come', async () => {
-    const landed = vi.fn()
-    eventBus.on('planLanded', landed)
-    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
-    readText.mockResolvedValue(JSON.stringify({ name: 'Pasted Plan', factories: [newFactory('Pasted')] }))
-
-    const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
-
-    eventBus.emit('calculationsCompleted')
-    await flushPromises()
-    expect(landed).not.toHaveBeenCalled()
-
-    eventBus.emit('loadingCompleted')
-    await flushPromises()
-    expect(landed).toHaveBeenCalledTimes(1)
-    eventBus.off('planLanded', landed)
-  })
-
-  it('announces nothing when the load was not a paste landing', async () => {
+  it('announces nothing when a plan is merely loaded or recalculated', async () => {
     const landed = vi.fn()
     eventBus.on('planLanded', landed)
     mountSubject()
@@ -231,7 +220,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(appStore.getCurrentTab().depotUploadTier).toBe(0)
     expect(appStore.getCurrentTab().depotExpansionTier).toBe(2)
@@ -246,7 +235,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(appStore.getCurrentTab().depotUploadTier).toBeUndefined()
     expect(appStore.getCurrentTab().depotExpansionTier).toBeUndefined()
@@ -264,7 +253,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toEqual([
       { id: 'new', name: 'Incoming', color: '#2196f3', order: 0 },
@@ -279,7 +268,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toBeUndefined()
   })
@@ -292,7 +281,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toBeUndefined()
   })
@@ -306,7 +295,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
     const subject = mountSubject()
     await clickButton(subject, 'Paste plan')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pasteApplied()
 
     expect(prepareLoader).toHaveBeenCalledTimes(1)
     expect(prepareLoader.mock.calls[0][0]).toHaveLength(1)

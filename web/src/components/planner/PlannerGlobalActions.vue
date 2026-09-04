@@ -237,10 +237,12 @@
         }
 
         emit('clear-all')
-        // The plan is about to land in whatever tab is open, and that is announced
-        // once the load finishes so whoever cares can act on it — the rooms store
-        // offers a local tab to the cloud, which nothing else would.
-        announceWhenLoaded = true
+        // Announced as it is dropped in, before the load that draws it: this knows a
+        // plan arrived and in which tab, and that is all it knows. Whoever cares
+        // waits for the load themselves — the rooms store offers a local tab to the
+        // cloud once it has drawn, which nothing else would.
+        const destination = getCurrentTab()
+        if (destination) eventBus.emit('planLanded', destination.id)
 
         setTimeout(() => {
           // Replace the current tab's settings with the pasted plan's (keeps its id) before
@@ -298,24 +300,6 @@
     eventBus.emit('plannerShow', true)
     eventBus.emit('toast', { message: 'Recalculations completed.', type: 'success' })
   }
-
-  /**
-   * Set by a paste, spent by the load it starts. Waiting for the load to finish means
-   * anything raised over the landing — the cloud offer — opens over the plan rather
-   * than over the loading overlay, which is persistent and would sit on top of it.
-   *
-   * `loadingCompleted` rather than `calculationsCompleted`: a small plan that has
-   * never been calculated renders straight through without calculating anything, so
-   * the calculation event never comes and the pasted plan was never announced.
-   */
-  let announceWhenLoaded = false
-
-  eventBus.on('loadingCompleted', () => {
-    if (!announceWhenLoaded) return
-    announceWhenLoaded = false
-    const tab = getCurrentTab()
-    if (tab) eventBus.emit('planLanded', tab.id)
-  })
 
   eventBus.on('calculationsCompleted', () => {
     disableRecalc.value = false
