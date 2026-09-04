@@ -452,6 +452,16 @@ describe('TabSettingsDialog', () => {
       expect(appStore.getTabState(tabId).kind).toBe('synced')
     })
 
+    // Three coloured actions in one dialog, and two of them copy something: the
+    // copy wears the planner's own "Copy plan" colour so it is not read as the
+    // grey secondary action beside it.
+    it('wears the planner\'s copy colour, not the muted grey beside it', async () => {
+      await render(syncedTab())
+
+      expect(at('duplicate-tab')?.className).toContain('bg-secondary')
+      expect(at('hide-tab')?.className).toContain('bg-grey-darken-1')
+    })
+
     it('offers no copy of a tab that is already local', async () => {
       await render(localTab())
 
@@ -471,6 +481,10 @@ describe('TabSettingsDialog', () => {
         .map(element => element.getAttribute('data-testid'))
       expect(order.indexOf('convert-to-local')).toBeLessThan(order.indexOf('delete-tab'))
       expect(order.indexOf('hide-tab')).toBeLessThan(order.indexOf('delete-tab'))
+      // Red on the heading as well as the button: the section has to read as the
+      // one place in the dialog where something is lost.
+      expect(zone!.querySelector('.text-red')?.textContent).toContain('Delete this plan')
+      expect(at('delete-tab')?.className).toContain('bg-red')
     })
 
     it('never offers to delete the last tab in the bar', async () => {

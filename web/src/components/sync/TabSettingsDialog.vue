@@ -38,7 +38,7 @@
           @click="applyRename"
         >Apply</v-btn>
       </div>
-      <p v-if="!canRename" class="mt-2 text-body-2 text-grey" data-testid="rename-refusal">
+      <p v-if="!canRename" class="mt-2 text-caption text-grey" data-testid="rename-refusal">
         Only the owner can rename this plan.
       </p>
       <p v-if="renameError" class="mt-2 text-body-2 text-red" data-testid="rename-error">
@@ -48,7 +48,7 @@
       <!-- Every kind gets in: a snapshot link needs no room, and the dialog itself
            explains what a local or non-owned tab cannot do. -->
       <v-divider class="my-4" />
-      <p class="mb-3 text-body-2">{{ shareBlurb }}</p>
+      <p class="mb-3 text-caption text-grey">{{ shareBlurb }}</p>
       <v-btn
         color="blue"
         data-testid="share-settings"
@@ -63,7 +63,7 @@
            and the one that is undone from the plus button rather than by re-uploading. -->
       <template v-if="canHide">
         <v-divider class="my-4" />
-        <p class="mb-3 text-body-2">
+        <p class="mb-3 text-caption text-grey">
           Hide this tab and it closes in this browser only. The plan stays on your account,
           and on any other device it is open on. To open it again, use the + button on the
           tab bar or your account panel.
@@ -86,12 +86,13 @@
       <!-- Moved here from the tab bar, where it was an icon nobody could name. -->
       <template v-if="kind !== 'local'">
         <v-divider class="my-4" />
-        <p class="mb-3 text-body-2">
+        <p class="mb-3 text-caption text-grey">
           Take a copy of this plan as a local tab. The copy lives in this browser only and
           goes its own way; this plan carries on exactly as it is.
         </p>
+        <!-- The planner's own "Copy plan" colour, so the two copies read as the same act. -->
         <v-btn
-          color="grey-darken-1"
+          color="secondary"
           data-testid="duplicate-tab"
           variant="flat"
           @click="duplicate"
@@ -102,7 +103,7 @@
 
       <template v-if="kind === 'local'">
         <v-divider class="my-4" />
-        <p class="mb-3 text-body-2">
+        <p class="mb-3 text-caption text-grey">
           This plan lives in this browser only. Convert it to a cloud plan and it follows
           your account to every device you sign in on.
         </p>
@@ -122,7 +123,7 @@
         </v-btn>
         <p
           v-if="!isLoggedIn"
-          class="mt-3 text-body-2 text-grey"
+          class="mt-3 text-caption text-grey"
           data-testid="convert-cloud-reassurance"
         >
           You do <strong>not</strong> need an account to use this planner. It is there should
@@ -134,7 +135,7 @@
       <template v-else-if="isOwner">
         <v-divider class="my-4" />
         <template v-if="!confirmingLocal">
-          <p class="mb-3 text-body-2">
+          <p class="mb-3 text-caption text-grey">
             Convert this plan to a local tab and it comes off your account, staying in
             this browser only.
           </p>
@@ -148,7 +149,7 @@
           </v-btn>
         </template>
         <template v-else>
-          <p class="mb-3 text-amber text-body-2" data-testid="convert-to-local-warning">
+          <p class="mb-3 text-amber text-caption" data-testid="convert-to-local-warning">
             {{ ownerWarning }}
           </p>
           <div class="d-flex ga-2 justify-end">
@@ -170,7 +171,7 @@
 
       <template v-else-if="isJoinedLike">
         <v-divider class="my-4" />
-        <p class="mb-3 text-body-2">
+        <p class="mb-3 text-caption text-grey">
           This is someone else's shared plan. Convert it to local and you leave the plan;
           your copy stays in this browser as a local tab.
         </p>
@@ -194,8 +195,8 @@
       <template v-if="canDelete">
         <v-divider class="my-4" />
         <div class="danger-zone pa-3 rounded" data-testid="danger-zone">
-          <p class="mb-1 font-weight-bold text-body-2">{{ deleteHeading }}</p>
-          <p class="mb-3 text-body-2">{{ deleteBlurb }}</p>
+          <p class="font-weight-bold mb-1 text-body-2 text-red">{{ deleteHeading }}</p>
+          <p class="mb-3 text-caption text-grey">{{ deleteBlurb }}</p>
           <v-btn
             color="red"
             data-testid="delete-tab"
