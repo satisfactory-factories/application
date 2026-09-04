@@ -53,7 +53,7 @@
     "mongodb-memory-server": "catalog:",
     "neostandard": "^0.13.0",
     "puppeteer-core": "^25.3.0",
-    "sass": "1.102.0",
+    "sass": "1.103.1",
     "ts-node": "catalog:",
     "typescript": "catalog:",
     "unplugin-auto-import": "^21.0.0",

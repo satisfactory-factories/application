@@ -221,13 +221,47 @@ Dimensional Depot Uploaders you have put on that item's surplus.
 - Three tooltips that promised sinking was "coming in a future update" now point at the control that
   does it, and the **End product** chip no longer claims the planner assumes you sink it — you say so.
 
+### Checklist: a desynced item now says what changed
+
+A ticked checklist item whose number the plan has since moved was flagged only as "desynced",
+which said something had changed but not what, so the only way to find out was to remember what the
+number used to be.
+
+- **Every desynced row now carries an amber chip with both numbers** — `560/min → 720/min` for a
+  product, import or export, `4 buildings → 6 buildings` for a power generator. Hovering it spells out the
+  two ways forward: build the difference and confirm it, or change the plan back to match what you
+  have already built.
+- **Clicking that chip confirms the new number**, exactly as re-ticking the row's checkbox does.
+- **The Checklist panel opens with an amber summary** when anything has drifted, saying how many
+  items are affected, with a **Reconfirm all** button for when you have already rebuilt the lot.
+  Reconfirming only touches rows that actually moved — an item you never ticked stays unticked.
+- **The factory's Checklist chip counts them** — `Checklist: 12/14 · 2 to reconfirm` — instead of
+  saying `(desynced)`, so a collapsed factory card tells you whether it is one stale row or nine.
+  The sidebar's checklist tooltip counts them the same way.
+- **A desynced checklist is now a factory status of its own**, so it wears an amber **Checklist
+  desync** chip everywhere the other statuses appear — the card header, the sidebar entry, the
+  Factories Summary and the plan- and group-level tallies — carrying the icons of the items that
+  moved, and turning the factory amber like any other warning. Previously the only clue in the
+  sidebar was a counter quietly changing colour, which said a factory was amber without saying why.
+- **The sidebar's checklist counter takes a chip's outline when it is amber**, rather than only
+  changing colour, so it reads as a state to act on rather than a recoloured icon.
+- **The checkboxes on the Products, Imports, Power and Satisfaction rows** carry the same two
+  numbers in their hover text, where there is no room for a chip.
+
 ### Interface
 
 - **Every dialog in the planner now has the same header and spacing.** Vuetify's stock card title sat the heading flush in the top-left corner with no breathing room, and each dialog had drifted its own way from there: some closed from a button at the bottom of the actions row, some had no way out but the scrim, and body text came in three different sizes. They now share one shell — a padded title row with the icon beside the heading, the close button in the top-right corner where a dialog's way out belongs, and body text at a single size. Dialogs that ask for a decision before they will go away (the out-of-sync prompt, the update-required notice) still have no corner close, deliberately.
 - **The "Show Info" toggle is gone**, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere in the UI (Game Sync, upkeep, variable power, and so on) are unaffected.
 - **Statistics and the Global Factories Summary now start collapsed.** A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics now start collapsed too, matching the per-factory power breakdown, which already did. Each section remembers your choice once you toggle it.
+- **The Checklist panel is three tables side by side** — Products (with Power beneath it), Imports and Exports — instead of one list stacked four groups deep. Imports and Exports are now listed by item, with a tick per source or destination factory hanging off it, so a factory buying three parts from the same neighbour names that neighbour once per part rather than repeating the item name for every factory it deals with. The factory chips are the same control the export chips under Satisfaction use, jump button and all. The columns re-flow to two, then one, when a card is too narrow to give each table a chip's worth of width, and empty groups are dropped rather than left as gaps.
 
 ### Fixes
+
+- **Enter accepts a task you are editing** instead of dropping a newline into it. Task titles are
+  edited in an auto-growing textarea, so pressing enter grew the row and left the edit sitting
+  there uncommitted, while the new-task field right above it has always taken enter as "add this".
+  Enter now commits the edit and leaves the field, the same as clicking away; shift+enter still
+  types a second line for anyone who wants one.
 
 - **Checklist mode: ticks on the Products, Imports and export-chip checkboxes are reliable again**
   (#592, #593). The export tick sat inside the chip's own clickable area, so the chip's click

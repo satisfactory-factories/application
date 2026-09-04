@@ -35,7 +35,7 @@
             :checked="!!input.completed"
             class="checklist-tick"
             :class="{ desynced: isInputChecklistDesynced(input) }"
-            :title="isInputChecklistDesynced(input) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this import as built'"
+            :title="checklistTickTitle(inputChecklistDesync(input), 'Mark this import as built')"
             type="checkbox"
             @click.prevent="toggleChecklistInput(factory, input)"
           >
@@ -237,7 +237,12 @@
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getExportableFactories } from '@/utils/factory-management/exports'
-  import { isInputChecklistDesynced, toggleChecklistInput } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    inputChecklistDesync,
+    isInputChecklistDesynced,
+    toggleChecklistInput,
+  } from '@/utils/factory-management/checklist'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
   import { markFactoryEdited } from '@/utils/sync-intent'

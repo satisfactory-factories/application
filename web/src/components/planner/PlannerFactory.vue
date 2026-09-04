@@ -92,11 +92,17 @@
                 <v-chip
                   class="sf-chip sf-chip-clickable small no-margin"
                   :class="checklistChipClass(factory)"
+                  :title="checklistChipTitle"
                   @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
                 >
                   <i class="fas fa-check" />
                   <span class="ml-2">Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
-                  <span v-if="hasChecklistDesync(factory)" class="ml-2">(desynced)</span>
+                  <!-- The count, not the bare word "desynced": a collapsed card is often all the
+                       player sees of a factory, and one stale row is a very different afternoon
+                       from nine. What each one actually changed is on the rows themselves. -->
+                  <span v-if="checklistDesyncCount > 0" class="ml-2">
+                    &middot; {{ checklistDesyncCount }} to reconfirm
+                  </span>
                 </v-chip>
               </div>
               <!-- power difference chip -->
@@ -471,8 +477,8 @@
   import {
     checklistChipClass,
     countChecklistCompleted,
+    countChecklistDesynced,
     countChecklistTotal,
-    hasChecklistDesync,
     setChecklistEnabled,
   } from '@/utils/factory-management/checklist'
   import { useAppStore } from '@/stores/app-store'
@@ -572,6 +578,17 @@
 
   // Header chips: net power and total somersloops / power shards across the whole
   // factory (products + power producers).
+  const checklistDesyncCount = computed(() => countChecklistDesynced(props.factory))
+
+  // The card's chip is often read collapsed, with the checklist panel out of sight, so the hover
+  // has to carry both the problem and where to go for the detail.
+  const checklistChipTitle = computed(() => {
+    const count = checklistDesyncCount.value
+    if (count === 0) return 'Open this factory\'s checklist'
+    return `${count} ticked ${count === 1 ? 'item was' : 'items were'} built to a number the plan ` +
+      'has since changed. Open the checklist to see what changed on each.'
+  })
+
   const factoryPowerDifference = computed(() =>
     (props.factory.power?.produced ?? 0) - (props.factory.power?.consumed ?? 0),
   )
