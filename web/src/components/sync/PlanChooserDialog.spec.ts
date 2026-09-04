@@ -81,14 +81,18 @@ describe('PlanChooserDialog', () => {
 
     const row = rows()[0]
     expect(row.textContent).toContain('Alpha')
-    expect(row.querySelector('[data-testid="chooser-factory-count"]')?.textContent).toBe('3 factories')
-    expect(row.querySelector('[data-testid="chooser-last-changed"]')?.textContent).toBe('5m ago')
+    // The size reads as the sidebar's summary does: the factory icon, then the number.
+    const count = row.querySelector('[data-testid="chooser-factory-count"]')
+    expect(count?.textContent?.trim()).toBe('3')
+    expect(count?.querySelector('.fa-industry')).not.toBeNull()
+    expect(row.querySelector('[data-testid="chooser-last-changed"]')?.textContent)
+      .toBe('Last updated 5 minutes ago')
   })
 
-  it('counts a one-factory plan in the singular', async () => {
-    await open([entry('room-1', { factoryCount: 1 })])
+  it('says nothing at all about a stamp it cannot read', async () => {
+    await open([entry('room-1', { lastActivityAt: 'nonsense' })])
 
-    expect(rows()[0].textContent).toContain('1 factory')
+    expect(rows()[0].querySelector('[data-testid="chooser-last-changed"]')?.textContent).toBe('')
   })
 
   it('starts with every plan chosen, because opening them is the usual answer', async () => {

@@ -52,11 +52,15 @@ describe('TabSettingsDialog', () => {
   let authStore: ReturnType<typeof useAuthStore>
   let roomSync: ReturnType<typeof useRoomSyncStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
+  /** What the browser's own confirm() answers; the delete path goes through it. */
+  let confirmed = true
 
   beforeEach(() => {
     document.body.innerHTML = ''
     localStorage.clear()
     vi.clearAllMocks()
+    confirmed = true
+    vi.spyOn(window, 'confirm').mockImplementation(() => confirmed)
     pinia = createPinia()
     setActivePinia(pinia)
 
@@ -425,6 +429,112 @@ describe('TabSettingsDialog', () => {
       expect(at('hide-error')?.textContent).toContain('cannot be left empty')
       expect(appStore.getTab(tabId)).toBeDefined()
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+  })
+
+  /**
+   * Copy, share and delete came off the tab bar and onto the tab they act on. The
+   * bar was carrying a duplicate of this dialog's own Share Settings, and a bin one
+   * mis-click from the plan beside it.
+   */
+  describe('the actions that moved off the tab bar', () => {
+    it('offers a cloud plan a copy of itself as a local tab', async () => {
+      const tabId = syncedTab()
+      const before = appStore.getTabs().length
+      await render(tabId)
+
+      at('duplicate-tab')!.click()
+      await flushPromises()
+
+      expect(appStore.getTabs()).toHaveLength(before + 1)
+      expect(appStore.getTabs().at(-1)?.name).toBe('My plan (local)')
+      // The plan it was taken from is untouched, and still on the account.
+      expect(appStore.getTabState(tabId).kind).toBe('synced')
+    })
+
+    it('offers no copy of a tab that is already local', async () => {
+      await render(localTab())
+
+      expect(shown('duplicate-tab')).toBe(false)
+    })
+
+    it('walls the delete off at the bottom, under everything else', async () => {
+      const tabId = syncedTab()
+      appStore.addTab({ name: 'Somewhere to land' })
+      await render(tabId)
+
+      const zone = at('danger-zone')
+      expect(zone).not.toBeNull()
+      expect(zone!.querySelector('[data-testid="delete-tab"]')).not.toBeNull()
+
+      const order = [...body().querySelectorAll('[data-testid]')]
+        .map(element => element.getAttribute('data-testid'))
+      expect(order.indexOf('convert-to-local')).toBeLessThan(order.indexOf('delete-tab'))
+      expect(order.indexOf('hide-tab')).toBeLessThan(order.indexOf('delete-tab'))
+    })
+
+    it('never offers to delete the last tab in the bar', async () => {
+      await render(syncedTab())
+
+      expect(shown('danger-zone')).toBe(false)
+      expect(shown('delete-tab')).toBe(false)
+    })
+
+    it('deletes the room and the tab once the warning is accepted', async () => {
+      const tabId = syncedTab()
+      appStore.addTab({ name: 'Somewhere to land' })
+      vi.mocked(api.deleteRoom).mockResolvedValue(undefined as never)
+      const wrapper = await render(tabId)
+
+      at('delete-tab')!.click()
+      await flushPromises()
+
+      expect(api.deleteRoom).toHaveBeenCalledWith(tabId)
+      expect(appStore.getTab(tabId)).toBeUndefined()
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    })
+
+    it('does nothing at all when the warning is declined', async () => {
+      confirmed = false
+      const tabId = syncedTab()
+      appStore.addTab({ name: 'Somewhere to land' })
+      await render(tabId)
+
+      at('delete-tab')!.click()
+      await flushPromises()
+
+      expect(api.deleteRoom).not.toHaveBeenCalled()
+      expect(appStore.getTab(tabId)).toBeDefined()
+    })
+
+    it('keeps the tab and says why when the server refuses', async () => {
+      const tabId = syncedTab()
+      appStore.addTab({ name: 'Somewhere to land' })
+      vi.mocked(api.deleteRoom).mockRejectedValue(new Error('Server exploded'))
+      await render(tabId)
+
+      at('delete-tab')!.click()
+      await flushPromises()
+
+      expect(at('delete-error')?.textContent).toContain('Server exploded')
+      expect(appStore.getTab(tabId)).toBeDefined()
+    })
+
+    // A member is leaving, not deleting; the words have to say which.
+    it('calls a member\'s delete leaving, and the owner\'s deleting', async () => {
+      const tabId = syncedTab({ role: 'member', shared: true })
+      appStore.addTab({ name: 'Somewhere to land' })
+      await render(tabId)
+
+      expect(at('danger-zone')?.textContent).toContain('gives up your access')
+      expect(at('delete-tab')?.textContent).toContain('Leave')
+
+      document.body.innerHTML = ''
+      appStore.setTabState(tabId, { kind: 'synced', shared: true, role: 'owner', revision: 3 })
+      await render(tabId)
+
+      expect(at('danger-zone')?.textContent).toContain('everyone you shared it with')
+      expect(at('delete-tab')?.textContent).toContain('Delete')
     })
   })
 

@@ -10,6 +10,7 @@ import {
   deleteCurrentTab,
   dragTab,
   expectTabKind,
+  mirroredFactories,
   openPlanner,
   openTabSettings,
   readTabBar,
@@ -21,6 +22,7 @@ import {
   waitForTab,
 } from '../helpers/planner'
 import { hidePlan, shareARoom, showPlan, syncedPair } from '../helpers/rooms'
+import { signIn } from '../helpers/session'
 
 /** The account's tabs, in bar order. The local "Default" tab is nobody else's business. */
 const syncedNames = async (page: Page): Promise<string[]> =>
@@ -204,4 +206,41 @@ test('a member gets the owner\'s rename and is offered no rename of their own', 
   await openTabSettings(member)
   await expect(member.locator('[data-testid="tab-name-field"] input')).toBeDisabled()
   await closeTabSettings(member)
+})
+
+/**
+ * The journey a user actually reported: signed in first, filled a local tab
+ * afterwards (a plan pasted in from the live site), and then had to work out how
+ * to get it onto the account and back down on another machine. Nothing offers
+ * the cloud at the moment the plan lands — the offer to adopt is made at
+ * sign-in — so tab settings is the route, and this is that route end to end.
+ */
+test('a plan filled in after signing in reaches the cloud and the next device', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+
+  // Signed in first, with nothing on the account and nothing in the bar.
+  const machineA = await openPlanner(await client({ user }))
+  const localTab = (await readTabBar(machineA))[0]
+  expect(localTab).toEqual(expect.objectContaining({ kind: 'local' }))
+
+  // ...then the plan arrives, into the local tab that was already there.
+  await addFactory(machineA, { name: 'Pasted from prod', note: 'landed after the sign-in' })
+
+  // Tab settings is where the cloud is offered, and the tab keeps its identity.
+  const settings = await openTabSettings(machineA)
+  await settings.getByTestId('convert-to-cloud').click()
+  await expectTabKind(machineA, localTab.id, 'synced')
+  await closeTabSettings(machineA)
+
+  // The other machine signs in and is asked; it takes the plan whole.
+  const machineB = await openPlanner(await client())
+  await signIn(machineB, user)
+
+  await expect.poll(
+    async () => (await mirroredFactories(machineB, localTab.id)).map(entry => entry.name),
+    { message: 'the converted plan never reached the second device' },
+  ).toEqual(['Pasted from prod'])
 })

@@ -11,7 +11,6 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
 import { LOCAL_TAB_STATE, type TabSyncStateMap } from '@/sync/tab-sync-state'
-import { relativeTime } from '@/utils/relative-time'
 
 const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
   roomId: 'room-1',
@@ -300,7 +299,7 @@ describe('AccountPanel', () => {
       await openCloud(wrapper)
 
       const counts = wrapper.findAll('[data-testid="plan-factory-count"]').map(count => count.text())
-      expect(counts).toEqual(['12 factories', '1 factory'])
+      expect(counts).toEqual(['12', '1'])
     })
 
     it('gives a joined plan the same two-line row', async () => {
@@ -310,7 +309,7 @@ describe('AccountPanel', () => {
       await openCloud(wrapper)
 
       const row = at(wrapper, 'joined-plan')
-      expect(row.find('[data-testid="plan-factory-count"]').text()).toBe('3 factories')
+      expect(row.find('[data-testid="plan-factory-count"]').text()).toBe('3')
       expect(row.find('[data-testid="plan-last-changed"]').exists()).toBe(true)
       expect(row.find('[data-testid="show-plan"]').exists()).toBe(true)
     })
@@ -382,7 +381,7 @@ describe('AccountPanel', () => {
       })
       await openCloud(wrapper)
 
-      expect(at(wrapper, 'plan-last-changed').text()).toBe(relativeTime(minutesAgo(5)))
+      expect(at(wrapper, 'plan-last-changed').text()).toBe('Last updated 5 minutes ago')
     })
 
     it('shows nothing rather than a broken date when the stamp is unreadable', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absoluteTime, relativeTime } from './relative-time'
+import { absoluteTime, relativeTime, relativeTimeLong } from './relative-time'
 
 const now = new Date('2026-08-31T12:00:00.000Z')
 const ago = (seconds: number) => new Date(now.getTime() - seconds * 1000).toISOString()
@@ -45,6 +45,30 @@ describe('relativeTime', () => {
   it('shows nothing at all for a missing or unreadable stamp', () => {
     expect(relativeTime(undefined, now)).toBe('')
     expect(relativeTime('not a date', now)).toBe('')
+  })
+})
+
+describe('relativeTimeLong', () => {
+  it('spells the unit out, and keeps the singular singular', () => {
+    expect(relativeTimeLong(ago(0), now)).toBe('1 second ago')
+    expect(relativeTimeLong(ago(45), now)).toBe('45 seconds ago')
+    expect(relativeTimeLong(ago(60), now)).toBe('1 minute ago')
+    expect(relativeTimeLong(ago(60 * 38), now)).toBe('38 minutes ago')
+    expect(relativeTimeLong(ago(60 * 60), now)).toBe('1 hour ago')
+    expect(relativeTimeLong(ago(60 * 60 * 23), now)).toBe('23 hours ago')
+  })
+
+  // The two forms are the same measurement, so they must agree about which side
+  // of every boundary a stamp falls on.
+  it('turns into the same date the compact form does', () => {
+    expect(relativeTimeLong(ago(60 * 60 * 24), now)).toBe(relativeTime(ago(60 * 60 * 24), now))
+    expect(relativeTimeLong(ago(-91), now)).toBe(relativeTime(ago(-91), now))
+  })
+
+  it('clamps the near future and shows nothing for an unreadable stamp', () => {
+    expect(relativeTimeLong(ago(-89), now)).toBe('1 second ago')
+    expect(relativeTimeLong(undefined, now)).toBe('')
+    expect(relativeTimeLong('not a date', now)).toBe('')
   })
 })
 

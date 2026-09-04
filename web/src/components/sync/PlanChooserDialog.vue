@@ -53,12 +53,12 @@
       >
         <template #label>
           <span class="mr-2">{{ plan.name }}</span>
+          <!-- The plan's size as the sidebar's Global Factories Summary draws it. -->
+          <v-chip class="mr-2" data-testid="chooser-factory-count" size="small" variant="tonal">
+            <i class="fas fa-industry mr-1" />{{ plan.factoryCount }}
+          </v-chip>
           <span class="text-caption text-grey">
-            <span data-testid="chooser-factory-count">{{ planSize(plan) }}</span>
-            <template v-if="relativeTime(plan.lastActivityAt, now)">
-              &middot;
-              <span data-testid="chooser-last-changed">{{ relativeTime(plan.lastActivityAt, now) }}</span>
-            </template>
+            <span data-testid="chooser-last-changed">{{ lastChanged(plan) }}</span>
           </span>
         </template>
       </v-checkbox>
@@ -97,7 +97,7 @@
   import { storeToRefs } from 'pinia'
   import type { RoomListEntry } from 'common'
   import { useRoomsStore } from '@/stores/rooms-store'
-  import { relativeTime } from '@/utils/relative-time'
+  import { relativeTimeLong } from '@/utils/relative-time'
 
   const roomsStore = useRoomsStore()
   const { chooserOpen, chooserCandidates, entries } = storeToRefs(roomsStore)
@@ -122,8 +122,11 @@
     if (isOpen) now.value = new Date()
   })
 
-  const planSize = (plan: RoomListEntry) =>
-    `${plan.factoryCount} ${plan.factoryCount === 1 ? 'factory' : 'factories'}`
+  /** Empty stays empty: an unreadable stamp shows nothing, not a bare label. */
+  const lastChanged = (plan: RoomListEntry): string => {
+    const elapsed = relativeTimeLong(plan.lastActivityAt, now.value)
+    return elapsed === '' ? '' : `Last updated ${elapsed}`
+  }
 
   const isChosen = (roomId: string) => chosen.value.includes(roomId)
 

@@ -207,13 +207,16 @@ export const renameCurrentTab = async (page: Page, name: string): Promise<void> 
   await closeTabSettings(page)
 }
 
-const tabBarButton = (page: Page, icon: string): Locator =>
-  page.locator(`.tab-bar button:has(.${icon})`)
-
-/** Deletes the current tab, accepting the confirmation the app insists on. */
+/**
+ * Deletes the current tab, accepting the confirmation the app insists on. The bin
+ * lives in tab settings' danger zone now rather than on the bar, so this goes in
+ * through the pencil; the dialog closes itself once the tab is gone.
+ */
 export const deleteCurrentTab = async (page: Page): Promise<void> => {
+  await openTabSettings(page)
   page.once('dialog', dialog => void dialog.accept())
-  await tabBarButton(page, 'fa-trash').click()
+  await page.getByTestId('delete-tab').click()
+  await expect(page.locator('[data-testid="tab-name-field"]')).toBeHidden()
 }
 
 /**

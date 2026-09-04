@@ -2,7 +2,16 @@ import { expect } from '@playwright/test'
 import type { APIRequestContext, BrowserContext, Page } from '@playwright/test'
 
 import { registerUser, type TestUser } from './accounts'
-import { addFactory, createSyncedTab, openPlanner, selectTab, settle, waitForTab } from './planner'
+import {
+  addFactory,
+  closeTabSettings,
+  createSyncedTab,
+  openPlanner,
+  openTabSettings,
+  selectTab,
+  settle,
+  waitForTab,
+} from './planner'
 import { closeAccountPanel, openAccountPanel } from './session'
 
 export type ClientFactory = (options?: { user?: TestUser }) => Promise<BrowserContext>
@@ -67,15 +76,24 @@ export const syncedPair = async (
   return { user, roomId, first, second }
 }
 
+/**
+ * Sharing lives in tab settings now — the bar's own share icon was a duplicate of
+ * the button inside this dialog, so the pencil is the only way in.
+ */
 export const openShareDialog = async (page: Page): Promise<void> => {
-  await page.getByTestId('share-button').click()
+  await openTabSettings(page)
+  await page.getByTestId('share-settings').click()
   await expect(page.getByTestId('share-dialog')).toBeVisible()
 }
 
-/** The shared dialog shell puts the way out in the corner, reachable by its id. */
+/**
+ * The shared dialog shell puts the way out in the corner, reachable by its id.
+ * Tab settings is still open behind it, so that goes too.
+ */
 export const closeShareDialog = async (page: Page): Promise<void> => {
   await page.locator('#close-share-dialog').click()
   await expect(page.getByTestId('share-dialog')).toBeHidden()
+  await closeTabSettings(page)
 }
 
 /** Turns the current tab into a collaborative one and hands back the invite link. */

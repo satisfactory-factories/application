@@ -67,11 +67,13 @@
         <cloud-plan-row
           v-for="plan in unopened"
           :key="plan.roomId"
+          class="mb-3"
           data-testid="unopened-plan"
           :loading="openingId === plan.roomId"
           :now="now"
           :open="false"
           :room="plan"
+          size="default"
           @toggle="openExisting"
         />
       </div>

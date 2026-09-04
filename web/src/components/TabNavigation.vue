@@ -115,37 +115,10 @@
       <last-updated-indicator v-if="!smAndDown" />
       <planner-search :factories="appStore.getFactories()" />
       <OptionsDialog />
-      <!-- The three per-tab actions sit together: copy it, share it, delete it. -->
-      <v-tooltip v-if="kindOf(currentTabId) !== 'local'" location="top">
-        <template #activator="{ props: duplicateProps }">
-          <v-btn
-            color="grey-darken-1 rounded"
-            data-testid="duplicate-tab"
-            icon="fas fa-copy"
-            size="small"
-            variant="flat"
-            v-bind="duplicateProps"
-            @click="onClickDuplicate"
-          />
-        </template>
-        <span>Copy this tab into a local one that only lives in this browser</span>
-      </v-tooltip>
-      <ShareButton />
-      <v-tooltip v-if="appStore.factoryTabs.length > 1" location="top">
-        <template #activator="{ props: deleteProps }">
-          <v-btn
-            color="red rounded"
-            data-testid="delete-tab"
-            icon="fas fa-trash"
-            :loading="deleting"
-            size="small"
-            variant="flat"
-            v-bind="deleteProps"
-            @click="onClickDelete"
-          />
-        </template>
-        <span>{{ deleteTooltip }}</span>
-      </v-tooltip>
+      <!-- Copy, share and delete used to sit here as three icons. They live in tab
+           settings now, behind the pencil on the tab they act on: the bar was
+           carrying a duplicate of the dialog's own Share Settings, and a bin one
+           mis-click from the plan next to it. -->
     </div>
 
     <!-- Mounted here rather than in the layout so it shares a lifetime with OptionsDialog, which
@@ -169,7 +142,6 @@
   import { isCollaborative } from '@/sync/tab-sync-state'
   import PlannerSearch from '@/components/planner/PlannerSearch.vue'
   import LastUpdatedIndicator from '@/components/planner/LastUpdatedIndicator.vue'
-  import { confirmDialog } from '@/utils/helpers'
   import eventBus from '@/utils/eventBus'
 
   /** Device-shaped, deliberately not synced: it is about this browser's user. */
@@ -192,7 +164,6 @@
     return null
   })
 
-  const deleting = ref(false)
   const newTabChooserOpen = ref(false)
   const settingsOpen = ref(false)
   const showNudge = ref(localStorage.getItem(NUDGE_KEY) !== 'true')
@@ -246,50 +217,6 @@
     if (!showNudge.value) return
     showNudge.value = false
     localStorage.setItem(NUDGE_KEY, 'true')
-  }
-
-  const onClickDuplicate = () => {
-    if (roomsStore.duplicateAsLocal(currentTabId.value)) {
-      eventBus.emit('toast', { message: 'Duplicated as a local tab.', type: 'success' })
-    }
-  }
-
-  const deleteTooltip = computed(() => {
-    const state = appStore.getTabState(currentTabId.value)
-    if (state.kind === 'local') return 'Delete this tab'
-    if (state.kind === 'synced' && state.role === 'owner') {
-      return 'Delete this plan from your account, on every device'
-    }
-    return 'Remove this shared plan from your tabs'
-  })
-
-  const deleteWarning = () => {
-    const state = appStore.getTabState(currentTabId.value)
-    if (state.kind === 'synced' && state.role === 'owner') {
-      return state.shared
-        ? 'This deletes the plan for everyone you shared it with. This action is irreversible!'
-        : 'This deletes the plan from your account on every device. This action is irreversible!'
-    }
-    if (state.kind !== 'local') {
-      return 'This removes the shared plan from your tabs. The owner keeps theirs.'
-    }
-    return 'Are you sure you wish to delete this tab? This action is irreversible!'
-  }
-
-  const onClickDelete = async () => {
-    if (appStore.getFactories().length > 0 || kindOf(currentTabId.value) !== 'local') {
-      if (!confirmDialog(deleteWarning())) return
-    }
-
-    deleting.value = true
-    const result = await roomsStore.removeTab(currentTabId.value)
-    deleting.value = false
-
-    if (result !== true) {
-      eventBus.emit('toast', { message: `Could not delete this tab: ${result}`, type: 'error' })
-      return
-    }
-    await appStore.removeCurrentTab()
   }
 
   const sidebarOpen = ref(localStorage.getItem('sidebarOpen') !== 'false')

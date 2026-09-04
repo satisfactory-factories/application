@@ -83,6 +83,23 @@
         </p>
       </template>
 
+      <!-- Moved here from the tab bar, where it was an icon nobody could name. -->
+      <template v-if="kind !== 'local'">
+        <v-divider class="my-4" />
+        <p class="mb-3 text-body-2">
+          Take a copy of this plan as a local tab. The copy lives in this browser only and
+          goes its own way; this plan carries on exactly as it is.
+        </p>
+        <v-btn
+          color="grey-darken-1"
+          data-testid="duplicate-tab"
+          variant="flat"
+          @click="duplicate"
+        >
+          <i class="fas fa-copy mr-2" />Copy to a local tab
+        </v-btn>
+      </template>
+
       <template v-if="kind === 'local'">
         <v-divider class="my-4" />
         <p class="mb-3 text-body-2">
@@ -171,6 +188,28 @@
       <p v-if="convertError" class="mt-3 text-body-2 text-red" data-testid="convert-error">
         {{ convertError }}
       </p>
+
+      <!-- Last, and walled off: the bin used to sit in the tab bar one mis-click from
+           the plan beside it. Nothing below this line is recoverable. -->
+      <template v-if="canDelete">
+        <v-divider class="my-4" />
+        <div class="danger-zone pa-3 rounded" data-testid="danger-zone">
+          <p class="mb-1 font-weight-bold text-body-2">{{ deleteHeading }}</p>
+          <p class="mb-3 text-body-2">{{ deleteBlurb }}</p>
+          <v-btn
+            color="red"
+            data-testid="delete-tab"
+            :loading="deleting"
+            variant="flat"
+            @click="deleteTab"
+          >
+            <i class="fas fa-trash mr-2" />{{ deleteLabel }}
+          </v-btn>
+          <p v-if="deleteError" class="mb-0 mt-3 text-body-2 text-red" data-testid="delete-error">
+            {{ deleteError }}
+          </p>
+        </div>
+      </template>
     </template>
 
     <template v-if="signingIn" #actions>
@@ -191,6 +230,7 @@
   import { useRoomsStore } from '@/stores/rooms-store'
   import { isCollaborative } from '@/sync/tab-sync-state'
   import eventBus from '@/utils/eventBus'
+  import { confirmDialog } from '@/utils/helpers'
 
   /**
    * Everything one tab is, in one place: its name, whether it lives on the
@@ -243,6 +283,66 @@
   const shareOpen = ref(false)
   const signingIn = ref(false)
   const hideError = ref('')
+  const deleting = ref(false)
+  const deleteError = ref('')
+
+  /** The tab bar never goes below one tab, so the last one cannot be deleted. */
+  const canDelete = computed(() => appStore.getTabs().length > 1)
+
+  const duplicate = () => {
+    if (!roomsStore.duplicateAsLocal(props.tabId)) return
+    eventBus.emit('toast', { message: 'Copied to a local tab.', type: 'success' })
+    open.value = false
+  }
+
+  const deleteHeading = computed(() =>
+    isOwner.value || kind.value === 'local' ? 'Delete this plan' : 'Leave this plan')
+
+  const deleteLabel = computed(() => {
+    if (kind.value === 'local') return 'Delete this tab'
+    return isOwner.value ? 'Delete this plan' : 'Leave and remove this plan'
+  })
+
+  const deleteBlurb = computed(() => {
+    if (kind.value === 'local') return 'This tab and everything in it goes, from this browser. There is no undo.'
+    if (isOwner.value) {
+      return state.value.shared
+        ? 'This deletes the plan from your account and takes it from everyone you shared it with. There is no undo.'
+        : 'This deletes the plan from your account, on every device. There is no undo.'
+    }
+    return 'This removes the shared plan from your tabs and gives up your access. The owner keeps theirs.'
+  })
+
+  /** Verbatim from the tab bar's bin, which this replaces: same words, same warning. */
+  const deleteWarning = (): string => {
+    if (isOwner.value) {
+      return state.value.shared
+        ? 'This deletes the plan for everyone you shared it with. This action is irreversible!'
+        : 'This deletes the plan from your account on every device. This action is irreversible!'
+    }
+    if (kind.value !== 'local') {
+      return 'This removes the shared plan from your tabs. The owner keeps theirs.'
+    }
+    return 'Are you sure you wish to delete this tab? This action is irreversible!'
+  }
+
+  const deleteTab = async () => {
+    const emptyLocalTab = kind.value === 'local' && (tab.value?.factories.length ?? 0) === 0
+    if (!emptyLocalTab && !confirmDialog(deleteWarning())) return
+
+    deleting.value = true
+    deleteError.value = ''
+    const result = await roomsStore.removeTab(props.tabId)
+    deleting.value = false
+
+    if (result !== true) {
+      deleteError.value = result
+      eventBus.emit('toast', { message: `Could not delete this tab: ${result}`, type: 'error' })
+      return
+    }
+    appStore.removeTab(props.tabId)
+    open.value = false
+  }
 
   /**
    * The tab goes, the room and the membership stay. A refusal — offline, or the last
@@ -266,6 +366,7 @@
     confirmingLocal.value = false
     signingIn.value = false
     hideError.value = ''
+    deleteError.value = ''
   }, { immediate: true })
 
   // A rename landing from another device follows into an untouched field.
@@ -349,3 +450,12 @@
     eventBus.emit('toast', { message: 'This plan is now a local tab in this browser.', type: 'success' })
   }
 </script>
+
+<style lang="scss" scoped>
+// Walled off rather than merely last: the tinted panel is what stops the eye
+// treating Delete as one more of the settings above it.
+.danger-zone {
+  background-color: rgba(244, 67, 54, 0.08);
+  border: 1px solid rgba(244, 67, 54, 0.4);
+}
+</style>

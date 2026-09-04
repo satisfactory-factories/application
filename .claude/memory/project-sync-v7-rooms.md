@@ -1864,6 +1864,35 @@ device since the last refresh is there. Reopening a plan you hid no longer means
 account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
 proves the content comes back down, then finds the section gone.
 
+## The tab bar's actions move into tab settings (2026-09-04)
+
+Copy, share and delete were three icons at the right of the tab bar. The share one opened the
+same `ShareDialog` that tab settings' own Share Settings button opens, so it was a duplicate;
+the bin sat one mis-click from the plan beside it. All three now live in
+`TabSettingsDialog.vue`, behind the pencil on the tab they act on, and `ShareButton.vue` (and
+its spec) is gone.
+
+- **Copy** is `duplicate-tab`, now labelled "Copy to a local tab" with a sentence saying the
+  copy goes its own way. Same `roomsStore.duplicateAsLocal`, same non-local-only condition.
+- **Delete** is `delete-tab` inside `danger-zone`, the last thing in the body, in a red-tinted
+  bordered panel below a divider. Same `confirmDialog` warnings, verbatim, then
+  `roomsStore.removeTab` and `appStore.removeTab`; a refusal shows in `delete-error` and keeps
+  the tab. Hidden entirely when the bar holds one tab, as the bar's bin was.
+- The wording follows the role: an owner deletes, a member leaves, a local tab is just a tab.
+- e2e: `openShareDialog` goes in through `openTabSettings` and `closeShareDialog` shuts both;
+  `deleteCurrentTab` opens the pencil and clicks the danger zone's button. Every share, invite,
+  unshare and snapshot test rides on those two helpers, so the move is covered by the suite it
+  already had.
+
+**Plan lists read at a glance (2026-09-04).** `CloudPlanRow` and the chooser rows draw the
+plan's size the way `PlannerFactoryList`'s Global Factories Summary does — the `fa-industry`
+icon and the number in a chip, the words moved into the tooltip — and spell the stamp out:
+`relativeTimeLong` in `utils/relative-time.ts` gives "38 minutes ago" where `relativeTime`
+gives "38m ago", both off one shared `measure()` so they can never disagree about which side
+of a boundary a stamp falls on. The rows say "Last updated ..." and, for a stamp they cannot
+read, still say nothing at all rather than a bare label. The sidebar keeps the compact form:
+it has no width to spare, which is why the compact form exists.
+
 ## Snapshot links are made once per version of the plan (2026-09-04)
 
 Every open of the share dialog used to mint a fresh `/share/:id` from the same bytes, so a

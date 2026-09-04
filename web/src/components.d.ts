@@ -99,7 +99,6 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SaveLoader: typeof import('./components/SaveLoader.vue')['default']
-    ShareButton: typeof import('./components/ShareButton.vue')['default']
     ShareDialog: typeof import('./components/sync/ShareDialog.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
     SplashV6: typeof import('./components/SplashV6.vue')['default']

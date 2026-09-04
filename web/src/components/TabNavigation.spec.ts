@@ -148,40 +148,20 @@ describe('Component: TabNavigation', () => {
   })
 
   describe('the per-tab actions', () => {
-    /** The order they sit in on the bar, read from the bar itself. */
-    const actionOrder = (wrapper: VueWrapper) =>
-      [...wrapper.element.querySelectorAll('[data-testid]')]
-        .map(element => element.getAttribute('data-testid'))
-        .filter(id => id !== null && ['duplicate-tab', 'share-button', 'delete-tab'].includes(id))
+    // Copy, share and delete were three icons on the bar: one of them a duplicate of
+    // the dialog's own Share Settings, one of them a bin beside the tab next to it.
+    // They live in tab settings now, behind the pencil on the tab they act on.
+    it.each(['duplicate-tab', 'share-button', 'delete-tab'])(
+      'no longer carries %s on the bar itself',
+      async testId => {
+        await mixedBar()
+        appStore.activateTab('room-a')
+        await flushPromises()
+        const wrapper = render()
 
-    it('keeps copy, share and delete together in that order', async () => {
-      await mixedBar()
-      appStore.activateTab('room-a')
-      await flushPromises()
-      const wrapper = render()
-
-      expect(actionOrder(wrapper)).toEqual(['duplicate-tab', 'share-button', 'delete-tab'])
-    })
-
-    // A `title` attribute is the browser's own tooltip: slow, unstyled, and easy to
-    // miss. Both of these have to be real hover tooltips.
-    it.each([
-      ['duplicate-tab', 'Copy this tab into a local one'],
-      ['delete-tab', 'Delete this plan from your account'],
-    ])('explains %s on hover, not through a title attribute', async (testId, wording) => {
-      await mixedBar()
-      appStore.activateTab('room-a')
-      await flushPromises()
-      const wrapper = render()
-
-      const button = wrapper.find(`[data-testid="${testId}"]`)
-      expect(button.attributes('title')).toBeUndefined()
-
-      await button.trigger('mouseenter')
-      await flushPromises()
-
-      expect(document.body.textContent).toContain(wording)
-    })
+        expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(false)
+      },
+    )
 
     // The one icon control on the bar that never explained itself.
     it('explains the plus button on hover, and keeps it a direct child of the strip', async () => {
@@ -196,17 +176,6 @@ describe('Component: TabNavigation', () => {
       await flushPromises()
 
       expect(document.body.textContent).toContain('New tab: local to this browser, or synced to your account')
-    })
-
-    it('says the milder thing for a local tab, which nobody else can lose', async () => {
-      appStore.addTab({ id: 'second', name: 'Second', factories: [] }, { activate: false })
-      const wrapper = render()
-
-      expect(wrapper.find('[data-testid="duplicate-tab"]').exists()).toBe(false)
-      await wrapper.find('[data-testid="delete-tab"]').trigger('mouseenter')
-      await flushPromises()
-
-      expect(document.body.textContent).toContain('Delete this tab')
     })
   })
 
