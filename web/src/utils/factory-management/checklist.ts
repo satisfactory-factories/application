@@ -200,11 +200,12 @@ const desyncValue = (value: number, unit: ChecklistDesyncUnit): string =>
     ? `${formatNumber(value)} ${value === 1 ? 'building' : 'buildings'}`
     : `${formatNumber(value)}/min`
 
-// "560 → 720/min". Short enough to sit on the chip beside the row it belongs to, and specific
+// "560/min → 720/min". Short enough to sit on the chip beside the row it belongs to, and specific
 // enough that the player can tell at a glance whether the change is worth walking to the factory
-// for. The unit is stated once, on the number that is now true.
+// for. Both numbers carry the unit: stated only on the second, "560 → 720/min" reads as though
+// the first were something else.
 export const checklistDesyncChange = (desync: ChecklistDesync): string =>
-  `${formatNumber(desync.from)} → ${desyncValue(desync.to, desync.unit)}`
+  `${desyncValue(desync.from, desync.unit)} → ${desyncValue(desync.to, desync.unit)}`
 
 // The long form, for tooltips: what changed, and the two things the player can do about it. Both
 // are legitimate — the plan may have moved because they changed their mind, in which case the

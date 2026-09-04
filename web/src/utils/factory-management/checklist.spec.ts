@@ -225,9 +225,10 @@ describe('checklist', () => {
     })
 
     it('phrases the change for a chip and the reason for a tooltip', () => {
-      expect(checklistDesyncChange({ from: 560, to: 720, unit: 'perMin' })).toBe('560 → 720/min')
-      expect(checklistDesyncChange({ from: 4, to: 6, unit: 'buildings' })).toBe('4 → 6 buildings')
-      expect(checklistDesyncChange({ from: 2, to: 1, unit: 'buildings' })).toBe('2 → 1 building')
+      // Both sides carry the unit: "560 → 720/min" reads as though only the second were a rate.
+      expect(checklistDesyncChange({ from: 560, to: 720, unit: 'perMin' })).toBe('560/min → 720/min')
+      expect(checklistDesyncChange({ from: 4, to: 6, unit: 'buildings' })).toBe('4 buildings → 6 buildings')
+      expect(checklistDesyncChange({ from: 2, to: 1, unit: 'buildings' })).toBe('2 buildings → 1 building')
 
       const reason = checklistDesyncReason({ from: 560, to: 720, unit: 'perMin' })
       expect(reason).toContain('560/min')

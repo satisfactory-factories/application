@@ -135,8 +135,8 @@ A ticked checklist item whose number the plan has since moved was flagged only a
 which said something had changed but not what, so the only way to find out was to remember what the
 number used to be.
 
-- **Every desynced row now carries an amber chip with both numbers** — `560 → 720/min` for a
-  product, import or export, `4 → 6 buildings` for a power generator. Hovering it spells out the
+- **Every desynced row now carries an amber chip with both numbers** — `560/min → 720/min` for a
+  product, import or export, `4 buildings → 6 buildings` for a power generator. Hovering it spells out the
   two ways forward: build the difference and confirm it, or change the plan back to match what you
   have already built.
 - **Clicking that chip confirms the new number**, exactly as re-ticking the row's checkbox does.
