@@ -1832,12 +1832,29 @@ dialog each, all off the same `loggedIn` event:
    Nothing is uploaded, so there is never a second copy.
 3. **A fresh browser.** Nothing local to adopt, so the chooser offers the account's rooms.
 
+**The adoption answer is per account (2026-09-04).** `adoptionOfferAnswered` used to be the
+literal `true` — one answer for the whole browser, which silenced the question for every
+account that signed in afterwards. It is now a map of account name to `true`, in
+`web/src/sync/adoption-answers.ts` (`hasAnsweredAdoption` / `rememberAdoptionAnswer`, built on
+`writeLocalStorage` like the other sidecars), keyed on `authStore.getLoggedInUser()` because
+that is the account identity the client already holds — the login response carries only a
+token, and the id inside it is never unpacked. The old literal is read as *nobody* having
+answered rather than migrated onto whichever account happens to sign in: v0.7 has not
+shipped, and being asked once more beats being silenced on a question you were never put.
+
 **Hide/show stays per-browser, by decision (2026-09-04).** Account-wide hiding would force a
 plan onto a device that does not want it, and the tab bar being the open set is what stops a
 plan opened on one machine popping into another's bar. What the chooser gained instead is
 **Select all / Select none** (`chooser-select-all` / `chooser-select-none`, each disabled at
 its own end of the range, both absent for a single candidate), so a long list is one click
 either way rather than a dozen.
+
+**Tab settings hides too (2026-09-04).** `hide-tab` sits above Convert to local in
+`TabSettingsDialog.vue` — the per-browser answer above the account-wide one — and calls
+`roomsStore.hidePlan`, so a refusal (offline, or the last tab in the bar) keeps the dialog up
+with the reason on it. Offered only for `kind === 'synced'`: a local tab or a link-joined one
+has no row in the account list to be offered back from, so closing either would be a deletion
+wearing a gentler word.
 
 **The plus button is the way back in.** `NewTabDialog` now lists the account's rooms with no
 tab here under the two choice cards (`open-existing-plans`, one `unopened-plan` row each —
@@ -1846,6 +1863,31 @@ account panel's own), and refreshes the room list as it opens so a plan made on 
 device since the last refresh is there. Reopening a plan you hid no longer means a trip to the
 account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
 proves the content comes back down, then finds the section gone.
+
+## Snapshot links are made once per version of the plan (2026-09-04)
+
+Every open of the share dialog used to mint a fresh `/share/:id` from the same bytes, so a
+plan nobody had touched could hand out a dozen links to identical dead copies. The dialog now
+keeps the last link per tab in `web/src/sync/snapshot-links.ts` (`snapshotLinks` in local
+storage: `{ shareId, fingerprint }` per tab id) and puts it back on screen when the plan still
+fingerprints the same, hiding the create button while it does. An edit changes the
+fingerprint, the button returns, and the new link is stored over the old one.
+
+- The fingerprint is FNV-1a over `JSON.stringify` of the payload `POST /share` actually
+  receives, with the string length carried alongside it. Same plan means the same frozen
+  bytes, which is the only question being asked; taken from the payload sent rather than
+  re-read from the tab, so an edit landing mid-request cannot be claimed as part of the snapshot.
+- Shares are never purged server-side (`legacy/share.schema.ts` has no TTL and the controller
+  only ever reads and view-counts them), so a stored link cannot go stale under the user.
+- Swept on open against the live tab bar (`pruneSnapshotLinks`), which is the only sweep these
+  records get.
+- The link is copied the instant it is made, as before, and now the button says **Copied!**
+  with a tick for 2.5s before going back to naming what it does — the toast alone left a button
+  reading "Copy" next to a link that was already on the clipboard. Both invite copy buttons
+  share the flash (`copiedKey`, one timer, cleared on close and unmount).
+- e2e: `snapshot-link.e2e.ts` reopens the dialog on an untouched plan (same link, no create
+  button), then edits and proves the next one differs. `createSnapshotLink` in
+  `e2e/helpers/rooms.ts` is ensure-made for the same reason `showPlan` is ensure-open.
 
 ## Account tokens are versioned, and a password change revokes them (2026-09-03)
 

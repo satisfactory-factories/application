@@ -363,6 +363,68 @@ describe('TabSettingsDialog', () => {
     })
   })
 
+  /**
+   * Hiding is the per-browser half of the same question conversion answers
+   * account-wide, so it sits above it: closing the tab here costs nothing and is
+   * undone from the plus button, where converting takes the plan off the account.
+   */
+  describe('hiding the tab', () => {
+    it('is offered on a cloud plan, above the way back to local', async () => {
+      await render(syncedTab())
+
+      expect(shown('hide-tab')).toBe(true)
+      const order = [...body().querySelectorAll('[data-testid]')]
+        .map(element => element.getAttribute('data-testid'))
+      expect(order.indexOf('hide-tab')).toBeLessThan(order.indexOf('convert-to-local'))
+    })
+
+    it('says where the plan goes and how to get it back', async () => {
+      await render(syncedTab())
+
+      const dialog = body().querySelector('[data-testid="tab-settings-dialog"]')
+      expect(dialog?.textContent).toContain('closes in this browser only')
+      expect(dialog?.textContent).toContain('+ button')
+    })
+
+    // Neither has a row in the account list to be offered back from, so closing
+    // one would be a deletion wearing a gentler word.
+    it('is offered on neither a local tab nor a link-joined one', async () => {
+      await render(localTab())
+      expect(shown('hide-tab')).toBe(false)
+
+      document.body.innerHTML = ''
+      await render(joinedTab())
+      expect(shown('hide-tab')).toBe(false)
+    })
+
+    it('closes the tab in this browser and leaves the plan on the account', async () => {
+      const tabId = syncedTab()
+      appStore.addTab({ name: 'Somewhere to land' })
+      const wrapper = await render(tabId)
+
+      at('hide-tab')!.click()
+      await flushPromises()
+
+      expect(appStore.getTab(tabId)).toBeUndefined()
+      expect(roomsStore.entries[tabId]).toBeDefined()
+      expect(api.deleteRoom).not.toHaveBeenCalled()
+      expect(api.leaveRoom).not.toHaveBeenCalled()
+      expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
+    })
+
+    it('keeps the dialog up with the reason when the bar cannot be left empty', async () => {
+      const tabId = syncedTab()
+      const wrapper = await render(tabId)
+
+      at('hide-tab')!.click()
+      await flushPromises()
+
+      expect(at('hide-error')?.textContent).toContain('cannot be left empty')
+      expect(appStore.getTab(tabId)).toBeDefined()
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+  })
+
   describe('convert to local', () => {
     it('fires no server call until the owner confirms', async () => {
       const tabId = syncedTab({ shared: true })

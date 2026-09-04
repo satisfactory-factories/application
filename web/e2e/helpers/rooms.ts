@@ -91,12 +91,19 @@ export const createInviteLink = async (page: Page): Promise<string> => {
   return link
 }
 
-/** The other half of the dialog: a frozen copy of the current tab, for anyone. */
+/**
+ * The other half of the dialog: a frozen copy of the current tab, for anyone.
+ * Ensure-made: a plan that has not changed since its last snapshot shows that
+ * link instead of the button, which is what stops duplicates of the same bytes.
+ */
 export const createSnapshotLink = async (page: Page): Promise<string> => {
   await openShareDialog(page)
-  await page.getByTestId('create-snapshot').click()
 
+  const create = page.getByTestId('create-snapshot')
   const field = page.getByTestId('snapshot-link').locator('input')
+  await expect(create.or(field)).toBeVisible()
+  if (await create.isVisible()) await create.click()
+
   await expect(field).not.toHaveValue('')
   const link = await field.inputValue()
 

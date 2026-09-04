@@ -7,6 +7,7 @@ import { config } from '@/config/config'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
+import { hasAnsweredAdoption, rememberAdoptionAnswer } from '@/sync/adoption-answers'
 import { removeTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { interleaveTabOrder, sameOrder, syncedTabOrder } from '@/sync/tab-order'
 import { readVisitorTokens, removeVisitorToken } from '@/sync/visitor-tokens'
@@ -20,9 +21,6 @@ export type JoinOutcome = { ok: true } | { ok: false, code: string | null, messa
 
 /** Offline mode is total backend silence, so every REST action refuses rather than queues. */
 export const OFFLINE_MESSAGE = 'You are in offline mode. Turn it off to change what is on the server.'
-
-/** Set once the user answers the adoption offer, so a refresh does not ask again. */
-export const ADOPTION_ANSWERED_KEY = 'adoptionOfferAnswered'
 
 const describe = (error: unknown): string => {
   if (error instanceof VersionMismatchError) return 'This version of the planner is out of date. Please refresh.'
@@ -376,9 +374,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     if (candidates.length === 0) return false
 
-    // Asked and answered: one prompt per browser, however many refreshes follow.
-    // The plus button stays the way to sync a plan after a "No thanks".
-    if (localStorage.getItem(ADOPTION_ANSWERED_KEY) === 'true') return false
+    // Asked and answered: one prompt per account in this browser, however many
+    // refreshes follow. The plus button stays the way to sync a plan after a
+    // "No thanks" — and a second account signing in here has answered nothing.
+    if (hasAnsweredAdoption(useAuthStore().getLoggedInUser())) return false
 
     adoptionCandidates.value = candidates.map(tab => tab.id)
     adoptionOpen.value = true
@@ -562,7 +561,7 @@ export const useRoomsStore = defineStore('rooms', () => {
    * never for cleanup closes like sign-out, which must not silence the offer.
    */
   const declineAdoption = (remember = false) => {
-    if (remember) localStorage.setItem(ADOPTION_ANSWERED_KEY, 'true')
+    if (remember) rememberAdoptionAnswer(useAuthStore().getLoggedInUser())
     adoptionOpen.value = false
     adoptionCandidates.value = []
     // Same rule as the chooser: a real answer hands the floor on, a cleanup close

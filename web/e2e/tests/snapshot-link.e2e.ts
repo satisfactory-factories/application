@@ -8,7 +8,7 @@ import {
   readTabBar,
   waitForRevision,
 } from '../helpers/planner'
-import { createSnapshotLink } from '../helpers/rooms'
+import { closeShareDialog, createSnapshotLink, openShareDialog } from '../helpers/rooms'
 
 /**
  * The second of the two link types, and the one that must not have become live:
@@ -41,4 +41,40 @@ test('a snapshot link hands over a frozen local copy, not a seat in the room', a
 
   await expect(visitor.locator('input.factory-name')).toHaveCount(1)
   expect(await factoryNames(visitor)).toEqual(['As it stood'])
+})
+
+/**
+ * A snapshot is a dead copy, so a second one of identical bytes is two links to
+ * the same thing. The dialog used to mint one every time it was opened.
+ */
+test('reopening the dialog on an unchanged plan hands back the same link', async ({
+  client,
+  request,
+}) => {
+  const user = await registerUser(request)
+  const owner = await openPlanner(await client({ user }))
+  const roomId = await createSyncedTab(owner)
+
+  await addFactory(owner, { name: 'Frozen once', note: 'the state the link froze' })
+  await waitForRevision(owner, roomId, 1)
+
+  const first = await createSnapshotLink(owner)
+
+  // Reopened on the same plan: the link is already there and there is nothing to press.
+  await openShareDialog(owner)
+  await expect(owner.getByTestId('snapshot-unchanged')).toBeVisible()
+  await expect(owner.getByTestId('create-snapshot')).toBeHidden()
+  expect(await owner.getByTestId('snapshot-link').locator('input').inputValue()).toBe(first)
+  await closeShareDialog(owner)
+
+  // An edit is what earns a new one, and it really is new.
+  await addFactory(owner, { name: 'Changed since', note: 'so the next snapshot differs' })
+  await waitForRevision(owner, roomId, 2)
+
+  await openShareDialog(owner)
+  await expect(owner.getByTestId('create-snapshot')).toBeVisible()
+  await closeShareDialog(owner)
+
+  const second = await createSnapshotLink(owner)
+  expect(second).not.toBe(first)
 })

@@ -58,6 +58,28 @@
         <i class="fas fa-share-alt mr-2" />Share Settings
       </v-btn>
 
+      <!-- Hiding is the per-browser move and conversion is the account-wide one, so
+           this sits above them: the gentler answer to "get this out of my tab bar",
+           and the one that is undone from the plus button rather than by re-uploading. -->
+      <template v-if="canHide">
+        <v-divider class="my-4" />
+        <p class="mb-3 text-body-2">
+          Hide this tab and it closes in this browser only. The plan stays on your account,
+          and on any other device it is open on. To open it again, use the + button on the
+          tab bar or your account panel.
+        </p>
+        <v-btn
+          data-testid="hide-tab"
+          variant="flat"
+          @click="hideTab"
+        >
+          <i class="fas fa-eye-slash mr-2" />Hide tab
+        </v-btn>
+        <p v-if="hideError" class="mt-3 text-body-2 text-red" data-testid="hide-error">
+          {{ hideError }}
+        </p>
+      </template>
+
       <template v-if="kind === 'local'">
         <v-divider class="my-4" />
         <p class="mb-3 text-body-2">
@@ -187,6 +209,12 @@
   const isJoinedLike = computed(() =>
     kind.value === 'joined' || (kind.value === 'synced' && state.value.role !== 'owner'))
   const collaborative = computed(() => isCollaborative(state.value))
+  /**
+   * Only a membership can be hidden: the account list is what offers it back, and a
+   * local tab or a link-joined one has no entry there, so closing either would be a
+   * deletion wearing a gentler word.
+   */
+  const canHide = computed(() => kind.value === 'synced')
   const isLoggedIn = computed(() => authStore.isLoggedIn)
   const canRename = computed(() => roomsStore.canRename(props.tabId))
 
@@ -211,6 +239,20 @@
   const confirmingLocal = ref(false)
   const shareOpen = ref(false)
   const signingIn = ref(false)
+  const hideError = ref('')
+
+  /**
+   * The tab goes, the room and the membership stay. A refusal — offline, or the last
+   * tab in the bar — keeps the dialog up with the reason on it; the store toasts it too.
+   */
+  const hideTab = () => {
+    const result = roomsStore.hidePlan(props.tabId)
+    if (result !== true) {
+      hideError.value = result
+      return
+    }
+    open.value = false
+  }
 
   watch(open, isOpen => {
     if (!isOpen) return
@@ -220,6 +262,7 @@
     convertError.value = ''
     confirmingLocal.value = false
     signingIn.value = false
+    hideError.value = ''
   }, { immediate: true })
 
   // A rename landing from another device follows into an untouched field.

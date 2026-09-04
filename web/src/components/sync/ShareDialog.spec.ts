@@ -311,5 +311,121 @@ describe('ShareDialog', () => {
 
       expect(body().textContent).toContain('rate limited')
     })
+
+    /**
+     * A snapshot is a dead copy, so two of them taken from identical bytes are two
+     * links to the same thing. Reopening the dialog used to mint one every time.
+     */
+    describe('taking the same snapshot twice', () => {
+      const shareOnce = async () => {
+        appStore.getCurrentTab().factories.push(newFactory('Iron Ingots'))
+        vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'success', shareId: 'abc123' })
+        const wrapper = await open({ kind: 'local' })
+        await click('create-snapshot')
+        wrapper.unmount()
+        document.body.innerHTML = ''
+        vi.mocked(api.createSnapshotShare).mockClear()
+      }
+
+      it('shows the link it already handed out, and asks the server for nothing', async () => {
+        await shareOnce()
+
+        await open({ kind: 'local' })
+
+        expect(at('snapshot-link')?.querySelector('input')?.value)
+          .toBe(`${window.location.origin}/share/abc123`)
+        expect(api.createSnapshotShare).not.toHaveBeenCalled()
+        expect(shows('snapshot-unchanged')).toBe(true)
+        // Nothing to press: a second link of the same bytes is what this prevents.
+        expect(shows('create-snapshot')).toBe(false)
+      })
+
+      it('offers a fresh one the moment the plan changes', async () => {
+        await shareOnce()
+        appStore.getCurrentTab().factories.push(newFactory('Copper Ingots'))
+
+        await open({ kind: 'local' })
+
+        expect(shows('create-snapshot')).toBe(true)
+        expect(shows('snapshot-link')).toBe(false)
+        expect(shows('snapshot-unchanged')).toBe(false)
+      })
+
+      it('keeps every tab to its own link', async () => {
+        await shareOnce()
+        const other = appStore.addTab({ name: 'Another plan' })
+
+        await open({ kind: 'local' })
+        expect(shows('snapshot-link')).toBe(true)
+
+        document.body.innerHTML = ''
+        mount(ShareDialog, {
+          props: { tabId: other, modelValue: true },
+          global: { plugins: [vuetify, pinia] },
+          attachTo: document.body,
+        })
+        await flushPromises()
+
+        expect(shows('snapshot-link')).toBe(false)
+      })
+    })
+
+    describe('copying the link', () => {
+      let written: string[]
+
+      beforeEach(() => {
+        written = []
+        Object.assign(navigator, {
+          clipboard: { writeText: vi.fn(async (text: string) => { written.push(text) }) },
+        })
+      })
+
+      it('copies the link the moment it is made, without being asked', async () => {
+        appStore.getCurrentTab().factories.push(newFactory('Iron Ingots'))
+        vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'success', shareId: 'abc123' })
+        await open({ kind: 'local' })
+
+        await click('create-snapshot')
+
+        expect(written).toEqual([`${window.location.origin}/share/abc123`])
+        expect(at('copy-snapshot')?.textContent).toContain('Copied!')
+      })
+
+      // The button is the only thing on screen that can say the copy happened, and
+      // it has to go back to naming what it does or it reads as a state.
+      it('says so on the button for a moment, then offers to copy again', async () => {
+        vi.useFakeTimers()
+        try {
+          appStore.getCurrentTab().factories.push(newFactory('Iron Ingots'))
+          vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'success', shareId: 'abc123' })
+          await open({ kind: 'local' })
+          await click('create-snapshot')
+
+          expect(at('copy-snapshot')?.textContent).toContain('Copied!')
+          expect(at('copy-snapshot')?.querySelector('.fa-check')).not.toBeNull()
+
+          vi.advanceTimersByTime(3000)
+          await flushPromises()
+
+          expect(at('copy-snapshot')?.textContent).toContain('Copy snapshot link')
+          expect(at('copy-snapshot')?.querySelector('.fa-copy')).not.toBeNull()
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it('says nothing of the sort when the browser refuses the clipboard', async () => {
+        Object.assign(navigator, {
+          clipboard: { writeText: vi.fn(async () => { throw new Error('denied') }) },
+        })
+        appStore.getCurrentTab().factories.push(newFactory('Iron Ingots'))
+        vi.mocked(api.createSnapshotShare).mockResolvedValue({ status: 'success', shareId: 'abc123' })
+        await open({ kind: 'local' })
+
+        await click('create-snapshot')
+
+        expect(at('copy-snapshot')?.textContent).toContain('Copy snapshot link')
+      })
+    })
   })
 })

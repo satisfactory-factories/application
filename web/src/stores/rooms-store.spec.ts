@@ -9,7 +9,8 @@ import { config } from '@/config/config'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
-import { ADOPTION_ANSWERED_KEY, OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+import { hasAnsweredAdoption, rememberAdoptionAnswer } from '@/sync/adoption-answers'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
 import { newFactory } from '@/utils/factory-management/factory'
@@ -566,7 +567,7 @@ describe('rooms-store', () => {
     // A returning user has answered the adoption offer long ago, so the recovery
     // offer is the only dialog due; the parking tests below clear this again.
     beforeEach(() => {
-      localStorage.setItem(ADOPTION_ANSWERED_KEY, 'true')
+      rememberAdoptionAnswer('pioneer')
     })
 
     const recovers = (roomId = 'recovered', dropped?: number) => {
@@ -697,7 +698,7 @@ describe('rooms-store', () => {
     // Both would otherwise be up at once on the same sign-in.
     it('waits behind the adoption offer and follows the answer', async () => {
       // No room the chooser could offer, so the adoption offer is the dialog up.
-      localStorage.removeItem(ADOPTION_ANSWERED_KEY)
+      localStorage.clear()
       localTab('Mine', 2)
       holdsLegacyPlan()
 
@@ -838,7 +839,25 @@ describe('rooms-store', () => {
       await store.refresh({ offerAdoption: true })
 
       expect(store.adoptionOpen).toBe(false)
-      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBe('true')
+      expect(hasAnsweredAdoption('pioneer')).toBe(true)
+    })
+
+    /**
+     * The answer belongs to the account that gave it. Declining on one account and
+     * then registering a second one in the same browser is a question that has
+     * never been put to that account, and a browser-wide flag swallowed it.
+     */
+    it('asks again for an account that has answered nothing', async () => {
+      localTab('Mine')
+      await store.refresh({ offerAdoption: true })
+      store.declineAdoption(true)
+
+      useAuthStore().setLoggedInUser('someone-else')
+      await store.refresh({ offerAdoption: true })
+
+      expect(store.adoptionOpen).toBe(true)
+      expect(hasAnsweredAdoption('pioneer')).toBe(true)
+      expect(hasAnsweredAdoption('someone-else')).toBe(false)
     })
 
     it('counts a completed adoption run as the answer too', async () => {
@@ -851,7 +870,7 @@ describe('rooms-store', () => {
 
       await store.adoptTabs([tab.id])
 
-      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBe('true')
+      expect(hasAnsweredAdoption('pioneer')).toBe(true)
     })
 
     // signOut closes the dialog as cleanup; that is not the user answering.
@@ -862,7 +881,7 @@ describe('rooms-store', () => {
       store.signOut()
 
       expect(store.adoptionOpen).toBe(false)
-      expect(localStorage.getItem(ADOPTION_ANSWERED_KEY)).toBeNull()
+      expect(hasAnsweredAdoption('pioneer')).toBe(false)
     })
 
     it('adopts create-only, carrying the tab id and its content', async () => {

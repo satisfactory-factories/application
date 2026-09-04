@@ -17,7 +17,11 @@
         A frozen copy of this plan exactly as it is right now. Whoever opens it gets their
         own separate copy to keep. It never updates and needs no account.
       </p>
+      <!-- Hidden while the link on screen still matches the plan: a second snapshot of
+           identical bytes is two links to the same dead copy, which is what reopening
+           this dialog used to mint. An edit brings the button back. -->
       <v-btn
+        v-if="!snapshotIsCurrent"
         color="blue"
         data-testid="create-snapshot"
         :disabled="!capabilities.canSnapshot"
@@ -28,14 +32,26 @@
         <i class="fas fa-camera mr-2" />Create snapshot link
       </v-btn>
       <div v-if="snapshotLink" class="mt-3">
+        <p v-if="restoredSnapshot" class="mb-2 text-body-2 text-grey" data-testid="snapshot-unchanged">
+          The link you made earlier. This plan has not changed since, so it is still the
+          same snapshot; edit the plan and you can take a fresh one.
+        </p>
         <v-text-field
           data-testid="snapshot-link"
           hide-details
           :model-value="snapshotLink"
           readonly
         />
-        <v-btn class="mt-2" color="blue" variant="tonal" @click="copy(snapshotLink)">
-          <i class="fas fa-copy mr-2" />Copy snapshot link
+        <v-btn
+          class="mt-2"
+          color="blue"
+          data-testid="copy-snapshot"
+          variant="tonal"
+          @click="copy(snapshotLink, 'snapshot')"
+        >
+          <span :key="copiedKey === 'snapshot' ? 'done' : 'copy'" class="mr-2">
+            <i :class="copiedKey === 'snapshot' ? 'fas fa-check' : 'fas fa-copy'" />
+          </span>{{ copiedKey === 'snapshot' ? 'Copied!' : 'Copy snapshot link' }}
         </v-btn>
       </div>
       <p v-if="snapshotError" class="mt-2 text-body-2 text-red">{{ snapshotError }}</p>
@@ -85,10 +101,13 @@
           <v-btn
             class="mt-2"
             color="green"
+            data-testid="copy-invite"
             variant="tonal"
-            @click="copy(capabilities.inviteLink ?? '')"
+            @click="copy(capabilities.inviteLink ?? '', 'invite')"
           >
-            <i class="fas fa-copy mr-2" />Copy invite link
+            <span :key="copiedKey === 'invite' ? 'done' : 'copy'" class="mr-2">
+              <i :class="copiedKey === 'invite' ? 'fas fa-check' : 'fas fa-copy'" />
+            </span>{{ copiedKey === 'invite' ? 'Copied!' : 'Copy invite link' }}
           </v-btn>
 
           <v-divider class="my-4" />
@@ -171,8 +190,16 @@
           :model-value="capabilities.inviteLink"
           readonly
         />
-        <v-btn class="mt-2" color="green" variant="tonal" @click="copy(capabilities.inviteLink)">
-          <i class="fas fa-copy mr-2" />Copy invite link
+        <v-btn
+          class="mt-2"
+          color="green"
+          data-testid="copy-invite"
+          variant="tonal"
+          @click="copy(capabilities.inviteLink, 'invite')"
+        >
+          <span :key="copiedKey === 'invite' ? 'done' : 'copy'" class="mr-2">
+            <i :class="copiedKey === 'invite' ? 'fas fa-check' : 'fas fa-copy'" />
+          </span>{{ copiedKey === 'invite' ? 'Copied!' : 'Copy invite link' }}
         </v-btn>
       </div>
 
@@ -182,13 +209,19 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, ref, toRaw, watch } from 'vue'
   import { ApiError, ApiNetworkError, createSnapshotShare } from '@/api/client'
   import { useSlugAvailability } from '@/composables/useSlugAvailability'
   import { useAppStore } from '@/stores/app-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
   import { shareCapabilities } from '@/sync/share-capabilities'
+  import {
+    fingerprintPlan,
+    pruneSnapshotLinks,
+    readSnapshotLink,
+    rememberSnapshotLink,
+  } from '@/sync/snapshot-links'
   import eventBus from '@/utils/eventBus'
 
   const props = defineProps<{ tabId: string }>()
@@ -201,6 +234,10 @@
   const creatingSnapshot = ref(false)
   const snapshotLink = ref('')
   const snapshotError = ref('')
+  /** The link on screen freezes the plan exactly as it stands, so no new one is owed. */
+  const snapshotIsCurrent = ref(false)
+  /** ...and it was made in an earlier visit to this dialog, which is worth saying. */
+  const restoredSnapshot = ref(false)
   const busy = ref(false)
   const inviteError = ref('')
   const password = ref('')
@@ -236,10 +273,39 @@
     return 'Failed to create the snapshot link for an unknown reason. Please report this on Discord.'
   }
 
+  const snapshotUrl = (shareId: string) => `${window.location.origin}/share/${shareId}`
+
+  /** The plan as `POST /share` receives it, which is the thing being frozen. */
+  const planFingerprint = (): string | null => {
+    const tab = appStore.getTab(props.tabId)
+    return tab ? fingerprintPlan(toRaw(tab)) : null
+  }
+
+  /**
+   * Puts the last link back on screen when the plan has not moved since. Reopening
+   * the dialog on an untouched plan therefore shows the link it already handed out
+   * rather than minting a duplicate of the same frozen bytes.
+   */
+  const restoreSnapshot = () => {
+    snapshotLink.value = ''
+    snapshotError.value = ''
+    snapshotIsCurrent.value = false
+    restoredSnapshot.value = false
+
+    const stored = readSnapshotLink(props.tabId)
+    if (!stored || stored.fingerprint !== planFingerprint()) return
+
+    snapshotLink.value = snapshotUrl(stored.shareId)
+    snapshotIsCurrent.value = true
+    restoredSnapshot.value = true
+  }
+
   const createSnapshot = async () => {
     const tab = appStore.getTab(props.tabId)
     snapshotError.value = ''
     snapshotLink.value = ''
+    snapshotIsCurrent.value = false
+    restoredSnapshot.value = false
 
     if (!tab || tab.factories.length === 0) {
       snapshotError.value = 'There is nothing in this plan to share yet.'
@@ -252,9 +318,15 @@
 
     creatingSnapshot.value = true
     try {
-      const { shareId } = await createSnapshotShare(tab)
-      snapshotLink.value = `${window.location.origin}/share/${shareId}`
-      await copy(snapshotLink.value)
+      // Fingerprinted from the payload actually sent, so the record can never claim
+      // an edit made mid-request was part of the snapshot.
+      const payload = toRaw(tab)
+      const fingerprint = fingerprintPlan(payload)
+      const { shareId } = await createSnapshotShare(payload)
+      snapshotLink.value = snapshotUrl(shareId)
+      snapshotIsCurrent.value = true
+      rememberSnapshotLink(props.tabId, { shareId, fingerprint })
+      await copy(snapshotLink.value, 'snapshot')
     } catch (error) {
       snapshotError.value = snapshotFailure(error)
     } finally {
@@ -292,10 +364,28 @@
 
   // ===== Shared =====
 
-  const copy = async (url: string) => {
+  // ===== Copying =====
+
+  /**
+   * Which button last copied. The button says so for a moment rather than only the
+   * toast: the link is copied for you the instant it is made, and a button that
+   * still reads "Copy" is the one thing on screen saying otherwise.
+   */
+  const copiedKey = ref('')
+  const COPIED_MS = 2500
+  let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
+  const flashCopied = (key: string) => {
+    copiedKey.value = key
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => { copiedKey.value = '' }, COPIED_MS)
+  }
+
+  const copy = async (url: string, key = '') => {
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
+      if (key) flashCopied(key)
       eventBus.emit('toast', { message: 'Link copied to clipboard!' })
     } catch {
       // Some browsers refuse clipboard access outright; the field is selectable.
@@ -304,15 +394,28 @@
   }
 
   watch(open, value => {
-    if (value) return
-    snapshotLink.value = ''
-    snapshotError.value = ''
-    inviteError.value = ''
-    password.value = ''
-    resetSlug()
-  })
+    if (!value) {
+      snapshotLink.value = ''
+      snapshotError.value = ''
+      snapshotIsCurrent.value = false
+      restoredSnapshot.value = false
+      inviteError.value = ''
+      password.value = ''
+      copiedKey.value = ''
+      clearTimeout(copiedTimer)
+      resetSlug()
+      return
+    }
 
-  onBeforeUnmount(stopSlugChecks)
+    // Nothing else sweeps these, and a tab closed long ago would keep its link.
+    pruneSnapshotLinks(appStore.getTabs().map(tab => tab.id))
+    restoreSnapshot()
+  }, { immediate: true })
+
+  onBeforeUnmount(() => {
+    clearTimeout(copiedTimer)
+    stopSlugChecks()
+  })
 </script>
 
 <style lang="scss" scoped>
