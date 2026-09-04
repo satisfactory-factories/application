@@ -918,7 +918,14 @@ negative-controlled in the spec (defaulting `interactive` to true fails exactly 
   `'not-now'`, `'none'` for accounts that cannot show it — the helper *waits* for the dialog
   unless told `'none'`, so a roomless sign-in must say so). `showPlan` is now ensure-open (a
   plan the chooser already opened is left be), which the adoption and preferences suites lean
-  on. `login-chooser.e2e.ts` proves "Not now" plus the reload suppression end to end.
+  on. `login-chooser.e2e.ts` proves "Not now" plus the reload suppression end to end, and
+  (2026-09-04) the other half of the journey: a browser that has never seen the account signs
+  in, takes open-all, and ends holding every plan's content — the tab the chooser never
+  selected included, since `openPlan` joins each room whether or not it is on screen — then a
+  plan left open there catches up on an edit made while the device was closed, on a bare page
+  load with no chooser and nothing clicked. The store spec's counterpart is "joins the rooms
+  this browser already holds, unprompted" (`applyRoomList` tracks every listed room that has
+  a tab), negative-controlled by dropping that `trackRoom`.
 - Counts after this round: web 2850 unit tests (1 skipped) across 153 files; the store spec
   holds 86 and the new dialog spec 10.
 

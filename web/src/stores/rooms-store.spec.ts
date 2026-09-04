@@ -121,6 +121,20 @@ describe('rooms-store', () => {
       expect(appStore.getTabState(tab.id).role).toBe('member')
     })
 
+    // The other side of that rule, and what makes an open plan follow the account:
+    // a tab this browser already holds is joined by the session itself, so its
+    // content is pulled down with nobody opening or selecting anything.
+    it('joins the rooms this browser already holds, unprompted', async () => {
+      const tab = localTab('Already open')
+      listReturns([entry({ roomId: tab.id, revision: 9 })])
+      const track = vi.spyOn(roomSync, 'trackRoom')
+
+      await store.begin()
+
+      expect(track).toHaveBeenCalledWith(tab.id)
+      expect(roomSync.rooms[tab.id]).toBeDefined()
+    })
+
     // The tab bar is this browser's open set: the list reports the room, and
     // opening it is the user's move (or, next stage, the login chooser's).
     it('leaves a room made on another device hidden, not forced into the bar', async () => {
