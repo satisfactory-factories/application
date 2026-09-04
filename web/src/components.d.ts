@@ -22,6 +22,7 @@ declare module 'vue' {
     BuildingGroups: typeof import('./components/planner/products/BuildingGroups.vue')['default']
     BuildingGroupsSection: typeof import('./components/planner/products/BuildingGroupsSection.vue')['default']
     BuildingGroupTutorial: typeof import('./components/planner/products/BuildingGroupTutorial.vue')['default']
+    ChecklistDesyncChip: typeof import('./components/planner/ChecklistDesyncChip.vue')['default']
     ChecklistTutorial: typeof import('./components/planner/ChecklistTutorial.vue')['default']
     Copyright: typeof import('./components/Copyright.vue')['default']
     CustomBuilding: typeof import('./components/planner/products/CustomBuilding.vue')['default']

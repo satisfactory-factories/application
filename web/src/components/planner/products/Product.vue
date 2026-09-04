@@ -53,7 +53,7 @@
           :checked="!!product.completed"
           class="checklist-tick"
           :class="{ desynced: isProductChecklistDesynced(product) }"
-          :title="isProductChecklistDesynced(product) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this product as built'"
+          :title="checklistTickTitle(productChecklistDesync(product), 'Mark this product as built')"
           type="checkbox"
           @click.prevent="toggleChecklistProduct(factory, product)"
         >
@@ -320,7 +320,12 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isProductChecklistDesynced, toggleChecklistProduct } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isProductChecklistDesynced,
+    productChecklistDesync,
+    toggleChecklistProduct,
+  } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
   import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'

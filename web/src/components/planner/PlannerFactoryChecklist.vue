@@ -6,7 +6,8 @@
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
         <v-chip class="sf-chip small no-margin" :class="checklistChipClass(factory)">
-          {{ completedCount }}/{{ totalCount }} {{ hasChecklistDesync(factory) ? 'ticked, needs reconfirming' : 'complete' }}
+          {{ completedCount }}/{{ totalCount }}
+          {{ desyncs.length > 0 ? `ticked, ${desyncs.length} to reconfirm` : 'complete' }}
         </v-chip>
       </v-col>
       <v-col class="text-right" cols="4">
@@ -29,6 +30,34 @@
       </v-col>
     </v-row>
     <v-card-text v-if="!factory.checklistPanelHidden" class="text-body-1">
+      <!-- The one place that says what to DO about a desync. The per-row chips below say what
+           changed on each row; this says why the factory is amber at all, and offers the bulk
+           acknowledgement for the common case of "I already rebuilt the lot". -->
+      <div v-if="desyncs.length > 0" class="desync-banner mb-4">
+        <div class="d-flex align-center flex-wrap ga-2">
+          <i class="fas fa-exclamation-triangle" />
+          <span>
+            <b>{{ desyncs.length }}</b>
+            {{ desyncs.length === 1 ? 'ticked item has' : 'ticked items have' }}
+            changed since you marked
+            {{ desyncs.length === 1 ? 'it' : 'them' }} as built.
+          </span>
+          <v-btn
+            class="ml-auto"
+            color="primary"
+            prepend-icon="fas fa-check-double"
+            size="small"
+            variant="flat"
+            @click="acknowledgeChecklistDesyncs(factory)"
+          >Reconfirm all
+          </v-btn>
+        </div>
+        <p class="text-body-2 mt-2 mb-0">
+          Each one is flagged below with the number it was ticked at and the number the plan asks
+          for now. Build the difference and reconfirm it, or change the plan back to match what you
+          have already built.
+        </p>
+      </div>
       <p v-if="totalCount === 0" class="text-body-2">
         Nothing to check off yet: add products, power producers, imports or exports to this factory.
       </p>
@@ -71,7 +100,11 @@
                         width="24"
                       />
                       <span>{{ getPartDisplayName(product.id) }}</span>
-                      <v-chip v-if="isProductChecklistDesynced(product)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+                      <checklist-desync-chip
+                        v-if="productChecklistDesync(product)"
+                        :desync="productChecklistDesync(product)!"
+                        @acknowledge="toggleChecklistProduct(factory, product)"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -111,7 +144,11 @@
                         width="24"
                       />
                       <span>{{ getPowerProducerDisplayName(producer) }}</span>
-                      <v-chip v-if="isPowerProducerChecklistDesynced(producer)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+                      <checklist-desync-chip
+                        v-if="powerProducerChecklistDesync(producer)"
+                        :desync="powerProducerChecklistDesync(producer)!"
+                        @acknowledge="toggleChecklistPowerProducer(factory, producer)"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -129,7 +166,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th class="source-col">From</th>
+                  <th>From</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,15 +201,27 @@
                       >
                       <v-chip
                         v-if="entry.input.factoryId"
-                        class="sf-chip sf-chip-clickable small factory no-margin"
-                        title="Jump to this factory"
+                        class="sf-chip sf-chip-clickable small factory"
                         @click="navigateToFactory(entry.input.factoryId)"
                       >
                         <factory-icon-display :icon="findFactory(entry.input.factoryId).icon" size="20" />
                         <span class="ml-2">{{ findFactory(entry.input.factoryId).name }}</span>
+                        <v-btn
+                          class="chip-jump-btn ml-2"
+                          color="primary"
+                          icon="fas fa-eye"
+                          size="x-small"
+                          title="Jump to this factory"
+                          variant="flat"
+                          @click.stop="navigateToFactory(entry.input.factoryId)"
+                        />
                       </v-chip>
                       <span v-else class="text-body-2 text-medium-emphasis">No factory selected</span>
-                      <v-chip v-if="isInputChecklistDesynced(entry.input)" class="sf-chip x-small status-warning no-margin">Desynced</v-chip>
+                      <checklist-desync-chip
+                        v-if="inputChecklistDesync(entry.input)"
+                        :desync="inputChecklistDesync(entry.input)!"
+                        @acknowledge="toggleChecklistInput(factory, entry.input)"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -187,7 +236,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th class="source-col">To</th>
+                  <th>To</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,17 +269,26 @@
                         @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
                       >
                       <v-chip
-                        class="sf-chip sf-chip-clickable small factory no-margin"
-                        title="Jump to this factory"
+                        class="sf-chip sf-chip-clickable small factory"
                         @click="navigateToFactory(request.requestingFactoryId)"
                       >
                         <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                         <span class="ml-2">{{ findFactory(request.requestingFactoryId).name }}</span>
+                        <v-btn
+                          class="chip-jump-btn ml-2"
+                          color="primary"
+                          icon="fas fa-eye"
+                          size="x-small"
+                          title="Jump to this factory"
+                          variant="flat"
+                          @click.stop="navigateToFactory(request.requestingFactoryId)"
+                        />
                       </v-chip>
-                      <v-chip
-                        v-if="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
-                        class="sf-chip x-small status-warning no-margin"
-                      >Desynced</v-chip>
+                      <checklist-desync-chip
+                        v-if="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)"
+                        :desync="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)!"
+                        @acknowledge="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -250,15 +308,20 @@
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import {
+    acknowledgeChecklistDesyncs,
     checklistChipClass,
+    checklistExportDesync,
     countChecklistCompleted,
     countChecklistTotal,
-    hasChecklistDesync,
+    inputChecklistDesync,
     isChecklistExportComplete,
     isChecklistExportDesynced,
     isInputChecklistDesynced,
     isPowerProducerChecklistDesynced,
     isProductChecklistDesynced,
+    listChecklistDesyncs,
+    powerProducerChecklistDesync,
+    productChecklistDesync,
     setChecklistPanelHidden,
     toggleChecklistExport,
     toggleChecklistInput,
@@ -279,6 +342,7 @@
 
   const totalCount = computed(() => countChecklistTotal(props.factory))
   const completedCount = computed(() => countChecklistCompleted(props.factory))
+  const desyncs = computed(() => listChecklistDesyncs(props.factory))
 
   // The input's index in factory.inputs travels with it: it is what keys the tick, and a tick
   // keyed on anything that can repeat (the part, the source factory) is a tick that can be
@@ -316,15 +380,30 @@
 </script>
 
 <style lang="scss" scoped>
+// Amber card rather than a chip: it holds a sentence, a paragraph and a button, and reads as the
+// panel's own state instead of one more label in the row of them above.
+.desync-banner {
+  background-color: var(--sf-status-warning-bg);
+  border: 1px solid var(--sf-status-warning-border);
+  border-radius: 4px;
+  padding: 12px;
+
+  > div > i {
+    color: var(--sf-status-warning);
+  }
+}
+
 // auto-fit rather than a Vuetify breakpoint on purpose: how much room the checklist actually has
 // depends on the card, not the viewport — the sidebar, the zoom level and the browser window all
 // move it. The grid drops to two columns, then one, when the card can no longer give each table
-// its minimum, so nothing has to be scrolled sideways. 300px is what an item name, a tick and a
-// factory chip need side by side before the chip starts wrapping its own label to fit.
+// its minimum, so nothing has to be scrolled sideways. That minimum is set by the factory chip:
+// it is the stock `sf-chip small factory` the export chips under Satisfaction use, at its natural
+// one-line size, and a column too narrow for one beside an item name is a column that would put a
+// sideways scrollbar under its table. Better to drop to two columns and keep the chips right.
 .checklist-columns {
   display: grid;
   gap: 16px 32px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
 }
 
 // No rule between the columns: the grid re-flows to two (or one) on a narrow card, and a border
@@ -352,11 +431,6 @@
     font-weight: bold;
   }
 
-  // The tick and item columns carry only their own contents; whatever column is last (the item
-  // name for products, the factory chips for imports/exports) takes the slack. Without this a
-  // three-up layout stretches the item names halfway across their column. The item cell is
-  // deliberately not `nowrap`: a table cell never shrinks below its longest unbreakable line, and
-  // an item name pinned to one line is what pushes the factory chip beside it past the column.
   .tick-col {
     white-space: nowrap;
     width: 1%;
@@ -392,32 +466,26 @@
   gap: 8px;
 }
 
-// One source/destination factory: its tick, its chip, and the desync flag if it has one. Held on
-// one line deliberately — a chip that wraps below its own tick reads as an unticked row. The chip
-// shrinks and wraps its label instead (see below).
+// One source/destination factory: its tick, its chip, and the desync flag if it has one, on a
+// single line. The chip is the stock `sf-chip small factory` the export chips under Satisfaction
+// use — nothing here resizes it, so the two read as the same control.
 .checklist-source {
   align-items: center;
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
   padding: 2px 0;
+}
 
-  // Two words at most, and it is the row's warning: it should never be the thing that gets
-  // squeezed.
-  .sf-chip.status-warning {
-    flex-shrink: 0;
-  }
-
-  // A long factory name in a third-of-a-card column has to be allowed to wrap inside its chip.
-  // Left on one line it sets the column's minimum width, and v-table answers an over-wide table
-  // by clipping it.
-  .sf-chip.factory {
-    flex: 0 1 auto;
-    height: auto;
-    min-height: 26px;
-    min-width: 0;
-    white-space: normal;
-  }
+// Sits inside the factory chip, so it has to shed the icon button's circle and claw back the
+// chip's right padding to avoid looking bolted on. Mirrors .chip-jump-btn in
+// PlannerFactorySatisfactionItems.vue, which the export chip here is styled after.
+.chip-jump-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 4px !important;
+  margin-right: -4px;
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
@@ -455,7 +523,7 @@
 
   // Desynced: still checked, but the plan's number for this item moved since it was ticked.
   // Amber rather than red — the tick stays applied, this only flags it may be stale. Plain, with
-  // no glyph of its own: the row's adjoining "Desynced" chip already carries that meaning, and a
+  // no glyph of its own: the row's adjoining desync chip already carries that meaning, and a
   // second symbol crammed into an 18px box read worse than the empty box does.
   &.desynced:checked {
     background-color: var(--sf-status-warning-border);

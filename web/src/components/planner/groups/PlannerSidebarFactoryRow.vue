@@ -54,10 +54,14 @@
         </v-tooltip>
         <v-tooltip right>
           <template #activator="{ props: activatorProps }">
+            <!-- Desynced, this stops being a plain grey counter and takes a chip's outline. Amber
+                 text alone left the row's only explanation of its amber border sitting in a
+                 tooltip; an outlined pill reads as a state the reader is meant to act on, and
+                 matches the amber Checklist chip on the card the row points at. -->
             <v-col
               v-if="factory.checklistEnabled"
               class="context-icon align-content-center text-center py-0 px-1"
-              :class="checklistTextClass(factory)"
+              :class="[checklistTextClass(factory), { 'checklist-desynced': checklistDesyncCount > 0 }]"
               cols="auto"
               v-bind="activatorProps"
               @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
@@ -69,7 +73,9 @@
           </template>
           <span>
             Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}
-            {{ hasChecklistDesync(factory) ? 'ticked, but some numbers have changed since' : 'complete' }}
+            {{ checklistDesyncCount > 0
+              ? `ticked, ${checklistDesyncCount} of them at a number that has since changed`
+              : 'complete' }}
           </span>
         </v-tooltip>
         <v-tooltip right>
@@ -134,8 +140,8 @@
   import {
     checklistTextClass,
     countChecklistCompleted,
+    countChecklistDesynced,
     countChecklistTotal,
-    hasChecklistDesync,
   } from '@/utils/factory-management/checklist'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
@@ -164,6 +170,8 @@
   const { dragEnabled } = useFactoryDrag()
 
   const iconDialogOpen = ref(false)
+
+  const checklistDesyncCount = computed(() => countChecklistDesynced(props.factory))
 
   const rowClass = computed(() => ({
     'factory-card': true,
@@ -226,6 +234,22 @@
 
   &:hover {
     color: white;
+  }
+
+  // The chip look, borrowed from .sf-chip.status-warning rather than reaching for a v-chip: this
+  // sits in a fixed-width icon strip beside the tasks and notes glyphs, and a real chip's own
+  // padding and height would push that row out of line.
+  &.checklist-desynced {
+    align-self: center;
+    background-color: var(--sf-status-warning-bg);
+    border: 1px solid var(--sf-status-warning-border);
+    border-radius: 4px;
+    padding: 1px 6px !important;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--sf-status-warning);
+    }
   }
 }
 </style>
