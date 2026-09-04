@@ -503,7 +503,7 @@
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                     class="checklist-tick"
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
-                    :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
+                    :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
                     type="checkbox"
                     @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                   >
@@ -606,7 +606,13 @@
     isUnhandledByproduct,
     showBacklogAdvisory,
   } from '@/utils/factory-management/status'
-  import { isChecklistExportComplete, isChecklistExportDesynced, toggleChecklistExport } from '@/utils/factory-management/checklist'
+  import {
+    checklistExportDesync,
+    checklistTickTitle,
+    isChecklistExportComplete,
+    isChecklistExportDesynced,
+    toggleChecklistExport,
+  } from '@/utils/factory-management/checklist'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
