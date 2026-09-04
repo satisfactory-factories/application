@@ -85,6 +85,7 @@
         <v-btn
           class="ma-1"
           color="secondary"
+          data-testid="copy-plan"
           :disabled="isEmpty"
           prepend-icon="fas fa-copy"
           variant="tonal"
@@ -97,6 +98,7 @@
         <v-btn
           class="ma-1"
           color="secondary"
+          data-testid="paste-plan"
           prepend-icon="fas fa-clipboard"
           variant="tonal"
           @click="confirmReplace() && pastePlanFromClipboard()"
@@ -298,18 +300,25 @@
   }
 
   /**
-   * Set by a paste, spent by the load it starts. Waiting for the calculations means
+   * Set by a paste, spent by the load it starts. Waiting for the load to finish means
    * anything raised over the landing — the cloud offer — opens over the plan rather
    * than over the loading overlay, which is persistent and would sit on top of it.
+   *
+   * `loadingCompleted` rather than `calculationsCompleted`: a small plan that has
+   * never been calculated renders straight through without calculating anything, so
+   * the calculation event never comes and the pasted plan was never announced.
    */
   let announceWhenLoaded = false
 
-  eventBus.on('calculationsCompleted', () => {
-    disableRecalc.value = false
+  eventBus.on('loadingCompleted', () => {
     if (!announceWhenLoaded) return
     announceWhenLoaded = false
     const tab = getCurrentTab()
     if (tab) eventBus.emit('planLanded', tab.id)
+  })
+
+  eventBus.on('calculationsCompleted', () => {
+    disableRecalc.value = false
   })
 </script>
 

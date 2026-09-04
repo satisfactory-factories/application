@@ -1882,11 +1882,19 @@ found nothing and recorded no answer).
   plans the sign-in offer asks about. `AdoptionDialog.vue` reads it for the wording — singular,
   "Send this plan to your account?", pointing at tab settings rather than the plus button.
 - The seam is the bus: `PlannerGlobalActions.vue` sets a flag on paste and emits
-  `planLanded` with the tab id on the next `calculationsCompleted`, which the rooms store
-  answers. Waiting for the calculations is deliberate — the loading overlay is persistent and
-  would sit on top of the dialog. Emitting rather than calling the store keeps a planner
-  component from booting the rooms store on mount, which broke two unrelated clipboard specs
-  when it was tried the direct way.
+  `planLanded` with the tab id on the next **`loadingCompleted`**, which the rooms store
+  answers. Waiting for the load is deliberate — the loading overlay is persistent and would
+  sit on top of the dialog. Emitting rather than calling the store keeps a planner component
+  from booting the rooms store on mount, which broke two unrelated clipboard specs when it
+  was tried the direct way.
+- **`calculationsCompleted` was the wrong signal, and only a browser caught it.** A small
+  plan that has never been calculated takes app-store's straight-through path ("Nothing was
+  calculated and the plan is small"), which emits `loadingCompleted` and never calculates, so
+  the offer appeared for a big plan and silently not for a little one. The unit spec had
+  emitted the event by hand and so agreed with the bug; it now proves the negative
+  (`calculationsCompleted` alone announces nothing) and `adoption.e2e.ts` drives the whole
+  thing through the real clipboard, with `clipboard-read`/`clipboard-write` granted on the
+  context and `copy-plan`/`paste-plan` testids on the sidebar buttons.
 - Any future landing (a template, a share import) can raise the same offer by emitting the
   same event.
 

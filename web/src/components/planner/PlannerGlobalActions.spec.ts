@@ -146,18 +146,42 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     // sit on top of anything raised over it.
     expect(landed).not.toHaveBeenCalled()
 
-    eventBus.emit('calculationsCompleted')
+    eventBus.emit('loadingCompleted')
     await flushPromises()
 
     expect(landed).toHaveBeenCalledWith(appStore.getCurrentTab().id)
     eventBus.off('planLanded', landed)
   })
 
-  it('announces nothing when the calculations were not a paste landing', async () => {
+  // The event a small, never-calculated plan actually ends on. Hanging this off
+  // `calculationsCompleted` instead meant the offer only ever appeared for a plan
+  // big enough to need calculating, which the browser caught and the spec had not.
+  it('waits for the load to finish, not for a calculation that may never come', async () => {
+    const landed = vi.fn()
+    eventBus.on('planLanded', landed)
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ name: 'Pasted Plan', factories: [newFactory('Pasted')] }))
+
+    const subject = mountSubject()
+    await clickButton(subject, 'Paste plan')
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    eventBus.emit('calculationsCompleted')
+    await flushPromises()
+    expect(landed).not.toHaveBeenCalled()
+
+    eventBus.emit('loadingCompleted')
+    await flushPromises()
+    expect(landed).toHaveBeenCalledTimes(1)
+    eventBus.off('planLanded', landed)
+  })
+
+  it('announces nothing when the load was not a paste landing', async () => {
     const landed = vi.fn()
     eventBus.on('planLanded', landed)
     mountSubject()
 
+    eventBus.emit('loadingCompleted')
     eventBus.emit('calculationsCompleted')
     await flushPromises()
 
