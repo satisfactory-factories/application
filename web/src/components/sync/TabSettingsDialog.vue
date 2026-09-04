@@ -68,7 +68,10 @@
           and on any other device it is open on. To open it again, use the + button on the
           tab bar or your account panel.
         </p>
+        <!-- The muted grey the rest of the app uses for secondary actions: on the dark
+             theme an uncoloured flat button is near enough invisible. -->
         <v-btn
+          color="grey-darken-1"
           data-testid="hide-tab"
           variant="flat"
           @click="hideTab"

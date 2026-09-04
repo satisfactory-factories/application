@@ -373,6 +373,9 @@ describe('TabSettingsDialog', () => {
       await render(syncedTab())
 
       expect(shown('hide-tab')).toBe(true)
+      // Uncoloured, a flat button is black on the dark theme and all but invisible;
+      // grey is what the app uses for a secondary action.
+      expect(at('hide-tab')?.className).toContain('bg-grey-darken-1')
       const order = [...body().querySelectorAll('[data-testid]')]
         .map(element => element.getAttribute('data-testid'))
       expect(order.indexOf('hide-tab')).toBeLessThan(order.indexOf('convert-to-local'))
