@@ -163,7 +163,7 @@ number used to be.
 - **A surplus the AWESOME Sink is currently mopping up still counts as spare**, because burning fuel beats sinking it — take it, and the sinks drop out of the plan by themselves.
 - The buttons appear only where there is something to match against: a generator whose fuel is entirely imported from elsewhere is left alone, as are Geothermal Generators, which have no fuel, and Alien Power Augmenters, whose matrix demand is decided by their building groups rather than by a rate you can set.
 - **The generator's row now wraps** rather than running off the edge of the card. It is the widest row in the planner, and on a 1440px screen with the sidebar open the new button had nowhere left to go.
-- **A "Generator fuel draw" template** shows it working, for anyone wanting to see the case before meeting it in their own plan. Two self-contained factories, each making 640/min Liquid Fuel from its own crude with Recycled Plastic taking 240 of it: one has its generators on 640 and offers the Trim, the other on 240 and offers the Expand, and both land on the same 400.
+- **A debug template, "#656: Generator fuel draw"**, shows it working: two self-contained factories, each making 640/min Liquid Fuel from its own crude with Recycled Plastic taking 240 of it. One has its generators on 640 and offers the Trim, the other on 240 and offers the Expand, and both land on the same 400. The debug rows in the Templates dialog are the app's primary blue now rather than Vuetify's stock secondary, which belonged to no palette in particular.
 
 ### Interface
 
