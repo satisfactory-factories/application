@@ -364,20 +364,50 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   await card.locator(`[id="${freshId}-notes"] textarea:not([aria-hidden="true"])`).fill(edit.note)
 }
 
+/** The cards in the plan, by id, which is what tells a new record from every other. */
+const factoryCardIds = (page: Page): Promise<string[]> =>
+  page.locator('.factory-card:not(.sub-card)').evaluateAll(cards => cards.map(card => card.id))
+
+/**
+ * Which card the click made. Focus is the better answer where it lands: it is
+ * client-local, so a peer's record arriving mid-add can never be mistaken for
+ * ours. But focus is also the flakiest thing in the suite, and losing it failed
+ * whatever test happened to be running rather than anything it was testing.
+ *
+ * So focus first, and the plan's own ids as the fallback: a card here that was
+ * not here before the click. Ambiguity is the one case that still fails, and it
+ * says which case it was.
+ */
+const freshCardId = async (page: Page, before: Set<string>): Promise<string> => {
+  const focused = page.locator('input.factory-name:focus')
+  let arrived: string[] = []
+
+  await expect.poll(async () => {
+    if (await focused.count() > 0) return true
+    arrived = (await factoryCardIds(page)).filter(id => id !== '' && !before.has(id))
+    return arrived.length > 0
+  }, { message: 'the new factory never reached the plan', timeout: 30_000 }).toBe(true)
+
+  if (await focused.count() > 0) {
+    const id = await focused.evaluate(el => el.closest('.factory-card:not(.sub-card)')?.id ?? '')
+    if (id !== '') return id
+  }
+
+  // Unfocused and more than one new card: a peer's record landed in the same
+  // breath as ours, and there is no honest way to say which is which.
+  expect(arrived, 'more than one factory arrived while this one was being added').toHaveLength(1)
+  return arrived[0]
+}
+
 /** The name half alone, for a test that only needs the plan to be a certain size. */
 export const addNamedFactory = async (page: Page, factoryName: string): Promise<string> => {
+  const before = new Set(await factoryCardIds(page))
+
   // Keyboard rather than mouse: the button is the last thing in the column, and
   // the offline banner is fixed to the bottom of the viewport on top of it.
   await page.getByTestId('add-factory').press('Enter')
 
-  // The new card is the one the cursor landed in. Focus is client-local, so a
-  // concurrent client's identical default-named record can never be confused
-  // with ours no matter how the timing falls — matching by name or position
-  // both lost that race on CI.
-  const focused = page.locator('input.factory-name:focus')
-  await expect(focused, 'the new factory never focused its name field').toBeVisible()
-  const freshId = await focused.evaluate(el => el.closest('.factory-card:not(.sub-card)')?.id ?? '')
-  expect(freshId, 'the focused name field sits outside a factory card').not.toBe('')
+  const freshId = await freshCardId(page, before)
 
   const card = page.locator(`[id="${freshId}"]`)
   const name = card.locator('input.factory-name')

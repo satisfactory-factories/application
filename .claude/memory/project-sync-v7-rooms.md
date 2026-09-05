@@ -1864,6 +1864,23 @@ device since the last refresh is there. Reopening a plan you hid no longer means
 account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
 proves the content comes back down, then finds the section gone.
 
+## The e2e suite's own flake, fixed rather than re-run (2026-09-05)
+
+`addNamedFactory` found the card it had just made by the focus the app puts in the new
+factory's name field. Focus is the right answer where it lands, because it is client-local and
+a peer's record arriving mid-add can never be mistaken for ours. It is also the flakiest thing
+in the suite: four full runs in one afternoon died on "the new factory never focused its name
+field", in `live-propagation`, `field-locks`, `sidebar-tabs` and `bulk-clear`, none of which is
+about focus or about adding factories.
+
+`freshCardId` keeps focus as the primary signal and falls back to the plan's own card ids: the
+id that is in the plan now and was not before the click. Ambiguity, meaning no focus and more
+than one new card, is the only case that still fails, and it says so in those words.
+
+`helper-resilience.e2e.ts` holds the fallback in place by stealing the focus on purpose for the
+length of an add. Negative-controlled: against the old helper it reproduces the exact failure
+message the four runs died on.
+
 ## Plans come and go as files, and the import owns its own failures (2026-09-05)
 
 Copy and paste were clipboard-only, which is laborious for a big plan and, on Firefox,

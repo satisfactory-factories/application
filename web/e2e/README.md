@@ -40,6 +40,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `adoption` | Two browsers with different local plans adopt into one account and converge on the union; unticking a plan leaves that one local. A plan pasted in while signed in raises the offer where it lands, through the real clipboard, and syncs on acceptance. |
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `login-chooser` | An interactive sign-in is fronted by the plan chooser; "Not now" opens nothing, and a reload with a persisted session never asks. Open-all on a device that has never seen the account downloads every plan whole, the unselected one included, and a plan left open there catches up on what it missed while the device was away. |
+| `helper-resilience` | `addNamedFactory` still finds the card it made when the app's focus is stolen out from under it, which is the flake that has taken unrelated tests down with it. |
 | `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
 | `field-locks` | A focused note disables the same field for the other client and keeps it disabled while its holder types; blur and a ten-second idle both hand it back, and a second factory's note is never covered. |
 | `loading-tab` | A client rendering a big plan makes no writes: no op it sends carries a removal, and both devices end holding every factory. Covered for a tab re-entered, a client with edits still unsent, and a return to the planner from another page. |
