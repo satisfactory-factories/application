@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { CAPS } from 'common'
+import { APP_VERSION_HEADER, CAPS } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { Connection } from 'mongoose'
 import { makeFactory } from 'common/testing'
@@ -51,7 +51,7 @@ describe('rooms', () => {
 
     it('426s without the app version header', async () => {
       const response = await call(context.app, 'get', '/rooms')
-        .set('X-App-Version', '')
+        .set(APP_VERSION_HEADER, '')
         .set('Authorization', `Bearer ${owner.token}`)
 
       expect(response.status).toBe(426)

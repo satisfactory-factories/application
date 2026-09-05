@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
+import { APP_VERSION_HEADER } from 'common'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { getModelToken } from '@nestjs/mongoose'
 import request from 'supertest'
@@ -94,7 +95,7 @@ describe('GET /metrics: who is allowed to ask', () => {
 
   // Same reason /health is exempt: the caller is a scraper and has no app version to send.
   it('is exempt from the version gate', async () => {
-    const response = await withToken(context).set('X-App-Version', 'ancient')
+    const response = await withToken(context).set(APP_VERSION_HEADER, 'ancient')
 
     expect(response.status).toBe(200)
   })
@@ -264,7 +265,7 @@ describe('the /metrics rate limiter', () => {
     // An exhausted scraper must not be able to rate-limit the planner.
     const login = await request(context.app.getHttpServer())
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })

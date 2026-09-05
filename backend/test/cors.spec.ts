@@ -1,4 +1,4 @@
-import { APP_VERSION_HEADER } from 'common'
+import { ACCEPTED_VERSION_HEADERS, APP_VERSION_HEADER } from 'common'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -25,18 +25,30 @@ describe('CORS', () => {
     expect(WEB_ORIGINS).not.toContain('https://api.satisfactory-factories.app')
   })
 
-  it('answers the preflight that X-App-Version now forces on every gated call', async () => {
-    const response = await request(context.app.getHttpServer())
-      .options('/login')
-      .set('Origin', PRODUCTION_ORIGIN)
-      .set('Access-Control-Request-Method', 'POST')
-      .set('Access-Control-Request-Headers', `content-type,${APP_VERSION_HEADER.toLowerCase()}`)
+  const preflight = (requested: string) => request(context.app.getHttpServer())
+    .options('/login')
+    .set('Origin', PRODUCTION_ORIGIN)
+    .set('Access-Control-Request-Method', 'POST')
+    .set('Access-Control-Request-Headers', `content-type,${requested.toLowerCase()}`)
+
+  it('answers the preflight the version header forces on every gated call', async () => {
+    const response = await preflight(APP_VERSION_HEADER)
 
     expect(response.status).toBe(204)
     expect(response.headers['access-control-allow-origin']).toBe(PRODUCTION_ORIGIN)
     expect(response.headers['access-control-allow-headers'].toLowerCase())
       .toContain(APP_VERSION_HEADER.toLowerCase())
     expect(response.headers['access-control-allow-methods']).toContain('POST')
+  })
+
+  // A name missing here is refused by the browser before the gate can answer 426, so the
+  // user sees an opaque network failure instead of the refresh prompt.
+  it.each([...ACCEPTED_VERSION_HEADERS])('allows %s on the preflight', async header => {
+    const response = await preflight(header)
+
+    expect(response.status).toBe(204)
+    expect(response.headers['access-control-allow-headers'].toLowerCase())
+      .toContain(header.toLowerCase())
   })
 
   it('reflects the allowed origin on the real request', async () => {

@@ -1,4 +1,4 @@
-import { APP_VERSION_HEADER } from 'common'
+import { ACCEPTED_VERSION_HEADERS } from 'common'
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface'
 
 /**
@@ -56,6 +56,7 @@ export const isAllowedWsOrigin = (origin: string | undefined): boolean =>
 export const CORS_OPTIONS: CorsOptions = {
   origin: (origin, callback) => callback(null, isAllowedHttpOrigin(origin)),
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // X-App-Version is a custom header, so every gated call now preflights.
-  allowedHeaders: ['Content-Type', 'Authorization', APP_VERSION_HEADER],
+  // The version header is custom, so every gated call preflights. Both names the gate
+  // accepts have to be listed, or the browser blocks the request before the gate sees it.
+  allowedHeaders: ['Content-Type', 'Authorization', ...ACCEPTED_VERSION_HEADERS],
 }

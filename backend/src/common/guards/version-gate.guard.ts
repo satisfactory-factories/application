@@ -1,4 +1,4 @@
-import { APP_VERSION_HEADER, PROTOCOL_VERSION } from 'common'
+import { APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK, PROTOCOL_VERSION } from 'common'
 import { CanActivate, ExecutionContext, HttpException, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import type { VersionMismatchBody } from 'common'
@@ -26,7 +26,10 @@ export class VersionGateGuard implements CanActivate {
     // Preflights never carry the header they are asking permission for.
     if (request.method === 'OPTIONS') return true
 
-    const received = request.header(APP_VERSION_HEADER) ?? null
+    // v0.7.x builds send the fallback name. Reading both means neither a deploy order
+    // nor a rollback can leave a client unable to reach the gate at all.
+    const received =
+      request.header(APP_VERSION_HEADER) ?? request.header(APP_VERSION_HEADER_FALLBACK) ?? null
     if (received === PROTOCOL_VERSION) return true
 
     const body: VersionMismatchBody = {

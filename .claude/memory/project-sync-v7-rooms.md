@@ -4,7 +4,7 @@ description: v0.7.0 realtime rooms sync — built and green on branch claude/syn
 metadata:
   type: project
   volatility: hot
-  lastVerified: 2026-09-03
+  lastVerified: 2026-09-05
 ---
 
 The v0.7.0 headline feature (version 0.7.0): realtime WebSocket sync with rooms, replacing the
@@ -95,8 +95,11 @@ every zod-derived type collapses into a wall of unrelated-looking TS errors.
   re-baselines, and what still differs goes out under a fresh opId. Nothing ever resends one.
 - No Mongo transactions (production stays a standalone mongod): resume-aware ensure-steps,
   tombstone-first delete, hourly sweeper.
-- Version gate via `X-App-Version` (only `/health` and `GET /share/:id` exempt); `/hello`
-  dropped; pre-v7 clients are cut off at backend deploy.
+- Version gate on a client version header (only `/health`, `/version` and `GET /share/:id`
+  exempt); `/hello` dropped; pre-v7 clients are cut off at backend deploy. Clients send
+  `X-Planner-Version`; the gate and CORS also accept `X-App-Version`, the name v0.7.x builds
+  sent. A custom header preflights, so a name CORS does not allow is blocked in the browser
+  before the gate can answer 426 and the user sees a network error, not the refresh prompt.
 - Adoption replaces migration: per-login, per-browser, create-only; the legacy blob and the
   shares collection are never rewritten.
 - Offline mode is first-class (manual airplane switch + detection prompt).
@@ -1764,7 +1767,7 @@ id set, its persistence and the convergence rule.
 Built alongside the rooms work and absent from the plan's original text, so the plan now carries
 a section for it too. Three surfaces, all `@SkipVersionGate()` for the reason `/health` is: the
 callers are a scraper and the oldest, most broken clients, none of which sends a useful
-`X-App-Version`.
+client version header.
 
 - **`GET /metrics`** serves Prometheus text behind a bearer token read from `METRICS_TOKEN` at
   request time. **Unset means 404, not an open endpoint** — forgetting the variable on a new box

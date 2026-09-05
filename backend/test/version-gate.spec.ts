@@ -1,10 +1,10 @@
-import { PROTOCOL_VERSION } from 'common'
+import { APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK, PROTOCOL_VERSION } from 'common'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 
-describe('the X-App-Version gate', () => {
+describe('the client version gate', () => {
   let context: TestContext
 
   beforeAll(async () => {
@@ -33,7 +33,7 @@ describe('the X-App-Version gate', () => {
   it('426s a stale version and echoes what was sent', async () => {
     const response = await request(server())
       .post('/login')
-      .set('X-App-Version', '6.9')
+      .set(APP_VERSION_HEADER, '6.9')
       .send({ username: 'a', password: 'b' })
 
     expect(response.status).toBe(426)
@@ -44,7 +44,7 @@ describe('the X-App-Version gate', () => {
   it('lets the current version through to the handler', async () => {
     const response = await request(server())
       .post('/login')
-      .set('X-App-Version', PROTOCOL_VERSION)
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(response.status).toBe(400)
@@ -73,5 +73,51 @@ describe('the X-App-Version gate', () => {
     expect((await request(server()).get('/health')).status).toBe(200)
     expect((await request(server()).get('/version')).status).toBe(200)
     expect((await request(server()).get('/share/anything')).status).toBe(404)
+  })
+
+  // A v0.7.x build sends the fallback name and nothing else. It has to reach the gate and be
+  // judged on its version, rather than being refused for the name it used.
+  describe('the fallback header name v0.7.x builds send', () => {
+    it('accepts a current version sent only under the fallback name', async () => {
+      const response = await request(server())
+        .post('/login')
+        .set(APP_VERSION_HEADER_FALLBACK, PROTOCOL_VERSION)
+        .send({ username: 'nobody', password: 'nobody' })
+
+      expect(response.status).toBe(400)
+      expect(response.body).toEqual({ message: 'Invalid credentials' })
+    })
+
+    it('426s a stale version sent only under the fallback name', async () => {
+      const response = await request(server())
+        .post('/login')
+        .set(APP_VERSION_HEADER_FALLBACK, '6.9')
+        .send({ username: 'a', password: 'b' })
+
+      expect(response.status).toBe(426)
+      expect(response.body.receivedVersion).toBe('6.9')
+    })
+
+    it('prefers the primary name when a client sends both', async () => {
+      const response = await request(server())
+        .post('/login')
+        .set(APP_VERSION_HEADER, '6.9')
+        .set(APP_VERSION_HEADER_FALLBACK, PROTOCOL_VERSION)
+        .send({ username: 'a', password: 'b' })
+
+      expect(response.status).toBe(426)
+      expect(response.body.receivedVersion).toBe('6.9')
+    })
+
+    it('still refuses a request carrying neither name', async () => {
+      const response = await request(server())
+        .post('/login')
+        .set('X-Some-Other-Version', PROTOCOL_VERSION)
+        .send({ username: 'a', password: 'b' })
+
+      expect(response.status).toBe(426)
+      expect(response.body.code).toBe('version_mismatch')
+      expect(response.body.receivedVersion).toBeNull()
+    })
   })
 })

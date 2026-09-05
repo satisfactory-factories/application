@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { EVENT_CAPS, EVENT_REASONS } from 'common'
+import { APP_VERSION_HEADER, EVENT_CAPS, EVENT_REASONS } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -221,7 +221,7 @@ describe('the /events rate limiter', () => {
     // A browser in an error loop must never rate-limit the planner beside it.
     const login = await request(context.app.getHttpServer())
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })
@@ -255,7 +255,7 @@ describe('the HTTP error filter', () => {
 
     await request(context.app.getHttpServer())
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(httpErrors(await scrape(), 400)).toBe(before + 1)
@@ -264,7 +264,7 @@ describe('the HTTP error filter', () => {
   it('counts a 426 from the version gate', async () => {
     const before = httpErrors(await scrape(), 426) ?? 0
 
-    await request(context.app.getHttpServer()).get('/rooms').set('X-App-Version', 'ancient')
+    await request(context.app.getHttpServer()).get('/rooms').set(APP_VERSION_HEADER, 'ancient')
 
     expect(httpErrors(await scrape(), 426)).toBe(before + 1)
   })
@@ -276,7 +276,7 @@ describe('the HTTP error filter', () => {
   it('leaves a structured error body untouched', async () => {
     const response = await request(context.app.getHttpServer())
       .get('/rooms')
-      .set('X-App-Version', 'ancient')
+      .set(APP_VERSION_HEADER, 'ancient')
 
     expect(response.status).toBe(426)
     expect(response.body).toMatchObject({
@@ -288,7 +288,7 @@ describe('the HTTP error filter', () => {
   it('leaves a plain message body untouched', async () => {
     const response = await request(context.app.getHttpServer())
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(response.status).toBe(400)
