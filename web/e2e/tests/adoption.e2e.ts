@@ -159,6 +159,7 @@ test('a plan pasted in while signed in is offered to the cloud where it lands', 
   await addFactory(page, { name: 'Copied from the live site', note: 'about to be pasted' })
   await expect(page.getByTestId('adoption-dialog')).toBeHidden()
   await actions.getByTestId('copy-plan').click()
+  await page.getByTestId('copy-to-clipboard').click()
 
   // Somewhere for it to land: a second, empty, local tab, which is the one on
   // screen — the plan replaces the tab you are looking at, not the first in the bar.
@@ -170,7 +171,8 @@ test('a plan pasted in while signed in is offered to the cloud where it lands', 
   }, { message: 'the new local tab never reached the mirror' }).not.toBe('')
   await expectTabKind(page, landing, 'local')
 
-  await actions.getByTestId('paste-plan').click()
+  await actions.getByTestId('import-plan').click()
+  await page.getByTestId('import-from-clipboard').click()
 
   // The offer, for that one plan, in the singular.
   const dialog = page.getByTestId('adoption-dialog')

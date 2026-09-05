@@ -1864,6 +1864,36 @@ device since the last refresh is there. Reopening a plan you hid no longer means
 account panel. e2e: `new-tab-chooser.e2e.ts` hides a plan, reopens it from the plus button and
 proves the content comes back down, then finds the section gone.
 
+## Plans come and go as files, and the import owns its own failures (2026-09-05)
+
+Copy and paste were clipboard-only, which is laborious for a big plan and, on Firefox,
+two steps: reading the clipboard is a permission and the browser asks for it with a **Paste**
+button of its own that the planner can neither see nor explain. So both halves became a
+choice, in the pattern `NewTabDialog` set:
+
+- `CopyPlanDialog.vue` (`copy-to-file` / `copy-to-clipboard`) behind the existing **Copy plan**
+  button. The file half is `downloadPlan` from `utils/plan-backup.ts`, which the raw-resources
+  wizard already used for its backup — same blob, same filename shape.
+- `ImportPlanDialog.vue` (`import-from-file` / `import-from-clipboard`) behind **Import plan**,
+  which is what **Paste plan** is now called. The file half drives a hidden `<input type="file">`
+  from the card and clears its value after every pick, so the same file twice in a row still
+  fires a change event.
+- The clipboard card carries the browser-prompt warning, next to the button that triggers it,
+  because after the fact there is nothing to explain: a dismissed prompt rejects the read.
+  `runImport` catches that and says so where the other way in still is.
+- `applyPlanBlob(text)` is the one path in, whatever carried the text. It **reports** rather
+  than alerting: an invalid blob returns a sentence, the dialog shows it inline and stays open.
+  The old `alert()` was a browser dialog you had to dismiss before you could try the file half.
+- e2e: `plan-transfer.e2e.ts` saves a plan, clears the tab and brings it back out of the file —
+  no account, no room, no clipboard permission — and proves a junk file says so without
+  touching the plan. The clipboard half stays with `adoption.e2e.ts`, which needs a real one.
+
+**The spec's own hazard, found twice.** `PlannerGlobalActions.spec.ts` kept failing on a *later*
+test whenever a new one drove the invalid-plan path: `recordEvent` starts the events store's
+flush interval, and it outlives the pinia it was made on. The file now mocks
+`@/utils/record-event` outright — nothing in it is about telemetry — which also settles the
+earlier round's dropped assertion.
+
 ## A plan that lands after the sweep gets its own offer (2026-09-04)
 
 Reported from the preview: signed in first, pasted a plan from the live site into the local

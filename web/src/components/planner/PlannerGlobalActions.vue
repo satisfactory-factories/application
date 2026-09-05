@@ -81,7 +81,7 @@
           Clear
         </v-btn>
       </tooltip>
-      <tooltip :text="isEmpty ? 'Nothing to copy yet — add a factory first.' : 'Copy the whole plan to your clipboard: every factory, plus the tab name, power target and groups. Save it to a file, or paste it into another tab.'">
+      <tooltip :text="isEmpty ? 'Nothing to copy yet — add a factory first.' : 'Take the whole plan out of the planner — every factory, plus the tab name, power target and groups — as a file to keep, or as JSON on your clipboard.'">
         <v-btn
           class="ma-1"
           color="secondary"
@@ -89,21 +89,21 @@
           :disabled="isEmpty"
           prepend-icon="fas fa-copy"
           variant="tonal"
-          @click="copyPlanToClipboard"
+          @click="copyOpen = true"
         >
           Copy plan
         </v-btn>
       </tooltip>
-      <tooltip text="Replace this tab with a plan copied to your clipboard. You'll be asked first if this tab already has factories in it. A cloud plan is replaced on every device it is open on, and for anyone you have shared it with.">
+      <tooltip text="Replace this tab with a plan from a file or from your clipboard. You'll be asked first if this tab already has factories in it, and a cloud plan is replaced on every device it is open on.">
         <v-btn
           class="ma-1"
           color="secondary"
-          data-testid="paste-plan"
-          prepend-icon="fas fa-clipboard"
+          data-testid="import-plan"
+          prepend-icon="fas fa-file-import"
           variant="tonal"
-          @click="confirmReplace() && pastePlanFromClipboard()"
+          @click="importOpen = true"
         >
-          Paste plan
+          Import plan
         </v-btn>
       </tooltip>
       <templates />
@@ -121,15 +121,26 @@
       </tooltip>
     </v-col>
   </v-row>
+
+  <copy-plan-dialog v-model="copyOpen" @choose="onCopyChoice" />
+  <import-plan-dialog
+    v-model="importOpen"
+    :busy="importing"
+    :error="importError"
+    @clipboard="importFromClipboard"
+    @file="importFromFile"
+  />
 </template>
 
 <script setup lang="ts">
+  import CopyPlanDialog from '@/components/planner/CopyPlanDialog.vue'
+  import ImportPlanDialog from '@/components/planner/ImportPlanDialog.vue'
   import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { confirmDialog } from '@/utils/helpers'
-  import { serializePlan } from '@/utils/plan-backup'
+  import { downloadPlan, serializePlan } from '@/utils/plan-backup'
   import type { PlanBlob } from '@/utils/plan-backup'
   import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
@@ -139,6 +150,10 @@
   const options = usePlannerOptions()
 
   const disableRecalc = ref(false)
+  const copyOpen = ref(false)
+  const importOpen = ref(false)
+  const importError = ref('')
+  const importing = ref(false)
 
   // Named because it is the reason five of these buttons are disabled, and each says so in its
   // own tooltip rather than leaving the reader to guess at a greyed-out control.
@@ -200,28 +215,37 @@
     }
   }
 
-  const copyPlanToClipboard = () => {
-    // Holistic full-tab copy: the tab name, power target and the entire factories
-    // array (which itself carries products, building groups, export calculator
-    // settings, tasks, notes, collapse state, sync state, etc). The tab id is
-    // intentionally omitted — a paste replaces the current tab and keeps its own id.
-    // Older exports were a bare Factory[] array, which paste still accepts.
-    const plan = serializePlan({
-      name: getCurrentTab()?.name,
-      factories: getFactories(),
-      powerTarget: powerTarget.value,
-      // Travels with the plan: pasting a plan that has already been answered for must not ask
-      // again, and pasting one from before the change must.
-      plannerVersion: getCurrentTab()?.plannerVersion,
-      // The only group state the factories don't carry themselves.
-      groups: getCurrentTab()?.groups,
-      // Describes the save the plan is written against, not the browser, so it travels with the
-      // plan. Absent means fully researched, so dropping these would rewrite the plan's capacity.
-      depotUploadTier: getCurrentTab()?.depotUploadTier,
-      depotExpansionTier: getCurrentTab()?.depotExpansionTier,
-    })
-    navigator.clipboard.writeText(plan)
-    eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or paste it.' })
+  /**
+   * Holistic full-tab copy: the tab name, power target and the entire factories
+   * array (which itself carries products, building groups, export calculator
+   * settings, tasks, notes, collapse state, sync state, etc). The tab id is
+   * intentionally omitted — an import replaces the current tab and keeps its own id.
+   * Older exports were a bare Factory[] array, which the import path still accepts.
+   */
+  const planBlob = (): PlanBlob => ({
+    name: getCurrentTab()?.name,
+    factories: getFactories(),
+    powerTarget: powerTarget.value,
+    // Travels with the plan: importing a plan that has already been answered for must not
+    // ask again, and importing one from before the change must.
+    plannerVersion: getCurrentTab()?.plannerVersion,
+    // The only group state the factories don't carry themselves.
+    groups: getCurrentTab()?.groups,
+    // Describes the save the plan is written against, not the browser, so it travels with the
+    // plan. Absent means fully researched, so dropping these would rewrite the plan's capacity.
+    depotUploadTier: getCurrentTab()?.depotUploadTier,
+    depotExpansionTier: getCurrentTab()?.depotExpansionTier,
+  })
+
+  const onCopyChoice = async (choice: 'file' | 'clipboard') => {
+    copyOpen.value = false
+    if (choice === 'file') {
+      downloadPlan(planBlob())
+      eventBus.emit('toast', { message: 'Plan saved as a file. Import it back from any tab, on any device.', type: 'success' })
+      return
+    }
+    await navigator.clipboard.writeText(serializePlan(planBlob()))
+    eventBus.emit('toast', { message: 'Plan copied to clipboard! You can save it to a file if you like, or import it into another tab.' })
   }
 
   // Only what the pasted blob actually states. The three tab settings are optional and the
@@ -234,76 +258,118 @@
     if (parsedPlan.depotExpansionTier !== undefined) markTabEdited('depotExpansionTier')
   }
 
-  const pastePlanFromClipboard = () => {
-    navigator.clipboard.readText().then(plan => {
-      try {
-        const parsedPlan = JSON.parse(plan)
-        // Legacy blobs are a bare Factory[] array; new ones are a full tab
-        // { name, factories, powerTarget }.
-        const isLegacy = Array.isArray(parsedPlan)
-        const factoriesToLoad = isLegacy ? parsedPlan : parsedPlan.factories
-        if (!Array.isArray(factoriesToLoad)) {
-          throw new Error('Plan does not contain a factories array.')
-        }
-        if (isLegacy) {
-          const tab = getCurrentTab()
-          if (tab) {
-            delete tab.plannerVersion
-            // A blob from before groups existed has none, so anything here belongs to the plan
-            // being replaced.
-            delete tab.groups
-            // Same for the Depot tiers: a bare-array blob predates them entirely.
-            delete tab.depotUploadTier
-            delete tab.depotExpansionTier
-          }
-        }
-
-        emit('clear-all')
-        // Announced as it is dropped in, before the load that draws it: this knows a
-        // plan arrived and in which tab, and that is all it knows. Whoever cares
-        // waits for the load themselves — the rooms store offers a local tab to the
-        // cloud once it has drawn, which nothing else would.
-        const destination = getCurrentTab()
-        if (destination) eventBus.emit('planLanded', destination.id)
-
-        setTimeout(() => {
-          // Replace the current tab's settings with the pasted plan's (keeps its id) before
-          // loading, so the plan is calculated against its own settings rather than the
-          // outgoing tab's.
-          if (!isLegacy) {
-            powerTarget.value = Number(parsedPlan.powerTarget) || 0
-            const tab = getCurrentTab()
-            if (tab && parsedPlan.name) {
-              tab.name = parsedPlan.name
-            }
-            if (tab) {
-              tab.plannerVersion = parsedPlan.plannerVersion
-              // Assigned rather than merged, and assigned even when the blob has none: clearing
-              // the factories cannot take memberless groups with it, so anything left here
-              // belongs to the plan being replaced.
-              tab.groups = parsedPlan.groups
-              // Assigned unconditionally for the same reason. A blob written before these
-              // existed means "not stated", which reads as fully researched — inheriting the
-              // outgoing tab's tiers instead would silently size the pasted plan against
-              // somebody else's save.
-              tab.depotUploadTier = parsedPlan.depotUploadTier
-              tab.depotExpansionTier = parsedPlan.depotExpansionTier
-              // Declared for whatever the blob actually stated. An absent value is not
-              // declarable — the diff cannot carry "cleared" — so a blob that states none
-              // leaves the room's own settings alone rather than silently clearing them.
-              declarePastedTabFields(parsedPlan)
-            }
-          }
-          prepareLoader(factoriesToLoad)
-        }, 250)
-      } catch (err) {
-        if (err instanceof Error) {
-          alert(`Invalid plan. Error: ${err.message}`)
-          recordEvent('plan_import_invalid')
+  /**
+   * The one path a plan comes back in by, whatever carried it here. Reports rather
+   * than alerts: an import that fails belongs in the dialog it failed in, where the
+   * other way in is still one click away.
+   */
+  const applyPlanBlob = (plan: string): true | string => {
+    try {
+      const parsedPlan = JSON.parse(plan)
+      // Legacy blobs are a bare Factory[] array; new ones are a full tab
+      // { name, factories, powerTarget }.
+      const isLegacy = Array.isArray(parsedPlan)
+      const factoriesToLoad = isLegacy ? parsedPlan : parsedPlan.factories
+      if (!Array.isArray(factoriesToLoad)) {
+        throw new Error('Plan does not contain a factories array.')
+      }
+      if (isLegacy) {
+        const tab = getCurrentTab()
+        if (tab) {
+          delete tab.plannerVersion
+          // A blob from before groups existed has none, so anything here belongs to the plan
+          // being replaced.
+          delete tab.groups
+          // Same for the Depot tiers: a bare-array blob predates them entirely.
+          delete tab.depotUploadTier
+          delete tab.depotExpansionTier
         }
       }
-    })
+
+      emit('clear-all')
+      // Announced as it is dropped in, before the load that draws it: this knows a
+      // plan arrived and in which tab, and that is all it knows. Whoever cares
+      // waits for the load themselves — the rooms store offers a local tab to the
+      // cloud once it has drawn, which nothing else would.
+      const destination = getCurrentTab()
+      if (destination) eventBus.emit('planLanded', destination.id)
+
+      setTimeout(() => {
+        // Replace the current tab's settings with the pasted plan's (keeps its id) before
+        // loading, so the plan is calculated against its own settings rather than the
+        // outgoing tab's.
+        if (!isLegacy) {
+          powerTarget.value = Number(parsedPlan.powerTarget) || 0
+          const tab = getCurrentTab()
+          if (tab && parsedPlan.name) {
+            tab.name = parsedPlan.name
+          }
+          if (tab) {
+            tab.plannerVersion = parsedPlan.plannerVersion
+            // Assigned rather than merged, and assigned even when the blob has none: clearing
+            // the factories cannot take memberless groups with it, so anything left here
+            // belongs to the plan being replaced.
+            tab.groups = parsedPlan.groups
+            // Assigned unconditionally for the same reason. A blob written before these
+            // existed means "not stated", which reads as fully researched — inheriting the
+            // outgoing tab's tiers instead would silently size the pasted plan against
+            // somebody else's save.
+            tab.depotUploadTier = parsedPlan.depotUploadTier
+            tab.depotExpansionTier = parsedPlan.depotExpansionTier
+            // Declared for whatever the blob actually stated. An absent value is not
+            // declarable — the diff cannot carry "cleared" — so a blob that states none
+            // leaves the room's own settings alone rather than silently clearing them.
+            declarePastedTabFields(parsedPlan)
+          }
+        }
+        prepareLoader(factoriesToLoad)
+      }, 250)
+      return true
+    } catch (error) {
+      recordEvent('plan_import_invalid')
+      return error instanceof Error
+        ? `That does not look like a plan the planner wrote. ${error.message}`
+        : 'That does not look like a plan the planner wrote.'
+    }
   }
+
+  const runImport = async (read: () => Promise<string>, whenRefused: string) => {
+    if (!confirmReplace()) return
+
+    importing.value = true
+    importError.value = ''
+    let text: string
+    try {
+      text = await read()
+    } catch {
+      importing.value = false
+      importError.value = whenRefused
+      return
+    }
+    importing.value = false
+
+    const result = applyPlanBlob(text)
+    if (result !== true) {
+      importError.value = result
+      return
+    }
+    importOpen.value = false
+  }
+
+  /**
+   * Reading the clipboard is a permission, and some browsers ask for it with a prompt
+   * of their own — Firefox puts a Paste button by the pointer. Dismissed or refused,
+   * the read rejects here, and saying so beats the silence this used to give.
+   */
+  const importFromClipboard = () => runImport(
+    () => navigator.clipboard.readText(),
+    'Your browser would not let the planner read the clipboard. Some browsers ask you to confirm with a Paste button of their own — look near the pointer or the address bar — or import from a file instead.',
+  )
+
+  const importFromFile = (file: File) => runImport(
+    () => file.text(),
+    'That file could not be read. Try it again, or copy the plan to your clipboard instead.',
+  )
 
   const forceRecalc = async () => {
     const confirmed = confirmDialog('WARNING: Forcing a recalculation takes a LONG time for large plans. Your browser will lag and will likely complain about stalling. Are you sure?')

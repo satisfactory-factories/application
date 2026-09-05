@@ -10,8 +10,16 @@ import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import { newFactory } from '@/utils/factory-management/factory'
 import eventBus from '@/utils/eventBus'
 
-// The copy/paste plan buttons must carry the plan's power target (a tab-level
-// field) alongside the factories, while still accepting the legacy array-only blob.
+/**
+ * Counting a failed import starts the events store's flush interval, and that timer
+ * outlives the pinia it was made on — a flush firing inside the next test made this
+ * file's later paste tests fail for reasons that had nothing to do with them. Nothing
+ * here is about telemetry, so it is stubbed out at the door.
+ */
+vi.mock('@/utils/record-event', () => ({ recordEvent: vi.fn() }))
+
+// The copy and import buttons must carry the plan's power target (a tab-level field)
+// alongside the factories, while still accepting the legacy array-only blob.
 describe('Component: PlannerGlobalActions clipboard', () => {
   let appStore: ReturnType<typeof useAppStore>
   let readText: ReturnType<typeof vi.fn>
@@ -29,6 +37,37 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     const button = subject.findAll('button').find(b => b.text().includes(text))
     if (!button) throw new Error(`Button "${text}" not found`)
     return button.trigger('click')
+  }
+
+  /** The dialogs teleport out of the wrapper, so their halves are read from the body. */
+  const at = (testId: string) => document.body.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+
+  /** Copy plan now asks where the plan should go; this takes one of the two answers. */
+  const copyVia = async (subject: VueWrapper, destination: 'copy-to-file' | 'copy-to-clipboard') => {
+    await clickButton(subject, 'Copy plan')
+    await flushPromises()
+    at(destination)!.click()
+    await flushPromises()
+  }
+
+  /** And Import plan asks where it is coming from. */
+  const importFromClipboard = async (subject: VueWrapper) => {
+    await clickButton(subject, 'Import plan')
+    await flushPromises()
+    at('import-from-clipboard')!.click()
+    await flushPromises()
+  }
+
+  /** The file half, through the input the card drives rather than around it. */
+  const importFromFile = async (subject: VueWrapper, contents: string) => {
+    await clickButton(subject, 'Import plan')
+    await flushPromises()
+
+    const input = at('import-file-input') as HTMLInputElement
+    const file = new File([contents], 'plan.json', { type: 'application/json' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
   }
 
   /**
@@ -52,6 +91,9 @@ describe('Component: PlannerGlobalActions clipboard', () => {
   }
 
   beforeEach(() => {
+    // The dialogs teleport into the body and outlive their wrapper, so a stale one
+    // would be the first thing `at()` finds in the next test.
+    document.body.innerHTML = ''
     localStorage.removeItem('factoryTabs')
     setActivePinia(createPinia())
     appStore = useAppStore()
@@ -107,13 +149,13 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(options.value.fullWidth).toBe(false)
   })
 
-  it('copy serializes the full tab (name, factories, powerTarget)', () => {
+  it('copy serializes the full tab (name, factories, powerTarget)', async () => {
     seedFactory()
     appStore.getCurrentTab().name = 'My Plan'
     usePowerTarget().powerTarget.value = 5000
 
     const subject = mountSubject()
-    clickButton(subject, 'Copy plan')
+    await copyVia(subject, 'copy-to-clipboard')
 
     expect(writeText).toHaveBeenCalledTimes(1)
     const payload = JSON.parse(writeText.mock.calls[0][0])
@@ -130,7 +172,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify({ name: 'Pasted Plan', factories: [newFactory('Pasted')], powerTarget: 1234 }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(prepareLoader).toHaveBeenCalledTimes(1)
@@ -157,7 +199,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify({ name: 'Pasted Plan', factories: [newFactory('Pasted')] }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(landed).toHaveBeenCalledWith(appStore.getCurrentTab().id)
@@ -179,6 +221,39 @@ describe('Component: PlannerGlobalActions clipboard', () => {
   })
 
   /**
+   * The other way in, and the one that does not need a clipboard permission at all:
+   * a plan saved as a file, handed back through the input the card drives.
+   */
+  describe('importing from a file', () => {
+    it('loads the plan out of the file, exactly as the clipboard would', async () => {
+      const prepareLoader = vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+      appStore.getCurrentTab().name = 'Original'
+
+      const subject = mountSubject()
+      await importFromFile(subject, JSON.stringify({
+        name: 'From a file', factories: [newFactory('Filed')], powerTarget: 900,
+      }))
+      await pasteApplied()
+
+      expect(prepareLoader).toHaveBeenCalledTimes(1)
+      expect(appStore.getCurrentTab().name).toBe('From a file')
+      expect(appStore.getCurrentTab().powerTarget).toBe(900)
+      expect(readText).not.toHaveBeenCalled()
+      subject.unmount()
+    })
+
+    // The dialog is where the other way in still is, so a bad file must not close it.
+    it('keeps the dialog open and says what was wrong with the file', async () => {
+      const subject = mountSubject()
+      await importFromFile(subject, 'not a plan at all')
+
+      expect(at('import-error')?.textContent).toContain('does not look like a plan')
+      expect(at('import-plan-dialog')).not.toBeNull()
+      subject.unmount()
+    })
+  })
+
+  /**
    * Delete already tells you who loses what; a paste destroys the same thing for the
    * same people. "Your plan" was written when every tab was local, and on a cloud tab
    * it is the one sentence standing between a plan and every device it is open on.
@@ -192,7 +267,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
       vi.mocked(window.confirm).mockReturnValue(false)
 
       const subject = mountSubject()
-      await clickButton(subject, 'Paste plan')
+      await importFromClipboard(subject)
       const asked = vi.mocked(window.confirm).mock.calls.at(-1)?.[0]
       subject.unmount()
       return asked
@@ -234,7 +309,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
       readText.mockResolvedValue(JSON.stringify({ name: 'Pasted', factories: [] }))
 
       const subject = mountSubject()
-      await clickButton(subject, 'Paste plan')
+      await importFromClipboard(subject)
 
       expect(window.confirm).not.toHaveBeenCalled()
       subject.unmount()
@@ -249,12 +324,12 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
   // Groups with members ride on the factories and need no help. Memberless ones live only on the
   // tab, so the clipboard is the one place they can be lost — or left behind.
-  it('copy carries the memberless groups the factories cannot', () => {
+  it('copy carries the memberless groups the factories cannot', async () => {
     seedFactory()
     appStore.getCurrentTab().groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
 
     const subject = mountSubject()
-    clickButton(subject, 'Copy plan')
+    await copyVia(subject, 'copy-to-clipboard')
 
     const payload = JSON.parse(writeText.mock.calls[0][0])
     expect(payload.groups).toEqual([{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }])
@@ -262,13 +337,13 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
   // The tiers describe the save the plan was written against, so they travel with it. Absent
   // reads as fully researched, which is why paste assigns them even when the blob has none.
-  it('copy carries the Depot research the plan was written against', () => {
+  it('copy carries the Depot research the plan was written against', async () => {
     seedFactory()
     appStore.getCurrentTab().depotUploadTier = 0
     appStore.getCurrentTab().depotExpansionTier = 1
 
     const subject = mountSubject()
-    clickButton(subject, 'Copy plan')
+    await copyVia(subject, 'copy-to-clipboard')
 
     const payload = JSON.parse(writeText.mock.calls[0][0])
     expect(payload.depotUploadTier).toBe(0)
@@ -288,7 +363,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(appStore.getCurrentTab().depotUploadTier).toBe(0)
@@ -303,7 +378,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(appStore.getCurrentTab().depotUploadTier).toBeUndefined()
@@ -321,7 +396,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toEqual([
@@ -336,7 +411,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toBeUndefined()
@@ -349,7 +424,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify([newFactory('Legacy')]))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(appStore.getCurrentTab().groups).toBeUndefined()
@@ -363,7 +438,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     readText.mockResolvedValue(JSON.stringify([newFactory('Legacy')]))
 
     const subject = mountSubject()
-    await clickButton(subject, 'Paste plan')
+    await importFromClipboard(subject)
     await pasteApplied()
 
     expect(prepareLoader).toHaveBeenCalledTimes(1)
