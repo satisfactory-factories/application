@@ -19,13 +19,14 @@ services:
     volumes:
       # The app lives at /app/backend in the image now (the workspace root is
       # /app), so mounting over /app would hide it entirely. The anonymous
-      # volume keeps the container's own node_modules rather than letting the
-      # host's shadow them.
+      # volumes keep the container's own node_modules and compiled dist rather
+      # than letting the host's shadow them — the image runs node dist/main.js.
       - .:/app/backend
       - /app/backend/node_modules
+      - /app/backend/dist
     command: pnpm start
   mongo:
-    image: mongo:8.3.7
+    image: mongo:8.3.8
     container_name: sf-db
     ports:
       - "27017:27017"

@@ -14,4 +14,4 @@ Deferred follow-up (separate session, not started): windowed factory rendering (
 
 **Why:** Current sync saves only the active tab, so switching tabs clobbers other tabs' server data.
 
-**How to apply:** Any sync/tab work should follow the approved plan's decisions (no content-merge of same-name plans, legacy `/save`//`/load` kept until logs quiet). See [[feedback-scope-plans-per-session]] and [[calc-engine-gotchas]].
+**How to apply:** Superseded by [[project-sync-v7-rooms]] (2026-08-27): the v7 realtime rooms plan replaces this branch's design; treat `tab-sync-v2` purely as a design reference (its backend spec, "(local)" collision rule and test shapes carried forward). The no-content-merge decision survives into v7. See [[feedback-scope-plans-per-session]] and [[calc-engine-gotchas]].

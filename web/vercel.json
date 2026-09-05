@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --filter web",
+  "installCommand": "pnpm install --filter web...",
   "git": {
     "deploymentEnabled": {
       "renovate/**": false,

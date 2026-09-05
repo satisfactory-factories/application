@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { factorySchema } from 'common'
 import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import {
@@ -74,6 +75,19 @@ describe('products', () => {
 
     it('should add a part to the factory', () => {
       expect(mockFactory.parts.IronIngot).toBeDefined()
+    })
+
+    // The blank row the "Add Product" button hands the user is stored content and goes
+    // over the wire like anything else. Left as `{}` the room's schema refused it, and
+    // the client stopped sending that plan anything at all.
+    it('should give a blank row a zeroed building requirement, not an empty object', () => {
+      const blank = newFactory('Blank')
+      // What the "Add Product" button asks for.
+      addProductToFactory(blank, { id: '', amount: 1 })
+
+      expect(blank.products[0].id).toBe('')
+      expect(blank.products[0].buildingRequirements).toEqual({ name: '', amount: 0 })
+      expect(factorySchema.safeParse(blank).success).toBe(true)
     })
 
     it('should add proper display orders', () => {

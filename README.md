@@ -45,7 +45,7 @@ pnpm install   # installs web + backend + parsing
 pnpm dev       # starts Mongo (Docker), then the backend + frontend together
 ```
 
-`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). The backend requires Docker to be running. `backend/.env` is committed with working local defaults, so there is nothing to create — just be aware those credentials are for local dev only.
+`pnpm dev` runs the frontend on http://localhost:3000 and the backend on http://localhost:3001 in parallel (their logs are interleaved in the one terminal). If something else on your machine already has those, `pnpm dev --port 3100,3101` moves both for that run; see [Ports](#ports). The backend requires Docker to be running. `backend/.env` is committed with working local defaults, so there is nothing to create — just be aware those credentials are for local dev only.
 
 If you only want to work on the planner — which is most of the time — `pnpm dev:web` is enough and needs no Docker.
 
@@ -56,6 +56,7 @@ For anything specific to a single component, see its own README — linked from 
 | Command | Description |
 | --- | --- |
 | `pnpm dev` | Bring up the Mongo container, then run the backend + frontend dev servers in parallel |
+| `pnpm dev [--port <web>[,<api>]]` | The same, on ports of your choosing instead of 3000/3001 |
 | `pnpm dev:web` | Run only the frontend dev server |
 | `pnpm dev:backend` | Bring up Mongo, then run only the backend dev server |
 | `pnpm dev:parsing` | Run the parser |
@@ -70,9 +71,24 @@ The reason there is only one lockfile is `sharedWorkspaceLockfile: true` in `pnp
 You can still run commands from inside a single package if you prefer — `cd web && pnpm dev` works fine. What you don't need is a per-package `pnpm install`: the root install has already put `node_modules` in place for all three. If you do want to install just one package's dependencies, use `pnpm install --filter web` from anywhere in the workspace rather than `cd`-ing in.
 
 ### Ports
-**The port allocation is 3000 for the web app and 3001 for the API, everywhere** — local dev, the container, the host, and behind the tunnel. Treat those two as fixed; anything else that wants a port should move rather than pushing the API off 3001.
+**Everywhere the app is deployed, the allocation is 3000 for the web app and 3001 for the API, and those two are fixed.** That covers the container, the `EXPOSE`, both sides of every compose mapping, the host port, and the tunnel's origin. Anything else that wants a port should move rather than pushing the API off 3001, and moving one layer means moving all of them: `618e944` put the app on 3010 and left everything else at 3001, which produced a container nothing upstream could reach.
 
-> One known overlap: `web/testing/global-setup.ts` serves the test `gameData.json` on 3001 too, and it *silently skips startup* if the port is taken — so running `pnpm test` in `web/` while the backend is up makes the suite fetch game data from the API, get a 404, and fail confusingly. It is rare enough to live with: stop the backend first, or start it elsewhere with `PORT=3011 pnpm dev:backend` (the frontend's dev API URL is hardcoded to 3001, so only do that when you're not exercising save/load). If it does start to bite, move **the test fixture** to a port of its own — say 3005 — rather than moving the API.
+Local dev is the one exception, and only because a dev server has nothing upstream of it. `pnpm dev` still defaults to 3000/3001, and `--port` moves both for one run:
+
+```sh
+pnpm dev                     # 3000 + 3001, as before
+pnpm dev --port 3100,3101    # web on 3100, API on 3101
+pnpm dev --port 3100         # web on 3100, API left on 3001
+pnpm dev:web --port 3100     # same flag on the single-server scripts
+```
+
+`WEB_PORT` and `API_PORT` do the same job as environment variables, and the flag wins over them. One behaviour change comes with this on the default ports too: a dev server launched through `pnpm dev` now fails if its port is taken instead of quietly moving to the next free one, which for the web app is the API's.
+
+Under the hood `scripts/dev.mjs` also has to tell each half where the other went: the web app gets `VITE_API_URL` so its API calls and its sync socket follow, and the API gets the new web origin appended to `CORS_EXTRA_ORIGINS`, without which every request fails preflight and every socket upgrade 403s. Nothing outside local dev reads either of those two ports.
+
+The e2e suite (`pnpm test:e2e`) is deliberately **not** movable and asserts 3000/3001 are free before it starts. It builds the real client, and a built client bakes its API URL in.
+
+> One known overlap: `web/testing/global-setup.ts` serves the test `gameData.json` on 3001 too, and it *silently skips startup* if the port is taken — so running `pnpm test` in `web/` while the backend is up makes the suite fetch game data from the API, get a 404, and fail confusingly. Stop the backend first, or start it elsewhere with `pnpm dev --port 3000,3011`, which now points the frontend at 3011 as well so save/load keeps working. If it starts to bite often, move **the test fixture** to a port of its own — say 3005 — rather than moving the API.
 
 ### Deployment
 New versions are trunked to `main` branch. Once `main` has been pushed, GitHub Actions will create a release then deploy the frontend to Vercel, and build a docker image of the backend which is published to Docker Hub and pulled onto my personal server automatically.
@@ -81,6 +97,7 @@ See [docs/deployment.md](docs/deployment.md) for the backend chain end to end �
 
 ### Further reading
 - [docs/architecture/](docs/architecture/README.md) — how the app is put together, the calculation engine, and the frontend data flow
+- [docs/telemetry.md](docs/telemetry.md): the anonymous usage heartbeat, every field it sends, and why the id in it cannot be tied to an account
 - [docs/conventions.md](docs/conventions.md) — commit and code conventions
 - [docs/how-do-we-release.md](docs/how-do-we-release.md) and [docs/versioning.md](docs/versioning.md) — the release and versioning strategy
 ___

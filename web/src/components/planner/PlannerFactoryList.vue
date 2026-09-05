@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, type Ref } from 'vue'
+  import { computed, inject, onUnmounted, ref, type Ref } from 'vue'
   import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
@@ -290,7 +290,10 @@
     totalFactories: number,
     loadedFrom: string
   }>()
-  const show = ref(compProps.loadedFrom !== 'planner')
+  // Visible from the start: the fast load paths (already-calculated plans,
+  // snapshot applies, instant renders) never emit incrementLoad, so an initial
+  // false here left the docked sidebar empty for every plan that loaded quickly.
+  const show = ref(true)
 
   // At-a-glance power figures for the Statistics jump-link. The difference is the
   // headroom vs the user's power target when one is set (bullseye icon), otherwise
@@ -335,13 +338,19 @@
     setGroupOrder(ordered)
   }
 
-  // "Cheat" here by when a load is requested we hide the list
-  eventBus.on('prepareForLoad', () => {
-    show.value = false
-  })
-
-  eventBus.on('incrementLoad', () => {
-    show.value = true
+  // Hidden only while a staggered load is mid-flight. Every load path ends at
+  // loadingCompleted, so that is the reveal that cannot be starved; incrementLoad
+  // keeps the staggered path's earlier reveal. Named handlers, removed on
+  // unmount: this component mounts twice (dock + drawer) and re-mounts per visit.
+  const hideForLoad = () => { show.value = false }
+  const reveal = () => { show.value = true }
+  eventBus.on('prepareForLoad', hideForLoad)
+  eventBus.on('incrementLoad', reveal)
+  eventBus.on('loadingCompleted', reveal)
+  onUnmounted(() => {
+    eventBus.off('prepareForLoad', hideForLoad)
+    eventBus.off('incrementLoad', reveal)
+    eventBus.off('loadingCompleted', reveal)
   })
 
   // One pass over the plan rather than a call per row per chip — the sidebar renders every factory,

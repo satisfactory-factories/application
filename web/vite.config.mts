@@ -9,9 +9,14 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Utilities
-import { defineConfig } from 'vitest/config'
+import { configDefaults, coverageConfigDefaults, defineConfig } from 'vitest/config'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+
+// e2e/ is Playwright's, and it must stay out of Vitest entirely: its files import
+// @playwright/test, which cannot run under jsdom. The *.e2e.ts naming already
+// misses Vitest's include, so these two are belt and braces.
+const PLAYWRIGHT_FILES = ['e2e/**', 'playwright.config.ts']
 
 // The repo root package.json is the single version for everything here, and it is what the
 // backend's client gate compares against. Read at config time so a build can never ship a
@@ -25,6 +30,16 @@ import { fileURLToPath, URL } from 'node:url'
 process.env.VITE_APP_VERSION = JSON.parse(
   readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
 ).version
+
+// The exact commit this bundle was built from, so a rollout can be watched by commit and not
+// only by release. Vercel sets VERCEL_GIT_COMMIT_SHA on every build; GIT_SHA is the escape
+// hatch for building somewhere else. Truncated to 12 characters, which is unambiguous in
+// practice and short enough to read on a chart axis.
+//
+// Empty rather than a placeholder when unknown: the telemetry schema treats the field as
+// optional, so a local `pnpm dev` reports no commit rather than a fake one.
+process.env.VITE_GIT_SHA =
+  (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_SHA || '').slice(0, 12)
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -92,6 +107,9 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Matches the tsconfig path: bundle `common` from source, so a web build (and
+      // Vercel's) never waits on that package having been compiled first.
+      common: fileURLToPath(new URL('../common/src/index.ts', import.meta.url)),
     },
     extensions: [
       '.js',
@@ -104,7 +122,14 @@ export default defineConfig(() => ({
     ],
   },
   server: {
-    port: 3000,
+    // 3000 unless a dev moved it for one run with `pnpm dev --port`. Playwright
+    // passes --port on the CLI, which wins over this.
+    port: Number(process.env.WEB_PORT) || 3000,
+    // scripts/dev.mjs always sets WEB_PORT, so every scripted dev run fails on a
+    // taken port rather than drifting to the next free one. A moved port was
+    // handed to the API as an allowed origin, and on the default pair the next
+    // free port is the API's own.
+    strictPort: Boolean(process.env.WEB_PORT),
   },
   test: {
     globals: true,
@@ -112,6 +137,10 @@ export default defineConfig(() => ({
     pool: 'forks',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
+    exclude: [...configDefaults.exclude, ...PLAYWRIGHT_FILES],
+    coverage: {
+      exclude: [...coverageConfigDefaults.exclude, ...PLAYWRIGHT_FILES],
+    },
     css: true,
     // The suite waits out roughly 135 seconds of real debounce timers across its component specs,
     // and a jsdom + Vuetify mount on top of that does not fit in Vitest's 5s default once the

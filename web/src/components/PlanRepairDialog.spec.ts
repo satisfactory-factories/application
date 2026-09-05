@@ -17,6 +17,7 @@ const rocketFuelRepair: PlanRepairEntry = {
 
 const ghostExportRepair: StructuralRepair = {
   kind: 'structural',
+  reason: 'plan_repair_duplicate_factory_id' as const,
   factoryName: 'Copper Ingots',
   summary: 'Was exporting CopperIngot to "Iron Plates", which is not importing it. The export has been removed.',
 }

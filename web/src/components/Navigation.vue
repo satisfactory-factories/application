@@ -9,8 +9,8 @@
       <img alt="Site logo" class="ml-3 site-logo" src="/assets/img/SF.png" style="max-width: 48px;">
       <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
       <span class="ml-2">
-        <v-chip class="sf-chip small beta-chip">
-          BETA v0.6
+        <v-chip class="sf-chip small beta-chip" data-testid="release-badge">
+          {{ releaseBadge }}
           <span class="mx-1">•</span>
           <a class="show-changes" href="#" @click.prevent="showChanges">Show changes</a>
         </v-chip>
@@ -67,7 +67,15 @@
   import { useDisplay } from 'vuetify'
   import eventBus from '@/utils/eventBus'
   import { sfColors } from '@/utils/colors'
+  import { config } from '@/config/config'
   const { mdAndDown } = useDisplay()
+
+  // Read off the build rather than typed in, because a hardcoded badge is only ever
+  // right until the next release.
+  const releaseBadge = computed(() => {
+    const [major, minor] = (config.appVersion ?? '').split('.')
+    return major && minor ? `BETA v${major}.${minor}` : 'BETA'
+  })
 
   const toolbarDensity = computed(() => mdAndDown.value ? 'compact' : undefined)
   const isDrawerOpen = ref(false)

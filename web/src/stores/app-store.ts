@@ -1,10 +1,18 @@
 // Utilities
 import { defineStore } from 'pinia'
-import { Factory, FactoryPower, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
+import { emptyFactoryPower, PROTOCOL_VERSION } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
+import { readTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import {
+  LOCAL_TAB_STATE,
+  readTabSyncStates,
+  writeTabSyncStates,
+} from '@/sync/tab-sync-state'
+import type { TabSyncState, TabSyncStateMap } from '@/sync/tab-sync-state'
 import eventBus from '@/utils/eventBus'
 import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
 import { addProductBuildingGroup } from '@/utils/factory-management/building-groups/product'
@@ -13,9 +21,13 @@ import { refreshBuildingGroupProblems } from '@/utils/factory-management/buildin
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { generateFactoryItemId } from '@/utils/factory-management/common'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
+import { captureOrder, markFactoryRemoved, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
 import { getHandGatheredParts } from '@/utils/factory-management/parts'
+import { needsPacedRender } from '@/utils/render-pacing'
 import { config } from '@/config/config'
+import { recordEvent } from '@/utils/record-event'
+import { writeLocalStorage } from '@/utils/safe-storage'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -61,10 +73,16 @@ export const useAppStore = defineStore('app', () => {
     }
     currentFactoryTabIndex.value = 0
     localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
-    alert('Your planner has been reverted to SAFE MODE. This is because your factory tab data was heavily corrupted. You are recommended to log into your account and force download the previously saved tabs. If you have not done this, the data has been lost, unless you have copied it to a file.')
+    alert('Your planner has been reverted to SAFE MODE, because your factory tab data was heavily corrupted. Sign in to bring back any plans synced to your account. Anything that only lived in this browser is lost, unless you copied it to a file.')
+    recordEvent('plan_repair_safe_mode_reset')
   }
 
   const currentFactoryTab = ref(factoryTabs.value[currentFactoryTabIndex.value])
+
+  // What each tab *is* — local, synced or joined. Cached across reloads so the tab
+  // bar doesn't flash every plan as local until `GET /rooms` answers; the room list
+  // is still the authority and overwrites this on every refresh.
+  const tabSyncStates = ref<TabSyncStateMap>(readTabSyncStates())
 
   const factories = computed({
     get () {
@@ -84,7 +102,6 @@ export const useAppStore = defineStore('app', () => {
     },
   })
 
-  const lastSave = ref<Date>(new Date(localStorage.getItem('lastSave') ?? ''))
   const lastEdit = ref<Date>(new Date(localStorage.getItem('lastEdit') ?? ''))
   const isDebugMode = ref<boolean>(false)
   const isLoaded = ref<boolean>(false)
@@ -126,6 +143,10 @@ export const useAppStore = defineStore('app', () => {
     const tab = getCurrentTab()
     if (tab) {
       tab.plannerVersion = config.plannerVersion
+      // Dismissing is the user answering for this plan, so it is their edit on every device
+      // the plan is open on — without this a rebase puts the unanswered plan back and the
+      // notice returns on the next reconnect.
+      markTabEdited('plannerVersion')
     }
     showRawBreakingNotice.value = false
     markPlanEdited()
@@ -166,14 +187,27 @@ export const useAppStore = defineStore('app', () => {
     else requestAnimationFrame(fn)
   }
 
+  /** The awaitable form, for a chain that has to let the overlay reach the screen. */
+  const nextPaint = () => new Promise<void>(resolve => afterPaint(resolve))
+
   // Watch the tab index, if it changes we need to throw up a loading
   watch(currentFactoryTabIndex, () => {
     afterPaint(() => {
       console.log('appStore: currentFactoryTabIndex watcher: Tab index changed, starting load.')
+      const sameTab = factoryTabs.value[currentFactoryTabIndex.value]?.id === currentFactoryTab.value?.id
       currentFactoryTab.value = factoryTabs.value[currentFactoryTabIndex.value]
 
       // Update localstorage with the tab index
       localStorage.setItem('currentFactoryTabIndex', currentFactoryTabIndex.value.toString())
+
+      // A reorder changes the index without changing which tab is on screen, and
+      // reloading the plan already rendered would only flash the loader over it.
+      if (sameTab) return
+
+      if (canRenderInstantly(currentFactoryTab.value.id)) {
+        renderMirrorInstantly()
+        return
+      }
 
       prepareLoader(currentFactoryTab.value.factories)
     })
@@ -205,22 +239,43 @@ export const useAppStore = defineStore('app', () => {
    * 5-second interval fires during any load that takes longer than that, and switching browser tabs
    * mid-load fires visibilitychange. Treating those as user work stamped a plan nobody had edited.
    */
-  const persistPlan = (fromLoad = !isLoaded.value) => {
+  /**
+   * @param evenWhileLoading only ever true for loadingCompleted's own flush, which is the
+   * one write that happens while the chain still holds the tab and the only one that has
+   * the whole plan to write.
+   *
+   * @returns whether the disk now holds the current plan. False says the write was skipped
+   * or refused, which is what the sync engine reads before advancing the mirror's revision.
+   */
+  const persistPlan = (fromLoad = !isLoaded.value, evenWhileLoading = false): boolean => {
+    // A load chain empties the tab's factory array and refills it one record at a time, so
+    // mid-chain it is a fragment. Writing that leaves a truncated plan on disk until the
+    // chain ends; loadingCompleted's own flush is what lands the whole thing.
+    if (loadInFlight.value && !evenWhileLoading) return false
     clearTimeout(persistTimer)
+    // The debounce can outlive a test's DOM environment; a persist with nowhere to
+    // write is a no-op, not a crash.
+    if (typeof localStorage === 'undefined') return false
+    // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
+    const json = JSON.stringify(toRaw(factoryTabs.value))
+    if (json === lastPersistedPlan) {
+      pendingUserEdit = false
+      return true
+    }
+    // Advanced only on a write that actually happened: a quota refusal that moved this on
+    // would make every later save think the disk already held the plan.
+    if (!writeLocalStorage('factoryTabs', json)) return false
+    lastPersistedPlan = json
     // A user edit that is still waiting to be written stamps the plan even if the write itself was
     // ordered by a load. Renaming a factory and switching tab inside the 500ms window used to lose
     // the timestamp: the load's schedulePersist cancelled the user's timer and inherited the write,
     // so the rename reached localStorage while lastEdit still described the plan before it.
     const userEditPending = pendingUserEdit
     pendingUserEdit = false
-    // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
-    const json = JSON.stringify(toRaw(factoryTabs.value))
-    if (json === lastPersistedPlan) return
-    lastPersistedPlan = json
-    localStorage.setItem('factoryTabs', json)
     if (!fromLoad || userEditPending) {
       setLastEdit() // Update last edit time whenever the data changes, from any source.
     }
+    return true
   }
 
   // Sticky until the write actually happens. schedulePersist cancels and replaces the pending
@@ -240,6 +295,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   eventBus.on('factoryUpdated', schedulePersist)
+  eventBus.on('tabEdited', schedulePersist)
   eventBus.on('calculationsCompleted', schedulePersist)
 
   // Anything written straight onto the tab has to call this. Tab-level state reaches neither the
@@ -316,10 +372,6 @@ export const useAppStore = defineStore('app', () => {
     lastEdit.value = new Date()
     localStorage.setItem('lastEdit', lastEdit.value.toISOString())
   }
-  const setLastSave = () => {
-    lastSave.value = new Date()
-    localStorage.setItem('lastSave', lastSave.value.toISOString())
-  }
 
   // The pauses in the load sequence pace the browser: they give Vue a chance to flush
   // and paint between factories so a large plan appears progressively instead of
@@ -331,19 +383,158 @@ export const useAppStore = defineStore('app', () => {
   const loadPause = (ms: number) =>
     new Promise(resolve => setTimeout(resolve, import.meta.env.MODE === 'test' ? 0 : ms))
 
+  // ==== LOADER GATING
+  // Two separate questions, and conflating them is what made a tab switch hitch with no
+  // loader on screen. Whether to CALCULATE is answered by the plan's own state: an already
+  // calculated plan is recalculated for nothing. Whether to PACE THE RENDER is answered by
+  // its size: the 75ms-per-factory stagger is not cosmetic, it paces the render of the whole
+  // list so a big plan doesn't freeze the tab, and that cost is owed by every big plan
+  // however little there was to calculate.
+  let lastLoadCalculated = false
+
+  // A previous load died mid-way and beginLoading holds the recovery copy, so the
+  // full path has to run whatever the gate says.
+  const hasInterruptedLoad = (): boolean => {
+    const stored = localStorage.getItem('preLoadFactories')
+    return stored !== null && stored !== '[]'
+  }
+
+  const shouldStagger = (plan: Factory[]): boolean =>
+    lastLoadCalculated || hasInterruptedLoad() || needsPacedRender(plan)
+
+  /**
+   * True when the mirror is provably the server's current state, written by this app
+   * version, and small enough that mounting it in one flush cannot hitch. A big plan is
+   * still spared the recalculation; it just takes the loader while it renders.
+   */
+  const canRenderInstantly = (tabId: string): boolean => {
+    const state = tabSyncStates.value[tabId]
+    if (!state || state.kind === 'local' || state.revision === null) return false
+    if (hasInterruptedLoad()) return false
+    if (needsPacedRender(getTab(tabId)?.factories ?? [])) return false
+
+    const meta = readTabMirrorMeta()[tabId]
+    return meta !== undefined &&
+      meta.revision === state.revision &&
+      meta.appVersion === PROTOCOL_VERSION
+  }
+
+  /** No validation, no migration, no calculation, no overlay: the mirror is already right. */
+  const renderMirrorInstantly = () => {
+    console.log('appStore: renderMirrorInstantly: mirror matches the server revision, rendering straight through.')
+    const tab = currentFactoryTab.value
+    // Aliasing the live array would make "previous" track "current" and corrupt
+    // the in-place diff commit in calculateFactories.
+    tab.factories.forEach(factory => {
+      factory.previousInputs = factory.inputs.map(input => ({ ...input }))
+    })
+    inited.value = true
+    lastLoadCalculated = false
+    loadingCompleted()
+  }
+
+  // A load owns the chain from the moment it starts until loadingCompleted. Two chains
+  // share loadedCount, factories.value and the preLoadFactories key, so an overlap
+  // truncates the plan — and the overlay's after-enter used to start one on every open.
+  const loadInFlight = ref(false)
+  // The tab the running chain is pushing into, known once beginLoading captures it. Until
+  // then the chain is still headed for whichever tab is current.
+  let loadOwnerTabId: string | null = null
+  // Latest wins: a load asked for mid-chain replaces whatever was waiting and runs when
+  // the current one finishes. Superseding is right because each request carries the whole
+  // plan, so the newer one already describes everything the older one would have loaded.
+  let queuedLoad: { newFactories?: Factory[], forceRecalc: boolean } | null = null
+
+  /**
+   * True while a load chain owns this tab's factory array, which therefore holds a
+   * fragment of the plan. Anything that reads the array to decide what the user meant —
+   * the sync engine above all — has to ask this first.
+   */
+  const isTabLoading = (tabId: string): boolean =>
+    loadInFlight.value && (loadOwnerTabId ?? currentFactoryTab.value?.id) === tabId
+
   const prepareLoader = async (newFactories?: Factory[], forceRecalc = false) => {
+    if (loadInFlight.value) {
+      console.log('appStore: prepareLoader: a load is already in flight, queueing this one.')
+      queuedLoad = { newFactories, forceRecalc }
+      return
+    }
+
+    loadInFlight.value = true
+    try {
+      await runLoad(newFactories, forceRecalc)
+    } catch (error) {
+      abandonLoad(error)
+      throw error
+    }
+  }
+
+  /** Nothing reaches loadingCompleted now, so release the chain or every later load queues behind a dead one. */
+  const abandonLoad = (error: unknown) => {
+    console.error('appStore: the load chain failed, releasing it', error)
+    // The chain left the tab holding a fragment, and releasing it below hands that fragment
+    // back to the sync engine as the user's plan. `preLoadFactories` is the whole thing.
+    // Guarded because an unreadable copy is itself a reason the chain died, and throwing
+    // here would skip the release this function exists to guarantee.
+    try {
+      const owner = (loadOwnerTabId ? getTab(loadOwnerTabId) : currentFactoryTab.value) as FactoryTab | undefined
+      const recovery = JSON.parse(localStorage.getItem('preLoadFactories') ?? '[]') as Factory[]
+      if (owner && Array.isArray(recovery) && recovery.length > 0) owner.factories = recovery
+    } catch (cause) {
+      console.error('appStore: the recovery copy could not be read, releasing anyway', cause)
+    }
+
+    loadInFlight.value = false
+    loadOwnerTabId = null
+    queuedLoad = null
+    // runLoad lowered it and only loadingCompleted raises it. Left down, this client
+    // persists nothing and sends nothing for the rest of the session.
+    isLoaded.value = true
+  }
+
+  /**
+   * The load drives itself. It used to stop at `prepareForLoad` and wait for the loading
+   * overlay's `readyForData` to carry on — which only ever fires on a CSS transition into
+   * view, so a load requested while the overlay was already up, or on a page that does not
+   * mount it at all, hung forever with `isLoaded` false. The overlay is UI: it is told what
+   * is happening and nothing waits on it.
+   */
+  const runLoad = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
-    const factoriesToLoad = newFactories ?? factories.value
-    console.log('appStore: prepareLoader', factoriesToLoad)
+
+    // The overlay goes up BEFORE the work and a frame is yielded so it paints. Everything below
+    // this blocks the main thread on a big plan, and a click that puts nothing on screen until
+    // it is over reads as a frozen tab. Read for its counts only, never committed — the plan
+    // that really loads is read after the pause below, and re-announced there.
+    const announcing = newFactories ?? currentFactoryTab.value?.factories ?? []
+    if (needsPacedRender(announcing)) {
+      eventBus.emit('prepareForLoad', {
+        count: announcing.length,
+        shown: shownFactories(announcing),
+      })
+    }
 
     // Tell planner to hide to remove all rendered content
     eventBus.emit('plannerShow', false)
 
+    await nextPaint()
     // Wait a bit for the planner to comply
     await loadPause(50)
 
+    // Read after the pause, never before it: an inbound snapshot landing inside it
+    // replaces the tab's array, and committing the copy captured earlier deletes the
+    // room's content — which the sync engine then sends as an op.
+    const factoriesToLoad = newFactories ?? factories.value
+    console.log('appStore: prepareLoader', factoriesToLoad)
+
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)
+
+    if (!shouldStagger(factories.value)) {
+      console.log('appStore: prepareLoader: Nothing was calculated and the plan is small, rendering straight through.')
+      loadingCompleted()
+      return
+    }
 
     // Tell loader to prepare for load
     console.log('appStore: prepareLoader: Factories set, starting load process.')
@@ -351,30 +542,80 @@ export const useAppStore = defineStore('app', () => {
       count: factories.value.length,
       shown: shownFactories(factories.value),
     })
+
+    // Give the overlay a beat to paint before the staggered render starts.
+    await loadPause(50)
+    await beginLoading(factories.value, true)
   }
 
-  // When the loader is ready, we will receive an event saying to initiate the load.
-  eventBus.on('readyForData', () => {
-    console.log('appStore: Received readyForData event, triggering load.')
+  /**
+   * Server-applied whole-plan data (a join snapshot, an offline-exit rebase) is a
+   * load like any other, so it goes through the same funnel instead of bypassing
+   * it. Background tabs re-render when they are next selected.
+   */
+  const reloadTabFromMirror = async (tabId: string) => {
+    if (currentFactoryTab.value?.id !== tabId) return
+    // A copy, for the same reason writeContentToTab takes one: if this queues behind a
+    // chain that is still staggering, that chain keeps pushing its own records into the
+    // tab's live array, and the queued load would commit the room's plan with them on
+    // the end.
+    await prepareLoader([...currentFactoryTab.value.factories])
+  }
 
-    beginLoading(factories.value, true)
-  })
+  /**
+   * The planner has mounted and is asking for its plan. This is the boot load, and the
+   * one a return to `/` needs, since the planner renders nothing until a chain reports
+   * back — every other load drives itself and must not be started a second time here.
+   *
+   * `isLoaded` goes down first. The chain below empties and refills the tab's factory
+   * array, and the sync engine reads that flag to know the array is a fragment: left
+   * true, the engine diffs the fragment and sends everyone else the plan as deletions.
+   */
+  const startQueuedLoad = () => {
+    isLoaded.value = false
+    if (loadInFlight.value) {
+      console.log('appStore: Received readyForData event while a load is in flight, ignoring.')
+      return
+    }
+    console.log('appStore: Received readyForData event, triggering load.')
+    loadInFlight.value = true
+
+    // Reading the getter inits the plan on the first load, which is what decides
+    // whether the stagger is owed.
+    const plan = factories.value
+    if (!shouldStagger(plan)) {
+      console.log('appStore: readyForData: Nothing was calculated and the plan is small, rendering straight through.')
+      loadingCompleted()
+      return
+    }
+
+    beginLoading(plan, true).catch(abandonLoad)
+  }
+
+  // The planner mounting is what asks for the plan.
+  eventBus.on('readyForData', startQueuedLoad)
 
   const beginLoading = async (newFactories: Factory[], loadMode = false) => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
     loadedCount = 0
 
+    // The chain's tab, captured before anything is emptied. Switching tabs inside the pause
+    // below used to move the target: the records went to the second tab while the first was
+    // left permanently empty, which the sync engine then sent as a deletion of the room.
+    const owner = currentFactoryTab.value
+    loadOwnerTabId = owner?.id ?? null
+
     // The assumption is gone; drop what saved plans still carry for it so they stop hauling a
     // dead field through every share, paste and sync from here on.
-    const tab = getCurrentTab() as (FactoryTab & LegacyRawAssumptionFields) | undefined
+    const tab = owner as (FactoryTab & LegacyRawAssumptionFields) | undefined
     if (tab) {
       delete tab.assumeRawInputs
     }
     newFactories.forEach(factory => delete (factory as Factory & LegacyRawAssumptionFields).assumeRawInputs)
 
     // Reset the factories currently loaded, if there is any
-    if (currentFactoryTab.value.factories.length > 0) {
-      currentFactoryTab.value.factories = []
+    if (owner.factories.length > 0) {
+      owner.factories = []
     }
 
     const attemptedFactories = JSON.parse(localStorage.getItem('preLoadFactories') ?? '[]') as Factory[]
@@ -395,20 +636,21 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    // Inform loader of the counts. Note this will not trigger readyForData again as the v-dialog is already open at this point
-    // So the loader's value are just simply updated.
+    // Inform the loader of the counts it is really showing; the chain drives itself from here.
     eventBus.emit('prepareForLoad', { count: newFactories.length, shown: shownFactories(newFactories) })
 
     // Wait 50ms to allow the loader to update
     await loadPause(50)
 
-    // Start loading the factories
-    await loadNextFactory(newFactories)
+    // Start loading the factories. The chain belongs to the tab it started on: each push
+    // used to resolve `factories.value` afresh, so switching tabs mid-stagger appended the
+    // rest of this plan onto the tab the user had just opened.
+    await loadNextFactory(newFactories, owner)
   }
 
-  const loadNextFactory = async (newFactories: Factory[]) => {
+  const loadNextFactory = async (newFactories: Factory[], owner: FactoryTab) => {
     while (loadedCount < newFactories.length) {
-      factories.value.push(newFactories[loadedCount])
+      owner.factories.push(newFactories[loadedCount])
       eventBus.emit('incrementLoad', { step: 'increment' })
       loadedCount++
 
@@ -439,11 +681,22 @@ export const useAppStore = defineStore('app', () => {
     // pending load-origin write and save the migration as though the user had made it, stamping
     // lastEdit. Writing it here leaves that later write with nothing to do, since persistPlan
     // returns early when the plan has not changed since the last one.
-    persistPlan(true)
+    persistPlan(true, true)
     isLoaded.value = true
 
     // Reset the saved factories
     localStorage.removeItem('preLoadFactories')
+
+    // The chain is over, so the next one may start. Released after the event above, since
+    // a queued load hides the planner again the moment it begins.
+    loadInFlight.value = false
+    loadOwnerTabId = null
+    const queued = queuedLoad
+    queuedLoad = null
+    if (queued) {
+      console.log('appStore: loadingCompleted: running the load that was queued behind this one.')
+      void prepareLoader(queued.newFactories, queued.forceRecalc)
+    }
   }
 
   // ==== FACTORY MANAGEMENT
@@ -466,6 +719,7 @@ export const useAppStore = defineStore('app', () => {
       // If err is type of Error
       if (err instanceof Error) {
         alert('Error validating factories: ' + err.message)
+        recordEvent('plan_validation_threw')
       }
       console.error('appStore: initFactories: Error validating factories:', err)
     }
@@ -572,8 +826,11 @@ export const useAppStore = defineStore('app', () => {
         factory.powerProducers = []
         needsCalculation = true
       }
-      if (factory.power === undefined) {
-        factory.power = {} as FactoryPower
+      // A factory added but never calculated was persisted with `power: {}`, which the
+      // sync schema fills rather than rejects — zero it here too so the mirror, the op
+      // and the server copy agree, and recalculate to replace the zeroes with real ones.
+      if (factory.power?.consumed === undefined) {
+        factory.power = { ...emptyFactoryPower(), ...factory.power }
         needsCalculation = true
       }
       if (factory.previousInputs === undefined) {
@@ -734,6 +991,9 @@ export const useAppStore = defineStore('app', () => {
       refreshBuildingGroupProblems(newFactories)
     }
 
+    // What the loader gate reads: the stagger paces a render that followed work.
+    lastLoadCalculated = needsCalculation
+
     console.log('appStore: initFactories - completed')
 
     inited.value = true
@@ -751,14 +1011,10 @@ export const useAppStore = defineStore('app', () => {
       console.error('appStore: getFactories: No current factory tab set!')
       return []
     }
-    // If the factories are not initialized, wait for a duration for the app to load then return them.
-    if (!inited.value) {
-      // Something wants to load these values so prepare the loader
-      eventBus.emit('prepareForLoad', {
-        count: currentFactoryTab.value.factories.length,
-        shown: shownFactories(currentFactoryTab.value.factories),
-      })
-    }
+    // Deliberately does not announce a load. This is a getter, not a chain: it used to emit
+    // prepareForLoad, which hides the sidebar and opens the overlay with nothing behind it to
+    // ever say the load finished. The boot chain emits the same event with the same counts a
+    // moment later, and until it does the overlay reads "Loading Planner...".
     return inited.value ? factories.value : initFactories(currentFactoryTab.value.factories)
   }
 
@@ -780,6 +1036,7 @@ export const useAppStore = defineStore('app', () => {
     if (forceRecalc) {
       // Trigger calculations
       calculateFactories(newFactories, gameData, { origin: 'recalculate' })
+      lastLoadCalculated = true
     }
 
     // For each factory, snapshot the current inputs as the previous inputs. Must be a
@@ -807,6 +1064,8 @@ export const useAppStore = defineStore('app', () => {
       console.warn(`appStore: addFactory: Factory ID ${oldId} was already taken, reassigned to ${factory.id}`)
     }
 
+    const before = captureOrder(factories.value)
+
     // A new factory is ungrouped, and ungrouped sorts to the top of the plan — so append it to
     // the end of the Ungrouped block rather than the end of the array, or the grouping sort
     // would immediately move it somewhere the user did not put it.
@@ -821,28 +1080,44 @@ export const useAppStore = defineStore('app', () => {
     // explicitly — otherwise the new factory isn't saved (or seen by sync) until the
     // periodic safety net catches it.
     eventBus.emit('factoryUpdated', factory)
+    // Inserting above the grouped block reindexes everything below it. Those records
+    // declare nothing of their own, so a rebase would take the server's order back.
+    markReorderedFactories(before, factories.value)
     schedulePersist()
   }
 
   const removeFactory = (id: number) => {
+    const before = captureOrder(factories.value)
     const index = factories.value.findIndex(factory => factory.id === id)
     if (index !== -1) {
       const [removed] = factories.value.splice(index, 1)
-      eventBus.emit('factoryUpdated', removed)
+      // Declared, not just announced: deletes coalescing into one op behind a slow ack
+      // must still pass the server's bulk-removal threshold.
+      markFactoryRemoved(removed)
       schedulePersist()
     }
 
     regenerateSortOrders(getFactories())
+    markReorderedFactories(before, factories.value)
   }
 
   const clearFactories = () => {
+    // Emptying the plan is the user deleting every record in it, and every one of
+    // them has to be declared: announcing nothing left the removals unsent and
+    // unsaved, so the next rebase took the whole plan back off the server.
+    const cleared = [...factories.value]
     factories.value.length = 0
     factories.value = []
     // Memberless groups are the one piece of group state no factory carries, so clearing the
     // factories does not take them with it. Left behind, they outlive the plan they belonged to
     // and turn up in whatever is loaded next.
     const tab = getCurrentTab()
-    if (tab) delete tab.groups
+    if (tab) {
+      delete tab.groups
+      markTabEdited('groups')
+    }
+    markPlanReplaced(cleared, [])
+    schedulePersist()
   }
   // ==== END FACTORY MANAGEMENT
 
@@ -864,6 +1139,9 @@ export const useAppStore = defineStore('app', () => {
     isLoaded.value = false
 
     try {
+      // A restore is a replacement: every id it displaces has to be declared, or restoring
+      // a small plan over a big one is refused on the wire as an undeclared bulk removal.
+      const outgoing = [...factories.value]
       if (Array.isArray(data)) {
         // A bare array was saved by v0.5 or earlier, so it predates the change by definition and
         // has to be asked about — including on a fresh machine, whose tab was born answered for
@@ -880,6 +1158,7 @@ export const useAppStore = defineStore('app', () => {
         // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
         // something different by it - raw resources were assumed supplied - so its stored ledger
         // is the one thing that cannot be believed, and it is exactly what the notice below reads.
+        markPlanReplaced(outgoing, data)
         setFactories(data, true)
         // Asked here too. A restore bypasses the loader, so loadingCompleted never fires and
         // nothing else calls this - the plan simply turned red with nothing on screen saying why.
@@ -902,6 +1181,7 @@ export const useAppStore = defineStore('app', () => {
         tab.depotUploadTier = data.depotUploadTier
         tab.depotExpansionTier = data.depotExpansionTier
       }
+      markPlanReplaced(outgoing, data.factories ?? [])
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
       // are the user's own and its ledger means what it says. A forced recalculation treats
       // building groups as authoritative and writes them back over any item deliberately left out
@@ -920,9 +1200,9 @@ export const useAppStore = defineStore('app', () => {
     return factoryTabs.value
   }
 
-  const addTab = (tab: Partial<FactoryTab> = {}) => {
+  const addTab = (tab: Partial<FactoryTab> = {}, { activate = true }: { activate?: boolean } = {}) => {
     const {
-      id = crypto.randomUUID(),
+      id: requestedId = crypto.randomUUID(),
       name = 'New Tab',
       factories = [],
       powerTarget,
@@ -930,6 +1210,15 @@ export const useAppStore = defineStore('app', () => {
       depotUploadTier,
       depotExpansionTier,
     } = tab
+
+    // A tab's id is its room id, so two tabs sharing one would have the room write into
+    // both and a join replace whichever it found first. An imported plan carrying an id
+    // this browser already holds gets a fresh one instead of colliding with it.
+    let id = requestedId
+    if (factoryTabs.value.some(existing => existing.id === id)) {
+      id = crypto.randomUUID()
+      console.warn(`appStore: addTab: a tab with id ${requestedId} already exists, re-keying the new one to ${id}.`)
+    }
 
     factoryTabs.value.push({
       id,
@@ -955,14 +1244,25 @@ export const useAppStore = defineStore('app', () => {
       depotExpansionTier,
     })
 
-    currentFactoryTabIndex.value = factoryTabs.value.length - 1
+    // A tab the room list brought in shouldn't yank the user off what they were doing.
+    if (activate) currentFactoryTabIndex.value = factoryTabs.value.length - 1
     schedulePersist()
+    return id
+  }
+
+  /** Brings a tab to the front by id; the index watcher runs the load. */
+  const activateTab = (tabId: string): boolean => {
+    const index = factoryTabs.value.findIndex(tab => tab.id === tabId)
+    if (index === -1) return false
+    currentFactoryTabIndex.value = index
+    return true
   }
 
   const removeCurrentTab = async () => {
     if (factoryTabs.value.length === 1) return
 
-    factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
+    const [removed] = factoryTabs.value.splice(currentFactoryTabIndex.value, 1)
+    if (removed) markTabLocal(removed.id)
     currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
     schedulePersist()
 
@@ -970,7 +1270,132 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: removeCurrentTab: Tab removed, preparing loader.')
     prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
   }
+
+  /**
+   * Removes any tab by id. The bar never goes below one tab, and the selection
+   * stays on the tab the user is looking at when another one goes.
+   */
+  const removeTab = (tabId: string): boolean => {
+    if (factoryTabs.value.length === 1) return false
+    const index = factoryTabs.value.findIndex(tab => tab.id === tabId)
+    if (index === -1) return false
+
+    factoryTabs.value.splice(index, 1)
+    markTabLocal(tabId)
+
+    if (index < currentFactoryTabIndex.value) {
+      currentFactoryTabIndex.value--
+    } else if (index === currentFactoryTabIndex.value) {
+      currentFactoryTabIndex.value = Math.min(currentFactoryTabIndex.value, factoryTabs.value.length - 1)
+      prepareLoader(factoryTabs.value[currentFactoryTabIndex.value].factories)
+    }
+    schedulePersist()
+    return true
+  }
+
+  const renameTab = (tabId: string, name: string) => {
+    const tab = getTab(tabId)
+    if (!tab || name === '') return false
+    tab.name = name
+    schedulePersist()
+    return true
+  }
+
+  /** An independent local copy of a tab, whatever the original's state. */
+  const duplicateTab = (tabId: string): string | null => {
+    const tab = getTab(tabId)
+    if (!tab) return null
+
+    const copy = JSON.parse(JSON.stringify(toRaw(tab))) as FactoryTab
+    // Everything `keepOfflineCopy` carries, for its reasons: a dropped plannerVersion
+    // re-asks the raw-resources question the user answered on the original, and dropped
+    // Depot tiers read as fully researched and hide the copy's over-capacity warnings.
+    return addTab({
+      name: `${tab.name} (local)`,
+      factories: copy.factories,
+      powerTarget: copy.powerTarget,
+      groups: copy.groups,
+      plannerVersion: copy.plannerVersion,
+      depotUploadTier: copy.depotUploadTier,
+      depotExpansionTier: copy.depotExpansionTier,
+    })
+  }
+
+  /**
+   * Lays the bar out in `orderedIds`, which must be a permutation of the tabs it
+   * already holds — a partial or unknown order is refused rather than applied to
+   * half the bar. The tab on screen stays on screen; only its index moves.
+   */
+  const reorderTabs = (orderedIds: string[]): boolean => {
+    const byId = new Map(factoryTabs.value.map(tab => [tab.id, tab]))
+    if (orderedIds.length !== byId.size || new Set(orderedIds).size !== orderedIds.length) return false
+
+    const ordered = orderedIds
+      .map(tabId => byId.get(tabId))
+      .filter((tab): tab is FactoryTab => tab !== undefined)
+    if (ordered.length !== byId.size) return false
+
+    // The index is what the tab bar selects on, and `currentFactoryTab` lags it by
+    // a tick during a switch, so the selection is the thing to keep pinned.
+    const selectedId = factoryTabs.value[currentFactoryTabIndex.value]?.id
+    // Spliced rather than reassigned: the array's identity is watched elsewhere.
+    factoryTabs.value.splice(0, factoryTabs.value.length, ...ordered)
+
+    const index = ordered.findIndex(tab => tab.id === selectedId)
+    if (index !== -1) currentFactoryTabIndex.value = index
+    schedulePersist()
+    return true
+  }
+
+  /**
+   * A tab's UUID is its room id, so adoption re-keys it when the server says that
+   * id belongs to someone else. Nothing else about the tab changes.
+   */
+  const rekeyTab = (tabId: string, newTabId: string): boolean => {
+    const tab = getTab(tabId)
+    if (!tab || getTab(newTabId)) return false
+
+    tab.id = newTabId
+    const state = tabSyncStates.value[tabId]
+    if (state) {
+      tabSyncStates.value[newTabId] = state
+      delete tabSyncStates.value[tabId]
+      persistTabSyncStates()
+    }
+    schedulePersist()
+    return true
+  }
   // ==== END TAB MANAGEMENT
+
+  // ==== TAB LIFECYCLE
+  const persistTabSyncStates = () => writeTabSyncStates(tabSyncStates.value)
+
+  const getTabState = (tabId: string): TabSyncState => tabSyncStates.value[tabId] ?? LOCAL_TAB_STATE
+
+  const setTabState = (tabId: string, patch: Partial<TabSyncState>) => {
+    tabSyncStates.value[tabId] = { ...getTabState(tabId), ...patch }
+    persistTabSyncStates()
+  }
+
+  /** Revocation, logout and deletion all land here: the content stays, the link dies. */
+  const markTabLocal = (tabId: string) => {
+    if (!(tabId in tabSyncStates.value)) return
+    delete tabSyncStates.value[tabId]
+    persistTabSyncStates()
+  }
+
+  /** Drops state for tabs the bar no longer holds, so the map cannot grow forever. */
+  const pruneTabStates = () => {
+    const known = new Set(factoryTabs.value.map(tab => tab.id))
+    let dropped = false
+    for (const tabId of Object.keys(tabSyncStates.value)) {
+      if (known.has(tabId)) continue
+      delete tabSyncStates.value[tabId]
+      dropped = true
+    }
+    if (dropped) persistTabSyncStates()
+  }
+  // ==== END TAB LIFECYCLE
 
   const getSatisfactionBreakdowns = () => {
     return showSatisfactionBreakdowns
@@ -1026,15 +1451,15 @@ export const useAppStore = defineStore('app', () => {
     currentFactoryTabIndex,
     factoryTabs,
     factories,
-    lastSave,
     lastEdit,
     isDebugMode,
     isLoaded,
+    loadInFlight,
+    isTabLoading,
     planRepairs,
     dismissPlanRepairs,
     getLastEdit,
     persistPlan,
-    setLastSave,
     setLastEdit,
     getFactories,
     setFactories,
@@ -1044,7 +1469,13 @@ export const useAppStore = defineStore('app', () => {
     clearFactories,
     getTabs,
     addTab,
+    activateTab,
     removeCurrentTab,
+    removeTab,
+    renameTab,
+    duplicateTab,
+    rekeyTab,
+    reorderTabs,
     getSatisfactionBreakdowns,
     changeSatisfactoryBreakdowns,
     showRawBreakingNotice,
@@ -1055,12 +1486,24 @@ export const useAppStore = defineStore('app', () => {
     loadServerPlan,
     rearmRawBreakingNotice,
     prepareLoader,
+    reloadTabFromMirror,
+    canRenderInstantly,
     forceCalculation,
+    // Sync writes into the mirror directly, so it has to ask for the save itself.
+    schedulePersist,
+
+    // Tab lifecycle
+    tabSyncStates,
+    getTabState,
+    setTabState,
+    markTabLocal,
+    pruneTabStates,
 
     // Testing
     getTab,
     getCurrentTab,
     beginLoading,
+    startQueuedLoad,
     inited,
   }
 })

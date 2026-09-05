@@ -1,0 +1,45 @@
+import type { Factory, RoomDiff, RoomSnapshot } from 'common'
+
+import { Room } from '../rooms/schemas/room.schema'
+
+/**
+ * The room as the wire sees it: never `passwordHash`, never `appliedOps`, and never
+ * `createdBy` — an anonymous visitor holding the invite link reads every snapshot, and
+ * the owner's account id is not theirs to have.
+ */
+export const toRoomSnapshot = (room: Room): RoomSnapshot => ({
+  roomId: room.roomId,
+  name: room.name,
+  slug: room.slug,
+  shared: room.shared,
+  hasPassword: room.passwordHash !== null,
+  factories: room.factories,
+  powerTarget: room.powerTarget,
+  depotUploadTier: room.depotUploadTier,
+  depotExpansionTier: room.depotExpansionTier,
+  plannerVersion: room.plannerVersion,
+  groups: room.groups,
+  revision: room.revision,
+})
+
+/**
+ * A diff carries whole factory records, so applying one is replace-by-id plus
+ * append. Order is preserved for records that survive; new ones go on the end.
+ */
+export const mergeFactories = (current: Factory[], diff: RoomDiff): Factory[] => {
+  const removed = new Set(diff.removedFactoryIds ?? [])
+  const incoming = new Map((diff.factories ?? []).map(factory => [factory.id, factory]))
+
+  const merged = current
+    .filter(factory => !removed.has(factory.id))
+    .map(factory => incoming.get(factory.id) ?? factory)
+
+  // Appended from `incoming`, not from the raw array: a diff that repeats an id
+  // lands one record, and duplicate ids break the export/import chain outright.
+  const present = new Set(merged.map(factory => factory.id))
+  for (const factory of incoming.values()) {
+    if (!present.has(factory.id) && !removed.has(factory.id)) merged.push(factory)
+  }
+
+  return merged
+}

@@ -237,6 +237,60 @@ describe('status', () => {
     })
   })
 
+  describe('checklistDesync', () => {
+    // The product `mockProduct` gives the baseline factory, ticked and then moved.
+    const withDesyncedProduct = (target: Factory) => {
+      target.checklistEnabled = true
+      target.products[0].completed = true
+      target.products[0].checklistSyncedAmount = target.products[0].amount + 50
+    }
+
+    test('does not fire on a factory whose ticked items still match the plan', () => {
+      factory.checklistEnabled = true
+      factory.products[0].completed = true
+      factory.products[0].checklistSyncedAmount = factory.products[0].amount
+
+      expect(typesOf(factory)).not.toContain('checklistDesync')
+    })
+
+    test('does not fire while checklist mode is off, however stale the ticks are', () => {
+      withDesyncedProduct(factory)
+      factory.checklistEnabled = false
+
+      expect(typesOf(factory)).not.toContain('checklistDesync')
+    })
+
+    test('fires as an amber status pointing at the checklist, carrying the moved items', () => {
+      withDesyncedProduct(factory)
+
+      expect(statusOf(factory, 'checklistDesync')).toMatchObject({
+        severity: 'warning',
+        section: 'checklist',
+        label: 'Checklist desync',
+        subjects: [{ id: factory.products[0].id, type: 'item' }],
+      })
+    })
+
+    test('counts the moved rows in its label, and a generator by its building', () => {
+      withDesyncedProduct(factory)
+      factory.powerProducers = [mockPowerProducer('GeneratorCoal', { buildingAmount: 4 })]
+      factory.powerProducers[0].completed = true
+      factory.powerProducers[0].checklistSyncedAmount = 6
+
+      const status = statusOf(factory, 'checklistDesync')
+      expect(status?.label).toBe('2 checklist desyncs')
+      expect(status?.detailLabel).toBe('2 desynced checklist items')
+      expect(status?.subjects).toContainEqual({ id: 'GeneratorCoal', type: 'building' })
+    })
+
+    test('colours the factory amber and jumps at the checklist panel', () => {
+      withDesyncedProduct(factory)
+
+      expect(factoryStatusClass(getFactoryStatuses(factory))).toMatchObject({ problem: false, warning: true })
+      expect(statusJumpTargets(7, { section: 'checklist' }).fallback).toBe('7-checklist')
+    })
+  })
+
   describe('redundantImport', () => {
     test('does not fire for an import the factory actually needs', () => {
       withRequiredImport(factory, 'IronOre')

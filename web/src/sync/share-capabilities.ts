@@ -1,0 +1,92 @@
+import type { RoomListEntry } from 'common'
+import type { TabSyncState } from '@/sync/tab-sync-state'
+
+/**
+ * What the share dialog may offer for one tab. Snapshot links are always
+ * available; the live invite half depends on the tab being a room and on this
+ * user owning it.
+ */
+export interface ShareCapabilities {
+  /** A frozen copy link. Any tab, no account. */
+  canSnapshot: boolean
+  /** The tab is a room, so a live invite is conceivable. */
+  isRoom: boolean
+  /** Share, unshare, re-slug and password are owner-only. */
+  canManageInvite: boolean
+  /** The room is currently shared, so a live link exists. */
+  isShared: boolean
+  inviteLink: string | null
+  hasPassword: boolean
+  /** Why the invite half is unavailable, or null when it is available. */
+  blockedReason: string | null
+  /** The reasons behind `blockedReason`, where they are worth spelling out. */
+  blockedDetail: string | null
+}
+
+export const roomLink = (slug: string, origin: string): string => `${origin}/room/${slug}`
+
+export const shareCapabilities = (
+  state: TabSyncState,
+  entry: RoomListEntry | undefined,
+  origin: string,
+  /** Offline mode is total backend silence, so nothing here may reach the server. */
+  offline = false,
+): ShareCapabilities => {
+  const base = { canSnapshot: !offline, hasPassword: entry?.hasPassword ?? false }
+
+  if (offline) {
+    const shared = entry?.shared ?? state.shared
+    const slug = entry?.slug ?? null
+    return {
+      ...base,
+      isRoom: state.kind !== 'local',
+      canManageInvite: false,
+      isShared: shared,
+      // The existing link is still worth copying: it needs nothing from us.
+      inviteLink: shared && slug ? roomLink(slug, origin) : null,
+      blockedReason: 'You are in offline mode. Turn it off to change how this plan is shared.',
+      blockedDetail: null,
+    }
+  }
+
+  if (state.kind === 'local') {
+    return {
+      ...base,
+      isRoom: false,
+      canManageInvite: false,
+      isShared: false,
+      inviteLink: null,
+      blockedReason: 'You must convert this tab to a cloud tab before it is possible to share it.',
+      blockedDetail: 'The plan has to live on your account before anyone else can join it and receive your changes live. ' +
+        'You stay its owner and decide who has access.',
+    }
+  }
+
+  // A joined tab is an anonymous pointer: the visitor already came in by a link
+  // and has no membership row to read a slug from.
+  if (state.kind === 'joined') {
+    return {
+      ...base,
+      isRoom: true,
+      canManageInvite: false,
+      isShared: true,
+      inviteLink: null,
+      blockedReason: 'You are editing this plan through an invite link. Only its owner can change how it is shared.',
+      blockedDetail: null,
+    }
+  }
+
+  const isOwner = state.role === 'owner'
+  const shared = entry?.shared ?? state.shared
+  const slug = entry?.slug ?? null
+
+  return {
+    ...base,
+    isRoom: true,
+    canManageInvite: isOwner,
+    isShared: shared,
+    inviteLink: shared && slug ? roomLink(slug, origin) : null,
+    blockedReason: isOwner ? null : 'Only the owner can change how this plan is shared.',
+    blockedDetail: null,
+  }
+}

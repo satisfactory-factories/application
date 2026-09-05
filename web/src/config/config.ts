@@ -10,6 +10,9 @@ export const config = {
   // backend can refuse writes from a tab too old to know the current save shape. Nothing to do
   // with `plannerVersion` below, which is a property of a plan rather than of the app.
   appVersion: import.meta.env.VITE_APP_VERSION,
+  // The commit this bundle was built from, 12 characters, or empty when built outside CI.
+  // Reported in the heartbeat so a rollout can be watched by commit as well as by release.
+  gitSha: import.meta.env.VITE_GIT_SHA,
   dataVersion: '1.2-09',
   // Stamped onto every factory as `plannerVersion`, marking a plan as having been answered for
   // the raw-resources change. Bump only when a release needs to ask a plan-wide question again.

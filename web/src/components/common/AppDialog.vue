@@ -21,7 +21,11 @@
         :class="{ 'title-centred': centreTitle }"
       >
         <slot name="title">
-          <i v-if="icon" :class="icon" />
+          <!-- Keyed wrapper: FA swaps the <i> for an <svg> and detaches it, so a dialog whose
+               icon changes has to replace the element rather than flip its classes. -->
+          <span v-if="icon" :key="icon">
+            <i :class="icon" />
+          </span>
           <span :class="icon ? 'ml-3' : ''">{{ title }}</span>
         </slot>
         <!-- Absent when the title is centred: a spacer and a centred title both want the free
