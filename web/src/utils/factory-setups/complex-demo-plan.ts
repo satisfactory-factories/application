@@ -7,7 +7,7 @@ import planData from '@/utils/factory-setups/complex-demo-plan-data.json'
 /**
  * The Demo plan, as shipped to anyone who picks "Load the demo plan".
  *
- * To update it: build the plan in the planner, press "Copy plan", and paste the clipboard over
+ * To update it: build the plan in the planner, press "Export plan" and copy to clipboard, then paste over
  * the whole of the -data.json file. Nothing else needs doing — the blob's other keys (name,
  * plannerVersion, groups) are simply not read here, so it goes in exactly as it comes out.
  *

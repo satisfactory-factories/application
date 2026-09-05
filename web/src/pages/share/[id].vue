@@ -2,6 +2,7 @@
   <h1 class="text-center">Loading share data...</h1>
 </template>
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { ref } from 'vue'
   import { DataInterface } from '@/interfaces/DataInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
@@ -38,7 +39,10 @@
 
       if (loadedFactoryData.value) {
         loadedFactoryData.value.name = `${loadedFactoryData.value.name} (shared)`
-        appStore.addTab(loadedFactoryData.value)
+        // The snapshot carries the tab id it was taken from, and a tab id is a room id:
+        // kept, the import would be replaced by the first join of that room, and an owner
+        // importing their own link would end up with two tabs claiming one plan.
+        appStore.addTab({ ...loadedFactoryData.value, id: crypto.randomUUID() })
       }
     }
 
@@ -62,6 +66,7 @@
 
         if (!data.data) {
           alert('Failed to load share link, it contained invalid data.')
+          recordEvent('share_load_invalid')
           return
         }
 
@@ -78,11 +83,13 @@
       } else {
         console.error('Loading share data failed:', data)
         alert(`Failed to load share link. Please report this error to GitHub! "${data}" `)
+        recordEvent('share_load_failed')
       }
     } catch (error) {
       if (error instanceof Error) {
         console.error('Error:', error)
         alert(`Failed to load share link. Please report this error to GitHub! "${error.message}"`)
+        recordEvent('share_load_failed')
       }
     }
   }

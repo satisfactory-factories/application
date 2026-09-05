@@ -44,7 +44,7 @@
           :checked="!!producer.completed"
           class="checklist-tick"
           :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
-          :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
+          :title="checklistTickTitle(powerProducerChecklistDesync(producer), 'Mark this generator as built')"
           type="checkbox"
           @click.prevent="toggleChecklistPowerProducer(factory, producer)"
         >
@@ -295,6 +295,7 @@
   </div>
 </template>
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
@@ -304,7 +305,12 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isPowerProducerChecklistDesynced, toggleChecklistPowerProducer } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isPowerProducerChecklistDesynced,
+    powerProducerChecklistDesync,
+    toggleChecklistPowerProducer,
+  } from '@/utils/factory-management/checklist'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
@@ -435,6 +441,7 @@
     if (!originalRecipe) {
       console.error('No recipe found for power producer!', producer)
       alert('Unable to find recipe for power generator! Please report this to Discord!')
+      recordEvent('calc_power_recipe_missing')
       return
     }
 

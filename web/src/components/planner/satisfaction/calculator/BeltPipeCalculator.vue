@@ -17,6 +17,7 @@
           divided
           mandatory
           variant="outlined"
+          @update:model-value="edited"
         >
           <v-btn
             v-for="mark in marks"
@@ -123,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ExportCalculatorFactorySettings, ExportCalculatorTransportGroup, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
+  import { ExportCalculatorFactorySettings, ExportCalculatorTransportGroup, Factory, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import {
     addTransportGroup,
     calculateWholeTransportGroupCount,
@@ -139,12 +140,20 @@
   } from '@/utils/factory-management/exportCalculator'
   import { formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{
+    factory: Factory
     request: FactoryDependencyRequest
     factorySettings: ExportCalculatorFactorySettings
     kind: TransportGroupKind
   }>()
+
+  // Belt and pipe groups are stored on the factory, so every button below is an edit the
+  // rebase must carry over. The initialisation and the request watcher further down are
+  // deliberately silent: neither is the user acting, and claiming they were would pin this
+  // client's copy of the factory over a peer's.
+  const edited = () => markFactoryEdited(props.factory)
 
   const marks = transportGroupMarks(props.kind)
   const speeds = transportGroupSpeeds(props.kind)
@@ -192,6 +201,7 @@
   const setGroupAmount = (group: ExportCalculatorTransportGroup, amount: number | null) => {
     if (amount == null || Number.isNaN(amount) || amount < 0) return
     group.amount = amount
+    edited()
   }
 
   // Entering a belt/pipe count means "I'm building this many" — the group carries their full capacity.
@@ -200,6 +210,7 @@
   const setGroupCount = (group: ExportCalculatorTransportGroup, count: number | null) => {
     if (count == null || Number.isNaN(count) || count < 0) return
     group.amount = transportGroupCapacity(count, group.mark, props.kind)
+    edited()
   }
 
   // Whole belts/pipes to build per mark, summed across the groups of that mark.
@@ -213,9 +224,20 @@
       .sort((a, b) => a.mark - b.mark)
   })
 
-  const addGroup = () => addTransportGroup(props.factorySettings, props.request.amount, props.kind)
-  const deleteGroup = (groupId: number) => deleteTransportGroup(props.factorySettings, groupId, props.request.amount, props.kind)
-  const splitEvenly = () => splitTransportGroupsEvenly(props.factorySettings, props.request.amount, props.kind)
+  const addGroup = () => {
+    addTransportGroup(props.factorySettings, props.request.amount, props.kind)
+    edited()
+  }
+
+  const deleteGroup = (groupId: number) => {
+    deleteTransportGroup(props.factorySettings, groupId, props.request.amount, props.kind)
+    edited()
+  }
+
+  const splitEvenly = () => {
+    splitTransportGroupsEvenly(props.factorySettings, props.request.amount, props.kind)
+    edited()
+  }
 </script>
 
 <style lang="scss" scoped>

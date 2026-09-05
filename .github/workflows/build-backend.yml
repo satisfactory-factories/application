@@ -1,7 +1,8 @@
 name: Backend Checks
 
-# Lint, typecheck and test. Runs on PRs, and is called by "Backend: Deploy" as the
-# gate in front of the image build.
+# Lint, compile and test. Runs on PRs, and is called by "Backend: Deploy" as the
+# gate in front of the image build. The build step is the typecheck: `nest build`
+# fails on a type error, the same way vue-tsc does for web.
 #
 # There is no `push: main` trigger any more: on main this is called by
 # Backend Deploy instead, so keeping one would run the same checks twice on the
@@ -14,6 +15,8 @@ on:
   pull_request:
     branches:
       - main
+      # The v0.7.0 integration line: sync work lands here for beta testing first.
+      - beta7
   workflow_call:
 
 permissions:
@@ -43,14 +46,18 @@ jobs:
         run: corepack enable
 
       # --filter, or the shared lockfile makes this install web and parsing too.
+      # `common` is named explicitly: --filter backend links the workspace
+      # dependency but does not install the typescript that compiles it.
       - name: Install dependencies
-        run: pnpm install --filter backend
+        run: pnpm install --filter backend --filter common
 
       - name: Lint check
         run: pnpm lint-check
 
+      # Builds `common` first, then `nest build`. vue-tsc's equivalent on web:
+      # a type error fails the job rather than reaching the image.
       - name: Build Backend
         run: pnpm build
 
       - name: Test Backend
-        run: pnpm test
+        run: pnpm exec vitest run

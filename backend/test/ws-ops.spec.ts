@@ -1,0 +1,586 @@
+import { randomUUID } from 'node:crypto'
+
+import { BULK_REMOVAL_THRESHOLD, CAPS } from 'common'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { makeFactory } from 'common/testing'
+import type { ClientOpMessage, Factory, RoomDiff } from 'common'
+import type { Connection } from 'mongoose'
+
+import { APPLIED_OPS_RING } from '../src/rooms/schemas/room.schema'
+import { BULK_RESTORE_MAX_BYTES } from '../src/realtime/room-op.service'
+import { TestClient, closeAll } from './utils/ws-client'
+import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
+import { TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
+import { wsConnectionLimiter } from '../src/realtime/ws-throttle'
+import {
+  WS_POLICY_VIOLATION,
+  WS_SNAPSHOT_REJECT_LIMIT,
+} from '../src/realtime/realtime.constants'
+
+describe('ws ops: the consistency contract', () => {
+  let context: TestContext
+  let connection: Connection
+  let url: string
+  let owner: TestUser
+  let member: TestUser
+  let roomId: string
+  let clients: TestClient[]
+
+  const post = (path: string, as?: TestUser) => call(context.app, 'post', path, as)
+  const get = (path: string, as?: TestUser) => call(context.app, 'get', path, as)
+
+  const greet = async (token?: string) => {
+    const client = await TestClient.greet(url, token)
+    clients.push(client)
+    return client
+  }
+
+  /** Greets, joins and drains the snapshot + presence the join produces. */
+  const joined = async (token?: string) => {
+    const client = await greet(token)
+    client.send({ type: 'join', roomId })
+    const snapshot = await client.next('snapshot')
+    await client.next('presence')
+    return { client, revision: snapshot.revision }
+  }
+
+  const op = (diff: RoomDiff, baseRevision: number, opId = randomUUID()): ClientOpMessage =>
+    ({ type: 'op', roomId, opId, baseRevision, diff })
+
+  const readRoom = () => connection.collection('rooms').findOne({ roomId })
+
+  const named = (id: number, name: string): Factory => makeFactory({ id, name })
+
+  beforeAll(async () => {
+    context = await createTestApp({ unthrottled: true })
+    connection = await awaitConnection(context.app)
+    url = context.wsUrl
+    await buildIndexes(context.app)
+  })
+
+  afterAll(async () => {
+    await destroyTestApp(context)
+  })
+
+  beforeEach(async () => {
+    clients = []
+    wsConnectionLimiter.reset()
+    await resetRooms(context.app)
+    owner = await registerAndLogin(context.app, 'owner')
+    member = await registerAndLogin(context.app, 'member')
+    roomId = randomUUID()
+    await post('/rooms', owner).send({
+      roomId,
+      name: 'Iron Line',
+      factories: [named(1, 'Smelters'), named(2, 'Constructors')],
+    })
+    await post(`/rooms/${roomId}/share`, owner).send({})
+    await post(`/rooms/${roomId}/join`, member).send({})
+  })
+
+  afterEach(() => {
+    closeAll(clients)
+  })
+
+  describe('a single op', () => {
+    it('acks the sender at the new revision and applies it to everyone else', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      const sent = op({ factories: [named(1, 'Ingot Smelters')] }, 0)
+      a.client.send(sent)
+
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({
+        roomId,
+        opId: sent.opId,
+        revision: 1,
+      })
+      const applied = await b.client.next('op_apply')
+      expect(applied).toMatchObject({ roomId, revision: 1 })
+      expect(applied.diff.factories?.[0].name).toBe('Ingot Smelters')
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(1)
+      expect(room?.factories.map((factory: Factory) => factory.name))
+        .toEqual(['Ingot Smelters', 'Constructors'])
+    })
+
+    it('never echoes the op back to its sender', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ name: 'Renamed by op' }, 0))
+      await a.client.next('op_ack')
+
+      await a.client.expectSilence('op_apply')
+    })
+
+    it('adds new factories and honours removedFactoryIds', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ factories: [named(3, 'Foundries')], removedFactoryIds: [1] }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.id)).toEqual([2, 3])
+    })
+
+    it('collapses a repeated id in one diff rather than storing it twice', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ factories: [named(3, 'First'), named(3, 'Second')] }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.id)).toEqual([1, 2, 3])
+      // Last write wins, the same rule that settles a same-factory collision.
+      expect(room?.factories[2].name).toBe('Second')
+    })
+
+    /**
+     * The op path is where a stripped field costs the most: the sender's own copy keeps it,
+     * every peer's does not, and the two disagree for ever. The fixture carries the sink and
+     * uploader counts, the custom building, the checklist state and the extraction settings.
+     */
+    it('stores and broadcasts a factory whole, stripping nothing', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      const edited = makeFactory({ id: 1, name: 'Smelters' })
+      a.client.send(op({ factories: [edited] }, 0))
+      await a.client.next('op_ack')
+
+      const applied = await b.client.next('op_apply')
+      expect(applied.diff.factories?.[0]).toEqual(edited)
+      expect((await readRoom())?.factories[0]).toEqual(edited)
+    })
+
+    it('carries the tab settings the plan is written against', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ depotUploadTier: 1, depotExpansionTier: 3, plannerVersion: '0.6.0' }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.depotUploadTier).toBe(1)
+      expect(room?.depotExpansionTier).toBe(3)
+      expect(room?.plannerVersion).toBe('0.6.0')
+    })
+
+    it('hands the tab settings back in the join snapshot', async () => {
+      const a = await joined(owner.token)
+      a.client.send(op({ depotUploadTier: 0 }, 0))
+      await a.client.next('op_ack')
+
+      const b = await greet(member.token)
+      b.send({ type: 'join', roomId })
+      const snapshot = await b.next('snapshot')
+
+      // Zero is a real tier — the unresearched 15/min — and must not read as absent.
+      expect(snapshot.room.depotUploadTier).toBe(0)
+    })
+
+    it('records an activity row and moves the last-changed stamp the room list serves', async () => {
+      const before = (await readRoom())?.lastActivityAt as Date
+      const listedBefore = (await get('/rooms', owner)).body.rooms[0].lastActivityAt as string
+      expect(listedBefore).toBe(before.toISOString())
+
+      const a = await joined(member.token)
+
+      a.client.send(op({ powerTarget: 500 }, 0))
+      await a.client.next('op_ack')
+
+      const rows = await connection.collection('room_activity')
+        .find({ roomId, kind: 'op' }).toArray()
+      expect(rows).toHaveLength(1)
+      expect(rows[0].actor).toBe(member.userId)
+
+      const stamped = (await readRoom())?.lastActivityAt as Date
+      expect(stamped.getTime()).toBeGreaterThanOrEqual(before.getTime())
+      expect((await get('/rooms', owner)).body.rooms[0].lastActivityAt).toBe(stamped.toISOString())
+    })
+  })
+
+  describe('the revision guard', () => {
+    it('rejects a stale base and hands back a fresh snapshot', async () => {
+      const a = await joined(owner.token)
+      a.client.send(op({ name: 'First' }, 0))
+      await a.client.next('op_ack')
+
+      const stale = op({ name: 'Second' }, 0)
+      a.client.send(stale)
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId: stale.opId, reason: 'stale_base' })
+      expect(rejected.snapshot?.revision).toBe(1)
+      expect(rejected.snapshot?.name).toBe('First')
+      expect((await readRoom())?.name).toBe('First')
+    })
+
+    it('serializes two clients racing at the same base: one ack, one reject', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      a.client.send(op({ factories: [named(1, 'A wins')] }, 0))
+      b.client.send(op({ factories: [named(2, 'B wins')] }, 0))
+
+      const outcomes = [
+        await a.client.nextOneOf(['op_ack', 'op_reject']),
+        await b.client.nextOneOf(['op_ack', 'op_reject']),
+      ]
+      const acks = outcomes.filter(message => message.type === 'op_ack')
+      const rejects = outcomes.filter(message => message.type === 'op_reject')
+
+      expect(acks).toHaveLength(1)
+      expect(rejects).toHaveLength(1)
+      expect(acks[0]).toMatchObject({ revision: 1 })
+      expect(rejects[0]).toMatchObject({ reason: 'stale_base' })
+      expect(rejects[0].type === 'op_reject' && rejects[0].snapshot?.revision).toBe(1)
+    })
+
+    it('lands both edits when the loser rebases onto the snapshot', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      a.client.send(op({ factories: [named(1, 'Ingot Smelters')] }, 0))
+      await a.client.next('op_ack')
+
+      // B was mid-edit at revision 0 and only ever touched factory 2.
+      const intent = named(2, 'Rod Constructors')
+      b.client.send(op({ factories: [intent] }, 0))
+      const rejected = await b.client.next('op_reject')
+
+      // The shared rebase path: adopt the server state, re-send the intent alone.
+      b.client.send(op({ factories: [intent] }, rejected.snapshot?.revision as number))
+      await expect(b.client.next('op_ack')).resolves.toMatchObject({ revision: 2 })
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.name))
+        .toEqual(['Ingot Smelters', 'Rod Constructors'])
+    })
+
+    it('resolves a same-factory collision last-write-wins after the rebase', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      a.client.send(op({ factories: [named(1, 'Named by A')] }, 0))
+      await a.client.next('op_ack')
+
+      const intent = named(1, 'Named by B')
+      b.client.send(op({ factories: [intent] }, 0))
+      const rejected = await b.client.next('op_reject')
+      b.client.send(op({ factories: [intent] }, rejected.snapshot?.revision as number))
+      await b.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories[0].name).toBe('Named by B')
+    })
+  })
+
+  describe('the op id ring', () => {
+    it('replays the original ack for a duplicate op id and changes nothing', async () => {
+      const a = await joined(owner.token)
+
+      const sent = op({ name: 'Once' }, 0)
+      a.client.send(sent)
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ revision: 1 })
+
+      // The client's single in-flight retry: same op id, same stale base.
+      a.client.send(sent)
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({
+        opId: sent.opId,
+        revision: 1,
+      })
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(1)
+      expect(room?.appliedOps).toHaveLength(1)
+    })
+
+    it('does not re-broadcast a replayed op to peers', async () => {
+      const a = await joined(owner.token)
+      const b = await joined(member.token)
+
+      const sent = op({ name: 'Once' }, 0)
+      a.client.send(sent)
+      await a.client.next('op_ack')
+      await b.client.next('op_apply')
+
+      a.client.send(sent)
+      await a.client.next('op_ack')
+
+      await b.client.expectSilence('op_apply')
+    })
+
+    it('keeps the ring bounded', async () => {
+      const a = await joined(owner.token)
+
+      for (let revision = 0; revision <= APPLIED_OPS_RING; revision++) {
+        a.client.send(op({ powerTarget: revision }, revision))
+        await a.client.next('op_ack')
+      }
+
+      const room = await readRoom()
+      expect(room?.appliedOps).toHaveLength(APPLIED_OPS_RING)
+      expect(room?.revision).toBe(APPLIED_OPS_RING + 1)
+    }, 30_000)
+  })
+
+  describe('content-only rights', () => {
+    it('refuses a member renaming the room, and leaves them in it to rebase', async () => {
+      const b = await joined(member.token)
+
+      const sent = op({ name: 'Renamed by a member', powerTarget: 900 }, 0)
+      b.client.send(sent)
+
+      const rejected = await b.client.next('op_reject')
+      expect(rejected).toMatchObject({ roomId, opId: sent.opId, reason: 'forbidden' })
+      expect(rejected.snapshot?.name).toBe('Iron Line')
+
+      const room = await readRoom()
+      expect(room?.name).toBe('Iron Line')
+      expect(room?.revision).toBe(0)
+      expect(room?.powerTarget).toBe(0)
+
+      // Still joined: the same socket's content-only op goes straight through.
+      b.client.send(op({ powerTarget: 900 }, 0))
+      await expect(b.client.next('op_ack')).resolves.toMatchObject({ revision: 1 })
+    })
+
+    it('refuses an anonymous visitor renaming the room', async () => {
+      const v = await joined()
+
+      const sent = op({ name: 'Renamed by a visitor' }, 0)
+      v.client.send(sent)
+
+      await expect(v.client.next('op_reject')).resolves.toMatchObject({
+        opId: sent.opId,
+        reason: 'forbidden',
+      })
+      expect((await readRoom())?.name).toBe('Iron Line')
+    })
+
+    it('lets the owner rename through an op', async () => {
+      const a = await joined(owner.token)
+
+      a.client.send(op({ name: 'Renamed by the owner' }, 0))
+      await a.client.next('op_ack')
+
+      expect((await readRoom())?.name).toBe('Renamed by the owner')
+    })
+  })
+
+  /**
+   * The server's half of the truncation defence. A client whose plan is half-mounted reports
+   * every unmounted record as deleted, and obeying that empties the room for everybody in it.
+   * Past the threshold the sender has to say the user meant it.
+   */
+  describe('declared bulk removals', () => {
+    const FILLED = 8
+    const ids = Array.from({ length: FILLED }, (_unused, index) => index + 1)
+    const overThreshold = ids.slice(0, BULK_REMOVAL_THRESHOLD + 1)
+
+    /** The fixture room holds two: this fills it to eight, so a removal can pass the threshold. */
+    const fill = async (client: TestClient) => {
+      client.send(op({ factories: ids.slice(2).map(id => named(id, `Factory ${id}`)) }, 0))
+      await client.next('op_ack')
+    }
+
+    const declared = (diff: RoomDiff, baseRevision: number): ClientOpMessage =>
+      ({ ...op(diff, baseRevision), bulkRemoval: true })
+
+    it('refuses a burst of removals nothing declared, and hands back a snapshot', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      const sent = op({ removedFactoryIds: overThreshold }, 1)
+      a.client.send(sent)
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId: sent.opId, reason: 'undeclared_bulk_removal' })
+      expect(rejected.snapshot?.revision).toBe(1)
+      expect(rejected.snapshot?.factories).toHaveLength(FILLED)
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(1)
+      expect(room?.factories).toHaveLength(FILLED)
+    })
+
+    it('accepts the same op once the client declares it', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: overThreshold }, 1))
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ revision: 2 })
+
+      const room = await readRoom()
+      expect(room?.factories.map((factory: Factory) => factory.id))
+        .toEqual(ids.slice(overThreshold.length))
+    })
+
+    it('leaves a removal at the threshold alone, declared or not', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(op({ removedFactoryIds: ids.slice(0, BULK_REMOVAL_THRESHOLD) }, 1))
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ revision: 2 })
+
+      const room = await readRoom()
+      expect(room?.factories).toHaveLength(FILLED - BULK_REMOVAL_THRESHOLD)
+      // Only a bulk removal is worth a restore point; an ordinary edit would just churn it.
+      expect(room?.lastBulkRestore).toBeNull()
+    })
+
+    it('stashes the plan it removed from, so a clear nobody meant can be put back', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: ids }, 1))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toEqual([])
+      expect(room?.lastBulkRestore.revision).toBe(1)
+      expect(room?.lastBulkRestore.factories.map((factory: Factory) => factory.id)).toEqual(ids)
+      expect(room?.lastBulkRestore.at).toBeInstanceOf(Date)
+    })
+
+    // A second copy of an oversized array is how a room document reaches Mongo's own limit,
+    // so the write goes ahead and only the stash is dropped. Sized in bytes rather than in
+    // factories: a room-cap plan of outsized records outweighs one of ordinary ones, and
+    // only one of those two shapes is refused by a count.
+    it('skips the restore point when the stored plan is too big to duplicate', async () => {
+      const a = await joined(owner.token)
+      const padding = 'x'.repeat(30_000)
+      const heavy = Array.from({ length: CAPS.factoriesPerRoom }, (_unused, index) =>
+        ({ ...named(index + 1, `Extra ${index}`), notes: padding }))
+      expect(JSON.stringify(heavy).length).toBeGreaterThan(BULK_RESTORE_MAX_BYTES)
+      await connection.collection('rooms').updateOne({ roomId }, { $set: { factories: heavy } })
+
+      a.client.send(declared({ removedFactoryIds: overThreshold }, 0))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toHaveLength(heavy.length - overThreshold.length)
+      expect(room?.lastBulkRestore).toBeNull()
+    }, 30_000)
+
+    // The stash is the one copy of what a clear removed, and a client that clears twice
+    // would otherwise overwrite it with the emptiness the first clear produced.
+    it('keeps the first stash when a second bulk arrives on an emptied plan', async () => {
+      const a = await joined(owner.token)
+      await fill(a.client)
+
+      a.client.send(declared({ removedFactoryIds: ids }, 1))
+      await a.client.next('op_ack')
+
+      // Nothing left to remove, and the sender declares it a bulk all the same.
+      a.client.send(declared({ removedFactoryIds: ids }, 2))
+      await a.client.next('op_ack')
+
+      const room = await readRoom()
+      expect(room?.factories).toEqual([])
+      expect(room?.lastBulkRestore.revision).toBe(1)
+      expect(room?.lastBulkRestore.factories.map((factory: Factory) => factory.id)).toEqual(ids)
+    })
+  })
+
+  describe('refusals', () => {
+    it('refuses an op that would push the room past the factory cap', async () => {
+      const a = await joined(owner.token)
+
+      // The room already holds two, so the cap has to be judged after the merge.
+      const additions = Array.from(
+        { length: CAPS.factoriesPerRoom - 1 },
+        (_unused, index) => named(index + 3, `Extra ${index}`),
+      )
+      const sent = op({ factories: additions }, 0)
+      a.client.send(sent)
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId: sent.opId, reason: 'too_large' })
+      expect(rejected.snapshot?.revision).toBe(0)
+
+      const room = await readRoom()
+      expect(room?.revision).toBe(0)
+      expect(room?.factories).toHaveLength(2)
+    }, 30_000)
+
+    it('errors on an op for a room this socket never joined', async () => {
+      const client = await greet(owner.token)
+
+      client.send(op({ name: 'Sneaky' }, 0))
+
+      await expect(client.next('error')).resolves.toMatchObject({ code: 'not_joined', roomId })
+    })
+
+    it('rejects a diff that fails the schema, with a snapshot to rebase onto', async () => {
+      const a = await joined(owner.token)
+
+      const opId = randomUUID()
+      a.client.sendRaw({
+        type: 'op',
+        roomId,
+        opId,
+        baseRevision: 0,
+        diff: { factories: [{ id: 'not-a-number' }] },
+      })
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({ opId, reason: 'invalid' })
+      expect(rejected.snapshot?.revision).toBe(0)
+      expect((await readRoom())?.revision).toBe(0)
+    })
+
+    /**
+     * The cheapest frame a client can send and the most expensive the server can answer:
+     * a malformed op is ninety bytes and buys a whole-plan read and serialisation. Past
+     * the budget the socket is closed rather than served, and its reconnect gets one
+     * snapshot per room instead.
+     */
+    it('closes a socket that keeps buying whole-plan rejections', async () => {
+      const a = await joined(owner.token)
+      const malformed = { type: 'op', roomId, opId: randomUUID(), baseRevision: 'not a number' }
+
+      for (let sent = 0; sent < WS_SNAPSHOT_REJECT_LIMIT; sent++) a.client.sendRaw(malformed)
+      for (let seen = 0; seen < WS_SNAPSHOT_REJECT_LIMIT; seen++) {
+        await expect(a.client.next('op_reject')).resolves.toMatchObject({ reason: 'invalid' })
+      }
+
+      a.client.sendRaw(malformed)
+
+      await expect(a.client.next('error')).resolves.toMatchObject({ code: 'rate_limited' })
+      await expect(a.client.waitForClose()).resolves.toMatchObject({ code: WS_POLICY_VIOLATION })
+    }, 30_000)
+
+    // The first op after "Add Factory" carries `power: {}`, because nothing
+    // recalculates on add. It used to be refused, costing a round trip every time.
+    it('accepts a factory that was never calculated, filling its power totals', async () => {
+      const a = await joined(owner.token)
+      const uncalculated = makeFactory({ id: 3, name: 'Just added', power: {} as never })
+
+      const sent = op({ factories: [uncalculated] }, 0)
+      a.client.send(sent)
+
+      await expect(a.client.next('op_ack')).resolves.toMatchObject({ opId: sent.opId, revision: 1 })
+      const stored = (await readRoom())?.factories as { id: number, power: unknown }[]
+      expect(stored.find(factory => factory.id === 3)?.power)
+        .toEqual({ consumed: 0, produced: 0, difference: 0 })
+    })
+
+    it('rejects an op on a room tombstoned under it', async () => {
+      const a = await joined(owner.token)
+      // Written straight to the collection: the REST delete would fan out and
+      // close this socket, which is the revocation path rather than the op path.
+      await connection.collection('rooms').updateOne({ roomId }, { $set: { deletedAt: new Date() } })
+
+      const sent = op({ name: 'Too late' }, 0)
+      a.client.send(sent)
+
+      await expect(a.client.next('op_reject')).resolves.toMatchObject({
+        opId: sent.opId,
+        reason: 'room_deleted',
+      })
+      await expect(a.client.next('room_deleted')).resolves.toMatchObject({ roomId })
+    })
+  })
+})

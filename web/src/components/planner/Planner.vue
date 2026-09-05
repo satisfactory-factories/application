@@ -108,6 +108,7 @@
         <div class="mt-4 text-center">
           <v-btn
             color="primary"
+            data-testid="add-factory"
             prepend-icon="fas fa-plus"
             size="large"
             @click="createFactory()"
@@ -146,6 +147,7 @@
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
+  import { captureOrder, markFactoryEdited, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
@@ -355,6 +357,11 @@
     showPlan()
   })
 
+  // The planner asks for its plan; the loading overlay used to, off its CSS transition.
+  // Mounting is the honest ask, since nothing here is on screen until a chain reports
+  // back — and a transition fires on a schedule the store cannot reason about.
+  onMounted(() => eventBus.emit('readyForData'))
+
   eventBus.on('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })
@@ -484,6 +491,18 @@
     if (groupId) moveFactoryToGroup(factory.id, groupId)
     // Reads the factory's group, so it opens the right one — hence after the move, not before.
     navigateToFactory(factory.id)
+    focusFactoryName(factory.id)
+  }
+
+  // A fresh card starts with the cursor in its name, ready to type over. Focus is
+  // also the one client-local marker of "my card" while a collaborator's identical
+  // default-named factory can arrive at any moment.
+  const focusFactoryName = (factoryId: number) => {
+    const focus = () =>
+      document.getElementById(String(factoryId))?.querySelector<HTMLInputElement>('input.factory-name')?.focus()
+    if (typeof requestAnimationFrame === 'undefined') focus()
+    // The card mounts on the next render; the second frame covers slower mounts.
+    else requestAnimationFrame(() => requestAnimationFrame(focus))
   }
 
   // This function calculates the world resources available after each group has consumed Raw Resources.
@@ -563,6 +582,7 @@
 
   const copyFactory = (originalFactory: Factory) => {
     // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
+    const before = captureOrder(getFactories())
     const newId = generateFactoryId(getFactories())
     const newFactory: Factory = {
       ...structuredClone(toRaw(originalFactory)),
@@ -596,6 +616,10 @@
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
+    // The clone itself is structural, so the engine infers it. Everything the reindex above
+    // pushed down is not, and would be taken back off the server without this.
+    markReorderedFactories(before, getFactories())
+
     navigateToFactory(newId)
   }
 
@@ -604,9 +628,13 @@
     const index = getFactories().findIndex(fac => fac.id === factory.id)
 
     if (index !== -1) {
+      const before = captureOrder(getFactories())
       removeFactoryDependants(factory, getFactories())
 
       getFactories().splice(index, 1) // Remove the factory at the found index
+      // Declared, not just inferred: deletes coalescing into one op behind a slow ack
+      // must still pass the server's bulk-removal threshold.
+      markFactoryRemoved(factory)
       updateWorldRawResources(gameData) // Recalculate the world resources
 
       // After deleting the factory, loop through all factories and update them as inputs / exports have likely changed.
@@ -614,6 +642,8 @@
 
       // Regenerate the sort orders
       regenerateSortOrders(getFactories())
+      // The removal is structural; the records the reindex shifted up are not.
+      markReorderedFactories(before, getFactories())
     } else {
       console.error('Factory not found to delete?!')
     }
@@ -633,8 +663,13 @@
     updateWorldRawResources(gameData)
   }
 
+  // Every factory is marked, deliberately: collapsing the plan is something the user did to
+  // all of them, and a rebase that carried none of it over would silently expand them again.
   const showHideAll = (mode: 'show' | 'hide') => {
-    getFactories().forEach(factory => factory.hidden = mode === 'hide')
+    getFactories().forEach(factory => {
+      factory.hidden = mode === 'hide'
+      markFactoryEdited(factory)
+    })
   }
 
   // `subsection` may name a row that isn't on screen (a status chip jumping to the product that
@@ -649,7 +684,12 @@
       return
     }
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
-    factory.hidden = false
+    // Payload, never intent: jumping to a card is moving around the app rather than editing it,
+    // and a navigation restored from session storage on load must not claim the user's authorship.
+    if (factory.hidden) {
+      factory.hidden = false
+      eventBus.emit('factoryUpdated', factory)
+    }
 
     // Same reasoning one step out: a card inside a collapsed group is hidden and has nothing to
     // scroll to, so every jump into one — a status chip, a pending session navigation, a link from
@@ -736,7 +776,10 @@
   }
 
   const moveFactory = (factory: Factory, direction: string) => {
+    // The reindex runs over the whole plan; mark exactly the records whose order moved.
+    const before = captureOrder(getFactories())
     reorderFactory(factory, direction, getFactories())
+    markReorderedFactories(before, getFactories())
   }
 
   // Scroll to a non-factory section (Statistics, Factories Summary, Dimensional Depot) by its id.

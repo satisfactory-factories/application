@@ -14,7 +14,7 @@ services:
       - backend
     env_file:
       - sf.env
-    # 3001 on both sides, matching backend.ts and the host port the Cloudflare
+    # 3001 on both sides, matching src/main.ts and the host port the Cloudflare
     # tunnel resolves to. Deliberately not a translated mapping: 618e944 moved
     # the app to 3010 and left this at "3001:3001", and the only reason
     # production still worked is that it was running an image from before that
@@ -36,10 +36,11 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      # ts-node compiles on boot, so first response takes a few seconds.
+      # The image runs compiled dist/, so boot is near-instant; the window is
+      # kept generous to cover a slow Mongo handshake.
       start_period: 30s
   mongo:
-    image: mongo:8.3.7
+    image: mongo:8.3.8
     container_name: sf-db
     restart: always
     ports:

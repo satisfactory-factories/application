@@ -7,8 +7,10 @@
 - [Preview API environment](preview-api-environment.md) — the second API previews point at; shared, port 3002, and nothing puts it back on `main`
 - [Building groups](building-groups-branch-status.md) — how overclocking/somersloops work and their gotchas; shipped, the branch it was built on is dead
 - [Calc engine gotchas](calc-engine-gotchas.md) — double-pass recalc, load-bearing step order, migration patches, and other traps
-- [Tab sync v2 rework](project-tab-sync-v2.md) — in-flight multi-tab sync on branch `tab-sync-v2`; rendering rework deferred to its own plan
+- [Sync v0.7.0 realtime rooms](project-sync-v7-rooms.md) — built and green on `claude/sync-mechanism-refactor-7b021b`, not yet merged; file map, locked decisions and the flagged follow-ups
+- [Tab sync v2 rework](project-tab-sync-v2.md) — superseded by sync v0.7.0; `tab-sync-v2` branch is a design reference only
 - [Scope plans per session](feedback-scope-plans-per-session.md) — split big multi-part features into separate plans/branches/sessions
+- [Opus workers, Fable orchestrator](feedback-opus-workers-fable-orchestrator.md) — subagents inherit the session model; pin model:'opus' on every agent() call
 - [Graph rebuild plan (parked)](project-graph-rebuild-plan.md) — Vue Flow graph-view rebuild plan saved to repo `.claude/plans/graph-view-vue-flow-rebuild.md`, decisions locked, M1–M6 not started
 - [AWESOME Sink plan (Beta v0.6)](project-awesome-sink-plan.md) — sink + byproduct routing plan approved, in `.claude/plans/awesome-sink-and-byproduct-routing.md`; do NOT implement during Beta v0.5
 - [Surplus disposition is not production-tied](surplus-disposition-not-production-tied.md) — sink/depot features key off surplus alone, never off whether the factory makes the part
@@ -40,3 +42,7 @@
 - [Building group balance tolerance](building-group-balance-tolerance.md) — balanced is a percentage of the item's demand with a ceiling, and changing it has to force a recalc
 - [Input debounce window](input-debounce-window.md) — the timer does reset per keystroke; the 250ms window is just shorter than typing, and reverse-solving inputs compound partial values
 - [Stale branch: cherry-pick, don't merge](stale-branch-cherry-pick-not-merge.md) — squash merges make a merge-forward conflict on 70 files where a cherry-pick conflicts on 2
+- [Overlay z-index bands](overlay-z-index-bands.md) — banners sit at 1900 below Vuetify menus (2000+), toasts at 2600 above dialogs; a banner above the overlay stack steals menu clicks
+- [prom-client is deprecated](prom-client-deprecated-successor.md) — the successor was days old and 0.x, so the metrics endpoint stayed put; what would change that, and the third package name context7 hands out
+- [Verify: hidden-pane menu freeze](verify-hidden-pane-menu-freeze.md) — a hidden browser pane leaves Vuetify menus stuck invisible with inline pointer-events:none; clear the inline props before hit-testing
+- [prom-client label lifecycle](prom-client-label-lifecycle.md) — seed bounded label sets at zero or panels read "No data"; reset ranked ones or dropped labels report forever

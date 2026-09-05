@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { PROTOCOL_VERSION } from 'common'
 import { Factory, FactoryPowerChangeType, FactoryTab, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
+import { setTabMirrorMeta, TAB_MIRROR_META_KEY } from '@/sync/tab-mirror-meta'
+import { TAB_SYNC_STATE_KEY } from '@/sync/tab-sync-state'
+import type { TabSyncState } from '@/sync/tab-sync-state'
 import * as FactoryManager from '@/utils/factory-management/factory'
 import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import * as FactoryValidate from '@/utils/factory-management/validation'
@@ -10,8 +15,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
+import { PACED_RENDER_FACTORY_COUNT } from '@/utils/render-pacing'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
+import { refuseLocalStorageWrites } from '../../testing/storage'
+import { resetStorageWarning } from '@/utils/safe-storage'
 
 let appStore: ReturnType<typeof useAppStore>
 
@@ -24,12 +32,40 @@ const resetAppStore = (keepLocalStorage = false) => {
   appStore = useAppStore()
 }
 
+/**
+ * Waits for a staggered load to finish. Resetting the store does not stop one that is
+ * already running, and the event bus is global, so a chain left in flight goes on
+ * emitting into whichever test comes next.
+ */
+const settleLoads = async () => {
+  for (let attempt = 0; attempt < 200 && appStore.loadInFlight; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }
+}
+
 describe('app-store', () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.resetAllMocks()
 
     resetAppStore()
+  })
+
+  // The debounced persist can fire after a test file's jsdom is torn down, where
+  // localStorage no longer exists. That must be a silent no-op: it failed a whole
+  // green CI run as an unhandled ReferenceError before the guard existed.
+  describe('the persist debounce outliving its environment', () => {
+    it('should drop a persist quietly when localStorage is gone', async () => {
+      vi.useFakeTimers()
+      try {
+        eventBus.emit('factoryUpdated', newFactory('Leaky'))
+        vi.stubGlobal('localStorage', undefined)
+        expect(() => vi.advanceTimersByTime(600)).not.toThrow()
+      } finally {
+        vi.unstubAllGlobals()
+        vi.useRealTimers()
+      }
+    })
   })
 
   describe('initFactories', () => {
@@ -233,6 +269,21 @@ describe('app-store', () => {
 
       expect(factory.powerProducers).toBeDefined()
       expect(factory.power).toBeDefined()
+    })
+
+    // A factory added but never calculated was persisted with `power: {}`. The sync
+    // schema now fills those totals rather than rejecting the factory, and the mirror
+    // has to agree with what the server stores, so init zeroes them too.
+    it('should backfill the power totals of a factory that was never calculated', () => {
+      factory.power = {} as typeof factory.power
+      const spy = vi.spyOn(FactoryManager, 'calculateFactories')
+
+      appStore.initFactories(factories)
+
+      expect(factory.power.consumed).toBeDefined()
+      expect(factory.power.produced).toBeDefined()
+      expect(factory.power.difference).toBeDefined()
+      expect(spy).toHaveBeenCalled()
     })
 
     it('should initialize factories with missing previous inputs data', () => {
@@ -450,9 +501,15 @@ describe('app-store', () => {
     })
 
     describe('prepareLoader', () => {
-      it('set the isLoaded value to false', async () => {
-        await appStore.prepareLoader()
-        expect(appStore.isLoaded).toBe(false)
+      // The load used to stop at prepareForLoad and wait for the loading overlay's
+      // readyForData to carry it on. Nothing here mounts that overlay, and neither does
+      // /room/<slug> — so the chain has to finish on its own or it never finishes at all.
+      it('should drive a staggered load to completion with no overlay listening', async () => {
+        await appStore.prepareLoader([newFactory('Foo')], true)
+
+        expect(appStore.isLoaded).toBe(true)
+        expect(appStore.loadInFlight).toBe(false)
+        expect(appStore.getFactories()).toHaveLength(1)
       })
 
       it('should emit the plannerShow,false event', async () => {
@@ -483,11 +540,237 @@ describe('app-store', () => {
         const factory2 = newFactory('Foo2')
         factory2.hidden = true
 
-        await appStore.prepareLoader([factory, factory2])
+        await appStore.prepareLoader([factory, factory2], true)
 
         expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
           count: 2,
           shown: 1,
+        })
+      })
+
+      // The stagger paces the render of a whole plan and is only worth its cost when
+      // something was calculated. An already-calculated plan renders straight through.
+      describe('loader gating', () => {
+        let factories: Factory[]
+
+        beforeEach(() => {
+          factories = [newFactory('Foo'), newFactory('Foo2')]
+          vi.mocked(eventBus.emit).mockClear()
+        })
+
+        it('should not open the loader when nothing was calculated', async () => {
+          await appStore.prepareLoader(factories)
+
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          expect(appStore.isLoaded).toBe(true)
+          expect(appStore.getFactories()).toEqual(factories)
+        })
+
+        it('should open the loader when a recalculation was forced', async () => {
+          await appStore.prepareLoader(factories, true)
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+        })
+
+        it('should open the loader when a data migration had to calculate', async () => {
+          const migrated = newFactory('Migrated')
+          // #180's backfill: a missing powerProducers array forces a recalculation.
+          // @ts-ignore
+          delete migrated.powerProducers
+
+          await appStore.prepareLoader([migrated])
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 1, shown: 1 })
+        })
+
+        it('should take the full path when a previous load was interrupted', async () => {
+          localStorage.setItem('preLoadFactories', JSON.stringify([newFactory('Recovered')]))
+
+          await appStore.prepareLoader(factories)
+
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+          localStorage.removeItem('preLoadFactories')
+        })
+
+        // Completing synchronously is the proof: the staggered path is async, so it
+        // could not have finished by the time the call returns.
+        it('should render straight through when the loader asks and nothing was calculated', async () => {
+          await appStore.prepareLoader(factories)
+          appStore.isLoaded = false
+
+          appStore.startQueuedLoad()
+
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        it('should stagger when the loader asks and a recalculation was forced', async () => {
+          await appStore.prepareLoader(factories, true)
+          appStore.isLoaded = false
+
+          appStore.startQueuedLoad()
+
+          expect(appStore.isLoaded).toBe(false)
+          await settleLoads()
+        })
+
+        // Calculating and pacing the render are separate questions. A plan too big to mount
+        // in one flush took the instant path because there was nothing to calculate, so the
+        // click produced no movement at all and then the tab locked up.
+        describe('a plan too big to render in one flush', () => {
+          const emitsOf = (event: string) =>
+            vi.mocked(eventBus.emit).mock.calls.filter(call => call[0] === event)
+
+          const bigPlan = () => Array.from(
+            { length: PACED_RENDER_FACTORY_COUNT + 1 },
+            (_, index) => newFactory(`Big ${index}`, index, index + 1),
+          )
+
+          it('should take the staggered loader with nothing calculated', async () => {
+            const calculate = vi.spyOn(FactoryManager, 'calculateFactories')
+            const plan = bigPlan()
+
+            await appStore.prepareLoader(plan)
+
+            expect(calculate).not.toHaveBeenCalled()
+            expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
+              count: plan.length,
+              shown: plan.length,
+            })
+            // One per factory plus the render step: the whole chain, not a shortcut to the end.
+            expect(emitsOf('incrementLoad')).toHaveLength(plan.length + 1)
+            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+            expect(appStore.getFactories()).toEqual(plan)
+          })
+
+          // The overlay is what the user sees the instant they click, so it is announced
+          // before the validate-and-mount work rather than after it.
+          it('should raise the overlay before it starts the work', async () => {
+            vi.mocked(eventBus.emit).mockClear()
+
+            await appStore.prepareLoader(bigPlan())
+
+            const events = vi.mocked(eventBus.emit).mock.calls.map(call => call[0])
+            expect(events.indexOf('prepareForLoad')).toBeGreaterThanOrEqual(0)
+            expect(events.indexOf('prepareForLoad')).toBeLessThan(events.indexOf('plannerShow'))
+          })
+
+          it('should still render a small plan straight through', async () => {
+            await appStore.prepareLoader([newFactory('Small One'), newFactory('Small Two')])
+
+            expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          })
+        })
+      })
+
+      // Two chains share loadedCount, the tab's factory array and the preLoadFactories key,
+      // so an overlap loses factories. Only one runs at a time; the other waits its turn.
+      describe('one chain at a time', () => {
+        const countEmits = (event: string) =>
+          vi.mocked(eventBus.emit).mock.calls.filter(call => call[0] === event).length
+
+        it('should queue a load asked for mid-chain and let the later one win', async () => {
+          const first = [newFactory('First', 0, 1)]
+          const second = [newFactory('Second', 0, 2), newFactory('Second B', 1, 3)]
+          vi.mocked(eventBus.emit).mockClear()
+
+          const running = appStore.prepareLoader(first, true)
+          // Same tick: the first chain has not passed its first pause, so this one queues.
+          await appStore.prepareLoader(second, true)
+          await running
+          await settleLoads()
+
+          expect(appStore.getFactories().map(entry => entry.name)).toEqual(['Second', 'Second B'])
+          // Both chains ran to the end, one after the other. A dead chain would show one.
+          expect(countEmits('loadingCompleted')).toBe(2)
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        // The stagger pushes into whatever tab is current at the moment of each push,
+        // so switching tabs mid-chain used to append the old plan onto the new one.
+        it('should not push the loading plan into a tab the user switched to', async () => {
+          appStore.addTab({ name: 'Other', factories: [newFactory('Other One', 0, 9)] })
+          const other = appStore.getCurrentTab() as FactoryTab
+          appStore.activateTab(appStore.factoryTabs[0].id)
+          await settleLoads()
+
+          const running = appStore.prepareLoader([newFactory('A', 0, 1), newFactory('B', 1, 2)], true)
+          await new Promise<void>(resolve => {
+            const onIncrement = () => {
+              eventBus.off('incrementLoad', onIncrement)
+              resolve()
+            }
+            eventBus.on('incrementLoad', onIncrement)
+          })
+          appStore.activateTab(other.id)
+          await running
+          await settleLoads()
+
+          expect(other.factories.map(entry => entry.name)).toEqual(['Other One'])
+        })
+
+        it('should ignore the overlay asking for data while a load is driving itself', async () => {
+          const plan = [newFactory('Foo', 0, 1), newFactory('Bar', 1, 2)]
+          vi.mocked(eventBus.emit).mockClear()
+
+          const running = appStore.prepareLoader(plan, true)
+          // What the overlay's after-enter does the moment it animates into view.
+          appStore.startQueuedLoad()
+          await running
+          await settleLoads()
+
+          expect(appStore.getFactories()).toHaveLength(2)
+          // One increment per factory plus one render step: a second chain would reset
+          // loadedCount and blank the tab, so the count is the proof it never started.
+          expect(countEmits('incrementLoad')).toBe(3)
+          expect(countEmits('loadingCompleted')).toBe(1)
+        })
+      })
+
+      /**
+       * The chain empties the tab and refills it, so for its whole length the array is a
+       * fragment of the plan. Two facts have to hold throughout, because the sync engine
+       * reads both: the app says it is not loaded, and the records go to the tab the
+       * chain started on.
+       */
+      describe('what the chain tells the rest of the app', () => {
+        it('should lower isLoaded for the whole of a chain the planner asked for', async () => {
+          await appStore.prepareLoader([newFactory('A', 0, 1), newFactory('B', 1, 2)], true)
+          await settleLoads()
+          expect(appStore.isLoaded).toBe(true)
+
+          const sampled: boolean[] = []
+          const onIncrement = () => sampled.push(appStore.isLoaded)
+          eventBus.on('incrementLoad', onIncrement)
+
+          // What the planner mounting does, and what a return to `/` therefore does.
+          appStore.startQueuedLoad()
+          await settleLoads()
+          eventBus.off('incrementLoad', onIncrement)
+
+          expect(sampled.length, 'the chain never staggered, so nothing was sampled')
+            .toBeGreaterThan(0)
+          expect(sampled).not.toContain(true)
+          expect(appStore.isLoaded).toBe(true)
+        })
+
+        // The tab was emptied first and the owner captured afterwards, so a switch in
+        // between sent the records to the new tab and left the old one permanently empty
+        // — which the sync engine reads as the user having deleted the room's contents.
+        it('should fill the tab it emptied, not the one the user switched to', async () => {
+          const first = appStore.getCurrentTab() as FactoryTab
+          first.factories = [newFactory('Original', 0, 1)]
+          appStore.addTab({ name: 'Other', factories: [newFactory('Other One', 0, 9)] }, { activate: false })
+          const other = appStore.getTab(appStore.factoryTabs[1].id) as FactoryTab
+
+          const running = appStore.beginLoading([newFactory('A', 0, 2), newFactory('B', 1, 3)], true)
+          // Inside the pause beginLoading takes before it starts pushing.
+          appStore.currentFactoryTab = other
+          await running
+
+          expect(first.factories.map(entry => entry.name)).toEqual(['A', 'B'])
+          expect(other.factories.map(entry => entry.name)).toEqual(['Other One'])
         })
       })
 
@@ -499,7 +782,8 @@ describe('app-store', () => {
           const factory = newFactory('Foo')
           const factory2 = newFactory('Foo2')
           factories = [factory, factory2]
-          await appStore.prepareLoader(factories)
+          // Forced, so the loader gate lets the staggered path run.
+          await appStore.prepareLoader(factories, true)
         })
 
         it('should load another list of factories if preLoadFactories contains them', async () => {
@@ -571,11 +855,12 @@ describe('app-store', () => {
           expect(appStore.getFactories()).toEqual(factories)
         })
 
+        // One call, because the load drives itself: an interrupted load makes prepareLoader
+        // take the full path, which is what picks the recovered plan up.
         it('should have loaded the correct number of factories given preLoadFactories', async () => {
           localStorage.setItem('preLoadFactories', JSON.stringify(mockFailedFactories))
-          await appStore.prepareLoader(factories)
 
-          await appStore.beginLoading(factories)
+          await appStore.prepareLoader(factories)
 
           // Check the resulting data
           expect(appStore.getFactories()).toEqual(mockFailedFactories)
@@ -591,9 +876,11 @@ describe('app-store', () => {
 
           await appStore.beginLoading(factories)
 
-          // Fresh factories need no migration, so no recalc fires. The 7 events are:
-          // plannerShow(false), prepareForLoad ×2, incrementLoad ×2 (one per factory),
-          // the render increment, and loadingCompleted. Annoyingly we can't check the payload.
+          // Fresh factories need no migration, so prepareLoader's gate renders straight
+          // through. The 7 events are: plannerShow(false) and loadingCompleted from
+          // prepareLoader, then prepareForLoad, incrementLoad ×2 (one per factory), the
+          // render increment and loadingCompleted from the explicit beginLoading.
+          // Annoyingly we can't check the payload.
           expect(eventBus.emit).toHaveBeenCalledTimes(7)
           expect(eventBus.emit).toHaveBeenCalledWith('incrementLoad', {
             step: 'increment',
@@ -608,6 +895,99 @@ describe('app-store', () => {
           expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
         })
       })
+    })
+  })
+
+  describe('persisting the plan when things go wrong', () => {
+    const bigPlan = () =>
+      Array.from({ length: PACED_RENDER_FACTORY_COUNT + 1 }, (_, index) => newFactory(`Factory ${index}`))
+
+    let restoreWrites: (() => void) | null = null
+
+    beforeEach(() => {
+      resetStorageWarning()
+      appStore.getFactories()
+    })
+
+    afterEach(async () => {
+      restoreWrites?.()
+      restoreWrites = null
+      vi.restoreAllMocks()
+      await settleLoads()
+    })
+
+    /**
+     * The chain empties the tab's factory array and refills it one record at a time, so
+     * anything written mid-chain is a truncated plan. A rebase reload left one on disk for
+     * the length of the stagger, and a crash inside that window kept it.
+     */
+    it('refuses to save the plan while a load chain owns the tab', async () => {
+      const plan = bigPlan()
+      const chain = appStore.prepareLoader(plan, true)
+      expect(appStore.loadInFlight, 'the chain under test').toBe(true)
+
+      expect(appStore.persistPlan()).toBe(false)
+
+      await chain
+      const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+      expect(stored[0]?.factories, 'the skipped save has to land when the chain ends').toHaveLength(plan.length)
+    })
+
+    /**
+     * `runLoad` lowers `isLoaded` and only `loadingCompleted` raises it, so a chain that
+     * dies leaves the client persisting nothing and sending nothing for the session.
+     */
+    it('re-arms the client and puts the plan back when a load chain dies', async () => {
+      const plan = bigPlan()
+      const emit = eventBus.emit.bind(eventBus)
+      vi.spyOn(eventBus, 'emit').mockImplementation(((event: string, payload: unknown) => {
+        if (event === 'incrementLoad') throw new Error('the chain died')
+        return emit(event as never, payload as never)
+      }) as typeof eventBus.emit)
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(appStore.prepareLoader(plan, true)).rejects.toThrow('the chain died')
+
+      expect(appStore.loadInFlight).toBe(false)
+      expect(appStore.isLoaded).toBe(true)
+      expect(appStore.getFactories(), 'the tab was left holding a fragment').toHaveLength(plan.length)
+    })
+
+    /**
+     * The recovery copy is read by `beginLoading` too, so an unreadable one is the reason
+     * the chain dies and then the reason the release is skipped. The tab is left wedged
+     * with `isLoaded` false, which is the very state this release exists to prevent.
+     */
+    it('releases a dead chain even when the recovery copy cannot be read', async () => {
+      localStorage.setItem('preLoadFactories', '{not json')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(appStore.prepareLoader(bigPlan(), true)).rejects.toThrow()
+
+      expect(appStore.loadInFlight, 'the chain never released').toBe(false)
+      expect(appStore.isLoaded, 'the client would persist and send nothing').toBe(true)
+
+      localStorage.removeItem('preLoadFactories')
+    })
+
+    /**
+     * `lastPersistedPlan` is the "nothing has changed since" shortcut. Advanced on a write
+     * that never happened, every later save takes the shortcut and the plan is never saved
+     * again — and the throw itself unwound whatever edit asked for the save.
+     */
+    it('leaves the plan unsaved rather than recording a save that was refused', () => {
+      appStore.getCurrentTab().name = 'Renamed'
+      restoreWrites = refuseLocalStorageWrites(key => key === 'factoryTabs')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect(() => appStore.persistPlan()).not.toThrow()
+      expect(appStore.persistPlan()).toBe(false)
+
+      restoreWrites()
+      restoreWrites = null
+      expect(appStore.persistPlan()).toBe(true)
+      const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+      expect(stored[0]?.name).toBe('Renamed')
     })
   })
 
@@ -886,6 +1266,32 @@ describe('app-store', () => {
       expect(appStore.getCurrentTab()?.depotUploadTier).toBeUndefined()
       expect(appStore.getCurrentTab()?.depotExpansionTier).toBeUndefined()
     })
+
+    // A restore is a replacement: an op that shrinks the plan past the server's threshold
+    // is refused unless every displaced id was declared.
+    it('declares the ids a restored plan displaced', () => {
+      appStore.getFactories()
+      appStore.addFactory(newFactory('Old 1', 0, 41))
+      appStore.addFactory(newFactory('Old 2', 1, 42))
+
+      const emit = vi.spyOn(eventBus, 'emit')
+      emit.mockClear()
+      appStore.loadServerPlan({ id: 'x', name: 'Cloud', factories: [newFactory('New', 0, 43)] } as never)
+
+      expect(emit).toHaveBeenCalledWith('planReplaced', { removedIds: [41, 42] })
+    })
+
+    it('declares the displaced ids for a bare-array plan too', () => {
+      appStore.getFactories()
+      appStore.addFactory(newFactory('Old 1', 0, 41))
+      appStore.addFactory(newFactory('Old 2', 1, 42))
+
+      const emit = vi.spyOn(eventBus, 'emit')
+      emit.mockClear()
+      appStore.loadServerPlan([newFactory('New', 0, 43)])
+
+      expect(emit).toHaveBeenCalledWith('planReplaced', { removedIds: [41, 42] })
+    })
   })
 
   // JSON.stringify drops an undefined key, so a plan from before the change arrives through a
@@ -956,7 +1362,9 @@ describe('app-store', () => {
         expect(appStore.getFactories()).toEqual([factory])
       })
 
-      it('should emit prepareForLoad if the state is not inited', async () => {
+      // It used to, and the event has no chain behind it: it hides the sidebar and opens the
+      // overlay with nothing that will ever say the load finished. A getter announces nothing.
+      it('should NOT emit prepareForLoad when it inits the state itself', async () => {
         appStore.inited = false
         vi.spyOn(eventBus, 'emit')
 
@@ -965,11 +1373,7 @@ describe('app-store', () => {
         // Wait for reactivity
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
-          // There should be no factories to load as it's a blank state
-          count: 0,
-          shown: 0,
-        })
+        expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
       })
 
       it('should NOT emit prepareForLoad if the state is inited', async () => {
@@ -1042,6 +1446,39 @@ describe('app-store', () => {
         expect(factories[0].displayOrder).toEqual(0)
         expect(factories[1].displayOrder).toEqual(1)
       })
+
+      // A reindex counts as an edit. The insert lands above the grouped block, so every
+      // record below it gets a new displayOrder while declaring nothing of its own — and a
+      // rebase carries over only declared records, so the server's old order would win.
+      it('declares intent for the records the insert reindexed', () => {
+        const grouped = newFactory('Grouped')
+        grouped.group = { id: 'group-1', name: 'Group 1', color: '#ffffff', order: 0 }
+        appStore.addFactory(grouped)
+
+        vi.spyOn(eventBus, 'emit')
+        // emit is already a spy from an earlier test, so the setup add above is on its
+        // record. Only the calls this mutation makes are the subject.
+        vi.mocked(eventBus.emit).mockClear()
+        const added = newFactory('Ungrouped')
+        appStore.addFactory(added)
+
+        expect(appStore.getFactories().map(entry => entry.name)).toEqual(['Ungrouped', 'Grouped'])
+        expect(grouped.displayOrder).toEqual(1)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', grouped)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', added)
+      })
+
+      it('leaves a record the insert did not move undeclared', () => {
+        const first = newFactory('First')
+        appStore.addFactory(first)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.addFactory(newFactory('Second'))
+
+        expect(first.displayOrder).toEqual(0)
+        expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', first)
+      })
     })
 
     describe('removeFactory', () => {
@@ -1080,6 +1517,38 @@ describe('app-store', () => {
         expect(factories[0].displayOrder).toEqual(0)
         expect(factories[1].displayOrder).toEqual(1)
       })
+
+      // Same reindex rule as addFactory, inverted: the removal itself is structural and the
+      // engine infers it, but the records that shifted up to close the gap are not.
+      it('declares intent for the records the removal reindexed', () => {
+        const first = newFactory('First', 123)
+        const middle = newFactory('Middle', 256)
+        const last = newFactory('Last', 678)
+        appStore.addFactory(first)
+        appStore.addFactory(middle)
+        appStore.addFactory(last)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.removeFactory(middle.id)
+
+        expect(last.displayOrder).toEqual(1)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', last)
+        expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', first)
+      })
+
+      // The engine infers the removal from the diff anyway; the declaration is what lets
+      // several deletes coalescing into one op pass the server's bulk-removal threshold.
+      it('declares the removed id', () => {
+        const factory = newFactory('Doomed', 0, 77)
+        appStore.addFactory(factory)
+
+        vi.spyOn(eventBus, 'emit')
+        vi.mocked(eventBus.emit).mockClear()
+        appStore.removeFactory(factory.id)
+
+        expect(eventBus.emit).toHaveBeenCalledWith('planReplaced', { removedIds: [77] })
+      })
     })
 
     describe('clearFactories', () => {
@@ -1090,6 +1559,23 @@ describe('app-store', () => {
         appStore.clearFactories()
 
         expect(appStore.getFactories()).toEqual([])
+      })
+
+      // Emptying the plan used to announce nothing at all, so the removals were never
+      // flushed and the next rebase pulled every factory back off the server.
+      it('declares every removed factory as intent', () => {
+        const first = newFactory('Kept nowhere')
+        const second = newFactory('Also gone')
+        appStore.addFactory(first)
+        appStore.addFactory(second)
+        vi.mocked(eventBus.emit).mockClear()
+
+        appStore.clearFactories()
+
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', first)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', second)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', first)
+        expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', second)
       })
 
       // No factory carries a memberless group, so nothing else would take it with the plan.
@@ -1148,7 +1634,85 @@ describe('app-store', () => {
           { id: 'g1', name: 'Empty', color: '#4caf50', order: 0 },
         ])
       })
+
+      // A tab id IS a room id, so a share link importing the id it was taken from would
+      // hand two tabs to one room.
+      it('re-keys an incoming tab whose id this browser already holds', () => {
+        appStore.addTab({ id: 'room-1', name: 'Mine', factories: [] })
+
+        const importedId = appStore.addTab({ id: 'room-1', name: 'Theirs (shared)', factories: [] })
+
+        expect(importedId).not.toBe('room-1')
+        expect(appStore.getTabs().filter(tab => tab.id === 'room-1')).toHaveLength(1)
+        expect(appStore.getTab('room-1')?.name).toBe('Mine')
+        expect(appStore.getTab(importedId)?.name).toBe('Theirs (shared)')
+      })
     })
+    describe('reorderTabs', () => {
+      const threeTabs = () => {
+        appStore.addTab({ id: 'b', name: 'B', factories: [] }, { activate: false })
+        appStore.addTab({ id: 'c', name: 'C', factories: [] }, { activate: false })
+        return [appStore.getTabs()[0].id, 'b', 'c']
+      }
+
+      it('should lay the bar out in the order given', () => {
+        const [first] = threeTabs()
+
+        expect(appStore.reorderTabs(['c', first, 'b'])).toBe(true)
+        expect(appStore.getTabs().map(tab => tab.id)).toEqual(['c', first, 'b'])
+      })
+
+      it('should keep the tab on screen on screen, at its new index', () => {
+        const [first] = threeTabs()
+        appStore.activateTab('b')
+
+        appStore.reorderTabs(['b', 'c', first])
+
+        expect(appStore.currentFactoryTabIndex).toBe(0)
+        expect(appStore.getCurrentTab().id).toBe('b')
+      })
+
+      it('should persist the new order to the plan mirror', () => {
+        const [first] = threeTabs()
+        vi.useFakeTimers()
+
+        appStore.reorderTabs(['c', 'b', first])
+        vi.runAllTimers()
+        vi.useRealTimers()
+
+        const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
+        expect(stored.map(tab => tab.id)).toEqual(['c', 'b', first])
+      })
+
+      // The index watcher drives the loader, and a reorder moves the index without
+      // changing what is rendered.
+      it('should not reload the plan the moved tab is already showing', async () => {
+        threeTabs()
+        appStore.activateTab('b')
+        await nextTick()
+
+        // eventBus may already be spied by an earlier test, and spyOn hands back that
+        // same mock: only a clear separates the switch's emits from the reorder's.
+        const emit = vi.spyOn(eventBus, 'emit')
+        emit.mockClear()
+
+        appStore.reorderTabs(['b', 'c', appStore.getTabs()[0].id])
+        await nextTick()
+
+        expect(emit).not.toHaveBeenCalledWith('plannerShow', false)
+      })
+
+      it('should refuse a partial, padded or duplicated order and change nothing', () => {
+        const [first] = threeTabs()
+        const before = appStore.getTabs().map(tab => tab.id)
+
+        expect(appStore.reorderTabs(['c', 'b'])).toBe(false)
+        expect(appStore.reorderTabs(['c', 'b', first, 'ghost'])).toBe(false)
+        expect(appStore.reorderTabs(['b', 'b', 'c'])).toBe(false)
+        expect(appStore.getTabs().map(tab => tab.id)).toEqual(before)
+      })
+    })
+
     describe('removeCurrentTab', () => {
       beforeEach(() => {
         // Reset the app store each time
@@ -1177,6 +1741,255 @@ describe('app-store', () => {
         expect(appStore.getTab('12345')).toBeUndefined()
         // Expect the old tab to still exist
         expect(appStore.getCurrentTab()).toEqual(originalTab)
+      })
+    })
+
+    describe('removeTab', () => {
+      beforeEach(() => {
+        resetAppStore()
+      })
+
+      it('should refuse to empty the bar', () => {
+        const only = appStore.getCurrentTab().id
+
+        expect(appStore.removeTab(only)).toBe(false)
+        expect(appStore.getTab(only)).toBeDefined()
+      })
+
+      it('should keep the selection on the tab being viewed when an earlier one goes', () => {
+        const first = appStore.getCurrentTab().id
+        appStore.addTab({ id: 'viewed', name: 'Viewed', factories: [] })
+
+        expect(appStore.removeTab(first)).toBe(true)
+
+        expect(appStore.getTab(first)).toBeUndefined()
+        expect(appStore.getCurrentTab().id).toBe('viewed')
+      })
+
+      it('should land on a real neighbour when the viewed tab itself goes', () => {
+        appStore.addTab({ id: 'doomed', name: 'Doomed', factories: [] })
+
+        expect(appStore.removeTab('doomed')).toBe(true)
+
+        expect(appStore.getTab('doomed')).toBeUndefined()
+        expect(appStore.getCurrentTab()).toBeDefined()
+      })
+
+      it('should drop the removed tab\'s sync state with it', () => {
+        appStore.addTab({ id: 'synced', name: 'Synced', factories: [] })
+        appStore.setTabState('synced', { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+
+        appStore.removeTab('synced')
+
+        expect(appStore.getTabState('synced').kind).toBe('local')
+      })
+    })
+  })
+
+  describe('tab lifecycle', () => {
+    beforeEach(() => {
+      localStorage.removeItem(TAB_SYNC_STATE_KEY)
+      localStorage.removeItem(TAB_MIRROR_META_KEY)
+      resetAppStore()
+    })
+
+    const syncedState = (revision: number, overrides: Partial<TabSyncState> = {}) => ({
+      kind: 'synced' as const,
+      shared: false,
+      role: 'owner' as const,
+      revision,
+      ...overrides,
+    })
+
+    it('should treat an unknown tab as local', () => {
+      expect(appStore.getTabState('nope')).toEqual({
+        kind: 'local',
+        shared: false,
+        role: 'owner',
+        revision: null,
+      })
+    })
+
+    it('should move a tab from local to synced and persist it outside factoryTabs', () => {
+      const tab = appStore.getCurrentTab()
+
+      appStore.setTabState(tab.id, syncedState(3))
+
+      expect(appStore.getTabState(tab.id).kind).toBe('synced')
+      expect(JSON.parse(localStorage.getItem(TAB_SYNC_STATE_KEY) ?? '{}')[tab.id].revision).toBe(3)
+      // The mirror keeps today's exact shape — nothing about sync leaks into what
+      // persistPlan writes, which is what makes a v6 rollback land on readable data.
+      // `plannerVersion` is a plan field, not a sync one: a fresh tab is born answered.
+      expect(Object.keys(JSON.parse(JSON.stringify(tab)))).toEqual(['id', 'name', 'factories', 'plannerVersion'])
+    })
+
+    it('should convert a revoked tab back to local without touching its content', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Kept'))
+      appStore.setTabState(tab.id, syncedState(3, { shared: true }))
+
+      appStore.markTabLocal(tab.id)
+
+      expect(appStore.getTabState(tab.id).kind).toBe('local')
+      expect(appStore.getTab(tab.id)?.factories.map(f => f.name)).toEqual(['Kept'])
+    })
+
+    it('should carry the sync state across a re-key', () => {
+      const tab = appStore.getCurrentTab()
+      const originalId = tab.id
+      appStore.setTabState(originalId, syncedState(7))
+
+      expect(appStore.rekeyTab(originalId, 'fresh-id')).toBe(true)
+
+      expect(appStore.getTab('fresh-id')).toBeDefined()
+      expect(appStore.getTabState('fresh-id').revision).toBe(7)
+      expect(appStore.getTabState(originalId).kind).toBe('local')
+    })
+
+    it('should refuse to re-key onto an id another tab already holds', () => {
+      const tab = appStore.getCurrentTab()
+      appStore.addTab({ id: 'taken', name: 'Other', factories: [] })
+
+      expect(appStore.rekeyTab(tab.id, 'taken')).toBe(false)
+    })
+
+    it('should not switch to a tab the room list brought in', () => {
+      const before = appStore.currentFactoryTabIndex
+
+      appStore.addTab({ id: 'remote', name: 'Remote', factories: [] }, { activate: false })
+
+      expect(appStore.currentFactoryTabIndex).toBe(before)
+      expect(appStore.getTab('remote')).toBeDefined()
+    })
+
+    it('should duplicate a tab as an independent local copy', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Original'))
+      appStore.setTabState(tab.id, syncedState(2, { shared: true }))
+
+      const copyId = appStore.duplicateTab(tab.id) as string
+      appStore.getTab(copyId)!.factories[0].name = 'Changed'
+
+      expect(appStore.getTab(copyId)?.name).toBe(`${tab.name} (local)`)
+      expect(appStore.getTabState(copyId).kind).toBe('local')
+      expect(tab.factories[0].name).toBe('Original')
+    })
+
+    // Dropping these changes what the copy means: an unanswered raw-resources question
+    // and Depot tiers reading as fully researched.
+    it('should carry the planner version and the Depot tiers into the copy', () => {
+      const tab = appStore.getCurrentTab()
+      tab.factories.push(newFactory('Original'))
+      tab.plannerVersion = '0.6'
+      tab.depotUploadTier = 3
+      tab.depotExpansionTier = 2
+
+      const copy = appStore.getTab(appStore.duplicateTab(tab.id) as string)
+
+      expect(copy?.plannerVersion).toBe('0.6')
+      expect(copy?.depotUploadTier).toBe(3)
+      expect(copy?.depotExpansionTier).toBe(2)
+    })
+
+    it('should drop state for tabs the bar no longer holds', () => {
+      appStore.setTabState('ghost', syncedState(1))
+
+      appStore.pruneTabStates()
+
+      expect(appStore.getTabState('ghost').kind).toBe('local')
+    })
+
+    // Two conditions, and both have to hold: the mirror is provably the server's current
+    // state, and the plan is small enough that mounting it in one flush cannot hitch.
+    describe('instant render gating', () => {
+      const mirrorAt = (tabId: string, revision: number, appVersion = PROTOCOL_VERSION) => {
+        setTabMirrorMeta(tabId, {
+          revision,
+          appVersion,
+          userTouchedIds: [],
+          userTouchedFields: [],
+          declaredRemovals: [],
+        })
+      }
+
+      it('should render instantly when the mirror matches the server revision', () => {
+        const tab = appStore.getCurrentTab()
+        tab.factories.push(newFactory('Small One'), newFactory('Small Two'))
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(true)
+      })
+
+      // The regression Matt reported: an up-to-date big plan skipped the loader as well as
+      // the recalculation, so the click produced nothing until the whole plan appeared.
+      it('should not render a big plan instantly, however current its mirror is', () => {
+        const tab = appStore.getCurrentTab()
+        for (let index = 0; index <= PACED_RENDER_FACTORY_COUNT; index++) {
+          tab.factories.push(newFactory(`Big ${index}`, index, index + 1))
+        }
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should not render instantly when the mirror is behind the server', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(5))
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should not render instantly when the mirror was written by another app version', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4, '6.9')
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should never render a local tab instantly', () => {
+        const tab = appStore.getCurrentTab()
+        mirrorAt(tab.id, 4)
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+      })
+
+      it('should not render instantly when a previous load was interrupted', () => {
+        const tab = appStore.getCurrentTab()
+        appStore.setTabState(tab.id, syncedState(4))
+        mirrorAt(tab.id, 4)
+        localStorage.setItem('preLoadFactories', JSON.stringify([newFactory('Recovered')]))
+
+        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+
+        localStorage.removeItem('preLoadFactories')
+      })
+    })
+
+    describe('reloadTabFromMirror', () => {
+      it('should push server-applied data through the loader funnel', async () => {
+        const tab = appStore.getCurrentTab()
+        appStore.getFactories()
+        vi.spyOn(eventBus, 'emit')
+        // Whole records arriving from the server, exactly as a snapshot leaves them.
+        tab.factories = [newFactory('From the server')]
+
+        await appStore.reloadTabFromMirror(tab.id)
+
+        expect(eventBus.emit).toHaveBeenCalledWith('plannerShow', false)
+        expect(appStore.getFactories().map(f => f.name)).toEqual(['From the server'])
+      })
+
+      it('should leave a background tab alone until it is selected', async () => {
+        appStore.addTab({ id: 'background', name: 'Background', factories: [] }, { activate: false })
+        vi.spyOn(eventBus, 'emit')
+
+        await appStore.reloadTabFromMirror('background')
+
+        expect(eventBus.emit).not.toHaveBeenCalledWith('plannerShow', false)
       })
     })
   })

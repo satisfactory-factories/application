@@ -6,7 +6,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Source rather than dist, so a web build never waits on `common` being compiled.
+      "common": ["../common/src/index.ts"]
     },
     "resolveJsonModule": true,
     "types": [
@@ -25,7 +27,9 @@
   },
   "include": [
     "src/**/*",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "e2e/**/*",
+    "playwright.config.ts"
   ],
   "exclude": ["dist", "node_modules", "cypress"],
   "references": [{ "path": "./tsconfig.node.json" }],

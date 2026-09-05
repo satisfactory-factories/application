@@ -1,0 +1,130 @@
+name: E2E Checks
+
+# The Playwright suite: a real compiled API against an in-memory mongod, a real
+# production build of the client, real WebSockets and two browser contexts per
+# test. `web/e2e/README.md` covers what it proves and why the ports are fixed.
+#
+# Unlike its sibling check workflows, this one IS path-filtered on pull_request.
+# Those three are required status checks on main, and a required check that never
+# triggers sits pending forever rather than passing — so they cannot filter. This
+# one is not required, which is what buys the filter. Making it required later
+# means deleting both paths blocks first, or a PR that touches only docs can
+# never be merged.
+#
+# The two lists are duplicated rather than shared: the workflow parser does not
+# accept YAML anchors, which is why deploy-backend.yml and pr-docker-backend.yml
+# repeat theirs as well.
+on:
+  push:
+    branches:
+      - main
+      # The v0.7.0 integration line: sync work lands here for beta testing first.
+      - beta7
+    paths:
+      - 'web/**'
+      - 'backend/**'
+      - 'common/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches:
+      - main
+      - beta7
+    paths:
+      - 'web/**'
+      - 'backend/**'
+      - 'common/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e.yml'
+  # So a flake can be re-run, or the suite pointed at a branch by hand.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same PR makes the in-flight run redundant.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    # The suite is ~2 minutes plus both builds; the headroom is for the first run
+    # on a cold cache, which downloads Chromium and the mongod binary.
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # corepack activates the pnpm pinned by `packageManager`, same as the API
+      # image and the three sibling check workflows.
+      - name: Install pnpm
+        run: corepack enable
+
+      # All three packages the harness touches: it builds the client from `web`,
+      # compiles and boots `backend/dist`, and `common` is named explicitly
+      # because --filter backend links that workspace dependency without
+      # installing the typescript that compiles it.
+      - name: Install dependencies
+        run: pnpm install --filter web --filter backend --filter common
+
+      # ~130MB of Chromium per run without this. Keyed on the lockfile, which is
+      # what moves when the @playwright/test catalog pin does. Renovate moves that
+      # lockfile for every other dependency too, so the prefix fallback restores the
+      # previous browser rather than re-downloading one that has not changed.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ms-playwright-${{ runner.os }}-
+
+      # A no-op download when the cache hit; --with-deps still runs apt each time,
+      # since system libraries live outside the cached directory.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # `allowBuilds: mongodb-memory-server: false` keeps the postinstall from
+      # fetching mongod, so the first MongoMemoryServer.create() of the run does
+      # it instead — ~100MB every time without this.
+      - name: Cache the mongod binary
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('pnpm-workspace.yaml') }}
+
+      # That path is mongodb-memory-server's own default, but only implicitly.
+      # Pinning it means a library default change cannot silently miss the cache.
+      - name: Pin the mongod download directory
+        run: echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
+
+      # `playwright test`. Its global setup builds backend/dist and web/dist, boots
+      # both on 3000/3001 and tears them down again; headless is the default.
+      - name: Run e2e suite
+        run: pnpm test:e2e
+
+      # `trace: retain-on-failure` and `screenshot: only-on-failure` are already
+      # configured, and this suite cannot be reproduced from the log alone.
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

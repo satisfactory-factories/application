@@ -1,0 +1,45 @@
+{
+  "name": "common",
+  "description": "Shared wire protocol, canonical plan types and the zod data boundary for Satisfactory Factories.",
+  "author": "Matt Cavanagh",
+  "license": "AGPL-3.0-or-later",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/fixtures.d.ts",
+      "import": "./dist/testing/fixtures.js",
+      "require": "./dist/testing/fixtures.js",
+      "default": "./dist/testing/fixtures.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint . --fix",
+    "lint-check": "eslint ."
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "globals": "^17.7.0",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "^4.1.10"
+  }
+}

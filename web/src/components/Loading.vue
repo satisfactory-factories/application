@@ -5,7 +5,6 @@
     :model-value="showLoad"
     opacity="1"
     persistent
-    @after-enter="afterEnter"
   >
     <v-card class="pa-4 text-center sub-card" width="500">
       <template v-if="!firstLoad">
@@ -20,7 +19,7 @@
         <div v-if="!isRendering" class="mt-2 text-body-1">{{ loaded }} out of {{ toLoad }} loaded...</div>
         <div v-if="isRendering" class="mt-2 text-body-1">Rendering...</div>
         <div class="mt-2 text-body-2 text-grey">{{ calculatingMessage }}</div>
-        <div v-if="shown > 10" class="mt-2 text-body-2 text-amber-darken-2">Detected many unhidden factories. Expect <b><u>significant</u></b> rendering delay, performance issues, and possible browser crashes. <br>Consider hiding some factories.</div>
+        <div v-if="shown > PACED_RENDER_FACTORY_COUNT" class="mt-2 text-body-2 text-amber-darken-2">Detected many unhidden factories. Expect <b><u>significant</u></b> rendering delay, performance issues, and possible browser crashes. <br>Consider hiding some factories.</div>
       </template>
       <template v-if="firstLoad">
         <div class="text-h5">Loading Planner...</div>
@@ -32,6 +31,7 @@
 <script setup lang="ts">
   import { onMounted, onUnmounted, ref } from 'vue'
   import eventBus from '@/utils/eventBus'
+  import { PACED_RENDER_FACTORY_COUNT } from '@/utils/render-pacing'
 
   // We want to show the loader by default cos there's weird chicken and egg scenarios, and the hideLoading event is eventually emitted.
   const showLoad = ref(true)
@@ -88,7 +88,6 @@
     firstLoad.value = false
 
     console.log('Loader: State after prepareForLoad', getState())
-    console.log('Loader: Waiting for v-overlay afterEnter event...')
   }
 
   function incrementLoad (payload: { step: string }) {
@@ -98,11 +97,6 @@
       console.log('Loader: setting isRendering')
       isRendering.value = true
     }
-  }
-
-  const afterEnter = () => {
-    console.log('Loader: v-overlay afterEnter received')
-    eventBus.emit('readyForData')
   }
 
   const loadingCompleted = () => {

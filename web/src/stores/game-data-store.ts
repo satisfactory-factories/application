@@ -5,6 +5,7 @@ import { config } from '@/config/config'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { loadLocalGameData } from './local-game-data-loader'
 import { getPrimaryProductRecipes } from '@/utils/factory-management/common'
+import { recordEvent } from '@/utils/record-event'
 
 export const useGameDataStore = defineStore('game-data', () => {
   const localData = loadLocalGameData()
@@ -50,6 +51,7 @@ export const useGameDataStore = defineStore('game-data', () => {
 
     if (!gameData.value) {
       alert('Could not load the game data! Please report this on Discord!')
+      recordEvent('game_data_load_failed')
       throw new Error('Game data not loaded even after attempting to re-load it!')
     }
     return gameData.value

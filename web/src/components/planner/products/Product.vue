@@ -5,6 +5,7 @@
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
+    data-testid="product-row"
   >
     <!-- A status chip names the part, so a byproduct needs an anchor of its own or the jump has
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
@@ -53,7 +54,7 @@
           :checked="!!product.completed"
           class="checklist-tick"
           :class="{ desynced: isProductChecklistDesynced(product) }"
-          :title="isProductChecklistDesynced(product) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this product as built'"
+          :title="checklistTickTitle(productChecklistDesync(product), 'Mark this product as built')"
           type="checkbox"
           @click.prevent="toggleChecklistProduct(factory, product)"
         >
@@ -320,7 +321,12 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isProductChecklistDesynced, toggleChecklistProduct } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isProductChecklistDesynced,
+    productChecklistDesync,
+    toggleChecklistProduct,
+  } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
   import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'

@@ -503,7 +503,7 @@
                     :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                     class="checklist-tick"
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
-                    :title="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this export as built'"
+                    :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
                     type="checkbox"
                     @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                   >
@@ -590,6 +590,7 @@
 </template>
 
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { computed, inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import {
@@ -606,7 +607,13 @@
     isUnhandledByproduct,
     showBacklogAdvisory,
   } from '@/utils/factory-management/status'
-  import { isChecklistExportComplete, isChecklistExportDesynced, toggleChecklistExport } from '@/utils/factory-management/checklist'
+  import {
+    checklistExportDesync,
+    checklistTickTitle,
+    isChecklistExportComplete,
+    isChecklistExportDesynced,
+    toggleChecklistExport,
+  } from '@/utils/factory-management/checklist'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
@@ -640,6 +647,7 @@
   import { NON_SINKABLE_PARTS } from '@/utils/factory-management/sinkable'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import eventBus from '@/utils/eventBus'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
   import AddShortageDialog from '@/components/planner/satisfaction/AddShortageDialog.vue'
   import {
@@ -737,6 +745,9 @@
       appStore.addFactory(targetFactory)
 
       addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part), Math.abs(factory.parts[part]?.amountRemaining ?? 0))
+      // The new factory is structural and inferred; the import this put on the factory that was
+      // short is not, and a rebase would drop it while keeping the producer it points at.
+      markFactoryEdited(factory)
       calculateFactories(appStore.getFactories(), getGameData())
       eventBus.emit('toast', { message: `Created "${targetFactory.name}" producing "${getPartDisplayName(part)}"!` })
 
@@ -858,6 +869,9 @@
     console.log('changeCalculatorSelection: requestFacId', requestFacId)
 
     factory.exportCalculator[part].selected = requestFacId ?? null
+    // The calculator's settings live on the factory record and travel with the plan, so
+    // opening one or picking a destination is an edit the rebase has to carry over.
+    markFactoryEdited(factory)
   }
 
   const isRequestSelected = (factory: Factory, factoryId: string, part: string) => {
@@ -880,6 +894,7 @@
 
     if (!product) {
       alert('Could not fix the product due to there not being a product! Please report this to Discord with a share link, quoting the factory in question.')
+      recordEvent('calc_fix_product_missing')
       console.error(`Could not find product for part ${partId}`)
       return
     }
@@ -893,6 +908,7 @@
 
     if (!generator) {
       alert('Could not fix the generator due to there not being a generator! Please report this to Discord with a share link, quoting the factory in question.')
+      recordEvent('calc_fix_generator_missing')
       console.error(`Could not find generator for part ${part}`)
       return
     }
@@ -926,7 +942,10 @@
     setDepotCount(props.factory, partId, count)
     // Read back for the same reason the sink does: only a count that actually landed counts.
     notifyDepotTutorial(getDepotCount(props.factory, partId))
-    eventBus.emit('factoryUpdated', props.factory)
+    // Intent as well as payload. The sink gets its declaration from calculateFactory; skipping
+    // the recalculation here must not also skip saying whose edit this was, or a rebase drops
+    // the uploader count the user just set.
+    markFactoryEdited(props.factory)
   }
 
   // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.

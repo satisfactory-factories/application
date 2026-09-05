@@ -1,9 +1,9 @@
+import { emptyFactoryPower } from 'common'
 import {
   BuildingRequirement,
   Factory,
   FactoryDependency,
   FactoryItem,
-  FactoryPower,
   FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
@@ -102,7 +102,9 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     exportCalculator: {},
     partDisposal: {},
     rawResources: {},
-    power: {} as FactoryPower,
+    // Zeroed rather than `{}`: nothing recalculates on add, and an empty power object
+    // is not a valid factory on the wire, so the tab's first sync op was refused.
+    power: emptyFactoryPower(),
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
     hidden: false,
@@ -418,6 +420,10 @@ export const calculateFactory = (
   if (!changed.includes(factory)) {
     eventBus.emit('factoryUpdated', factory)
   }
+
+  // This entry point is only reached from a user action on one factory, so it is
+  // the only place that can tell sync which change was intent and which was ripple.
+  eventBus.emit('factoryEdited', factory)
 
   return factory
 }

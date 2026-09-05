@@ -11,9 +11,10 @@ Nothing is preserved from the old plan except the file's surrounding code.
 
 ## What the blob is
 
-"Copy plan" puts a `PlanBlob` on the clipboard: `{ name, factories, powerTarget, plannerVersion,
-groups }` (`utils/plan-backup.ts`). `factories` is the whole plan — products, building groups,
-inputs, dependencies, tasks, notes, group membership, the lot.
+**Export plan** (was "Copy plan") offers a file or the clipboard, and either way hands over a
+`PlanBlob`: `{ name, factories, powerTarget, plannerVersion, groups }` (`utils/plan-backup.ts`).
+`factories` is the whole plan: products, building groups, inputs, dependencies, tasks, notes,
+group membership, the lot.
 
 ## Where it can go
 
