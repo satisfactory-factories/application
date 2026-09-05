@@ -156,6 +156,14 @@ number used to be.
 - **The checkboxes on the Products, Imports, Power and Satisfaction rows** carry the same two
   numbers in their hover text, where there is no room for a chip.
 
+### Power generators: match the fuel to what the factory can supply
+
+- **A generator burning fuel its own factory makes now offers to match its draw to the supply**, with the same green **Expand to supply** and yellow **Trim to supply** pair the product rows carry, and the figure it would land on named on the button. A Fuel-Powered Generator set to 1,280 Liquid Fuel a minute in a factory that only has 1,120 spare offers **Trim to supply (1120)**; give the same factory more fuel than the generators are burning and it offers **Expand to supply** instead.
+- **The figure accounts for everything else that wants the fuel**, not just the generators. An oil plant that sends 120 Liquid Fuel a minute to Recycled Rubber and 40 to a Packager has 160 less to burn than it makes, which is exactly the sum this saves you doing by hand. Exports to other factories count too, and so does another generator burning the same fuel.
+- **A surplus the AWESOME Sink is currently mopping up still counts as spare**, because burning fuel beats sinking it — take it, and the sinks drop out of the plan by themselves.
+- The buttons appear only where there is something to match against: a generator whose fuel is entirely imported from elsewhere is left alone, as are Geothermal Generators, which have no fuel, and Alien Power Augmenters, whose matrix demand is decided by their building groups rather than by a rate you can set.
+- **The generator's row now wraps** rather than running off the edge of the card. It is the widest row in the planner, and on a 1440px screen with the sidebar open the new button had nowhere left to go.
+
 ### Interface
 
 - **Every dialog in the planner now has the same header and spacing.** Vuetify's stock card title sat the heading flush in the top-left corner with no breathing room, and each dialog had drifted its own way from there: some closed from a button at the bottom of the actions row, some had no way out but the scrim, and body text came in three different sizes. They now share one shell — a padded title row with the icon beside the heading, the close button in the top-right corner where a dialog's way out belongs, and body text at a single size. Dialogs that ask for a decision before they will go away (the out-of-sync prompt, the update-required notice) still have no corner close, deliberately.
