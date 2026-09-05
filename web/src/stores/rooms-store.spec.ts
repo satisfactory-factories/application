@@ -791,7 +791,7 @@ describe('rooms-store', () => {
     /**
      * The signed-out cloud tab: this browser kept the plan when it signed out, so
      * the same id is both a tab here and a room on the account. The list is what
-     * puts the two back together — offering to upload it would make a second copy.
+     * puts the two back together; offering to upload it would make a second copy.
      */
     it('re-marks a signed-out cloud tab as synced rather than offering to upload it', async () => {
       const tab = localTab('Was cloudy')
@@ -921,8 +921,8 @@ describe('rooms-store', () => {
         expect(store.adoptionCandidates).toEqual([tabId])
       })
 
-      // Nothing is listening between pastes: every other load in the session — a tab
-      // switch, a template, the boot — is not this store's business.
+      // Nothing is listening between pastes: every other load in the session (a tab
+      // switch, a template, the boot) is not this store's business.
       it('listens for that one load and no other', async () => {
         pastedInto()
 

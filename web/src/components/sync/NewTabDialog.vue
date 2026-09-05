@@ -116,7 +116,7 @@
   const signingIn = ref(false)
 
   /**
-   * The account's plans with no tab in this browser — hidden, in other words.
+   * The account's plans with no tab in this browser: hidden, in other words.
    * Showing and hiding stays per-browser, so this list is the one place that
    * says what this device is missing out on. Membership order, as everywhere.
    */

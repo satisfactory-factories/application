@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import CopyPlanDialog from './CopyPlanDialog.vue'
+import ExportPlanDialog from './ExportPlanDialog.vue'
 import vuetify from '@/plugins/vuetify'
 
 // The dialog teleports its content out of the wrapper, so everything is read from
@@ -8,8 +8,8 @@ import vuetify from '@/plugins/vuetify'
 const body = () => document.body
 const at = (testId: string) => body().querySelector<HTMLElement>(`[data-testid="${testId}"]`)
 
-describe('CopyPlanDialog', () => {
-  const render = () => mount(CopyPlanDialog, {
+describe('ExportPlanDialog', () => {
+  const render = () => mount(ExportPlanDialog, {
     global: { plugins: [vuetify] },
     props: { modelValue: true },
     attachTo: document.body,
@@ -23,20 +23,20 @@ describe('CopyPlanDialog', () => {
   it('offers both ways out of the planner', () => {
     render()
 
-    expect(at('copy-to-file')).not.toBeNull()
-    expect(at('copy-to-clipboard')).not.toBeNull()
+    expect(at('export-to-file')).not.toBeNull()
+    expect(at('export-to-clipboard')).not.toBeNull()
   })
 
   it('says what each one gives you', () => {
     render()
 
-    expect(at('copy-to-file')?.textContent).toContain('.json')
-    expect(at('copy-to-clipboard')?.textContent).toContain('clipboard')
+    expect(at('export-to-file')?.textContent).toContain('.json')
+    expect(at('export-to-clipboard')?.textContent).toContain('clipboard')
   })
 
   it.each([
-    ['copy-to-file', 'file'],
-    ['copy-to-clipboard', 'clipboard'],
+    ['export-to-file', 'file'],
+    ['export-to-clipboard', 'clipboard'],
   ])('emits the choice behind %s', async (testId, choice) => {
     const wrapper = render()
 
@@ -48,7 +48,7 @@ describe('CopyPlanDialog', () => {
 
   // The cards are the whole dialog, and a v-card with a click handler is not a button:
   // without this a keyboard cycles straight past both choices to Cancel.
-  it.each(['copy-to-file', 'copy-to-clipboard'])('puts %s in the tab order as a button', testId => {
+  it.each(['export-to-file', 'export-to-clipboard'])('puts %s in the tab order as a button', testId => {
     render()
 
     expect(at(testId)?.getAttribute('role')).toBe('button')
@@ -58,7 +58,7 @@ describe('CopyPlanDialog', () => {
   it('takes a choice from the keyboard too', async () => {
     const wrapper = render()
 
-    at('copy-to-file')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    at('export-to-file')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     await flushPromises()
 
     expect(wrapper.emitted('choose')?.at(-1)).toEqual(['file'])

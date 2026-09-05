@@ -2,20 +2,20 @@
   <app-dialog
     v-model="open"
     card-class="border-md"
-    data-testid="copy-plan-dialog"
-    icon="fas fa-copy"
+    data-testid="export-plan-dialog"
+    icon="fas fa-file-export"
     max-width="720"
-    title="Copy this plan"
+    title="Export this plan"
   >
     <p class="mb-4 text-body-2">
-      Either way you get the whole plan — every factory, its groups, power target and Depot
-      research — as the planner's own JSON. Import it back into any tab, on any device.
+      Either way you get the whole plan (every factory, its groups, power target and Depot
+      research) as the planner's own JSON. Import it back into any tab, on any device.
     </p>
 
     <div class="d-flex flex-column flex-md-row ga-4">
       <v-card
         class="choice flex-1-1 pa-4"
-        data-testid="copy-to-file"
+        data-testid="export-to-file"
         role="button"
         tabindex="0"
         variant="tonal"
@@ -34,7 +34,7 @@
 
       <v-card
         class="choice flex-1-1 pa-4"
-        data-testid="copy-to-clipboard"
+        data-testid="export-to-clipboard"
         role="button"
         tabindex="0"
         variant="tonal"

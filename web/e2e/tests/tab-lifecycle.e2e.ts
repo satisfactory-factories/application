@@ -212,8 +212,8 @@ test('a member gets the owner\'s rename and is offered no rename of their own', 
  * The journey a user actually reported: signed in first, filled a local tab
  * afterwards (a plan pasted in from the live site), and then had to work out how
  * to get it onto the account and back down on another machine. Nothing offers
- * the cloud at the moment the plan lands — the offer to adopt is made at
- * sign-in — so tab settings is the route, and this is that route end to end.
+ * the cloud at the moment the plan lands, because the offer to adopt is made at
+ * sign-in. So tab settings is the route, and this is that route end to end.
  */
 test('a plan filled in after signing in reaches the cloud and the next device', async ({
   client,

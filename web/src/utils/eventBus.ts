@@ -49,11 +49,11 @@ type Events = {
   plannerShow: boolean;
   calculationsCompleted: undefined
   /**
-   * A whole plan has just been dropped into a tab from outside — a paste today, an
+   * A whole plan has just been dropped into a tab from outside: a paste today, an
    * import tomorrow. Carries the tab it landed in, and fires as it lands rather than
    * once it has drawn: the emitter knows a plan arrived, and whoever cares waits for
    * the load themselves. The rooms store answers it by offering that tab to the
-   * cloud, which nothing else would — the sweep of what this browser holds is made
+   * cloud, which nothing else would. The sweep of what this browser holds is made
    * at sign-in, and a plan that turns up afterwards misses it.
    */
   planLanded: string

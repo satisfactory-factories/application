@@ -90,7 +90,7 @@
           Take a copy of this plan as a local tab. The copy lives in this browser only and
           goes its own way; this plan carries on exactly as it is.
         </p>
-        <!-- The planner's own "Copy plan" colour, so the two copies read as the same act. -->
+        <!-- The planner's own "Export plan" colour, so the two read as the same kind of act. -->
         <v-btn
           color="secondary"
           data-testid="duplicate-tab"
@@ -346,8 +346,8 @@
   }
 
   /**
-   * The tab goes, the room and the membership stay. A refusal — offline, or the last
-   * tab in the bar — keeps the dialog up with the reason on it; the store toasts it too.
+   * The tab goes, the room and the membership stay. A refusal (offline, or the last
+   * tab in the bar) keeps the dialog up with the reason on it; the store toasts it too.
    */
   const hideTab = () => {
     const result = roomsStore.hidePlan(props.tabId)

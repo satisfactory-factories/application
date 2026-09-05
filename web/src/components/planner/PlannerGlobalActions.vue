@@ -81,17 +81,17 @@
           Clear
         </v-btn>
       </tooltip>
-      <tooltip :text="isEmpty ? 'Nothing to copy yet — add a factory first.' : 'Take the whole plan out of the planner — every factory, plus the tab name, power target and groups — as a file to keep, or as JSON on your clipboard.'">
+      <tooltip :text="isEmpty ? 'Nothing to export yet, add a factory first.' : 'Take the whole plan out of the planner (every factory, plus the tab name, power target and groups) as a file to keep, or as JSON on your clipboard.'">
         <v-btn
           class="ma-1"
           color="secondary"
-          data-testid="copy-plan"
+          data-testid="export-plan"
           :disabled="isEmpty"
-          prepend-icon="fas fa-copy"
+          prepend-icon="fas fa-file-export"
           variant="tonal"
-          @click="copyOpen = true"
+          @click="exportOpen = true"
         >
-          Copy plan
+          Export plan
         </v-btn>
       </tooltip>
       <tooltip text="Replace this tab with a plan from a file or from your clipboard. You'll be asked first if this tab already has factories in it, and a cloud plan is replaced on every device it is open on.">
@@ -122,7 +122,7 @@
     </v-col>
   </v-row>
 
-  <copy-plan-dialog v-model="copyOpen" @choose="onCopyChoice" />
+  <export-plan-dialog v-model="exportOpen" @choose="onExportChoice" />
   <import-plan-dialog
     v-model="importOpen"
     :busy="importing"
@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-  import CopyPlanDialog from '@/components/planner/CopyPlanDialog.vue'
+  import ExportPlanDialog from '@/components/planner/ExportPlanDialog.vue'
   import ImportPlanDialog from '@/components/planner/ImportPlanDialog.vue'
   import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
@@ -150,7 +150,7 @@
   const options = usePlannerOptions()
 
   const disableRecalc = ref(false)
-  const copyOpen = ref(false)
+  const exportOpen = ref(false)
   const importOpen = ref(false)
   const importError = ref('')
   const importing = ref(false)
@@ -219,7 +219,7 @@
    * Holistic full-tab copy: the tab name, power target and the entire factories
    * array (which itself carries products, building groups, export calculator
    * settings, tasks, notes, collapse state, sync state, etc). The tab id is
-   * intentionally omitted — an import replaces the current tab and keeps its own id.
+   * intentionally omitted: an import replaces the current tab and keeps its own id.
    * Older exports were a bare Factory[] array, which the import path still accepts.
    */
   const planBlob = (): PlanBlob => ({
@@ -237,8 +237,8 @@
     depotExpansionTier: getCurrentTab()?.depotExpansionTier,
   })
 
-  const onCopyChoice = async (choice: 'file' | 'clipboard') => {
-    copyOpen.value = false
+  const onExportChoice = async (choice: 'file' | 'clipboard') => {
+    exportOpen.value = false
     if (choice === 'file') {
       downloadPlan(planBlob())
       eventBus.emit('toast', { message: 'Plan saved as a file. Import it back from any tab, on any device.', type: 'success' })
@@ -289,7 +289,7 @@
       emit('clear-all')
       // Announced as it is dropped in, before the load that draws it: this knows a
       // plan arrived and in which tab, and that is all it knows. Whoever cares
-      // waits for the load themselves — the rooms store offers a local tab to the
+      // waits for the load themselves. The rooms store offers a local tab to the
       // cloud once it has drawn, which nothing else would.
       const destination = getCurrentTab()
       if (destination) eventBus.emit('planLanded', destination.id)
@@ -358,12 +358,12 @@
 
   /**
    * Reading the clipboard is a permission, and some browsers ask for it with a prompt
-   * of their own — Firefox puts a Paste button by the pointer. Dismissed or refused,
+   * of their own. Firefox puts a Paste button by the pointer. Dismissed or refused,
    * the read rejects here, and saying so beats the silence this used to give.
    */
   const importFromClipboard = () => runImport(
     () => navigator.clipboard.readText(),
-    'Your browser would not let the planner read the clipboard. Some browsers ask you to confirm with a Paste button of their own — look near the pointer or the address bar — or import from a file instead.',
+    'Your browser would not let the planner read the clipboard. Some browsers ask you to confirm with a Paste button of their own. Look near the pointer or the address bar, or import from a file instead.',
   )
 
   const importFromFile = (file: File) => runImport(

@@ -139,7 +139,7 @@ test('unticking a plan leaves that one local and syncs the rest', async ({ clien
 /**
  * The other way a plan reaches the cloud, and the one a user reported missing:
  * signed in first, plan pasted in afterwards. The sign-in sweep has already run
- * by then — on an empty bar it finds nothing and records no answer — so the
+ * by then (on an empty bar it finds nothing and records no answer), so the
  * paste raises the offer for the plan that just landed, or nothing ever does.
  */
 test('a plan pasted in while signed in is offered to the cloud where it lands', async ({
@@ -158,11 +158,11 @@ test('a plan pasted in while signed in is offered to the cloud where it lands', 
   // already ran against an empty bar, so nothing has been asked or answered.
   await addFactory(page, { name: 'Copied from the live site', note: 'about to be pasted' })
   await expect(page.getByTestId('adoption-dialog')).toBeHidden()
-  await actions.getByTestId('copy-plan').click()
-  await page.getByTestId('copy-to-clipboard').click()
+  await actions.getByTestId('export-plan').click()
+  await page.getByTestId('export-to-clipboard').click()
 
   // Somewhere for it to land: a second, empty, local tab, which is the one on
-  // screen — the plan replaces the tab you are looking at, not the first in the bar.
+  // screen: the plan replaces the tab you are looking at, not the first in the bar.
   await addLocalTab(page)
   let landing = ''
   await expect.poll(async () => {

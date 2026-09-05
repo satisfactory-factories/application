@@ -453,7 +453,7 @@ describe('TabSettingsDialog', () => {
     })
 
     // Three coloured actions in one dialog, and two of them copy something: the
-    // copy wears the planner's own "Copy plan" colour so it is not read as the
+    // copy wears the planner's own "Export plan" colour so it is not read as the
     // grey secondary action beside it.
     it('wears the planner\'s copy colour, not the muted grey beside it', async () => {
       await render(syncedTab())

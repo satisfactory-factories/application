@@ -370,7 +370,7 @@
   const gameDataStore = useGameDataStore()
   // Via the composable, not tab.powerTarget. A target set before targets were per-plan lives in
   // localStorage only, and the 0 recorded for it would stick: pasting a backup writes the target
-  // back onto the tab (#536). Copy plan reads it the same way, so both produce the same blob.
+  // back onto the tab (#536). Export plan reads it the same way, so both produce the same blob.
   const { powerTarget } = usePowerTarget()
 
   const rows = ref<WizardRow[]>([])

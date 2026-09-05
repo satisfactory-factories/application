@@ -1873,7 +1873,7 @@ choice, in the pattern `NewTabDialog` set:
 
 - `CopyPlanDialog.vue` (`copy-to-file` / `copy-to-clipboard`) behind the existing **Copy plan**
   button. The file half is `downloadPlan` from `utils/plan-backup.ts`, which the raw-resources
-  wizard already used for its backup — same blob, same filename shape.
+  wizard already used for its backup: same blob, same filename shape.
 - `ImportPlanDialog.vue` (`import-from-file` / `import-from-clipboard`) behind **Import plan**,
   which is what **Paste plan** is now called. The file half drives a hidden `<input type="file">`
   from the card and clears its value after every pick, so the same file twice in a row still
@@ -1884,21 +1884,21 @@ choice, in the pattern `NewTabDialog` set:
 - `applyPlanBlob(text)` is the one path in, whatever carried the text. It **reports** rather
   than alerting: an invalid blob returns a sentence, the dialog shows it inline and stays open.
   The old `alert()` was a browser dialog you had to dismiss before you could try the file half.
-- e2e: `plan-transfer.e2e.ts` saves a plan, clears the tab and brings it back out of the file —
-  no account, no room, no clipboard permission — and proves a junk file says so without
+- e2e: `plan-transfer.e2e.ts` saves a plan, clears the tab and brings it back out of the file
+  (no account, no room, no clipboard permission) and proves a junk file says so without
   touching the plan. The clipboard half stays with `adoption.e2e.ts`, which needs a real one.
 
 **The spec's own hazard, found twice.** `PlannerGlobalActions.spec.ts` kept failing on a *later*
 test whenever a new one drove the invalid-plan path: `recordEvent` starts the events store's
 flush interval, and it outlives the pinia it was made on. The file now mocks
-`@/utils/record-event` outright — nothing in it is about telemetry — which also settles the
+`@/utils/record-event` outright, since nothing in it is about telemetry, which also settles the
 earlier round's dropped assertion.
 
 ## A plan that lands after the sweep gets its own offer (2026-09-04)
 
 Reported from the preview: signed in first, pasted a plan from the live site into the local
-tab afterwards, then had to work out how to get it onto the account. Nothing was wrong —
-tab settings, the account panel's Local list and the plus button all convert a local tab —
+tab afterwards, then had to work out how to get it onto the account. Nothing was wrong:
+tab settings, the account panel's Local list and the plus button all convert a local tab,
 but nothing *said* so at the moment the plan landed, because `openAdoptionOffer` is the
 sign-in sweep and it had already run (and, on a first sign-in with an empty Default tab,
 found nothing and recorded no answer).
@@ -1906,15 +1906,15 @@ found nothing and recorded no answer).
 - `offerTabToCloud(tabId)` in `rooms-store.ts` raises the adoption dialog for one tab,
   regardless of the stored sign-in answer. Refuses silently when signed out, offline, when
   the tab is empty or already a room, or when another dialog (chooser, adoption, legacy) is
-  up — the login dialogs are a queue and this must not jump it.
+  up, because the login dialogs are a queue and this must not jump it.
 - `adoptionReason` (`'sign-in' | 'landed'`) rides alongside the candidates. `declineAdoption`
   writes the per-account answer **only** for the sweep: "not this one" says nothing about the
-  plans the sign-in offer asks about. `AdoptionDialog.vue` reads it for the wording — singular,
+  plans the sign-in offer asks about. `AdoptionDialog.vue` reads it for the wording: singular,
   "Send this plan to your account?", pointing at tab settings rather than the plus button.
 - The seam is the bus, and each half knows only its own business. `PlannerGlobalActions.vue`
   emits `planLanded` with the tab id **as the plan is dropped in**, before the load that
   draws it: it knows a plan arrived and where, and nothing else. The rooms store owns the
-  wait — `onPlanLanded` arms a one-shot `loadingCompleted` listener and takes it down again
+  wait. `onPlanLanded` arms a one-shot `loadingCompleted` listener and takes it down again
   in `offerPastedTab`, so between pastes nothing is listening and every other load in the
   session is nobody's business. A second paste before the first has drawn re-aims the pending
   tab rather than stacking a second listener. Emitting rather than calling the store also
@@ -1958,8 +1958,8 @@ its spec) is gone.
   already had.
 
 **Plan lists read at a glance (2026-09-04).** `CloudPlanRow` and the chooser rows draw the
-plan's size the way `PlannerFactoryList`'s Global Factories Summary does — the `fa-industry`
-icon and the number in a chip, the words moved into the tooltip — and spell the stamp out:
+plan's size the way `PlannerFactoryList`'s Global Factories Summary does (the `fa-industry`
+icon and the number in a chip, the words moved into the tooltip), and spell the stamp out:
 `relativeTimeLong` in `utils/relative-time.ts` gives "38 minutes ago" where `relativeTime`
 gives "38m ago", both off one shared `measure()` so they can never disagree about which side
 of a boundary a stamp falls on. The rows say "Last updated ..." and, for a stamp they cannot
@@ -1984,7 +1984,7 @@ fingerprint, the button returns, and the new link is stored over the old one.
 - Swept on open against the live tab bar (`pruneSnapshotLinks`), which is the only sweep these
   records get.
 - The link is copied the instant it is made, as before, and now the button says **Copied!**
-  with a tick for 2.5s before going back to naming what it does — the toast alone left a button
+  with a tick for 2.5s before going back to naming what it does. The toast alone left a button
   reading "Copy" next to a link that was already on the clipboard. Both invite copy buttons
   share the flash (`copiedKey`, one timer, cleared on close and unmount).
 - e2e: `snapshot-link.e2e.ts` reopens the dialog on an untouched plan (same link, no create

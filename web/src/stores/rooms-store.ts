@@ -382,7 +382,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
     // Asked and answered: one prompt per account in this browser, however many
     // refreshes follow. The plus button stays the way to sync a plan after a
-    // "No thanks" — and a second account signing in here has answered nothing.
+    // "No thanks", and a second account signing in here has answered nothing.
     if (hasAnsweredAdoption(useAuthStore().getLoggedInUser())) return false
 
     adoptionCandidates.value = candidates.map(tab => tab.id)
@@ -392,7 +392,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   /**
-   * One plan, offered the moment it lands in a local tab — a paste, an import, a
+   * One plan, offered the moment it lands in a local tab: a paste, an import, a
    * template. The sign-in sweep is made once and then the browser stops asking,
    * which leaves a plan that arrives afterwards with nothing to point at the
    * cloud; this is that pointer. Silent when there is nothing to offer or a
@@ -941,8 +941,8 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   /**
    * A plan pasted or imported into a tab: the one moment its own cloud offer is due.
-   * The offer waits for the load that draws the plan — the loading overlay is
-   * persistent and would sit on top of the dialog — so this arms a listener for
+   * The offer waits for the load that draws the plan, because the loading overlay is
+   * persistent and would sit on top of the dialog. So this arms a listener for
    * exactly that load and takes it down again on the way out. Between pastes nothing
    * is listening, which is the point: every other load is not this store's business.
    */

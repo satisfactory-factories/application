@@ -66,7 +66,7 @@ describe('ImportPlanDialog', () => {
     expect(wrapper.emitted('file')?.at(-1)).toEqual([file])
   })
 
-  // Same file twice in a row is a real thing to do — re-exported, re-imported — and a
+  // Same file twice in a row is a real thing to do (re-exported, re-imported), and a
   // file input fires no change event when its value has not moved.
   it('clears the input so the same file can be chosen twice', async () => {
     const wrapper = render()

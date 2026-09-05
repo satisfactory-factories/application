@@ -56,7 +56,7 @@ const spelled = (count: number, unit: string): string =>
   `${count} ${unit}${count === 1 ? '' : 's'} ago`
 
 /**
- * The same measurement in words — "45 seconds ago", "1 minute ago", "38 minutes
+ * The same measurement in words: "45 seconds ago", "1 minute ago", "38 minutes
  * ago", "3 hours ago", then the same date. For the dialogs, which have the width
  * to spell it out; the sidebar keeps the compact form because it has not.
  */

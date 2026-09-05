@@ -77,7 +77,7 @@ test('signing in inside the chooser still gets the synced tab that was asked for
 
 /**
  * The way back in. Hiding a plan is a per-browser move, so getting it back has to
- * be one too — and the button someone reaches for when they want a tab they have
+ * be one too, and the button someone reaches for when they want a tab they have
  * not got is the plus, not the account panel three clicks away.
  */
 test('the plus button offers the account plans this browser has closed', async ({

@@ -12,7 +12,7 @@ import eventBus from '@/utils/eventBus'
 
 /**
  * Counting a failed import starts the events store's flush interval, and that timer
- * outlives the pinia it was made on — a flush firing inside the next test made this
+ * outlives the pinia it was made on. A flush firing inside the next test made this
  * file's later paste tests fail for reasons that had nothing to do with them. Nothing
  * here is about telemetry, so it is stubbed out at the door.
  */
@@ -42,9 +42,9 @@ describe('Component: PlannerGlobalActions clipboard', () => {
   /** The dialogs teleport out of the wrapper, so their halves are read from the body. */
   const at = (testId: string) => document.body.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
 
-  /** Copy plan now asks where the plan should go; this takes one of the two answers. */
-  const copyVia = async (subject: VueWrapper, destination: 'copy-to-file' | 'copy-to-clipboard') => {
-    await clickButton(subject, 'Copy plan')
+  /** Export plan asks where the plan should go; this takes one of the two answers. */
+  const exportVia = async (subject: VueWrapper, destination: 'export-to-file' | 'export-to-clipboard') => {
+    await clickButton(subject, 'Export plan')
     await flushPromises()
     at(destination)!.click()
     await flushPromises()
@@ -73,7 +73,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
   /**
    * The paste handler reads the clipboard and then applies the plan behind a 250ms
    * timer, so every test here used to wait 300ms and hope. The plan landing is the
-   * thing to wait for, and `prepareLoader` is where it lands — spied in every test
+   * thing to wait for, and `prepareLoader` is where it lands, spied in every test
    * that pastes, and the last call the handler makes.
    */
   const pasteApplied = async () => {
@@ -124,7 +124,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     const subject = mountSubject()
     const hints = subject.findAllComponents(Tooltip).map(t => t.props('text') as string)
 
-    for (const label of ['hide', 'expand', 'clear', 'copy', 'recalculate']) {
+    for (const label of ['hide', 'expand', 'clear', 'export', 'recalculate']) {
       expect(hints.some(hint => hint.startsWith(`Nothing to ${label} yet`))).toBe(true)
     }
   })
@@ -149,13 +149,13 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(options.value.fullWidth).toBe(false)
   })
 
-  it('copy serializes the full tab (name, factories, powerTarget)', async () => {
+  it('export serializes the full tab (name, factories, powerTarget)', async () => {
     seedFactory()
     appStore.getCurrentTab().name = 'My Plan'
     usePowerTarget().powerTarget.value = 5000
 
     const subject = mountSubject()
-    await copyVia(subject, 'copy-to-clipboard')
+    await exportVia(subject, 'export-to-clipboard')
 
     expect(writeText).toHaveBeenCalledTimes(1)
     const payload = JSON.parse(writeText.mock.calls[0][0])
@@ -185,7 +185,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
    * A plan pasted in after signing in used to have nothing pointing at the cloud:
    * the offer to sync what this browser holds is made at sign-in and then the
    * browser stops asking. The paste raises it for the plan that just landed, once
-   * the load is done — the loading overlay is persistent and would sit over it.
+   * the load is done, because the loading overlay is persistent and would sit over it.
    */
   /**
    * Announced as the plan is dropped in, naming the tab it went into. That is all
@@ -324,12 +324,12 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
   // Groups with members ride on the factories and need no help. Memberless ones live only on the
   // tab, so the clipboard is the one place they can be lost — or left behind.
-  it('copy carries the memberless groups the factories cannot', async () => {
+  it('export carries the memberless groups the factories cannot', async () => {
     seedFactory()
     appStore.getCurrentTab().groups = [{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }]
 
     const subject = mountSubject()
-    await copyVia(subject, 'copy-to-clipboard')
+    await exportVia(subject, 'export-to-clipboard')
 
     const payload = JSON.parse(writeText.mock.calls[0][0])
     expect(payload.groups).toEqual([{ id: 'g1', name: 'Empty', color: '#4caf50', order: 0 }])
@@ -337,13 +337,13 @@ describe('Component: PlannerGlobalActions clipboard', () => {
 
   // The tiers describe the save the plan was written against, so they travel with it. Absent
   // reads as fully researched, which is why paste assigns them even when the blob has none.
-  it('copy carries the Depot research the plan was written against', async () => {
+  it('export carries the Depot research the plan was written against', async () => {
     seedFactory()
     appStore.getCurrentTab().depotUploadTier = 0
     appStore.getCurrentTab().depotExpansionTier = 1
 
     const subject = mountSubject()
-    await copyVia(subject, 'copy-to-clipboard')
+    await exportVia(subject, 'export-to-clipboard')
 
     const payload = JSON.parse(writeText.mock.calls[0][0])
     expect(payload.depotUploadTier).toBe(0)

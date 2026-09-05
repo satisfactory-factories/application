@@ -4,7 +4,7 @@ import { writeLocalStorage } from '@/utils/safe-storage'
  * Who has answered the adoption offer in this browser, kept per account.
  *
  * The offer is about the local plans this browser holds, so the answer lives
- * here rather than on the server — but it is an answer given *for one account*.
+ * here rather than on the server, but it is an answer given *for one account*.
  * A single browser-wide flag silenced the question for every account that ever
  * signed in afterwards, which is exactly wrong for the account that has never
  * been asked: someone who declines on their own account and then registers a
@@ -27,7 +27,7 @@ export const readAdoptionAnswers = (): AdoptionAnswers => {
   }
   // The shape before accounts was the bare literal `true`. v0.7 has not shipped,
   // so it is read as nobody having answered rather than migrated onto whichever
-  // account happens to be signing in — being asked once more beats being silenced.
+  // account happens to be signing in. Being asked once more beats being silenced.
   if (typeof parsed !== 'object' || parsed === null) return {}
 
   const answers: AdoptionAnswers = {}

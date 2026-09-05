@@ -28,7 +28,7 @@
           <span class="mr-2"><i class="fas fa-file-upload" /></span>From a file
         </div>
         <p class="text-body-2">
-          A <code>.json</code> plan saved from the planner — yours or somebody else's.
+          A <code>.json</code> plan saved from the planner, yours or somebody else's.
         </p>
       </v-card>
 
@@ -47,7 +47,7 @@
           <span class="mr-2"><i class="fas fa-clipboard" /></span>From the clipboard
         </div>
         <p class="text-body-2">
-          A plan copied to your clipboard. Your browser may ask you to confirm the paste —
+          A plan copied to your clipboard. Your browser may ask you to confirm the paste.
           Firefox in particular puts a <b>Paste</b> button near the pointer, and nothing
           arrives until you press it.
         </p>
@@ -81,7 +81,7 @@
    * The two ways a plan comes back in. The clipboard half carries the warning it
    * needs: reading the clipboard is a permission, and some browsers ask for it with
    * a prompt of their own that the planner cannot see, dismiss or explain after the
-   * fact — so it is said up front, next to the button that triggers it.
+   * fact, so it is said up front, next to the button that triggers it.
    */
   const open = defineModel<boolean>({ default: false })
 

@@ -69,7 +69,7 @@ test('a fresh device signs in and every plan it opens downloads whole', async ({
   await addFactory(machineA, { name: 'Copper spur', note: 'also machine A' })
 
   // Machine B: a browser holding nothing but its own empty local tab. The
-  // sign-in is all the user does — the chooser opens every plan by default.
+  // sign-in is all the user does; the chooser opens every plan by default.
   const machineB = await openPlanner(await client())
   await signIn(machineB, user)
 
@@ -81,7 +81,7 @@ test('a fresh device signs in and every plan it opens downloads whole', async ({
 
   // Both plans arrive, including the one machine B never selected: opening a
   // plan joins its room, and the join fills the tab whether it is on screen or
-  // not. Converged is the strong form — same revision and the same bytes.
+  // not. Converged is the strong form: same revision and the same bytes.
   for (const [roomId, factory] of [[backbone, 'Iron backbone'], [spur, 'Copper spur']] as const) {
     await expect.poll(
       async () => (await mirroredFactories(machineB, roomId)).map(entry => entry.name),
@@ -118,7 +118,7 @@ test('a plan already open on a device catches up on what it missed, unprompted',
 
   // Coming back is a page load with a persisted session, not a sign-in: no
   // chooser fronts it, and the tab left open refills itself with nothing
-  // clicked — a plan that is not hidden is a plan this device keeps downloading.
+  // clicked. A plan that is not hidden is a plan this device keeps downloading.
   machineB = await openPlanner(deviceB)
   await expect(machineB.getByTestId('plan-chooser-dialog')).toBeHidden()
   await expect.poll(

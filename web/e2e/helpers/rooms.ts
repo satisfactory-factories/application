@@ -77,7 +77,7 @@ export const syncedPair = async (
 }
 
 /**
- * Sharing lives in tab settings now — the bar's own share icon was a duplicate of
+ * Sharing lives in tab settings now. The bar's own share icon was a duplicate of
  * the button inside this dialog, so the pencil is the only way in.
  */
 export const openShareDialog = async (page: Page): Promise<void> => {

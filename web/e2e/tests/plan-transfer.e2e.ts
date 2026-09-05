@@ -13,10 +13,10 @@ test('a plan saved as a file comes back whole through the file half', async ({ c
 
   await addFactory(page, { name: 'Saved to disk', note: 'and read back' })
 
-  // Copy plan asks where the plan should go; the file half hands over a download.
-  await actions.getByTestId('copy-plan').click()
+  // Export plan asks where the plan should go; the file half hands over a download.
+  await actions.getByTestId('export-plan').click()
   const download = page.waitForEvent('download')
-  await page.getByTestId('copy-to-file').click()
+  await page.getByTestId('export-to-file').click()
   const file = await download
   expect(file.suggestedFilename()).toMatch(/^satisfactory-.*\.json$/)
 
