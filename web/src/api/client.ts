@@ -240,13 +240,14 @@ export const deleteRoom = (roomId: string): Promise<DeleteRoomResult> =>
 export const lookupRoomBySlug = (slug: string): Promise<RoomSlugLookup> =>
   apiRequest(`/rooms/by-slug/${encodeURIComponent(slug.toLowerCase())}`, { auth: false })
 
-export const legacyAutoImport = (localTabCount: number): Promise<LegacyImportResult> =>
-  apiRequest('/rooms/legacy/auto-import', { method: 'POST', body: { localTabCount } })
+/** The boot path's upgrade. Safe on every load; the server imports at most once. */
+export const legacyAutoImport = (): Promise<LegacyImportResult> =>
+  apiRequest('/rooms/legacy/auto-import', { method: 'POST', body: {} })
 
 /** Does this account still hold a pre-v0.7 save, and how big is it? No blob body. */
 export const legacyStatus = (): Promise<LegacyStatusResult> => apiRequest('/rooms/legacy/status')
 
-/** The on-demand import behind the login offer; the auto-import is its silent twin. */
+/** The on-demand import behind the login offer; the boot upgrade is its silent twin. */
 export const legacyRecover = (): Promise<LegacyImportResult> =>
   apiRequest('/rooms/legacy/recover', { method: 'POST', body: {} })
 

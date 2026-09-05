@@ -16,6 +16,9 @@ import eventBus from '@/utils/eventBus'
 /** How long a revocation or adoption notice sits on screen. Never blocking. */
 const NOTICE_MS = 8000
 
+/** How long the boot waits for the pre-v0.7 upgrade before carrying on without it. */
+export const LEGACY_UPGRADE_TIMEOUT_MS = 8000
+
 /** A failed join carries the server's code, so the caller can ask for a password. */
 export type JoinOutcome = { ok: true } | { ok: false, code: string | null, message: string }
 
@@ -106,9 +109,11 @@ export const useRoomsStore = defineStore('rooms', () => {
     const rooms = await inFlight
     if (rooms === null) return false
 
-    // Only an account that owns no cloud plan is offered its old save, so the
-    // question costs a request on the logins that could act on it and no other.
-    const legacy = offerLegacy && !rooms.some(room => room.role === 'owner')
+    // The fallback for whoever the automatic upgrade missed, so an upgrade that has
+    // just landed silences it. Beyond that, only an account that owns no cloud plan
+    // is asked, so the question costs a request on the logins that could act on it
+    // and no other.
+    const legacy = offerLegacy && !legacyImported && !rooms.some(room => room.role === 'owner')
       ? await findLegacyPlan()
       : null
 
@@ -116,7 +121,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     // are parked; every answer releases the next offer that is still due.
     if (offerChooser && openPlanChooser(rooms)) {
       parked = { adoption: offerAdoption ? rooms : null, legacy }
-    } else if (offerAdoption && await openAdoptionOffer(rooms)) {
+    } else if (offerAdoption && openAdoptionOffer(rooms)) {
       parked = { adoption: null, legacy }
     } else if (legacy !== null) {
       openLegacyOffer(legacy)
@@ -257,7 +262,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   const runParkedOffers = async () => {
     const due = parked
     dropParked()
-    if (due.adoption && await openAdoptionOffer(due.adoption)) {
+    if (due.adoption && openAdoptionOffer(due.adoption)) {
       parked = { adoption: null, legacy: due.legacy }
       return
     }
@@ -364,7 +369,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   // ===== Adoption =====
 
   /** Says whether it put the dialog on screen, so the caller knows the floor is taken. */
-  const openAdoptionOffer = async (list: RoomListEntry[]): Promise<boolean> => {
+  const openAdoptionOffer = (list: RoomListEntry[]): boolean => {
     const known = new Set(list.map(entry => entry.roomId))
     // The bar always holds at least the "Default" tab, so an empty one is not a
     // plan: "zero local tabs" means nothing here is worth keeping.
@@ -374,10 +379,6 @@ export const useRoomsStore = defineStore('rooms', () => {
       tab.factories.length > 0
     )
 
-    if (list.length === 0 && candidates.length === 0) {
-      await autoImportLegacy(candidates.length)
-      return false
-    }
     if (candidates.length === 0) return false
 
     // Asked and answered: one prompt per account in this browser, however many
@@ -416,17 +417,41 @@ export const useRoomsStore = defineStore('rooms', () => {
   /** Set the moment an import lands, so the offer cannot ask for it a second time. */
   let legacyImported = false
 
-  /** Only an account with no rooms in a browser with no plans; anything else asks. */
-  const autoImportLegacy = async (localTabCount: number) => {
-    if (blocked()) return
-    try {
-      // Sent rather than hardcoded so the server's own eligibility gate is real.
-      const result = await api.legacyAutoImport(localTabCount)
-      if (!result.imported) return
-      await landRecoveredPlan(result)
-    } catch (error) {
-      lastError.value = describe(error)
-    }
+  /** One attempt per session, however many times the session is re-established. */
+  let legacyUpgradeTried = false
+
+  /**
+   * The automatic upgrade of a pre-v0.7 account save into a room, run once by every
+   * signed-in boot. Nothing is asked and nothing local is touched: the plan arrives
+   * as a tab of its own alongside whatever this browser and this account already
+   * hold. The server decides whether there is anything to do, so this can be called
+   * on a boot that has nothing to upgrade and on one that already did it.
+   *
+   * Every failure is swallowed. The blob is still on the server, the account is
+   * still unstamped, and the next boot tries again; meanwhile the planner loads.
+   */
+  const upgradeLegacyPlan = async () => {
+    if (legacyUpgradeTried || legacyImported || blocked()) return
+    legacyUpgradeTried = true
+
+    const upgrade = (async () => {
+      try {
+        const result = await api.legacyAutoImport()
+        if (result.imported) await landRecoveredPlan(result)
+      } catch {
+        // Deliberately silent: an upgrade nobody asked for cannot report a failure at them.
+      }
+    })()
+
+    // The boot stops waiting well before a stuck request would strand it. Abandoning
+    // the wait costs nothing: the import is the server's to decide and the plan still
+    // lands if the answer turns up late.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+      upgrade,
+      new Promise<void>(resolve => { timer = setTimeout(resolve, LEGACY_UPGRADE_TIMEOUT_MS) }),
+    ])
+    clearTimeout(timer)
   }
 
   /** The toast, the list refresh and the mount every recovered plan needs. */
@@ -884,8 +909,12 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!authStore.isLoggedIn) return
     roomSync.start()
     await upgradeJoinedTabs()
+    // Before the list is read, so a plan that has just been brought over is in the
+    // list the offers are computed from and nothing asks about a plan already here.
+    await upgradeLegacyPlan()
     // The recovery offer rides on the same flag as the chooser: a returning user
-    // is asked about their old save when they sign in, never on a page refresh.
+    // whose upgrade did not happen is asked about their old save when they sign in,
+    // never on a page refresh.
     await refresh({ offerAdoption: true, offerChooser: interactive, offerLegacy: interactive })
   }
 
@@ -922,6 +951,8 @@ export const useRoomsStore = defineStore('rooms', () => {
     closeChooser(false)
     closeLegacyOffer()
     legacyImported = false
+    // A different account signing in here has an upgrade of its own to attempt.
+    legacyUpgradeTried = false
     roomSync.stop()
     // Anonymous joined tabs are nobody's account, so they keep their live link.
     restoreJoinedTabs()

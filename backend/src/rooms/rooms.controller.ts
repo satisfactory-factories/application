@@ -20,7 +20,6 @@ import { RoomsService } from './rooms.service'
 import {
   adoptRoomSchema,
   authRoomSchema,
-  autoImportSchema,
   createRoomSchema,
   joinRoomSchema,
   parseBody,
@@ -82,12 +81,17 @@ export class RoomsController {
     return this.legacy.status(user.id, user.username)
   }
 
+  /**
+   * The automatic upgrade, called once by every signed-in boot. Same work as the
+   * button below and safe to call on every load: the account's import marker is
+   * claimed by one caller only, so a second call imports nothing. Eligibility is
+   * the account's alone, so the answer never depends on which browser asked.
+   */
   @Post('legacy/auto-import')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  autoImport (@CurrentUser() user: AuthTokenPayload, @Body() body: unknown): Promise<LegacyImportResult> {
-    const { localTabCount } = parseBody(autoImportSchema, body)
-    return this.legacy.autoImport(user.id, user.username, localTabCount)
+  autoImport (@CurrentUser() user: AuthTokenPayload): Promise<LegacyImportResult> {
+    return this.legacy.recover(user.id, user.username)
   }
 
   @Post('legacy/recover')

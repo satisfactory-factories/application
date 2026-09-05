@@ -26,7 +26,6 @@ export const shareRoomSchema = z.object({ slug: slugSchema.optional() })
 export const setPasswordSchema = z.object({ password: invitePasswordSchema })
 export const authRoomSchema = z.object({ password: z.string().max(CAPS.string) })
 export const joinRoomSchema = z.object({ visitorToken: z.string().max(CAPS.string).optional() })
-export const autoImportSchema = z.object({ localTabCount: z.number().int().min(0) })
 
 const invalid = (issues: z.ZodIssue[]): never => {
   throw roomError('invalid_payload', 'Invalid request payload.', HttpStatus.BAD_REQUEST, {

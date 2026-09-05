@@ -179,17 +179,36 @@ below. The wire protocol is untouched.
 - `TabMirrorMeta.baselinePrints` carries the fingerprints; `unacknowledged` in the engine
   keeps a dropped socket's own op from being presented as somebody else's edit
 
-### The account-recovery offer — delivered
+### The account-recovery offer, and the automatic upgrade — delivered
 
-The blob import existed server-side from the start, but `autoImport` only fires for an account
+The blob import existed server-side from the start, but `autoImport` only fired for an account
 with no rooms in a browser with no local tabs, so a returning user with plans in this browser
-could never reach their old account save. The owner's choice: offer it on login.
+could never reach their old account save. First the owner's choice to offer it on login, then
+the owner's choice to stop asking at all: the upgrade now happens by itself and the offer is
+what catches whoever it missed.
+
+- `POST /rooms/legacy/auto-import` is the boot path, called once per signed-in session by
+  `begin()` — an interactive sign-in and a page refresh alike — and it carries no body. It
+  gates on nothing: eligibility is the account's, so the same account gets the same answer from
+  any browser, and neither local tabs nor rooms the account already owns hold it back
+- Both routes run the one `recover`, so there is one rule for both. It only ever adds a room,
+  under the deterministic import id, and an account already on v0.7 keeps every plan it has
+  with its content and its membership order untouched
+- At most once per account for all time. The room insert is race-safe on the deterministic id,
+  so the account is what has to be claimed: the conditional `legacyImportRoomId: null -> roomId`
+  update is the serialisation point, and the caller that flips it is the one caller that reports
+  an import. It stays last in the chain, so a failure anywhere above leaves the marker unset and
+  the whole idempotent chain replays
+- The client swallows every failure. The blob is never written, the account is never stamped by a
+  failed attempt, and the planner loads either way; the next sign-in tries again and offers the
+  dialog in the meantime
 
 - `GET /rooms/legacy/status` → `{ exists, factoryCount }`, guarded, on the global bucket like
   its two `legacy/` siblings. The count is computed in the aggregation, so the blob body never
   leaves Mongo, and `exists` is false once the import stamp is written, because that is all
   `recover` would answer
-- Eligibility is the account's, never the browser's: an interactive sign-in (`offerLegacy`,
+- The offer is the fallback, so an upgrade that has already landed silences it. Beyond that,
+  eligibility is the account's, never the browser's: an interactive sign-in (`offerLegacy`,
   threaded from the same `interactive` flag as the chooser) whose room list holds no room this
   user owns. A page refresh with a persisted session asks nothing and does not even check
 - `LegacyRecoveryDialog.vue` (AppDialog) names the size — "a plan with N factories from before
@@ -581,11 +600,11 @@ refresh prompt. Pre-v7 clients send nothing and are cut off (verified: no versio
 exists today).
 
 **Adoption and legacy data.** Adoption is per-login, per-tab, and create-only. The legacy
-blob auto-imports as one room only for an account with zero rooms and a browser with zero
-local tabs, under a deterministic import id; every other account that owns no room is offered
-it on sign-in instead (the account-recovery offer above), and the import is the same
-`POST /rooms/legacy/recover` either way. The blob is never written again; the shares
-collection only ever gains new snapshot rows.
+blob is upgraded into one room, under a deterministic import id, by the first signed-in boot
+that finds it, and at most once per account; an account the upgrade could not reach is offered
+it on the next sign-in instead (the account-recovery offer above), and the import is the same
+`recover` either way. The blob is never written again; the shares collection only ever gains
+new snapshot rows.
 
 ## Infrastructure
 

@@ -118,7 +118,7 @@ export interface RoomErrorBody {
 
 // ===== Legacy blob adoption =====
 
-export type LegacyImportSkipReason = 'already_imported' | 'not_eligible' | 'no_legacy_data'
+export type LegacyImportSkipReason = 'already_imported' | 'no_legacy_data'
 
 export interface LegacyImportResult {
   imported: boolean

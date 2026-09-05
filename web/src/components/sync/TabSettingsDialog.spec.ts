@@ -18,6 +18,7 @@ vi.mock('@/api/client', async importOriginal => {
     login: vi.fn(),
     listRooms: vi.fn(),
     legacyStatus: vi.fn(),
+    legacyAutoImport: vi.fn(),
     adoptRoom: vi.fn(),
     renameRoom: vi.fn(),
     deleteRoom: vi.fn(),
@@ -74,8 +75,9 @@ describe('TabSettingsDialog', () => {
     authStore.setLoggedInUser('pioneer')
 
     vi.mocked(api.listRooms).mockResolvedValue({ roomsRevision: 1, rooms: [] })
-    // An account owning no cloud plan is asked about its pre-v0.7 save on sign-in,
-    // and the session is not ready until that answer lands.
+    // Every signed-in boot tries the pre-v0.7 upgrade and, owning no cloud plan,
+    // is then asked about the save. The session is not ready until both land.
+    vi.mocked(api.legacyAutoImport).mockResolvedValue({ imported: false, reason: 'no_legacy_data' })
     vi.mocked(api.legacyStatus).mockResolvedValue({ exists: false, factoryCount: 0 })
   })
 

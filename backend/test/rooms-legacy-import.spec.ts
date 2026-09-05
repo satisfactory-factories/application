@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
 
 import { CAPS } from 'common'
+import { makeFactory } from 'common/testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { Connection } from 'mongoose'
 
 import { LEGACY_ROOM_NAME, legacyImportRoomId } from '../src/rooms/legacy-import.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
-import { TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
+import { FailingStepRunner, TestUser, buildIndexes, call, registerAndLogin, resetRooms } from './utils/rooms'
 
 const BLOB = [
   { id: 1, name: 'Old iron', products: [] },
@@ -33,6 +34,7 @@ describe('legacy blob import', () => {
   let context: TestContext
   let connection: Connection
   let user: TestUser
+  const runner = new FailingStepRunner()
 
   const post = (path: string, as?: TestUser) => call(context.app, 'post', path, as)
   const get = (path: string, as?: TestUser) => call(context.app, 'get', path, as)
@@ -45,7 +47,7 @@ describe('legacy blob import', () => {
     })
 
   beforeAll(async () => {
-    context = await createTestApp({ unthrottled: true })
+    context = await createTestApp({ stepRunner: runner, unthrottled: true })
     connection = await awaitConnection(context.app)
     await buildIndexes(context.app)
   })
@@ -55,6 +57,7 @@ describe('legacy blob import', () => {
   })
 
   beforeEach(async () => {
+    runner.reset()
     await resetRooms(context.app)
     user = await registerAndLogin(context.app, 'veteran')
   })
@@ -373,37 +376,146 @@ describe('legacy blob import', () => {
     })
   })
 
+  /**
+   * The boot path: a signed-in client calls this once per session and the plan is
+   * upgraded without anyone pressing anything. Nothing about the browser gates it,
+   * so the same account gets the same answer wherever it signs in.
+   */
   describe('POST /rooms/legacy/auto-import', () => {
-    it('imports for a zero-room account whose browser has no local tabs', async () => {
+    const autoImport = (as: TestUser = user) => post('/rooms/legacy/auto-import', as).send({})
+
+    it('upgrades a v0.5 array save without being asked', async () => {
       await seedBlob(user.username)
 
-      const response = await post('/rooms/legacy/auto-import', user).send({ localTabCount: 0 })
+      const response = await autoImport()
 
       expect(response.status).toBe(200)
       expect(response.body.imported).toBe(true)
+      expect(response.body.room).toMatchObject({
+        roomId: legacyImportRoomId(user.userId),
+        name: LEGACY_ROOM_NAME,
+        role: 'owner',
+      })
+      const stored = await connection.collection('rooms')
+        .findOne({ roomId: response.body.room.roomId })
+      expect((stored?.factories as { name: string }[]).map(factory => factory.name))
+        .toEqual(['Old iron', 'Old copper'])
     })
 
-    it('declines when the browser reports local tabs', async () => {
-      await seedBlob(user.username)
+    it('upgrades a v0.6 whole-tab save and keeps its tab-level state', async () => {
+      await seedBlob(user.username, wholeTab())
 
-      const response = await post('/rooms/legacy/auto-import', user).send({ localTabCount: 3 })
+      const { body } = await autoImport()
 
-      expect(response.body).toEqual({ imported: false, reason: 'not_eligible' })
-      expect(await connection.collection('rooms').countDocuments()).toBe(0)
+      expect(body.imported).toBe(true)
+      expect(body.room.name).toBe('Nuclear megabase')
+      const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
+      expect(stored).toMatchObject({
+        name: 'Nuclear megabase',
+        powerTarget: 4500,
+        depotUploadTier: 2,
+        depotExpansionTier: 3,
+        plannerVersion: '0.6.2',
+        groups: [{ id: 'group-1', name: 'Planned, no members yet', color: '#ff8800' }],
+      })
     })
 
-    it('declines when the account already owns a room', async () => {
+    it('runs once for all time: the next sign-in upgrades nothing', async () => {
       await seedBlob(user.username)
-      await post('/rooms', user).send({ roomId: randomUUID(), name: 'Already syncing' })
+      await autoImport()
 
-      const response = await post('/rooms/legacy/auto-import', user).send({ localTabCount: 0 })
+      const second = await autoImport()
 
-      expect(response.body).toEqual({ imported: false, reason: 'not_eligible' })
+      expect(second.body).toEqual({ imported: false, reason: 'already_imported' })
       expect(await connection.collection('rooms').countDocuments()).toBe(1)
+      expect(await connection.collection('room_memberships').countDocuments()).toBe(1)
     })
 
-    it('requires the local tab count', async () => {
-      expect((await post('/rooms/legacy/auto-import', user).send({})).status).toBe(400)
+    // Two tabs signing in together. Driven as a real race: awaiting the first would
+    // prove only that the short circuit works, which is not the case that breaks.
+    it('two concurrent sign-ins produce exactly one room and one import', async () => {
+      await seedBlob(user.username)
+
+      const results = await Promise.all([autoImport(), autoImport()])
+
+      expect(results.map(result => result.status)).toEqual([200, 200])
+      expect(results.filter(result => result.body.imported)).toHaveLength(1)
+      expect(results.filter(result => result.body.reason === 'already_imported')).toHaveLength(1)
+      expect(await connection.collection('rooms').countDocuments()).toBe(1)
+      expect(await connection.collection('room_memberships').countDocuments()).toBe(1)
+    })
+
+    // The upgrade adds a room and only ever adds one; an account already on v0.7
+    // keeps every plan it has, with its content and its order untouched.
+    it('adds a room to an account that already has v7 rooms, changing none of them', async () => {
+      await seedBlob(user.username)
+      const existing = randomUUID()
+      await post('/rooms', user).send({
+        roomId: existing,
+        name: 'Already syncing',
+        factories: [makeFactory({ id: 9, name: 'Steel' })],
+      })
+      const before = await connection.collection('rooms').findOne({ roomId: existing })
+
+      const { body } = await autoImport()
+
+      expect(body.imported).toBe(true)
+      expect(await connection.collection('rooms').findOne({ roomId: existing })).toEqual(before)
+
+      const rooms = (await get('/rooms', user)).body.rooms as { roomId: string, order: number }[]
+      expect(rooms).toHaveLength(2)
+      expect(rooms.find(room => room.roomId === existing)?.order).toBe(0)
+      expect(rooms.find(room => room.roomId === body.room.roomId)?.order).toBe(1)
+    })
+
+    it.each(['ensure-room', 'ensure-membership', 'stamp-legacy-import'])(
+      'leaves the save intact and retryable when the upgrade dies at %s',
+      async step => {
+        await seedBlob(user.username, wholeTab())
+        const blobBefore = await connection.collection('factorydatas').find({}).toArray()
+        runner.failAt = step as never
+
+        expect((await autoImport()).status).toBe(500)
+
+        expect(await connection.collection('factorydatas').find({}).toArray()).toEqual(blobBefore)
+        expect((await connection.collection('users').findOne({ username: user.username }))
+          ?.legacyImportRoomId).toBeNull()
+        // The old save is still on offer, so nothing about the account looks done.
+        expect((await get('/rooms/legacy/status', user)).body)
+          .toEqual({ exists: true, factoryCount: 2 })
+
+        runner.reset()
+        const retry = await autoImport()
+
+        expect(retry.body.imported).toBe(true)
+        expect(await connection.collection('rooms').countDocuments()).toBe(1)
+      },
+    )
+
+    // The button is the fallback for whoever the boot path missed, so the two must
+    // never both be live: once the upgrade has run there is nothing left to offer.
+    it('takes the manual offer off the table once it has run', async () => {
+      await seedBlob(user.username)
+
+      await autoImport()
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: false, factoryCount: 0 })
+      expect((await post('/rooms/legacy/recover', user).send({})).body)
+        .toEqual({ imported: false, reason: 'already_imported' })
+    })
+
+    it('leaves the manual offer standing when the upgrade found nothing', async () => {
+      const response = await autoImport()
+
+      expect(response.body).toEqual({ imported: false, reason: 'no_legacy_data' })
+      await seedBlob(user.username)
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: true, factoryCount: 2 })
+    })
+
+    it('needs an account', async () => {
+      expect((await post('/rooms/legacy/auto-import').send({})).status).toBe(401)
     })
   })
 

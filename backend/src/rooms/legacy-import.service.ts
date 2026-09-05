@@ -14,7 +14,6 @@ import type {
 
 import { EnsureStepRunner } from './ensure-step.runner'
 import { FactoryData } from '../legacy/factory-data.schema'
-import { Room } from './schemas/room.schema'
 import { RoomsService } from './rooms.service'
 import { User } from '../auth/user.schema'
 
@@ -77,24 +76,10 @@ const readTabState = (tab: Record<string, unknown>): LegacyTabState => {
 export class LegacyImportService {
   constructor (
     @InjectModel(FactoryData.name) private readonly blobs: Model<FactoryData>,
-    @InjectModel(Room.name) private readonly rooms: Model<Room>,
     @InjectModel(User.name) private readonly users: Model<User>,
     private readonly roomsService: RoomsService,
     private readonly steps: EnsureStepRunner,
   ) {}
-
-  /**
-   * Only for an account with no rooms whose browser reports no local tabs. Any
-   * other shape gets the "Recover server copy" button instead, so nothing is
-   * imported behind the user's back.
-   */
-  async autoImport (userId: string, username: string, localTabCount: number): Promise<LegacyImportResult> {
-    if (localTabCount !== 0) return { imported: false, reason: 'not_eligible' }
-    if (await this.rooms.countDocuments({ createdBy: userId, deletedAt: null }) > 0) {
-      return { imported: false, reason: 'not_eligible' }
-    }
-    return this.recover(userId, username)
-  }
 
   /**
    * Whether the account still has an old save to offer, and how big it is. The
@@ -142,7 +127,14 @@ export class LegacyImportService {
     return { exists: factoryCount > 0, factoryCount }
   }
 
+  /**
+   * The upgrade itself, and the only thing that ever writes a room from the blob.
+   * Both the boot path and the "Recover server copy" button land here, so there is
+   * one set of rules: it adds one room under a deterministic id, it touches no room
+   * the account already has, and it runs at most once per account for all time.
+   */
   async recover (userId: string, username: string): Promise<LegacyImportResult> {
+    // A cheap short circuit, not the gate. The claim below is what actually decides.
     if (await this.alreadyImported(userId)) {
       return { imported: false, reason: 'already_imported' }
     }
@@ -161,13 +153,27 @@ export class LegacyImportService {
 
     // Stamped last, so a failure anywhere above replays the whole idempotent chain
     // and the import only counts as done once the marker is written.
-    await this.steps.run('stamp-legacy-import', async () => {
-      await this.users.updateOne({ _id: userId }, { $set: { legacyImportRoomId: roomId } })
-    })
+    const claimed = await this.steps.run('stamp-legacy-import', () => this.claim(userId, roomId))
+    if (!claimed) return { imported: false, reason: 'already_imported' }
 
     return dropped > 0
       ? { imported: true, room: result.room, dropped }
       : { imported: true, room: result.room }
+  }
+
+  /**
+   * The serialisation point. Two callers reach here having built the same room —
+   * the id is derived from the account, and `insertRoomIfAbsent` turns the loser's
+   * duplicate key into a no-op — so the account is what has to be claimed, and this
+   * conditional update is the one write that can do it. Whoever flips the marker
+   * from unset owns the import; everyone else is told it already happened.
+   */
+  private async claim (userId: string, roomId: string): Promise<boolean> {
+    const result = await this.users.updateOne(
+      { _id: userId, legacyImportRoomId: null },
+      { $set: { legacyImportRoomId: roomId } },
+    )
+    return result.modifiedCount === 1
   }
 
   /** The stamp outlives the room it made, so a deleted import is never redone. */
