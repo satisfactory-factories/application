@@ -94,7 +94,7 @@
           Copy plan
         </v-btn>
       </tooltip>
-      <tooltip text="Replace this tab with a plan copied to your clipboard. You'll be asked first if this tab already has factories in it.">
+      <tooltip text="Replace this tab with a plan copied to your clipboard. You'll be asked first if this tab already has factories in it. A cloud plan is replaced on every device it is open on, and for anyone you have shared it with.">
         <v-btn
           class="ma-1"
           color="secondary"
@@ -134,7 +134,7 @@
   import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
 
-  const { getFactories, getCurrentTab, prepareLoader, forceCalculation } = useAppStore()
+  const { getFactories, getCurrentTab, getTabState, prepareLoader, forceCalculation } = useAppStore()
   const { powerTarget } = usePowerTarget()
   const options = usePlannerOptions()
 
@@ -161,9 +161,31 @@
     return confirm(message)
   }
 
+  /**
+   * Delete already says who loses what, and a replace destroys the same thing for
+   * the same people, so it says the same. "Your plan" was written when every tab
+   * was local: on a cloud plan the replacement lands on every device it is open on,
+   * and on a shared one it lands on everybody else as well.
+   */
+  const replaceWarning = (): string => {
+    const tab = getCurrentTab()
+    const state = getTabState(tab?.id ?? '')
+    const name = tab?.name ?? 'this plan'
+
+    if (state.kind === 'local') return 'This will replace your plan. Are you sure?'
+    if (state.kind === 'synced' && state.role === 'owner') {
+      return state.shared
+        ? `This will replace "${name}" for everyone you have shared it with, on every device. Are you sure?`
+        : `This will replace "${name}" on your account, on every device you are signed in on. Are you sure?`
+    }
+    // A member or a link visitor: theirs is the same copy everybody else is looking at.
+    return `This will replace "${name}" for everyone in this plan, including its owner. Are you sure?`
+  }
+
   const confirmReplace = () => {
+    // An empty tab has nothing to lose, cloud or not, so it is replaced in silence.
     if (getFactories().length === 0) return true
-    return confirmDialog('This will replace your plan. Are you sure?')
+    return confirmDialog(replaceWarning())
   }
 
   const expandAll = () => {

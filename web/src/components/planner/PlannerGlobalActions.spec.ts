@@ -178,6 +178,75 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     eventBus.off('planLanded', landed)
   })
 
+  /**
+   * Delete already tells you who loses what; a paste destroys the same thing for the
+   * same people. "Your plan" was written when every tab was local, and on a cloud tab
+   * it is the one sentence standing between a plan and every device it is open on.
+   */
+  describe('the warning before it replaces anything', () => {
+    const warningFor = async (state?: Record<string, unknown>) => {
+      seedFactory()
+      appStore.getCurrentTab().name = 'Iron Backbone'
+      if (state) appStore.setTabState(appStore.getCurrentTab().id, state as never)
+      // Declined, so nothing is pasted and the wording is all this test is about.
+      vi.mocked(window.confirm).mockReturnValue(false)
+
+      const subject = mountSubject()
+      await clickButton(subject, 'Paste plan')
+      const asked = vi.mocked(window.confirm).mock.calls.at(-1)?.[0]
+      subject.unmount()
+      return asked
+    }
+
+    it('says nothing about the cloud for a plan that lives in this browser', async () => {
+      expect(await warningFor()).toBe('This will replace your plan. Are you sure?')
+    })
+
+    it('names the plan and every device for a cloud plan you own', async () => {
+      const asked = await warningFor({ kind: 'synced', shared: false, role: 'owner', revision: 1 })
+
+      expect(asked).toContain('"Iron Backbone"')
+      expect(asked).toContain('on your account, on every device you are signed in on')
+    })
+
+    it('names the people you shared it with once it is shared', async () => {
+      const asked = await warningFor({ kind: 'synced', shared: true, role: 'owner', revision: 1 })
+
+      expect(asked).toContain('"Iron Backbone"')
+      expect(asked).toContain('for everyone you have shared it with')
+    })
+
+    it('tells a member they are replacing the owner\'s copy', async () => {
+      const asked = await warningFor({ kind: 'synced', shared: true, role: 'member', revision: 1 })
+
+      expect(asked).toContain('for everyone in this plan, including its owner')
+    })
+
+    it('says the same to a visitor who joined by link', async () => {
+      const asked = await warningFor({ kind: 'joined', shared: true, role: 'member', revision: null })
+
+      expect(asked).toContain('for everyone in this plan, including its owner')
+    })
+
+    // Nothing to lose, cloud or not: asking here would make the prompt routine.
+    it('asks nothing at all when the tab is empty', async () => {
+      appStore.setTabState(appStore.getCurrentTab().id, { kind: 'synced', shared: true, role: 'owner', revision: 1 })
+      readText.mockResolvedValue(JSON.stringify({ name: 'Pasted', factories: [] }))
+
+      const subject = mountSubject()
+      await clickButton(subject, 'Paste plan')
+
+      expect(window.confirm).not.toHaveBeenCalled()
+      subject.unmount()
+    })
+
+    it('declining leaves the clipboard unread and the plan alone', async () => {
+      await warningFor({ kind: 'synced', shared: false, role: 'owner', revision: 1 })
+
+      expect(readText).not.toHaveBeenCalled()
+    })
+  })
+
   // Groups with members ride on the factories and need no help. Memberless ones live only on the
   // tab, so the clipboard is the one place they can be lost — or left behind.
   it('copy carries the memberless groups the factories cannot', () => {
