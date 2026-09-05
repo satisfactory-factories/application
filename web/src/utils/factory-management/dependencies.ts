@@ -395,6 +395,7 @@ export const deleteRequestPair = (
   ))
 
   // Recalculate the both factories now as the part demand has changed likely for both.
-  calculateFactory(factory, factories, gameData)
-  calculateFactory(dependantFactory, factories, gameData)
+  // Derived: the engine prunes these pairs itself, so neither is anyone's edit.
+  calculateFactory(factory, factories, gameData, { intent: 'derived' })
+  calculateFactory(dependantFactory, factories, gameData, { intent: 'derived' })
 }

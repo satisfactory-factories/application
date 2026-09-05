@@ -556,8 +556,11 @@ exists on both sides carries no structural signal. The rule, and it is not negot
 - **Only from a user event handler.** Never from a `watch` on the data, which also fires when an
   inbound op rewrites it — that marks a factory this client never edited, nothing clears intent
   no diff can satisfy, and the client overlays its copy over that peer's edits for ever.
-- Calculation entry points are the exception that needs no call: `calculateFactory()` emits
-  `factoryEdited` for the one factory the user acted on, and payload for the ripples.
+- Calculation entry points are the exception that needs no call, but they must say so:
+  `calculateFactory()` emits `factoryEdited` for the one factory the user acted on only when
+  the caller passes `intent: 'userEdit'`, and payload for the ripples. It defaults to
+  `'derived'` because the same entry point is reached by load-time validation repair, and a
+  derived run claiming intent overlays that factory over a peer's newer copy for ever.
 - A reindex counts, and an add or a delete reindexes too. A move, a copy, a regroup, and
   `addFactory`/`removeFactory` in `app-store.ts` all rewrite `displayOrder` across the whole
   plan, so `captureOrder` before and `markReorderedFactories` after declare every record that
