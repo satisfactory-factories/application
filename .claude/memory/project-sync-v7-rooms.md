@@ -1881,6 +1881,14 @@ than one new card, is the only case that still fails, and it says so in those wo
 length of an add. Negative-controlled: against the old helper it reproduces the exact failure
 message the four runs died on.
 
+**CI found one the local suite could not.** `plan-transfer.e2e.ts` waited on `settle()` after the
+import, and a one-factory plan needs no calculation, so it renders straight through and never
+raises the loading overlay: `settle` had nothing to observe and returned before the import
+landed. It waits on the plan itself now, and checks the written file before reading it back, so
+an export that wrote nothing and an import that dropped it stop looking identical from the far
+end of the test. Neither 6x nor 20x CPU throttling reproduced it here, which is worth
+remembering the next time a local pass is taken as proof.
+
 ## Plans come and go as files, and the import owns its own failures (2026-09-05)
 
 Copy and paste were clipboard-only, which is laborious for a big plan and, on Firefox,
@@ -1901,6 +1909,9 @@ choice, in the pattern `NewTabDialog` set:
 - `applyPlanBlob(text)` is the one path in, whatever carried the text. It **reports** rather
   than alerting: an invalid blob returns a sentence, the dialog shows it inline and stays open.
   The old `alert()` was a browser dialog you had to dismiss before you could try the file half.
+- The blob URL the download hangs off is revoked on the next tick, not in the same one. The
+  click starts the save, and revoking before the browser has finished reading the blob cancels
+  the download it just started. Nothing observes that on a machine with time to spare.
 - e2e: `plan-transfer.e2e.ts` saves a plan, clears the tab and brings it back out of the file
   (no account, no room, no clipboard permission) and proves a junk file says so without
   touching the plan. The clipboard half stays with `adoption.e2e.ts`, which needs a real one.

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { expect, test } from '../helpers/fixtures'
 import { addFactory, clearPlan, factoryNames, openPlanner, settle } from '../helpers/planner'
 
@@ -20,16 +22,28 @@ test('a plan saved as a file comes back whole through the file half', async ({ c
   const file = await download
   expect(file.suggestedFilename()).toMatch(/^satisfactory-.*\.json$/)
 
+  // The file is the deliverable, so it is checked before anything reads it back:
+  // an export that wrote nothing and an import that dropped it look identical
+  // from the far end of this test.
+  const written = JSON.parse(readFileSync(await file.path(), 'utf8')) as { factories: { name: string }[] }
+  expect(written.factories.map(factory => factory.name)).toEqual(['Saved to disk'])
+
   // Emptied, so the plan on screen afterwards can only have come out of the file.
   await clearPlan(page)
   await expect(page.locator('input.factory-name')).toHaveCount(0)
 
   await actions.getByTestId('import-plan').click()
   await page.getByTestId('import-file-input').setInputFiles(await file.path())
+
+  // The plan itself is the thing to wait for. A one-factory plan needs no
+  // calculation, so it renders straight through without ever raising the loading
+  // overlay: `settle` has nothing to observe and returns before the import lands.
+  await expect(page.locator('input.factory-name')).toHaveCount(1)
   await settle(page)
 
   expect(await factoryNames(page)).toEqual(['Saved to disk'])
-  // A landed import closes the dialog it came in through.
+  // A landed import closes the dialog it came in through, error and all.
+  await expect(page.getByTestId('import-error')).toBeHidden()
   await expect(page.getByTestId('import-plan-dialog')).toBeHidden()
 })
 
