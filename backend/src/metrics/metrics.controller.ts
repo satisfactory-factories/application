@@ -13,7 +13,7 @@ export class MetricsController {
    * The Prometheus scrape target, in the text exposition format.
    *
    * Exempt from the version gate for the same reason `/health` is: the caller is a
-   * scraper, not a planner, and it has no `X-App-Version` to send. It has its own rate
+   * scraper, not a planner, and it has no client version to send. It has its own rate
    * limit bucket too, so ordinary traffic can never throttle a scrape into a gap in the
    * graphs, and a scrape can never eat the allowance real requests share.
    */
