@@ -684,7 +684,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     for (const roomId of Object.keys(rooms.value)) {
       applyParkedResolution(roomId)
       recordIntent(roomId)
-      flushRoom(roomId)
+      const sent = flushRoom(roomId)
+      // The journal's records are the content, and `markUserTouched` only fires the first
+      // time a factory is touched — so without this the record is frozen at the moment the
+      // intent was declared and every keystroke after it is missing from the durable copy.
+      // Debounced with the flush, so this is one write per burst rather than per edit, and
+      // only where something is actually owed. `persistBaseline` covers what was sent.
+      if (!sent && (hasLocalEdits(roomId) || outstandingConflict(roomId))) persistJournalRoom(roomId)
     }
   }
 
