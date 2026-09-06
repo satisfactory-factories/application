@@ -1,10 +1,15 @@
 <template>
+  <!-- Sealed while an import is running. The dialog being modal is what keeps the tab bar
+       out of reach until the replacement has landed, so a dismissable one would hand back
+       the very window the import has to be protected from. -->
   <app-dialog
     v-model="open"
     card-class="border-md"
+    :closable="!busy"
     data-testid="import-plan-dialog"
     icon="fas fa-file-import"
     max-width="720"
+    :persistent="busy"
     title="Import a plan"
   >
     <p class="mb-4 text-body-2">
