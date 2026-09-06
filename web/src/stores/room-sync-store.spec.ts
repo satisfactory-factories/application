@@ -24,6 +24,8 @@ import { DEMO_TOUCHED, offlineConflictDemoPlans } from '@/utils/factory-setups/o
 import { mergeFactories, stableStringify } from '@/sync/room-state'
 import { fingerprint } from '@/sync/offline-conflict'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
+import { forgetInstanceId, INSTANCE_ID_KEY, recoverJournalRoom } from '@/sync/plan-journal'
+import { resetStorageWarning } from '@/utils/safe-storage'
 import eventBus from '@/utils/eventBus'
 import { refuseLocalStorageWrites } from '../../testing/storage'
 
@@ -101,6 +103,37 @@ describe('room-sync-store', () => {
     receive(helloOk)
   }
 
+  /**
+   * The browser closed and opened again on the same storage: a brand new store, a brand
+   * new app store reading `localStorage.factoryTabs` from scratch, and nothing carried in
+   * memory. `newBrowserInstance` also drops the per-tab instance id, which is what makes
+   * it a *second* browser tab rather than a reload of the same one.
+   */
+  const restart = ({ newBrowserInstance = false } = {}) => {
+    store.dispose()
+    if (newBrowserInstance) {
+      sessionStorage.removeItem(INSTANCE_ID_KEY)
+      forgetInstanceId()
+    }
+
+    setActivePinia(createPinia())
+    appStore = useAppStore()
+    appStore.isLoaded = true
+    vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+    store = useRoomSyncStore()
+    store.configure({
+      socket: new SyncSocket({
+        url: 'ws://test.local/ws',
+        socketFactory: url => {
+          const socket = new FakeSocket(url)
+          sockets.push(socket)
+          return socket
+        },
+      }),
+    })
+  }
+
   const setTab = (factories: Factory[], overrides: Partial<FactoryTab> = {}): FactoryTab => {
     appStore.factoryTabs.splice(0, appStore.factoryTabs.length, {
       id: ROOM,
@@ -139,6 +172,9 @@ describe('room-sync-store', () => {
 
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
+    forgetInstanceId()
+    resetStorageWarning()
     setActivePinia(createPinia())
     appStore = useAppStore()
     // The engine refuses to send while a load is in flight, because a half-filled
@@ -2975,6 +3011,286 @@ describe('room-sync-store', () => {
       store.untrackRoom(ROOM)
 
       expect(store.lockedByOther(ROOM, 'notes:1')).toBe(false)
+    })
+  })
+
+  /**
+   * Two bugs with one durable story behind them. An unanswered question only ever lived in
+   * memory while the baseline it was about had already moved to the server's revision, so a
+   * reload answered "mine" for the user; and both the render mirror and the sync sidecar are
+   * single shared keys, so a second browser tab of the same browser replaces them with a
+   * generation that never carried the first tab's unsent edits.
+   */
+  describe('durability across a restart and across browser tabs', () => {
+    let producing: Factory[]
+
+    const recalc = (plan: Factory[]) => calculateFactories(plan, gameData, { origin: 'item' })
+
+    const inTab = (tab: FactoryTab, id: number) => tab.factories.find(factory => factory.id === id)
+
+    const amountOf = (tab: FactoryTab | undefined, id: number, item: string) =>
+      inTab(tab as FactoryTab, id)?.products.find(product => product.id === item)?.amount
+
+    const serverPlan = (mutate: (plan: Factory[]) => void): Factory[] => {
+      const plan = wire(producing)
+      mutate(plan)
+      recalc(plan)
+      return wire(plan)
+    }
+
+    const editHere = (tab: FactoryTab, id: number, item: string, amount: number) => {
+      const product = inTab(tab, id)?.products.find(entry => entry.id === item)
+      if (product) product.amount = amount
+      recalc(tab.factories)
+      store.markUserTouched(ROOM, id)
+    }
+
+    beforeEach(() => {
+      vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
+
+      producing = [newFactory('Alpha', 0, 1), newFactory('Beta', 1, 2)]
+      addProductToFactory(producing[0], { id: 'IronIngot', amount: 30, recipe: 'IngotIron' })
+      addProductToFactory(producing[1], { id: 'CopperIngot', amount: 40, recipe: 'IngotCopper' })
+      recalc(producing)
+      producing = wire(producing)
+    })
+
+    /**
+     * The state the reload lands on: this device edited Alpha offline, the room edited it
+     * too, the reconnect raised the question, and nobody has answered it. The baseline is
+     * already at the room's revision by then, which is exactly what made the reload look
+     * like there was nothing left to decide.
+     */
+    const leaveAQuestionUnanswered = (live?: Factory[]) => {
+      const server = live ?? serverPlan(plan => { plan[0].products[0].amount = 444 })
+      const tab = syncAt(producing, 4)
+      store.enterOffline()
+      editHere(tab, 1, 'IronIngot', 111)
+
+      store.exitOffline()
+      latest().open()
+      receive(helloOk)
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+
+      expect(store.conflicts[ROOM]?.factories.map(row => row.factoryId)).toEqual([1])
+      store.persistJournal()
+      return server
+    }
+
+    describe('a reload with the question still on the table', () => {
+      it('brings the send barrier back before anything can join', () => {
+        leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+
+        expect(store.pendingConflicts[ROOM]?.factoryIds).toEqual([1])
+        expect(store.flushRoom(ROOM), 'flushed with the question unanswered').toBe(false)
+      })
+
+      /**
+       * A join carrying a revision can be answered `up_to_date`, which carries no records,
+       * and the question can only be put against live ones. So the reload asks for the room.
+       */
+      it('asks for the whole room rather than a revision check', () => {
+        leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+
+        expect(joinsOf()).toEqual([{ type: 'join', roomId: ROOM }])
+      })
+
+      it('sends nothing even if the server answers up_to_date anyway', () => {
+        leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'up_to_date', roomId: ROOM, revision: 6 })
+
+        expect(opsOf(), 'overwrote the other device without anybody choosing it').toHaveLength(0)
+      })
+
+      it('puts the same question back once the snapshot lands, and still sends nothing', () => {
+        const live = leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(live, 6), revision: 6 })
+
+        expect(store.conflicts[ROOM]?.factories.map(row => row.factoryId)).toEqual([1])
+        expect(store.conflicts[ROOM]?.factories[0].products).toEqual([
+          { itemId: 'IronIngot', live: 444, mine: 111, recipeChanged: false },
+        ])
+        expect(opsOf()).toHaveLength(0)
+      })
+
+      it('leaves the other device\'s value standing when the live plan wins the re-ask', () => {
+        const live = leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(live, 6), revision: 6 })
+        store.resolveConflict(ROOM, { liveWinners: [1] })
+
+        expect(amountOf(appStore.getTab(ROOM), 1, 'IronIngot')).toBe(444)
+        expect(opsOf()).toHaveLength(0)
+      })
+
+      it('lets the room flush again once the question is answered', () => {
+        const live = leaveAQuestionUnanswered()
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(live, 6), revision: 6 })
+        store.resolveConflict(ROOM)
+
+        expect(store.pendingConflicts[ROOM]).toBeUndefined()
+        expect(opsOf(), 'the answer never reached the room').toHaveLength(1)
+      })
+
+      it('asks about a factory the room deleted rather than resurrecting it', () => {
+        const live = leaveAQuestionUnanswered(serverPlan(plan => plan.splice(0, 1)))
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(live, 6), revision: 6 })
+
+        expect(store.conflicts[ROOM]?.factories[0].liveDeleted).toBe(true)
+        expect(opsOf(), 'put the deleted factory back with nobody asked').toHaveLength(0)
+
+        store.resolveConflict(ROOM, { liveWinners: [1] })
+        expect(inTab(appStore.getTab(ROOM) as FactoryTab, 1)).toBeUndefined()
+      })
+    })
+
+    describe('a second browser tab writing over the shared keys', () => {
+      /**
+       * What the sibling's own `persistBaseline` does: its whole plan over `factoryTabs`,
+       * its own sync metadata over the sidecar. Both are single shared keys and both are
+       * whole-value writes, so this is the sibling's generation replacing this one's.
+       */
+      const siblingPersists = (plan: Factory[], revision: number) => {
+        localStorage.setItem('factoryTabs', JSON.stringify([{
+          id: ROOM,
+          name: 'Plan',
+          factories: wire(plan),
+          powerTarget: 0,
+          groups: [],
+        }]))
+        setTabMirrorMeta(ROOM, {
+          revision,
+          appVersion: PROTOCOL_VERSION,
+          userTouchedIds: [],
+          userTouchedFields: [],
+          declaredRemovals: [],
+        })
+      }
+
+      it('cannot take away an edit this browser tab made offline', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        editHere(tab, 1, 'IronIngot', 111)
+        store.persistJournal()
+
+        siblingPersists(producing, 4)
+
+        restart()
+        store.trackRoom(ROOM)
+
+        expect(amountOf(appStore.getTab(ROOM), 1, 'IronIngot')).toBe(111)
+        expect(store.hasLocalEdits(ROOM)).toBe(true)
+      })
+
+      it('recovers it in a fresh browser tab too, not only on a reload of the same one', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        editHere(tab, 1, 'IronIngot', 111)
+        store.persistJournal()
+
+        siblingPersists(producing, 4)
+
+        restart({ newBrowserInstance: true })
+        store.trackRoom(ROOM)
+
+        expect(amountOf(appStore.getTab(ROOM), 1, 'IronIngot')).toBe(111)
+      })
+
+      it('sends that edit on once the room is joined again', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        editHere(tab, 1, 'IronIngot', 111)
+        store.persistJournal()
+
+        siblingPersists(producing, 4)
+
+        restart()
+        store.trackRoom(ROOM)
+        connect()
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(producing, 4), revision: 4 })
+
+        const sent = (lastOp()?.diff.factories ?? []) as Factory[]
+        expect(sent.find(factory => factory.id === 1)?.products[0].amount).toBe(111)
+      })
+
+      it('does not put back a factory this browser tab deleted offline', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        const alpha = tab.factories[0]
+        tab.factories.splice(0, 1)
+        eventBus.emit('factoryEdited', alpha)
+        eventBus.emit('planReplaced', { removedIds: [alpha.id] })
+        store.persistJournal()
+
+        siblingPersists(producing, 4)
+
+        restart()
+        store.trackRoom(ROOM)
+
+        expect(inTab(appStore.getTab(ROOM) as FactoryTab, 1)).toBeUndefined()
+      })
+
+      it('keeps the unanswered question across the sibling\'s write', () => {
+        leaveAQuestionUnanswered()
+        siblingPersists(producing, 6)
+
+        restart()
+        store.trackRoom(ROOM)
+
+        expect(store.pendingConflicts[ROOM]?.factoryIds).toEqual([1])
+      })
+    })
+
+    describe('a browser that refuses to save', () => {
+      it('keeps the pending edit, says so, and lands it when storage comes back', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+
+        const toasts = vi.spyOn(eventBus, 'emit')
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        const restoreStorage = refuseLocalStorageWrites(key => key === 'planSyncJournal')
+
+        editHere(tab, 1, 'IronIngot', 111)
+        store.persistJournal()
+
+        expect(store.hasLocalEdits(ROOM), 'dropped the edit because the disk refused it').toBe(true)
+        expect(recoverJournalRoom(ROOM)?.userTouchedIds, 'the refused write cannot have landed').toEqual([])
+        // The sidecar still took it, so the refusal costs the records and not the intent.
+        expect(readTabMirrorMeta()[ROOM]?.userTouchedIds).toEqual([1])
+        expect(toasts).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'error' }))
+
+        restoreStorage()
+        store.persistJournal()
+
+        expect(recoverJournalRoom(ROOM)?.userTouchedIds, 'never retried the refused write').toEqual([1])
+        vi.restoreAllMocks()
+      })
     })
   })
 })

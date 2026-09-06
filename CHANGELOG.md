@@ -51,6 +51,9 @@ Cloud saving is gone and live plans have taken its place. A tab you choose to sy
 - **Coming back online is manual, like a phone.** When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.
 - **If somebody else changed the same factories while you were away, the planner asks before deciding for you.** Coming back raises one prompt listing every factory both sides edited, with the live plan's figures beside yours product by product, and you pick which version wins for each. Everything that does not clash syncs safely either way, and a tick box keeps this device's version as a separate local tab whatever you choose.
 - Nothing else about this interrupts you. There are no popups to dismiss while you plan, and that prompt is the only question offline work will ever raise.
+- **That prompt now survives a refresh.** Reloading the page with the question still on screen used to quietly pick your version and send it, overwriting whatever the other person had done. The planner now holds everything back until you have answered, and asks again with the live figures once it reconnects.
+- **Two browser tabs open on the same planner no longer overwrite each other's unsent work.** Each browser tab keeps its own record of what it still owes the server, so an edit made offline in one is still there when you come back to it, whatever the other one saved in the meantime.
+- **If your browser runs out of storage the planner says so and keeps going.** Your edits stay on screen and are saved as soon as there is room again, instead of disappearing the next time you close the tab.
 
 ### Your settings follow your account
 

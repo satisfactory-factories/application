@@ -989,6 +989,42 @@ describe('app-store', () => {
       const stored = JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[]
       expect(stored[0]?.name).toBe('Renamed')
     })
+
+    /**
+     * `factoryTabs` is one shared key and every write replaces the whole array, so a second
+     * browser tab of the same browser writes its own generation over this one's. Trusting
+     * `lastPersistedPlan` meant this one reported a save it had not made and never noticed
+     * the disk no longer held it — which is how a plan edited offline in one browser tab
+     * was gone for good once the other one saved.
+     */
+    it('writes the plan again when another browser tab replaced the stored value', () => {
+      appStore.getCurrentTab().name = 'Mine'
+      expect(appStore.persistPlan()).toBe(true)
+      const mine = localStorage.getItem('factoryTabs')
+
+      localStorage.setItem('factoryTabs', JSON.stringify([
+        { id: 'from-the-other-tab', name: 'Theirs', factories: [] },
+      ]))
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      expect(appStore.persistPlan()).toBe(true)
+      expect(localStorage.getItem('factoryTabs'), 'trusted its own cache over the disk').toBe(mine)
+    })
+
+    /** The same thing, arriving as the event a browser fires in its other tabs. */
+    it('takes the storage event as notice that its cache is stale', () => {
+      appStore.getCurrentTab().name = 'Mine'
+      appStore.persistPlan()
+      const mine = localStorage.getItem('factoryTabs')
+
+      const theirs = JSON.stringify([{ id: 'from-the-other-tab', name: 'Theirs', factories: [] }])
+      localStorage.setItem('factoryTabs', theirs)
+      window.dispatchEvent(new StorageEvent('storage', { key: 'factoryTabs', newValue: theirs }))
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      expect(appStore.persistPlan()).toBe(true)
+      expect(localStorage.getItem('factoryTabs')).toBe(mine)
+    })
   })
 
   describe('raw resources breaking-change notice', () => {

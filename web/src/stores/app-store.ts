@@ -222,7 +222,44 @@ export const useAppStore = defineStore('app', () => {
   // periodic compare-and-save plus a flush on tab-hide/close catches direct mutations
   // that bypass the calculator (factory/tab renames, hidden toggles, tasks and such).
   let persistTimer: ReturnType<typeof setTimeout> | undefined
-  let lastPersistedPlan = ''
+  // Seeded from the disk rather than blank: this is "what the stored value is, as far as
+  // this instance knows", and on boot that is whatever boot read.
+  let lastPersistedPlan = (typeof localStorage === 'undefined' ? null : localStorage.getItem('factoryTabs')) ?? ''
+
+  /**
+   * `factoryTabs` is one shared key and every write replaces the whole array, so a second
+   * browser tab of the same browser writes its own generation over this one's. That is
+   * survivable while this cache is honest about it: believing our own last write meant a
+   * closing tab reported success without noticing the disk no longer held what it wrote,
+   * and the edits only that tab had were gone from both the content and this cache.
+   *
+   * @returns the disk's own copy when it is not the one we last wrote, otherwise null.
+   */
+  const foreignWrite = (): string | null => {
+    let stored: string | null = null
+    try {
+      stored = localStorage.getItem('factoryTabs')
+    } catch {
+      // A browser that will not read is one that will not write either; the write below
+      // is what reports that, and it is not this function's business.
+      return null
+    }
+    return stored === lastPersistedPlan ? null : stored
+  }
+
+  /**
+   * Cheap and prompt where it works: `storage` fires in the OTHER browser tabs of the same
+   * origin, so a sibling's write invalidates this cache the moment it lands rather than at
+   * the next persist. It is only ever an optimisation — `foreignWrite` reads the disk on
+   * every persist and catches the same thing without any event at all — so a browser that
+   * never delivers this loses nothing but promptness.
+   */
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', event => {
+      if (event.key !== 'factoryTabs' && event.key !== null) return
+      lastPersistedPlan = event.newValue ?? ''
+    })
+  }
 
   /**
    * @param fromLoad only ever true for a debounced write that a LOAD scheduled. The v0.6 migration
@@ -258,6 +295,14 @@ export const useAppStore = defineStore('app', () => {
     if (typeof localStorage === 'undefined') return false
     // Stringify the raw tree — stringifying through the reactive proxies is many times slower.
     const json = JSON.stringify(toRaw(factoryTabs.value))
+    // The disk is asked, not the cache. Skipping the write because we believe we already
+    // made it is only safe while nothing else writes this key, and a second browser tab of
+    // the same browser does.
+    const foreign = foreignWrite()
+    if (foreign !== null) {
+      console.warn('appStore: another browser tab replaced the stored plan; writing this one back')
+      lastPersistedPlan = foreign
+    }
     if (json === lastPersistedPlan) {
       pendingUserEdit = false
       return true
