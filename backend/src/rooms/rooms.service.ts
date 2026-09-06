@@ -191,8 +191,12 @@ export class RoomsService {
       await this.rooms.updateOne({ roomId }, { $set: { passwordHash }, $inc: { passwordVersion: 1 } })
     })
 
-    await this.finishMetaMutation(userId, roomId, 'password_set')
+    // The kick rides on that write, as unshare's does, and for the same reason: emitted
+    // after the tail below, a failure part-way would leave the outstanding tokens dead
+    // to a fresh join while the sockets already holding them went on taking the fan-out.
     this.events.emit('access_revoked', { roomId, scope: 'visitors' })
+
+    await this.finishMetaMutation(userId, roomId, 'password_set')
 
     return (await this.requireRoom(roomId)).passwordVersion
   }
@@ -204,8 +208,11 @@ export class RoomsService {
       await this.rooms.updateOne({ roomId }, { $set: { passwordHash: null }, $inc: { passwordVersion: 1 } })
     })
 
-    await this.finishMetaMutation(userId, roomId, 'password_removed')
+    // Same shape as setPassword: the version bump voids every outstanding visitor token
+    // whether the password went or changed, so the kick belongs to that write alone.
     this.events.emit('access_revoked', { roomId, scope: 'visitors' })
+
+    await this.finishMetaMutation(userId, roomId, 'password_removed')
 
     return (await this.requireRoom(roomId)).passwordVersion
   }
