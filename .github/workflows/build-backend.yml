@@ -54,6 +54,20 @@ jobs:
       - name: Lint check
         run: pnpm lint-check
 
+      # Nothing ran `common`'s own checks: its specs are excluded from
+      # tsconfig.build.json, so `pnpm build` never saw them, and neither sibling suite
+      # loads them. The zod schema in there is the whole data boundary. Checked in this
+      # job because it is the one that already installs the package; `--filter` resolves
+      # from the workspace root, so the backend working directory does not matter.
+      - name: Lint check Common
+        run: pnpm --filter common lint-check
+
+      - name: Typecheck Common
+        run: pnpm --filter common typecheck
+
+      - name: Test Common
+        run: pnpm --filter common exec vitest run
+
       # Builds `common` first, then `nest build`. vue-tsc's equivalent on web:
       # a type error fails the job rather than reaching the image.
       - name: Build Backend
