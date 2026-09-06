@@ -1,5 +1,5 @@
 // Check for invalid factory data e.g. inputs without factories etc
-import { calculateFactory, findFac, generateFactoryId } from '@/utils/factory-management/factory'
+import { calculateFactory, findFac, repairedFactoryId } from '@/utils/factory-management/factory'
 import { Factory, FactoryInput, FactoryTab } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
@@ -24,17 +24,20 @@ const repair = (factory: Factory, reason: EventReason, summary: string): Structu
 // Plans built before IDs were issued uniquely can carry collisions, so break them on load.
 // The first factory keeps the ID; anything still pointing at the reassigned one is left for
 // the chain reconciliation and the recalculation that follows.
+//
+// The replacement is derived from the plan, never minted at random: every client that opens a
+// malformed plan runs this, and two of them must arrive at the same repaired plan.
 export const repairDuplicateFactoryIds = (factories: Factory[]): StructuralRepair[] => {
   const repairs: StructuralRepair[] = []
   const seen = new Set<number>()
 
-  factories.forEach(factory => {
+  factories.forEach((factory, index) => {
     if (factory.id && !seen.has(factory.id)) {
       seen.add(factory.id)
       return
     }
 
-    factory.id = generateFactoryId(factories)
+    factory.id = repairedFactoryId(factories, factory, index)
     seen.add(factory.id)
     repairs.push(repair(factory, 'plan_repair_duplicate_factory_id', `Shared an internal ID with another factory, which mixes up their imports and exports. It has been given an ID of its own; check its imports still point where you expect.`))
   })

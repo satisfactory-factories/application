@@ -28,6 +28,7 @@ import { calculateCustomBuildings } from '@/utils/factory-management/custom-buil
 import { calculateBuildingMaterialCosts } from '@/utils/factory-management/building-costs'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { applyDiff } from '@/utils/factory-management/commit'
+import { nextRepairedId } from '@/utils/factory-management/common'
 import { toRaw } from 'vue'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
@@ -80,6 +81,25 @@ export const generateFactoryId = (factories: Factory[] = []): number => {
       range *= 10
     }
   }
+}
+
+/**
+ * The id a load-time repair gives a factory whose id collides with another's.
+ *
+ * `generateFactoryId` is right for a factory the user adds: one client mints it and the plan
+ * carries it everywhere. A repair is the opposite — every client that opens the malformed plan
+ * runs it — so a random id there meant two clients disagreed about a plan nobody had edited,
+ * and the reassignment then read as a local add to the sync intent layer.
+ *
+ * Derived from the plan instead: the colliding id, the name, and where the collision sits, all
+ * of which read the same wherever the plan is opened. Repaired ids are minted above
+ * REPAIRED_ID_OFFSET so they cannot land on one already saved.
+ */
+export const repairedFactoryId = (factories: Factory[], factory: Factory, index: number): number => {
+  const taken = new Set(factories.map(candidate => candidate.id))
+  const identity = `${factory.id ?? ''}|${factory.name ?? ''}|${index}`
+
+  return nextRepairedId(identity, id => taken.has(id), taken.size)
 }
 
 export const newFactory = (name = 'A new factory', order?: number, id?: number): Factory => {

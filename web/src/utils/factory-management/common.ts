@@ -1,4 +1,4 @@
-import { BuildingGroup, Factory, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { BuildingGroup, Factory, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { toRaw } from 'vue'
@@ -47,6 +47,73 @@ export const generateFactoryItemId = (factory: Factory): string => {
       range *= 10
     }
   }
+}
+
+/**
+ * Ids minted by a load-time repair start here.
+ *
+ * Everything `generateFactoryId` and `generateFactoryItemId` have ever issued sits below 10,000
+ * in an ordinary plan, so minting above this offset leaves the two kinds unable to collide and
+ * nothing already saved has to be rewritten.
+ */
+export const REPAIRED_ID_OFFSET = 1_000_000
+
+// One repaired id per number in this range. Far larger than the row and factory caps allow, so
+// the probe below always lands on a free slot within a handful of steps.
+const REPAIRED_ID_SPAN = 1_000_000
+
+// FNV-1a. Any stable string hash would do; this one is short, needs no dependency, and depends
+// on nothing but the characters — no locale, no clock, no iteration order.
+export const hashIdentity = (value: string): number => {
+  let hash = 0x811C9DC5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash
+}
+
+/**
+ * A repaired id: hashed from the thing's identity, then the first free slot at or above it.
+ *
+ * First free slot rather than the hash alone, because a deterministic id that collides is worse
+ * than the random one it replaced. Both clients probe the same taken set in the same order, so
+ * they land on the same answer.
+ */
+export const nextRepairedId = (
+  identity: string,
+  isTaken: (id: number) => boolean,
+  takenCount: number
+): number => {
+  const start = hashIdentity(identity) % REPAIRED_ID_SPAN
+
+  // Pigeonhole: one more probe than there are ids in use always finds a free slot.
+  for (let step = 0; step <= takenCount; step++) {
+    const id = REPAIRED_ID_OFFSET + (start + step) % REPAIRED_ID_SPAN
+    if (!isTaken(id)) return id
+  }
+
+  throw new Error(`nextRepairedId: no free id for "${identity}" among ${takenCount} taken`)
+}
+
+/**
+ * The id given to a power producer saved before rows carried one.
+ *
+ * The backfill runs on every client that opens the plan, so a random id there meant two clients
+ * held different plans with neither user having edited anything — and the id travels in the sync
+ * payload. Derived from the producer's own recipe, building and position instead, all of which
+ * read the same wherever the plan is opened. The taken set spans both row collections for the
+ * same reason `generateFactoryItemId`'s does.
+ */
+export const repairedFactoryItemId = (factory: Factory, producer: FactoryPowerProducer): string => {
+  const taken = new Set<string>([
+    ...(factory.powerProducers ?? []).map(candidate => candidate.id),
+    ...(factory.customBuildings ?? []).map(customBuilding => customBuilding.id),
+  ])
+  const position = (factory.powerProducers ?? []).indexOf(producer)
+  const identity = `power|${producer.recipe ?? ''}|${producer.building ?? ''}|${position}`
+
+  return nextRepairedId(identity, id => taken.has(id.toString()), taken.size).toString()
 }
 
 export const createNewPart = (factory: Factory, part: string) => {
