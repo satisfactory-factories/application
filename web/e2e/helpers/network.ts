@@ -36,11 +36,24 @@ export interface WsGate {
    * assert that something was never sent, as opposed to never having an effect.
    */
   sent: () => Record<string, unknown>[]
+  /** Every frame the server has sent this client, parsed. Its side of the conversation. */
+  received: () => Record<string, unknown>[]
   /**
    * Stops forwarding this client's ops to the server. Resolves once one has been
    * swallowed, so a test can say "an op is in flight" and mean it.
    */
   holdOps: () => Promise<void>
+  /**
+   * Queues this client's ops instead of forwarding them, and resolves with the
+   * first one queued. Unlike `holdOps` nothing is thrown away, so `releaseOps`
+   * puts the client back where it would have been.
+   *
+   * This is what makes a concurrent edit concurrent: two clients each holding an
+   * op built against the same revision, neither yet seen by the server.
+   */
+  stallOps: () => Promise<Record<string, unknown>>
+  /** Forwards everything `stallOps` queued, in order, and stops queueing. */
+  releaseOps: () => void
   /** Drops the live socket and refuses every reconnect until `restore`. */
   kill: () => Promise<void>
   restore: () => void
@@ -55,9 +68,16 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
   let connections = 0
   let killed = false
   let holding = false
+  let stalling = false
   let announceHeld: (() => void) | null = null
+  let announceStalled: ((op: Record<string, unknown>) => void) | null = null
   const sent: Record<string, unknown>[] = []
+  const received: Record<string, unknown>[] = []
+  /** Frames `stallOps` took off the wire, with the socket that has to send them on. */
+  const queued: { server: WebSocketRoute, message: string | Buffer }[] = []
   const live = new Set<{ client: WebSocketRoute, server: WebSocketRoute }>()
+
+  const isOp = (message: string | Buffer): boolean => String(message).includes('"type":"op"')
 
   await page.routeWebSocket(/\/ws$/, ws => {
     connections++
@@ -73,19 +93,36 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
     ws.onMessage(message => {
       // Recorded before the hold, so a swallowed frame still counts as one the client
       // chose to put on the wire — which is the thing under test.
+      let parsed: Record<string, unknown> | null = null
       try {
-        sent.push(JSON.parse(String(message)) as Record<string, unknown>)
+        parsed = JSON.parse(String(message)) as Record<string, unknown>
+        sent.push(parsed)
       } catch {
         // A frame this harness cannot read is not one any assertion is about.
       }
-      if (holding && String(message).includes('"type":"op"')) {
+      if (holding && isOp(message)) {
         announceHeld?.()
         announceHeld = null
         return
       }
+      if (stalling && isOp(message)) {
+        queued.push({ server, message })
+        if (parsed) {
+          announceStalled?.(parsed)
+          announceStalled = null
+        }
+        return
+      }
       server.send(message)
     })
-    server.onMessage(message => ws.send(message))
+    server.onMessage(message => {
+      try {
+        received.push(JSON.parse(String(message)) as Record<string, unknown>)
+      } catch {
+        // Same as above: unreadable frames are nothing any assertion is about.
+      }
+      ws.send(message)
+    })
 
     ws.onClose((code, reason) => {
       live.delete(pair)
@@ -100,10 +137,20 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
   return {
     connections: () => connections,
     sent: () => [...sent],
+    received: () => [...received],
     holdOps: () => new Promise<void>(resolve => {
       holding = true
       announceHeld = resolve
     }),
+    stallOps: () => new Promise<Record<string, unknown>>(resolve => {
+      stalling = true
+      announceStalled = resolve
+    }),
+    releaseOps: () => {
+      stalling = false
+      announceStalled = null
+      for (const { server, message } of queued.splice(0)) server.send(message)
+    },
     kill: async () => {
       killed = true
       for (const pair of [...live]) {
@@ -115,7 +162,10 @@ export const installWsGate = async (page: Page): Promise<WsGate> => {
     restore: () => {
       killed = false
       holding = false
+      stalling = false
       announceHeld = null
+      announceStalled = null
+      queued.length = 0
     },
   }
 }

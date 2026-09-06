@@ -24,7 +24,7 @@ The harness refuses to start if either port is taken rather than picking another
 | File | What it proves |
 | --- | --- |
 | `two-devices` | An edit reaches the account's other device inside 2s; both mirrors end deep-equal. |
-| `concurrency` | Same-factory edits converge on one winner; different-factory edits both survive, whether the edit is an add or a note. |
+| `concurrency` | Both devices' first op is held at the socket until both exist and are checked to carry the same base revision, then released together. One comes back `stale_base` and rebases: a same-factory tie lands on that device's write, and different-factory edits both survive, whether the edit is an add or a note. |
 | `tab-lifecycle` | Create, rename (through the tab settings dialog), delete and drag-reorder all reach a second device once it opens the plan from the panel; a hidden plan stays hidden across a reload and Show restores it; a member's rename field is disabled with the reason shown; signing in from the signed-out convert button turns it into the real conversion on the same open dialog; a plan filled in after signing in reaches the cloud through tab settings and comes down on the next device. |
 | `sidebar-tabs` | The docked sidebar lists the tab you are on, whether local, synced or joined; a tab too big to render in one flush opens behind the loading overlay, and a small one opens instantly. |
 | `new-tab-chooser` | Local is offered to anyone; picking synced without an account signs in on the same dialog and still makes the tab. A plan hidden in this browser is listed on the plus button and comes back whole when opened from there. |
@@ -41,7 +41,7 @@ The harness refuses to start if either port is taken rather than picking another
 | `preferences` | A synced preference set on one device is there on the next device's first login. |
 | `login-chooser` | An interactive sign-in is fronted by the plan chooser; "Not now" opens nothing, and a reload with a persisted session never asks. Open-all on a device that has never seen the account downloads every plan whole, the unselected one included, and a plan left open there catches up on what it missed while the device was away. |
 | `helper-resilience` | `addNamedFactory` still finds the card it made when the app's focus is stolen out from under it, which is the flake that has taken unrelated tests down with it. |
-| `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. |
+| `version-gate` | A 426 raises the persistent refresh prompt and leaves the planner usable. The version the client sends is also rewritten on the wire so the real API answers the 426 itself, which is what proves the gate, the header name and its CORS allowance rather than only the prompt. |
 | `field-locks` | A focused note disables the same field for the other client and keeps it disabled while its holder types; blur and a ten-second idle both hand it back, and a second factory's note is never covered. |
 | `loading-tab` | A client rendering a big plan makes no writes: no op it sends carries a removal, and both devices end holding every factory. Covered for a tab re-entered, a client with edits still unsent, and a return to the planner from another page. |
 
