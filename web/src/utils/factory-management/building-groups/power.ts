@@ -11,7 +11,7 @@ export const addPowerProducerBuildingGroup = (
   factory: Factory,
   addBuildings = true,
 ) => {
-  createBuildingGroup(producer, ItemType.Power, addBuildings)
+  createBuildingGroup(producer, ItemType.Power, factory, addBuildings)
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.

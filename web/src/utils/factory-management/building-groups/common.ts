@@ -74,10 +74,89 @@ export const addBuildingGroup = (
   recalculateGroupMetrics(item, type, factory)
 }
 
+/**
+ * Building group ids have to be reproducible, because the engine mints them.
+ *
+ * A groupless item (an older plan, an import, a plan joined from a room) gets its first group
+ * from calculateBuildingGroupParts, deep inside a calculation pass. Sync sends whole changed
+ * factories, so a random id there meant two clients holding the same plan computed different
+ * output the moment they loaded it: every client reported the factory as changed, and the id
+ * itself travelled in the payload. Deriving the id from the item makes the calculation a pure
+ * function of the plan again.
+ *
+ * Ids issued before this sat at `Math.random() * 10000`, so every one saved in an existing plan
+ * is below 10,000. Minting above this offset leaves the two kinds unable to collide, and nothing
+ * already stored has to be rewritten.
+ */
+export const DETERMINISTIC_GROUP_ID_OFFSET = 1_000_000
+
+// Each item gets its own block of ids so two items minting a group at the same time on different
+// clients cannot pick the same number.
+const GROUP_ID_BLOCK_SIZE = 1_000
+const GROUP_ID_BLOCKS = 1_000_000
+
+// FNV-1a. Any stable string hash would do; this one is short, needs no dependency, and depends
+// on nothing but the characters — no locale, no clock, no iteration order.
+const hashGroupIdentity = (value: string): number => {
+  let hash = 0x811C9DC5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash
+}
+
+// What the item is, rather than where it currently sits: the part/producer id and the recipe are
+// both plan data, identical on every client, and neither moves when rows are reordered.
+const buildingGroupIdentity = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType
+): string => `${groupType}|${item.id ?? ''}|${item.recipe ?? ''}`
+
+// Uniqueness has to hold factory-wide, not just within the item: the group card builds its DOM
+// ids as `${factory.id}-${group.id}-...` and focuses them with getElementById.
+const takenGroupIds = (
+  item: FactoryItem | FactoryPowerProducer,
+  factory?: Factory
+): Set<number> => {
+  const taken = new Set<number>()
+  const collect = (groups?: BuildingGroup[]) => groups?.forEach(group => taken.add(group.id))
+
+  factory?.products?.forEach(product => collect(product.buildingGroups))
+  factory?.powerProducers?.forEach(producer => collect(producer.buildingGroups))
+  // The item is normally already in the factory, but a group can be created before it is pushed.
+  collect(item.buildingGroups)
+
+  return taken
+}
+
+export const nextBuildingGroupId = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory?: Factory
+): number => {
+  const taken = takenGroupIds(item, factory)
+  const base = DETERMINISTIC_GROUP_ID_OFFSET +
+    (hashGroupIdentity(buildingGroupIdentity(item, groupType)) % GROUP_ID_BLOCKS) * GROUP_ID_BLOCK_SIZE
+
+  // The ordinal is "first free slot in the block", not the group count, so deleting a group from
+  // the middle and adding another cannot reissue an id that is still in use.
+  for (let ordinal = 0; ordinal < GROUP_ID_BLOCK_SIZE; ordinal++) {
+    if (!taken.has(base + ordinal)) {
+      return base + ordinal
+    }
+  }
+
+  // A full block needs 1,000 groups on one item, which the row caps do not allow. Carry on above
+  // everything the factory holds rather than handing back a duplicate.
+  return Math.max(DETERMINISTIC_GROUP_ID_OFFSET, ...taken) + 1
+}
+
 // @See ./product.ts, ./power.ts for usages
 export const createBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
+  factory?: Factory,
   matchBuildings = true
 ) => {
   let buildingCount = 0
@@ -103,7 +182,7 @@ export const createBuildingGroup = (
   }
 
   const group: BuildingGroup = {
-    id: Math.floor(Math.random() * 10000),
+    id: nextBuildingGroupId(item, groupType, factory),
     type: groupType,
     buildingCount,
     overclockPercent: 100,

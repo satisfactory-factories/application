@@ -17,7 +17,7 @@ export const addProductBuildingGroup = (
   factory: Factory,
   matchBuildings = false
 ) => {
-  createBuildingGroup(product, ItemType.Product, matchBuildings)
+  createBuildingGroup(product, ItemType.Product, factory, matchBuildings)
 
   // There's a high probability that a fractional building count has been created, so we need to run the balancing to make it whole buildings and underclocked.
   // Only do this though if we have one building group, as we don't want to mess with the overclocking if we have multiple groups.
