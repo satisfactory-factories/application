@@ -1,9 +1,19 @@
 import { APP_VERSION_HEADER } from 'common'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
-import { HEALTH_THROTTLE } from '../src/config/throttling'
-import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
+import { HEALTH_THROTTLE, SHARE_THROTTLE } from '../src/config/throttling'
+import {
+  TestContext,
+  VERSION_HEADERS,
+  awaitConnection,
+  createTestApp,
+  destroyTestApp,
+} from './utils/test-app'
+
+/** Documentation-range addresses, so nothing here reads as a real client. */
+const REMOTE_PEER = '203.0.113.5'
+const SPOOFING_PEER = '198.51.100.7'
 
 describe('GET /health', () => {
   let context: TestContext
@@ -56,14 +66,21 @@ describe('GET /health', () => {
 
 describe('the /health rate limiter', () => {
   let context: TestContext
+  // supertest always connects over loopback, and loopback is exempt, so the bucket can only be
+  // asserted from a peer that looks like an ordinary remote client.
+  let peer = REMOTE_PEER
 
   beforeAll(async () => {
-    context = await createTestApp()
+    context = await createTestApp({ peerAddress: () => peer })
     await awaitConnection(context.app)
   })
 
   afterAll(async () => {
     await destroyTestApp(context)
+  })
+
+  beforeEach(() => {
+    peer = REMOTE_PEER
   })
 
   it(`allows ${HEALTH_THROTTLE.limit} a minute in its own bucket, then 429s`, async () => {
@@ -81,5 +98,50 @@ describe('the /health rate limiter', () => {
       .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
+  })
+
+  // The container's own healthcheck is the only caller that can reach /health over loopback, and
+  // `up --wait` blocks on it, so counting it can only ever turn a healthy deploy into a failure.
+  it.each([
+    ['::ffff:127.0.0.1', 'the form Node reports for the container healthcheck'],
+    ['127.0.0.1', 'plain IPv4 loopback'],
+    ['::1', 'IPv6 loopback'],
+    ['127.0.0.2', 'the rest of 127.0.0.0/8'],
+  ])('never counts a probe from %s (%s)', async address => {
+    peer = address
+    const server = context.app.getHttpServer()
+
+    for (let probe = 0; probe < HEALTH_THROTTLE.limit * 3; probe++) {
+      expect((await request(server).get('/health')).status).toBe(200)
+    }
+  })
+
+  // The security-relevant case: `trust proxy` makes req.ip header-derived, so the exemption has
+  // to key on the TCP peer the kernel reports and not on anything a caller can send.
+  it('does not let X-Forwarded-For claim to be loopback', async () => {
+    peer = SPOOFING_PEER
+    const server = context.app.getHttpServer()
+
+    for (let attempt = 0; attempt < HEALTH_THROTTLE.limit; attempt++) {
+      const response = await request(server).get('/health').set('X-Forwarded-For', '127.0.0.1')
+      expect(response.status).toBe(200)
+    }
+
+    const throttled = await request(server).get('/health').set('X-Forwarded-For', '127.0.0.1')
+    expect(throttled.status).toBe(429)
+  })
+
+  // The exemption is scoped to /health, so nothing else loses its bucket to a loopback caller.
+  it('does not exempt any other route, even from loopback', async () => {
+    peer = '127.0.0.1'
+    const server = context.app.getHttpServer()
+
+    const share = () => request(server).post('/share').set(VERSION_HEADERS).send({})
+
+    for (let attempt = 0; attempt < SHARE_THROTTLE.limit; attempt++) {
+      expect((await share()).status).not.toBe(429)
+    }
+
+    expect((await share()).status).toBe(429)
   })
 })

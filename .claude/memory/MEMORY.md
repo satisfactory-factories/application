@@ -47,3 +47,4 @@
 - [prom-client is deprecated](prom-client-deprecated-successor.md) — the successor was days old and 0.x, so the metrics endpoint stayed put; what would change that, and the third package name context7 hands out
 - [Verify: hidden-pane menu freeze](verify-hidden-pane-menu-freeze.md) — a hidden browser pane leaves Vuetify menus stuck invisible with inline pointer-events:none; clear the inline props before hit-testing
 - [prom-client label lifecycle](prom-client-label-lifecycle.md) — seed bounded label sets at zero or panels read "No data"; reset ranked ones or dropped labels report forever
+- [Clock step freezes rate limits](clock-step-freezes-rate-limits.md) — a backwards clock step at boot 429'd the API container unhealthy under express-rate-limit; why @nestjs/throttler closed it, and why it looks exactly like prod drift

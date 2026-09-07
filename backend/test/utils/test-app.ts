@@ -37,7 +37,25 @@ export interface TestAppOptions {
    * 200-per-5-minutes global bucket. health.spec asserts the real thing.
    */
   unthrottled?: boolean
+  /**
+   * Reports every request as arriving from this TCP peer. supertest always connects over
+   * loopback, and /health exempts loopback, so a suite asserting that bucket needs to look
+   * like an ordinary remote client. A function is read per request, so one app can walk
+   * several peers.
+   */
+  peerAddress?: string | (() => string)
 }
+
+/**
+ * Rewrites the kernel-reported peer, the one thing supertest cannot vary. Redefined per
+ * request because keep-alive reuses the socket.
+ */
+const withPeerAddress = (peer: string | (() => string)) =>
+  (req: { socket: object }, _res: unknown, next: () => void): void => {
+    const value = typeof peer === 'function' ? peer() : peer
+    Object.defineProperty(req.socket, 'remoteAddress', { value, configurable: true })
+    next()
+  }
 
 const NEVER_THROTTLED: ThrottlerStorage = {
   increment: async (_key, ttl) =>
@@ -64,6 +82,8 @@ export const createTestApp = async (options: TestAppOptions = {}): Promise<TestC
   const moduleRef = await builder.compile()
   const app = moduleRef.createNestApplication<NestExpressApplication>()
   configureApp(app)
+  // Ahead of the guards, so the throttler sees the peer this suite asked for.
+  if (options.peerAddress) app.use(withPeerAddress(options.peerAddress))
   await app.init()
   // The connection is lazy; resolving it here keeps DB assertions stable.
   await awaitConnection(app)
