@@ -30,15 +30,29 @@ without fixing it, which is why "it is healthy now" was never evidence.
 The NestJS rewrite moved rate limiting to `@nestjs/throttler`, and that is what ended this class
 of freeze. Verified against the installed 6.5.0 by driving `ThrottlerStorageService` through a
 faked backwards step of an hour: **it decrements each hit on its own `setTimeout(ttl)`, and Node
-timers are monotonic, so a clock step cannot stop the count falling.** Under the healthcheck's
+timers are monotonic, so a clock step alone cannot stop the count falling.** Under the healthcheck's
 access pattern the count sits at 2 and never climbs, stepped clock or not. `expiresAt` is still
 wall-clock but only feeds the reported retry-after; it does not gate anything.
 
-One wall-clock path survives: `blockExpiresAt`. Once a key is *actually* blocked, unblocking waits
+Two paths survive, and the second is the more serious.
+
+**`blockExpiresAt` is still wall-clock.** Once a key is *actually* blocked, unblocking waits
 on `Date.now()`, so a backwards step extends the block by the offset. Reaching it needs more hits
 inside one ttl than the limit allows, which two probes a minute cannot do, so `/health` is out of
-reach of it. Both halves are pinned in `backend/test/throttler-clock-step.spec.ts`, which is the
-thing to re-run if the throttler is ever upgraded or swapped.
+reach of it.
+
+**Timers are cancelled per bucket, not per client, so a count can stall for a reason that has
+nothing to do with the clock.** `timeoutIds` is keyed by throttler name alone, and
+`resetBlockdRequest` calls `clearExpirationTimes(throttlerName)`, so unblocking any one client
+cancels the pending decrements of every other client in that bucket. Their counts then never
+fall. Repeated block-and-reset cycles accumulate, and the buckets that can strand a real person
+are `login`, `roomAuth`, `share` and `slugLookup`; `global` can eventually refuse ordinary
+traffic. So the statement above is about the clock specifically: a step cannot stall a count, but
+something else can.
+
+`backend/test/throttler-clock-step.spec.ts` pins the clock behaviour and is the thing to re-run if
+the throttler is ever upgraded or swapped. It uses one key per bucket, so it cannot see the
+cross-client cancellation on its own.
 
 ## The traps worth keeping
 
