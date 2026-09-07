@@ -48,7 +48,9 @@ To tear the container back down, `pnpm db:down` from either the root or here.
 
 ## Routes
 
-Every route except `GET /health` and `GET /share/:id` requires an `X-App-Version` header matching the protocol version exported by `common`. A mismatch, or a missing header, gets **426** with a `{ code: 'version_mismatch', ... }` body, which is how pre-v7 clients are cut off.
+Every route except `GET /health`, `GET /version` and `GET /share/:id` requires a client version header matching the protocol version exported by `common`. A mismatch, or a missing header, gets **426** with a `{ code: 'version_mismatch', ... }` body, which is how pre-v7 clients are cut off.
+
+Clients send `X-Planner-Version`. The gate also reads `X-App-Version`, the name v0.7.x builds sent, and CORS allows both. Both halves matter: a custom header forces a preflight, so a server that does not allow the name a client sends fails the request in the browser before the gate can answer 426, and the user gets an opaque network error instead of the refresh prompt. Accepting both names is what makes the deploy order and a rollback safe in either direction. The names live in `common` as `APP_VERSION_HEADER`, `APP_VERSION_HEADER_FALLBACK` and `ACCEPTED_VERSION_HEADERS`.
 
 | Route | Notes |
 | --- | --- |

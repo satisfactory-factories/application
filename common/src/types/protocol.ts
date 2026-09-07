@@ -8,9 +8,21 @@ export const PROTOCOL_VERSION = '7.0'
 
 /**
  * Header every REST call must carry, matched against `PROTOCOL_VERSION`. Only
- * `GET /health` and `GET /share/:id` are exempt; everything else 426s without it.
+ * `GET /health`, `GET /version` and `GET /share/:id` are exempt; everything else
+ * 426s without it. Every client since the gate shipped sends this name.
  */
-export const APP_VERSION_HEADER = 'X-App-Version'
+export const APP_VERSION_HEADER = 'X-Planner-Version'
+
+/**
+ * The name v0.7.x builds sent instead. A custom header forces a CORS preflight, so a
+ * server that does not allow the name a client sends fails it in the browser before the
+ * gate can answer 426, and the user sees an opaque network error rather than the refresh
+ * prompt. Accepting both names is what makes deploy order and rollback safe.
+ */
+export const APP_VERSION_HEADER_FALLBACK = 'X-App-Version'
+
+/** Every name the gate reads and CORS allows, most preferred first. */
+export const ACCEPTED_VERSION_HEADERS = [APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK] as const
 
 /** The gateway shares the API's HTTP server; this is the only path it answers on. */
 export const WS_PATH = '/ws'

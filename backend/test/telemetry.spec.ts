@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { TELEMETRY_CAPS, TELEMETRY_VERSION_FALLBACK } from 'common'
+import { APP_VERSION_HEADER, TELEMETRY_CAPS, TELEMETRY_VERSION_FALLBACK } from 'common'
 import request from 'supertest'
 
 import { METRICS_VERSION_LABEL_LIMIT, TELEMETRY_MIN_INTERVAL_MS } from '../src/metrics/metrics.constants'
@@ -60,7 +60,7 @@ describe('POST /telemetry', () => {
 
     // The clients most worth counting are the ones the gate would otherwise turn away.
     it('is exempt from the version gate', async () => {
-      const response = await post(heartbeat()).set('X-App-Version', 'ancient')
+      const response = await post(heartbeat()).set(APP_VERSION_HEADER, 'ancient')
 
       expect(response.status).toBe(204)
     })
@@ -346,7 +346,7 @@ describe('the /telemetry rate limiter', () => {
     // A busy NAT heartbeating must never rate-limit the planner behind it.
     const login = await request(context.app.getHttpServer())
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })

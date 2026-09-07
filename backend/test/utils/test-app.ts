@@ -1,6 +1,6 @@
 import type { Server } from 'node:http'
 
-import { PROTOCOL_VERSION, WS_PATH } from 'common'
+import { APP_VERSION_HEADER, PROTOCOL_VERSION, WS_PATH } from 'common'
 import { ThrottlerStorage } from '@nestjs/throttler'
 import { getConnectionToken } from '@nestjs/mongoose'
 import { Test } from '@nestjs/testing'
@@ -16,7 +16,7 @@ import { configureApp } from '../../src/bootstrap'
 import { AppModule } from '../../src/app.module'
 
 export { TEST_JWT_SECRET } from './constants'
-export const VERSION_HEADERS = { 'X-App-Version': PROTOCOL_VERSION }
+export const VERSION_HEADERS = { [APP_VERSION_HEADER]: PROTOCOL_VERSION }
 
 export interface TestContext {
   app: INestApplication

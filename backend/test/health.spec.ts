@@ -1,3 +1,4 @@
+import { APP_VERSION_HEADER } from 'common'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -33,7 +34,7 @@ describe('GET /health', () => {
   it('is exempt from the version gate', async () => {
     const response = await request(context.app.getHttpServer())
       .get('/health')
-      .set('X-App-Version', 'ancient')
+      .set(APP_VERSION_HEADER, 'ancient')
 
     expect(response.status).toBe(200)
   })
@@ -77,7 +78,7 @@ describe('the /health rate limiter', () => {
     // The global bucket is untouched, so ordinary traffic still works.
     const login = await request(server)
       .post('/login')
-      .set('X-App-Version', '7.0')
+      .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { APP_VERSION_HEADER } from 'common'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -61,7 +62,7 @@ describe('GET /version', () => {
     const missing = await request(context.app.getHttpServer()).get('/version')
     const stale = await request(context.app.getHttpServer())
       .get('/version')
-      .set('X-App-Version', '6.9')
+      .set(APP_VERSION_HEADER, '6.9')
 
     expect(missing.status).toBe(200)
     expect(stale.status).toBe(200)
