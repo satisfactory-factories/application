@@ -5,6 +5,10 @@
  * out of reach and the count never fell. @nestjs/throttler drains each hit on a setTimeout
  * instead, and Node timers are monotonic, so the same step cannot stop the count falling. The
  * ttls here are scaled down from the real 60s bucket so the suite can watch it happen.
+ *
+ * This file drives the library's storage, which the app no longer runs on: it runs on
+ * PerClientThrottlerStorage, pinned in throttler-storage.spec.ts. Keeping the library pinned
+ * here is what makes an upgrade's behaviour change visible.
  */
 import { ThrottlerStorageService } from '@nestjs/throttler'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -56,8 +60,9 @@ describe('a backwards clock step against @nestjs/throttler storage', () => {
     storage.onApplicationShutdown()
   })
 
-  // The residual hazard, recorded rather than fixed: unblocking is still wall-clock. Reaching it
-  // needs more hits inside one ttl than the healthcheck can produce, which is why /health is safe.
+  // Why the library's unblocking was not good enough: it waits on Date.now(), so a step
+  // backwards extends a live block by the offset. Our storage does not; see
+  // throttler-storage.spec.ts, 'unblocks on schedule despite a backwards clock step'.
   it('does freeze a key that had already been blocked when the step landed', async () => {
     const storage = new ThrottlerStorageService()
     const limit = 3

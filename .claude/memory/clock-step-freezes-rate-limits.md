@@ -1,6 +1,6 @@
 ---
 name: clock-step-freezes-rate-limits
-description: "A backwards clock step at boot froze express-rate-limit windows in the future, so the 30s Docker healthcheck alone 429'd the API container unhealthy; @nestjs/throttler closed that path, and the incident is worth keeping because it presents identically to deployment drift"
+description: "A backwards clock step at boot froze express-rate-limit windows in the future, so the 30s Docker healthcheck alone 429'd the API container unhealthy; @nestjs/throttler closed that path and our own storage closed the two defects left in its, and the incident is worth keeping because it presents identically to deployment drift"
 metadata:
   node_type: memory
   type: project
@@ -25,34 +25,45 @@ Two things cleared it, neither of them a code change: the wall clock eventually 
 reset, and a later deploy replaced the container against a corrected clock. Both hide the defect
 without fixing it, which is why "it is healthy now" was never evidence.
 
-## The library rewrite closed it
+## The library rewrite closed it, and our own storage closed what it left
 
 The NestJS rewrite moved rate limiting to `@nestjs/throttler`, and that is what ended this class
 of freeze. Verified against the installed 6.5.0 by driving `ThrottlerStorageService` through a
 faked backwards step of an hour: **it decrements each hit on its own `setTimeout(ttl)`, and Node
 timers are monotonic, so a clock step alone cannot stop the count falling.** Under the healthcheck's
-access pattern the count sits at 2 and never climbs, stepped clock or not. `expiresAt` is still
-wall-clock but only feeds the reported retry-after; it does not gate anything.
+access pattern the count sits at 2 and never climbs, stepped clock or not.
 
-Two paths survive, and the second is the more serious.
+Reading that storage closely turned up two defects of its own, so the app no longer runs on it.
+`src/config/throttler-storage.ts` holds `PerClientThrottlerStorage`, wired in through
+`ThrottlerModule.forRootAsync` so every application instance gets its own, the way `forRoot` gave
+each one its own library storage. Both defects are structural rather than tunable, which is why a
+replacement rather than a setting.
 
-**`blockExpiresAt` is still wall-clock.** Once a key is *actually* blocked, unblocking waits
-on `Date.now()`, so a backwards step extends the block by the offset. Reaching it needs more hits
-inside one ttl than the limit allows, which two probes a minute cannot do, so `/health` is out of
-reach of it.
+**Pending decrements are held per client now, not per bucket.** The library kept one timer list
+per throttler name with no client key in it, and `resetBlockdRequest` cleared the whole list, so
+unblocking any one client cancelled the pending decrements of every other client in that bucket
+and their counts never fell again. That locks strangers out for real: on `login`, `roomAuth`,
+`share` or `slugLookup` someone who spent nothing carries a permanent count and starts collecting
+429s on ordinary requests, `global` can eventually refuse ordinary traffic, and repeated
+block-and-unblock cycles accumulate. Each client owns its own timers here, so an unblock touches
+nobody else.
 
-**Timers are cancelled per bucket, not per client, so a count can stall for a reason that has
-nothing to do with the clock.** `timeoutIds` is keyed by throttler name alone, and
-`resetBlockdRequest` calls `clearExpirationTimes(throttlerName)`, so unblocking any one client
-cancels the pending decrements of every other client in that bucket. Their counts then never
-fall. Repeated block-and-reset cycles accumulate, and the buckets that can strand a real person
-are `login`, `roomAuth`, `share` and `slugLookup`; `global` can eventually refuse ordinary
-traffic. So the statement above is about the clock specifically: a step cannot stall a count, but
-something else can.
+**Every deadline is monotonic.** The library compared `blockExpiresAt` against `Date.now()`, so a
+backwards step extended a live block by the offset; that was the residual this memory used to
+record as known-and-unfixed, and it is closed. `performance.now()` replaces `Date.now()`
+throughout, floored to whole milliseconds because the float residue in `at + ttl - at` was enough
+to round a reported window up by a second.
 
-`backend/test/throttler-clock-step.spec.ts` pins the clock behaviour and is the thing to re-run if
-the throttler is ever upgraded or swapped. It uses one key per bucket, so it cannot see the
-cross-client cancellation on its own.
+**The guarantee now:** a count falls one ttl after the hit that raised it, whatever any other
+client in the same bucket does and whatever the wall clock does, and a block lasts its configured
+duration and no longer. Everything the guard reads is unchanged — `totalHits`, `timeToExpire`,
+`timeToBlockExpire` in whole seconds, `isBlocked`, blocking on the hit that passes the limit.
+
+Two spec files, and both are the thing to re-run if the throttler is upgraded or swapped.
+`backend/test/throttler-storage.spec.ts` pins our storage, and deliberately holds the library to
+the stranding defect, so an upstream fix surfaces as a red test rather than silently.
+`backend/test/throttler-clock-step.spec.ts` pins what the library does under a clock step; it uses
+one key per bucket, which is exactly why the cross-client cancellation was invisible to it.
 
 ## The traps worth keeping
 
