@@ -9,7 +9,7 @@ import { config } from '@/config/config'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
-import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+import { LEGACY_UPGRADE_TIMEOUT_MS, OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
 import { hasAnsweredAdoption, rememberAdoptionAnswer } from '@/sync/adoption-answers'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { readVisitorToken, setVisitorToken } from '@/sync/visitor-tokens'
@@ -79,6 +79,8 @@ describe('rooms-store', () => {
 
     listReturns([])
     vi.mocked(api.legacyStatus).mockResolvedValue({ exists: false, factoryCount: 0 })
+    // Every signed-in boot asks; the overwhelmingly common answer is "nothing here".
+    vi.mocked(api.legacyAutoImport).mockResolvedValue({ imported: false, reason: 'no_legacy_data' })
   })
 
   afterEach(() => {
@@ -555,9 +557,170 @@ describe('rooms-store', () => {
   })
 
   /**
-   * The pre-v0.7 blob is reachable server-side, but the auto-import only fires for
-   * an empty account in an empty browser — so a returning user with local plans
-   * could never get at their old save. This is the offer that fixes that.
+   * A pre-v0.7 account save becomes a cloud plan on its own, on the sign-in or the
+   * page load that finds it. Nobody presses anything, nothing local is disturbed,
+   * and a failure is invisible.
+   */
+  describe('the automatic upgrade of a pre-v0.7 save', () => {
+    const upgrades = (roomId = 'recovered', dropped?: number) => {
+      vi.mocked(api.legacyAutoImport).mockResolvedValue({
+        imported: true,
+        room: entry({ roomId, name: 'Recovered plan', factoryCount: 42 }),
+        ...(dropped === undefined ? {} : { dropped }),
+      })
+    }
+
+    it('upgrades on a sign-in and mounts the plan as a cloud tab', async () => {
+      localTab('Mine')
+      upgrades()
+      listReturns([entry({ roomId: 'recovered', name: 'Recovered plan' })])
+
+      await store.begin({ interactive: true })
+
+      expect(api.legacyAutoImport).toHaveBeenCalled()
+      expect(appStore.getTab('recovered')?.name).toBe('Recovered plan')
+      expect(appStore.getTabState('recovered').kind).toBe('synced')
+    })
+
+    // Auth.vue's onMounted path: the session already existed, nobody signed in.
+    it('upgrades on a page load with a persisted session', async () => {
+      localTab('Mine')
+      upgrades()
+      listReturns([entry({ roomId: 'recovered', name: 'Recovered plan' })])
+
+      await store.begin()
+
+      expect(appStore.getTab('recovered')?.name).toBe('Recovered plan')
+    })
+
+    // Neither is a reason to leave a plan stranded in the old save.
+    it('runs for an account that already owns cloud plans, in a browser holding its own', async () => {
+      const tab = localTab('Mine', 4)
+      listReturns([entry({ roomId: tab.id, role: 'owner' })])
+      upgrades()
+
+      await store.begin({ interactive: true })
+
+      expect(api.legacyAutoImport).toHaveBeenCalled()
+    })
+
+    it('leaves the tabs this browser already holds alone', async () => {
+      const tab = localTab('Mine', 4)
+      upgrades()
+
+      await store.begin({ interactive: true })
+
+      expect(appStore.getTab(tab.id)?.factories).toHaveLength(4)
+      expect(appStore.getCurrentTab().id).toBe(tab.id)
+    })
+
+    it('says where the plan came from, without a dialog', async () => {
+      const toast = vi.spyOn(eventBus, 'emit')
+      localTab('Mine')
+      upgrades()
+
+      await store.begin({ interactive: true })
+
+      expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
+        message: expect.stringContaining('previously saved to your account'),
+        type: 'success',
+      }))
+      expect(store.legacyOpen).toBe(false)
+      toast.mockRestore()
+    })
+
+    // The blob can hold more factories than a cloud plan takes, and the browser has no
+    // way of knowing that happened.
+    it('says how much of an oversized old save was left behind', async () => {
+      const toast = vi.spyOn(eventBus, 'emit')
+      localTab('Mine')
+      upgrades('recovered', 12)
+
+      await store.begin({ interactive: true })
+
+      expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
+        message: expect.stringContaining('the last 12 factories could not be brought over'),
+        type: 'warning',
+      }))
+      toast.mockRestore()
+    })
+
+    it('asks once per session, however many times the session is re-established', async () => {
+      localTab('Mine')
+
+      await store.begin({ interactive: true })
+      await store.begin({ interactive: true })
+
+      expect(api.legacyAutoImport).toHaveBeenCalledTimes(1)
+    })
+
+    it('asks again for the next account to sign in here', async () => {
+      localTab('Mine')
+      await store.begin({ interactive: true })
+
+      store.signOut()
+      await store.begin({ interactive: true })
+
+      expect(api.legacyAutoImport).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not reach the server at all in offline mode', async () => {
+      localTab('Mine')
+      roomSync.enterOffline()
+
+      await store.begin({ interactive: true })
+
+      expect(api.legacyAutoImport).not.toHaveBeenCalled()
+    })
+
+    // The planner is the point; the upgrade is not worth a working session.
+    it('leaves a working planner and shows no error when the upgrade fails', async () => {
+      const toast = vi.spyOn(eventBus, 'emit')
+      const tab = localTab('Mine', 2)
+      vi.mocked(api.legacyAutoImport).mockRejectedValue(new ApiError(500, 'Kaboom'))
+
+      await expect(store.begin({ interactive: true })).resolves.toBeUndefined()
+
+      expect(store.lastError).toBeNull()
+      expect(toast).not.toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'error' }))
+      expect(appStore.getTab(tab.id)?.factories).toHaveLength(2)
+      toast.mockRestore()
+    })
+
+    // A request that never answers is the one failure an error handler cannot catch.
+    it('does not strand the boot on a request that never answers', async () => {
+      localTab('Mine')
+      vi.mocked(api.legacyAutoImport).mockReturnValue(new Promise(() => {}))
+      vi.useFakeTimers()
+
+      const booting = store.begin({ interactive: true })
+      await vi.advanceTimersByTimeAsync(LEGACY_UPGRADE_TIMEOUT_MS)
+
+      await expect(booting).resolves.toBeUndefined()
+      expect(api.listRooms).toHaveBeenCalled()
+      vi.useRealTimers()
+    })
+
+    // Nothing was imported, so the account still has an old save and the button that
+    // recovers it is the only way left to reach it.
+    it('leaves the manual offer standing when it failed', async () => {
+      // A returning user, so the adoption offer is answered and this one has the floor.
+      rememberAdoptionAnswer('pioneer')
+      localTab('Mine')
+      vi.mocked(api.legacyAutoImport).mockRejectedValue(new ApiError(500, 'Kaboom'))
+      vi.mocked(api.legacyStatus).mockResolvedValue({ exists: true, factoryCount: 42 })
+
+      await store.begin({ interactive: true })
+
+      expect(store.legacyOpen).toBe(true)
+      expect(store.legacyFactoryCount).toBe(42)
+    })
+  })
+
+  /**
+   * The fallback for whoever the automatic upgrade could not reach: the server was
+   * down at boot, or the request failed. It is only ever offered on an interactive
+   * sign-in, and only while the account still has something to recover.
    */
   describe('the account-recovery offer', () => {
     const holdsLegacyPlan = (factoryCount = 42) => {
@@ -744,10 +907,9 @@ describe('rooms-store', () => {
       expect(store.legacyOpen).toBe(false)
     })
 
-    // The empty account in an empty browser still imports silently; asking about a
-    // plan that is already on screen would be nonsense.
-    it('does not offer what the auto-import has just taken', async () => {
-      localTab('Empty', 0)
+    // Asking about a plan that is already on screen would be nonsense.
+    it('does not offer what the automatic upgrade has just taken', async () => {
+      localTab('Mine', 3)
       holdsLegacyPlan()
       vi.mocked(api.legacyAutoImport).mockResolvedValue({
         imported: true,
@@ -757,6 +919,7 @@ describe('rooms-store', () => {
       await store.begin({ interactive: true })
 
       expect(store.legacyOpen).toBe(false)
+      expect(api.legacyStatus).not.toHaveBeenCalled()
     })
   })
 
@@ -1084,53 +1247,6 @@ describe('rooms-store', () => {
 
       expect(api.adoptRoom).toHaveBeenCalledTimes(2)
       expect(appStore.getTabs()[0].factories).toHaveLength(1)
-    })
-
-    it('auto-imports the legacy blob only for an empty account in an empty browser', async () => {
-      localTab('Empty', 0)
-      vi.mocked(api.legacyAutoImport).mockResolvedValue({ imported: false, reason: 'no_legacy_data' })
-
-      await store.refresh({ offerAdoption: true })
-
-      expect(api.legacyAutoImport).toHaveBeenCalledWith(0)
-    })
-
-    it('does not auto-import when the account already has a room', async () => {
-      localTab('Empty', 0)
-      listReturns([entry({ roomId: 'other-room' })])
-
-      await store.refresh({ offerAdoption: true })
-
-      expect(api.legacyAutoImport).not.toHaveBeenCalled()
-    })
-
-    // The blob can hold more factories than a cloud plan takes, and the browser has no
-    // way of knowing that happened.
-    it('says how much of an oversized legacy plan was left behind', async () => {
-      const toast = vi.spyOn(eventBus, 'emit')
-      localTab('Empty', 0)
-      vi.mocked(api.legacyAutoImport).mockResolvedValue({
-        imported: true,
-        room: entry({ roomId: 'recovered' }),
-        dropped: 12,
-      })
-
-      await store.refresh({ offerAdoption: true })
-
-      expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
-        message: expect.stringContaining('the last 12 factories could not be brought over'),
-        type: 'warning',
-      }))
-      toast.mockRestore()
-    })
-
-    it('does not auto-import when the browser holds a plan', async () => {
-      localTab('Mine')
-
-      await store.refresh({ offerAdoption: true })
-
-      expect(api.legacyAutoImport).not.toHaveBeenCalled()
-      expect(store.adoptionOpen).toBe(true)
     })
   })
 

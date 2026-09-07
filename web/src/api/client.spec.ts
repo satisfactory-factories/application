@@ -258,9 +258,9 @@ describe('api/client', () => {
     })
 
     it('runs the legacy import route', async () => {
-      await legacyAutoImport(0)
+      await legacyAutoImport()
       expectCall('POST', '/rooms/legacy/auto-import')
-      expect(JSON.parse(lastCall()[1].body)).toEqual({ localTabCount: 0 })
+      expect(JSON.parse(lastCall()[1].body)).toEqual({})
     })
 
     it('reads and writes preferences', async () => {
