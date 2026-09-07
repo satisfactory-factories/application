@@ -13,6 +13,22 @@ const BLOB = [
   { id: 2, name: 'Old copper', products: [] },
 ]
 
+// What a v0.6 client actually stored: the whole tab, sent verbatim to the old `/save`.
+const wholeTab = (overrides: Record<string, unknown> = {}) => ({
+  id: '2f3a0c74-6b21-4f0e-9a4d-1c8e5b7d0e11',
+  name: 'Nuclear megabase',
+  factories: [
+    { id: 1, name: 'Old iron', products: [] },
+    { id: 2, name: 'Old copper', products: [] },
+  ],
+  powerTarget: 4500,
+  depotUploadTier: 2,
+  depotExpansionTier: 3,
+  groups: [{ id: 'group-1', name: 'Planned, no members yet', color: '#ff8800' }],
+  plannerVersion: '0.6.2',
+  ...overrides,
+})
+
 describe('legacy blob import', () => {
   let context: TestContext
   let connection: Connection
@@ -139,6 +155,130 @@ describe('legacy blob import', () => {
       expect(body.imported).toBe(true)
       expect(body.dropped).toBeUndefined()
     })
+
+    it('leaves a bare-array save on the room defaults', async () => {
+      await seedBlob(user.username)
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
+      expect(stored).toMatchObject({ name: LEGACY_ROOM_NAME, powerTarget: 0, groups: [] })
+      expect(stored?.depotUploadTier).toBeUndefined()
+      expect(stored?.depotExpansionTier).toBeUndefined()
+      expect(stored?.plannerVersion).toBeUndefined()
+    })
+  })
+
+  // The shape the great majority of accounts were last saved in. Recovering only the
+  // factories out of it would hand the plan back with its plan-level state stripped.
+  describe('POST /rooms/legacy/recover, whole-tab save', () => {
+    it('imports the factories out of the tab object', async () => {
+      await seedBlob(user.username, wholeTab())
+
+      const response = await post('/rooms/legacy/recover', user).send({})
+
+      expect(response.status).toBe(200)
+      expect(response.body.imported).toBe(true)
+      const stored = await connection.collection('rooms')
+        .findOne({ roomId: response.body.room.roomId })
+      expect((stored?.factories as { name: string }[]).map(factory => factory.name))
+        .toEqual(['Old iron', 'Old copper'])
+    })
+
+    it('keeps the tab-level state the v0.6 shape exists to carry', async () => {
+      await seedBlob(user.username, wholeTab())
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
+      expect(stored).toMatchObject({
+        name: 'Nuclear megabase',
+        powerTarget: 4500,
+        depotUploadTier: 2,
+        depotExpansionTier: 3,
+        plannerVersion: '0.6.2',
+        groups: [{ id: 'group-1', name: 'Planned, no members yet', color: '#ff8800' }],
+      })
+      expect(body.room.name).toBe('Nuclear megabase')
+    })
+
+    // Absent is a meaning: the tiers read as fully researched and the version as unanswered.
+    it('leaves the fields the tab never set absent', async () => {
+      await seedBlob(user.username, {
+        id: 'tab-1',
+        name: 'Early plan',
+        factories: [{ id: 1, name: 'Old iron' }],
+      })
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
+      expect(stored?.name).toBe('Early plan')
+      expect(stored?.powerTarget).toBe(0)
+      expect(stored?.groups).toEqual([])
+      expect(stored?.depotUploadTier).toBeUndefined()
+      expect(stored?.plannerVersion).toBeUndefined()
+    })
+
+    it('falls back to the import name when the tab has none worth using', async () => {
+      await seedBlob(user.username, wholeTab({ name: '   ' }))
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      expect(body.room.name).toBe(LEGACY_ROOM_NAME)
+    })
+
+    it('truncates and caps the tab it imports', async () => {
+      await seedBlob(user.username, wholeTab({
+        name: 't'.repeat(400),
+        groups: [{ id: 'group-1', name: 'g'.repeat(400) }],
+        factories: [
+          { id: 1, name: 'n'.repeat(400), notes: 'x'.repeat(2000) },
+          ...Array.from({ length: CAPS.factoriesPerRoom + 20 }, (_unused, id) => ({ id: id + 2, name: 'f' })),
+        ],
+      }))
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
+      const factories = stored?.factories as { name: string, notes?: string }[]
+      expect(factories).toHaveLength(CAPS.factoriesPerRoom)
+      expect(factories[0].name).toHaveLength(CAPS.name)
+      expect(factories[0].notes).toHaveLength(CAPS.notes)
+      expect(stored?.name).toHaveLength(CAPS.name)
+      expect((stored?.groups as { name: string }[])[0].name).toHaveLength(CAPS.name)
+    })
+
+    it('reports how many factories the cap left behind', async () => {
+      await seedBlob(user.username, wholeTab({
+        factories: Array.from(
+          { length: CAPS.factoriesPerRoom + 12 },
+          (_unused, id) => ({ id: id + 1, name: 'f' }),
+        ),
+      }))
+
+      const { body } = await post('/rooms/legacy/recover', user).send({})
+
+      expect(body.imported).toBe(true)
+      expect(body.dropped).toBe(12)
+    })
+
+    it.each([
+      ['no factories key', { id: 'tab-1', name: 'Empty' }],
+      ['an empty factory list', wholeTab({ factories: [] })],
+      ['a factories key that is not a list', wholeTab({ factories: 'nope' })],
+      ['nothing usable in the list', wholeTab({ factories: ['junk', 7, null] })],
+      ['a string', 'not a plan'],
+      ['a number', 7],
+      ['null', null],
+    ])('reports no legacy data for a blob holding %s', async (_label, data) => {
+      await seedBlob(user.username, data)
+
+      const response = await post('/rooms/legacy/recover', user).send({})
+
+      expect(response.body).toEqual({ imported: false, reason: 'no_legacy_data' })
+      expect(await connection.collection('rooms').countDocuments()).toBe(0)
+    })
   })
 
   describe('GET /rooms/legacy/status', () => {
@@ -184,6 +324,45 @@ describe('legacy blob import', () => {
 
     it('survives a blob whose data is not a list at all', async () => {
       await seedBlob(user.username, { factories: [] })
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: false, factoryCount: 0 })
+    })
+
+    // Without this the most common save shape offers nothing to recover.
+    it('reports a whole-tab save', async () => {
+      await seedBlob(user.username, wholeTab())
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: true, factoryCount: 2 })
+    })
+
+    it('counts a whole-tab save above the per-room cap', async () => {
+      await seedBlob(user.username, wholeTab({
+        factories: Array.from(
+          { length: CAPS.factoriesPerRoom + 7 },
+          (_unused, id) => ({ id: id + 1, name: 'f' }),
+        ),
+      }))
+
+      expect((await get('/rooms/legacy/status', user)).body.factoryCount)
+        .toBe(CAPS.factoriesPerRoom + 7)
+    })
+
+    it('counts only what a whole-tab import would keep', async () => {
+      await seedBlob(user.username, wholeTab({ factories: [{ id: 1, name: 'Real' }, 'junk', 7, null] }))
+
+      expect((await get('/rooms/legacy/status', user)).body)
+        .toEqual({ exists: true, factoryCount: 1 })
+    })
+
+    it.each([
+      ['a factories key that is not a list', wholeTab({ factories: 'nope' })],
+      ['a string', 'not a plan'],
+      ['a number', 7],
+      ['null', null],
+    ])('reports nothing for a blob holding %s', async (_label, data) => {
+      await seedBlob(user.username, data)
 
       expect((await get('/rooms/legacy/status', user)).body)
         .toEqual({ exists: false, factoryCount: 0 })
