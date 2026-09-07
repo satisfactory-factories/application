@@ -448,3 +448,216 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(appStore.getCurrentTab().name).toBe('Keep Me')
   })
 })
+
+/**
+ * An import empties a tab and refills it, and until it finishes the tab holds neither plan.
+ * These are about that gap: which tab it belongs to, what happens when the replacement turns
+ * out to be unloadable, and what the dialog is allowed to claim while it is still open.
+ */
+describe('Component: PlannerGlobalActions import safety', () => {
+  let appStore: ReturnType<typeof useAppStore>
+  let readText: ReturnType<typeof vi.fn>
+
+  /**
+   * Wired to the planner's own `clear-all` handler. Mounted bare the emit goes nowhere, and
+   * the destructive half of an import simply does not happen, which is the half these are about.
+   */
+  const mountSubject = () =>
+    mount(PlannerGlobalActions, {
+      global: { plugins: [vuetify], stubs: { Templates: true } },
+      props: { onClearAll: () => appStore.clearFactories() },
+    })
+
+  const at = (testId: string) => document.body.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+
+  const importFromClipboard = async (subject: VueWrapper) => {
+    const button = subject.findAll('button').find(b => b.text().includes('Import plan'))
+    if (!button) throw new Error('Button "Import plan" not found')
+    await button.trigger('click')
+    await flushPromises()
+    at('import-from-clipboard')!.click()
+    await flushPromises()
+  }
+
+  /** Long enough for the timer the import used to hide its work behind. */
+  const afterAnyPendingTimer = async () => {
+    await new Promise(resolve => setTimeout(resolve, 350))
+    await flushPromises()
+  }
+
+  const secondTab = () => appStore.addTab(
+    { name: 'Second', factories: [newFactory('Beta')] },
+    { activate: false },
+  )
+
+  const fullPlan = () => JSON.stringify({
+    name: 'Pasted Plan',
+    factories: [newFactory('Pasted')],
+    powerTarget: 1234,
+    groups: [{ id: 'new', name: 'Incoming', color: '#2196f3', order: 0 }],
+    depotUploadTier: 2,
+  })
+
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    localStorage.clear()
+    setActivePinia(createPinia())
+    appStore = useAppStore()
+
+    readText = vi.fn()
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(), readText } })
+    vi.stubGlobal('confirm', vi.fn(() => true))
+
+    appStore.getCurrentTab().name = 'Original'
+    appStore.getCurrentTab().powerTarget = 4000
+    appStore.getCurrentTab().factories = [newFactory('Mine')]
+    appStore.getFactories()
+  })
+
+  it('lands the plan in the tab it was confirmed for, whatever the user switches to next', async () => {
+    const destination = appStore.getCurrentTab()
+    const otherId = secondTab()
+    const prepareLoader = vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    // The moment the dialog lets go, the user goes back to the other tab.
+    appStore.activateTab(otherId)
+    await afterAnyPendingTimer()
+
+    const other = appStore.getTab(otherId)!
+    expect(other.name).toBe('Second')
+    expect(other.powerTarget).toBeUndefined()
+    // Normalised to an empty list by the load the tab switch runs, which is the point: what
+    // it must never hold is the group that arrived with the imported plan.
+    expect(other.groups ?? []).toHaveLength(0)
+    expect(other.factories.map(factory => factory.name)).toEqual(['Beta'])
+
+    expect(destination.name).toBe('Pasted Plan')
+    expect(destination.powerTarget).toBe(1234)
+    expect(destination.depotUploadTier).toBe(2)
+    expect(prepareLoader.mock.calls[0][0]).toHaveLength(1)
+    subject.unmount()
+  })
+
+  // The tab the user moved to is somebody else's plan as well, and it was never named in
+  // anything they agreed to.
+  it('never announces a plan into a synced tab it was not confirmed for', async () => {
+    const destination = appStore.getCurrentTab()
+    const otherId = secondTab()
+    appStore.setTabState(otherId, { kind: 'synced', shared: true, role: 'owner', revision: 1 })
+    const landed = vi.fn()
+    eventBus.on('planLanded', landed)
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    appStore.activateTab(otherId)
+    await afterAnyPendingTimer()
+
+    expect(landed).toHaveBeenCalledTimes(1)
+    expect(landed).toHaveBeenCalledWith(destination.id)
+    expect(landed).not.toHaveBeenCalledWith(otherId)
+
+    const other = appStore.getTab(otherId)!
+    expect(other.name).toBe('Second')
+    expect(other.factories.map(factory => factory.name)).toEqual(['Beta'])
+    eventBus.off('planLanded', landed)
+    subject.unmount()
+  })
+
+  // Valid JSON, with a factories array in it, and nothing in that array the loader can read.
+  it('turns away a plan it cannot load without touching the one already there', async () => {
+    const prepareLoader = vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ name: 'Broken', factories: [{ name: 'No parts' }] }))
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    await afterAnyPendingTimer()
+
+    expect(appStore.getCurrentTab().factories.map(factory => factory.name)).toEqual(['Mine'])
+    expect(appStore.getCurrentTab().name).toBe('Original')
+    expect(prepareLoader).not.toHaveBeenCalled()
+    expect(at('import-error')?.textContent).toContain('cannot load it')
+    expect(at('import-plan-dialog')).not.toBeNull()
+    subject.unmount()
+  })
+
+  it('puts the outgoing plan back when the load itself fails', async () => {
+    vi.spyOn(appStore, 'prepareLoader')
+      .mockRejectedValueOnce(new Error('the load chain died'))
+      .mockResolvedValue(undefined)
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    await afterAnyPendingTimer()
+
+    expect(appStore.getCurrentTab().factories.map(factory => factory.name)).toEqual(['Mine'])
+    expect(appStore.getCurrentTab().name).toBe('Original')
+    expect(appStore.getCurrentTab().powerTarget).toBe(4000)
+    expect(at('import-error')?.textContent).toContain('put back')
+    expect(at('import-plan-dialog')).not.toBeNull()
+    subject.unmount()
+  })
+
+  // The dialog closing is the app saying the plan is in. It has to be true when it says it.
+  it('reports nothing until the replacement has actually landed', async () => {
+    let finishTheLoad: () => void = () => {}
+    vi.spyOn(appStore, 'prepareLoader')
+      .mockImplementation(() => new Promise<void>(resolve => { finishTheLoad = resolve }))
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+
+    // The load is still running, so nothing has any business saying it is done. The dialog
+    // is still up and still busy, which is also what holds the tab bar out of reach.
+    expect(at('import-plan-dialog')).not.toBeNull()
+    expect(at('import-from-clipboard')?.className).toContain('v-card--disabled')
+    expect(at('import-error')).toBeNull()
+
+    finishTheLoad()
+    await flushPromises()
+
+    expect(at('import-from-clipboard')?.className ?? '').not.toContain('v-card--disabled')
+    expect(appStore.getCurrentTab().name).toBe('Pasted Plan')
+    subject.unmount()
+  })
+
+  it('replaces the whole tab with the imported plan, settings and all', async () => {
+    const prepareLoader = vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+
+    const tab = appStore.getCurrentTab()
+    expect(tab.name).toBe('Pasted Plan')
+    expect(tab.powerTarget).toBe(1234)
+    expect(tab.groups).toEqual([{ id: 'new', name: 'Incoming', color: '#2196f3', order: 0 }])
+    expect(tab.depotUploadTier).toBe(2)
+    expect(tab.depotExpansionTier).toBeUndefined()
+    expect(prepareLoader.mock.calls[0][0]?.map(factory => factory.name)).toEqual(['Pasted'])
+    expect(at('import-error')).toBeNull()
+    subject.unmount()
+  })
+
+  // Queued rather than run, a load lands whenever the running one lets go, which is long
+  // after this would have reported success.
+  it('refuses to start while the planner is already loading a plan', async () => {
+    appStore.loadInFlight = true
+    const prepareLoader = vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(fullPlan())
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+
+    expect(prepareLoader).not.toHaveBeenCalled()
+    expect(appStore.getCurrentTab().factories.map(factory => factory.name)).toEqual(['Mine'])
+    expect(at('import-error')?.textContent).toContain('still loading')
+    subject.unmount()
+  })
+})

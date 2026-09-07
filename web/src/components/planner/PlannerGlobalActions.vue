@@ -142,10 +142,12 @@
   import { confirmDialog } from '@/utils/helpers'
   import { downloadPlan, serializePlan } from '@/utils/plan-backup'
   import type { PlanBlob } from '@/utils/plan-backup'
+  import type { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
   import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
 
-  const { getFactories, getCurrentTab, getTabState, prepareLoader, forceCalculation } = useAppStore()
+  const appStore = useAppStore()
+  const { getFactories, getCurrentTab, getTabState, prepareLoader, forceCalculation } = appStore
   const { powerTarget } = usePowerTarget()
   const options = usePlannerOptions()
 
@@ -259,101 +261,220 @@
   }
 
   /**
+   * The shapes the loader walks straight into without checking. A blob can be valid JSON
+   * carrying a factories array and still be missing these, in which case the load throws
+   * part way through with the destination tab already emptied. Checked here instead, so a
+   * plan that cannot load is turned away before anything is destroyed.
+   */
+  const assertLoadable = (factories: unknown[]) => {
+    factories.forEach((entry, index) => {
+      const unreadable = (what: string) =>
+        new Error(`Factory ${index + 1} in it has no ${what}, so the planner cannot load it.`)
+
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw unreadable('readable record')
+      const factory = entry as Record<string, unknown>
+      if (!Array.isArray(factory.products)) throw unreadable('list of products')
+      if (!Array.isArray(factory.inputs)) throw unreadable('list of imports')
+      if (!factory.parts || typeof factory.parts !== 'object' || Array.isArray(factory.parts)) {
+        throw unreadable('satisfaction data')
+      }
+      if (factory.powerProducers !== undefined && !Array.isArray(factory.powerProducers)) {
+        throw unreadable('readable list of power producers')
+      }
+    })
+  }
+
+  /**
+   * Everything the destination tab held, kept until the replacement has landed. The array
+   * copy is shallow on purpose: a load rewrites the factories arriving, never these, and a
+   * deep clone of a big plan costs seconds on the main thread.
+   */
+  const snapshotTab = (tab: FactoryTab) => ({
+    factories: [...tab.factories],
+    name: tab.name,
+    powerTarget: tab.powerTarget,
+    groups: tab.groups,
+    plannerVersion: tab.plannerVersion,
+    depotUploadTier: tab.depotUploadTier,
+    depotExpansionTier: tab.depotExpansionTier,
+  })
+
+  const restoreTab = async (tab: FactoryTab, outgoing: ReturnType<typeof snapshotTab>) => {
+    tab.name = outgoing.name
+    tab.powerTarget = outgoing.powerTarget
+    tab.groups = outgoing.groups
+    tab.plannerVersion = outgoing.plannerVersion
+    tab.depotUploadTier = outgoing.depotUploadTier
+    tab.depotExpansionTier = outgoing.depotExpansionTier
+    tab.factories = outgoing.factories
+
+    // The store keeps the plan it was loading under this key and picks it up on the next
+    // load as a recovery copy. Left there it would put the import that just failed straight
+    // back over the plan being restored.
+    try {
+      localStorage.removeItem('preLoadFactories')
+    } catch (cause) {
+      console.error('applyPlanBlob: could not clear the recovery copy', cause)
+    }
+
+    // The failed load hid the planner, so the restored plan needs drawing or the tab reads
+    // empty until the page is reloaded. Guarded on its own: a restore that cannot draw has
+    // still put the data back, which is the half that matters.
+    try {
+      if (getCurrentTab()?.id === tab.id) await prepareLoader(outgoing.factories)
+    } catch (cause) {
+      console.error('applyPlanBlob: the outgoing plan was restored but could not be drawn', cause)
+    }
+  }
+
+  /**
+   * Replaces the destination tab's settings with the pasted plan's (keeping its id), so the
+   * plan is calculated against its own settings rather than the outgoing tab's. Writes to
+   * the tab it is handed rather than to whichever is current, which is the whole point.
+   */
+  const applyPastedTabSettings = (tab: FactoryTab, parsedPlan: PlanBlob) => {
+    tab.powerTarget = Number(parsedPlan.powerTarget) || 0
+    markTabEdited('powerTarget')
+    if (parsedPlan.name) tab.name = parsedPlan.name
+    tab.plannerVersion = parsedPlan.plannerVersion
+    // Assigned rather than merged, and assigned even when the blob has none: clearing
+    // the factories cannot take memberless groups with it, so anything left here
+    // belongs to the plan being replaced.
+    tab.groups = parsedPlan.groups
+    // Assigned unconditionally for the same reason. A blob written before these
+    // existed means "not stated", which reads as fully researched — inheriting the
+    // outgoing tab's tiers instead would silently size the pasted plan against
+    // somebody else's save.
+    tab.depotUploadTier = parsedPlan.depotUploadTier
+    tab.depotExpansionTier = parsedPlan.depotExpansionTier
+    // Declared for whatever the blob actually stated. An absent value is not
+    // declarable — the diff cannot carry "cleared" — so a blob that states none
+    // leaves the room's own settings alone rather than silently clearing them.
+    declarePastedTabFields(parsedPlan)
+  }
+
+  /** A legacy bare-array blob states none of the tab settings, so none of them survive it. */
+  const clearLegacyTabSettings = (tab: FactoryTab) => {
+    delete tab.plannerVersion
+    // A blob from before groups existed has none, so anything here belongs to the plan
+    // being replaced.
+    delete tab.groups
+    // Same for the Depot tiers: a bare-array blob predates them entirely.
+    delete tab.depotUploadTier
+    delete tab.depotExpansionTier
+  }
+
+  const refusal = (error: unknown) => error instanceof Error
+    ? `That does not look like a plan the planner wrote. ${error.message}`
+    : 'That does not look like a plan the planner wrote.'
+
+  /**
    * The one path a plan comes back in by, whatever carried it here. Reports rather
    * than alerts: an import that fails belongs in the dialog it failed in, where the
    * other way in is still one click away.
+   *
+   * The whole plan is read and checked before the destination is touched, the destination
+   * is decided once and everything is written against that tab, the outgoing plan is kept
+   * until the replacement has landed, and the load is awaited. Nothing here reports success
+   * for work that has not finished.
+   *
+   * There used to be a 250ms timer between emptying the tab and loading the replacement. It
+   * dates from the load being synchronous: `prepareLoader` set the factories the instant it
+   * was called, and the pause was what let the planner tear the cleared cards down first.
+   * The loader has done that waiting itself for a long time now (it hides the planner,
+   * yields a frame and pauses before it commits anything), so the timer bought nothing and
+   * cost a window in which the user could switch tabs and take the import with them.
    */
-  const applyPlanBlob = (plan: string): true | string => {
+  const applyPlanBlob = async (plan: string): Promise<true | string> => {
+    let parsedPlan: PlanBlob | Factory[]
+    let factoriesToLoad: Factory[]
+    let isLegacy = false
+
     try {
-      const parsedPlan = JSON.parse(plan)
+      parsedPlan = JSON.parse(plan)
       // Legacy blobs are a bare Factory[] array; new ones are a full tab
       // { name, factories, powerTarget }.
-      const isLegacy = Array.isArray(parsedPlan)
-      const factoriesToLoad = isLegacy ? parsedPlan : parsedPlan.factories
+      isLegacy = Array.isArray(parsedPlan)
+      factoriesToLoad = (isLegacy ? parsedPlan : (parsedPlan as PlanBlob)?.factories) as Factory[]
       if (!Array.isArray(factoriesToLoad)) {
         throw new Error('Plan does not contain a factories array.')
       }
-      if (isLegacy) {
-        const tab = getCurrentTab()
-        if (tab) {
-          delete tab.plannerVersion
-          // A blob from before groups existed has none, so anything here belongs to the plan
-          // being replaced.
-          delete tab.groups
-          // Same for the Depot tiers: a bare-array blob predates them entirely.
-          delete tab.depotUploadTier
-          delete tab.depotExpansionTier
-        }
-      }
+      assertLoadable(factoriesToLoad)
+    } catch (error) {
+      recordEvent('plan_import_invalid')
+      return refusal(error)
+    }
 
+    // A load already running would queue this one rather than run it, and a queued load
+    // lands whenever the running one lets go, long after this has returned. Ask again once
+    // the planner is idle rather than report a replacement that has not happened.
+    if (appStore.loadInFlight) {
+      return 'The planner is still loading a plan. Wait for it to finish, then try the import again.'
+    }
+
+    // Decided ONCE, before anything is cleared, and every write below goes to this tab
+    // rather than to whichever happens to be current at the time. This is the tab the
+    // confirmation named, and it is the only tab this import is allowed to touch.
+    const destination = getCurrentTab()
+    if (!destination) {
+      recordEvent('plan_import_invalid')
+      return 'There is no tab open to import into.'
+    }
+
+    const outgoing = snapshotTab(destination)
+
+    try {
+      // Nothing awaits between emptying the tab and handing the replacement to the loader,
+      // so nothing can get in between the two and redirect it.
       emit('clear-all')
       // Announced as it is dropped in, before the load that draws it: this knows a
       // plan arrived and in which tab, and that is all it knows. Whoever cares
       // waits for the load themselves. The rooms store offers a local tab to the
       // cloud once it has drawn, which nothing else would.
-      const destination = getCurrentTab()
-      if (destination) eventBus.emit('planLanded', destination.id)
+      eventBus.emit('planLanded', destination.id)
 
-      setTimeout(() => {
-        // Replace the current tab's settings with the pasted plan's (keeps its id) before
-        // loading, so the plan is calculated against its own settings rather than the
-        // outgoing tab's.
-        if (!isLegacy) {
-          powerTarget.value = Number(parsedPlan.powerTarget) || 0
-          const tab = getCurrentTab()
-          if (tab && parsedPlan.name) {
-            tab.name = parsedPlan.name
-          }
-          if (tab) {
-            tab.plannerVersion = parsedPlan.plannerVersion
-            // Assigned rather than merged, and assigned even when the blob has none: clearing
-            // the factories cannot take memberless groups with it, so anything left here
-            // belongs to the plan being replaced.
-            tab.groups = parsedPlan.groups
-            // Assigned unconditionally for the same reason. A blob written before these
-            // existed means "not stated", which reads as fully researched — inheriting the
-            // outgoing tab's tiers instead would silently size the pasted plan against
-            // somebody else's save.
-            tab.depotUploadTier = parsedPlan.depotUploadTier
-            tab.depotExpansionTier = parsedPlan.depotExpansionTier
-            // Declared for whatever the blob actually stated. An absent value is not
-            // declarable — the diff cannot carry "cleared" — so a blob that states none
-            // leaves the room's own settings alone rather than silently clearing them.
-            declarePastedTabFields(parsedPlan)
-          }
-        }
-        prepareLoader(factoriesToLoad)
-      }, 250)
+      if (isLegacy) clearLegacyTabSettings(destination)
+      else applyPastedTabSettings(destination, parsedPlan as PlanBlob)
+
+      await prepareLoader(factoriesToLoad)
       return true
     } catch (error) {
+      // The replacement failed somewhere after the tab was emptied, so put back what was
+      // there and say so. Reporting success over a plan that is now half gone is the one
+      // outcome there is no way back from.
+      await restoreTab(destination, outgoing)
       recordEvent('plan_import_invalid')
-      return error instanceof Error
-        ? `That does not look like a plan the planner wrote. ${error.message}`
-        : 'That does not look like a plan the planner wrote.'
+      console.error('applyPlanBlob: the import failed and the outgoing plan was restored', error)
+      return 'That plan could not be loaded, so your original plan has been put back. Try the import again, or check the file.'
     }
   }
 
   const runImport = async (read: () => Promise<string>, whenRefused: string) => {
     if (!confirmReplace()) return
 
+    // Held for the whole import, not just the read. The dialog is modal while it is busy,
+    // which is what keeps the tab bar out of reach until the replacement has landed, and
+    // the `finally` is what stops a thrown error leaving it that way for good.
     importing.value = true
     importError.value = ''
-    let text: string
     try {
-      text = await read()
-    } catch {
-      importing.value = false
-      importError.value = whenRefused
-      return
-    }
-    importing.value = false
+      let text: string
+      try {
+        text = await read()
+      } catch {
+        importError.value = whenRefused
+        return
+      }
 
-    const result = applyPlanBlob(text)
-    if (result !== true) {
-      importError.value = result
-      return
+      const result = await applyPlanBlob(text)
+      if (result !== true) {
+        importError.value = result
+        return
+      }
+      importOpen.value = false
+    } finally {
+      importing.value = false
     }
-    importOpen.value = false
   }
 
   /**
