@@ -9,7 +9,7 @@ import type { Connection } from 'mongoose'
 import { AuthModule } from './auth/auth.module'
 import { VersionGateGuard } from './common/guards/version-gate.guard'
 import { validateEnv } from './config/env'
-import { THROTTLER_OPTIONS } from './config/throttling'
+import { createThrottlerOptions } from './config/throttling'
 import { EventCountersModule } from './event-counters/event-counters.module'
 import { HealthModule } from './health/health.module'
 import { HttpErrorFilter } from './event-counters/http-error.filter'
@@ -57,7 +57,9 @@ import { VersionModule } from './version/version.module'
         },
       }),
     }),
-    ThrottlerModule.forRoot(THROTTLER_OPTIONS),
+    // Async so the factory runs per application and each gets its own storage, which is what
+    // forRoot does for the library's storage. The storage is ours; see config/throttler-storage.ts.
+    ThrottlerModule.forRootAsync({ useFactory: createThrottlerOptions }),
     // Global, and imported first: everything below may need to report a fault.
     EventCountersModule,
     HealthModule,

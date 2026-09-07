@@ -2,7 +2,11 @@ import type { ExecutionContext } from '@nestjs/common'
 import type { ThrottlerModuleOptions } from '@nestjs/throttler'
 import type { Request } from 'express'
 
+import { PerClientThrottlerStorage } from './throttler-storage'
 import { isLoopbackRequest } from './loopback'
+
+/** The object form of the module options, as opposed to the bare array of throttlers. */
+type ThrottlerOptions = Extract<ThrottlerModuleOptions, { throttlers: unknown }>
 
 export const HEALTH_PATH = '/health'
 export const VERSION_PATH = '/version'
@@ -117,7 +121,7 @@ const isSlugLookup = (context: ExecutionContext): boolean => {
  * `generateKey` drops the per-handler suffix Nest adds by default, which would otherwise
  * give every route its own allowance instead of one shared allowance per client.
  */
-export const THROTTLER_OPTIONS: ThrottlerModuleOptions = {
+export const THROTTLER_OPTIONS: ThrottlerOptions = {
   throttlers: [
     {
       ...GLOBAL_THROTTLE,
@@ -143,3 +147,16 @@ export const THROTTLER_OPTIONS: ThrottlerModuleOptions = {
   ],
   generateKey: (_context, tracker, throttlerName) => `${throttlerName}-${tracker}`,
 }
+
+/**
+ * The buckets plus our own storage. @nestjs/throttler's in-memory storage holds one list of
+ * pending decrements per bucket with no client key in it, so unblocking one client cancels every
+ * other client's decay in the same bucket and strands their counts; see throttler-storage.ts.
+ *
+ * A factory rather than a constant, because ThrottlerModule.forRoot builds the library's storage
+ * once per application: tests stand several apps up in one process and must not share counts.
+ */
+export const createThrottlerOptions = (): ThrottlerOptions => ({
+  ...THROTTLER_OPTIONS,
+  storage: new PerClientThrottlerStorage(),
+})
