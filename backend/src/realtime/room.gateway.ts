@@ -157,6 +157,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // ===== Message dispatch =====
 
   private async onMessage (connection: Connection, data: WebSocket.RawData): Promise<void> {
+    // A kick is asynchronous at the socket layer, so frames keep arriving after it.
+    // None of them may be acted on.
+    if (connection.invalidated) return
+
     if (!connection.allowMessage()) {
       connection.send(error('rate_limited', 'Too many messages.'))
       connection.close(WS_POLICY_VIOLATION, 'message rate exceeded')
@@ -214,6 +218,14 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     // Cleared before any await, so a slow database can never be reported as 4401.
     connection.clearHelloTimer()
 
+    // One handshake per socket. Two in flight would each claim a slot in the account
+    // index and only the last would ever be given back on disconnect.
+    if (connection.helloStarted) {
+      connection.close(CLOSE_CODES.unauthorized, 'hello already in progress')
+      return
+    }
+    connection.helloStarted = true
+
     const parsed = parseClientMessage(raw)
     if (!parsed.success || parsed.data.type !== 'hello') {
       connection.close(CLOSE_CODES.unauthorized, 'expected hello')
@@ -237,6 +249,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       }
     }
 
+    // The account index is claimed before the read, not after it. A rotation that
+    // commits while this handshake is reading closes the sockets it can find, and a
+    // handshake absent from the index is not one of them: it would then finish and
+    // register itself holding the generation the rotation just killed.
+    connection.userId = user?.id ?? null
+    connection.username = user?.username ?? null
+    connection.tokenVersion = user?.tokenVersion ?? null
+    this.registry.registerUser(connection)
+
     // The one read the handshake makes, and it answers both questions: whether the token
     // has been superseded, and what the account's rooms revision is.
     let account: AccountState | null = null
@@ -249,6 +270,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return
     }
 
+    // Claiming the slot is only half of it: the kick landed while this frame was
+    // suspended, so the greeting has to notice it rather than complete over the top.
+    if (connection.invalidated) return
+
     // A token the account has superseded is refused exactly as an unsigned one is: 4401 is
     // what puts the client through its sign-in-again path.
     if (user && (account === null || !tokenVersionMatches(user.tokenVersion, account.tokenVersion))) {
@@ -258,10 +283,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const roomsRevision = account?.roomsRevision ?? null
 
-    connection.userId = user?.id ?? null
-    connection.username = user?.username ?? null
     connection.helloDone = true
-    this.registry.registerUser(connection)
 
     connection.send({
       type: 'hello_ok',
@@ -270,6 +292,33 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       roomsRevision,
       connectionId: connection.id,
     })
+  }
+
+  /**
+   * Whether the account behind this socket is still on the generation it greeted with.
+   * A read that fails refuses the caller without closing: a database blip is not a
+   * reason to put someone through the sign-out path, and refusing already denies the
+   * only thing at stake, which is content this socket has not been handed yet.
+   */
+  private async accountStillCurrent (connection: Connection): Promise<boolean> {
+    // An anonymous visitor has no account to revoke; the room's own checks answer for it.
+    if (connection.userId === null) return true
+
+    let stored: number | null
+    try {
+      stored = await this.accounts.tokenVersionOf(connection.userId)
+    } catch (cause) {
+      this.logger.error('Could not re-check the account behind a socket', cause)
+      this.counters.record('server', 'ws_token_recheck_failed')
+      connection.send(error('internal_error', 'The server could not verify your session.'))
+      return false
+    }
+
+    if (connection.invalidated) return false
+    if (stored !== null && tokenVersionMatches(connection.tokenVersion, stored)) return true
+
+    connection.close(CLOSE_CODES.unauthorized, 'token revoked')
+    return false
   }
 
   /** A visitor token is signed with the same secret, so the shape is the check. */
@@ -285,6 +334,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   // ===== join / leave =====
 
   private async handleJoin (connection: Connection, message: ClientJoinMessage): Promise<void> {
+    // Join is the frame that hands over a whole plan, so it re-asks the question the
+    // handshake answered once. `connection.userId` records who greeted, never who may
+    // still read, and a generation that moved under a socket is not visible from here.
+    if (!await this.accountStillCurrent(connection)) return
+
     const access = await this.access.authorizeWithContent(message.roomId, {
       userId: connection.userId,
       visitorToken: message.visitorToken,
@@ -378,11 +432,17 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     }
 
     const actor = connection.userId ?? ANONYMOUS_ACTOR
-    const outcome = await this.ops.apply(message, actor, () =>
-      this.access.authorizeWithContent(message.roomId, {
+    const outcome = await this.ops.apply(message, actor, async () => {
+      // Evaluated inside the room's queue, which is where the wait happens: an op that
+      // got through the door before the kick must not commit after it. The room's own
+      // checks cannot see this, because an account revocation leaves the membership
+      // intact and only takes the socket.
+      if (connection.invalidated) return { status: 'denied' }
+      return this.access.authorizeWithContent(message.roomId, {
         userId: connection.userId,
         visitorToken: session.visitorToken,
-      }))
+      })
+    })
 
     switch (outcome.status) {
       case 'applied':
@@ -621,6 +681,10 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       const roomsRevision = await this.rooms.roomsRevisionOf(userId)
       for (const connection of connections) {
+        // A handshake holds a slot in this index from before it is finished, so that a
+        // revocation can reach it. It is not a client yet, and must not be sent frames
+        // ahead of its own `hello_ok`.
+        if (!connection.helloDone) continue
         this.deliver(connection, { type: 'rooms_changed', roomsRevision })
       }
     }
@@ -667,20 +731,40 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     for (const connection of connections) {
       const session = connection.rooms.get(roomId)
-      const access = await this.access.authorize(roomId, {
-        userId: connection.userId,
-        visitorToken: session?.visitorToken,
-      })
-      // Anything short of a clean grant kicks. A room that would refuse this socket
-      // a join must not keep answering the one it already holds.
-      if (access.status === 'granted') continue
 
+      let granted: boolean
+      try {
+        const access = await this.access.authorize(roomId, {
+          userId: connection.userId,
+          visitorToken: session?.visitorToken,
+        })
+        // Anything short of a clean grant kicks. A room that would refuse this socket
+        // a join must not keep answering the one it already holds.
+        granted = access.status === 'granted'
+      } catch (cause) {
+        // The sweep exists because access has already been withdrawn, so "could not
+        // tell" is the one answer that cannot be taken back: the socket goes on taking
+        // the op fan-out forever. It is dropped on a code the client reconnects from,
+        // and the join that follows re-runs the real check.
+        this.logger.error(`Could not re-check access to room ${roomId}`, cause)
+        this.counters.record('server', 'ws_access_recheck_failed')
+        this.kick(connection, roomId, WS_INTERNAL_ERROR, 'access re-check failed')
+        continue
+      }
+
+      if (granted) continue
       this.deliver(connection, error('forbidden', 'Your access to this room was revoked.', roomId))
-      connection.close(CLOSE_CODES.forbidden, 'access revoked')
-      // The close handshake is asynchronous, and the room must not go on showing a
-      // field held by a socket that has already been cut off.
-      if (this.locks.release(roomId, connection)) this.broadcastFieldLocks(roomId)
+      this.kick(connection, roomId, CLOSE_CODES.forbidden, 'access revoked')
     }
+  }
+
+  /**
+   * The close handshake is asynchronous, and the room must not go on showing a field
+   * held by a socket that has already been cut off.
+   */
+  private kick (connection: Connection, roomId: string, code: number, reason: string): void {
+    connection.close(code, reason)
+    if (this.locks.release(roomId, connection)) this.broadcastFieldLocks(roomId)
   }
 }
 

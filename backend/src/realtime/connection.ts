@@ -27,6 +27,10 @@ export class Connection {
   readonly rooms = new Map<string, RoomSession>()
   userId: string | null = null
   username: string | null = null
+  /** The account's token generation as the greeting token claimed it; null for a visitor. */
+  tokenVersion: number | null = null
+  /** Set the moment a hello starts, so a second one cannot race it into the account index. */
+  helloStarted = false
   helloDone = false
   isAlive = true
   helloTimer: NodeJS.Timeout | null = null
@@ -38,6 +42,16 @@ export class Connection {
 
   constructor (readonly socket: WebSocket, readonly ip: string) {}
 
+  /**
+   * Every server-side kick goes through `close` or `terminate`, so this is the one
+   * question a handshake or a queued op has to ask before it may finish: has this
+   * connection been cut off since the work started? Nothing that reads true here may
+   * become authorized again, however far through it already is.
+   */
+  get invalidated (): boolean {
+    return this.closed || this.socket.readyState > WebSocket.OPEN
+  }
+
   allowMessage (): boolean {
     return this.messages.allow()
   }
@@ -48,7 +62,9 @@ export class Connection {
   }
 
   send (message: ServerMessage): void {
-    if (this.socket.readyState !== WebSocket.OPEN) return
+    // `closed` as well as the socket state: a kick flips it first, and the close
+    // handshake is asynchronous, so a fan-out in between must not still be written.
+    if (this.closed || this.socket.readyState !== WebSocket.OPEN) return
     // Snapshots are large and the process is single: a client that cannot drain
     // is dropped rather than allowed to grow the heap without bound.
     if (this.socket.bufferedAmount > WS_MAX_BUFFERED_BYTES) {

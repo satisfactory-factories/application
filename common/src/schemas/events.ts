@@ -62,6 +62,10 @@ export const EVENT_REASONS = [
   'share_id_allocation_exhausted',
   'ws_handshake_internal_error',
   'ws_message_handler_error',
+  /** A socket was dropped because its account could not be re-read on join. */
+  'ws_token_recheck_failed',
+  /** A revocation sweep could not read the room, so it dropped the sockets instead. */
+  'ws_access_recheck_failed',
   /** A socket asked to be answered with a whole plan more often than any client needs to. */
   'ws_snapshot_reject_rate_exceeded',
   'room_access_unstable_race',
