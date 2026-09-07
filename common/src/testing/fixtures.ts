@@ -21,6 +21,8 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
       parts: { OreIron: 30 },
       powerUsage: 4,
       powerProduced: 0,
+      somersloops: 1,
+      clockSetByUser: true,
       type: ItemType.Product,
     }],
     buildingGroupsTrayOpen: false,
@@ -64,7 +66,21 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
   buildingMaterialCosts: {},
   requirementsSatisfied: true,
   exportCalculator: {
-    IronIngot: { selected: null, factorySettings: {} },
+    IronIngot: {
+      selected: null,
+      factorySettings: {
+        // Belt and pipe splits are stored state the calculator writes lazily, so a fixture
+        // that leaves them out cannot notice them being dropped from the schema.
+        2: {
+          trainTime: 123,
+          droneTime: 123,
+          truckTime: 123,
+          tractorTime: 123,
+          beltGroups: [{ id: 1, mark: 4, amount: 20 }, { id: 2, mark: 4, amount: 10 }],
+          pipeGroups: [{ id: 1, mark: 2, amount: 300 }],
+        },
+      },
+    },
   },
   partDisposal: { IronIngot: { sinks: 2, depots: 1 } },
   dependencies: { requests: {}, metrics: {} },
@@ -78,8 +94,12 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
   syncStatePower: {},
   syncStateCustomBuildings: { 'cb-1': { building: 'portal', amount: 1, ingredientAmount: 10 } },
   displayOrder: 0,
-  tasks: [],
-  notes: '',
+  // Both states: `completed` is the half a fixture with no tasks can never prove.
+  tasks: [
+    { title: 'Build the smelters', completed: false },
+    { title: 'Route the belts', completed: true },
+  ],
+  notes: 'Feeds the assembly line',
   checklistEnabled: true,
   checklistPanelHidden: false,
   checklistExports: { '2:IronIngot': true },

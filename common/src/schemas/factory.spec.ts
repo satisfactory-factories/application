@@ -3,7 +3,9 @@ import type { z } from 'zod'
 
 import { CAPS } from '../caps'
 import { makeFactory, makeFactoryTab } from '../testing/fixtures'
+import { presentKeys, withoutKey } from '../testing/schema-walk'
 import type { Factory, FactoryTab } from '../types/factory'
+import * as planSchemas from './factory'
 import {
   factorySchema,
   factoryTabSchema,
@@ -297,5 +299,29 @@ describe('invitePasswordSchema', () => {
     { length: 101, accepted: false },
   ])('a $length character password is accepted: $accepted', ({ length, accepted }) => {
     expect(invitePasswordSchema.safeParse('p'.repeat(length)).success).toBe(accepted)
+  })
+})
+
+/**
+ * Mutation cover for the fixture. "Keeps every persisted field" above only proves the keys the
+ * fixture happens to carry, and it passes just as green when a key it never sets is deleted
+ * from the schema. This runs the same round trip against a schema with one key removed, for
+ * every key the fixture does carry, and each one has to be noticed.
+ *
+ * `web/src/sync/schema-parity.spec.ts` runs the same table over a plan the planner builds for
+ * real, which reaches the keys a hand-written fixture cannot.
+ */
+describe('every key the fixture carries is load-bearing', () => {
+  const tab = makeFactoryTab()
+  const covered = presentKeys(factoryTabSchema, tab, planSchemas)
+
+  it.each(covered)('dropping %s from the schema breaks the round trip', key => {
+    // Owner labels carry dots of their own (`...requirements.*`), so split on the last one.
+    const split = key.lastIndexOf('.')
+    const mutant = withoutKey(factoryTabSchema, key.slice(0, split), key.slice(split + 1), planSchemas)
+    const parsed = mutant.safeParse(JSON.parse(JSON.stringify(tab)))
+
+    expect(parsed.success).toBe(true)
+    expect(parsed.data).not.toEqual(tab)
   })
 })
