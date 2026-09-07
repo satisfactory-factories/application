@@ -1,5 +1,6 @@
 import { PROTOCOL_VERSION } from 'common'
 import type { TabField } from '@/sync/room-state'
+import type { JournalConflict } from '@/sync/plan-journal'
 import { writeLocalStorage } from '@/utils/safe-storage'
 
 /**
@@ -28,6 +29,13 @@ export interface TabMirrorMeta {
    * later cannot tell a factory somebody else changed from one only it changed.
    */
   baselinePrints?: Record<string, string>
+  /**
+   * A clash the user was asked about and has not answered. The question itself only ever
+   * lived in memory, so a reload landed on a baseline already advanced to the server's
+   * revision, answered `up_to_date`, and flushed this device's version over the peer's
+   * without anybody choosing it. Persisted, the send barrier and the question both come back.
+   */
+  conflict?: JournalConflict
 }
 
 export type TabMirrorMetaMap = Record<string, TabMirrorMeta>
@@ -37,6 +45,15 @@ const readPrints = (value: unknown): Record<string, string> => {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).filter(([, print]) => typeof print === 'string'),
   ) as Record<string, string>
+}
+
+const readConflict = (value: unknown): JournalConflict | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const candidate = value as Partial<JournalConflict>
+  if (typeof candidate.revision !== 'number' || !Array.isArray(candidate.factoryIds)) return undefined
+
+  const factoryIds = candidate.factoryIds.filter((id): id is number => typeof id === 'number')
+  return factoryIds.length > 0 ? { revision: candidate.revision, factoryIds } : undefined
 }
 
 const isMeta = (value: unknown): value is TabMirrorMeta =>
@@ -66,6 +83,7 @@ export const readTabMirrorMeta = (): TabMirrorMetaMap => {
         ? value.declaredRemovals.filter(id => typeof id === 'number')
         : [],
       baselinePrints: readPrints(value.baselinePrints),
+      conflict: readConflict(value.conflict),
     }
   }
   return map

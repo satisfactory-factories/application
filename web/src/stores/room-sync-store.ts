@@ -37,6 +37,14 @@ import {
   removeTabMirrorMeta,
   setTabMirrorMeta,
 } from '@/sync/tab-mirror-meta'
+import {
+  dropJournalRoom,
+  prunePlanJournal,
+  recoverJournalRoom,
+  touchJournalSlot,
+  writeJournalRoom,
+} from '@/sync/plan-journal'
+import type { JournalConflict, JournalRoom } from '@/sync/plan-journal'
 import { isCollaborative } from '@/sync/tab-sync-state'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -69,6 +77,13 @@ export const REJECT_PAUSE_AFTER = 3
 
 /** Keystrokes renew a field lock at most this often: a typist costs one frame per few seconds. */
 export const FIELD_LOCK_RENEW_MS = 3_000
+
+/**
+ * Trailing debounce on the durable journal. A pasted plan marks every record as intent one
+ * at a time, so writing the journal on each would serialize the whole plan once per factory.
+ * Everything that moves a baseline writes it straight through instead; this covers the bursts.
+ */
+export const JOURNAL_DEBOUNCE_MS = 250
 
 export type OfflineMode = 'online' | 'reconnecting' | 'offlinePrompt' | 'offline'
 
@@ -139,6 +154,8 @@ interface RoomEngine {
   unacknowledged: Map<number, string>
   /** Something inbound was refused because the tab was mid-load; re-baseline when it ends. */
   needsSnapshot: boolean
+  /** The durable journal has been read back into this engine and into the tab. Once only. */
+  journalRestored: boolean
   /**
    * The revision of the content the disk actually holds. The plan is persisted on a 500ms
    * debounce and the mirror's metadata is not, so this is what stops the metadata claiming
@@ -226,6 +243,7 @@ const newEngine = (options: TrackRoomOptions): RoomEngine => ({
   fingerprints: new Map(),
   unacknowledged: new Map(),
   needsSnapshot: false,
+  journalRestored: false,
   mirroredRevision: 0,
   visitorToken: options.visitorToken,
 })
@@ -252,6 +270,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
    * user has said which version of each clashing factory wins.
    */
   const conflicts = ref<Record<string, RoomConflict>>({})
+  /**
+   * Questions this device was asked and never answered, read back off the durable journal
+   * on boot. The dialog itself cannot be rebuilt from storage — it is about live server
+   * content, which is a restart out of date — so this is the half that can be: the send
+   * barrier, held until a fresh snapshot lets the question be put again.
+   */
+  const pendingConflicts = ref<Record<string, JournalConflict>>({})
 
   /** No socket, no REST, no retries. Preferences and adoption gate on this too. */
   const isOffline = computed(() => mode.value === 'offline')
@@ -413,6 +438,22 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return hash
   }
 
+  /**
+   * The question this device still owes an answer to, in the shape storage keeps it. An
+   * answer parked behind a load chain counts: it is not on the plan yet, so a restart in
+   * that window has to ask again rather than let the default through unchosen.
+   */
+  const outstandingConflict = (roomId: string): JournalConflict | undefined => {
+    const revision = rooms.value[roomId]?.revision ?? 0
+    const open = conflicts.value[roomId]
+    if (open) return { revision, factoryIds: open.factories.map(row => row.factoryId) }
+
+    const parked = parkedResolutions.get(roomId)
+    if (parked) return { revision, factoryIds: [...parked.askedIds] }
+
+    return pendingConflicts.value[roomId]
+  }
+
   const persistMeta = (roomId: string) => {
     const engine = engines.get(roomId)
     if (!engine) return
@@ -431,7 +472,82 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       userTouchedFields: [...engine.touchedFields],
       declaredRemovals: [...engine.declaredRemovals],
       baselinePrints,
+      conflict: outstandingConflict(roomId),
     })
+    scheduleJournal(roomId)
+  }
+
+  // ===== The durable journal =====
+
+  /**
+   * `factoryTabs` and `tabMirrorMeta` are shared keys, so a second browser tab of the same
+   * browser replaces both with a generation that never carried this instance's unsent
+   * edits. The journal is partitioned per instance, and each room entry carries the
+   * revision, the intent, the content of the touched records and any unanswered question
+   * in one write — so all four describe the same durable generation.
+   */
+  const journalOf = (roomId: string): JournalRoom | null => {
+    const engine = engines.get(roomId)
+    if (!engine) return null
+
+    const baselinePrints: Record<string, string> = {}
+    for (const id of engine.touchedFactories) {
+      const print = baselineFingerprint(engine, id)
+      if (print !== undefined) baselinePrints[id] = print
+    }
+
+    // Only the records this instance still holds. A touched id with no record here is one
+    // it deleted, which `declaredRemovals` is the statement of.
+    const records: Record<string, string> = {}
+    const tab = getTab(roomId)
+    if (tab) {
+      for (const factory of tab.factories) {
+        if (engine.touchedFactories.has(factory.id)) records[factory.id] = stableStringify(factory)
+      }
+    }
+
+    return {
+      revision: engine.mirroredRevision,
+      appVersion: PROTOCOL_VERSION,
+      userTouchedIds: [...engine.touchedFactories],
+      userTouchedFields: [...engine.touchedFields],
+      declaredRemovals: [...engine.declaredRemovals],
+      baselinePrints,
+      records,
+      conflict: outstandingConflict(roomId),
+    }
+  }
+
+  let journalTimer: ReturnType<typeof setTimeout> | undefined
+  const journalDirty = new Set<string>()
+
+  /** @returns whether the disk took it, which is what stops a caller claiming a revision. */
+  const persistJournalRoom = (roomId: string): boolean => {
+    const room = journalOf(roomId)
+    if (room === null) {
+      journalDirty.delete(roomId)
+      return false
+    }
+
+    if (writeJournalRoom(roomId, room)) {
+      journalDirty.delete(roomId)
+      return true
+    }
+    // Refused, so the edit is still owed. Left dirty and re-armed: a quota that frees up,
+    // or a browser that stops blocking site data, is what makes the next attempt land.
+    scheduleJournal(roomId)
+    return false
+  }
+
+  const persistJournal = () => {
+    clearTimeout(journalTimer)
+    for (const roomId of [...journalDirty]) persistJournalRoom(roomId)
+  }
+
+  const scheduleJournal = (roomId: string) => {
+    journalDirty.add(roomId)
+    clearTimeout(journalTimer)
+    journalTimer = setTimeout(persistJournal, JOURNAL_DEBOUNCE_MS)
   }
 
   /**
@@ -444,10 +560,15 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const engine = engines.get(roomId)
     if (engine && appStore.persistPlan()) engine.mirroredRevision = engine.acked.revision
     persistMeta(roomId)
+    // Straight through rather than on the debounce: this runs once per op, so it is not
+    // the burst the debounce exists for, and it is the moment the four halves agree.
+    persistJournalRoom(roomId)
   }
 
   const pruneMirrorMeta = () => {
-    pruneTabMirrorMeta(appStore.getTabs().map(tab => tab.id))
+    const known = appStore.getTabs().map(tab => tab.id)
+    pruneTabMirrorMeta(known)
+    prunePlanJournal(known)
   }
 
   // ===== Op builder =====
@@ -466,6 +587,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // guards against is exactly a chain that ran without lowering `isLoaded`.
     if (!appStore.isLoaded || roomIsMidLoad(roomId)) return
 
+    restoreJournalRecords(roomId)
     primeBaseline(roomId)
     if (!engine.seeded && !engine.primed) return
 
@@ -524,8 +646,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!appStore.isLoaded) return false
     // An unanswered clash: what this op should carry is the question on screen, and
     // sending our version first would answer it for the user. An answer parked behind a
-    // load chain holds it for the same reason: it is not on the plan yet.
-    if (conflicts.value[roomId] || parkedResolutions.has(roomId)) return false
+    // load chain holds it for the same reason: it is not on the plan yet. A question the
+    // journal remembers holds it too, until a fresh snapshot lets it be put again — a
+    // reload used to drop the barrier with the question and flush "mine" unchosen.
+    if (conflicts.value[roomId] || parkedResolutions.has(roomId) || pendingConflicts.value[roomId]) {
+      return false
+    }
 
     const tab = getTab(roomId)
     if (!tab) return false
@@ -558,7 +684,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     for (const roomId of Object.keys(rooms.value)) {
       applyParkedResolution(roomId)
       recordIntent(roomId)
-      flushRoom(roomId)
+      const sent = flushRoom(roomId)
+      // The journal's records are the content, and `markUserTouched` only fires the first
+      // time a factory is touched — so without this the record is frozen at the moment the
+      // intent was declared and every keystroke after it is missing from the durable copy.
+      // Debounced with the flush, so this is one write per burst rather than per edit, and
+      // only where something is actually owed. `persistBaseline` covers what was sent.
+      if (!sent && (hasLocalEdits(roomId) || outstandingConflict(roomId))) persistJournalRoom(roomId)
     }
   }
 
@@ -801,6 +933,41 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     else conflict.factories = rows
   }
 
+  /**
+   * A question the journal remembers, put again against the server content that has just
+   * arrived. Deliberately not measured the way a fresh clash is: the baseline moved on when
+   * the question was first raised, so `changedRemotely` would say the records agree and the
+   * decision would be made by nobody. What was recorded is that these ids are undecided,
+   * and the only thing a restart has to re-derive is what each side now says.
+   */
+  const reraisePendingConflict = (roomId: string, server: RoomContent) => {
+    const pending = pendingConflicts.value[roomId]
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!pending || !engine || !tab) return
+
+    const serverById = new Map(server.factories.map(factory => [factory.id, factory]))
+    const localById = new Map(contentOfTab(tab).factories.map(factory => [factory.id, factory]))
+
+    const rows = pending.factoryIds
+      .filter(id => engine.touchedFactories.has(id))
+      .map(id => describeClash(id, serverById.get(id) ?? null, localById.get(id) ?? null))
+      .filter((row): row is ConflictFactory => row !== null)
+
+    // Asked again, or found to have nothing left to decide. Either way the barrier now
+    // belongs to `conflicts`, or to nobody.
+    delete pendingConflicts.value[roomId]
+
+    const open = conflicts.value[roomId]
+    if (!open) {
+      if (rows.length > 0) conflicts.value[roomId] = { roomId, factories: rows }
+    } else {
+      const known = new Set(open.factories.map(row => row.factoryId))
+      open.factories = [...open.factories, ...rows.filter(row => !known.has(row.factoryId))]
+    }
+    persistMeta(roomId)
+  }
+
   /** Puts the server's copy of each named record back into the tab, absence included. */
   const takeServerCopies = (tab: FactoryTab, engine: RoomEngine, factoryIds: number[]) => {
     const wanted = new Set(factoryIds)
@@ -833,8 +1000,16 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }, { activate: false })
   }
 
-  /** Answers given while a load chain owned the plan, applied when it hands it back. */
-  const parkedResolutions = new Map<string, ResolveConflictOptions>()
+  /**
+   * Answers given while a load chain owned the plan, applied when it hands it back.
+   * `askedIds` rides along so a restart inside that window can put the same question back
+   * rather than let the unapplied answer become a silent "mine wins".
+   */
+  interface ParkedResolution extends ResolveConflictOptions {
+    askedIds: number[]
+  }
+
+  const parkedResolutions = new Map<string, ParkedResolution>()
 
   /**
    * The user's answer. Mine-winners keep the intent they already have, so they leave exactly
@@ -852,12 +1027,20 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const conflict = conflicts.value[roomId]
     if (!conflict) return false
 
-    const asked = new Set(conflict.factories.map(row => row.factoryId))
-    const answer = { liveWinners: liveWinners.filter(id => asked.has(id)), keepCopy }
+    const asked = [...new Set(conflict.factories.map(row => row.factoryId))]
+    const answer = {
+      liveWinners: liveWinners.filter(id => asked.includes(id)),
+      keepCopy,
+      askedIds: asked,
+    }
     delete conflicts.value[roomId]
+    // Answered, so nothing is owed here any more even if a restore put it back.
+    delete pendingConflicts.value[roomId]
 
     if (roomIsMidLoad(roomId) || !appStore.isLoaded) {
       parkedResolutions.set(roomId, answer)
+      persistMeta(roomId)
+      persistJournalRoom(roomId)
       return true
     }
     return applyResolution(roomId, answer)
@@ -884,6 +1067,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }
 
     persistMeta(roomId)
+    persistJournalRoom(roomId)
     flushRoom(roomId)
     // A staged demo owns no room and has nothing to sync: hand the tab back as a plain
     // local one. A no-op for every real room, which is never in the set.
@@ -953,8 +1137,11 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (!demoRooms.delete(roomId)) return
     engines.delete(roomId)
     delete conflicts.value[roomId]
+    delete pendingConflicts.value[roomId]
     parkedResolutions.delete(roomId)
+    journalDirty.delete(roomId)
     removeTabMirrorMeta(roomId)
+    dropJournalRoom(roomId)
   }
 
   // ===== Reducer =====
@@ -1090,6 +1277,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     // Before the rebase, which replaces both halves of the comparison: the baseline this
     // client agreed on, and the records it still holds.
+    reraisePendingConflict(roomId, server)
     noteClashes(roomId, server, revision)
     const recalculated = rebase(roomId, server, revision)
     // A clean adopt is proof the room is healthy, so an old streak must not carry into
@@ -1431,29 +1619,111 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     socket?.stop()
   }
 
+  /**
+   * Intent is the only thing that survives a restart; the baseline is not. Both sources are
+   * read: the journal is this browser's per-instance record and the authority on unsent
+   * work, and the shared sidecar covers a browser whose state predates the journal, or whose
+   * journal write the quota refused.
+   */
+  const restoreIntent = (roomId: string, engine: RoomEngine) => {
+    const stored = readTabMirrorMeta()[roomId]
+    const journal = recoverJournalRoom(roomId)
+
+    for (const id of [...stored?.userTouchedIds ?? [], ...journal?.userTouchedIds ?? []]) {
+      engine.touchedFactories.add(id)
+    }
+    for (const field of [...stored?.userTouchedFields ?? [], ...journal?.userTouchedFields ?? []]) {
+      engine.touchedFields.add(field)
+    }
+    for (const id of [...stored?.declaredRemovals ?? [], ...journal?.declaredRemovals ?? []]) {
+      engine.declaredRemovals.add(id)
+    }
+    for (const [id, print] of Object.entries({ ...stored?.baselinePrints, ...journal?.baselinePrints })) {
+      engine.baselinePrints.set(Number(id), print)
+    }
+    // The sidecar's revision describes the shared render mirror, which is what this is
+    // about; the journal answers only when there is no sidecar to ask.
+    engine.mirroredRevision = stored?.revision ?? journal?.revision ?? 0
+
+    // The barrier goes up here, before anything can join or flush, because the whole
+    // failure is a flush that beat the question back onto the screen.
+    const conflict = journal?.conflict ?? stored?.conflict
+    if (conflict) pendingConflicts.value[roomId] = conflict
+  }
+
   const trackRoom = (roomId: string, options: TrackRoomOptions = {}) => {
     if (!rooms.value[roomId]) rooms.value[roomId] = newRoomState(roomId)
 
-    let engine = engines.get(roomId)
+    const engine = engines.get(roomId)
     if (!engine) {
-      engine = newEngine(options)
-      engines.set(roomId, engine)
-
-      // Intent is the only thing that survives a restart; the baseline is not.
-      const stored = readTabMirrorMeta()[roomId]
-      for (const id of stored?.userTouchedIds ?? []) engine.touchedFactories.add(id)
-      for (const field of stored?.userTouchedFields ?? []) engine.touchedFields.add(field)
-      for (const id of stored?.declaredRemovals ?? []) engine.declaredRemovals.add(id)
-      for (const [id, print] of Object.entries(stored?.baselinePrints ?? {})) {
-        engine.baselinePrints.set(Number(id), print)
-      }
-      engine.mirroredRevision = stored?.revision ?? 0
+      const fresh = newEngine(options)
+      engines.set(roomId, fresh)
+      restoreIntent(roomId, fresh)
     } else if (options.visitorToken) {
       engine.visitorToken = options.visitorToken
     }
 
-    if (appStore.isLoaded && !roomIsMidLoad(roomId)) primeBaseline(roomId)
+    if (appStore.isLoaded && !roomIsMidLoad(roomId)) {
+      restoreJournalRecords(roomId)
+      primeBaseline(roomId)
+    }
     if (isConnected.value) join(roomId)
+  }
+
+  /**
+   * Put this browser's unsent records back into the tab. `factoryTabs` is one shared key, so
+   * a sibling browser tab's whole-plan write can be a generation that never carried them —
+   * and the intent alone would then make the rebase push the sibling's stale copy back at
+   * the room as this instance's own edit.
+   *
+   * Only the records still owed: a journal room entry is dropped the moment its intent is
+   * spent, so nothing acknowledged can be written back in from here.
+   */
+  const restoreJournalRecords = (roomId: string) => {
+    const engine = engines.get(roomId)
+    const tab = getTab(roomId)
+    if (!engine || !tab || engine.journalRestored) return
+    engine.journalRestored = true
+
+    const journal = recoverJournalRoom(roomId)
+    if (!journal) return
+
+    const byId = new Map(tab.factories.map(factory => [factory.id, factory]))
+    let changed = false
+
+    for (const [key, print] of Object.entries(journal.records)) {
+      const id = Number(key)
+      if (!engine.touchedFactories.has(id)) continue
+      const mounted = byId.get(id)
+      if (mounted && stableStringify(mounted) === print) continue
+
+      const record = JSON.parse(print) as Factory
+      if (mounted) tab.factories.splice(tab.factories.indexOf(mounted), 1, record)
+      else tab.factories.push(record)
+      changed = true
+    }
+
+    // The mirror image: a record this instance deleted and never sent. It is touched, it is
+    // declared removed, and it has no journal record because this instance does not hold
+    // one. A sibling's write can put it back, and nothing else would take it out again.
+    for (const id of engine.declaredRemovals) {
+      if (!engine.touchedFactories.has(id) || journal.records[id] !== undefined) continue
+      const mounted = byId.get(id)
+      if (!mounted) continue
+      tab.factories.splice(tab.factories.indexOf(mounted), 1)
+      changed = true
+    }
+
+    if (!changed) return
+    tab.factories = inDisplayOrder(tab.factories)
+    // This runs on the boot path, so the game data may not have arrived yet. The records
+    // are the thing being rescued; their derived figures are re-done by the next rebase.
+    try {
+      recalculate(tab)
+    } catch (error) {
+      console.error('roomSyncStore: restored the unsent records but could not recalculate them', error)
+    }
+    appStore.schedulePersist()
   }
 
   /**
@@ -1468,8 +1738,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     dropRoomLocks(roomId)
     // A question about a room this browser no longer holds has no answer worth taking.
     delete conflicts.value[roomId]
+    delete pendingConflicts.value[roomId]
     parkedResolutions.delete(roomId)
-    if (!keepMirrorMeta) removeTabMirrorMeta(roomId)
+    journalDirty.delete(roomId)
+    if (!keepMirrorMeta) {
+      removeTabMirrorMeta(roomId)
+      dropJournalRoom(roomId)
+    }
   }
 
   const join = (roomId: string): boolean => {
@@ -1480,7 +1755,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (room.status === 'revoked' || room.status === 'deleted') return false
 
     const stored = readTabMirrorMeta()[roomId]
-    const lastRevision = engine.seeded ? engine.acked.revision : stored?.revision
+    // A question the journal remembers can only be put again against the live records, and
+    // a join carrying a revision can be answered `up_to_date`, which carries none. So this
+    // one asks for the whole room: the reload used to take that `up_to_date`, seed off its
+    // own mirror and flush, which is how "mine" won without anybody choosing it.
+    const lastRevision = pendingConflicts.value[roomId]
+      ? undefined
+      : engine.seeded ? engine.acked.revision : stored?.revision
     room.status = 'joining'
     return ensureSocket().join(roomId, { lastRevision, visitorToken: engine.visitorToken })
   }
@@ -1511,6 +1792,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   }
 
   const probeTick = () => {
+    // Says this browser tab is still here, so a sweep can tell an abandoned slot from one
+    // whose instance simply has nothing to write.
+    touchJournalSlot()
     // A demo has no room, so the loop below would never reach an answer of its own that
     // parked behind a load chain. Empty in every session that has not staged one.
     for (const roomId of demoRooms) applyParkedResolution(roomId)
@@ -1622,6 +1906,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const enterOffline = () => {
     // Whatever was edited inside the last debounce window still has to be remembered.
     for (const roomId of Object.keys(rooms.value)) recordIntent(roomId)
+    // Going quiet is exactly when the durable copy has to be up to date: from here on it
+    // is the only record of anything the user changes.
+    persistJournal()
     // While the socket is still up: nobody should be left staring at a field this
     // client walked away from.
     releaseAllFields()
@@ -1698,6 +1985,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
    */
   const onLoadingCompleted = () => {
     for (const roomId of Object.keys(rooms.value)) {
+      restoreJournalRecords(roomId)
       primeBaseline(roomId)
       healFromSnapshot(roomId)
     }
@@ -1715,7 +2003,20 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   eventBus.on('calculationsCompleted', scheduleFlush)
   eventBus.on('loadingCompleted', onLoadingCompleted)
 
-  if (typeof window !== 'undefined') window.addEventListener('offline', onBrowserOffline)
+  /**
+   * The journal is debounced, so a browser closed inside that window would keep the intent
+   * (the sidecar is written straight through) and lose the records it refers to. Both go
+   * out here instead, on the last event a page reliably gets.
+   */
+  const flushJournalOnHide = () => {
+    if (document.visibilityState === 'hidden') persistJournal()
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('offline', onBrowserOffline)
+    window.addEventListener('pagehide', persistJournal)
+    window.addEventListener('visibilitychange', flushJournalOnHide)
+  }
 
   const probeTimer = setInterval(probeTick, probeIntervalMs())
   if (typeof probeTimer === 'object' && 'unref' in probeTimer) probeTimer.unref()
@@ -1730,8 +2031,14 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     eventBus.off('factoryUpdated', scheduleFlush)
     eventBus.off('calculationsCompleted', scheduleFlush)
     eventBus.off('loadingCompleted', onLoadingCompleted)
-    if (typeof window !== 'undefined') window.removeEventListener('offline', onBrowserOffline)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('offline', onBrowserOffline)
+      window.removeEventListener('pagehide', persistJournal)
+      window.removeEventListener('visibilitychange', flushJournalOnHide)
+    }
     clearTimeout(debounceTimer)
+    clearTimeout(journalTimer)
+    journalDirty.clear()
     unsubscribeMessage?.()
     unsubscribeStatus?.()
     unsubscribeMessage = null
@@ -1752,6 +2059,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     connectionId,
     fieldLocks,
     conflicts,
+    pendingConflicts,
     isOffline,
     isSuppressed,
     isConnected,
@@ -1797,6 +2105,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
     // Persistence
     pruneMirrorMeta,
+    // The debounced journal write, forced. The timer is what runs it in the app.
+    persistJournal,
 
     // Reducer, driven by the socket and directly by tests
     handleMessage,

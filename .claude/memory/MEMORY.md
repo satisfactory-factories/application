@@ -8,6 +8,7 @@
 - [Building groups](building-groups-branch-status.md) — how overclocking/somersloops work and their gotchas; shipped, the branch it was built on is dead
 - [Calc engine gotchas](calc-engine-gotchas.md) — double-pass recalc, load-bearing step order, migration patches, and other traps
 - [Sync v0.7.0 realtime rooms](project-sync-v7-rooms.md) — built and green on `claude/sync-mechanism-refactor-7b021b`, not yet merged; file map, locked decisions and the flagged follow-ups
+- [Offline durability](offline-durability.md) — content, intent, revision and any unanswered conflict are one durable generation, journalled per browser instance; read before touching plan persistence
 - [Tab sync v2 rework](project-tab-sync-v2.md) — superseded by sync v0.7.0; `tab-sync-v2` branch is a design reference only
 - [Scope plans per session](feedback-scope-plans-per-session.md) — split big multi-part features into separate plans/branches/sessions
 - [Opus workers, Fable orchestrator](feedback-opus-workers-fable-orchestrator.md) — subagents inherit the session model; pin model:'opus' on every agent() call
