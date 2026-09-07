@@ -577,7 +577,7 @@
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
   const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
-    calculateFactory(factory, getFactories(), gameData, modes)
+    calculateFactory(factory, getFactories(), gameData, { ...modes, intent: 'userEdit' })
   }
 
   const copyFactory = (originalFactory: Factory) => {

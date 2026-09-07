@@ -13,7 +13,8 @@ import {
   useRoomSyncStore,
 } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
-import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
+import { validateFactories } from '@/utils/factory-management/validation'
 import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { getDisposal, setDepotCount, setSinkCount } from '@/utils/factory-management/disposal'
@@ -1483,6 +1484,83 @@ describe('room-sync-store', () => {
       receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 6), revision: 6 })
 
       expect(orders(tab)).toEqual([1, 1])
+    })
+  })
+
+  /**
+   * A recalculation the user did not ask for must claim nothing. Load-time repair and an
+   * inbound op both rewrite records this client never edited, and intent is the only thing
+   * a rebase overlays: a claim made here keeps this client's copy over a peer's newer one
+   * on every rebase from then on, silently, for as long as the claim survives.
+   */
+  describe('recalculations the user did not make', () => {
+    /** A product the loader has to put right; validateFactories clamps it and recalculates. */
+    const breakAProduct = (factory: Factory) => {
+      addProductToFactory(factory, { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      factory.products[0].amount = 0
+    }
+
+    const repairThePlan = (tab: FactoryTab) => {
+      // Both are how a repair reports itself; the assertions here are about intent.
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      return validateFactories(tab.factories, gameData, tab)
+    }
+
+    it('claims nothing when the loader repairs a malformed plan', () => {
+      const tab = syncAt(fixture, 4)
+      breakAProduct(tab.factories[1])
+
+      const repairs = repairThePlan(tab)
+
+      expect(repairs).not.toHaveLength(0)
+      expect(tab.factories[1].products[0].amount).toBe(0.1)
+      expect(store.hasLocalEdits(ROOM)).toBe(false)
+    })
+
+    it('claims nothing when a peer\'s op rewrites a factory', () => {
+      const tab = syncAt(fixture, 4)
+
+      const theirs = wire(fixture[1])
+      theirs.notes = 'Needs a second smelter'
+      receive({ type: 'op_apply', roomId: ROOM, revision: 5, diff: { factories: [theirs] } })
+
+      expect(tab.factories[1].notes).toBe('Needs a second smelter')
+      expect(store.hasLocalEdits(ROOM)).toBe(false)
+    })
+
+    /**
+     * The regression itself. This client opened a shared room whose plan needed repair, a
+     * collaborator renamed a factory, and the rebase that follows used to hand back this
+     * client's repaired copy — losing the rename with nothing on screen to say so.
+     */
+    it('keeps a collaborator\'s newer factory over a plan this client only repaired', () => {
+      const tab = syncAt(fixture, 4)
+      breakAProduct(tab.factories[1])
+      repairThePlan(tab)
+
+      const server = wire(fixture)
+      server[1].name = 'Renamed by them'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+
+      expect(names(tab)).toEqual(['Alpha', 'Renamed by them'])
+    })
+
+    // The other half of the same rule: suppressing the claim must not stop a real edit
+    // from making one, or the rebase throws the user's own work away instead.
+    it('still keeps a factory the user actually edited', () => {
+      const tab = syncAt(fixture, 4)
+      addProductToFactory(tab.factories[1], { id: 'IronIngot', amount: 100, recipe: 'IngotIron' })
+      calculateFactory(tab.factories[1], tab.factories, gameData, { intent: 'userEdit' })
+
+      expect(store.hasLocalEdits(ROOM)).toBe(true)
+
+      const server = wire(fixture)
+      server[1].name = 'Renamed by them'
+      receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(server, 6), revision: 6 })
+
+      expect(names(tab)).toEqual(['Alpha', 'Beta'])
+      expect(tab.factories[1].products).toHaveLength(1)
     })
   })
 

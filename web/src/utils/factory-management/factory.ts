@@ -140,6 +140,17 @@ export interface CalculationModes {
   powerResync?: boolean
 }
 
+// Whether a calculation is the user acting on this factory, or a recalculation derived
+// from something else (plan load, validation repair, an inbound sync op, a rebase).
+export type CalculationIntent = 'userEdit' | 'derived'
+
+export interface CalculationOptions extends CalculationModes {
+  // Sync overlays exactly the factories marked as user edits, so a derived run claiming
+  // one silently takes a collaborator's newer copy off the server. Defaults to 'derived':
+  // a lost local edit is visible and can be redone, a stolen one is neither.
+  intent?: CalculationIntent
+}
+
 // What the factory's power producers consume, as a value comparable across passes.
 // Alien Power Augmenters derive their matrix demand from their building groups rather than
 // from their own amount, so this is the one demand that can move during the group sync.
@@ -387,8 +398,10 @@ export const calculateFactory = (
   factory: Factory,
   allFactories: Factory[],
   gameData: DataInterface,
-  modes: CalculationModes = {},
+  options: CalculationOptions = {},
 ): Factory => {
+  const { intent = 'derived', ...modes } = options
+
   if (inCloneRun()) {
     return calculateFactoryEngine(factory, allFactories, gameData, modes)
   }
@@ -421,9 +434,12 @@ export const calculateFactory = (
     eventBus.emit('factoryUpdated', factory)
   }
 
-  // This entry point is only reached from a user action on one factory, so it is
-  // the only place that can tell sync which change was intent and which was ripple.
-  eventBus.emit('factoryEdited', factory)
+  // Intent has to be stated, not assumed: this entry point is also reached from load-time
+  // validation repair, where claiming the factory would make a rebase overlay it over a
+  // collaborator's newer copy.
+  if (intent === 'userEdit') {
+    eventBus.emit('factoryEdited', factory)
+  }
 
   return factory
 }

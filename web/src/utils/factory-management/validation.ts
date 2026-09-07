@@ -304,8 +304,9 @@ export const validateFactories = (
 
       if (needsRecalc) {
         console.warn(`validation: Recalculating Factory "${factory.name}" (${factory.id}) due to product validation errors.`)
-        // Recalculate right now
-        calculateFactory(factory, factories, gameData)
+        // Recalculate right now. Derived: a repair is the loader putting a malformed plan
+        // right, never the user editing it, so it must not claim the factory for sync.
+        calculateFactory(factory, factories, gameData, { intent: 'derived' })
       }
     })
   })
