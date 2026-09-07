@@ -19,7 +19,7 @@ import { addProductBuildingGroup } from '@/utils/factory-management/building-gro
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { refreshBuildingGroupProblems } from '@/utils/factory-management/building-groups/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
-import { generateFactoryItemId } from '@/utils/factory-management/common'
+import { repairedFactoryItemId } from '@/utils/factory-management/common'
 import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repair'
 import { captureOrder, markFactoryRemoved, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
@@ -930,8 +930,10 @@ export const useAppStore = defineStore('app', () => {
 
         // Patch for #11 adding IDs. Issued against the factory rather than picked blind, or the
         // backfill can manufacture the very collision that makes a factory unsyncable (#546).
+        // Derived from the producer rather than random, or every client that opens the plan
+        // backfills a different id and they disagree with nobody having edited anything.
         if (producer.id === undefined) {
-          producer.id = generateFactoryItemId(factory)
+          producer.id = repairedFactoryItemId(factory, producer)
         }
 
         // Patch for #11 adding Building Groups have problems
