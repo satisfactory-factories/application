@@ -11,7 +11,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { HEALTH_THROTTLE } from '../src/config/throttling'
 
-const TTL = 100
+/**
+ * Wide on purpose. The shape being pinned is "two hits alive at a time, and the count does not
+ * climb", which holds at any scale; what a tight ttl adds is a race against the suite's own
+ * scheduler, where one late timer leaves three alive and fails a test that found nothing wrong.
+ * A probe interval of 200ms gives a decrement that much slack before it matters.
+ */
+const TTL = 400
 const PROBE = TTL / 2
 /** The incident: the clock was stepped back about an hour shortly after boot. */
 const STEP_BACK = -60 * 60 * 1000
@@ -37,8 +43,9 @@ describe('a backwards clock step against @nestjs/throttler storage', () => {
     // ...and only then does the clock get stepped back, which is the ordering that mattered.
     stepClock(STEP_BACK)
 
-    // Docker probes at half the ttl, so two hits are alive at once and no more.
-    for (let probe = 0; probe < HEALTH_THROTTLE.limit * 3; probe++) {
+    // Docker probes at half the ttl, so two hits are alive at once and no more. More probes
+    // than the bucket's limit, so a count that was climbing would certainly have blocked.
+    for (let probe = 0; probe < HEALTH_THROTTLE.limit + 2; probe++) {
       await sleep(PROBE)
       const record = await storage.increment(key, TTL, HEALTH_THROTTLE.limit, TTL, 'health')
       seen.push(record.totalHits)
