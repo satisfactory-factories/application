@@ -2,6 +2,8 @@ import type { ExecutionContext } from '@nestjs/common'
 import type { ThrottlerModuleOptions } from '@nestjs/throttler'
 import type { Request } from 'express'
 
+import { isLoopbackRequest } from './loopback'
+
 export const HEALTH_PATH = '/health'
 export const VERSION_PATH = '/version'
 export const SHARE_PATH = '/share'
@@ -62,6 +64,15 @@ const httpRequest = (context: ExecutionContext): Request | null =>
 const isHealthRequest = (context: ExecutionContext): boolean =>
   httpRequest(context)?.path === HEALTH_PATH
 
+/**
+ * The container's own healthcheck reaches /health over loopback, which nothing outside the
+ * container's network namespace can, and `up --wait` blocks on it. Counting it can only ever
+ * turn a healthy deploy into a failed one, so it is exempt. Scoped to /health alone: every
+ * other bucket exists to hold a real client, and loopback is not one.
+ */
+const isContainerHealthProbe = (context: ExecutionContext): boolean =>
+  isHealthRequest(context) && isLoopbackRequest(httpRequest(context))
+
 const isVersionRequest = (context: ExecutionContext): boolean =>
   httpRequest(context)?.path === VERSION_PATH
 
@@ -117,7 +128,10 @@ export const THROTTLER_OPTIONS: ThrottlerModuleOptions = {
         isTelemetryRequest(context) ||
         isEventsRequest(context),
     },
-    { ...HEALTH_THROTTLE, skipIf: context => !isHealthRequest(context) },
+    {
+      ...HEALTH_THROTTLE,
+      skipIf: context => !isHealthRequest(context) || isContainerHealthProbe(context),
+    },
     { ...VERSION_THROTTLE, skipIf: context => !isVersionRequest(context) },
     { ...METRICS_THROTTLE, skipIf: context => !isMetricsRequest(context) },
     { ...TELEMETRY_THROTTLE, skipIf: context => !isTelemetryRequest(context) },

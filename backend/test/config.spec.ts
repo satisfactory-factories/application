@@ -41,14 +41,14 @@ describe('validateEnv', () => {
 describe('throttler configuration', () => {
   const options = THROTTLER_OPTIONS as Extract<typeof THROTTLER_OPTIONS, { throttlers: unknown }>
 
-  const context = (method: string, path: string): ExecutionContext => ({
+  const context = (method: string, path: string, remoteAddress?: string): ExecutionContext => ({
     getType: () => 'http',
-    switchToHttp: () => ({ getRequest: () => ({ method, path }) }),
+    switchToHttp: () => ({ getRequest: () => ({ method, path, socket: { remoteAddress } }) }),
   }) as unknown as ExecutionContext
 
-  const applies = (name: string, method: string, path: string): boolean => {
+  const applies = (name: string, method: string, path: string, remoteAddress?: string): boolean => {
     const throttler = options.throttlers.find(entry => entry.name === name)
-    return throttler?.skipIf?.(context(method, path)) === false
+    return throttler?.skipIf?.(context(method, path, remoteAddress)) === false
   }
 
   it('keeps the express-rate-limit buckets: 200 per 5 minutes, 10 on health, 30 on version', () => {
@@ -125,5 +125,26 @@ describe('throttler configuration', () => {
     expect(applies('events', 'POST', '/events')).toBe(true)
     expect(applies('events', 'POST', '/telemetry')).toBe(false)
     expect(applies('global', 'POST', '/events')).toBe(false)
+  })
+
+  // The container's own healthcheck reaches /health over loopback and `up --wait` blocks on it,
+  // so counting it can only ever turn a healthy deploy into a failed one.
+  it('exempts the loopback healthcheck from the health bucket, and nothing else', () => {
+    expect(applies('health', 'GET', '/health', '203.0.113.5')).toBe(true)
+    expect(applies('health', 'GET', '/health', '::ffff:127.0.0.1')).toBe(false)
+    expect(applies('health', 'GET', '/health', '127.0.0.1')).toBe(false)
+    expect(applies('health', 'GET', '/health', '::1')).toBe(false)
+    // A request with no readable peer is throttled rather than waved through.
+    expect(applies('health', 'GET', '/health')).toBe(true)
+    // Loopback buys no exemption anywhere else.
+    expect(applies('share', 'POST', '/share', '127.0.0.1')).toBe(true)
+    expect(applies('login', 'POST', '/login', '127.0.0.1')).toBe(true)
+    expect(applies('version', 'GET', '/version', '127.0.0.1')).toBe(true)
+    expect(applies('metrics', 'GET', '/metrics', '127.0.0.1')).toBe(true)
+    expect(applies('telemetry', 'POST', '/telemetry', '127.0.0.1')).toBe(true)
+    expect(applies('events', 'POST', '/events', '127.0.0.1')).toBe(true)
+    expect(applies('roomAuth', 'POST', '/rooms/abc-123/auth', '127.0.0.1')).toBe(true)
+    expect(applies('slugLookup', 'GET', '/rooms/by-slug/iron-plate-hub', '127.0.0.1')).toBe(true)
+    expect(applies('global', 'POST', '/share', '127.0.0.1')).toBe(true)
   })
 })
