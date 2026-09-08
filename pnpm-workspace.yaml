@@ -13,7 +13,7 @@ catalog:
   eslint: 10.8.1
   eslint-import-resolver-typescript: 4.4.5
   eslint-plugin-import-x: 4.17.1
-  typescript-eslint: 8.67.0
+  typescript-eslint: 8.68.0
   zod: 4.4.3
   '@playwright/test': 1.62.1
   # Both the backend suite and web's Playwright harness boot one; a version skew
@@ -57,4 +57,4 @@ allowBuilds:
 # Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
 # that governs what Renovate proposes, not what an override pins.
 overrides:
-  js-yaml@^3.13.1: 5.3.0
+  js-yaml@^3.13.1: 5.4.0

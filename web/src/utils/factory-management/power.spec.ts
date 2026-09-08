@@ -9,7 +9,13 @@ import {
 import { calculateFactories, calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
-import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import {
+  addPowerProducerToFactory,
+  fixProducerFuel,
+  fuelFixTarget,
+  producerFuelPart,
+  shouldShowFuelFix,
+} from '@/utils/factory-management/power'
 import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 import { calculateTotalPower } from '@/utils/statistics'
@@ -841,6 +847,170 @@ describe('power', () => {
         expect(factory.power.boostMw).toBe(400)
         expect(fuelFactory.power.boostPercent).toBe(0)
         expect(fuelFactory.power.boostMw).toBe(0)
+      })
+    })
+  })
+
+  // #### A generator burning fuel the factory itself supplies: the planner knows the supply and
+  // every other claim on it, so the fuel rate it may carry is arithmetic rather than guesswork.
+  describe('fuel supply matching', () => {
+    let producer: FactoryPowerProducer
+
+    // 1280/min Liquid Fuel made on site, all of it fed to Fuel Generators.
+    const buildFuelPlant = () => {
+      factory = newFactory('Oil MegaFac')
+      addProductToFactory(factory, { id: 'LiquidFuel', amount: 1280, recipe: 'LiquidFuel' })
+      addPowerProducerToFactory(factory, {
+        building: 'generatorfuel',
+        fuelAmount: 1280,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Fuel,
+      })
+      calculateFactories([factory], gameData)
+      producer = factory.powerProducers[0]
+    }
+
+    beforeEach(() => {
+      buildFuelPlant()
+    })
+
+    it('should offer nothing when the fuel exactly matches the supply', () => {
+      expect(factory.parts.LiquidFuel.amountRemaining).toBe(0)
+      expect(shouldShowFuelFix(producer, factory, gameData)).toBe(null)
+    })
+
+    it('should offer nothing when the factory supplies none of the fuel', () => {
+      const importer = newFactory('Generators only')
+      addPowerProducerToFactory(importer, {
+        building: 'generatorfuel',
+        fuelAmount: 1280,
+        recipe: 'GeneratorFuel_LiquidFuel',
+        updated: FactoryPowerChangeType.Fuel,
+      })
+      calculateFactories([importer], gameData)
+
+      expect(importer.parts.LiquidFuel.amountSupplied).toBe(0)
+      expect(shouldShowFuelFix(importer.powerProducers[0], importer, gameData)).toBe(null)
+      expect(fuelFixTarget(importer.powerProducers[0], importer, gameData)).toBe(null)
+    })
+
+    describe('another recipe takes a share of the same fuel', () => {
+      beforeEach(() => {
+        // Recycled Rubber eats 120/min of the same Liquid Fuel, leaving the generators short.
+        addProductToFactory(factory, { id: 'Rubber', amount: 240, recipe: 'Alternate_RecycledRubber' })
+        calculateFactories([factory], gameData)
+      })
+
+      it('should ask to trim down to what the other recipe leaves over', () => {
+        expect(factory.parts.LiquidFuel.amountRequiredProduction).toBe(120)
+        expect(factory.parts.LiquidFuel.amountRemaining).toBe(-120)
+
+        expect(shouldShowFuelFix(producer, factory, gameData)).toBe('trim')
+        expect(fuelFixTarget(producer, factory, gameData)).toBe(1160) // 1280 supplied - 120 to rubber
+      })
+
+      it('should leave the part satisfied once trimmed', () => {
+        fixProducerFuel(producer, factory, gameData)
+        calculateFactories([factory], gameData)
+
+        expect(producer.ingredients[0].perMin).toBe(1160)
+        expect(factory.parts.LiquidFuel.amountRemaining).toBe(0)
+        expect(factory.parts.LiquidFuel.satisfied).toBe(true)
+        // The power follows the fuel: 1160/min at 12.5 MW an item.
+        expect(producer.powerProduced).toBe(14500)
+        // ...and there is nothing left to offer.
+        expect(shouldShowFuelFix(producer, factory, gameData)).toBe(null)
+      })
+    })
+
+    describe('spare fuel', () => {
+      beforeEach(() => {
+        factory.products[0].amount = 1500
+        calculateFactories([factory], gameData)
+      })
+
+      it('should ask to expand up to the spare fuel', () => {
+        expect(factory.parts.LiquidFuel.amountRemaining).toBe(220)
+
+        expect(shouldShowFuelFix(producer, factory, gameData)).toBe('expand')
+        expect(fuelFixTarget(producer, factory, gameData)).toBe(1500)
+      })
+
+      it('should burn the lot once expanded', () => {
+        fixProducerFuel(producer, factory, gameData)
+        calculateFactories([factory], gameData)
+
+        expect(producer.ingredients[0].perMin).toBe(1500)
+        expect(factory.parts.LiquidFuel.amountRemaining).toBe(0)
+        expect(shouldShowFuelFix(producer, factory, gameData)).toBe(null)
+      })
+
+      it('should ignore an export request being met from the same surplus', () => {
+        const consumer = newFactory('Turbofuel')
+        calculateFactories([factory, consumer], gameData)
+        addInputToFactory(consumer, { factoryId: factory.id, outputPart: 'LiquidFuel', amount: 200 })
+        calculateFactories([factory, consumer], gameData)
+
+        // Only the 20/min the export does not claim is this generator's to take.
+        expect(fuelFixTarget(producer, factory, gameData)).toBe(1300)
+      })
+    })
+
+    // A surplus the sink is mopping up is still spare fuel — burning it beats sinking it, and the
+    // sink's own count shrinks by itself on the next calculation.
+    it('should still offer the surplus when a sink is placed on the fuel', () => {
+      factory = newFactory('Coal power')
+      addProductToFactory(factory, { id: 'Coal', amount: 500, recipe: 'Extract_Coal' })
+      addPowerProducerToFactory(factory, {
+        building: 'generatorcoal',
+        fuelAmount: 300,
+        recipe: 'GeneratorCoal_Coal',
+        updated: FactoryPowerChangeType.Fuel,
+      })
+      factory.partDisposal = { Coal: { sinks: 1, depots: 0 } }
+      calculateFactories([factory], gameData)
+      producer = factory.powerProducers[0]
+
+      expect(factory.parts.Coal.amountRequiredSink).toBe(200) // Sunk, so nothing "remains"
+      expect(factory.parts.Coal.amountRemaining).toBe(0)
+
+      expect(shouldShowFuelFix(producer, factory, gameData)).toBe('expand')
+      expect(fuelFixTarget(producer, factory, gameData)).toBe(500)
+    })
+
+    describe('generators with no fuel rate to set', () => {
+      it('should offer nothing for a geothermal generator', () => {
+        const geo = newFactory('Geothermal')
+        addPowerProducerToFactory(geo, {
+          building: 'geothermalgenerator',
+          buildingAmount: 2,
+          recipe: 'GeneratorGeoThermal_Pure',
+          updated: FactoryPowerChangeType.Building,
+        })
+        calculateFactories([geo], gameData)
+
+        expect(producerFuelPart(geo.powerProducers[0], gameData)).toBe(null)
+        expect(shouldShowFuelFix(geo.powerProducers[0], geo, gameData)).toBe(null)
+      })
+
+      // The augmenter has ingredients once its groups are fed matrixes, but the rate comes from
+      // the building count — writing a fuel figure here would be overwritten on the next pass.
+      it('should offer nothing for an alien power augmenter supplying matrixes', () => {
+        const augmented = newFactory('Augmenters')
+        addProductToFactory(augmented, { id: 'AlienPowerFuel', amount: 30, recipe: 'AlienPowerFuel' })
+        addPowerProducerToFactory(augmented, {
+          building: 'alienpoweraugmenter',
+          buildingAmount: 2,
+          recipe: 'AlienPowerAugmenter',
+          updated: FactoryPowerChangeType.Building,
+        })
+        calculateFactories([augmented], gameData)
+        augmented.powerProducers[0].buildingGroups[0].supplyMatrixes = true
+        calculateFactories([augmented], gameData)
+
+        expect(augmented.powerProducers[0].ingredients[0].part).toBe('AlienPowerFuel')
+        expect(producerFuelPart(augmented.powerProducers[0], gameData)).toBe(null)
+        expect(shouldShowFuelFix(augmented.powerProducers[0], augmented, gameData)).toBe(null)
       })
     })
   })

@@ -31,7 +31,7 @@
             <td class="text-center">
               <v-btn
                 class="mr-2"
-                :color="template.isDebug ? 'secondary' : 'green'"
+                :color="template.isDebug ? 'primary' : 'green'"
                 :prepend-icon="template.isDebug ? 'fas fa-bug' : 'fas fa-file'"
                 @click="loadTemplate(template)"
               >
@@ -50,6 +50,7 @@
   import { create503PreMiningPlan } from '@/utils/factory-setups/503-pre-mining-plan'
   import { createMiningDemoPlan } from '@/utils/factory-setups/mining-demo-plan'
   import { create268Scenraio } from '@/utils/factory-setups/268-power-gen-only-import'
+  import { createFuelSupplyMatchingScenario } from '@/utils/factory-setups/fuel-supply-matching'
   import { useAppStore } from '@/stores/app-store'
   import { config } from '@/config/config'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
@@ -237,6 +238,13 @@
       show: devToolsEnabled(),
       isDebug: true,
       run: () => runOfflineConflictDemo(),
+    },
+    {
+      name: '#656: Generator fuel draw',
+      description: 'The Oil MegaFac\'s fuel problem, shrunk to two self-contained factories. Each makes 640/min Liquid Fuel from its own crude, and Recycled Plastic takes 240 of it, so 400 is what the generators may burn. They differ only in what the generators are set to: "over-drawing" is on 640 and should offer Trim to supply (400), taking it 8,000 → 5,000 MW; "spare fuel" is on 240 and should offer Expand to supply (400), taking it 3,000 → 5,000 MW. Nothing is imported and every part but the Plastic the factory exists to make balances exactly, so the fuel is the only thing either has left to settle. The over-drawing one also offers Satisfy (880) on its Liquid Fuel product — deliberately: making more fuel and burning less are both real answers to the same shortage, and the two buttons are the two ends of it.',
+      data: scenarioData(createFuelSupplyMatchingScenario().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
     },
     {
       name: '#375: Byproduct products handling',

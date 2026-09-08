@@ -14,6 +14,7 @@ import {
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
+import { addProductToFactory } from '@/utils/factory-management/products'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 import { getBuildingDisplayName } from '@/utils/factory-management/common'
 
@@ -331,5 +332,78 @@ describe('Component: PowerProducer (augmenter building count)', () => {
     it('should not claim anything about the power grid', () => {
       expect(augmenterSubject.text()).not.toContain('one power grid')
     })
+  })
+})
+
+// The generator burns fuel this factory makes, so the planner can say what rate it may carry.
+describe('Component: PowerProducer (fuel supply buttons)', () => {
+  const fuelButton = (wrapper: VueWrapper<any>) =>
+    wrapper.findAll('button').find(button => button.text().includes('to supply'))
+
+  // 1280/min Liquid Fuel on site, all of it fed to Fuel Generators.
+  const fuelPlant = () => {
+    const plant = newFactory('Oil MegaFac')
+    addProductToFactory(plant, { id: 'LiquidFuel', amount: 1280, recipe: 'LiquidFuel' })
+    addPowerProducerToFactory(plant, {
+      building: 'generatorfuel',
+      fuelAmount: 1280,
+      recipe: 'GeneratorFuel_LiquidFuel',
+      updated: FactoryPowerChangeType.Fuel,
+    })
+    calculateFactory(plant, [plant], gameData)
+    return plant
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('should offer nothing while the fuel matches the supply', () => {
+    expect(fuelButton(mountSubject(fuelPlant()))).toBeUndefined()
+  })
+
+  it('should offer a trim naming the figure when another recipe takes a share of the fuel', () => {
+    const plant = fuelPlant()
+    // Recycled Rubber eats 120/min of the same Liquid Fuel, leaving the generators short.
+    addProductToFactory(plant, { id: 'Rubber', amount: 240, recipe: 'Alternate_RecycledRubber' })
+    calculateFactory(plant, [plant], gameData)
+
+    expect(fuelButton(mountSubject(plant))?.text()).toBe('Trim to supply (1160)')
+  })
+
+  it('should offer an expand naming the figure when there is spare fuel', () => {
+    const plant = fuelPlant()
+    plant.products[0].amount = 1500
+    calculateFactory(plant, [plant], gameData)
+
+    expect(fuelButton(mountSubject(plant))?.text()).toBe('Expand to supply (1500)')
+  })
+
+  it('should set the fuel rate and recalculate when pressed', async () => {
+    const plant = fuelPlant()
+    addProductToFactory(plant, { id: 'Rubber', amount: 240, recipe: 'Alternate_RecycledRubber' })
+    calculateFactory(plant, [plant], gameData)
+
+    const wrapper = mountSubject(plant)
+    await fuelButton(wrapper)?.trigger('click')
+    await nextTick()
+
+    expect(plant.powerProducers[0].fuelAmount).toBe(1160)
+    expect(plant.parts.LiquidFuel.satisfied).toBe(true)
+    // With the part balanced there is nothing left to offer.
+    expect(fuelButton(mountSubject(plant))).toBeUndefined()
+  })
+
+  it('should offer nothing when the factory supplies none of the fuel', () => {
+    const plant = newFactory('Generators only')
+    addPowerProducerToFactory(plant, {
+      building: 'generatorfuel',
+      fuelAmount: 1280,
+      recipe: 'GeneratorFuel_LiquidFuel',
+      updated: FactoryPowerChangeType.Fuel,
+    })
+    calculateFactory(plant, [plant], gameData)
+
+    expect(fuelButton(mountSubject(plant))).toBeUndefined()
   })
 })
