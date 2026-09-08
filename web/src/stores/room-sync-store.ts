@@ -499,11 +499,16 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // Only the records this instance still holds. A touched id with no record here is one
     // it deleted, which `declaredRemovals` is the statement of.
     const records: Record<string, string> = {}
+    // The value behind each touched scalar/groups field, not just the fact it was touched
+    // — see the `fields` doc on JournalRoom for why.
+    const fields: Record<string, string> = {}
     const tab = getTab(roomId)
     if (tab) {
       for (const factory of tab.factories) {
         if (engine.touchedFactories.has(factory.id)) records[factory.id] = stableStringify(factory)
       }
+      const content = contentOfTab(tab)
+      for (const field of engine.touchedFields) fields[field] = JSON.stringify(content[field] ?? null)
     }
 
     return {
@@ -514,6 +519,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       declaredRemovals: [...engine.declaredRemovals],
       baselinePrints,
       records,
+      fields,
       conflict: outstandingConflict(roomId),
     }
   }
@@ -1711,6 +1717,26 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       const mounted = byId.get(id)
       if (!mounted) continue
       tab.factories.splice(tab.factories.indexOf(mounted), 1)
+      changed = true
+    }
+
+    // Same rescue for a touched scalar or `groups`: the journal has the value, `tab` only
+    // has whatever `factoryTabs` currently holds, which a sibling tab can have overwritten
+    // since this instance last wrote it. `content` starts from what is mounted so an
+    // untouched field is written back unchanged.
+    const content = contentOfTab(tab)
+    let fieldsChanged = false
+    for (const field of TAB_FIELDS) {
+      if (!engine.touchedFields.has(field)) continue
+      const json = journal.fields[field]
+      if (json === undefined) continue
+      const value = JSON.parse(json) as RoomContent[typeof field]
+      if (stableStringify(content[field] ?? null) === stableStringify(value ?? null)) continue
+      Object.assign(content, { [field]: value ?? undefined })
+      fieldsChanged = true
+    }
+    if (fieldsChanged) {
+      writeContentToTab(tab, content)
       changed = true
     }
 

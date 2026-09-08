@@ -3286,6 +3286,24 @@ describe('room-sync-store', () => {
         expect(store.hasLocalEdits(ROOM)).toBe(true)
       })
 
+      // The journal used to remember that powerTarget was touched without remembering what it
+      // was touched to, so a sibling's overwrite of the shared factoryTabs key left this device
+      // with no value of its own to restore and it silently adopted the sibling's.
+      it('cannot take away a tab-scalar edit this browser tab made offline', () => {
+        const tab = syncAt(producing, 4)
+        store.enterOffline()
+        tab.powerTarget = 111
+        eventBus.emit('tabEdited', 'powerTarget')
+        store.persistJournal()
+
+        siblingPersists(producing, 4)
+
+        restart()
+        store.trackRoom(ROOM)
+
+        expect(appStore.getTab(ROOM)?.powerTarget).toBe(111)
+      })
+
       it('recovers it in a fresh browser tab too, not only on a reload of the same one', () => {
         const tab = syncAt(producing, 4)
         store.enterOffline()

@@ -44,6 +44,15 @@ export interface JournalRoom {
    * so the rebase would push the sibling's stale copy back at the room as ours.
    */
   records: Record<string, string>
+  /**
+   * The same rescue as `records`, for a touched tab-scalar or `groups`: each entry is
+   * `JSON.stringify` of the field's current value, keyed by field name. `userTouchedFields`
+   * alone only says a field was touched, not what it was set to — without this a sibling
+   * tab's overwrite of the shared `factoryTabs` key leaves the intent behind with no value
+   * of its own, and the rebase publishes whatever the sibling last wrote as this instance's
+   * edit.
+   */
+  fields: Record<string, string>
   conflict?: JournalConflict
 }
 
@@ -89,6 +98,7 @@ const asRoom = (value: unknown): JournalRoom | null => {
     declaredRemovals: asNumbers(candidate.declaredRemovals),
     baselinePrints: asStringMap(candidate.baselinePrints),
     records: asStringMap(candidate.records),
+    fields: asStringMap(candidate.fields),
     conflict: asConflict(candidate.conflict),
   }
 }
@@ -241,6 +251,7 @@ export const recoverJournalRoom = (roomId: string): JournalRoom | null => {
   const removals = new Set<number>()
   const baselinePrints: Record<string, string> = {}
   const records: Record<string, string> = {}
+  const fieldValues: Record<string, string> = {}
   let revision = 0
   let appVersion = PROTOCOL_VERSION
   let conflict: JournalConflict | undefined
@@ -252,6 +263,7 @@ export const recoverJournalRoom = (roomId: string): JournalRoom | null => {
     for (const factoryId of room.declaredRemovals) removals.add(factoryId)
     Object.assign(baselinePrints, room.baselinePrints)
     Object.assign(records, room.records)
+    Object.assign(fieldValues, room.fields)
     // The revision is about the shared mirror, so the furthest-along answer is the truthful
     // one: a slot left behind at an older revision has not seen what the newer one adopted.
     if (room.revision >= revision) {
@@ -269,6 +281,7 @@ export const recoverJournalRoom = (roomId: string): JournalRoom | null => {
     declaredRemovals: [...removals],
     baselinePrints,
     records,
+    fields: fieldValues,
     conflict,
   }
 }

@@ -27,6 +27,7 @@ const entry = (overrides: Partial<JournalRoom> = {}): JournalRoom => ({
   declaredRemovals: [],
   baselinePrints: {},
   records: {},
+  fields: {},
   ...overrides,
 })
 
