@@ -57,7 +57,7 @@ importers:
         version: 9.0.3
       mongoose:
         specifier: ^9.0.0
-        version: 9.9.3
+        version: 9.9.4
       random-word-slugs:
         specifier: ^0.1.7
         version: 0.1.7
@@ -3497,8 +3497,8 @@ packages:
       socks:
         optional: true
 
-  mongoose@9.9.3:
-    resolution: {integrity: sha512-9dQaKct05LNgVkunDzFPZsGGBhinobl3Qc5B5KYJkLNG5lBLgqESUEItl1EUIkVaCwZJGBgTuvJiFAjjIATCiw==}
+  mongoose@9.9.4:
+    resolution: {integrity: sha512-Gc7buf0ExrOZ3t8MD8tVzTek7Qr5d+tEwj4GRFmHCtTZvpaDb38EVsXgCkYacPL9ICAftgS+FGe+dQHLRLHhcw==}
     engines: {node: '>=20.19.0'}
 
   mpath@0.9.0:
@@ -8732,7 +8732,7 @@ snapshots:
       bson: 7.3.2
       mongodb-connection-string-url: 7.0.2
 
-  mongoose@9.9.3:
+  mongoose@9.9.4:
     dependencies:
       '@standard-schema/spec': 1.1.0
       kareem: 3.3.0
