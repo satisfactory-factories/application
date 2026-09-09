@@ -26,10 +26,15 @@
       data-testid="offline-switch"
       density="compact"
       hide-details
-      label="Offline mode"
       :model-value="roomSync.isOffline"
       @update:model-value="toggleOffline"
-    />
+    >
+      <!-- The same fa-plane the connection chip above wears for the offline state:
+           the switch that causes that state carries the icon it puts you in. -->
+      <template #label>
+        <span class="mr-2"><i class="fas fa-plane" /></span>Offline mode
+      </template>
+    </v-switch>
     <p class="text-body-2 mb-4 text-grey">
       Offline mode stops all contact with the server. Your edits are kept and sent when you
       switch it back off.
@@ -60,29 +65,34 @@
       >
         Every plan in your tab bar is already on the cloud.
       </p>
-      <div
+      <!-- The same card a cloud plan gets in CloudPlanRow, minus the body: a local plan
+           has no size or last-changed to report. One tab away from a list of cards, so
+           bare rows here would read as the unfinished half of the same panel. -->
+      <v-card
         v-for="tab in localTabs"
         :key="tab.id"
-        class="align-center d-flex ga-2 mb-2"
+        class="factory-card plan-card mb-2"
         data-testid="local-plan"
       >
-        <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
-        <v-tooltip location="top">
-          <template #activator="{ props: convertProps }">
-            <v-btn
-              color="green"
-              data-testid="convert-local-plan"
-              icon="fas fa-cloud-upload-alt"
-              :loading="convertingId === tab.id"
-              size="x-small"
-              variant="flat"
-              v-bind="convertProps"
-              @click="convert(tab.id)"
-            />
-          </template>
-          <span>Send this plan to the cloud</span>
-        </v-tooltip>
-      </div>
+        <div class="header align-center d-flex ga-2">
+          <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
+          <v-tooltip location="top">
+            <template #activator="{ props: convertProps }">
+              <v-btn
+                color="green"
+                data-testid="convert-local-plan"
+                icon="fas fa-cloud-upload-alt"
+                :loading="convertingId === tab.id"
+                size="x-small"
+                variant="flat"
+                v-bind="convertProps"
+                @click="convert(tab.id)"
+              />
+            </template>
+            <span>Send this plan to the cloud</span>
+          </v-tooltip>
+        </div>
+      </v-card>
       <p v-if="localTabs.length > 0" class="text-body-2 mt-1 text-grey">
         A local plan lives in this browser only. Send it to the cloud and it follows your
         account to every device you sign in on.
@@ -91,7 +101,9 @@
 
     <div v-else data-testid="cloud-pane">
       <div data-testid="my-plans">
-        <p class="text-body-2 font-weight-bold mb-2">My Plans</p>
+        <!-- A heading has to outrank the plan names under it. At text-body-2 it was
+             SMALLER than they are, and read as one more plan in the list. -->
+        <p class="text-h6 mb-2 plans-heading" data-testid="my-plans-heading">My Plans</p>
         <p
           v-if="ownedRooms.length === 0"
           class="text-body-2 text-grey mb-3"
@@ -113,7 +125,7 @@
       </div>
 
       <div v-if="joinedRooms.length > 0" class="mt-3" data-testid="joined-plans">
-        <p class="text-body-2 font-weight-bold mb-2">Joined Plans</p>
+        <p class="text-h6 mb-2 plans-heading" data-testid="joined-plans-heading">Joined Plans</p>
         <cloud-plan-row
           v-for="room in joinedRooms"
           :key="room.roomId"
@@ -330,3 +342,18 @@
     roomsStore.signOut()
   }
 </script>
+
+<style lang="scss" scoped>
+  // `text-h6` carries its own `font-weight: 400 !important`, which beats the
+  // `font-weight-bold` utility — a class that reads as bold and silently is not. The
+  // weight is set here instead, where it actually lands.
+  .plans-heading {
+    font-weight: 700 !important;
+  }
+
+  // Matches CloudPlanRow's card: `.factory-card .header` in global.scss is padded for a
+  // full-width planner card (12px 16px 0), which is too generous for a ~370px tray.
+  .plan-card .header {
+    padding: 6px 10px !important;
+  }
+</style>

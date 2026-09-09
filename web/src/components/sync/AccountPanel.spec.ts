@@ -163,6 +163,16 @@ describe('AccountPanel', () => {
   })
 
   describe('offline switch', () => {
+    // The chip above it already draws the offline state as a plane; the switch that
+    // causes that state says so with the same icon rather than with words alone.
+    it('wears the same aeroplane the offline connection chip does', () => {
+      const wrapper = render()
+      const label = at(wrapper, 'offline-switch').find('label')
+
+      expect(label.text()).toContain('Offline mode')
+      expect(label.find('i.fa-plane').exists()).toBe(true)
+    })
+
     it('goes silent when switched on', async () => {
       const wrapper = render()
 
@@ -220,6 +230,17 @@ describe('AccountPanel', () => {
 
       expect(at(wrapper, 'no-local-plans').exists()).toBe(true)
       expect(at(wrapper, 'local-plan').exists()).toBe(false)
+    })
+
+    // Both tabs are seen together, so a local plan gets the same card a cloud plan does —
+    // header only, as a local plan has no size or last-changed to report.
+    it('draws each local plan as a factory card', () => {
+      const wrapper = render({}, mixedTabs())
+
+      const card = at(wrapper, 'local-plan')
+      expect(card.classes()).toContain('factory-card')
+      expect(card.find('.header').text()).toContain('My Browser Plan')
+      expect(card.find('.header [data-testid="convert-local-plan"]').exists()).toBe(true)
     })
 
     it('converts a local tab through the adoption path', async () => {
@@ -302,7 +323,7 @@ describe('AccountPanel', () => {
       expect(counts).toEqual(['12', '1'])
     })
 
-    it('gives a joined plan the same two-line row', async () => {
+    it('gives a joined plan the same card', async () => {
       const wrapper = render({
         rooms: { entries: { 'room-2': entry({ roomId: 'room-2', role: 'member', factoryCount: 3 }) } },
       })
@@ -312,6 +333,55 @@ describe('AccountPanel', () => {
       expect(row.find('[data-testid="plan-factory-count"]').text()).toBe('3')
       expect(row.find('[data-testid="plan-last-changed"]').exists()).toBe(true)
       expect(row.find('[data-testid="show-plan"]').exists()).toBe(true)
+    })
+
+    // ===== Layout =====
+
+    // Each plan is one of the planner's factory cards — a `.header` naming it over a
+    // body of readouts — so the panel reads as part of the same app. Two bare stacked
+    // lines per plan ran the list together.
+    it('draws each plan as a factory card with a header', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+      await openCloud(wrapper)
+
+      const card = at(wrapper, 'my-plan')
+      expect(card.classes()).toContain('factory-card')
+      expect(card.find('.header').text()).toContain('Iron Plates')
+      // The name and its Show button share the header; the readouts sit below it.
+      expect(card.find('.header [data-testid="show-plan"]').exists()).toBe(true)
+      expect(card.find('.header [data-testid="plan-factory-count"]').exists()).toBe(false)
+    })
+
+    // Tonal grey on this dark tray read as a disabled control rather than as a count.
+    // The `factory` token is the one the rest of the app gives a factory reference.
+    it('colours the factory count with the factory token', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry({ factoryCount: 4 }) } } })
+      await openCloud(wrapper)
+
+      // `.sf-chip.factory` in global.scss carries `!important` colour and border, so it
+      // wins over the chip variant underneath it — the class list is the whole contract.
+      const count = at(wrapper, 'plan-factory-count')
+      expect(count.classes()).toEqual(expect.arrayContaining(['sf-chip', 'factory', 'x-small']))
+      expect(count.text()).toBe('4')
+    })
+
+    // At text-body-2 the headings were SMALLER than the plan names beneath them, so
+    // each one read as one more plan rather than as the heading over the list.
+    it('sizes both group headings above the plan names', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', role: 'member', order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      for (const testId of ['my-plans-heading', 'joined-plans-heading']) {
+        expect(at(wrapper, testId).classes()).toContain('text-h6')
+        expect(at(wrapper, testId).classes()).not.toContain('text-body-2')
+      }
     })
   })
 
