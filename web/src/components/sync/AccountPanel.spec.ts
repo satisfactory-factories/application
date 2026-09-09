@@ -407,6 +407,24 @@ describe('AccountPanel', () => {
         expect(at(wrapper, testId).classes()).not.toContain('text-body-2')
       }
     })
+
+    // The tab bar names a tab's kind with an icon (TabNavigation.vue: a cloud for a
+    // synced tab, a group of people for a collaborative one). The headings over the
+    // two lists say the same thing with the same glyphs, rather than inventing a pair.
+    it('heads each list with the tab bar\'s icon for that kind of plan', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', role: 'member', order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'my-plans-heading').find('i.fa-cloud').exists()).toBe(true)
+      expect(at(wrapper, 'joined-plans-heading').find('i.fa-users').exists()).toBe(true)
+    })
   })
 
   describe('show and hide', () => {

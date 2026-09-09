@@ -22,6 +22,7 @@
     </v-chip>
 
     <v-switch
+      class="offline-switch"
       color="orange"
       data-testid="offline-switch"
       density="compact"
@@ -102,8 +103,15 @@
     <div v-else data-testid="cloud-pane">
       <div data-testid="my-plans">
         <!-- A heading has to outrank the plan names under it. At text-body-2 it was
-             SMALLER than they are, and read as one more plan in the list. -->
-        <p class="text-h6 mb-2 plans-heading" data-testid="my-plans-heading">My Plans</p>
+             SMALLER than they are, and read as one more plan in the list.
+
+             The icons are the tab bar's own vocabulary for what a tab is, from
+             TabNavigation.vue: a cloud for a synced tab, a group of people for a
+             collaborative one. Fixed-width so both headings start their text at the
+             same x despite the two glyphs being different widths. -->
+        <p class="text-h6 mb-2 plans-heading" data-testid="my-plans-heading">
+          <i class="fas fa-cloud fa-fw mr-2" />My Plans
+        </p>
         <p
           v-if="ownedRooms.length === 0"
           class="text-body-2 text-grey mb-3"
@@ -125,7 +133,9 @@
       </div>
 
       <div v-if="joinedRooms.length > 0" class="mt-3" data-testid="joined-plans">
-        <p class="text-h6 mb-2 plans-heading" data-testid="joined-plans-heading">Joined Plans</p>
+        <p class="text-h6 mb-2 plans-heading" data-testid="joined-plans-heading">
+          <i class="fas fa-users fa-fw mr-2" />Joined Plans
+        </p>
         <cloud-plan-row
           v-for="room in joinedRooms"
           :key="room.roomId"
@@ -349,6 +359,15 @@
   // weight is set here instead, where it actually lands.
   .plans-heading {
     font-weight: 700 !important;
+  }
+
+  // Vuetify draws the switch's thumb 6px to the LEFT of the control's own box (and the
+  // track 4px), so the thumb is free to overhang as it slides. Everything else in this
+  // tray — the username, the connection chip, the tabs, the body copy — starts at one x,
+  // and the switch alone poked out of that column. Nudged back by the thumb's overhang
+  // rather than the track's: the thumb is the high-contrast edge the eye lines up on.
+  .offline-switch {
+    margin-left: 6px;
   }
 
   // Matches CloudPlanRow's card: `.factory-card .header` in global.scss is padded for a
