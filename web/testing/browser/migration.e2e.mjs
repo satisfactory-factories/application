@@ -1,6 +1,12 @@
-// The pre-v0.6 migration, end to end and in a real browser: a returning user with a plan built
-// before extraction existed is met by the v0.6 deck, runs the wizard from it, and comes back to
-// the deck with a plan that is actually fixed. Run the dev server first, then:
+// STALE AS OF v0.7 — this harness drives behaviour that release removed, and every assertion
+// below that names the deck now fails. The v0.6 deck took the raw-resources warning over while
+// the two shipped together; v0.7 is the current release, so the v0.6 deck no longer auto-shows,
+// no longer carries the "Action needed" banner and no longer locks. The warning is back with
+// RawMigrationPrompt.vue, which is what this should be repointed at.
+//
+// What it was written for: the pre-v0.6 migration, end to end and in a real browser — a returning
+// user with a plan built before extraction existed is met by the v0.6 deck, runs the wizard from
+// it, and comes back to the deck with a plan that is actually fixed. Run the dev server first:
 //   node testing/browser/migration.e2e.mjs
 import puppeteer from 'puppeteer-core'
 
