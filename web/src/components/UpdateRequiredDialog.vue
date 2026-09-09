@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { onBeforeUnmount, ref } from 'vue'
   import eventBus from '@/utils/eventBus'
   import { config } from '@/config/config'
 
@@ -42,8 +42,28 @@
     window.location.reload()
   }
 
-  eventBus.on('clientOutdated', ({ minimumVersion: minimum }) => {
+  // Two clients for one fact. This one reads the `X-Planner-Client-Outdated` header off a raw
+  // fetch; VersionPrompt reads the 426 body and the socket's 4426 close, which is the path
+  // every call through `api/client.ts` takes. Where both could fire, the banner wins placement:
+  // it is the one the sync engine's own state drives, and a modal over it would hide it.
+  const gated = ref(false)
+
+  const announce = ({ minimumVersion: minimum }: { minimumVersion: string }) => {
+    if (gated.value) return
     minimumVersion.value = minimum
     isOpen.value = true
+  }
+
+  const standDown = () => {
+    gated.value = true
+    isOpen.value = false
+  }
+
+  eventBus.on('clientOutdated', announce)
+  eventBus.on('versionMismatch', standDown)
+
+  onBeforeUnmount(() => {
+    eventBus.off('clientOutdated', announce)
+    eventBus.off('versionMismatch', standDown)
   })
 </script>

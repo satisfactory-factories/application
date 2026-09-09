@@ -1,9 +1,9 @@
+import { emptyFactoryPower } from 'common'
 import {
   BuildingRequirement,
   Factory,
   FactoryDependency,
   FactoryItem,
-  FactoryPower,
   FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
@@ -28,6 +28,7 @@ import { calculateCustomBuildings } from '@/utils/factory-management/custom-buil
 import { calculateBuildingMaterialCosts } from '@/utils/factory-management/building-costs'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
 import { applyDiff } from '@/utils/factory-management/commit'
+import { nextRepairedId } from '@/utils/factory-management/common'
 import { toRaw } from 'vue'
 
 export const findFac = (factoryId: string | number, factories: Factory[]): Factory => {
@@ -82,6 +83,25 @@ export const generateFactoryId = (factories: Factory[] = []): number => {
   }
 }
 
+/**
+ * The id a load-time repair gives a factory whose id collides with another's.
+ *
+ * `generateFactoryId` is right for a factory the user adds: one client mints it and the plan
+ * carries it everywhere. A repair is the opposite — every client that opens the malformed plan
+ * runs it — so a random id there meant two clients disagreed about a plan nobody had edited,
+ * and the reassignment then read as a local add to the sync intent layer.
+ *
+ * Derived from the plan instead: the colliding id, the name, and where the collision sits, all
+ * of which read the same wherever the plan is opened. Repaired ids are minted above
+ * REPAIRED_ID_OFFSET so they cannot land on one already saved.
+ */
+export const repairedFactoryId = (factories: Factory[], factory: Factory, index: number): number => {
+  const taken = new Set(factories.map(candidate => candidate.id))
+  const identity = `${factory.id ?? ''}|${factory.name ?? ''}|${index}`
+
+  return nextRepairedId(identity, id => taken.has(id), taken.size)
+}
+
 export const newFactory = (name = 'A new factory', order?: number, id?: number): Factory => {
   return {
     id: id ?? generateFactoryId(),
@@ -102,7 +122,9 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     exportCalculator: {},
     partDisposal: {},
     rawResources: {},
-    power: {} as FactoryPower,
+    // Zeroed rather than `{}`: nothing recalculates on add, and an empty power object
+    // is not a valid factory on the wire, so the tab's first sync op was refused.
+    power: emptyFactoryPower(),
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
     hidden: false,
@@ -136,6 +158,17 @@ export interface CalculationModes {
   // Internal: set when calculateFactory re-runs itself after the post-sync power pass
   // changed what the power producers consume, to prevent further recursion.
   powerResync?: boolean
+}
+
+// Whether a calculation is the user acting on this factory, or a recalculation derived
+// from something else (plan load, validation repair, an inbound sync op, a rebase).
+export type CalculationIntent = 'userEdit' | 'derived'
+
+export interface CalculationOptions extends CalculationModes {
+  // Sync overlays exactly the factories marked as user edits, so a derived run claiming
+  // one silently takes a collaborator's newer copy off the server. Defaults to 'derived':
+  // a lost local edit is visible and can be redone, a stolen one is neither.
+  intent?: CalculationIntent
 }
 
 // What the factory's power producers consume, as a value comparable across passes.
@@ -385,8 +418,10 @@ export const calculateFactory = (
   factory: Factory,
   allFactories: Factory[],
   gameData: DataInterface,
-  modes: CalculationModes = {},
+  options: CalculationOptions = {},
 ): Factory => {
+  const { intent = 'derived', ...modes } = options
+
   if (inCloneRun()) {
     return calculateFactoryEngine(factory, allFactories, gameData, modes)
   }
@@ -417,6 +452,13 @@ export const calculateFactory = (
   // this call, so the diff may be empty even though the plan is dirty — always notify.
   if (!changed.includes(factory)) {
     eventBus.emit('factoryUpdated', factory)
+  }
+
+  // Intent has to be stated, not assumed: this entry point is also reached from load-time
+  // validation repair, where claiming the factory would make a rebase overlay it over a
+  // collaborator's newer copy.
+  if (intent === 'userEdit') {
+    eventBus.emit('factoryEdited', factory)
   }
 
   return factory

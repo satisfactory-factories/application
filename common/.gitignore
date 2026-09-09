@@ -1,0 +1,13 @@
+.DS_Store
+node_modules
+/dist
+
+# Test
+/coverage
+
+# Log files
+npm-debug.log*
+pnpm-debug.log*
+
+# Build artifacts
+package-lock.json

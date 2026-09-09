@@ -14,9 +14,9 @@ variable that tells a preview build which API to talk to.
 ## The chain
 
 ```
- merge to main  (paths: backend/**, pnpm-workspace.yaml, package.json, .dockerignore)
+ merge to main  (paths: backend/**, common/**, pnpm-workspace.yaml, package.json, .dockerignore)
    └─ Backend: Deploy  (.github/workflows/deploy-backend.yml)
-      ├─ Checks          → build-backend.yml    lint-check + tsc
+      ├─ Checks          → build-backend.yml    lint-check + build + vitest
       ├─ Publish image   → publish-backend.yml  docker build -f backend/Dockerfile .
       │                                         → maelstromeous/satisfactory-factories
       │                                            :backend-latest
@@ -53,23 +53,37 @@ still there as a break-glass path and says so at the top.
   `200` now means the script ran *and* exited `0`, with its output in the response
   body — it used to mean only that the request was accepted.
 - **The image builds from the repo root, not from `backend/`.**
-  `backend/package.json` pins `ts-node`, `typescript` and the eslint packages
-  with `catalog:`, and a catalog only resolves when pnpm can see
+  `backend/package.json` pins `typescript` and the eslint packages with
+  `catalog:`, and a catalog only resolves when pnpm can see
   `pnpm-workspace.yaml`. Building from `backend/` fails with
-  `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. `backend/Dockerfile` is written
-  for a root context; the root `.dockerignore` keeps `web/`, `parsing/` and the
-  three `node_modules` trees out of it.
-- **`ts-node` is a runtime dependency in all but name.** `pnpm start` is
-  `ts-node backend.ts`, so the image deliberately installs dev dependencies. Do
-  not add `--prod` to the install, and do not set `NODE_ENV=production` before
-  it, or the container will start and immediately die.
-- **The API is on 3001, and that number is the same in every layer** — `backend.ts`,
+  `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. The API also compiles against the
+  `common` workspace package, which the image builds first. `backend/Dockerfile`
+  is written for a root context; the root `.dockerignore` keeps `web/`,
+  `parsing/` and the three `node_modules` trees out of it.
+- **The image runs compiled output, not `ts-node`.** `pnpm build` runs `common`'s
+  build then `nest build`, and the container's command is `node dist/main.js`. Two
+  consequences: a type error now fails the build instead of surfacing as a runtime
+  crash on the box, and the container starts in milliseconds rather than
+  compiling first. Dev dependencies are still installed in the image because the
+  Nest CLI does the compiling, so `--prod` on the install still breaks it.
+- **The API is on 3001, and that number is the same in every layer** — `src/main.ts`,
   `EXPOSE`, both compose files, the host port, and the Cloudflare tunnel's origin.
   Keep it that way. `618e944` moved the app to 3010 without moving anything else,
   and the only reason production survived is that it was still running an image
   from before that commit; the first rebuild would have published a container
   nothing upstream could reach. `PORT` can override the app's port for local work
-  (web's vitest fixture also binds 3001), but nothing deployed sets it.
+  (web's vitest fixture also binds 3001, and `pnpm dev --port` sets it to move a
+  local run off the default pair), but nothing deployed sets it.
+- **The WebSocket gateway shares that same port and process.** Realtime sync is
+  served at `/ws` on 3001 — no second port, no second container, no extra compose
+  entry. What it does need is a tunnel that forwards the `Upgrade` header;
+  a tunnel configured for plain HTTP answers the upgrade with a `400` and every
+  synced tab silently falls back to nothing. Verify this once after the first v7
+  deploy.
+- **`GET /hello` no longer exists.** It duplicated `/health` and now 404s. Any
+  probe still pointing at it — including a stale healthcheck in the box's own
+  compose file — reports the container unhealthy, and `up -d --wait` turns that
+  into a failed deploy.
 - **Two files on the box are not version-controlled by any deploy.**
   `/root/docker/docker-compose.yml` and `/root/update.sh` are mirrored here as
   `backend/docker-compose-server.yml` and `backend/update.sh`, by hand. Changing
@@ -96,9 +110,10 @@ this script fails to write down is not recorded anywhere, by anything.
 
 **1. It took the API offline on every single call, including the no-ops.**
 `down backend && up backend -d` unconditionally destroys and recreates the
-container. Under `ts-node` the app compiles on boot, so that is roughly ten
-seconds of `502`s — paid on every deploy, including the majority where the pull
-found nothing new. `up -d` on its own recreates only when the digest actually
+container. That cost roughly ten seconds of `502`s back when the app compiled on
+boot — paid on every deploy, including the majority where the pull found nothing
+new. The compiled image starts far faster, but the teardown is still needless
+downtime. `up -d` on its own recreates only when the digest actually
 changed, which makes a no-op deploy cost about a second and drop nothing.
 
 Measured on the sibling albionroads box, which still ran the old script: two
@@ -108,8 +123,8 @@ deploys of the same commit, resolved image ID identical across both
 
 **2. It could not tell whether the container survived.** `docker compose up -d`
 returns when the container has been *started*, not when the app is listening. A
-container that boots and dies — bad `sf.env`, unreachable Mongo, a TypeScript
-error that only `ts-node` hits at runtime — still exits `0`. Worse, with
+container that boots and dies — bad `sf.env`, a missing `JWT_SECRET`, unreachable
+Mongo — still exits `0`. Worse, with
 `restart: always` the daemon keeps restarting it, so a crashlooping container and
 a healthy one look the same from the outside. `up -d --wait` plus a healthcheck
 turns "started" into "answering HTTP".
@@ -369,7 +384,9 @@ again, so a local retag is a stopgap, not a state anyone else can see.
 | `DEPLOY FAILED` in `deploy.log` after `up --wait` | The new image starts but never turns healthy. `ssh sf 'docker logs sf-backend'` — most likely a bad `sf.env` or Mongo unreachable |
 | Publish step fails on `pnpm install --frozen-lockfile` | `backend/pnpm-lock.yaml` is out of date with `backend/package.json`. Run `pnpm install` in `backend/` and commit the lockfile |
 | Publish step fails with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC` | Something changed the build context back to `backend/`. It must be the repo root with `-f backend/Dockerfile` |
-| Container healthy, but the app 502s | A port disagrees somewhere. It should be `3001` in `backend.ts`, in `EXPOSE`, on both sides of the compose mapping, and as the tunnel's origin — check all four rather than adding a translation |
+| Container healthy, but the app 502s | A port disagrees somewhere. It should be `3001` in `src/main.ts`, in `EXPOSE`, on both sides of the compose mapping, and as the tunnel's origin — check all four rather than adding a translation |
+| Container never turns healthy, logs say `Missing required environment variable(s)` | Boot asserts `JWT_SECRET` and `MONGODB_URI` now instead of falling back to a default. Add the name to the box's env file |
+| `/health` fine, but no tab ever syncs | The WebSocket upgrade is not getting through to `/ws` on 3001. `curl -i -H 'Connection: Upgrade' -H 'Upgrade: websocket'` against the public origin should answer `101`, not `400` |
 | `Container state: NO HEALTHCHECK` in `deploy.log` | The box's compose file is missing the `healthcheck` block, so `up --wait` only confirmed the container is running. Copy it from `backend/docker-compose-server.yml` |
 | `Another deploy has held the lock` | A deploy was already running (a workflow and a manual `publish.sh` colliding, most likely). Nothing is broken — re-run once it finishes |
 
@@ -404,8 +421,40 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
   — the Docker Hub image and the healthcheck that `up --wait` blocks on. The
   existing `3001:3001` port line is already correct and needs no change.
   **The healthcheck moved from `/hello` to `/health`** and the box's copy has to
-  be edited by hand for that to take effect; until it is, the container's health
-  state still only proves the process is up.
+  be edited by hand. `/hello` now returns `404`, so a copy still probing it makes
+  the container permanently unhealthy and fails the deploy at `up -d --wait`.
+- **`JWT_SECRET` must be set in the env file before a v7 image is deployed.** Boot
+  asserts it (and `MONGODB_URI`) and exits with
+  `Missing required environment variable(s)` rather than falling back to a
+  default, which is what the old code did — it signed tokens anyone could forge.
+- **`METRICS_TOKEN` must be set in the env file before `/metrics` answers anything.**
+  Unlike the two above it is optional and boot does *not* assert it: with the variable
+  unset, `GET /metrics` returns **404**, which is deliberate so that a box nobody
+  configured cannot serve an open metrics endpoint. Generate a long random value
+  (`openssl rand -hex 32`), put it in the env file, and give the same value to the
+  Prometheus scrape job as a bearer token. Nothing else reads it, so rotating it means
+  editing those two places and restarting the container.
+
+  **The token is the access control, and it is worth being honest about why.**
+  `/metrics` carries usernames and plan ids in its top-20 gauges, so it is not a
+  page to leave open. Two things people assume protect it and do not:
+
+  - The compose files publish `3001:3001` (and `3002:3002` for preview) on **all**
+    host interfaces. Excluding `/metrics` at the tunnel removes the public route but
+    does not close the host port. Anything that can reach the box on the LAN can
+    reach `/metrics`, and only the token stops it.
+  - An application-level "private addresses only" check was considered and rejected.
+    Behind Docker port publishing with a tunnel in front, the container sees the
+    tunnel as its peer rather than the caller, so such a guard can pass public
+    traffic while looking like it blocks it. A guard that fails open is worse than
+    none, because it invites trust.
+
+  What actually keeps it private today is that the box holds a private address behind
+  NAT with no port forward, plus the token. The first of those is a property of the
+  network and is not enforced by anything in this repository.
+- The tunnel in front of the API must forward WebSocket upgrades to `/ws` on the
+  same origin as the REST routes. Nothing in the repo can prove this; check it
+  from the production origin after the first v7 deploy.
 - `/root/update.sh` must match `backend/update.sh`, mode `755`.
 - The webhooks box's deploy key must be in `/root/.ssh/authorized_keys`
   (fingerprint `SHA256:Y69lglv47Mp3dkMh9a/CL1u9PmYldx4u+NTDb0QiFDs`).
@@ -414,7 +463,9 @@ On the box (`ssh sf`), one-off, and not done by any deploy:
   must exist beside it, mode 600. It carries the same Mongo credentials as
   production with `factory_planner_preview` as the database and
   `?authSource=admin` appended, its own generated `JWT_SECRET`, `PORT=3002`,
-  `ENVIRONMENT=preview`, and `CORS_EXTRA_ORIGINS`.
+  `ENVIRONMENT=preview`, and `CORS_EXTRA_ORIGINS`. Give it **its own**
+  `METRICS_TOKEN` as well, different from production's, or leave it unset and accept
+  that preview `/metrics` answers 404.
 - The `satisfactory-factories-preview` hook must be loaded on the webhooks box
   (`cd /root/webhooks && ./sync.sh`). It needs no new secret here: the preview
   hook's URL is derived from `WEBHOOK_URL` by swapping the last path segment, and

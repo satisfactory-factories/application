@@ -84,6 +84,16 @@ describe('FactoryIconDialog', () => {
     expect(eventBus.emit).toHaveBeenCalledWith('factoryUpdated', factory)
   })
 
+  // Sync treats `factoryEdited` as the user's intent and a rebase only carries
+  // touched factories over, so without this an unsent icon change is discarded.
+  it('records the pick as user intent, not as a recalculation ripple', async () => {
+    const { factory } = openDialog()
+
+    await fireEvent.click(tileFor('Smelter')!)
+
+    expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
+  })
+
   it('clears the icon on "Use default"', async () => {
     const factory = newFactory('Iron Ingots')
     factory.icon = 'smelter'

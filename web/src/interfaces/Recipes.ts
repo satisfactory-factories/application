@@ -1,13 +1,17 @@
 // noinspection DuplicatedCode
 // Duplicated by backend
+// PowerItem and NodePurity are part of the stored plan shape (FactoryPowerProducer.ingredients,
+// BuildingGroup.purity), so `common` owns them and this file re-exports them.
+import type { NodePurity, PowerItem } from 'common'
+
+export type { NodePurity, PowerItem }
+
 export interface RecipeItem {
   part: string;
   amount: number;
   perMin: number;
   isByProduct?: boolean;
 }
-
-export type NodePurity = 'impure' | 'normal' | 'pure'
 
 // Extraction recipes have no ingredients: an extractor placed on a resource node produces it
 // outright. The mark and node purity are chosen per building group, so the recipe only declares
@@ -48,14 +52,6 @@ export interface Recipe {
 }
 
 // ===== POWER RECIPES =====
-export interface PowerItem {
-  part: string;
-  perMin: number;
-  amount?: number;
-  mwPerItem?: number;
-  supplementalRatio?: number;
-}
-
 export interface PowerRecipe {
   id: string;
   displayName: string;

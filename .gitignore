@@ -9,3 +9,7 @@ node_modules
 
 # Agent worktrees — real checkouts living inside the repo, never committed
 .claude/worktrees/
+
+# Codex review scratch, never committed
+.codex-build-review.diff
+.codex-build-review-result.md

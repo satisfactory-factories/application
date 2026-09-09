@@ -87,6 +87,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
   import { addProductToFactory } from '@/utils/factory-management/products'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
@@ -150,6 +151,10 @@
   const addToFactory = (factory: Factory) => {
     runAdd(factory.id, () => {
       addRecipeProduct(factory)
+      // A product added to a factory that already exists carries no structural signal, and
+      // `calculateFactories` announces payload only — so this is the only thing saying whose
+      // edit it was. Without it a rebase drops the product the user just added.
+      markFactoryEdited(factory)
       calculateFactories(appStore.getFactories(), gameDataStore.getGameData())
       eventBus.emit('toast', { message: `Added "${props.recipe.displayName}" to ${factory.name}!` })
     })

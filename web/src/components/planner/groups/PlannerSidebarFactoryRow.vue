@@ -8,7 +8,7 @@
      was silently dropped and Sortable matched no items at all: dragging did nothing, with no
      error anywhere. -->
 <template>
-  <div class="mb-1 rounded" :class="rowClass">
+  <div class="mb-1 rounded" :class="rowClass" data-testid="sidebar-factory-row">
     <v-card
       class="w-100 header list px-0 rounded-0"
       style="box-shadow: none !important;"

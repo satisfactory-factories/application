@@ -77,6 +77,21 @@ describe('startVersionCheck', () => {
     expect(fetch).toHaveBeenCalledTimes(3)
   })
 
+  // The gate is the same news said harder: it means nothing this tab sends is accepted until it
+  // reloads. VersionPrompt says so persistently, so there is nothing left for a nudge to add.
+  it('should stop polling once the version gate has refused this build', async () => {
+    respondWith(config.appVersion)
+    stop = startVersionCheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    eventBus.emit('versionMismatch', { source: 'rest' })
+    await vi.advanceTimersByTimeAsync(VERSION_POLL_INTERVAL_MS * 2)
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(eventBus.emit).not.toHaveBeenCalledWith('updateAvailable', expect.anything())
+  })
+
   it('should stop polling once it has announced a release', async () => {
     respondWith(newer())
     stop = startVersionCheck()

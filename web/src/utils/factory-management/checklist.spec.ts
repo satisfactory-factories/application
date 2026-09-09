@@ -324,7 +324,7 @@ describe('checklist', () => {
       vi.restoreAllMocks()
     })
 
-    it('every checklist mutation emits factoryUpdated', () => {
+    it('every checklist mutation declares payload and intent', () => {
       const factory = newFactory('Provider', 0, 1)
       factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
       factory.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
@@ -337,7 +337,29 @@ describe('checklist', () => {
       setChecklistEnabled(factory, true)
       setChecklistPanelHidden(factory, true)
 
-      expect(emitted).toEqual(Array(6).fill('factoryUpdated'))
+      // Payload alone schedules the save; only the intent survives a rebase, and a build
+      // session made of nothing but ticks has no other edit to ride back on.
+      expect(emitted).toEqual(Array(6).fill(['factoryUpdated', 'factoryEdited']).flat())
+    })
+
+    /**
+     * Acknowledging arrived while the intent layer was being built on another branch, so
+     * it emitted payload only. Re-baselining every moved row is a write like any other:
+     * without the intent a rebase carries the plan over without the new baselines, and
+     * every row the player just acknowledged reads as desynced all over again.
+     */
+    it('acknowledging a set of desyncs declares them too', () => {
+      const factory = newFactory('Provider', 0, 1)
+      factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+
+      toggleChecklistProduct(factory, factory.products[0])
+      factory.products[0].amount = 120
+      emitted = []
+
+      acknowledgeChecklistDesyncs(factory)
+
+      expect(factory.products[0].checklistSyncedAmount).toBe(120)
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
     })
 
     it('unticking dirties the plan too, not only ticking', () => {
@@ -349,7 +371,7 @@ describe('checklist', () => {
       toggleChecklistInput(factory, factory.inputs[0])
 
       expect(factory.inputs[0].completed).toBe(false)
-      expect(emitted).toEqual(['factoryUpdated'])
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
     })
   })
 

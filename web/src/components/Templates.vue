@@ -27,7 +27,7 @@
       </thead>
       <tbody>
         <template v-for="template in sortedTemplates" :key="template.name">
-          <tr v-if="template.show">
+          <tr v-if="template.show" :data-template="template.name">
             <td class="text-center">
               <v-btn
                 class="mr-2"
@@ -69,21 +69,26 @@
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
+  import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
+  import { devToolsEnabled, runOfflineConflictDemo } from '@/sync/offline-conflict-demo'
 
-  const { prepareLoader, isDebugMode, getCurrentTab, rearmRawBreakingNotice } = useAppStore()
+  const { prepareLoader, isDebugMode, getCurrentTab, getFactories, rearmRawBreakingNotice } = useAppStore()
 
   const dialog = ref(false)
 
   interface Template {
     name: string
     description: string
-    // JSON TemplatePayload — always serialize via planData()/scenarioData().
+    // JSON TemplatePayload — always serialize via planData()/scenarioData(). Empty for a
+    // row that runs something of its own instead of loading a plan.
     data: string
     show: boolean
     isDebug: boolean
     // Re-arms the one-time raw-resources breaking-change notice, which is otherwise
     // unreachable once dismissed.
     rearmNotice?: boolean
+    // A row that does its own thing rather than overwriting the current plan.
+    run?: () => unknown
   }
 
   interface TemplatePayload {
@@ -227,6 +232,14 @@
       isDebug: true,
     },
     {
+      name: 'Offline conflict demo',
+      description: 'Developer tool. Creates a local "Conflict demo" tab, seeds four factories and stages a fabricated clash against a pretend live plan, then opens the real offline conflict dialog over it. Nothing is sent to the server, no room is created, and the tab is an ordinary local tab once the question is answered. Shown on a dev build, or anywhere once localStorage.sfDevTools is set to "true".',
+      data: '',
+      show: devToolsEnabled(),
+      isDebug: true,
+      run: () => runOfflineConflictDemo(),
+    },
+    {
       name: '#656: Generator fuel draw',
       description: 'The Oil MegaFac\'s fuel problem, shrunk to two self-contained factories. Each makes 640/min Liquid Fuel from its own crude, and Recycled Plastic takes 240 of it, so 400 is what the generators may burn. They differ only in what the generators are set to: "over-drawing" is on 640 and should offer Trim to supply (400), taking it 8,000 → 5,000 MW; "spare fuel" is on 240 and should offer Expand to supply (400), taking it 3,000 → 5,000 MW. Nothing is imported and every part but the Plastic the factory exists to make balances exactly, so the fuel is the only thing either has left to settle. The over-drawing one also offers Satisfy (880) on its Liquid Fuel product — deliberately: making more fuel and burning less are both real answers to the same shortage, and the two buttons are the two ends of it.',
       data: scenarioData(createFuelSupplyMatchingScenario().getFactories()),
@@ -265,6 +278,13 @@
   })
 
   const loadTemplate = (template: Template) => {
+    // A row that runs its own thing keeps the current plan: it never reaches the loader.
+    if (template.run) {
+      dialog.value = false
+      template.run()
+      return
+    }
+
     console.log('Template loaded:', template.name, 'starting load')
 
     // This is a workaround for the templating bug where the data was passed as a reference, and would refuse to load the same template until the page is refreshed.
@@ -277,15 +297,24 @@
     const tab = getCurrentTab()
     if (tab) {
       tab.powerTarget = powerTarget ?? 0
+      markTabEdited('powerTarget')
       // Templates are built by today's code, so they have never assumed a raw resource and are
       // answered by construction. The exception is the one that exists to reproduce a plan from
       // before the change: it must arrive unanswered or it cannot reproduce anything.
       tab.plannerVersion = template.rearmNotice ? undefined : config.plannerVersion
+      // Only the stamp is declarable: a diff has no way to say "cleared", so the re-arming
+      // template stays local by construction rather than being announced and ignored.
+      if (!template.rearmNotice) markTabEdited('plannerVersion')
     }
 
     if (template.rearmNotice) {
       rearmRawBreakingNotice()
     }
+
+    // The template overwrites the whole plan, so declare all of it: the records it
+    // drops, and the ones it brings — including any landing on an id it reuses, which
+    // the structural inference cannot see as a change at all.
+    markPlanReplaced(getFactories(), factories)
 
     prepareLoader(factories, true)
     dialog.value = false

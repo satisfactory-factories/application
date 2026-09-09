@@ -493,7 +493,6 @@
   } from '@/utils/factory-management/building-groups/extraction'
   import { NodePurity } from '@/interfaces/Recipes'
   import { applyGroupSomersloops, updateBuildingGroup } from '@/components/planner/products/BuildingGroup'
-  import eventBus from '@/utils/eventBus'
   import { CalculationModes } from '@/utils/factory-management/factory'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
 
@@ -576,7 +575,6 @@
       forceRebalance: false,
       origin: 'buildingGroup',
     })
-    eventBus.emit('buildingGroupUpdated', props.factory)
   }
 
   const somersloopSlots = computed(() => getSomersloopSlots(props.building))
@@ -692,7 +690,6 @@
       console.log('Updating building group overclock')
       updateBuildingGroup(group)
       updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
-      eventBus.emit('buildingGroupUpdated', props.factory)
       // Hold the spinner until the recalc's DOM updates have painted.
       await afterRender()
       if (runId === updateRunId) {
@@ -790,7 +787,6 @@
         props.group.parts[part],
       )
       updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
-      eventBus.emit('buildingGroupUpdated', props.factory)
       // Hold the spinner until the recalc's DOM updates have painted.
       await afterRender()
       if (runId === updateRunId) {

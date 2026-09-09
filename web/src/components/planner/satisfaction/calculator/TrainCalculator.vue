@@ -15,6 +15,7 @@
       max-width="150px"
       type="number"
       variant="outlined"
+      @update:model-value="edited"
     />
     <tooltip-info text="Round Trip time is calculated by riding the train and timing how long it takes to do a full round trip. Unload, load, unload aka &quot;3 choos&quot;" />
   </div>
@@ -42,16 +43,22 @@
 <script setup lang="ts">
   import { toRef } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { ExportCalculatorFactorySettings, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
+  import { ExportCalculatorFactorySettings, Factory, FactoryDependencyRequest } from '@/interfaces/planner/FactoryInterface'
   import TooltipInfo from '@/components/tooltip-info.vue'
   import { calculateTransportVehiclesForExporting, TransportMethod } from '@/utils/factory-management/exportCalculator'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const gameData = useGameDataStore().getGameData()
 
   const props = defineProps<{
+    factory: Factory
     request: FactoryDependencyRequest
     factorySettings: ExportCalculatorFactorySettings
   }>()
+
+  // The round trip time is stored on the factory, so setting it is an edit the rebase
+  // must carry over — declared from the field and the timer, never from a watcher.
+  const edited = () => markFactoryEdited(props.factory)
 
   // Writes through to the settings object held by the store — the round trip time persists with the plan.
   const trainTime = toRef(props.factorySettings, 'trainTime')
@@ -70,6 +77,7 @@
     clearInterval(timerInterval)
     trainTime.value = timer.value
     timer.value = 0
+    edited()
   }
 
   const calculateFreightCars = () => {

@@ -2,9 +2,107 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
-## Beta v0.7
+## Beta v0.7: Realtime sync, rooms and offline mode
 
 _In development._
+
+Cloud saving is gone and live plans have taken its place. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
+
+### Every tab is now local, synced or shared
+
+- The old model saved one tab as a blob every ten seconds and the last writer won, so two devices could quietly overwrite each other and the only fix was a manual force download. That is replaced by **three kinds of tab, and you pick**. A **local** tab lives in this browser and needs no account, exactly like every tab did before. A **synced** tab lives on your account and can be opened on any device you sign in on. A **shared** tab is a synced tab you have invited other people into, and everyone edits the same plan live.
+- The **+ button now opens a chooser** rather than silently making a local tab. It explains what each kind is, and a one-time dot on the button points it out the first time. Local stays the default, so nothing changes for anyone who never signs in. Pick synced without an account and you can sign in or register on the same dialog; the tab you asked for is made as soon as you do.
+- **The + button also lists the cloud plans you have closed in this browser**, each with the same Show button the account panel uses, so opening one you put away is one click from the place you already reach for when you want a tab. Signed out, or with every plan already open, the list is simply not there.
+- **Each tab wears its kind in the tab bar**: a monitor for local, a cloud for synced, a group of people for shared. A shared tab also shows how many people are in it right now.
+- **The pencil on the current tab opens a tab settings dialog** instead of renaming in place. It renames the tab (Apply, Enter or clicking away all save it), sends a local plan to the cloud, converts a cloud plan back to a local tab, and holds the Share Settings button. Renaming a cloud plan stays owner-only, and the dialog says so.
+- **Tab settings can hide a cloud plan**, sat above Convert to local because it is the gentler answer to the same question: hiding closes the tab in this browser and nothing else, where converting takes the plan off your account. It says so, and says where to find the plan again: the + button or the account panel. Local and link-joined tabs are not offered it: neither has a row on your account to be opened back from.
+- **The tab bar's three action icons have moved into tab settings**, behind the pencil on the tab they act on. The share icon was a duplicate of the dialog's own Share Settings button; the copy icon is now **Copy to a local tab**, in words; and the bin, which sat one mis-click from the plan beside it, is now a **Delete** button in a walled-off red section at the bottom of the dialog, with the same confirmation as before. Deleting the last tab in the bar is still not offered.
+- **Signed out, Convert to cloud reads Sign in to convert** and opens the sign-in form on the same dialog rather than sitting greyed out, with a note beside it saying an account is optional and the planner works perfectly well without one.
+- **Share Settings is offered on every tab**, local ones included, because any plan can hand out a snapshot link. On a local tab the dialog says you have to convert it to a cloud tab before anyone can be invited to plan in it with you.
+- **Convert to local** on a plan you own removes it from your account after a confirmation, keeping the plan in this browser as a local tab; anyone you shared it with keeps their copy the same way. On a plan you joined, it leaves the plan and keeps your copy as a local tab.
+- **Tabs can be dragged into whatever order you like.** The order of your synced tabs follows your account, so a bar you arrange on one machine looks the same when you sign in on another. Local tabs belong to this browser and hold the position you put them in, wherever the synced ones move to. Ordering is paused while offline mode is on.
+- **A local tab keeps its identity when you sync it.** Its ID becomes the plan's ID on the server, so nothing about it is recreated or renamed.
+- Synced tabs still write their full contents to this browser exactly as before. That copy is what draws the screen, and it is what you would be left holding if the server were unreachable.
+
+### Sharing: two links that are never mixed up
+
+- The share dialog now offers two clearly separated things. **Copy snapshot link** is what `/share` has always been: a frozen copy of the plan as it is right now, which whoever opens it keeps as their own. It works on any tab and needs no account.
+- **A snapshot link is made once per version of the plan.** Reopening the share dialog on a plan you have not touched since shows the link you already made, rather than minting a second link to identical bytes; change the plan and the button to take a fresh one is back. The link is copied to your clipboard the moment it is made, and the copy button says **Copied!** for a moment so you can see that it was.
+- **Invite collaborators** is new. A synced tab gets a link of the form `satisfactory-factories.app/room/three-word-slug`, and anyone who opens it is editing *your* plan with you. You can set your own words for the link, and the dialog tells you live whether they are free.
+- **An invite can carry a password.** Set one and anyone new is asked for it once. Change it and anyone who joined anonymously is dropped while people signed in keep their access. Remove it and the link is open again.
+- **Stop sharing puts the plan back to private.** Everyone else is removed and keeps their own copy of the last state they saw, and the tab in their bar quietly becomes a local one with a note saying why. Sharing again restores the same link.
+- Deleting a shared plan does the same thing to everyone in it. Nobody ever loses data because of something the owner did.
+- **Duplicate as a local tab** is available on any synced or shared tab, at any time, for an independent copy that answers to nobody.
+
+### Editing together
+
+- Changes flow both ways over a single connection and land on the other side in about as long as the network takes. You can both work in the same plan at once.
+- **Edits to different factories both survive.** Edits to the same factory settle on one of them rather than merging into something neither of you asked for.
+- What you see is always your last acknowledged state from the server, plus everything you have changed since, fully recalculated. A change of yours is never dropped in favour of an incoming one, and nothing is ever half-applied.
+- The owner can rename, share, unshare, set the link, set a password and delete. Everyone else can edit the plan and leave. Renames reach every device.
+- **One person at a time in a text field.** Click into a factory's notes and that box is held for you: everyone else sees it greyed out with "Another builder is editing this" until you click away. Keep typing and it stays yours; leave it alone for ten seconds and it is released for whoever wants it next. It is per field, so the factory next to yours is still open to everybody, and the rest of the plan is unaffected.
+- **Emptying a shared plan is something you have to mean.** Clearing it, pasting over it or loading a template into it says so as it sends. Anything else that asks to delete most of the plan in one go is refused and handed the server's copy back, so a browser that has got itself into a bad state cannot take everyone's plan down with it. The server also keeps the plan as it stood immediately before a bulk deletion, so one that should never have happened can be put back.
+
+### Offline mode
+
+- **A switch in the account panel puts the planner into offline mode**, which means exactly no contact with the server: no connection, no requests, no retries. Keep planning; everything is kept on this device.
+- Switching it on says so once and then gets out of the way. That you are still in offline mode is shown by the chip in the tab bar and by the account panel, which is also where you switch it back off.
+- If the connection drops on its own, a small bar asks whether you want to go offline rather than deciding for you. Say no and it keeps quietly retrying.
+- **Coming back online is manual, like a phone.** When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.
+- **If somebody else changed the same factories while you were away, the planner asks before deciding for you.** Coming back raises one prompt listing every factory both sides edited, with the live plan's figures beside yours product by product, and you pick which version wins for each. Everything that does not clash syncs safely either way, and a tick box keeps this device's version as a separate local tab whatever you choose.
+- Nothing else about this interrupts you. There are no popups to dismiss while you plan, and that prompt is the only question offline work will ever raise.
+- **That prompt now survives a refresh.** Reloading the page with the question still on screen used to quietly pick your version and send it, overwriting whatever the other person had done. The planner now holds everything back until you have answered, and asks again with the live figures once it reconnects.
+- **Two browser tabs open on the same planner no longer overwrite each other's unsent work.** Each browser tab keeps its own record of what it still owes the server, so an edit made offline in one is still there when you come back to it, whatever the other one saved in the meantime.
+- **If your browser runs out of storage the planner says so and keeps going.** Your edits stay on screen and are saved as soon as there is room again, instead of disappearing the next time you close the tab.
+
+### Your settings follow your account
+
+- Preferences that are about *you* rather than about this computer now travel with your account: satisfaction breakdowns, the group colours you have used, the tutorial and introduction you have already dismissed, the statistics panels you keep hidden and the summary you keep collapsed. Sign in on a new machine and the planner is set up the way you left it.
+- Settings this browser has that your account has never seen are kept and uploaded rather than overwritten, so signing in for the first time on a machine never wipes what was already there.
+
+### Account panel
+
+- The account tile has been rebuilt: your username, a live connection indicator, the offline switch, your plans under two tabs, and **Change password**. The **Local** tab lists the plans that live in this browser only, each with a cloud button that syncs it to your account on the spot. The **Cloud** tab splits your synced plans into **My Plans** (the ones you own) and **Joined Plans** (the ones shared with you), each showing how many factories it holds and when it last changed.
+- **Cloud plans open where you choose.** Every plan on your account is listed in the panel with a Show or Hide button. Show opens the plan as a tab in this browser; Hide closes that tab and nothing more. The plan stays on your account and on every other device it is open on.
+- **Every list of your plans now reads at a glance**: the plan's size is the factory icon and a number, exactly as the sidebar's Global Factories Summary shows it, and the time beside it is spelled out as "Last updated 38 minutes ago" rather than "38m ago". That goes for the account panel, the sign-in chooser and the + button's list alike.
+- Signing in or refreshing no longer opens a tab for every plan on your account. The tabs you had open stay open, and the rest wait in the panel.
+- **Signing in asks which of your plans to open.** The dialog lists every account plan this browser does not have open, all ticked, each with its size and when it last changed. **Select all** and **Select none** move the whole list at once. Untick what you want left in the panel, or choose "Not now" to open none. A page refresh never asks, and neither does an account with no plans.
+- **Changing your password now signs out every device**, including the one that changed it. Sign-ins made on the old password stop working the moment the change lands, so a password you had to change because somebody else knew it takes their access with it. Sign in again with the new one.
+- The panel's per-plan share buttons are gone; sharing lives on the planner toolbar's share button.
+- The plan the old planner saved to your account comes back on its own: sign in with an account holding one into a browser with nothing in it, and it appears as a new synced tab. There is only ever one of these, and it only happens once.
+- **The offer to sync your local plans is remembered per account, not per browser.** Saying "No thanks" on one account no longer silences the question for the next account signed in on the same machine. Registering a new account is asked about the plans this browser holds, as it should be.
+- **Plans go in and out as files, not only through the clipboard.** **Copy plan** has become **Export plan**, and it asks where the plan should go: **Save as a file** downloads it as JSON named after the plan, and **Copy to clipboard** is what it always did. **Paste plan** has become **Import plan**, which asks where the plan is coming from: a file or the clipboard. Everything either way is the whole plan: every factory, its groups, the power target and the Depot research.
+- **The clipboard half says what your browser is about to do.** Reading the clipboard is a permission, and some browsers ask for it themselves. Firefox puts a **Paste** button by the pointer, and nothing arrives until you press it. The dialog says so beside the button that triggers it, and if the read is refused it says that too instead of doing nothing at all.
+- **An import that fails now says why, in the dialog it failed in**, rather than through a browser alert you have to dismiss before you can try the other way in.
+- **A plan pasted in while you are signed in is offered to the cloud on the spot.** The offer to sync what this browser holds is made when you sign in, so a plan that arrives afterwards used to have nothing pointing at the cloud, and you had to know to go to tab settings. Paste one into a local tab now and, once it has drawn, you are asked whether to send that plan to your account. Saying no leaves it local and is not treated as an answer about anything else.
+- **A plan you saved to your account before v0.7 is brought over on its own.** Sign in, or open the planner while you are already signed in, and the old save becomes a cloud plan without you having to ask for it, with a short message saying where it came from. It arrives as a tab of its own, so everything already open in this browser and every plan already on your account is left exactly as it was. It happens once per account. If it cannot be done at the time, nothing is lost: the old save stays where it is, and the next sign-in offers it to you in a dialog that says how many factories it holds. The plan comes over whole either way: its name, its power target, its factory groups and its Depot research all arrive with the factories.
+- Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Say no and they stay exactly as they are. Names that would collide get a "(local)" suffix rather than being merged.
+- The out-of-sync dialog and the force download button are gone. Neither has anything to do now.
+
+### Loading
+
+- Switching to a tab the server has already confirmed is current no longer recalculates it. A small plan opens instantly.
+- A big plan still gets the loading dialog while it draws, and the dialog now appears the moment you click the tab. Drawing a hundred factory cards takes a moment whether or not there was anything to calculate, and the wait used to happen with nothing on screen to say so.
+- Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.
+- **A plan that is still drawing is left alone.** While a big plan renders, nothing arriving from the server is written into it and nothing about it is sent back. Someone else opening a shared plan could previously make everyone's copy lose the factories their screen had not reached yet, which showed up as red factories and a data-corruption warning for everybody else. The plan catches up with the server the moment it has finished drawing.
+
+### Knowing what just happened
+
+- **"Last updated" sits beside the search box** and says when the plan in the tab you are looking at last changed, flashing as it moves. Your own edits and a collaborator's both count. Renaming a factory or dragging one somewhere else does not, so the line stays worth reading. It works on a local tab too, and it remembers across a refresh.
+- **A notice you need to act on now waits for you.** A plan deleted by its owner leaves a notice you close yourself, so it cannot slide past while you are looking elsewhere. A notice that is only keeping you informed counts itself down with a line along the bottom and then goes.
+- **The planner says so when the backend is having problems.** A red bar along the bottom names the Discord to report it on, and says which features are away until it is back. Nothing in your tabs is lost while it is: everything is kept in this browser and syncs when the server answers again. It clears itself the moment it does. Closes #108.
+
+### Under the hood
+
+- **The backend is a new application.** It has been rewritten in NestJS with a real module structure, typed configuration, graceful shutdown, and a test suite covering the routes, the live connection, concurrent edits, passwords, revocation, deletion and the hourly cleanup.
+- A new shared package holds the message formats, the plan schema and the protocol version that the planner and the server both build against, so the two can no longer drift apart.
+- Every plan that reaches the server is validated against one schema with explicit limits: 150 factories per plan, 10 plans of your own, 25 plans in your tab bar, and the same name and note truncation the planner has always applied.
+- Multi-step changes are built as steps that can each be repeated safely, so a request that fails halfway leaves nothing stranded and simply resumes. Deleting a plan marks it dead first, which makes it inert instantly, and clears up afterwards.
+- Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.
+- Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently.
+- `/save` and `/load` are retired. `/hello` is gone, since `/health` had already replaced it.
+- **Developer tool: the offline conflict prompt can be staged from the Templates menu.** It builds a local tab of its own, fabricates a clash against a pretend live plan and opens the real dialog over it, so the prompt can be seen without two devices. Nothing is sent to the server and no plan is created on it. The entry shows on a development build, or anywhere once `sfDevTools` is set to `true` in the browser's local storage.
+- **The planner now sends an anonymous usage heartbeat**, because a plan that is never synced and a user who never signs in are both invisible to the server, and between them that is most of the planner's use. It reports six numbers and one flag: how many tabs are open, how many of those are synced, how many factories they hold in total, whether somebody is signed in, and which build is running. No names, no plan contents, no account details. The identifier attached to it is random, minted by your browser, and cannot be tied to an account. Offline mode stops it along with everything else, and so does any tracker blocker. The `telemetry` page in the repository documentation lists every field it can ever contain.
 
 ### Search the plan
 

@@ -13,6 +13,7 @@ on:
     # .github/workflows/** — editing build-web.yml should not redeploy the API.
     paths:
       - 'backend/**'
+      - 'common/**'              # the API compiles against it and ships it
       - 'package.json'            # holds the packageManager pin corepack uses
       - 'pnpm-workspace.yaml'     # the catalog the backend install resolves against
       - '.dockerignore'           # changes what lands in the build context

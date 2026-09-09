@@ -18,7 +18,7 @@
             <v-chip color="green" density="compact">Great accuracy <tooltip-info text="Subject to inaccuracies due to traffic, acceleration forces (e.g. if stopped on a<br>hill due to traffic, takes a LONG time to speed up), and waiting times at stations. Otherwise very accurate." /></v-chip>
           </div>
           <div v-if="request" class="pt-4 px-2">
-            <train-calculator v-if="request" :factory-settings="factorySettings" :request="request" />
+            <train-calculator v-if="request" :factory="factory" :factory-settings="factorySettings" :request="request" />
           </div>
         </v-col>
         <!-- Drone -->
@@ -49,7 +49,7 @@
             <v-chip color="amber" density="compact">Ok accuracy <tooltip-info text="Highly subject to the game's ability to handle the player's recordings, with inconsistencies often occurring resulting in delays.<br>Also subject to traffic, acceleration forces and even creature collisions when near the player." /></v-chip>
           </div>
           <div v-if="request" class="pt-4 px-2">
-            <truck-calculator :factory-settings="factorySettings" :request="request" />
+            <truck-calculator :factory="factory" :factory-settings="factorySettings" :request="request" />
           </div>
         </v-col>
         <!-- Tractor -->
@@ -66,7 +66,7 @@
             <p v-if="isFluidExport">
               Tractors cannot transport fluids in their liquid form. Package them first — packaged fluids are solids and travel as regular cargo.
             </p>
-            <tractor-calculator v-else :factory-settings="factorySettings" :request="request" />
+            <tractor-calculator v-else :factory="factory" :factory-settings="factorySettings" :request="request" />
           </div>
         </v-col>
       </v-row>
@@ -81,7 +81,7 @@
           <v-chip color="green" density="compact">Perfect accuracy <tooltip-info text="Belts move items at a constant rate, so the calculation is exact." /></v-chip>
         </div>
         <div class="pt-2 px-2">
-          <belt-pipe-calculator :factory-settings="factorySettings" kind="belts" :request="request" />
+          <belt-pipe-calculator :factory="factory" :factory-settings="factorySettings" kind="belts" :request="request" />
         </div>
       </div>
       <!-- Pipes (fluids) -->
@@ -95,7 +95,7 @@
           <v-chip color="green" density="compact">Perfect accuracy <tooltip-info text="Pipelines move fluids at a constant rate, so the calculation is exact." /></v-chip>
         </div>
         <div class="pt-2 px-2">
-          <belt-pipe-calculator :factory-settings="factorySettings" kind="pipes" :request="request" />
+          <belt-pipe-calculator :factory="factory" :factory-settings="factorySettings" kind="pipes" :request="request" />
         </div>
       </div>
     </template>

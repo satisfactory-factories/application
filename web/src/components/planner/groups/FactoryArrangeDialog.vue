@@ -10,6 +10,7 @@
     v-model="isOpen"
     body-class="pa-0"
     body-max-height="60vh"
+    data-testid="arrange-dialog"
     divider
     icon="fas fa-sort"
     max-width="640"

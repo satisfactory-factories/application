@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "full",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "3100,3101"],
+      "port": 3100
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:web", "--port", "3100,3101"],
+      "port": 3100
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:backend", "--port", "3100,3101"],
+      "port": 3101
+    }
+  ]
+}

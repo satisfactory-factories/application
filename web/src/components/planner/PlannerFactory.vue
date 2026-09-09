@@ -17,6 +17,7 @@
                 class="ml-3 pl-0 factory-name"
                 placeholder="Factory Name"
                 @blur="commitName"
+                @focus="nameFocused = true"
                 @keyup.enter="acceptName"
               >
             </div>
@@ -48,7 +49,7 @@
               </div>
               <!-- sync status chip -->
               <div v-if="factory.inSync">
-                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small green no-margin sync-chip" @click="markInSync(factory)">
                   <i class="fas fa-check-square" />
                   <span class="ml-2">In sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -64,7 +65,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === false">
-                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="setSyncState(factory)">
+                <v-chip class="sf-chip sf-chip-clickable small status-warning-outlined no-margin sync-chip" @click="markInSync(factory)">
                   <i class="fas fa-times-square" />
                   <span class="ml-2">Out of sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -80,7 +81,7 @@
                 </v-chip>
               </div>
               <div v-if="factory.inSync === null">
-                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="setSyncState(factory)">
+                <v-chip class="sf-chip-clickable border border-gray border-dashed" :disabled="!validForGameSync(factory)" @click="markInSync(factory)">
                   <i class="fas fa-question" />
                   <span class="ml-2">Mark as in sync with game</span>
                   <tooltip-info :text="gameSyncHelpText" @click.stop />
@@ -177,7 +178,7 @@
               size="small"
               title="Collapse Factory"
               variant="outlined"
-              @click="factory.hidden = true"
+              @click="setHidden(true)"
             />
             <v-btn
               v-show="factory.hidden"
@@ -187,7 +188,7 @@
               size="small"
               title="Expand Factory"
               variant="outlined"
-              @click="factory.hidden = false"
+              @click="setHidden(false)"
             />
             <v-btn
               class="mr-2"
@@ -485,6 +486,7 @@
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import {
     factoryStatusClass,
     FactoryStatusSection,
@@ -539,13 +541,24 @@
   // The name is held as a draft while typing: writing each keystroke into the factory re-rendered
   // every place the name appears, which read as lag. Blur or Enter is what applies it.
   const draftName = ref(props.factory.name)
+  const nameFocused = ref(false)
+  // A remote apply must not clobber a draft mid-typing; blur commits, and the
+  // user's committed name then wins the same way any content edit does.
   watch(() => props.factory.name, name => {
-    draftName.value = name
+    if (!nameFocused.value) draftName.value = name
   })
 
+  // The write is here rather than on each keystroke, so this is also where the rename is
+  // declared: intent, not just payload, or a rebase would take the server's name back.
+  // Written through the live record: a rebase can replace the factory object between
+  // the keystroke and the commit, and a rename on the detached copy never syncs.
   const commitName = () => {
+    nameFocused.value = false
     if (draftName.value === props.factory.name) return
+    const live = getFactories().find(entry => entry.id === props.factory.id) ?? props.factory
+    live.name = draftName.value
     props.factory.name = draftName.value
+    markFactoryEdited(live)
   }
 
   // Enter accepts the rename and leaves the field, matching the group name in the sidebar.
@@ -650,8 +663,21 @@
       ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
   }
 
+  // Every handler below writes a field the plan persists and the room syncs, so each one
+  // declares intent as well as payload — a rebase carries over only what the user touched.
+  const setHidden = (hidden: boolean) => {
+    props.factory.hidden = hidden
+    markFactoryEdited(props.factory)
+  }
+
+  const markInSync = (factory: Factory) => {
+    setSyncState(factory)
+    markFactoryEdited(factory)
+  }
+
   const resetSyncState = (factory: Factory) => {
     factory.inSync = null
+    markFactoryEdited(factory)
   }
 
   // The tutorial is opt-out, not opt-in: the first time anyone turns checklist mode on, in any
