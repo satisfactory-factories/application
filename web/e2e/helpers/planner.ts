@@ -354,14 +354,33 @@ export const notesField = (page: Page): Locator =>
  * One user-made edit: a factory, named, with a note. `fill` rather than typing
  * because a rebase can replace the factory object mid-burst, and a single input
  * event cannot be split across that.
+ *
+ * The note is filled before the name is committed, not after: committing the name
+ * schedules the sync flush, and a caller racing this against another device needs
+ * both edits to land in that one flush. Filling the note first and committing the
+ * name last means the name's commit is always the most recent edit when the flush
+ * timer is running, so it never fires on the name alone with the note still to come.
  */
 export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> => {
-  const freshId = await addNamedFactory(page, edit.name)
-  const card = page.locator(`[id="${freshId}"]`)
+  const before = new Set(await factoryCardIds(page))
+  await page.getByTestId('add-factory').press('Enter')
+  const freshId = await freshCardId(page, before)
 
-  // A note needs no recalculation to reach the sync engine, so it is the cheapest
-  // per-factory payload a test can give a new card.
+  const card = page.locator(`[id="${freshId}"]`)
+  const name = card.locator('input.factory-name')
+  await name.fill(edit.name)
   await card.locator(`[id="${freshId}-notes"] textarea:not([aria-hidden="true"])`).fill(edit.note)
+  await commitName(name)
+
+  // A rebase racing the commit can still revert the draft; a person retypes, and so
+  // does the test — once.
+  try {
+    await expect(name).toHaveValue(edit.name, { timeout: 2_000 })
+  } catch {
+    await name.fill(edit.name)
+    await commitName(name)
+    await expect(name).toHaveValue(edit.name)
+  }
 }
 
 /** The cards in the plan, by id, which is what tells a new record from every other. */
