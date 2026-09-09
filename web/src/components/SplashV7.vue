@@ -97,27 +97,16 @@
           >
             <h3 class="text-h6 mb-1 font-weight-bold">At no point is a cloud account mandatory</h3>
             <p class="mb-0">
-              The planner works <b>100% without an account</b>, exactly as it always has. Everything
-              on this slide is opt-in.
+              The planner works <b>100% without an account</b>, just as it always has done.
             </p>
           </v-alert>
-          <p class="mb-4">
-            Each tab wears its kind in the tab bar, and the <b>+</b> button now asks which kind you
-            want rather than silently making a local one.
-          </p>
+          <p class="mb-4">There are three kinds of tab, and you pick which you want.</p>
 
           <div v-for="kind in tabKinds" :key="kind.key" class="mb-4">
             <h3 class="section-heading d-flex align-center ga-3 mb-2">
-              <!-- The capture of the real tab where there is one, the bare glyph where there
-                   isn't: either way the heading carries what the tab bar shows. -->
-              <v-img
-                v-if="kind.shot"
-                :alt="kind.alt"
-                class="tab-shot rounded"
-                :src="kind.image"
-                :width="kind.width"
-              />
-              <i v-else class="tab-glyph" :class="kind.icon" />
+              <!-- The glyph the tab bar itself wears, so the heading and the tab on screen are
+                   recognisably the same thing. -->
+              <i class="tab-glyph" :class="kind.icon" />
               <span>{{ kind.label }}</span>
             </h3>
             <p class="mb-0">{{ kind.blurb }}</p>
@@ -137,9 +126,10 @@
             :src="shots.plusButton"
           />
           <p class="mb-0">
-            <b>Local is still the default.</b> The pencil on a tab opens <b>tab settings</b>, where
-            you rename it, send it to the cloud, bring it back, hide it or delete it — and tabs drag
-            into whatever order you like, with your synced ones following your account.
+            The pencil on a tab opens <b>tab settings</b>, where you rename it, send it to the
+            cloud, download it back to local, remove it from the cloud, hide it, share it and
+            delete it. Tabs drag into whatever order you like, and your synced ones keep that
+            order on your account.
           </p>
         </div>
 
@@ -147,12 +137,8 @@
              the two kinds of link side by side, because they are what people confuse. -->
         <div v-if="currentSlide === 2">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-share-nodes" /><span class="ml-2">Tab sharing</span>
+            <i class="fas fa-share-alt" /><span class="ml-2">Tab sharing</span>
           </h2>
-          <p class="mb-4">
-            Two ways to hand a plan to somebody else, and they do different things. Both live in the
-            sharing tray, reached from <b>Share Settings</b> in tab settings.
-          </p>
           <v-img
             v-if="hasShareTrayShot"
             alt="The tab sharing tray, offering a snapshot link and an invite link"
@@ -171,7 +157,7 @@
           >
             <b>Unlike local tabs, real-time collaboration does need a cloud account.</b> It is what
             lets the planner tell who may edit a plan and keep everyone's copy of it in step.
-            Snapshot links, on the left, need no account at all.
+            Snapshot links need no account at all.
           </v-alert>
 
           <!-- Left to right in the order the tray itself puts them. -->
@@ -282,24 +268,13 @@
             the belt and stall the buildings making it. The planner now says so, in the sidebar and
             on the item itself:
           </p>
-          <v-row class="mb-2" no-gutters>
-            <v-col class="pr-md-3" cols="12" md="6">
-              <v-img
-                v-if="hasBacklogSidebarShot"
-                alt="The sidebar warning that a factory will cause a backlog"
-                class="rounded"
-                :src="shots.backlogSidebar"
-              />
-            </v-col>
-            <v-col class="pl-md-3" cols="12" md="6">
-              <v-img
-                v-if="hasBacklogSatisfactionShot"
-                alt="The Will cause backlog warning on an item's satisfaction row"
-                class="rounded"
-                :src="shots.backlogSatisfaction"
-              />
-            </v-col>
-          </v-row>
+          <v-img
+            v-if="hasBacklogSatisfactionShot"
+            alt="The Will cause backlog warning on an item's satisfaction row"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.backlogSatisfaction"
+          />
 
           <v-divider class="my-4" />
 
@@ -326,11 +301,15 @@
             max-width="1000"
             :src="shots.depotAssign"
           />
-          <p class="mb-0">
+          <p class="mb-3">
             <b>An Uploader deliberately changes no number.</b> The Depot is finite storage — it
             fills, then backs up like any other container. Marking an item for it records what you
             are building and what it costs, and leaves the surplus exactly as it is.
           </p>
+          <v-alert density="comfortable" type="info" variant="tonal">
+            <b>Where to set both:</b> under <b>Satisfaction</b> on any factory, in the new
+            <b>Storage</b> column — sinks on the left, Depot Uploaders on the right.
+          </v-alert>
         </div>
 
         <!-- Slide 6: Search, on its own, because it is one of the four. -->
@@ -432,7 +411,14 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Plans go in and out as files</h3>
+          <h3 class="section-heading mb-2">Plans can be exported and imported as files or the clipboard</h3>
+          <v-img
+            v-if="hasExportShot"
+            alt="The Export plan dialog, offering a file or the clipboard"
+            class="mb-3 mx-auto rounded"
+            max-width="760"
+            :src="shots.exportPlan"
+          />
           <p class="mb-4">
             <b>Copy plan is now Export plan</b>, and asks where the plan should go: save it as a
             JSON file, or copy it to the clipboard. <b>Paste plan is now Import plan</b>, and asks
@@ -526,11 +512,11 @@
     accountPanel: '/assets/changelog/beta7/account-panel.png',
     offline: '/assets/changelog/beta7/offline-switch.png',
     sink: '/assets/changelog/beta7/sink-storage.png',
-    backlogSidebar: '/assets/changelog/beta7/backlog-sidebar.png',
     backlogSatisfaction: '/assets/changelog/beta7/backlog-satisfaction.png',
     depot: '/assets/changelog/beta7/depot-summary.png',
     depotAssign: '/assets/changelog/beta7/depot-assign.png',
     search: '/assets/changelog/beta7/search.png',
+    exportPlan: '/assets/changelog/beta7/export-plan.png',
     customBuildings: '/assets/changelog/beta7/custom-buildings.png',
     materialCosts: '/assets/changelog/beta7/material-costs.png',
     checklist: '/assets/changelog/beta7/checklist.png',
@@ -541,17 +527,17 @@
   // behind its own flag and a slide whose picture has not been taken yet ships as text. Flip one
   // on as its file lands in web/public/assets/changelog/beta7/.
   const hasPlusButtonShot = true
-  const hasShareTrayShot = false
+  const hasShareTrayShot = true
   const hasShareShot = false
   const hasSnapshotShot = false
-  const hasAccountPanelShot = false
+  const hasAccountPanelShot = true
   const hasOfflineShot = false
   const hasSinkShot = true
-  const hasBacklogSidebarShot = true
   const hasBacklogSatisfactionShot = true
   const hasDepotShot = true
   const hasDepotAssignShot = false
   const hasSearchShot = true
+  const hasExportShot = true
   const hasCustomBuildingsShot = true
   const hasMaterialCostsShot = true
   const hasChecklistShot = true
@@ -637,7 +623,7 @@
   const slides = [
     { title: 'The SINKronisation Update', nav: 'Intro', icon: 'fas fa-flag' },
     { title: 'Every tab is local, synced or shared', nav: 'Kinds of tab', icon: 'fas fa-folder-open' },
-    { title: 'Tab sharing', nav: 'Tab sharing', icon: 'fas fa-share-nodes' },
+    { title: 'Tab sharing', nav: 'Tab sharing', icon: 'fas fa-share-alt' },
     { title: 'Manage your plans in the new account panel', nav: 'Your account', icon: 'fas fa-user' },
     { title: 'AWESOME Sinks and the Dimensional Depot', nav: 'Sinks & the Depot', icon: 'fas fa-recycle' },
     { title: 'Search the plan', nav: 'Search', icon: 'fas fa-search' },
@@ -689,7 +675,6 @@
   const tabKinds = [
     {
       key: 'local',
-      shot: false,
       label: 'Local',
       icon: 'fas fa-desktop',
       image: shots.tabLocal,
@@ -700,7 +685,6 @@
     },
     {
       key: 'synced',
-      shot: false,
       label: 'Synced',
       icon: 'fas fa-cloud',
       image: shots.tabSynced,
@@ -711,7 +695,6 @@
     },
     {
       key: 'shared',
-      shot: false,
       label: 'Shared',
       icon: 'fas fa-users',
       image: shots.tabShared,
