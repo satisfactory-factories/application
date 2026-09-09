@@ -57,4 +57,4 @@ allowBuilds:
 # Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
 # that governs what Renovate proposes, not what an override pins.
 overrides:
-  js-yaml@^3.13.1: 5.4.0
+  js-yaml@^3.13.1: 5.4.1
