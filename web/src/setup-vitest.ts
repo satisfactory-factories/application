@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { afterAll, vi } from 'vitest'
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
 import { config } from '@/config/config'
@@ -82,6 +82,65 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   }
 }
 
+// jsdom's WebSocket is a thin wrapper around undici's, and undici builds its `open` event
+// with the realm's `Event` — jsdom's — then dispatches it through Node's own `EventTarget`,
+// whose `instanceof Event` check is against Node's class. Hence the nonsense error, `The
+// "event" argument must be an instance of Event. Received an instance of Event`. Nothing
+// awaits it, so it escapes as an uncaught exception that Vitest counts and exits 1 on, on a
+// run where every test passed. It fires only once a socket actually connects, which is what
+// made it intermittent.
+//
+// No unit test should be opening a real connection in the first place: the specs that drive
+// the sync client inject their own socket (`SyncSocketOptions.socketFactory`), and everything
+// else reaching `new WebSocket()` — `roomSync.start()` by way of `roomsStore.begin()` — is
+// doing so incidentally, at the live API's URL. So this one is installed unconditionally
+// rather than behind the `typeof … === 'undefined'` guard the stubs above use: a real
+// implementation being present is precisely the problem. It connects to nothing and fires
+// no handler, which is the honest stand-in for a socket a test never meant to open.
+class InertWebSocket {
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
+  static readonly CLOSING = 2
+  static readonly CLOSED = 3
+
+  readonly CONNECTING = 0
+  readonly OPEN = 1
+  readonly CLOSING = 2
+  readonly CLOSED = 3
+
+  readyState = InertWebSocket.CONNECTING
+  binaryType = 'blob'
+  bufferedAmount = 0
+  extensions = ''
+  protocol = ''
+  readonly url: string
+
+  onopen: unknown = null
+  onmessage: unknown = null
+  onclose: unknown = null
+  onerror: unknown = null
+
+  constructor (url: string | URL) {
+    this.url = String(url)
+  }
+
+  send (): void {}
+
+  close (): void {
+    this.readyState = InertWebSocket.CLOSED
+  }
+
+  addEventListener (): void {}
+  removeEventListener (): void {}
+  dispatchEvent (): boolean {
+    return true
+  }
+}
+
+for (const target of [globalThis, window]) {
+  Object.defineProperty(target, 'WebSocket', { value: InertWebSocket, writable: true, configurable: true })
+}
+
 // jsdom never loads images, so an <img> stays `complete: false` with a zero natural
 // size forever — and Vuetify's VImg keeps re-arming its 100ms size poll to wait for
 // one. Nothing unmounts those components, so the timers outlive the jsdom teardown
@@ -90,6 +149,33 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 for (const prop of ['naturalWidth', 'naturalHeight'] as const) {
   Object.defineProperty(HTMLImageElement.prototype, prop, { configurable: true, get: () => 1 })
 }
+
+// Vitest's worker console buffers what is logged and ships it to the reporter over the worker's
+// rpc channel. That channel is closed the moment the file's tests are over, and any call still
+// in flight is rejected with `Closing rpc while "onUserConsoleLog" was pending` — an unhandled
+// rejection Vitest counts as an error and exits 1 on. One more red run with every test green.
+//
+// What it catches is the app's own logging, arriving late: the store's load chain and its 500ms
+// persist debounce both keep going after the test that started them returned, and both log
+// generously on the way. `afterPaint` and `loadPause` in `app-store.ts` already close the two
+// widest gaps at the source, and a full run still leaves around seventy lines landing after the
+// test that caused them — each one a chance to be the call that teardown rejects. Rather than
+// ask every future spec to await a chain it never started on purpose, stop logging once the
+// tests are over. Nothing readable is lost: Vitest keeps a passing test's console output to
+// itself, `pnpm test` passes `--silent` on top of that, and a line logged after the last test
+// belongs to no test to be printed under in any case.
+//
+// Scoped to the file, and only the file: `pool: 'forks'` gives each spec file its own process,
+// so this console dies with it. Registered from a setup file, so it is the first `afterAll` on
+// the root suite — and hooks running in reverse (`sequence.hooks: 'stack'`), the last to run.
+afterAll(() => {
+  const quietened = ['log', 'info', 'debug', 'dir', 'table', 'trace', 'warn', 'error'] as const
+  const quiet = Object.fromEntries(quietened.map(method => [method, () => {}]))
+  // One object under jsdom, but a Set keeps this honest if the two ever differ.
+  for (const target of new Set([globalThis.console, window.console])) {
+    Object.assign(target, quiet)
+  }
+})
 
 let gameData: any = null
 let gameDataVersion: string | null = null
