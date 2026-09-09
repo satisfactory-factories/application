@@ -1,15 +1,35 @@
 <template>
-  <div class="d-flex align-center">
-    <h4 class="text-h4 d-flex align-center">
+  <div class="d-flex align-center flex-wrap ga-2 mb-4">
+    <h4 class="text-h4 d-flex align-center" :class="{ 'text-red': problems.blockers > 0 }">
       <span class="stats-heading-icon"><i class="fas fa-globe section-icon" /></span>Raw Resources
     </h4>
     <v-chip
       v-if="allFactoryRawResources.length > 0"
       id="stats-raw-resources-summary"
-      class="sf-chip raw-resource small ml-3"
+      class="sf-chip raw-resource small no-margin"
       variant="tonal"
     >
       {{ allFactoryRawResources.length }} {{ allFactoryRawResources.length === 1 ? 'resource' : 'resources' }}
+    </v-chip>
+    <!-- The section can be collapsed, and is on a returning visitor, so the header has to be able
+         to say something inside it is wrong on its own. -->
+    <v-chip
+      v-if="problems.blockers > 0"
+      id="stats-raw-resources-problems"
+      class="sf-chip status-problem small no-margin"
+      variant="flat"
+    >
+      <i class="fas fa-exclamation-triangle" />
+      <span class="ml-2">{{ problems.blockers }} beyond map allowances</span>
+    </v-chip>
+    <v-chip
+      v-if="problems.needsOverclock.length > 0"
+      id="stats-raw-resources-shards"
+      class="sf-chip status-warning small no-margin"
+      variant="flat"
+    >
+      <i class="fas fa-bolt" />
+      <span class="ml-2">{{ problems.needsOverclock.length }} needing shards</span>
     </v-chip>
     <v-btn
       class="ml-auto"
@@ -21,11 +41,29 @@
     >{{ hidden ? 'Show' : 'Hide' }}</v-btn>
   </div>
   <template v-if="!hidden">
+    <v-alert
+      v-if="problems.blockers > 0"
+      id="stats-raw-resources-alert"
+      class="mb-4"
+      density="compact"
+      type="error"
+      variant="tonal"
+    >
+      <b>Parts of this plan cannot be built on the map.</b>
+      <div v-if="problems.overCapacity.length > 0">
+        The world does not hold as much {{ nameList(problems.overCapacity) }} as the plan takes,
+        however the extractors are clocked.
+      </div>
+      <div v-if="problems.overNodes.length > 0">
+        More extractors are placed than there are nodes to stand on
+        for {{ nameList(problems.overNodes) }}.
+      </div>
+    </v-alert>
     <v-table v-if="allFactoryRawResources.length > 0" id="stats-raw-resources" class="stats-table" density="compact">
       <thead>
         <tr>
           <th>Resource</th>
-          <th class="text-right">Extracted</th>
+          <th>Utilisation</th>
           <th>Extracted by</th>
         </tr>
       </thead>
@@ -36,8 +74,129 @@
               <game-asset clickable :subject="resource.id" type="item" />
               <b class="ml-2">{{ getPartDisplayName(resource.id) }}</b>
             </v-chip>
+            <!-- Under the name, the way the Factories Summary hangs its status chips off a
+                 factory: what is wrong with this resource is a property of the resource, not a
+                 footnote to whichever bar happens to be over. -->
+            <div v-if="resource.statuses.length > 0" class="d-flex flex-wrap ga-1 mt-1">
+              <v-chip
+                v-for="status in resource.statuses"
+                :key="status.key"
+                class="sf-chip x-small no-margin"
+                :class="status.class"
+                variant="flat"
+              >
+                <i :class="status.icon" />
+                <span class="ml-2">{{ status.label }}</span>
+              </v-chip>
+            </div>
           </td>
-          <td class="text-right"><b>{{ formatNumber(resource.totalAmount) }}</b>/min</td>
+          <!-- Extraction is measured against both ceilings, one bar each: what the nodes give
+               unclocked, and what they give at the 250% cap. A plan between the two is buildable
+               and needs power shards, which is a thing you see rather than read. The extractor
+               those ceilings assume is named by its own icon — the same nodes worked by a Mk.1
+               come to a quarter of a Mk.3's. Nodes take a diamond, the shape the game draws them
+               as on the map, and sit below a rule: extraction and nodes are different questions. -->
+          <td class="utilisation">
+            <template v-if="!resource.utilisation">
+              <span class="text-medium-emphasis">&mdash;</span>
+            </template>
+            <template v-else-if="resource.utilisation.status === 'unlimited'">
+              <div class="bar-line">
+                <span class="bar-key">
+                  <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
+                </span>
+                <span class="text-caption text-medium-emphasis">Effectively unlimited &mdash; bounded only by space on the water</span>
+              </div>
+              <div class="bar-figure"><b>{{ formatCompactPrecise(resource.totalAmount) }}</b>/min</div>
+            </template>
+            <template v-else>
+              <div
+                v-for="ceiling in extractionCeilings(resource.utilisation)"
+                :key="ceiling.clock"
+                class="bar-block"
+              >
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <game-asset height="20" :subject="resource.utilisation.capacity.extractor" type="building" width="20" />
+                    <span class="bar-key-text ml-1">@{{ ceiling.clock }}</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(ceiling.fraction)"
+                    height="10"
+                    :model-value="barValue(ceiling.fraction)"
+                    rounded
+                  />
+                </div>
+                <!-- Snug under its own bar rather than out to the right of it, so every bar in the
+                     table runs the full width of the column whatever its figures read. The share
+                     is spelled out after them in the bar's own colour: a bar says "nearly full",
+                     the percentage says how nearly. -->
+                <div class="bar-figure">
+                  <b>{{ formatCompactPrecise(resource.totalAmount) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(ceiling.capacity) }}</span>/min
+                  <span class="bar-percent" :style="{ color: barColour(ceiling.fraction) }">({{ percentLabel(ceiling.fraction) }})</span>
+                </div>
+              </div>
+              <div v-if="resource.nodeUsage && totalNodes(resource.nodeUsage.nodesAvailable) > 0" class="bar-block nodes">
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <i class="fas fa-diamond bar-key-icon" />
+                    <span class="bar-key-text ml-1">Nodes</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                    height="10"
+                    :model-value="barValue(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable))"
+                    rounded
+                  />
+                </div>
+                <div class="bar-figure">
+                  <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesUsed)) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.nodesAvailable)) }}</span>
+                  <span
+                    class="bar-percent"
+                    :style="{ color: barColour(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable)) }"
+                  >({{ percentLabel(nodeFraction(resource.nodeUsage.nodesUsed, resource.nodeUsage.nodesAvailable)) }})</span>
+                </div>
+              </div>
+              <!-- Only where wells are actually in play: every oil plan would otherwise carry a
+                   "0 / 18" well row saying nothing. -->
+              <div
+                v-if="resource.nodeUsage && (totalNodes(resource.nodeUsage.satellitesUsed) > 0 || totalNodes(resource.nodeUsage.nodesAvailable) === 0)"
+                class="bar-block nodes"
+              >
+                <div class="bar-line">
+                  <span class="bar-key">
+                    <i class="fas fa-diamond bar-key-icon" />
+                    <span class="bar-key-text ml-1">Well nodes</span>
+                  </span>
+                  <v-progress-linear
+                    bg-opacity="0.15"
+                    :color="barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                    height="10"
+                    :model-value="barValue(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable))"
+                    rounded
+                  />
+                </div>
+                <div class="bar-figure">
+                  <b>{{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesUsed)) }}</b>
+                  <span class="text-medium-emphasis"> / {{ formatCompactPrecise(totalNodes(resource.nodeUsage.satellitesAvailable)) }}</span>
+                  <span
+                    class="bar-percent"
+                    :style="{ color: barColour(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable)) }"
+                  >({{ percentLabel(nodeFraction(resource.nodeUsage.satellitesUsed, resource.nodeUsage.satellitesAvailable)) }})</span>
+                </div>
+              </div>
+              <!-- What is left in prose is advice rather than status: which Converter recipe makes
+                   up the shortfall, or which purities to spread across. The status itself is a
+                   chip beside the resource name. -->
+              <div v-if="resource.details.length > 0" class="details text-caption mt-1">
+                <div v-for="detail in resource.details" :key="detail">{{ detail }}</div>
+              </div>
+            </template>
+          </td>
           <td>
             <!-- One chip per factory digging it up, the same shape the collapsed card uses for
                  its exports: icon, name, its own share, and a click that goes there. A total on
@@ -61,6 +220,18 @@
       </tbody>
     </v-table>
     <p v-else class="text-body-1">Nothing in this plan extracts a raw resource yet.</p>
+    <!-- Not behind the help toggle, which is off for most people: every figure above is wrong for
+         a world generated with anything other than the defaults, and nothing in a plan records
+         which settings a save was started with. -->
+    <p v-if="allFactoryRawResources.length > 0" id="stats-raw-resources-assumption" class="assumption text-caption mt-3">
+      <i class="fas fa-info-circle" />
+      <span class="ml-2">
+        Every figure here assumes a <b>default vanilla world</b>. Advanced Game Settings and the
+        1.2 world-generation options change what the map holds &mdash; randomised node layouts, the
+        resource-rich and fossil-fuel-rich presets, and the node purity settings all deal different
+        counts. A plan cannot tell which of those a save was started with.
+      </span>
+    </p>
   </template>
 </template>
 
@@ -69,18 +240,180 @@
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { formatCompactPrecise, formatNumber } from '@/utils/numberFormatter'
   import { calculateTotalRawResources } from '@/utils/statistics'
   import {
     getPartDisplayName,
   } from '@/utils/helpers'
+  import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
+  import {
+    calculateResourceNodeUsage,
+    calculateWorldResourceProblems,
+    getResourceUtilisation,
+    NodeCounts,
+    ResourceNodeUsage,
+    ResourceUtilisation,
+    totalNodes,
+  } from '@/utils/world-resources'
 
   const props = defineProps<{
     factories: Factory[];
   }>()
 
-  // Everything the plan takes out of the world, per resource, with the factories doing the taking.
-  const allFactoryRawResources = computed(() => calculateTotalRawResources(props.factories))
+  interface ResourceStatus {
+    key: string
+    label: string
+    icon: string
+    class: string
+  }
+
+  // Bars are read at a glance rather than measured, so the colour has to carry the meaning: green
+  // while there is room, amber from 60% where the resource is worth thinking about, red from 80%
+  // where it is nearly spoken for. Anything over the ceiling pins at full and stays red.
+  const barColour = (fraction: number) => {
+    if (fraction >= 0.8) return 'var(--sf-error)'
+    return fraction >= 0.6 ? 'var(--sf-status-warning)' : 'var(--sf-success)'
+  }
+
+  const barValue = (fraction: number) => Math.min(100, Math.max(0, fraction * 100))
+
+  // The two ceilings, in the order a plan meets them: what every node gives with no power shards,
+  // then what the same nodes give at the game's clock cap. Sitting between the two is what
+  // "needs power shards" means, and with a bar each it is visible without reading anything.
+  const extractionCeilings = (utilisation: ResourceUtilisation) => [
+    { clock: '100%', capacity: utilisation.capacity.atStandardClock, fraction: utilisation.ofStandardClock },
+    { clock: '250%', capacity: utilisation.capacity.atMaxClock, fraction: utilisation.ofMaxClock },
+  ]
+
+  // The bar's own share, spelled out. Rounded to whole percent — this is a "how close am I"
+  // figure, not a measurement — with a floor so a trickle off a huge world does not read as 0%.
+  const percentLabel = (fraction: number) => {
+    if (!Number.isFinite(fraction)) {
+      return '\u2014'
+    }
+    const percent = fraction * 100
+    if (percent > 0 && percent < 1) {
+      return '<1%'
+    }
+    return `${formatNumber(percent, 0)}%`
+  }
+
+  const nodeFraction = (used: NodeCounts, available: NodeCounts) => {
+    const total = totalNodes(available)
+    // No nodes at all means nothing to be a fraction of; any extractor on it is over the line.
+    return total > 0 ? totalNodes(used) / total : (totalNodes(used) > 0 ? Infinity : 0)
+  }
+
+  /**
+   * What is wrong with a resource, as chips beside its name.
+   *
+   * The rate check and the node check are separate questions — whether the resource exists in
+   * that quantity, and whether the extractors fit — and a plan can pass one and fail the other,
+   * so each gets to speak. Nothing repeats a figure the bars already carry.
+   */
+  const buildStatuses = (
+    utilisation: ResourceUtilisation | undefined,
+    nodeUsage: ResourceNodeUsage | undefined,
+  ): ResourceStatus[] => {
+    const statuses: ResourceStatus[] = []
+    if (!utilisation || utilisation.status === 'unlimited') {
+      return statuses
+    }
+
+    if (utilisation.status === 'impossible') {
+      statuses.push({
+        key: 'capacity',
+        label: 'Beyond the map',
+        icon: 'fas fa-exclamation-triangle',
+        class: 'status-problem',
+      })
+    } else if (utilisation.status === 'needsOverclock') {
+      statuses.push({
+        key: 'shards',
+        label: 'Needs power shards',
+        icon: 'fas fa-bolt',
+        class: 'status-warning',
+      })
+    }
+
+    if (nodeUsage?.overcommitted) {
+      statuses.push({
+        key: 'nodes',
+        label: 'Not enough nodes',
+        icon: 'fas fa-map-marker-alt',
+        class: 'status-problem',
+      })
+    } else if (nodeUsage?.overcommittedPurities.length) {
+      statuses.push({
+        key: 'purity',
+        label: 'Purity mismatch',
+        icon: 'fas fa-layer-group',
+        class: 'status-note',
+      })
+    }
+
+    return statuses
+  }
+
+  // Advice rather than status: what to do about it, which no chip or bar can say.
+  const buildDetails = (
+    utilisation: ResourceUtilisation | undefined,
+    nodeUsage: ResourceNodeUsage | undefined,
+  ): string[] => {
+    const details: string[] = []
+    if (!utilisation || utilisation.status === 'unlimited') {
+      return details
+    }
+
+    if (utilisation.status === 'impossible') {
+      // Naming the recipes matters: it is the difference between "give up" and "this is the
+      // Converter recipe that gets you the rest".
+      details.push(utilisation.conversionRecipes.length > 0
+        ? `Needs the Converter: ${utilisation.conversionRecipes.join(', ')}.`
+        : 'No Converter recipe makes this — the map total is final.')
+    }
+
+    // The node bars total the three purities, so the one thing about nodes still worth writing
+    // out is which purity a plan has overcommitted while its totals still fit.
+    if (!nodeUsage?.overcommitted) {
+      nodeUsage?.overcommittedPurities.forEach(purity => {
+        const used = nodeUsage.nodesUsed[purity] + nodeUsage.satellitesUsed[purity]
+        const available = nodeUsage.nodesAvailable[purity] + nodeUsage.satellitesAvailable[purity]
+        details.push(`${used} on ${available} ${PURITY_LABELS[purity].toLowerCase()} nodes — spread them across purities.`)
+      })
+    }
+
+    return details
+  }
+
+  // Everything the plan takes out of the world, per resource, with the factories doing the taking
+  // and what the world has to say about it.
+  const allFactoryRawResources = computed(() => {
+    const nodeUsage = calculateResourceNodeUsage(props.factories)
+
+    return calculateTotalRawResources(props.factories).map(resource => {
+      const utilisation = getResourceUtilisation(resource.id, resource.totalAmount)
+      const usage = nodeUsage.find(entry => entry.id === resource.id)
+
+      return {
+        ...resource,
+        utilisation,
+        nodeUsage: usage,
+        statuses: buildStatuses(utilisation, usage),
+        details: buildDetails(utilisation, usage),
+      }
+    })
+  })
+
+  const problems = computed(() => calculateWorldResourceProblems(props.factories))
+
+  const nameList = (ids: string[]) => {
+    const names = ids.map(id => getPartDisplayName(id))
+    if (names.length <= 1) {
+      return names.join('')
+    }
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  }
 
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
@@ -100,21 +433,95 @@
 .stats-table {
   background-color: transparent;
 
-  // The chips column carries the width; the first two only need enough not to wrap their own
-  // contents, or a plan with one long factory name squeezes the resource name onto two lines.
+  // The chips column carries the width; the resource name only needs enough not to wrap.
   th:nth-child(1),
-  td:nth-child(1),
-  th:nth-child(2),
-  td:nth-child(2) {
+  td:nth-child(1) {
     white-space: nowrap;
     width: 1%;
   }
 
+  // Bars need a floor to be readable at: left to itself the chips column takes the width and
+  // leaves the bars a few pixels of track.
+  th:nth-child(2),
+  td:nth-child(2) {
+    width: 1%;
+    min-width: 440px;
+  }
+
+  // Key and bar, and nothing else on the line: with the figures moved underneath, the bar takes
+  // every pixel the column has left. Table columns are one width, so `1fr` still leaves every bar
+  // in the table exactly as long as every other.
+  .bar-line {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-key {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    color: rgb(var(--v-theme-on-surface));
+  }
+
+  // Sized to sit level with the extractor icons above it rather than to the text beside it.
+  .bar-key-icon {
+    font-size: 0.9rem;
+    width: 20px;
+    text-align: center;
+    color: var(--sf-status-note, rgb(var(--v-theme-on-surface)));
+  }
+
+  // Muted on the text alone: dimming the whole key takes the extractor icon down with it, and
+  // the icon is the only thing naming the machine the ceiling assumes.
+  .bar-key-text {
+    opacity: 0.75;
+  }
+
+  // Under its own bar and tight to it: the figure belongs to the bar above, not to the row below.
+  .bar-figure {
+    padding-left: 94px;
+    margin-top: -1px;
+    font-size: 0.8rem;
+  }
+
+  .bar-percent {
+    margin-left: 4px;
+    font-weight: 600;
+  }
+
+  .bar-block + .bar-block {
+    margin-top: 4px;
+  }
+
+  // One rule in the whole cell, at the one place the subject changes: how much comes out of the
+  // ground, against how many places there are to take it from. The two extraction ceilings are the
+  // same measure twice and need nothing between them.
+  .bar-block:not(.nodes) + .bar-block.nodes {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px dotted rgba(255, 255, 255, 0.28);
+  }
+
+  .details {
+    color: var(--sf-status-warning);
+    max-width: 46ch;
+    padding-left: 94px;
+  }
+
   // v-table's default cell height assumes one line; these rows hold chips and wrap.
   td {
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     height: auto !important;
   }
+}
+
+.assumption {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
+  max-width: 92ch;
 }
 </style>

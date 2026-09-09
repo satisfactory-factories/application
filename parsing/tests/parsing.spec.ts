@@ -37,6 +37,13 @@ describe('common', () => {
             expect(results.items.rawResources["Crystal"].limit).toBe(596);
             expect(results.items.rawResources["Wood"].name).toBe('Wood');
             expect(results.items.rawResources["Wood"].limit).toBe(100000000);
+            // Limestone was entered here as 69900 for a resource the map yields 69300 of: its 94
+            // nodes are 15 impure, 50 normal and 29 pure, and a Miner Mk.3 at the 250% cap takes
+            // 300, 600 and 1200 from those respectively. The limits are hand-entered because
+            // Docs.json does not state them, so each one is only as good as its arithmetic.
+            expect(results.items.rawResources["Stone"].name).toBe('Limestone');
+            expect(results.items.rawResources["Stone"].limit).toBe(69300);
+            expect(15 * 300 + 50 * 600 + 29 * 1200).toBe(results.items.rawResources["Stone"].limit);
         })
 
         test('iron plate part should be correct', async () => {
