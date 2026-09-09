@@ -460,6 +460,21 @@ describe('rooms-store', () => {
       expect(store.adoptionOpen).toBe(true)
     })
 
+    // The offer dialog sits on top of the loading overlay, and an answer given while
+    // the plan is still being calculated can act on a partial one. A sign-in racing
+    // the boot's own load is the ordinary case this covers, not just a paste.
+    it('waits for the plan to finish loading before offering, on a sign-in too', async () => {
+      appStore.isLoaded = false
+
+      await interactiveLogin([])
+      expect(store.adoptionOpen, 'the plan is still loading').toBe(false)
+
+      eventBus.emit('loadingCompleted')
+      await nextTick()
+
+      expect(store.adoptionOpen).toBe(true)
+    })
+
     // signOut closes the dialog as cleanup; that is not the user answering, so
     // the parked adoption offer is dropped with the session, not shown.
     it('is cleared by a sign-out without counting as an answer', async () => {
@@ -640,6 +655,10 @@ describe('rooms-store', () => {
       expect(toast).toHaveBeenCalledWith('toast', expect.objectContaining({
         message: expect.stringContaining('previously saved to your account'),
         type: 'success',
+        // This fires straight off sign-in, right when the sync offer or a release
+        // splash is likely sat on top of it -- a timed toast nobody saw is the same
+        // as one that never fired.
+        variant: 'permanent',
       }))
       expect(store.legacyOpen).toBe(false)
       toast.mockRestore()
