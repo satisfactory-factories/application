@@ -95,6 +95,16 @@
               </template>
               <span>{{ factoryCountLabel(tab.factories.length) }} in this plan</span>
             </v-tooltip>
+            <v-tooltip v-if="localLastChanged(tab.id)" location="top">
+              <template #activator="{ props: timeProps }">
+                <span
+                  class="text-no-wrap text-truncate"
+                  data-testid="local-plan-last-changed"
+                  v-bind="timeProps"
+                >{{ localLastChanged(tab.id) }}</span>
+              </template>
+              <span>Last changed {{ localLastChangedExact(tab.id) }}</span>
+            </v-tooltip>
           </div>
 
           <div class="align-center d-flex plan-action">
@@ -228,6 +238,8 @@
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+  import { usePlanActivityStore } from '@/stores/plan-activity-store'
+  import { absoluteTime, relativeTimeLong } from '@/utils/relative-time'
 
   const props = withDefaults(defineProps<{
     /** True while the account tray is showing this panel. */
@@ -238,6 +250,7 @@
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
   const roomSync = useRoomSyncStore()
+  const planActivity = usePlanActivityStore()
 
   const username = computed(() => authStore.loggedInUser)
 
@@ -252,6 +265,31 @@
   /** Spelled out for the tooltip; the chip itself is the icon and the number. */
   const factoryCountLabel = (count: number) =>
     `${count} ${count === 1 ? 'factory' : 'factories'}`
+
+  /**
+   * When this browser last saw a local plan's CONTENT change. plan-activity-store already
+   * keeps one stamp per tab for the tab bar's own last-updated line — renames and reorders
+   * deliberately excluded — so a local plan says the same thing a cloud plan does without
+   * anything new being stored. A cloud plan keeps using the server's `lastActivityAt`
+   * instead: that one is stamped by the server's clock and follows the plan across devices,
+   * where this is only what this browser has seen.
+   *
+   * Empty until this browser has seen the plan change, and empty stays empty — the same
+   * rule CloudPlanRow follows for an unreadable stamp.
+   */
+  const localStamp = (tabId: string): string | null => {
+    const at = planActivity.lastUpdatedAt(tabId)
+    return at ? new Date(at).toISOString() : null
+  }
+
+  const localLastChanged = (tabId: string) => {
+    const at = localStamp(tabId)
+    if (at === null) return ''
+    const elapsed = relativeTimeLong(at, now.value)
+    return elapsed === '' ? '' : `Last updated ${elapsed}`
+  }
+
+  const localLastChangedExact = (tabId: string) => absoluteTime(localStamp(tabId) ?? undefined)
 
   const rooms = computed(() =>
     Object.values(roomsStore.entries).sort((a, b) => a.order - b.order)

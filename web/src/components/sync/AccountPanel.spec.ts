@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
+import { usePlanActivityStore } from '@/stores/plan-activity-store'
 import { LOCAL_TAB_STATE, type TabSyncStateMap } from '@/sync/tab-sync-state'
 
 const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
@@ -34,10 +35,16 @@ describe('AccountPanel', () => {
   let authStore: ReturnType<typeof useAuthStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
   let roomSync: ReturnType<typeof useRoomSyncStore>
+  let planActivity: ReturnType<typeof usePlanActivityStore>
 
   const render = (
     initialState: Record<string, unknown> = {},
-    { open = true, tabs = [] as FactoryTab[], tabStates = {} as TabSyncStateMap } = {},
+    {
+      open = true,
+      tabs = [] as FactoryTab[],
+      tabStates = {} as TabSyncStateMap,
+      stamps = {} as Record<string, number>,
+    } = {},
   ) => {
     const pinia = createTestingPinia({ createSpy: vi.fn, initialState })
     setActivePinia(pinia)
@@ -53,6 +60,10 @@ describe('AccountPanel', () => {
     appStore = useAppStore()
     vi.mocked(appStore.getTabs).mockImplementation(() => tabs)
     vi.mocked(appStore.getTabState).mockImplementation(tabId => tabStates[tabId] ?? LOCAL_TAB_STATE)
+
+    // The per-tab content stamp the tab bar already keeps; the panel reads it for local plans.
+    planActivity = usePlanActivityStore()
+    vi.mocked(planActivity.lastUpdatedAt).mockImplementation(tabId => stamps[tabId] ?? null)
 
     return mount(AccountPanel, { global: { plugins: [vuetify, pinia] }, props: { open } })
   }
@@ -243,16 +254,33 @@ describe('AccountPanel', () => {
       expect(card.find('.plan-action [data-testid="convert-local-plan"]').exists()).toBe(true)
     })
 
-    // A local tab carries no timestamp of its own, so the card says how big the plan is
-    // and stops there rather than repeating app-store's one browser-wide `lastEdit`.
-    it('says how big a local plan is, and claims no last-changed it does not have', () => {
+    const sizedTab = (factories: number) => ([
+      { id: 'local-1', name: 'My Browser Plan', factories: Array.from({ length: factories }, () => ({})) },
+    ] as unknown as FactoryTab[])
+
+    it('says how big a local plan is', () => {
+      const wrapper = render({}, { tabs: sizedTab(3) })
+
+      expect(at(wrapper, 'local-plan-factory-count').text()).toBe('3')
+    })
+
+    // The stamp comes from plan-activity-store, which the tab bar's own last-updated line
+    // already keeps per tab. Nothing new is stored for this.
+    it('says when a local plan last changed, from the per-tab content stamp', () => {
       const wrapper = render({}, {
-        tabs: [{ id: 'local-1', name: 'My Browser Plan', factories: [{}, {}, {}] } as unknown as FactoryTab],
+        tabs: sizedTab(3),
+        stamps: { 'local-1': Date.now() - 5 * 60_000 },
       })
 
-      const card = at(wrapper, 'local-plan')
-      expect(card.find('[data-testid="local-plan-factory-count"]').text()).toBe('3')
-      expect(card.find('[data-testid="plan-last-changed"]').exists()).toBe(false)
+      expect(at(wrapper, 'local-plan-last-changed').text()).toBe('Last updated 5 minutes ago')
+    })
+
+    // Empty stays empty: a plan this browser has not seen change says nothing rather than
+    // inventing a time for it.
+    it('says nothing about a local plan this browser has not seen change', () => {
+      const wrapper = render({}, { tabs: sizedTab(3) })
+
+      expect(at(wrapper, 'local-plan-last-changed').exists()).toBe(false)
     })
 
     it('converts a local tab through the adoption path', async () => {
