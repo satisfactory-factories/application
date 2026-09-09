@@ -554,8 +554,8 @@
   const hasSearchShot = true
   const hasCustomBuildingsShot = true
   const hasMaterialCostsShot = true
-  const hasChecklistShot = false
-  const hasGeneratorFuelShot = false
+  const hasChecklistShot = true
+  const hasGeneratorFuelShot = true
 
   const key = 'seenV7Splash'
 
