@@ -111,7 +111,7 @@
               <!-- The capture of the real tab where there is one, the bare glyph where there
                    isn't: either way the heading carries what the tab bar shows. -->
               <v-img
-                v-if="hasTabShots"
+                v-if="kind.shot"
                 :alt="kind.alt"
                 class="tab-shot rounded"
                 :src="kind.image"
@@ -540,8 +540,7 @@
   // A v-img pointed at a file that isn't there renders as a broken image, so each capture sits
   // behind its own flag and a slide whose picture has not been taken yet ships as text. Flip one
   // on as its file lands in web/public/assets/changelog/beta7/.
-  const hasTabShots = false
-  const hasPlusButtonShot = false
+  const hasPlusButtonShot = true
   const hasShareTrayShot = false
   const hasShareShot = false
   const hasSnapshotShot = false
@@ -551,7 +550,7 @@
   const hasBacklogShots = false
   const hasDepotShot = false
   const hasDepotAssignShot = false
-  const hasSearchShot = false
+  const hasSearchShot = true
   const hasCustomBuildingsShot = true
   const hasMaterialCostsShot = false
   const hasChecklistShot = false
@@ -689,6 +688,7 @@
   const tabKinds = [
     {
       key: 'local',
+      shot: false,
       label: 'Local',
       icon: 'fas fa-desktop',
       image: shots.tabLocal,
@@ -699,6 +699,7 @@
     },
     {
       key: 'synced',
+      shot: false,
       label: 'Synced',
       icon: 'fas fa-cloud',
       image: shots.tabSynced,
@@ -709,6 +710,7 @@
     },
     {
       key: 'shared',
+      shot: false,
       label: 'Shared',
       icon: 'fas fa-users',
       image: shots.tabShared,
