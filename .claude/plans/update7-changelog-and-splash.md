@@ -30,35 +30,53 @@ Done:
   on the Change Log page's heading.~~ 09/Sep/2026, the date #674 and #678 landed.
 - ~~Reword `CHANGELOG.md`'s v0.7 opening line.~~
 
+- ~~Polish the account panel before its slide is captured.~~ Merged as #680 and pulled into this
+  branch.
+- ~~Restructure the deck around the four features the release is actually about.~~ Renamed it the
+  **SINKronisation Update**, on the pun the two headline features hand you.
+
 Outstanding:
 
 - Record the headline demo: two browser windows side by side, one edit, both screens moving.
-- Capture the screenshots into `web/public/assets/changelog/beta7/`. Every one of them is named
-  in `SplashV7.vue`'s `shots` map and sits behind its own `has*Shot` flag, all `false` bar
-  `hasCustomBuildingsShot`. Drop a file in and flip its flag.
-- Polish the account panel before slide 5 is captured, so the screenshot is of the fixed UI.
-  Forked to its own session, see "Account panel polish" below.
+  `video-placeholder.png` stands in the slot until it exists.
+- **Nine of the fifteen screenshots are captured.** The rest all need a live backend and a signed-in
+  account, and must not be faked: a stubbed session renders "Not connected" with an empty Cloud tab,
+  which misrepresents the feature. Still wanted: `account-panel`, `offline-switch`, `tab-local`,
+  `tab-synced`, `tab-shared`, `share-tray`, `share-invite`.
+- **`main`'s `Build & Test Web` is red and this PR inherits it.** `SyncSocket`'s default
+  `new WebSocket(url)` opens a real socket in jsdom; under Node 24 undici throws asynchronously
+  after the test has passed, so every test passes and the run still exits 1. A validated fix — an
+  inert `WebSocket` stub in `web/src/setup-vitest.ts` — is posted as a comment on #679 but not
+  applied, because it belongs on `main` and this branch is not the place for it.
 
 ## The slides
 
 Eight slides. Slide 1 carries the video and a contents list that jumps to any of the others.
 
+The release is named for the pun its two headline features hand you: you **sync** a plan and you
+**sink** a surplus. Slide 1 leads on the four features everything else hangs off — realtime sync
+and search on the top row, AWESOME Sinks and the Dimensional Depot beneath — the last two wearing
+the game's own art and the colours the satisfaction table already gives them.
+
 | # | Slide | What goes on it | Media |
 | --- | --- | --- | --- |
-| 1 | **Realtime sync is here** | The old backend cloud-save system has been gutted and replaced. It is still cloud saving, it is a new one. What it buys you: every tab is a first-class plan on your account rather than one blob, tabs can be shared, and two people can edit the same plan live. Contents list. | The two-browser demo |
-| 2 | **Every tab is local, synced or shared** | A heading per kind, each with a picture of that tab as it appears in the tab bar sitting beside the heading: the monitor for **Local**, the cloud for **Synced**, the group of people for **Shared**. One short paragraph per kind saying what it is and what it needs. Local is still the default and still needs no account. Then the tab edit menu behind the pencil: rename, convert to cloud, convert to local, hide, share settings, delete. | `tab-local.png`, `tab-synced.png`, `tab-shared.png` (small, inline beside each heading), `tab-settings.png` |
-| 3 | **Editing together** | Invite link `.../room/three-word-slug`, your own words for it, live availability. Optional password. Edits to different factories both survive; same factory settles on one. One person at a time in a text field, released after ten seconds. Stop sharing hands everyone their own copy. Snapshot link is still there and is a separate thing. | Live demo clip |
-| 4 | **Offline mode** | Say plainly **where it is**: the account panel, on the cloud account tile, not under Options. Then what it does: no connection, no requests, no retries. Chip in the tab bar. Coming back is manual, like a phone. One prompt on return, listing every factory both sides touched, your figures against the live ones, product by product, and you pick. Survives a refresh. | `offline-switch.png` (the toggle in the account panel), `offline-conflict.png` |
-| 5 | **Your account, your plans** | The account panel with its **Local** and **Cloud** tabs, showing what each holds. Signing in asks which plans to open instead of opening all of them. Settings follow your account. A pre-v0.7 cloud save is brought over on its own. Export plan and Import plan now do files as well as the clipboard. | `account-panel-local.png`, `account-panel-cloud.png`, `signin-chooser.png` |
-| 6 | **AWESOME Sinks and the Dimensional Depot** | The Storage column. A sink disposes of surplus so the planner treats it as gone; 30 MW each. An Uploader deliberately changes no number. New "Will cause backlog" warning. New Dimensional Depot section and sidebar entry. Mercer Spheres join Power Shards and Somersloops. Upload and expansion research are saved on the plan. | `sink-depot.png`, `depot-section.png` |
-| 7 | **Also new in the planner** | Search the plan (Ctrl/Cmd+K). Custom buildings — twenty of them, portals included, with real power and part demands. Material costs panel. Checklist rework: three tables, and a desynced row now says `560/min → 720/min`. Sidebar Arrange dialog and scroll-spy following. Every dialog shares one header. Statistics start collapsed. "Last updated" beside the search box. Power generators offer **Expand to supply** and **Trim to supply** against the fuel their own factory can spare. | `search.png`, `custom-buildings.png`, `material-costs.png`, `checklist.png`, `generator-fuel.png` |
-| 8 | **Fixes, and where to read more** | Seven fixes, one line each: task edit on Enter, checklist ticks, Fix Product counting imports, phantom export surplus, imports for an over-committed mine, Share sharing the wrong tab, duplicate generator IDs, wizard backup zeroing a power target. Then the backend rewrite in one paragraph. Two buttons: the full Change Log, and **Missed Beta v0.6?**. | none |
+| 1 | **The SINKronisation Update** | "Sync your plans. Sink your surplus." The video, then the four features as equal cards, then the contents list. | The two-browser demo; `video-placeholder.png` until it exists |
+| 2 | **Every tab is local, synced or shared** | Opens on the thing to read first: **an account is never mandatory**, the planner works 100% without one. Then a heading per kind carrying that tab as it appears in the bar. Then adding a tab, with the + button ringed. | `tab-local.png`, `tab-synced.png`, `tab-shared.png`, `plus-button.png` ✅ |
+| 3 | **Tab sharing** | The sharing tray, then the two links side by side in the order the tray puts them: **snapshot** on the left (the old system — a one-time link that loads a frozen copy into someone's browser, no account either end), **invite** on the right (both edit live, password optional, unshare at any time and nobody loses data). Says plainly that collaboration is the one feature that *does* need an account, and why. | `share-tray.png`, `share-snapshot.png`, `share-invite.png` |
+| 4 | **Manage your plans in the new account panel** | Local and Cloud tabs, My Plans against Joined Plans, Show/Hide per plan, Change password. Then settings following your account, then **offline mode** in three lines — switch it on to stay deliberately unsynced, it kicks in by itself if the connection drops, everything re-syncs when you come back. | `account-panel.png`, `offline-switch.png` |
+| 5 | **AWESOME Sinks and the Dimensional Depot** | Two sections. A sink disposes of surplus so it never backs the belt up (which is a bad thing), with the backlog warning it answers. Then Depot support: the summary table, and that an Uploader deliberately changes no number. | `sink-storage.png` ✅, `backlog-sidebar.png` ✅, `backlog-satisfaction.png` ✅, `depot-summary.png` ✅ |
+| 6 | **Search the plan** | Its own slide — it is one of the four. Ctrl/Cmd+K, a factory or a part, results grouped by what each factory does with it, landing on the row it names. | `search.png` ✅ |
+| 7 | **Also new in the planner** | Custom buildings, material costs, the checklist rework, generators matching fuel to supply, plans in and out as files, then an "around the edges" list. | `custom-buildings.png` ✅, `material-costs.png` ✅, `checklist.png` ✅, `generator-fuel.png` ✅ |
+| 8 | **Fixes** | Four a player would notice: task edit on Enter, Fix Product counting imports, phantom export surplus, and imports for an over-committed mine. Then **Missed Beta v0.6?**. | none |
 
 ### Deliberately not on a slide
 
-Backend internals beyond one paragraph, the shared package, the schema limits, idempotent
+The backend rewrite entirely — nobody reading a release deck cares that the server is a new
+application. Also: the shared package, the schema limits, idempotent
 steps, the audit record, the version gate, the telemetry heartbeat, the loading-path changes,
-and the dev-tools conflict stager. All of it stays on the Change Log page.
+the dev-tools conflict stager, the sign-in chooser, the one-time pre-v0.7 cloud recovery (a
+future reader would not know what it meant), and the mechanics of what happens when two people
+type into the same field at once. All of it stays on the Change Log page.
 
 ## Format
 
