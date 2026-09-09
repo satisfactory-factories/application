@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import { useRoomsStore } from '@/stores/rooms-store'
+import { usePlanActivityStore } from '@/stores/plan-activity-store'
 import { LOCAL_TAB_STATE, type TabSyncStateMap } from '@/sync/tab-sync-state'
 
 const entry = (overrides: Partial<RoomListEntry> = {}): RoomListEntry => ({
@@ -34,10 +35,16 @@ describe('AccountPanel', () => {
   let authStore: ReturnType<typeof useAuthStore>
   let roomsStore: ReturnType<typeof useRoomsStore>
   let roomSync: ReturnType<typeof useRoomSyncStore>
+  let planActivity: ReturnType<typeof usePlanActivityStore>
 
   const render = (
     initialState: Record<string, unknown> = {},
-    { open = true, tabs = [] as FactoryTab[], tabStates = {} as TabSyncStateMap } = {},
+    {
+      open = true,
+      tabs = [] as FactoryTab[],
+      tabStates = {} as TabSyncStateMap,
+      stamps = {} as Record<string, number>,
+    } = {},
   ) => {
     const pinia = createTestingPinia({ createSpy: vi.fn, initialState })
     setActivePinia(pinia)
@@ -53,6 +60,10 @@ describe('AccountPanel', () => {
     appStore = useAppStore()
     vi.mocked(appStore.getTabs).mockImplementation(() => tabs)
     vi.mocked(appStore.getTabState).mockImplementation(tabId => tabStates[tabId] ?? LOCAL_TAB_STATE)
+
+    // The per-tab content stamp the tab bar already keeps; the panel reads it for local plans.
+    planActivity = usePlanActivityStore()
+    vi.mocked(planActivity.lastUpdatedAt).mockImplementation(tabId => stamps[tabId] ?? null)
 
     return mount(AccountPanel, { global: { plugins: [vuetify, pinia] }, props: { open } })
   }
@@ -163,6 +174,16 @@ describe('AccountPanel', () => {
   })
 
   describe('offline switch', () => {
+    // The chip above it already draws the offline state as a plane; the switch that
+    // causes that state says so with the same icon rather than with words alone.
+    it('wears the same aeroplane the offline connection chip does', () => {
+      const wrapper = render()
+      const label = at(wrapper, 'offline-switch').find('label')
+
+      expect(label.text()).toContain('Offline mode')
+      expect(label.find('i.fa-plane').exists()).toBe(true)
+    })
+
     it('goes silent when switched on', async () => {
       const wrapper = render()
 
@@ -220,6 +241,46 @@ describe('AccountPanel', () => {
 
       expect(at(wrapper, 'no-local-plans').exists()).toBe(true)
       expect(at(wrapper, 'local-plan').exists()).toBe(false)
+    })
+
+    // Both tabs are seen together, so a local plan gets the same card and the same
+    // two-row/two-column layout a cloud plan does.
+    it('draws each local plan as a factory card, laid out like a cloud plan', () => {
+      const wrapper = render({}, mixedTabs())
+
+      const card = at(wrapper, 'local-plan')
+      expect(card.classes()).toContain('factory-card')
+      expect(card.find('.plan-title').text()).toContain('My Browser Plan')
+      expect(card.find('.plan-action [data-testid="convert-local-plan"]').exists()).toBe(true)
+    })
+
+    const sizedTab = (factories: number) => ([
+      { id: 'local-1', name: 'My Browser Plan', factories: Array.from({ length: factories }, () => ({})) },
+    ] as unknown as FactoryTab[])
+
+    it('says how big a local plan is', () => {
+      const wrapper = render({}, { tabs: sizedTab(3) })
+
+      expect(at(wrapper, 'local-plan-factory-count').text()).toBe('3')
+    })
+
+    // The stamp comes from plan-activity-store, which the tab bar's own last-updated line
+    // already keeps per tab. Nothing new is stored for this.
+    it('says when a local plan last changed, from the per-tab content stamp', () => {
+      const wrapper = render({}, {
+        tabs: sizedTab(3),
+        stamps: { 'local-1': Date.now() - 5 * 60_000 },
+      })
+
+      expect(at(wrapper, 'local-plan-last-changed').text()).toBe('Last updated 5 minutes ago')
+    })
+
+    // Empty stays empty: a plan this browser has not seen change says nothing rather than
+    // inventing a time for it.
+    it('says nothing about a local plan this browser has not seen change', () => {
+      const wrapper = render({}, { tabs: sizedTab(3) })
+
+      expect(at(wrapper, 'local-plan-last-changed').exists()).toBe(false)
     })
 
     it('converts a local tab through the adoption path', async () => {
@@ -302,7 +363,7 @@ describe('AccountPanel', () => {
       expect(counts).toEqual(['12', '1'])
     })
 
-    it('gives a joined plan the same two-line row', async () => {
+    it('gives a joined plan the same card', async () => {
       const wrapper = render({
         rooms: { entries: { 'room-2': entry({ roomId: 'room-2', role: 'member', factoryCount: 3 }) } },
       })
@@ -312,6 +373,98 @@ describe('AccountPanel', () => {
       expect(row.find('[data-testid="plan-factory-count"]').text()).toBe('3')
       expect(row.find('[data-testid="plan-last-changed"]').exists()).toBe(true)
       expect(row.find('[data-testid="show-plan"]').exists()).toBe(true)
+    })
+
+    // ===== Layout =====
+
+    // Two rows, two columns: the name over its readouts in column one, the toggle in
+    // column two spanning both. The toggle answers for the whole plan, so it must NOT
+    // sit inside the title row — that is the arrangement this replaced.
+    it('lays each plan out as a name over its readouts, with the toggle beside both', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry({ factoryCount: 9 }) } } })
+      await openCloud(wrapper)
+
+      const card = at(wrapper, 'my-plan')
+      expect(card.classes()).toContain('factory-card')
+      expect(card.find('.plan-title').text()).toContain('Iron Plates')
+      expect(card.find('.plan-meta [data-testid="plan-factory-count"]').text()).toBe('9')
+      expect(card.find('.plan-meta [data-testid="plan-last-changed"]').exists()).toBe(true)
+      expect(card.find('.plan-action [data-testid="show-plan"]').exists()).toBe(true)
+      expect(card.find('.plan-title [data-testid="show-plan"]').exists()).toBe(false)
+    })
+
+    // Tonal grey on this dark tray read as a disabled control rather than as a count.
+    // The `factory` token is the one the rest of the app gives a factory reference.
+    it('colours the factory count with the factory token', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry({ factoryCount: 4 }) } } })
+      await openCloud(wrapper)
+
+      // `.sf-chip.factory` in global.scss carries `!important` colour and border, so it
+      // wins over the chip variant underneath it — the class list is the whole contract.
+      const count = at(wrapper, 'plan-factory-count')
+      expect(count.classes()).toEqual(expect.arrayContaining(['sf-chip', 'factory', 'x-small']))
+      expect(count.text()).toBe('4')
+    })
+
+    // The card's border carries the Show/Hide state: blue while the plan has a tab in
+    // this browser, and otherwise the grey every factory card wears. `plan-open` is what
+    // swaps it, so the class is the contract the scoped rule hangs off.
+    it('marks an open plan\'s card and leaves a hidden one alone', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', order: 1 }),
+          },
+        },
+      }, {
+        tabs: [tab('room-1', 'Iron Plates')],
+        tabStates: { 'room-1': { kind: 'synced', shared: false, role: 'owner', revision: 3 } },
+      })
+      await openCloud(wrapper)
+
+      const cards = wrapper.findAll('[data-testid="my-plan"]')
+      expect(cards[0].find('[data-testid="hide-plan"]').exists()).toBe(true)
+      expect(cards[0].classes()).toContain('plan-open')
+      expect(cards[1].find('[data-testid="show-plan"]').exists()).toBe(true)
+      expect(cards[1].classes()).not.toContain('plan-open')
+    })
+
+    // At text-body-2 the headings were SMALLER than the plan names beneath them, so
+    // each one read as one more plan rather than as the heading over the list.
+    it('sizes both group headings above the plan names', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', role: 'member', order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      for (const testId of ['my-plans-heading', 'joined-plans-heading']) {
+        expect(at(wrapper, testId).classes()).toContain('text-h6')
+        expect(at(wrapper, testId).classes()).not.toContain('text-body-2')
+      }
+    })
+
+    // The tab bar names a tab's kind with an icon (TabNavigation.vue: a cloud for a
+    // synced tab, a group of people for a collaborative one). The headings over the
+    // two lists say the same thing with the same glyphs, rather than inventing a pair.
+    it('heads each list with the tab bar\'s icon for that kind of plan', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', role: 'member', order: 1 }),
+          },
+        },
+      })
+      await openCloud(wrapper)
+
+      expect(at(wrapper, 'my-plans-heading').find('i.fa-cloud').exists()).toBe(true)
+      expect(at(wrapper, 'joined-plans-heading').find('i.fa-users').exists()).toBe(true)
     })
   })
 
