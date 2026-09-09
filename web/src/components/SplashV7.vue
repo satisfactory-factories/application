@@ -548,12 +548,12 @@
   const hasOfflineShot = false
   const hasSinkShot = true
   const hasBacklogSidebarShot = true
-  const hasBacklogSatisfactionShot = false
+  const hasBacklogSatisfactionShot = true
   const hasDepotShot = true
   const hasDepotAssignShot = false
   const hasSearchShot = true
   const hasCustomBuildingsShot = true
-  const hasMaterialCostsShot = false
+  const hasMaterialCostsShot = true
   const hasChecklistShot = false
   const hasGeneratorFuelShot = false
 
