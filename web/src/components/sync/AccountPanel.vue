@@ -66,32 +66,54 @@
       >
         Every plan in your tab bar is already on the cloud.
       </p>
-      <!-- The same card a cloud plan gets in CloudPlanRow, minus the body: a local plan
-           has no size or last-changed to report. One tab away from a list of cards, so
-           bare rows here would read as the unfinished half of the same panel. -->
+      <!-- The same card, and the same two-row/two-column layout, a cloud plan gets in
+           CloudPlanRow. No last-changed line: a local tab carries no timestamp of its
+           own (app-store's `lastEdit` is one stamp for the whole browser, not per plan),
+           and repeating that one value on every card would say they were all edited at
+           the same moment. -->
       <v-card
         v-for="tab in localTabs"
         :key="tab.id"
         class="factory-card plan-card mb-2"
         data-testid="local-plan"
       >
-        <div class="header align-center d-flex ga-2">
-          <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
-          <v-tooltip location="top">
-            <template #activator="{ props: convertProps }">
-              <v-btn
-                color="green"
-                data-testid="convert-local-plan"
-                icon="fas fa-cloud-upload-alt"
-                :loading="convertingId === tab.id"
-                size="x-small"
-                variant="flat"
-                v-bind="convertProps"
-                @click="convert(tab.id)"
-              />
-            </template>
-            <span>Send this plan to the cloud</span>
-          </v-tooltip>
+        <div class="plan-grid">
+          <div class="align-center d-flex ga-2 plan-title">
+            <span class="flex-grow-1 plan-name text-truncate">{{ tab.name }}</span>
+          </div>
+
+          <div class="align-center d-flex ga-2 plan-meta text-caption text-grey">
+            <v-tooltip location="top">
+              <template #activator="{ props: countProps }">
+                <v-chip
+                  class="sf-chip factory x-small no-margin"
+                  data-testid="local-plan-factory-count"
+                  v-bind="countProps"
+                >
+                  <i class="fas fa-industry mr-1" />{{ tab.factories.length }}
+                </v-chip>
+              </template>
+              <span>{{ factoryCountLabel(tab.factories.length) }} in this plan</span>
+            </v-tooltip>
+          </div>
+
+          <div class="align-center d-flex plan-action">
+            <v-tooltip location="top">
+              <template #activator="{ props: convertProps }">
+                <v-btn
+                  color="green"
+                  data-testid="convert-local-plan"
+                  icon="fas fa-cloud-upload-alt"
+                  :loading="convertingId === tab.id"
+                  size="x-small"
+                  variant="flat"
+                  v-bind="convertProps"
+                  @click="convert(tab.id)"
+                />
+              </template>
+              <span>Send this plan to the cloud</span>
+            </v-tooltip>
+          </div>
         </div>
       </v-card>
       <p v-if="localTabs.length > 0" class="text-body-2 mt-1 text-grey">
@@ -226,6 +248,10 @@
   const localTabs = computed(() =>
     appStore.getTabs().filter(tab => appStore.getTabState(tab.id).kind === 'local')
   )
+
+  /** Spelled out for the tooltip; the chip itself is the icon and the number. */
+  const factoryCountLabel = (count: number) =>
+    `${count} ${count === 1 ? 'factory' : 'factories'}`
 
   const rooms = computed(() =>
     Object.values(roomsStore.entries).sort((a, b) => a.order - b.order)
@@ -370,9 +396,43 @@
     margin-left: 6px;
   }
 
-  // Matches CloudPlanRow's card: `.factory-card .header` in global.scss is padded for a
-  // full-width planner card (12px 16px 0), which is too generous for a ~370px tray.
-  .plan-card .header {
-    padding: 8px 10px !important;
+  // The same two-row/two-column grid CloudPlanRow lays its cards out on, so the two
+  // tabs of this panel agree. Kept in step by hand: scoped styles cannot be shared, and
+  // one small grid in two files beat a third component for a purely visual layout.
+  .plan-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 10px;
+  }
+
+  .plan-title {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .plan-meta {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  .plan-action {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  // The square-ish corner the planner gives every button in a factory card, which the
+  // dropped `.header` rule used to supply. Without it Vuetify's `.v-btn--icon` rounds
+  // this one to a circle while the Show/Hide buttons opposite stay square.
+  .plan-action .v-btn {
+    border-radius: 4px;
+  }
+
+  .plan-name {
+    line-height: 1.25;
   }
 </style>

@@ -1,60 +1,63 @@
 <template>
-  <!-- Drawn as one of the planner's factory cards: a `.header` naming the thing and
-       carrying its controls, over a body of readouts. A bare pair of stacked lines read
-       as loose text running into the next plan's; a card says where one plan ends. -->
+  <!-- Two rows, two columns: the name over its readouts in column one, the toggle in
+       column two spanning both. Deliberately looser than the planner's factory card,
+       whose tinted header band and divider cannot survive a control that crosses them. -->
   <v-card class="factory-card plan-card mb-2" :class="{ 'plan-open': open }">
-    <div class="header align-center d-flex ga-2">
-      <span class="flex-grow-1 plan-name text-truncate">{{ room.name }}</span>
-      <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
-      <v-tooltip location="top">
-        <template #activator="{ props: toggleProps }">
-          <v-btn
-            :color="open ? undefined : 'primary'"
-            :data-room-id="room.roomId"
-            :data-testid="open ? 'hide-plan' : 'show-plan'"
-            :loading="loading"
-            :size="size"
-            variant="tonal"
-            v-bind="toggleProps"
-            @click="emit('toggle', room.roomId)"
-          >{{ open ? 'Hide' : 'Show' }}</v-btn>
-        </template>
-        <span>{{ open
-          ? 'Close this plan\'s tab in this browser. It stays on your account.'
-          : 'Open this plan in your tab bar.' }}</span>
-      </v-tooltip>
+    <div class="plan-grid">
+      <div class="align-center d-flex ga-2 plan-title">
+        <span class="flex-grow-1 plan-name text-truncate">{{ room.name }}</span>
+        <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
+      </div>
+
+      <div class="align-center d-flex ga-2 plan-meta text-caption text-grey">
+        <!-- The plan's size, drawn the way the sidebar's Global Factories Summary draws
+             it: the icon carries the meaning and the tooltip spells it out. Wears the
+             `factory` token rather than a tonal grey, which on this dark tray read as a
+             disabled control rather than as a count. -->
+        <v-tooltip location="top">
+          <template #activator="{ props: countProps }">
+            <v-chip
+              class="sf-chip factory x-small no-margin"
+              data-testid="plan-factory-count"
+              v-bind="countProps"
+            >
+              <i class="fas fa-industry mr-1" />{{ room.factoryCount }}
+            </v-chip>
+          </template>
+          <span>{{ factoryCountLabel }} in this plan</span>
+        </v-tooltip>
+        <v-tooltip location="top">
+          <template #activator="{ props: timeProps }">
+            <span
+              class="text-no-wrap text-truncate"
+              data-testid="plan-last-changed"
+              v-bind="timeProps"
+            >{{ lastChanged }}</span>
+          </template>
+          <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
+        </v-tooltip>
+      </div>
+
+      <div class="align-center d-flex plan-action">
+        <v-tooltip location="top">
+          <template #activator="{ props: toggleProps }">
+            <v-btn
+              :color="open ? undefined : 'primary'"
+              :data-room-id="room.roomId"
+              :data-testid="open ? 'hide-plan' : 'show-plan'"
+              :loading="loading"
+              :size="size"
+              variant="tonal"
+              v-bind="toggleProps"
+              @click="emit('toggle', room.roomId)"
+            >{{ open ? 'Hide' : 'Show' }}</v-btn>
+          </template>
+          <span>{{ open
+            ? 'Close this plan\'s tab in this browser. It stays on your account.'
+            : 'Open this plan in your tab bar.' }}</span>
+        </v-tooltip>
+      </div>
     </div>
-    <!-- A v-card-text rather than a plain div on purpose: `.factory-card .header` drops
-         its bottom border when no `.v-card-text` follows it, so the divider that makes
-         this read as a header only exists if the body below is one. -->
-    <v-card-text class="align-center d-flex ga-2 plan-meta text-caption text-grey">
-      <!-- The plan's size, drawn the way the sidebar's Global Factories Summary draws
-           it: the icon carries the meaning and the tooltip spells it out. Wears the
-           `factory` token rather than a tonal grey, which on this dark tray read as a
-           disabled control rather than as a count. -->
-      <v-tooltip location="top">
-        <template #activator="{ props: countProps }">
-          <v-chip
-            class="sf-chip factory x-small no-margin"
-            data-testid="plan-factory-count"
-            v-bind="countProps"
-          >
-            <i class="fas fa-industry mr-1" />{{ room.factoryCount }}
-          </v-chip>
-        </template>
-        <span>{{ factoryCountLabel }} in this plan</span>
-      </v-tooltip>
-      <v-tooltip location="top">
-        <template #activator="{ props: timeProps }">
-          <span
-            class="text-no-wrap"
-            data-testid="plan-last-changed"
-            v-bind="timeProps"
-          >{{ lastChanged }}</span>
-        </template>
-        <span>Last changed {{ absoluteTime(room.lastActivityAt) }}</span>
-      </v-tooltip>
-    </v-card-text>
   </v-card>
 </template>
 
@@ -64,9 +67,9 @@
   import { absoluteTime, relativeTimeLong } from '@/utils/relative-time'
 
   /**
-   * One plan's card in the account panel's plan lists. The header names the plan
-   * and toggles whether it is open (has a tab) in this browser; the body says how
-   * big it is and when it last changed. Owned and joined plans share it.
+   * One plan's card in the account panel's plan lists. Column one names the plan and
+   * says how big it is and when it last changed; column two toggles whether it is open
+   * (has a tab) in this browser. Owned and joined plans share it.
    */
   const props = withDefaults(defineProps<{
     room: RoomListEntry
@@ -97,27 +100,45 @@
 </script>
 
 <style lang="scss" scoped>
-  // `.factory-card .header` in global.scss is padded for a full-width planner card
-  // (12px 16px 0). These sit in a ~370px account tray as well as in a dialog, so the
-  // padding comes in and the header gets a bottom of its own — the planner's card has
-  // a chips bar to fill that space, and this one does not. Two classes plus the scope
-  // attribute to outrank the global rule's `!important`.
-  //
-  // The header is deliberately the TALLER of the two bands. Matched padding left the
-  // 12px readouts below in a roomier strip than the 16px name above them, which read as
-  // the title being squeezed rather than as the heading of the card.
-  .plan-card .header {
-    padding: 8px 10px !important;
+  // Column one takes what is left after the button; `minmax(0, 1fr)` rather than `1fr`
+  // so a long plan name truncates instead of forcing the card wider than the tray.
+  .plan-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 10px;
   }
 
-  .plan-card .plan-meta {
-    padding: 4px 10px;
+  .plan-title {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
   }
 
-  // The name sets the header's height through its line box, and at the inherited 1.43
-  // that box carries far more air below the baseline than above the cap, which sits the
-  // name visibly high in the band. Tightened to hug the glyphs so centring them centres
-  // what you actually see.
+  .plan-meta {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  // Spans both rows and centres against them, which is the whole point of the grid:
+  // one control answering for the plan rather than one sitting on its title.
+  .plan-action {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  // The square-ish corner the planner gives every button in a factory card's header.
+  // That rule keyed off `.header`, which this layout no longer has.
+  .plan-action .v-btn {
+    border-radius: 4px;
+  }
+
+  // The name sets row one's height through its line box, and at the inherited 1.43 that
+  // box carries far more air below the baseline than above the cap. Tightened to hug the
+  // glyphs so the two rows sit evenly either side of the card's middle.
   .plan-name {
     line-height: 1.25;
   }

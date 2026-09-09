@@ -232,15 +232,27 @@ describe('AccountPanel', () => {
       expect(at(wrapper, 'local-plan').exists()).toBe(false)
     })
 
-    // Both tabs are seen together, so a local plan gets the same card a cloud plan does —
-    // header only, as a local plan has no size or last-changed to report.
-    it('draws each local plan as a factory card', () => {
+    // Both tabs are seen together, so a local plan gets the same card and the same
+    // two-row/two-column layout a cloud plan does.
+    it('draws each local plan as a factory card, laid out like a cloud plan', () => {
       const wrapper = render({}, mixedTabs())
 
       const card = at(wrapper, 'local-plan')
       expect(card.classes()).toContain('factory-card')
-      expect(card.find('.header').text()).toContain('My Browser Plan')
-      expect(card.find('.header [data-testid="convert-local-plan"]').exists()).toBe(true)
+      expect(card.find('.plan-title').text()).toContain('My Browser Plan')
+      expect(card.find('.plan-action [data-testid="convert-local-plan"]').exists()).toBe(true)
+    })
+
+    // A local tab carries no timestamp of its own, so the card says how big the plan is
+    // and stops there rather than repeating app-store's one browser-wide `lastEdit`.
+    it('says how big a local plan is, and claims no last-changed it does not have', () => {
+      const wrapper = render({}, {
+        tabs: [{ id: 'local-1', name: 'My Browser Plan', factories: [{}, {}, {}] } as unknown as FactoryTab],
+      })
+
+      const card = at(wrapper, 'local-plan')
+      expect(card.find('[data-testid="local-plan-factory-count"]').text()).toBe('3')
+      expect(card.find('[data-testid="plan-last-changed"]').exists()).toBe(false)
     })
 
     it('converts a local tab through the adoption path', async () => {
@@ -337,19 +349,20 @@ describe('AccountPanel', () => {
 
     // ===== Layout =====
 
-    // Each plan is one of the planner's factory cards — a `.header` naming it over a
-    // body of readouts — so the panel reads as part of the same app. Two bare stacked
-    // lines per plan ran the list together.
-    it('draws each plan as a factory card with a header', async () => {
-      const wrapper = render({ rooms: { entries: { 'room-1': entry() } } })
+    // Two rows, two columns: the name over its readouts in column one, the toggle in
+    // column two spanning both. The toggle answers for the whole plan, so it must NOT
+    // sit inside the title row — that is the arrangement this replaced.
+    it('lays each plan out as a name over its readouts, with the toggle beside both', async () => {
+      const wrapper = render({ rooms: { entries: { 'room-1': entry({ factoryCount: 9 }) } } })
       await openCloud(wrapper)
 
       const card = at(wrapper, 'my-plan')
       expect(card.classes()).toContain('factory-card')
-      expect(card.find('.header').text()).toContain('Iron Plates')
-      // The name and its Show button share the header; the readouts sit below it.
-      expect(card.find('.header [data-testid="show-plan"]').exists()).toBe(true)
-      expect(card.find('.header [data-testid="plan-factory-count"]').exists()).toBe(false)
+      expect(card.find('.plan-title').text()).toContain('Iron Plates')
+      expect(card.find('.plan-meta [data-testid="plan-factory-count"]').text()).toBe('9')
+      expect(card.find('.plan-meta [data-testid="plan-last-changed"]').exists()).toBe(true)
+      expect(card.find('.plan-action [data-testid="show-plan"]').exists()).toBe(true)
+      expect(card.find('.plan-title [data-testid="show-plan"]').exists()).toBe(false)
     })
 
     // Tonal grey on this dark tray read as a disabled control rather than as a count.
