@@ -5,8 +5,17 @@
   <v-card class="factory-card plan-card mb-2" :class="{ 'plan-open': open }">
     <div class="plan-grid">
       <div class="align-center d-flex ga-2 plan-title">
-        <span class="flex-grow-1 plan-name text-truncate">{{ room.name }}</span>
-        <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
+        <!-- The chip qualifies the name, so it sits against it rather than being pushed to
+             the far side of the column, where it lined up with nothing and shifted with
+             the width of the button opposite. -->
+        <span class="plan-name text-truncate">{{ room.name }}</span>
+        <v-chip
+          v-if="room.shared"
+          class="flex-shrink-0"
+          color="green"
+          size="x-small"
+          variant="flat"
+        >Shared</v-chip>
       </div>
 
       <div class="align-center d-flex ga-2 plan-meta text-caption text-grey">
@@ -141,6 +150,9 @@
   // glyphs so the two rows sit evenly either side of the card's middle.
   .plan-name {
     line-height: 1.25;
+    // A flex item will not shrink below its content without this, so `text-truncate`
+    // would never get to truncate — the name would push the Shared chip out of the card.
+    min-width: 0;
   }
 
   // The border says whether this plan has a tab in this browser: the product blue when
