@@ -2,9 +2,9 @@
   <!-- Drawn as one of the planner's factory cards: a `.header` naming the thing and
        carrying its controls, over a body of readouts. A bare pair of stacked lines read
        as loose text running into the next plan's; a card says where one plan ends. -->
-  <v-card class="factory-card plan-card mb-2">
+  <v-card class="factory-card plan-card mb-2" :class="{ 'plan-open': open }">
     <div class="header align-center d-flex ga-2">
-      <span class="flex-grow-1 text-truncate">{{ room.name }}</span>
+      <span class="flex-grow-1 plan-name text-truncate">{{ room.name }}</span>
       <v-chip v-if="room.shared" color="green" size="x-small" variant="flat">Shared</v-chip>
       <v-tooltip location="top">
         <template #activator="{ props: toggleProps }">
@@ -102,11 +102,30 @@
   // padding comes in and the header gets a bottom of its own — the planner's card has
   // a chips bar to fill that space, and this one does not. Two classes plus the scope
   // attribute to outrank the global rule's `!important`.
+  //
+  // The header is deliberately the TALLER of the two bands. Matched padding left the
+  // 12px readouts below in a roomier strip than the 16px name above them, which read as
+  // the title being squeezed rather than as the heading of the card.
   .plan-card .header {
-    padding: 6px 10px !important;
+    padding: 8px 10px !important;
   }
 
   .plan-card .plan-meta {
-    padding: 6px 10px;
+    padding: 4px 10px;
+  }
+
+  // The name sets the header's height through its line box, and at the inherited 1.43
+  // that box carries far more air below the baseline than above the cap, which sits the
+  // name visibly high in the band. Tightened to hug the glyphs so centring them centres
+  // what you actually see.
+  .plan-name {
+    line-height: 1.25;
+  }
+
+  // The border says whether this plan has a tab in this browser: the product blue when
+  // it is open, and otherwise the grey every factory card wears, straight from
+  // `.factory-card`. Outranks that rule's `!important` shorthand on specificity.
+  .plan-card.plan-open {
+    border-color: var(--sf-product) !important;
   }
 </style>

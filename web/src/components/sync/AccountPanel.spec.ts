@@ -365,6 +365,30 @@ describe('AccountPanel', () => {
       expect(count.text()).toBe('4')
     })
 
+    // The card's border carries the Show/Hide state: blue while the plan has a tab in
+    // this browser, and otherwise the grey every factory card wears. `plan-open` is what
+    // swaps it, so the class is the contract the scoped rule hangs off.
+    it('marks an open plan\'s card and leaves a hidden one alone', async () => {
+      const wrapper = render({
+        rooms: {
+          entries: {
+            'room-1': entry(),
+            'room-2': entry({ roomId: 'room-2', name: 'Steel', order: 1 }),
+          },
+        },
+      }, {
+        tabs: [tab('room-1', 'Iron Plates')],
+        tabStates: { 'room-1': { kind: 'synced', shared: false, role: 'owner', revision: 3 } },
+      })
+      await openCloud(wrapper)
+
+      const cards = wrapper.findAll('[data-testid="my-plan"]')
+      expect(cards[0].find('[data-testid="hide-plan"]').exists()).toBe(true)
+      expect(cards[0].classes()).toContain('plan-open')
+      expect(cards[1].find('[data-testid="show-plan"]').exists()).toBe(true)
+      expect(cards[1].classes()).not.toContain('plan-open')
+    })
+
     // At text-body-2 the headings were SMALLER than the plan names beneath them, so
     // each one read as one more plan rather than as the heading over the list.
     it('sizes both group headings above the plan names', async () => {

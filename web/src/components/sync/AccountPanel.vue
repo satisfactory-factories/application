@@ -354,6 +354,6 @@
   // Matches CloudPlanRow's card: `.factory-card .header` in global.scss is padded for a
   // full-width planner card (12px 16px 0), which is too generous for a ~370px tray.
   .plan-card .header {
-    padding: 6px 10px !important;
+    padding: 8px 10px !important;
   }
 </style>
