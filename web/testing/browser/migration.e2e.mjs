@@ -7,8 +7,9 @@
 // `plannerVersion` on the tab. Answering therefore belongs to the PLAN, not to the browser, so
 // every scenario here re-arms by seeding an unstamped plan rather than by clearing a flag.
 //
-// The v0.6 deck still takes the notice over on the one load where it auto-shows (see the last
-// scenario); everywhere else `seenV6Splash` is seeded so the notice speaks for itself.
+// On the one load where the v0.6 release deck auto-shows it takes the notice over, so the last
+// scenario asserts only what holds whichever of the two speaks; everywhere else `seenV6Splash`
+// is seeded so the notice speaks for itself.
 //
 // Run the dev server first, then:
 //   cd web && VITE_ENV=dev pnpm exec vite --port 3005 --strictPort
@@ -333,15 +334,22 @@ await page.close()
   await p.close()
 }
 
-// --- The one load the notice does not own. The v0.6 deck still auto-shows for a user who has not
-// seen it, and takes the warning over rather than queueing behind it — slide 1 IS this warning,
-// with the wizard attached. The notice must not be stacked underneath.
+// --- The first load, before the release deck has been seen. The v0.6 deck currently auto-shows
+// here and takes the warning over rather than queueing behind it — slide 1 IS this warning, with
+// the wizard attached — so the notice must not be stacked underneath. Once the deck becomes
+// manual-only the notice speaks here itself. Asserted as the invariant that holds either way:
+// exactly one of the two puts the warning in front of the user, and whichever it is, the plan is
+// left unanswered until it is answered.
 {
   const p = await bootLegacyPlan({ deckSeen: false })
-  check('[deck] the v0.6 deck takes the warning over on its one showing',
-    await waitFor(() => deckOpenOn(p)))
-  check('[deck] and the notice is not stacked behind it', (await promptStateOf(p)).open === false)
-  check('[deck] the plan is left unanswered until the deck is answered',
+  check('[first load] the warning is raised',
+    await waitFor(async () => (await deckOpenOn(p)) || (await promptStateOf(p)).open))
+  const byDeck = await deckOpenOn(p)
+  const byNotice = (await promptStateOf(p)).open
+  console.log(`      raised by: ${byDeck ? 'the v0.6 deck, which still takes it over' : 'RawMigrationPrompt'}`)
+  check('[first load] by one of the deck and the notice, never both', byDeck !== byNotice,
+    `deck ${byDeck}, notice ${byNotice}`)
+  check('[first load] and the plan is left unanswered until it is answered',
     (await tabsOf(p))[0]?.plannerVersion === null, JSON.stringify(await tabsOf(p)))
   await p.close()
 }
