@@ -4,9 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Beta v0.7: Realtime sync, rooms and offline mode
 
-_In development._
-
-Cloud saving is gone and live plans have taken its place. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
+The old cloud save has been gutted and a new one built in its place. It is still cloud saving; it is a different cloud saving. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
 
 ### Every tab is now local, synced or shared
 

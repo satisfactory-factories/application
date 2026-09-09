@@ -11,24 +11,33 @@ The deck is a highlights reel. The Change Log page is the complete record.
 
 ## Tasks
 
-- Build `web/src/components/SplashV7.vue`: eight slides, same shape as `SplashV6.vue`.
+Done:
+
+- ~~Build `web/src/components/SplashV7.vue`: eight slides, same shape as `SplashV6.vue`.~~
+- ~~Expand the Beta v0.7 section of `web/src/pages/changelog.vue` to cover sync, rooms, offline
+  mode, the account panel, import/export and the backend rewrite.~~
+- ~~Add a `splashShowV6` event to `web/src/utils/eventBus.ts`.~~
+- ~~Make `SplashV6.vue` manual-only: stop it auto-showing, show it on `splashShowV6` only.~~
+  The raw-resources breaking notice goes back to `RawMigrationPrompt.vue` with it: the v0.6 deck
+  took that warning over while the two shipped together, and they no longer do.
+- ~~Point the header's "Show changes" link at the v0.7 deck.~~ It emits `splashShow`, which
+  the v0.7 deck now answers and the v0.6 deck no longer does.
+- ~~Gate the v0.7 deck on `seenV7Splash` and on the introduction having been dismissed, exactly
+  as the v0.6 deck is gated.~~
+- ~~Cover the gating with a spec: first run, already seen, manual reopen, hand-off to v0.6.~~
+  `SplashV7.spec.ts`, and `SplashV6.spec.ts` cut down to its manual-only surface.
+- ~~Version-stamp the v0.7 section of `CHANGELOG.md` and drop "_In development._", and the same
+  on the Change Log page's heading.~~ 09/Sep/2026, the date #674 and #678 landed.
+- ~~Reword `CHANGELOG.md`'s v0.7 opening line.~~
+
+Outstanding:
+
 - Record the headline demo: two browser windows side by side, one edit, both screens moving.
-- Expand the Beta v0.7 section of `web/src/pages/changelog.vue` to cover sync, rooms, offline
-  mode, the account panel, import/export and the backend rewrite.
-- Add a `splashShowV6` event to `web/src/utils/eventBus.ts`.
-- Make `SplashV6.vue` manual-only: stop it auto-showing, show it on `splashShowV6` only.
-- Point the header's "Show changes" link at the v0.7 deck.
-- Gate the v0.7 deck on `seenV7Splash` and on the introduction having been dismissed, exactly
-  as the v0.6 deck is gated.
-- Capture the screenshots into `web/public/assets/changelog/beta7/`.
+- Capture the screenshots into `web/public/assets/changelog/beta7/`. Every one of them is named
+  in `SplashV7.vue`'s `shots` map and sits behind its own `has*Shot` flag, all `false` bar
+  `hasCustomBuildingsShot`. Drop a file in and flip its flag.
 - Polish the account panel before slide 5 is captured, so the screenshot is of the fixed UI.
   Forked to its own session, see "Account panel polish" below.
-- Cover the gating with a spec: first run, already seen, manual reopen, hand-off to v0.6.
-- Version-stamp the v0.7 section of `CHANGELOG.md` and drop "_In development._", and the same
-  on the Change Log page's heading.
-- Reword `CHANGELOG.md`'s v0.7 opening line. "Cloud saving is gone and live plans have taken
-  its place" says the feature was removed. It was replaced: the old backend save is gutted and
-  a new one is in its place. Slide 1 says it the right way round and the changelog should match.
 
 ## The slides
 

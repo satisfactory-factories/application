@@ -65,8 +65,12 @@ type Events = {
   // and deliberately stopped, so that a first-time visitor is not handed it the moment they
   // finish reading the introduction.
   introDismissed: undefined;
+  // The current release's deck. What the header's "Show changes" asks for, and the only
+  // one of the three that ever opens on its own.
   splashShow: undefined;
-  // The previous release's splash, kept for anyone who missed it. Only ever opened by hand.
+  // The decks behind it, each kept for anyone who missed it and each reachable only from the
+  // last slide of the one in front. Never opened automatically.
+  splashShowV6: undefined;
   splashShowV5: undefined;
   // The Raw Resources Wizard is mounted by OptionsDialog; this is how anything else asks for it.
   openRawWizard: undefined;
