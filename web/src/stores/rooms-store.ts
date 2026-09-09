@@ -226,6 +226,13 @@ export const useRoomsStore = defineStore('rooms', () => {
 
     if (!appStore.getTab(roomId)) return true
 
+    // Hiding drops the journal along with the tab, so an edit that never reached the
+    // server — still pending, still debouncing, or an unanswered clash — goes with it.
+    // `blocked()` alone only catches deliberate offline mode, not a dropped connection.
+    if (roomSync.hasLocalEdits(roomId) || roomSync.conflicts[roomId] || roomSync.pendingConflicts[roomId]) {
+      return refuse('This plan has changes still syncing. Wait for them to finish before hiding it.')
+    }
+
     const tabs = appStore.getTabs()
     if (tabs.length === 1) {
       return refuse('The tab bar cannot be left empty. Open another plan first.')

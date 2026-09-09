@@ -324,6 +324,22 @@ describe('rooms-store', () => {
           message: OFFLINE_MESSAGE,
         }))
       })
+
+      // Hiding drops the journal along with the tab, so an edit that never reached the
+      // server has nowhere left to survive — and "offline" alone misses this: a dropped
+      // connection or a debounce still in flight leaves an edit unsent with nobody ever
+      // having asked for offline mode.
+      it('refuses to hide a plan with edits that never reached the server', async () => {
+        await openRoom()
+        roomSync.markUserTouched('room-1', 1)
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(store.hidePlan('room-1'))
+          .toBe('This plan has changes still syncing. Wait for them to finish before hiding it.')
+
+        expect(appStore.getTab('room-1')).toBeDefined()
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'error' }))
+      })
     })
 
     it('keeps a hidden plan hidden across refreshes', async () => {
