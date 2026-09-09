@@ -285,7 +285,7 @@
           <v-row class="mb-2" no-gutters>
             <v-col class="pr-md-3" cols="12" md="6">
               <v-img
-                v-if="hasBacklogShots"
+                v-if="hasBacklogSidebarShot"
                 alt="The sidebar warning that a factory will cause a backlog"
                 class="rounded"
                 :src="shots.backlogSidebar"
@@ -293,7 +293,7 @@
             </v-col>
             <v-col class="pl-md-3" cols="12" md="6">
               <v-img
-                v-if="hasBacklogShots"
+                v-if="hasBacklogSatisfactionShot"
                 alt="The Will cause backlog warning on an item's satisfaction row"
                 class="rounded"
                 :src="shots.backlogSatisfaction"
@@ -546,9 +546,10 @@
   const hasSnapshotShot = false
   const hasAccountPanelShot = false
   const hasOfflineShot = false
-  const hasSinkShot = false
-  const hasBacklogShots = false
-  const hasDepotShot = false
+  const hasSinkShot = true
+  const hasBacklogSidebarShot = true
+  const hasBacklogSatisfactionShot = false
+  const hasDepotShot = true
   const hasDepotAssignShot = false
   const hasSearchShot = true
   const hasCustomBuildingsShot = true
