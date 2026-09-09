@@ -17,7 +17,7 @@ import { FactoryData } from '../legacy/factory-data.schema'
 import { RoomsService } from './rooms.service'
 import { User } from '../auth/user.schema'
 
-export const LEGACY_ROOM_NAME = 'Recovered plan'
+export const LEGACY_ROOM_NAME = 'Restored from old cloud sync'
 
 /**
  * A v5 UUID over the account id, so the import lands on the same room even if the
@@ -142,12 +142,17 @@ export class LegacyImportService {
     const blob = await this.loadBlob(username)
     if (!blob) return { imported: false, reason: 'no_legacy_data' }
     const { factories, dropped, tab } = blob
+    // A room named only after whatever the old save was called is indistinguishable from
+    // a fresh v0.7 plan of the same name -- say plainly where it came from either way.
     const { name = LEGACY_ROOM_NAME, ...content } = tab
+    const roomName = name === LEGACY_ROOM_NAME
+      ? name
+      : truncateString(`${name} (restored from old cloud sync)`, CAPS.name)
 
     const roomId = legacyImportRoomId(userId)
     const result = await this.roomsService.ensureRoom(
       userId,
-      { roomId, name, factories, ...content },
+      { roomId, name: roomName, factories, ...content },
       'imported',
     )
 

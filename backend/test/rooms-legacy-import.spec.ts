@@ -195,14 +195,14 @@ describe('legacy blob import', () => {
 
       const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
       expect(stored).toMatchObject({
-        name: 'Nuclear megabase',
+        name: 'Nuclear megabase (restored from old cloud sync)',
         powerTarget: 4500,
         depotUploadTier: 2,
         depotExpansionTier: 3,
         plannerVersion: '0.6.2',
         groups: [{ id: 'group-1', name: 'Planned, no members yet', color: '#ff8800' }],
       })
-      expect(body.room.name).toBe('Nuclear megabase')
+      expect(body.room.name).toBe('Nuclear megabase (restored from old cloud sync)')
     })
 
     // Absent is a meaning: the tiers read as fully researched and the version as unanswered.
@@ -216,7 +216,7 @@ describe('legacy blob import', () => {
       const { body } = await post('/rooms/legacy/recover', user).send({})
 
       const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
-      expect(stored?.name).toBe('Early plan')
+      expect(stored?.name).toBe('Early plan (restored from old cloud sync)')
       expect(stored?.powerTarget).toBe(0)
       expect(stored?.groups).toEqual([])
       expect(stored?.depotUploadTier).toBeUndefined()
@@ -408,10 +408,10 @@ describe('legacy blob import', () => {
       const { body } = await autoImport()
 
       expect(body.imported).toBe(true)
-      expect(body.room.name).toBe('Nuclear megabase')
+      expect(body.room.name).toBe('Nuclear megabase (restored from old cloud sync)')
       const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
       expect(stored).toMatchObject({
-        name: 'Nuclear megabase',
+        name: 'Nuclear megabase (restored from old cloud sync)',
         powerTarget: 4500,
         depotUploadTier: 2,
         depotExpansionTier: 3,

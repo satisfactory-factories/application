@@ -173,6 +173,13 @@ describe('AdoptionDialog', () => {
       expect(body().textContent).toContain('Sync your planner tabs now?')
       expect(body().textContent).toContain('These plans live only in this browser')
     })
+
+    it('points at tab settings for the sign-in sweep too, not the plus button', async () => {
+      await open(['Alpha', 'Beta'])
+
+      expect(body().textContent).toContain('sync them any time from tab settings')
+      expect(body().textContent).not.toContain('the plus button')
+    })
   })
 
   it('leaves every plan local when declined, and remembers the answer', async () => {
