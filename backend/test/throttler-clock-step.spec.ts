@@ -15,14 +15,20 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { HEALTH_THROTTLE } from '../src/config/throttling'
 
+const TTL = 500
 /**
- * Wide on purpose. The shape being pinned is "two hits alive at a time, and the count does not
- * climb", which holds at any scale; what a tight ttl adds is a race against the suite's own
- * scheduler, where one late timer leaves three alive and fails a test that found nothing wrong.
- * A probe interval of 200ms gives a decrement that much slack before it matters.
+ * How late a decrement timer may fire before three hits are alive at once, and the assertion
+ * below fails on the suite's own scheduler rather than on anything the storage did wrong.
  */
-const TTL = 400
-const PROBE = TTL / 2
+const JITTER_MARGIN = 200
+/**
+ * Docker probes at roughly half the ttl, which is what keeps two hits alive at a time. Probing
+ * at *exactly* half leaves no margin at all: hit k's decrement falls due the same instant probe
+ * k+2 lands, at any ttl, so scaling the ttl up on its own buys nothing — measured, the gap sits
+ * at 0ms whether the ttl is 100 or 2000. Probing half the margin later than half the ttl puts
+ * each probe midway between the two deadlines that bracket it, and that gap is the tolerance.
+ */
+const PROBE = (TTL + JITTER_MARGIN) / 2
 /** The incident: the clock was stepped back about an hour shortly after boot. */
 const STEP_BACK = -60 * 60 * 1000
 
@@ -47,7 +53,7 @@ describe('a backwards clock step against @nestjs/throttler storage', () => {
     // ...and only then does the clock get stepped back, which is the ordering that mattered.
     stepClock(STEP_BACK)
 
-    // Docker probes at half the ttl, so two hits are alive at once and no more. More probes
+    // Probing just over half the ttl keeps two hits alive at once and no more. More probes
     // than the bucket's limit, so a count that was climbing would certainly have blocked.
     for (let probe = 0; probe < HEALTH_THROTTLE.limit + 2; probe++) {
       await sleep(PROBE)
