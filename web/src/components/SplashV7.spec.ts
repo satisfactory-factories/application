@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { gameData } from '@/utils/gameData'
+
+// Slide 1 and slide 5 carry the sink and Depot art, and its component throws outright without
+// the data behind it.
+vi.mock('@/stores/game-data-store', () => ({
+  useGameDataStore: () => ({
+    getGameData: () => gameData,
+    loadGameData: async () => {},
+  }),
+}))
 
 import SplashV7 from './SplashV7.vue'
 import { vuetifyRender } from '@/utils/ui-test-bootstrap'

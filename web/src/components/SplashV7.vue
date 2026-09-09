@@ -50,8 +50,17 @@
               sm="6"
             >
               <div class="headline-card h-100 pa-4 rounded">
-                <h3 class="headline-title d-flex align-center ga-3 mb-2">
-                  <i :class="feature.icon" />
+                <h3 class="headline-title d-flex align-center ga-3 mb-2" :class="feature.tone">
+                  <!-- The game's own art where the feature is a building, so the card and the
+                       control it names are recognisably the same thing. -->
+                  <game-asset
+                    v-if="feature.asset"
+                    height="28"
+                    :subject="feature.asset"
+                    type="item_id"
+                    width="28"
+                  />
+                  <i v-else :class="feature.icon" />
                   <span>{{ feature.title }}</span>
                 </h3>
                 <p class="mb-0">{{ feature.blurb }}</p>
@@ -76,9 +85,25 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-folder-open" /><span class="ml-2">Every tab is local, synced or shared</span>
           </h2>
+          <!-- Said before anything else on the slide, and said plainly: everything below this
+               describes accounts, and the first thing anyone should know is that they are
+               optional. -->
+          <v-alert
+            class="mb-4"
+            density="comfortable"
+            prominent
+            type="success"
+            variant="tonal"
+          >
+            <h3 class="text-h6 mb-1 font-weight-bold">At no point is a cloud account mandatory</h3>
+            <p class="mb-0">
+              The planner works <b>100% without an account</b>, exactly as it always has. Everything
+              on this slide is opt-in.
+            </p>
+          </v-alert>
           <p class="mb-4">
-            The <b>+</b> button now asks which kind you want rather than silently making a local
-            one, and each tab wears its kind in the tab bar.
+            Each tab wears its kind in the tab bar, and the <b>+</b> button now asks which kind you
+            want rather than silently making a local one.
           </p>
 
           <div v-for="kind in tabKinds" :key="kind.key" class="mb-4">
@@ -100,11 +125,21 @@
 
           <v-divider class="my-4" />
 
+          <h3 class="section-heading mb-2">Adding a tab</h3>
+          <p class="mb-3">
+            Press the <b>+</b> button at the end of the tab bar and pick which kind you want.
+          </p>
+          <v-img
+            v-if="hasPlusButtonShot"
+            alt="The + button at the end of the tab bar, highlighted"
+            class="mb-3 mx-auto rounded"
+            max-width="640"
+            :src="shots.plusButton"
+          />
           <p class="mb-0">
-            <b>Local is still the default and still needs no account.</b> Nothing changes for anyone
-            who never signs in. The pencil on a tab opens <b>tab settings</b>, where you rename it,
-            send it to the cloud, bring it back, hide it or delete it — and tabs drag into whatever
-            order you like, with your synced ones following your account.
+            <b>Local is still the default.</b> The pencil on a tab opens <b>tab settings</b>, where
+            you rename it, send it to the cloud, bring it back, hide it or delete it — and tabs drag
+            into whatever order you like, with your synced ones following your account.
           </p>
         </div>
 
@@ -112,47 +147,42 @@
              the two kinds of link side by side, because they are what people confuse. -->
         <div v-if="currentSlide === 2">
           <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-users" /><span class="ml-2">Real-time collaboration</span>
+            <i class="fas fa-share-nodes" /><span class="ml-2">Tab sharing</span>
           </h2>
           <p class="mb-4">
-            Invite someone into a synced tab and they are editing <i>your</i> plan with you. Changes
-            flow both ways and land on the other side in about as long as the network takes.
+            Two ways to hand a plan to somebody else, and they do different things. Both live in the
+            sharing tray, reached from <b>Share Settings</b> in tab settings.
           </p>
           <v-img
-            v-if="hasTabSettingsShot"
-            alt="Tab settings, with Share Settings among its buttons"
+            v-if="hasShareTrayShot"
+            alt="The tab sharing tray, offering a snapshot link and an invite link"
             class="mb-4 mx-auto rounded"
-            max-width="760"
-            :src="shots.tabSettings"
+            max-width="820"
+            :src="shots.shareTray"
           />
-          <p class="text-center text-medium-emphasis mb-4">
-            Both links live behind <b>Share Settings</b>, in tab settings.
-          </p>
 
+          <!-- The counterpart to slide 2's promise that an account is optional. It is, right up
+               until this one feature, and being straight about that is the point. -->
+          <v-alert
+            class="mb-4"
+            density="comfortable"
+            type="info"
+            variant="tonal"
+          >
+            <b>Unlike local tabs, real-time collaboration does need a cloud account.</b> It is what
+            lets the planner tell who may edit a plan and keep everyone's copy of it in step.
+            Snapshot links, on the left, need no account at all.
+          </v-alert>
+
+          <!-- Left to right in the order the tray itself puts them. -->
           <v-row no-gutters>
             <v-col class="pr-md-4" cols="12" md="6">
-              <h3 class="section-heading mb-2">
-                <i class="fas fa-user-plus" /><span class="ml-2">Invite a pioneer</span>
-              </h3>
-              <v-img
-                v-if="hasShareShot"
-                alt="The share dialog, offering an invite link"
-                class="mb-3 rounded"
-                :src="shots.share"
-              />
-              <ul class="ml-6 mb-0">
-                <li>Invite a pioneer into your plan with a link, and you both edit it live.</li>
-                <li>The link can be <b>password protected</b>.</li>
-                <li>You stay in control: <b>unshare at any time</b>, and everyone keeps their own copy of the plan. Nobody loses data.</li>
-              </ul>
-            </v-col>
-            <v-col class="pl-md-4" cols="12" md="6">
               <h3 class="section-heading mb-2">
                 <i class="fas fa-camera" /><span class="ml-2">Snapshot link</span>
               </h3>
               <v-img
                 v-if="hasSnapshotShot"
-                alt="The share dialog's snapshot link"
+                alt="The snapshot link half of the sharing tray"
                 class="mb-3 rounded"
                 :src="shots.snapshot"
               />
@@ -160,6 +190,22 @@
                 <li>This is the <b>old share link system</b>, and it is still here.</li>
                 <li>You make a one-time link, and it loads into someone's browser as their own local copy.</li>
                 <li>That's it — no account needed, on either end.</li>
+              </ul>
+            </v-col>
+            <v-col class="pl-md-4" cols="12" md="6">
+              <h3 class="section-heading mb-2">
+                <i class="fas fa-user-plus" /><span class="ml-2">Invite a pioneer</span>
+              </h3>
+              <v-img
+                v-if="hasShareShot"
+                alt="The invite link half of the sharing tray"
+                class="mb-3 rounded"
+                :src="shots.share"
+              />
+              <ul class="ml-6 mb-0">
+                <li>Invite a pioneer into your plan with a link, and you both edit it live.</li>
+                <li>The link can be <b>password protected</b>.</li>
+                <li>You stay in control: <b>unshare at any time</b>, and everyone keeps their own copy of the plan. Nobody loses data.</li>
               </ul>
             </v-col>
           </v-row>
@@ -215,8 +261,9 @@
 
         <!-- Slide 5: The other half of the pun. -->
         <div v-if="currentSlide === 4">
-          <h2 class="text-h5 text-center mb-2">
-            <i class="fas fa-recycle" /><span class="ml-2">AWESOME Sink support</span>
+          <h2 class="text-h5 text-center d-flex align-center justify-center ga-3 mb-2 tone-sink">
+            <game-asset height="32" subject="awesome-sink" type="item_id" width="32" />
+            <span>AWESOME Sink support</span>
           </h2>
           <p class="mb-4">
             <b>You can now dispose of any surplus</b>, so that it doesn't generate a backlog
@@ -256,8 +303,9 @@
 
           <v-divider class="my-4" />
 
-          <h2 class="text-h5 text-center mb-3">
-            <i class="fas fa-warehouse" /><span class="ml-2">Dimensional Depot support</span>
+          <h2 class="text-h5 text-center d-flex align-center justify-center ga-3 mb-3 tone-depot">
+            <game-asset height="32" subject="dimensional-depot" type="item_id" width="32" />
+            <span>Dimensional Depot support</span>
           </h2>
           <v-img
             v-if="hasDepotShot"
@@ -471,7 +519,8 @@
     tabLocal: '/assets/changelog/beta7/tab-local.png',
     tabSynced: '/assets/changelog/beta7/tab-synced.png',
     tabShared: '/assets/changelog/beta7/tab-shared.png',
-    tabSettings: '/assets/changelog/beta7/tab-settings.png',
+    plusButton: '/assets/changelog/beta7/plus-button.png',
+    shareTray: '/assets/changelog/beta7/share-tray.png',
     share: '/assets/changelog/beta7/share-invite.png',
     snapshot: '/assets/changelog/beta7/share-snapshot.png',
     accountPanel: '/assets/changelog/beta7/account-panel.png',
@@ -492,7 +541,8 @@
   // behind its own flag and a slide whose picture has not been taken yet ships as text. Flip one
   // on as its file lands in web/public/assets/changelog/beta7/.
   const hasTabShots = false
-  const hasTabSettingsShot = false
+  const hasPlusButtonShot = false
+  const hasShareTrayShot = false
   const hasShareShot = false
   const hasSnapshotShot = false
   const hasAccountPanelShot = false
@@ -587,7 +637,7 @@
   const slides = [
     { title: 'The SINKronisation Update', nav: 'Intro', icon: 'fas fa-flag' },
     { title: 'Every tab is local, synced or shared', nav: 'Kinds of tab', icon: 'fas fa-folder-open' },
-    { title: 'Real-time collaboration', nav: 'Collaboration', icon: 'fas fa-users' },
+    { title: 'Tab sharing', nav: 'Tab sharing', icon: 'fas fa-share-nodes' },
     { title: 'Manage your plans in the new account panel', nav: 'Your account', icon: 'fas fa-user' },
     { title: 'AWESOME Sinks and the Dimensional Depot', nav: 'Sinks & the Depot', icon: 'fas fa-recycle' },
     { title: 'Search the plan', nav: 'Search', icon: 'fas fa-search' },
@@ -597,30 +647,40 @@
 
   // The four this release is actually about. Slide 1 leads on them; every later slide is one of
   // them in detail.
+  // Order matters: the two sync features on the top row, the two storage ones underneath, so the
+  // pair each half of the release name refers to reads together.
   const headlines = [
     {
       title: 'Realtime sync',
-      icon: 'fas fa-satellite-dish',
+      icon: 'fas fa-sync',
+      asset: '',
+      tone: '',
       blurb: 'Every tab is a plan on your account, on every device you sign in on — and one you ' +
         'can hand to a friend and build together, live.',
     },
     {
+      title: 'Search',
+      icon: 'fas fa-search',
+      asset: '',
+      tone: '',
+      blurb: 'Ctrl/Cmd + K, then a factory or a part — and land on the exact row that names it, ' +
+        'anywhere in the plan.',
+    },
+    {
       title: 'AWESOME Sinks',
-      icon: 'fas fa-recycle',
+      icon: '',
+      asset: 'awesome-sink',
+      tone: 'tone-sink',
       blurb: 'Dispose of a surplus so it never backs the belt up, and see at a glance which of ' +
         'your factories are about to clog.',
     },
     {
       title: 'Dimensional Depot',
-      icon: 'fas fa-warehouse',
+      icon: '',
+      asset: 'dimensional-depot',
+      tone: 'tone-depot',
       blurb: 'Plan what you upload, what it costs in Mercer Spheres, and whether your Uploaders ' +
         'can keep up with what you make.',
-    },
-    {
-      title: 'Search',
-      icon: 'fas fa-search',
-      blurb: 'Ctrl/Cmd + K, then a factory or a part — and land on the exact row that names it, ' +
-        'anywhere in the plan.',
     },
   ] as const
 
@@ -712,6 +772,16 @@
   font-weight: 700;
 }
 
+// The two storage features wear the colours the satisfaction table already gives them, so a
+// heading here and the control it names are the same colour on screen.
+.tone-sink {
+  color: var(--sf-awesome-sink);
+}
+
+.tone-depot {
+  color: var(--sf-dimensional-depot);
+}
+
 // Section headings on the later slides, which carry several unrelated changes each. text-h6 was
 // not pulling far enough clear of the body text for them to read as divisions.
 .section-heading {
@@ -734,6 +804,13 @@
 
   i {
     color: rgb(var(--v-theme-primary));
+  }
+
+  &.tone-sink,
+  &.tone-depot {
+    i {
+      color: inherit;
+    }
   }
 }
 
