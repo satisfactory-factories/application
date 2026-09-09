@@ -22,14 +22,20 @@
     </v-chip>
 
     <v-switch
+      class="offline-switch"
       color="orange"
       data-testid="offline-switch"
       density="compact"
       hide-details
-      label="Offline mode"
       :model-value="roomSync.isOffline"
       @update:model-value="toggleOffline"
-    />
+    >
+      <!-- The same fa-plane the connection chip above wears for the offline state:
+           the switch that causes that state carries the icon it puts you in. -->
+      <template #label>
+        <span class="mr-2"><i class="fas fa-plane" /></span>Offline mode
+      </template>
+    </v-switch>
     <p class="text-body-2 mb-4 text-grey">
       Offline mode stops all contact with the server. Your edits are kept and sent when you
       switch it back off.
@@ -60,29 +66,66 @@
       >
         Every plan in your tab bar is already on the cloud.
       </p>
-      <div
+      <!-- The same card, and the same two-row/two-column layout, a cloud plan gets in
+           CloudPlanRow. No last-changed line: a local tab carries no timestamp of its
+           own (app-store's `lastEdit` is one stamp for the whole browser, not per plan),
+           and repeating that one value on every card would say they were all edited at
+           the same moment. -->
+      <v-card
         v-for="tab in localTabs"
         :key="tab.id"
-        class="align-center d-flex ga-2 mb-2"
+        class="factory-card plan-card mb-2"
         data-testid="local-plan"
       >
-        <span class="flex-grow-1 text-truncate">{{ tab.name }}</span>
-        <v-tooltip location="top">
-          <template #activator="{ props: convertProps }">
-            <v-btn
-              color="green"
-              data-testid="convert-local-plan"
-              icon="fas fa-cloud-upload-alt"
-              :loading="convertingId === tab.id"
-              size="x-small"
-              variant="flat"
-              v-bind="convertProps"
-              @click="convert(tab.id)"
-            />
-          </template>
-          <span>Send this plan to the cloud</span>
-        </v-tooltip>
-      </div>
+        <div class="plan-grid">
+          <div class="align-center d-flex ga-2 plan-title">
+            <span class="flex-grow-1 plan-name text-truncate">{{ tab.name }}</span>
+          </div>
+
+          <div class="align-center d-flex ga-2 plan-meta text-caption text-grey">
+            <v-tooltip location="top">
+              <template #activator="{ props: countProps }">
+                <v-chip
+                  class="sf-chip factory x-small no-margin"
+                  data-testid="local-plan-factory-count"
+                  v-bind="countProps"
+                >
+                  <i class="fas fa-industry mr-1" />{{ tab.factories.length }}
+                </v-chip>
+              </template>
+              <span>{{ factoryCountLabel(tab.factories.length) }} in this plan</span>
+            </v-tooltip>
+            <v-tooltip v-if="localLastChanged(tab.id)" location="top">
+              <template #activator="{ props: timeProps }">
+                <span
+                  class="text-no-wrap text-truncate"
+                  data-testid="local-plan-last-changed"
+                  v-bind="timeProps"
+                >{{ localLastChanged(tab.id) }}</span>
+              </template>
+              <span>Last changed {{ localLastChangedExact(tab.id) }}</span>
+            </v-tooltip>
+          </div>
+
+          <div class="align-center d-flex plan-action">
+            <v-tooltip location="top">
+              <template #activator="{ props: convertProps }">
+                <v-btn
+                  color="green"
+                  data-testid="convert-local-plan"
+                  icon="fas fa-cloud-upload-alt"
+                  :loading="convertingId === tab.id"
+                  size="x-small"
+                  variant="flat"
+                  v-bind="convertProps"
+                  @click="convert(tab.id)"
+                />
+              </template>
+              <span>Send this plan to the cloud</span>
+            </v-tooltip>
+          </div>
+        </div>
+      </v-card>
       <p v-if="localTabs.length > 0" class="text-body-2 mt-1 text-grey">
         A local plan lives in this browser only. Send it to the cloud and it follows your
         account to every device you sign in on.
@@ -91,7 +134,16 @@
 
     <div v-else data-testid="cloud-pane">
       <div data-testid="my-plans">
-        <p class="text-body-2 font-weight-bold mb-2">My Plans</p>
+        <!-- A heading has to outrank the plan names under it. At text-body-2 it was
+             SMALLER than they are, and read as one more plan in the list.
+
+             The icons are the tab bar's own vocabulary for what a tab is, from
+             TabNavigation.vue: a cloud for a synced tab, a group of people for a
+             collaborative one. Fixed-width so both headings start their text at the
+             same x despite the two glyphs being different widths. -->
+        <p class="text-h6 mb-2 plans-heading" data-testid="my-plans-heading">
+          <i class="fas fa-cloud fa-fw mr-2" />My Plans
+        </p>
         <p
           v-if="ownedRooms.length === 0"
           class="text-body-2 text-grey mb-3"
@@ -113,7 +165,9 @@
       </div>
 
       <div v-if="joinedRooms.length > 0" class="mt-3" data-testid="joined-plans">
-        <p class="text-body-2 font-weight-bold mb-2">Joined Plans</p>
+        <p class="text-h6 mb-2 plans-heading" data-testid="joined-plans-heading">
+          <i class="fas fa-users fa-fw mr-2" />Joined Plans
+        </p>
         <cloud-plan-row
           v-for="room in joinedRooms"
           :key="room.roomId"
@@ -184,6 +238,8 @@
   import { useAuthStore } from '@/stores/auth-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
+  import { usePlanActivityStore } from '@/stores/plan-activity-store'
+  import { absoluteTime, relativeTimeLong } from '@/utils/relative-time'
 
   const props = withDefaults(defineProps<{
     /** True while the account tray is showing this panel. */
@@ -194,6 +250,7 @@
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
   const roomSync = useRoomSyncStore()
+  const planActivity = usePlanActivityStore()
 
   const username = computed(() => authStore.loggedInUser)
 
@@ -204,6 +261,35 @@
   const localTabs = computed(() =>
     appStore.getTabs().filter(tab => appStore.getTabState(tab.id).kind === 'local')
   )
+
+  /** Spelled out for the tooltip; the chip itself is the icon and the number. */
+  const factoryCountLabel = (count: number) =>
+    `${count} ${count === 1 ? 'factory' : 'factories'}`
+
+  /**
+   * When this browser last saw a local plan's CONTENT change. plan-activity-store already
+   * keeps one stamp per tab for the tab bar's own last-updated line — renames and reorders
+   * deliberately excluded — so a local plan says the same thing a cloud plan does without
+   * anything new being stored. A cloud plan keeps using the server's `lastActivityAt`
+   * instead: that one is stamped by the server's clock and follows the plan across devices,
+   * where this is only what this browser has seen.
+   *
+   * Empty until this browser has seen the plan change, and empty stays empty — the same
+   * rule CloudPlanRow follows for an unreadable stamp.
+   */
+  const localStamp = (tabId: string): string | null => {
+    const at = planActivity.lastUpdatedAt(tabId)
+    return at ? new Date(at).toISOString() : null
+  }
+
+  const localLastChanged = (tabId: string) => {
+    const at = localStamp(tabId)
+    if (at === null) return ''
+    const elapsed = relativeTimeLong(at, now.value)
+    return elapsed === '' ? '' : `Last updated ${elapsed}`
+  }
+
+  const localLastChangedExact = (tabId: string) => absoluteTime(localStamp(tabId) ?? undefined)
 
   const rooms = computed(() =>
     Object.values(roomsStore.entries).sort((a, b) => a.order - b.order)
@@ -330,3 +416,61 @@
     roomsStore.signOut()
   }
 </script>
+
+<style lang="scss" scoped>
+  // `text-h6` carries its own `font-weight: 400 !important`, which beats the
+  // `font-weight-bold` utility — a class that reads as bold and silently is not. The
+  // weight is set here instead, where it actually lands.
+  .plans-heading {
+    font-weight: 700 !important;
+  }
+
+  // Vuetify draws the switch's thumb 6px to the LEFT of the control's own box (and the
+  // track 4px), so the thumb is free to overhang as it slides. Everything else in this
+  // tray — the username, the connection chip, the tabs, the body copy — starts at one x,
+  // and the switch alone poked out of that column. Nudged back by the thumb's overhang
+  // rather than the track's: the thumb is the high-contrast edge the eye lines up on.
+  .offline-switch {
+    margin-left: 6px;
+  }
+
+  // The same two-row/two-column grid CloudPlanRow lays its cards out on, so the two
+  // tabs of this panel agree. Kept in step by hand: scoped styles cannot be shared, and
+  // one small grid in two files beat a third component for a purely visual layout.
+  .plan-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 10px;
+  }
+
+  .plan-title {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .plan-meta {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  .plan-action {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  // The square-ish corner the planner gives every button in a factory card, which the
+  // dropped `.header` rule used to supply. Without it Vuetify's `.v-btn--icon` rounds
+  // this one to a circle while the Show/Hide buttons opposite stay square.
+  .plan-action .v-btn {
+    border-radius: 4px;
+  }
+
+  .plan-name {
+    line-height: 1.25;
+  }
+</style>
