@@ -141,6 +141,40 @@ for (const target of [globalThis, window]) {
   Object.defineProperty(target, 'WebSocket', { value: InertWebSocket, writable: true, configurable: true })
 }
 
+// Nothing in a unit test may reach the network. `config.apiUrl` points at a dead port under
+// Vitest, so a stray request cannot travel — but a request that fails at the socket is still a
+// request, and this app reads a network failure as its offline path: a spec that forgot to mock
+// the API would quietly exercise offline behaviour and pass, which is how the sync stores would
+// come to be tested against the wrong thing. Refuse it outright instead, and say what to mock.
+//
+// It rejects rather than throwing, because that is what `fetch` does and what the callers are
+// written for: `api/client.ts` wraps a failure in `ApiNetworkError`, and the telemetry beacon
+// swallows one on purpose. Which is also why the refusal is announced on the process's own
+// stderr — a swallowed rejection would be exactly as silent as the request it replaced, and the
+// reporter keeps a passing test's console to itself.
+const refusedUrls = new Set<string>()
+
+const refuseNetwork = (input: unknown): Promise<never> => {
+  const url = typeof input === 'string'
+    ? input
+    : String((input as { url?: unknown })?.url ?? input)
+  const message = `A unit test tried to reach the network: fetch(${url}). Mock the module that ` +
+    'calls it — `@/api/client` for the planner\'s API — rather than letting the request out.'
+
+  if (!refusedUrls.has(url)) {
+    refusedUrls.add(url)
+    process.stderr.write(`${message}\n`)
+  }
+
+  return Promise.reject(new TypeError(message))
+}
+
+// `writable`/`configurable`, so a spec's own `vi.stubGlobal('fetch', …)` still replaces it — and
+// is put back to this, rather than to the real thing, by `vi.unstubAllGlobals()`.
+for (const target of [globalThis, window]) {
+  Object.defineProperty(target, 'fetch', { value: refuseNetwork, writable: true, configurable: true })
+}
+
 // jsdom never loads images, so an <img> stays `complete: false` with a zero natural
 // size forever — and Vuetify's VImg keeps re-arming its 100ms size poll to wait for
 // one. Nothing unmounts those components, so the timers outlive the jsdom teardown
