@@ -916,9 +916,11 @@ tr.sf-nav-flash {
   }
 
   // Square-rounded when it is clickable, because that is what a clickable thing looks like
-  // everywhere else in the planner. A pill that navigates somewhere reads as a label.
+  // everywhere else in the planner. A pill that navigates somewhere reads as a label. The 4px is
+  // `sf-chip-clickable`'s, so a factory chip in the statistics table and one in the search results
+  // are the same shape.
   &.clickable {
-    border-radius: 8px;
+    border-radius: 4px;
   }
 
   &.clickable:hover {
