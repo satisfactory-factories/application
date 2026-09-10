@@ -414,7 +414,7 @@
           <h3 class="section-heading mb-2">Power generators: match the fuel to the supply</h3>
           <v-img
             v-if="hasGeneratorFuelShot"
-            alt="A fuel generator offering Trim to supply against what its factory can spare"
+            alt="A factory making 400 Fuel a minute, with the generator below it offering to trim from 640 to 400"
             class="mb-3 mx-auto rounded"
             max-width="1000"
             :src="shots.generatorFuel"
