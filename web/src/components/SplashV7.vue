@@ -429,13 +429,26 @@
           <v-divider class="my-4" />
 
           <h3 class="section-heading mb-2">Plans can be exported and imported as files or the clipboard</h3>
-          <v-img
-            v-if="hasExportShot"
-            alt="The Export plan dialog, offering a file or the clipboard"
-            class="mb-3 mx-auto rounded"
-            max-width="760"
-            :src="shots.exportPlan"
-          />
+          <v-row class="mb-3" no-gutters>
+            <v-col class="pr-md-3" cols="12" md="7">
+              <v-img
+                v-if="hasExportShot"
+                alt="The Export plan dialog, offering a file or the clipboard"
+                class="rounded framed"
+                :src="shots.exportPlan"
+              />
+            </v-col>
+            <!-- Where the buttons are, because right now the sidebar is the only place they live. -->
+            <v-col class="pl-md-3 d-flex flex-column justify-center" cols="12" md="5">
+              <p class="mb-2"><b>Both sit at the foot of the sidebar:</b></p>
+              <v-img
+                v-if="hasPlanButtonsShot"
+                alt="The Export plan and Import plan buttons at the foot of the sidebar, highlighted"
+                class="rounded"
+                :src="shots.planButtons"
+              />
+            </v-col>
+          </v-row>
           <p class="mb-4">
             <b>Copy plan is now Export plan</b>, and asks where the plan should go: save it as a
             JSON file, or copy it to the clipboard. <b>Paste plan is now Import plan</b>, and asks
@@ -531,6 +544,7 @@
     depotAssign: '/assets/changelog/beta7/depot-assign.png',
     search: '/assets/changelog/beta7/search.png',
     exportPlan: '/assets/changelog/beta7/export-plan.png',
+    planButtons: '/assets/changelog/beta7/sidebar-plan-buttons.png',
     customBuildings: '/assets/changelog/beta7/custom-buildings.png',
     materialCosts: '/assets/changelog/beta7/material-costs.png',
     checklist: '/assets/changelog/beta7/checklist.png',
@@ -552,6 +566,7 @@
   const hasDepotAssignShot = true
   const hasSearchShot = true
   const hasExportShot = true
+  const hasPlanButtonsShot = true
   const hasCustomBuildingsShot = true
   const hasMaterialCostsShot = true
   const hasChecklistShot = true
