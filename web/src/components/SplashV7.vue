@@ -202,11 +202,13 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-user" /><span class="ml-2">Manage your plans in the new account panel</span>
           </h2>
+          <!-- The panel is a narrow tray, and the capture is 2x, so left at the slide's own width
+               it rendered at twice life size and swamped the slide. 392 is its true CSS width. -->
           <v-img
             v-if="hasAccountPanelShot"
             alt="The account panel alternating between its Local and Cloud tabs"
             class="mb-4 mx-auto rounded framed"
-            max-width="900"
+            max-width="392"
             :src="shots.accountPanel"
           />
           <ul class="ml-6 mb-4">
@@ -522,7 +524,15 @@
             <i class="fas fa-check" /><span class="ml-2">Got it!</span>
           </template>
           <template v-else>
-            <i class="mr-2" :class="slides[currentSlide + 1].icon" />
+            <!-- FontAwesome's JS replaces an <i> with an <svg> the first time it sees one, which
+                 takes that node out of Vue's hands: patching the class afterwards does nothing, so
+                 every slide's forward button wore whichever icon rendered first. Keying the <i>
+                 alone is worse, because Vue then removes a node that is already detached and the
+                 abandoned <svg>s pile up. The key belongs on a wrapper Vue still owns, so the
+                 whole thing goes and a fresh <i> arrives for FontAwesome to convert. -->
+            <span :key="slides[currentSlide + 1].icon" class="mr-2">
+              <i :class="slides[currentSlide + 1].icon" />
+            </span>
             <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="fas fa-arrow-right" />
           </template>
         </v-btn>

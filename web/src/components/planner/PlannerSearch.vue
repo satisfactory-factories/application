@@ -75,7 +75,7 @@
         />
       </div>
 
-      <div class="results-scroll">
+      <div class="results-scroll" @mouseleave="pointerOut = true">
         <p v-if="!trimmedQuery" class="pa-4 mb-0 text-body-2 text-medium-emphasis">
           Type a factory name, or a part to see every factory that makes, produces as a
           byproduct, or otherwise uses it.
@@ -94,11 +94,11 @@
                 v-for="match in results.factories"
                 :key="`factory-${match.factory.id}`"
                 class="result-inline"
-                :class="{ active: activeIndex === indexOf(`factory-${match.factory.id}`) }"
+                :class="{ active: !pointerOut && activeIndex === indexOf(`factory-${match.factory.id}`) }"
                 :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
                 type="button"
                 @click="goToFactory(match.factory.id)"
-                @mousemove="activeIndex = indexOf(`factory-${match.factory.id}`)"
+                @mousemove="pointerOut = false; activeIndex = indexOf(`factory-${match.factory.id}`)"
               >
                 <v-chip
                   class="sf-chip sf-chip-clickable small factory no-margin row-chip"
@@ -130,11 +130,11 @@
                 v-for="usage in group.usages"
                 :key="`${part.partId}-${usage.factory.id}`"
                 class="result-row"
-                :class="{ active: activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
+                :class="{ active: !pointerOut && activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
                 :title="usage.factory.group ? `Group: ${usage.factory.group.name}` : undefined"
                 type="button"
                 @click="goToUsage(part.partId, usage)"
-                @mousemove="activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
+                @mousemove="pointerOut = false; activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
               >
                 <v-chip
                   class="sf-chip sf-chip-clickable small factory no-margin row-chip"
@@ -259,6 +259,11 @@
   })
 
   const activeIndex = ref(0)
+  // One index drives both the keyboard cursor and what the mouse is pointing at, so a row the
+  // pointer has left stays marked until the pointer reaches another one: leave the list sideways
+  // and the highlight is stranded on whatever you touched last. The pointer leaving the list is
+  // its own fact, and while it is out the mark belongs to the keyboard alone.
+  const pointerOut = ref(true)
   // Every row asks where it sits on every render, so this is a lookup rather than a scan.
   const rowIndex = computed(() => new Map(rows.value.map((row, position) => [row.key, position])))
   const indexOf = (key: string) => rowIndex.value.get(key) ?? -1
@@ -289,8 +294,10 @@
     event.stopPropagation()
 
     if (event.key === 'ArrowDown') {
+      pointerOut.value = false
       activeIndex.value = (activeIndex.value + 1) % rows.value.length
     } else if (event.key === 'ArrowUp') {
+      pointerOut.value = false
       activeIndex.value = (activeIndex.value - 1 + rows.value.length) % rows.value.length
     } else {
       rows.value[activeIndex.value]?.activate()
@@ -425,9 +432,20 @@ $focus-ring: 1px solid var(--sf-grey-border);
   padding: 0;
   cursor: pointer;
 
+  // The chip is the thing you see, so the pointer lights the chip rather than painting a second
+  // shape behind it. A fill change alone was too quiet against a dark tray full of dark chips;
+  // the border moving is what actually reads as "this one".
   &.active .row-chip,
   &:hover .row-chip {
-    background-color: #323232;
+    background-color: #3a3a3a;
+    border-color: #ffffff !important;
+  }
+
+  // `border-color` is the shorthand, so it takes the left edge with it and a grouped factory
+  // loses its colour exactly while you are pointing at it. Put it back, after the rule above.
+  &.active .row-chip.grouped,
+  &:hover .row-chip.grouped {
+    border-left-color: var(--group-color) !important;
   }
 }
 
@@ -516,6 +534,19 @@ $focus-ring: 1px solid var(--sf-grey-border);
   &:hover,
   &.active {
     background-color: rgba(255, 255, 255, 0.10);
+  }
+
+  // Same signal as the inline results, so a row and a chip answer the pointer the same way.
+  &:hover .row-chip,
+  &.active .row-chip {
+    background-color: #3a3a3a;
+    border-color: #ffffff !important;
+  }
+
+  // As above: the shorthand would take the group's left edge with it.
+  &:hover .row-chip.grouped,
+  &.active .row-chip.grouped {
+    border-left-color: var(--group-color) !important;
   }
 
   .row-usage {
