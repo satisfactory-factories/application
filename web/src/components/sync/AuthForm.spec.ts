@@ -5,14 +5,16 @@ import { setActivePinia } from 'pinia'
 import AuthForm from './AuthForm.vue'
 import vuetify from '@/plugins/vuetify'
 import { useAuthStore } from '@/stores/auth-store'
+import { useBackendHealthStore } from '@/stores/backend-health-store'
 
 describe('AuthForm', () => {
   let authStore: ReturnType<typeof useAuthStore>
 
-  const render = (props: Record<string, unknown> = {}) => {
+  const render = (props: Record<string, unknown> = {}, { unhealthy = false } = {}) => {
     const pinia = createTestingPinia({ createSpy: vi.fn })
     setActivePinia(pinia)
     authStore = useAuthStore()
+    useBackendHealthStore().unhealthy = unhealthy
 
     return mount(AuthForm, { global: { plugins: [vuetify, pinia] }, props })
   }
@@ -100,5 +102,37 @@ describe('AuthForm', () => {
   it('takes the wording of the ask from whoever is asking', () => {
     expect(render({ intro: 'Sign in and your synced tab is made straight afterwards.' }).text())
       .toContain('Sign in and your synced tab is made straight afterwards.')
+  })
+  // The tray still opens when the server is down: a button that silently does nothing is worse
+  // than one that says why. Nothing in here can succeed, so it says so and goes inert.
+  describe('when the backend is not responding', () => {
+    it('says so, and points at Discord', () => {
+      const wrapper = render({}, { unhealthy: true })
+
+      const notice = wrapper.find('[data-testid="auth-backend-outage"]')
+      expect(notice.exists()).toBe(true)
+      expect(notice.text()).toContain('not responding')
+      expect(notice.find('a').attributes('href')).toContain('discord.gg')
+    })
+
+    it('disables both forms rather than letting a submit fail', async () => {
+      const wrapper = render({}, { unhealthy: true })
+
+      const disabled = () => wrapper.findAll('input').every(input => input.attributes('disabled') !== undefined)
+      expect(disabled()).toBe(true)
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.find('[data-testid="show-register"]').trigger('click')
+
+      expect(disabled()).toBe(true)
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('stays out of the way while the backend is healthy', () => {
+      const wrapper = render()
+
+      expect(wrapper.find('[data-testid="auth-backend-outage"]').exists()).toBe(false)
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+    })
   })
 })
