@@ -18,7 +18,7 @@
       </v-card-title>
       <v-card-text ref="slideBody">
         <!-- Slide 1: The headline. Four features carry this release, and the name is a pun on
-             the two of them that sound alike — you sync a plan and you sink a surplus. -->
+             the two of them that sound alike: you sync a plan and you sink a surplus. -->
         <div v-if="currentSlide === 0">
           <h2 class="text-h4 text-center mb-2">
             The <span class="pun">SINK</span>ronisation Update
@@ -175,7 +175,7 @@
               <ul class="ml-6 mb-0">
                 <li>This is the <b>old share link system</b>, and it is still here.</li>
                 <li>You make a one-time link, and it loads into someone's browser as their own local copy.</li>
-                <li>That's it — no account needed, on either end.</li>
+                <li>That's it. No account needed, on either end.</li>
               </ul>
             </v-col>
             <v-col class="pl-md-4" cols="12" md="6">
@@ -205,7 +205,7 @@
           <v-img
             v-if="hasAccountPanelShot"
             alt="The account panel, listing local and cloud plans"
-            class="mb-4 mx-auto rounded"
+            class="mb-4 mx-auto rounded framed"
             max-width="900"
             :src="shots.accountPanel"
           />
@@ -213,7 +213,7 @@
             <li><b>Local</b> lists the plans held in this browser, each with a button to send it to your account.</li>
             <li><b>Cloud</b> splits into <b>My Plans</b>, the ones you own, and <b>Joined Plans</b>, the ones shared with you.</li>
             <li>Every plan has a <b>Show</b> or <b>Hide</b> button: show opens it as a tab here, hide closes that tab and nothing more.</li>
-            <li>Change your password from here too — which signs out every device, including this one.</li>
+            <li>Change your password from here too, which signs out every device, including this one.</li>
           </ul>
 
           <v-divider class="my-4" />
@@ -222,7 +222,7 @@
             <i class="fas fa-sliders-h" /><span class="ml-2">Your settings follow your account</span>
           </h3>
           <p class="mb-4">
-            Your personal settings, as defined in <b>Options</b>, now carry across — sign in on any
+            Your personal settings, as defined in <b>Options</b>, now carry across. Sign in on any
             machine and they are applied for you.
           </p>
 
@@ -239,13 +239,14 @@
             :src="shots.offline"
           />
           <ul class="ml-6 mb-0">
-            <li><b>Switch it on</b> to keep your tabs deliberately unsynced — on a flight, or anywhere you would rather the planner left the network alone.</li>
+            <li><b>Switch it on</b> to keep your tabs deliberately unsynced, on a flight or anywhere you would rather the planner left the network alone.</li>
             <li><b>It kicks in by itself</b> if the connection drops, so a dead network is not a broken planner.</li>
             <li><b>Everything re-syncs when you come back.</b> Keep planning offline; it all goes up when you switch it off.</li>
           </ul>
         </div>
 
-        <!-- Slide 5: The other half of the pun. -->
+        <!-- Slide 5: The other half of the pun. Shown as before and after, because "a sink
+             disposes of surplus" means nothing until you have seen the row change. -->
         <div v-if="currentSlide === 4">
           <h2 class="text-h5 text-center d-flex align-center justify-center ga-3 mb-2 tone-sink">
             <game-asset height="32" subject="awesome-sink" type="item_id" width="32" />
@@ -253,28 +254,41 @@
           </h2>
           <p class="mb-4">
             <b>You can now dispose of any surplus</b>, so that it doesn't generate a backlog
-            (which is a bad thing). Surplus that isn't shipped to another factory can be sunk —
+            (which is a bad thing). Surplus that isn't shipped to another factory can be sunk,
             and should be sunk.
           </p>
-          <v-img
-            v-if="hasSinkShot"
-            alt="The Storage column, setting AWESOME Sinks against an item's surplus"
-            class="mb-4 mx-auto rounded"
-            max-width="1000"
-            :src="shots.sink"
-          />
+
+          <h3 class="section-heading mb-2">Before: a surplus with nowhere to go</h3>
           <p class="mb-3">
-            Anything left over that nothing consumes, nothing exports and no sink takes will fill
-            the belt and stall the buildings making it. The planner now says so, in the sidebar and
-            on the item itself:
+            Plastic that nothing consumes, nothing exports and no sink takes will fill the belt
+            and stall the buildings making it. The planner says so:
           </p>
           <v-img
-            v-if="hasBacklogSatisfactionShot"
-            alt="The Will cause backlog warning on an item's satisfaction row"
+            v-if="hasSinkBeforeShot"
+            alt="A Plastic row with a surplus, warning that it will cause a backlog"
+            class="mb-4 mx-auto rounded"
+            max-width="1000"
+            :src="shots.sinkBefore"
+          />
+
+          <h3 class="section-heading mb-2">After: put a sink on it</h3>
+          <p class="mb-3">
+            Set a sink in the <b>Storage</b> column and the surplus reads zero, with a gold
+            <b>sunk</b> chip saying how much it is taking and the pre-sink figure underneath.
+            Nothing is hidden from you.
+          </p>
+          <v-img
+            v-if="hasSinkAfterShot"
+            alt="The same row with a sink set, reading 0/min surplus and a gold sunk chip"
             class="mb-3 mx-auto rounded"
             max-width="1000"
-            :src="shots.backlogSatisfaction"
+            :src="shots.sinkAfter"
           />
+          <p class="mb-0">
+            A sink takes what is spare and nothing more. Internal use and exports are served
+            first, so adding an export later shrinks the sunk amount by itself. Each one draws
+            30 MW, counted into the factory's power.
+          </p>
 
           <v-divider class="my-4" />
 
@@ -282,33 +296,37 @@
             <game-asset height="32" subject="dimensional-depot" type="item_id" width="32" />
             <span>Dimensional Depot support</span>
           </h2>
+          <p class="mb-3">
+            The other half of the Storage column. Set Uploaders on an item and the plan tracks
+            what you are uploading and what it costs:
+          </p>
+          <v-img
+            v-if="hasDepotAssignShot"
+            alt="A Copper Ingot row with two Dimensional Depot Uploaders set in the Storage column"
+            class="mb-4 mx-auto rounded"
+            max-width="1000"
+            :src="shots.depotAssign"
+          />
           <v-img
             v-if="hasDepotShot"
             alt="The Dimensional Depot summary table"
-            class="mb-4 mx-auto rounded"
+            class="mb-3 mx-auto rounded"
             max-width="1000"
             :src="shots.depot"
           />
           <p class="mb-3">
-            A summary of everything your plan uploads: what it has spare, how many Uploaders are on
-            it, and which factories they stand in. Mercer Spheres and the MAM research are counted
-            with it, and both the upload and expansion tiers are saved on the plan.
+            A summary of everything your plan uploads: what it has spare, how many Uploaders are
+            on it, and which factories they stand in. Mercer Spheres and the MAM research are
+            counted with it, and both the upload and expansion tiers are saved on the plan.
           </p>
-          <v-img
-            v-if="hasDepotAssignShot"
-            alt="Assigning Dimensional Depot Uploaders in the Storage column"
-            class="mb-3 mx-auto rounded"
-            max-width="1000"
-            :src="shots.depotAssign"
-          />
           <p class="mb-3">
-            <b>An Uploader deliberately changes no number.</b> The Depot is finite storage — it
+            <b>An Uploader deliberately changes no number.</b> The Depot is finite storage. It
             fills, then backs up like any other container. Marking an item for it records what you
             are building and what it costs, and leaves the surplus exactly as it is.
           </p>
           <v-alert density="comfortable" type="info" variant="tonal">
             <b>Where to set both:</b> under <b>Satisfaction</b> on any factory, in the new
-            <b>Storage</b> column — sinks on the left, Depot Uploaders on the right.
+            <b>Storage</b> column. Sinks on the left, Depot Uploaders on the right.
           </v-alert>
         </div>
 
@@ -329,12 +347,11 @@
             max-width="1000"
             :src="shots.search"
           />
+          <p class="mb-2">Results come back in two sections:</p>
           <ul class="ml-6 mb-0">
-            <li><b>Part results are grouped by what the factory does with it</b>: production first, then byproducts, then imports, exports and plain ingredient demand — each row saying which it is, and how much per minute.</li>
+            <li><b>By factory</b>, listing the factories whose name matches.</li>
+            <li><b>By part</b>, listing every factory that touches it, grouped by what each one does with the part: production first, then imports and other usage, with the rate beside each.</li>
             <li><b>Clicking a result lands on the row it names</b>, not just the top of the factory card.</li>
-            <li>The arrow keys walk the results and Enter opens one.</li>
-            <li>Every result wears the factory chip used everywhere else, carrying its group's colour.</li>
-            <li>On a narrow screen it is a search button that opens the same panel.</li>
           </ul>
         </div>
 
@@ -356,7 +373,7 @@
             <b>Twenty buildings that make nothing</b> can now be added to a factory: portals, train
             stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME
             Sink, hypertube entrances, jump pads, pipeline pumps and lights. They count towards the
-            factory's power draw and its building list — and the Main Portal's
+            factory's power draw and its building list, and the Main Portal's
             <b>Singularity Cells are a real demand</b>, two a minute each.
           </p>
 
@@ -372,7 +389,7 @@
           />
           <p class="mb-4">
             Power &amp; Buildings has a <b>Material Costs</b> panel: what it would cost, in parts, to
-            build everything the factory needs. <b>A guide only</b> — nothing is assumed about belts,
+            build everything the factory needs. <b>A guide only</b>. Nothing is assumed about belts,
             foundations or anything structural.
           </p>
 
@@ -387,7 +404,7 @@
             :src="shots.checklist"
           />
           <ul class="ml-6 mb-4">
-            <li><b>Three tables side by side</b> — Products (with Power beneath), Imports and Exports — instead of one list stacked four groups deep.</li>
+            <li><b>Three tables side by side</b>: Products (with Power beneath), Imports and Exports, instead of one list stacked four groups deep.</li>
             <li><b>A desynced row now says what changed</b>: an amber chip reading <code>560/min → 720/min</code>. Click it to confirm the new number.</li>
             <li><b>Reconfirm all</b>, for when you have already built the lot.</li>
           </ul>
@@ -405,7 +422,7 @@
           <p class="mb-4">
             A generator burning fuel its own factory makes now offers <b>Expand to supply</b> and
             <b>Trim to supply</b>, with the figure named on the button. It accounts for everything
-            else that wants the fuel — other recipes, other generators, exports — which is exactly
+            else that wants the fuel: other recipes, other generators, exports. That is exactly
             the sum this saves you doing by hand.
           </p>
 
@@ -427,14 +444,11 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Around the edges</h3>
+          <h3 class="section-heading mb-2">Other quality of life</h3>
           <ul class="ml-6 mb-0">
             <li><b>The sidebar has an Arrange dialog</b>: reorder groups and factories with buttons, because on a phone dragging a row was the same gesture as scrolling it.</li>
-            <li><b>The sidebar follows the scroll-spy indicator</b>, keeping the highlighted factory in view.</li>
-            <li><b>Every dialog now shares one header</b>, with the close button in the top-right corner where it belongs.</li>
-            <li><b>Statistics and the Global Factories Summary start collapsed</b>, rather than a page-length wall of stats above your factories.</li>
-            <li><b>"Last updated" sits beside the search box</b>, saying when this plan last changed — your edits and a collaborator's alike.</li>
-            <li><b>The "Show Info" toggle is gone</b>, along with the paragraphs it hid. The ⓘ tooltips stay.</li>
+            <li><b>The sidebar follows the active factory indicator</b>, the orange marker, keeping the factory you are looking at in view as you scroll.</li>
+            <li><b>"Last updated" sits beside the search box</b>, saying when this plan last changed. Your edits and a collaborator's alike.</li>
           </ul>
         </div>
 
@@ -444,10 +458,10 @@
             <i class="fas fa-wrench" /><span class="ml-2">Fixes</span>
           </h2>
           <ul class="ml-6 mb-4">
-            <li><b>Enter accepts a task you are editing</b> instead of dropping a newline into it. Shift+enter still types a second line.</li>
-            <li><b>Fix Product no longer ignores what the factory imports</b> (#595). Local production only has to cover what the imports don't, so a factory needing 5,232/min with 2,100/min arriving now offers to make 3,132 — not the whole figure.</li>
-            <li><b>A factory that consumes its own output no longer reports a phantom surplus</b> (#540). A mine extracting 480 ore a minute and smelting every bit of it still offered 240 of it to somebody else.</li>
-            <li><b>A mine that exports more than it digs up can now import the difference</b> (#541). Mines had their Add Import button switched off, because extraction needs no ingredients — so the planner assumed a mine could never need anything. Promise more ore than you produce and you can now buy the shortfall from another mine.</li>
+            <li><b>When creating a task, pressing Enter creates it</b> rather than adding a new line. Shift+Enter still types a second line if you want one.</li>
+            <li><b>Fix Product no longer ignores what the factory imports.</b> Local production only has to cover what the imports don't, so a factory needing 5,000/min of Iron Ingots with 2,100/min arriving now offers to make the remaining 2,900.</li>
+            <li><b>A factory that consumes its own output no longer reports a phantom surplus.</b> A mine extracting 480 ore a minute and smelting every bit of it still offered 240 of it to somebody else.</li>
+            <li><b>A mine that exports more than it digs up can now import the difference.</b> Mines had their Add Import button switched off, because extraction needs no ingredients, so the planner assumed a mine could never need anything. Promise more ore than you produce and you can now buy the shortfall from another mine.</li>
           </ul>
 
           <p class="text-center text-medium-emphasis">
@@ -499,7 +513,7 @@
   const launchVideoId = ''
 
   // Bound rather than literal paths: these live in public/, and a static src makes vite try to
-  // resolve them at transform time — which fails the whole module while a capture is missing.
+  // resolve them at transform time, which fails the whole module while a capture is missing.
   const shots = {
     videoPlaceholder: '/assets/changelog/beta7/video-placeholder.png',
     tabLocal: '/assets/changelog/beta7/tab-local.png',
@@ -511,8 +525,8 @@
     snapshot: '/assets/changelog/beta7/share-snapshot.png',
     accountPanel: '/assets/changelog/beta7/account-panel.png',
     offline: '/assets/changelog/beta7/offline-switch.png',
-    sink: '/assets/changelog/beta7/sink-storage.png',
-    backlogSatisfaction: '/assets/changelog/beta7/backlog-satisfaction.png',
+    sinkBefore: '/assets/changelog/beta7/sink-before.png',
+    sinkAfter: '/assets/changelog/beta7/sink-after.png',
     depot: '/assets/changelog/beta7/depot-summary.png',
     depotAssign: '/assets/changelog/beta7/depot-assign.png',
     search: '/assets/changelog/beta7/search.png',
@@ -532,10 +546,10 @@
   const hasSnapshotShot = false
   const hasAccountPanelShot = true
   const hasOfflineShot = false
-  const hasSinkShot = true
-  const hasBacklogSatisfactionShot = true
+  const hasSinkBeforeShot = true
+  const hasSinkAfterShot = true
   const hasDepotShot = true
-  const hasDepotAssignShot = false
+  const hasDepotAssignShot = true
   const hasSearchShot = true
   const hasExportShot = true
   const hasCustomBuildingsShot = true
@@ -565,7 +579,7 @@
   const introWasDismissed = localStorage.getItem('dismissed-introduction') === 'true'
   const seen = () => localStorage.getItem(key) === 'true'
 
-  // Present the splash only once the planner has finished loading — showing it during the load
+  // Present the splash only once the planner has finished loading. Showing it during the load
   // means the page resizing underneath can shift the dialog mid-interaction and cause misclicks.
   // Some flows (e.g. demo plan setup) load more than once back to back, so the show is debounced:
   // it fires shortly after the last loadingCompleted and is cancelled whenever a new load begins.
@@ -573,8 +587,8 @@
   let showTimer: ReturnType<typeof setTimeout> | undefined
 
   // No forced-answer gate this time. v0.6 was unskippable because raw resources broke every
-  // existing plan and needed an answer; v0.7 breaks nothing the user has to act on — the old
-  // cloud save is brought over on its own — so this closes from the corner throughout.
+  // existing plan and needed an answer; v0.7 breaks nothing the user has to act on, since the
+  // old cloud save is brought over on its own, so this closes from the corner throughout.
   const tryShow = () => {
     if (!loadSettled || seen()) {
       return
@@ -610,7 +624,7 @@
       eventBus.on('prepareForLoad', onLoadStarted)
       eventBus.on('loaderInit', onLoadStarted)
     }
-    // Manual re-show via the header's "Show changes" button — works even after dismissal
+    // Manual re-show via the header's "Show changes" button, which works even after dismissal
     eventBus.on('splashShow', show)
   })
 
@@ -641,7 +655,7 @@
       icon: 'fas fa-sync',
       asset: '',
       tone: '',
-      blurb: 'Every tab is a plan on your account, on every device you sign in on — and one you ' +
+      blurb: 'Every tab is a plan on your account, on every device you sign in on, and one you ' +
         'can hand to a friend and build together, live.',
     },
     {
@@ -649,7 +663,7 @@
       icon: 'fas fa-search',
       asset: '',
       tone: '',
-      blurb: 'Ctrl/Cmd + K, then a factory or a part — and land on the exact row that names it, ' +
+      blurb: 'Ctrl/Cmd + K, then a factory or a part, landing on the exact row that names it, ' +
         'anywhere in the plan.',
     },
     {
@@ -756,6 +770,12 @@
 .pun {
   color: rgb(var(--v-theme-primary));
   font-weight: 700;
+}
+
+// A capture that is a floating panel rather than a slab of the page needs an edge, or it reads
+// as part of the slide instead of as a picture of the app.
+.framed {
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 // The two storage features wear the colours the satisfaction table already gives them, so a
