@@ -398,6 +398,9 @@ $focus-ring: 1px solid var(--sf-grey-border);
 .results-scroll {
   max-height: min(60vh, 520px);
   overflow-y: auto;
+  // The last row of the last group sat flush against the panel's bottom edge, which read as the
+  // list having been cut off rather than having ended.
+  padding-bottom: 8px;
 }
 
 // Factories listed inline rather than stacked: they carry no figure, so a full-width row each
@@ -405,8 +408,11 @@ $focus-ring: 1px solid var(--sf-grey-border);
 .factory-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 2px;
-  padding: 2px 4px 6px;
+  // The chips carry their own border, so they need real air between them, or two side by side
+  // read as one control with a line down the middle. The padding matches: sat tight under the
+  // "Factories" heading, the first row looked stuck to it.
+  gap: 8px;
+  padding: 10px 12px 12px;
 }
 
 // The button is only a hit area; the chip inside it is the thing you see, so keyboard focus and

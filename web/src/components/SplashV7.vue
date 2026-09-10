@@ -175,7 +175,7 @@
               <ul class="ml-6 mb-0">
                 <li>This is the <b>old share link system</b>, and it is still here.</li>
                 <li>You make a one-time link, and it loads into someone's browser as their own local copy.</li>
-                <li>That's it. No account needed, on either end.</li>
+                <li>That's it. No account needed.</li>
               </ul>
             </v-col>
             <v-col class="pl-md-4" cols="12" md="6">
@@ -204,7 +204,7 @@
           </h2>
           <v-img
             v-if="hasAccountPanelShot"
-            alt="The account panel, listing local and cloud plans"
+            alt="The account panel alternating between its Local and Cloud tabs"
             class="mb-4 mx-auto rounded framed"
             max-width="900"
             :src="shots.accountPanel"
@@ -241,7 +241,7 @@
           <ul class="ml-6 mb-0">
             <li><b>Switch it on</b> to keep your tabs deliberately unsynced, on a flight or anywhere you would rather the planner left the network alone.</li>
             <li><b>It kicks in by itself</b> if the connection drops, so a dead network is not a broken planner.</li>
-            <li><b>Everything re-syncs when you come back.</b> Keep planning offline; it all goes up when you switch it off.</li>
+            <li><b>Everything catches up when you come back.</b> Once you are back online it syncs automatically.</li>
           </ul>
         </div>
 
@@ -370,11 +370,11 @@
             :src="shots.customBuildings"
           />
           <p class="mb-4">
-            <b>Twenty buildings that make nothing</b> can now be added to a factory: portals, train
-            stations, freight platforms, truck stations, drone ports, radar towers, the AWESOME
-            Sink, hypertube entrances, jump pads, pipeline pumps and lights. They count towards the
-            factory's power draw and its building list, and the Main Portal's
-            <b>Singularity Cells are a real demand</b>, two a minute each.
+            You can now add the buildings that make nothing to a factory: portals, train stations,
+            freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink,
+            hypertube entrances, jump pads, pipeline pumps and lights. Twenty of them, so anything
+            that draws power can go in and <b>your factory's power demand reads true</b>. The Main
+            Portal's <b>Singularity Cells are a real demand</b> too, two a minute each.
           </p>
 
           <v-divider class="my-4" />
@@ -405,8 +405,22 @@
           />
           <ul class="ml-6 mb-4">
             <li><b>Three tables side by side</b>: Products (with Power beneath), Imports and Exports, instead of one list stacked four groups deep.</li>
-            <li><b>A desynced row now says what changed</b>: an amber chip reading <code>560/min → 720/min</code>. Click it to confirm the new number.</li>
             <li><b>Reconfirm all</b>, for when you have already built the lot.</li>
+          </ul>
+          <p class="mb-3">
+            Tick a row off as built, then change the number it was ticked at, and the row goes out
+            of sync. It says so rather than quietly unticking itself:
+          </p>
+          <v-img
+            v-if="hasDesyncShot"
+            alt="A checklist row carrying an amber desync chip with the old and new numbers"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.desync"
+          />
+          <ul class="ml-6 mb-4">
+            <li><b>An amber chip carries both numbers</b>, reading <code>560/min → 720/min</code>, so you can see what moved and by how much.</li>
+            <li><b>Click the chip to confirm the new number</b>, or change the plan back to match what you have already built.</li>
           </ul>
 
           <v-divider class="my-4" />
@@ -472,9 +486,9 @@
           </h2>
           <ul class="ml-6 mb-4">
             <li><b>When creating a task, pressing Enter creates it</b> rather than adding a new line. Shift+Enter still types a second line if you want one.</li>
-            <li><b>Fix Product no longer ignores what the factory imports.</b> Local production only has to cover what the imports don't, so a factory needing 5,000/min of Iron Ingots with 2,100/min arriving now offers to make the remaining 2,900.</li>
+            <li><b>Fix Product no longer ignores what the factory imports.</b> Local production only has to cover what the imports don't. Press it on a factory needing 5,000/min of Iron Ingots that already imports 2,100/min, and it now makes the remaining 2,900 rather than the full 5,000.</li>
             <li><b>A factory that consumes its own output no longer reports a phantom surplus.</b> A mine extracting 480 ore a minute and smelting every bit of it still offered 240 of it to somebody else.</li>
-            <li><b>A mine that exports more than it digs up can now import the difference.</b> Mines had their Add Import button switched off, because extraction needs no ingredients, so the planner assumed a mine could never need anything. Promise more ore than you produce and you can now buy the shortfall from another mine.</li>
+            <li><b>A mine that exports more than it produces can now import more ore.</b> Mines had their Add Import button switched off because extraction needs no ingredients, so it created no demand, and from that the planner silently assumed a mine could never need an import at all. You can now bring in more ore on top of the ore you dig up.</li>
           </ul>
 
           <p class="text-center text-medium-emphasis">
@@ -536,7 +550,7 @@
     shareTray: '/assets/changelog/beta7/share-tray.png',
     share: '/assets/changelog/beta7/share-invite.png',
     snapshot: '/assets/changelog/beta7/share-snapshot.png',
-    accountPanel: '/assets/changelog/beta7/account-panel.png',
+    accountPanel: '/assets/changelog/beta7/account-panel.gif',
     offline: '/assets/changelog/beta7/offline-switch.png',
     sinkBefore: '/assets/changelog/beta7/sink-before.png',
     sinkAfter: '/assets/changelog/beta7/sink-after.png',
@@ -548,6 +562,7 @@
     customBuildings: '/assets/changelog/beta7/custom-buildings.png',
     materialCosts: '/assets/changelog/beta7/material-costs.png',
     checklist: '/assets/changelog/beta7/checklist.png',
+    desync: '/assets/changelog/beta7/checklist-desync.png',
     generatorFuel: '/assets/changelog/beta7/generator-fuel.png',
   }
 
@@ -570,6 +585,7 @@
   const hasCustomBuildingsShot = true
   const hasMaterialCostsShot = true
   const hasChecklistShot = true
+  const hasDesyncShot = false
   const hasGeneratorFuelShot = true
 
   const key = 'seenV7Splash'
