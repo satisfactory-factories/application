@@ -719,8 +719,10 @@
       tone: '',
       shot: '/assets/changelog/beta7/hero-sync.png',
       alt: 'A tab bar carrying a local tab, a synced tab and a shared tab',
-      blurb: 'Every tab is a plan on your account, on every device you sign in on, and one you ' +
-        'can hand to a friend and build together, live.',
+      // "(optional)" said here as well as on slide 2: the cover is where most readers stop, and
+      // an account is the one thing about this release people assume is being forced on them.
+      blurb: 'Every tab is a plan on your (optional) account, on every device you sign in on, ' +
+        'and one you can hand to a friend and build together, live.',
     },
     {
       title: 'Search',
