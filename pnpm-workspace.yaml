@@ -14,7 +14,7 @@ catalog:
   eslint-import-resolver-typescript: 4.4.5
   eslint-plugin-import-x: 4.17.1
   typescript-eslint: 8.68.0
-  zod: 4.4.3
+  zod: 4.5.1
   '@playwright/test': 1.62.1
   # Both the backend suite and web's Playwright harness boot one; a version skew
   # between them would mean two mongod downloads for no reason.
