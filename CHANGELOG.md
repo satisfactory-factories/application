@@ -8,10 +8,13 @@ The Beta v0.7 "What's new" deck, and three fixes found while building it.
 
 - **The release deck is in.** Eight slides covering realtime sync, tab sharing, the account panel, AWESOME Sinks and the Dimensional Depot, search, and everything else new in the planner. It opens once per person and can be reopened from **Show changes** in the header.
 - **Search results no longer strand their hover highlight.** One index served both the keyboard cursor and the pointer with nothing clearing it, so leaving the list sideways left the mark on whatever was touched last. Hovering also reads more clearly: the chip's border brightens rather than only its fill.
+- **An outage is retried straight away rather than a minute later.** The health check used to ask once a minute whatever was happening, so a tab open during a deploy could sit behind the outage banner for the best part of a minute after the API was already back. The first failed check now starts ten quick retries five seconds apart, covering the better part of a minute, so an ordinary rollout clears itself in seconds. While those are running the banner says "Reconnecting to SF's backend servers, attempt n of 10" and holds back the ask to go and report it, since a deploy is not an outage worth reporting. Only once the ten are spent does it harden into the outage notice, and the checks fall back to a minute and then double, capped at five minutes.
 - **Signing in says why it cannot, when the backend is down.** The tray still opens, names the outage, points at Discord and goes inert, instead of failing silently on submit.
 - **Factory chips are one shape everywhere.** The statistics table and the search results disagreed about what a clickable factory chip looks like; both now use the planner's 4px corner.
 
-## Beta v0.7: Realtime sync, rooms and offline mode
+## Beta v0.7 - The "SINKronisation" Update
+
+_Realtime sync, rooms and offline mode._
 
 The old cloud save has been gutted and a new one built in its place. It is still cloud saving; it is a different cloud saving. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
 

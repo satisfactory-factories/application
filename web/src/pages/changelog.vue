@@ -19,11 +19,14 @@
             <li v-for="release in releases" :key="release.id">
               <a :href="`#${release.id}`" @click.prevent="jumpTo(release.id)">{{ release.title }}</a>
               <span v-if="release.date" class="text-medium-emphasis ml-2">{{ release.date }}</span>
+              <ul v-if="release.summary" class="toc-summary">
+                <li>{{ release.summary }}</li>
+              </ul>
             </li>
           </ul>
         </nav>
         <v-divider />
-        <h1>Beta v0.7 - Realtime sync, rooms and offline mode <span class="release-date">09/Sep/2026</span></h1>
+        <h1>Beta v0.7 - The "SINKronisation" Update <span class="release-date">09/Sep/2026</span><span class="release-summary">Realtime sync, rooms and offline mode</span></h1>
         <p>The old cloud save has been gutted and a new one built in its place. Every tab is a plan in its own right on your account, a plan can be handed to a friend as a link you both edit at the same time, and offline is a mode you choose rather than a failure state you fall into.</p>
         <nav v-if="sectionsOf('Beta v0.7').length" class="toc">
           <p class="mb-1"><b>In this update:</b></p>
@@ -253,7 +256,7 @@
         </ul>
 
         <v-divider />
-        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
+        <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span><span class="release-summary">Raw resources, mines, resource wells and factory groups</span></h1>
         <p>Raw resources are no longer assumed. Ore, water, oil and gas are dug up by buildings you place, and planned and exported like anything else. Factory groups, factory icons and status chips arrive to keep a bigger plan in order.</p>
         <nav v-if="sectionsOf('Beta v0.6').length" class="toc">
           <p class="mb-1"><b>In this update:</b></p>
@@ -595,7 +598,7 @@
         </ul>
 
         <v-divider />
-        <h1>Beta v0.5 - The "Overclocked" Update <span class="release-date">21/Jul/2026</span></h1>
+        <h1>Beta v0.5 - The "Overclocked" Update <span class="release-date">21/Jul/2026</span><span class="release-summary">Overclocking, Somersloops, building groups and power</span></h1>
         <p>After a long hiatus, we're excited to add the highly anticipated Overclocking and Somersloop support!</p>
         <nav v-if="sectionsOf('Beta v0.5').length" class="toc">
           <p class="mb-1"><b>In this update:</b></p>
@@ -764,7 +767,7 @@
         </ul>
 
         <v-divider />
-        <h1>Alpha v0.4 <span class="release-date">25/Jan/2025</span></h1>
+        <h1>Alpha v0.4 <span class="release-date">25/Jan/2025</span><span class="release-summary">Export Calculator v2 and a new loading sequence</span></h1>
 
         <p>Check out what's new in the video below!</p>
         <youtube-embed
@@ -888,7 +891,7 @@
 </template>
 <script setup lang="ts">
   interface Entry { id: string; title: string }
-  interface Release extends Entry { date: string; sections: Entry[] }
+  interface Release extends Entry { date: string; summary: string; sections: Entry[] }
 
   // The contents are read back off the rendered headings rather than kept as a second list beside
   // them: a hand-written one silently goes stale the next time a section is added here.
@@ -897,6 +900,13 @@
 
   const slug = (title: string) =>
     title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+  /** The heading's own words: whatever it carries beside them has its own home in the contents. */
+  const titleOf = (heading: Element) => {
+    const clone = heading.cloneNode(true) as HTMLElement
+    for (const aside of clone.querySelectorAll('.release-date, .release-summary')) aside.remove()
+    return (clone.textContent ?? '').trim()
+  }
 
   const sectionsOf = (prefix: string) =>
     releases.value.find(release => release.title.startsWith(prefix))?.sections ?? []
@@ -924,14 +934,17 @@
 
     const found: Release[] = []
     for (const heading of root.querySelectorAll('h1, h2')) {
-      // The date is rendered inside the heading so it has one home; it is not part of the title.
+      // The date and the one-line summary are rendered inside the heading so each has one home,
+      // and neither is part of the title. Taken off a clone rather than by trimming the string,
+      // so a title that happens to contain its own date keeps it.
       const date = heading.querySelector('.release-date')?.textContent?.trim() ?? ''
-      const title = (heading.textContent ?? '').replace(date, '').trim()
+      const summary = heading.querySelector('.release-summary')?.textContent?.trim() ?? ''
+      const title = titleOf(heading)
       if (!title || title === 'Change Log') continue
 
       if (heading.tagName === 'H1') {
         if (!heading.id) heading.id = slug(title)
-        found.push({ id: heading.id, title, date, sections: [] })
+        found.push({ id: heading.id, title, date, summary, sections: [] })
       } else {
         // Scoped to the release: "Fixes & minor adjustments" is a heading in most of them, and a
         // shared id sends every one of those links to the first.
@@ -1000,6 +1013,23 @@ h1,h2,h3,h4,h5,h6 {
   font-weight: 400;
   margin-left: 0.5rem;
   white-space: nowrap;
+}
+
+// Its own line under the release name: "The SINKronisation Update" says which release this is,
+// and this says what was in it.
+.release-summary {
+  color: #bdbdbd;
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin-top: 0.25rem;
+}
+
+.toc-summary {
+  color: #bdbdbd;
+  font-size: 0.9rem;
+  list-style: none;
+  padding-left: 1rem;
 }
 
 .toc {
