@@ -204,6 +204,19 @@ describe('the database-backed usage metrics', () => {
       expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(2)
       expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
     })
+
+    // A resumed session edits without ever hitting /login. Left out of the signed-in
+    // window, the "of those who signed in, how many edited" ratio climbed past 100%.
+    it('counts an editor as signed in even without a password login', async () => {
+      const user = await seedUser('resumed')
+      await context.app.get(UserActivityService).recordEdit(String(user._id), clock.now())
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signins_total')).toBe(0)
+    })
   })
 
   describe('sf_room_factories, the largest plans', () => {
@@ -663,6 +676,7 @@ describe('UserActivityService', () => {
 
       const stored = await reload(user._id)
       expect(stored?.lastActiveAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
       expect(stored?.editCount).toBe(1)
     })
 
@@ -686,6 +700,19 @@ describe('UserActivityService', () => {
 
     it('ignores anonymous visitors, who have no account to stamp', async () => {
       await expect(service().recordEdit(ANONYMOUS_ACTOR, new Date())).resolves.toBeUndefined()
+    })
+  })
+
+  describe('recordSessionResumed', () => {
+    it('moves the sign-in window forward without counting a sign-in', async () => {
+      const user = await seedUser('resumed', { lastSignInAt: new Date('2026-09-01T00:00:00Z'), signInCount: 4 })
+      const at = new Date('2026-09-02T10:00:00Z')
+
+      await service().recordSessionResumed(String(user._id), at)
+
+      const stored = await reload(user._id)
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.signInCount).toBe(4)
     })
   })
 
