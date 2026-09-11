@@ -9,11 +9,12 @@ export const HEALTH_POLL_MS = 60_000
 /**
  * How fast to ask again the moment the server stops answering, and how many times. A deploy takes
  * the API away for seconds rather than minutes, so the common outage is over long before the
- * unhurried poll above would next look. Five at five seconds covers a rollout without turning a
- * genuine outage into a request every five seconds for as long as the tab stays open.
+ * unhurried poll above would next look. Ten at five seconds covers the better part of a minute,
+ * which is a whole rollout including a slow image pull, without turning a genuine outage into a
+ * request every five seconds for as long as the tab stays open.
  */
 export const HEALTH_RETRY_MS = 5_000
-export const HEALTH_RETRY_ATTEMPTS = 5
+export const HEALTH_RETRY_ATTEMPTS = 10
 
 /**
  * Once the quick retries are spent the server is properly down, so the wait doubles from the
@@ -43,7 +44,7 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
   /**
    * Still in the quick-retry window, so the server may simply be mid-deploy. The banner says
    * "reconnecting" here and holds back the ask to go and report an outage, which would be a
-   * false alarm for the twenty-five seconds a rollout actually takes.
+   * false alarm for the fifty seconds a rollout actually takes.
    */
   const retrying = computed(
     () => failures.value > 0 && failures.value <= HEALTH_RETRY_ATTEMPTS,
@@ -59,7 +60,7 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     typeof navigator !== 'undefined' && navigator.onLine === false
 
   /**
-   * Healthy: the ordinary poll. First five failures: five seconds apart. After that: a minute,
+   * Healthy: the ordinary poll. The first ten failures: five seconds apart. After that: a minute,
    * then doubling to the cap.
    */
   const nextDelay = (): number => {

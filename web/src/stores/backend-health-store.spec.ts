@@ -137,7 +137,7 @@ describe('backend-health-store', () => {
         expect(store.retrying).toBe(true)
       }
 
-      // Five retries spent in twenty-five seconds, on top of the check that found it down.
+      // Every retry spent, on top of the ordinary check that found it down.
       expect(api.getHealth).toHaveBeenCalledTimes(2 + HEALTH_RETRY_ATTEMPTS - 1)
     } finally {
       vi.useRealTimers()
@@ -170,7 +170,7 @@ describe('backend-health-store', () => {
       store.start()
       await vi.advanceTimersByTimeAsync(0)
 
-      // Burn the five quick retries.
+      // Burn the quick retries.
       await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS * HEALTH_RETRY_ATTEMPTS)
       const spent = vi.mocked(api.getHealth).mock.calls.length
       expect(spent).toBe(1 + HEALTH_RETRY_ATTEMPTS)

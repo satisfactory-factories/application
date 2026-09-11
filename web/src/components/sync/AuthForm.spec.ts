@@ -5,7 +5,7 @@ import { setActivePinia } from 'pinia'
 import AuthForm from './AuthForm.vue'
 import vuetify from '@/plugins/vuetify'
 import { useAuthStore } from '@/stores/auth-store'
-import { useBackendHealthStore } from '@/stores/backend-health-store'
+import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
 
 describe('AuthForm', () => {
   let authStore: ReturnType<typeof useAuthStore>
@@ -135,7 +135,7 @@ describe('AuthForm', () => {
 
       const notice = wrapper.find('[data-testid="auth-backend-outage"]')
       expect(notice.text()).toContain('Reconnecting to our backend servers')
-      expect(notice.text()).toContain('Attempt 3 of 5')
+      expect(notice.text()).toContain(`Attempt 3 of ${HEALTH_RETRY_ATTEMPTS}`)
       // Nobody should be sent to report an outage that is most likely a deploy in progress.
       expect(notice.find('a').exists()).toBe(false)
       expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()

@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing'
 import { setActivePinia } from 'pinia'
 import BackendHealthBanner from './BackendHealthBanner.vue'
 import vuetify from '@/plugins/vuetify'
-import { useBackendHealthStore } from '@/stores/backend-health-store'
+import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
 
 describe('BackendHealthBanner', () => {
   let health: ReturnType<typeof useBackendHealthStore>
@@ -47,7 +47,9 @@ describe('BackendHealthBanner', () => {
     await nextTick()
 
     const text = banner(wrapper).text()
-    expect(text).toContain('Reconnecting to SF\'s backend servers, attempt 2 of 5')
+    expect(text).toContain(
+      `Reconnecting to SF's backend servers, attempt 2 of ${HEALTH_RETRY_ATTEMPTS}`,
+    )
     expect(text).toContain('an update is going out')
     expect(text).not.toContain('Discord')
     expect(wrapper.find('[data-testid="backend-health-retrying"]').exists()).toBe(true)
@@ -56,7 +58,7 @@ describe('BackendHealthBanner', () => {
   it('hardens into the outage notice once the quick retries are spent', async () => {
     const wrapper = render()
     health.unhealthy = true
-    health.failures = 6
+    health.failures = HEALTH_RETRY_ATTEMPTS + 1
     await nextTick()
 
     expect(wrapper.find('[data-testid="backend-health-retrying"]').exists()).toBe(false)
