@@ -260,8 +260,10 @@
 
           <h3 class="section-heading mb-2">Before: a surplus with nowhere to go</h3>
           <p class="mb-3">
-            Plastic that nothing consumes, nothing exports and no sink takes will fill the belt
-            and stall the buildings making it. The planner says so:
+            A product nothing consumes, nothing exports and no sink takes will fill the belt and
+            stall the buildings making it. In earlier versions there was no way to tell that a
+            product line would clog, so the plan's throughput read higher than the factory would
+            ever actually manage. The planner now says so outright:
           </p>
           <v-img
             v-if="hasSinkBeforeShot"
@@ -320,9 +322,10 @@
             counted with it, and both the upload and expansion tiers are saved on the plan.
           </p>
           <p class="mb-3">
-            <b>An Uploader deliberately changes no number.</b> The Depot is finite storage. It
-            fills, then backs up like any other container. Marking an item for it records what you
-            are building and what it costs, and leaves the surplus exactly as it is.
+            <b>An Uploader deliberately changes no number.</b> The Depot is finite storage, so
+            the plan assumes it fills up and the excess goes back down your factory lines, exactly
+            as it would without one. Marking an item for it records what you are building and what
+            it costs, and leaves the surplus where it is.
           </p>
           <v-alert density="comfortable" type="info" variant="tonal">
             <b>Where to set both:</b> under <b>Satisfaction</b> on any factory, in the new
@@ -384,7 +387,7 @@
             freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink,
             hypertube entrances, jump pads, pipeline pumps and lights. Twenty of them, so anything
             that draws power can go in and <b>your factory's power demand reads true</b>. The Main
-            Portal's <b>Singularity Cells are a real demand</b> too, two a minute each.
+            Portal's <b>Singularity Cells are a real demand</b> too.
           </p>
 
           <v-divider class="my-4" />
@@ -406,6 +409,10 @@
           <v-divider class="my-4" />
 
           <h3 :id="'also-checklist'" class="section-heading mb-2">Checklist rework</h3>
+          <p class="mb-3">
+            The checklist tracks exactly which parts of a factory you still have left to build,
+            ticking off products, power, imports and exports as you put them down in game.
+          </p>
           <v-img
             v-if="hasChecklistShot"
             alt="The Checklist panel as three tables, a desynced row carrying both numbers"
@@ -429,8 +436,7 @@
             :src="shots.desync"
           />
           <ul class="ml-6 mb-4">
-            <li><b>An amber chip carries both numbers</b>, reading <code>560/min → 720/min</code>, so you can see what moved and by how much.</li>
-            <li><b>Click the chip to confirm the new number</b>, or change the plan back to match what you have already built.</li>
+            <li><b>Click the chip to confirm the new number</b>, or re-tick the row's checkbox, which does the same thing. The other way out is to change the plan back to match what you have already built.</li>
           </ul>
 
           <v-divider class="my-4" />
@@ -479,14 +485,6 @@
             where it is coming from. Either way it is the whole plan.
           </p>
 
-          <v-divider class="my-4" />
-
-          <h3 :id="'also-qol'" class="section-heading mb-2">Other quality of life</h3>
-          <ul class="ml-6 mb-0">
-            <li><b>The sidebar has an Arrange dialog</b>: reorder groups and factories with buttons, because on a phone dragging a row was the same gesture as scrolling it.</li>
-            <li><b>The sidebar follows the active factory indicator</b>, the orange marker, keeping the factory you are looking at in view as you scroll.</li>
-            <li><b>"Last updated" sits beside the search box</b>, saying when this plan last changed. Your edits and a collaborator's alike.</li>
-          </ul>
         </div>
 
         <!-- Slide 8: Fixes, and the way back to the previous deck. -->
@@ -499,6 +497,15 @@
             <li><b>Fix Product no longer ignores what the factory imports.</b> Local production only has to cover what the imports don't. Press it on a factory needing 5,000/min of Iron Ingots that already imports 2,100/min, and it now makes the remaining 2,900 rather than the full 5,000.</li>
             <li><b>A factory that consumes its own output no longer reports a phantom surplus.</b> A mine extracting 480 ore a minute and smelting every bit of it still offered 240 of it to somebody else.</li>
             <li><b>A mine that exports more than it produces can now import more ore.</b> Mines had their Add Import button switched off because extraction needs no ingredients, so it created no demand, and from that the planner silently assumed a mine could never need an import at all. You can now bring in more ore on top of the ore you dig up.</li>
+          </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">Other quality of life</h3>
+          <ul class="ml-6 mb-4">
+            <li><b>The sidebar has an Arrange dialog</b>: reorder groups and factories with buttons, because on a phone dragging a row was the same gesture as scrolling it.</li>
+            <li><b>The sidebar follows the active factory indicator</b>, the orange marker, keeping the factory you are looking at in view as you scroll.</li>
+            <li><b>"Last updated" sits beside the search box</b>, saying when this plan last changed. Your edits and a collaborator's alike.</li>
           </ul>
 
           <p class="text-center text-medium-emphasis">
@@ -698,7 +705,6 @@
     { title: 'Checklist rework', anchor: 'also-checklist', icon: 'fas fa-tasks' },
     { title: 'Power generators: match the fuel to the supply', anchor: 'also-generators', icon: 'fas fa-bolt' },
     { title: 'Plans can be exported and imported as files or the clipboard', anchor: 'also-plan-files', icon: 'fas fa-file-export' },
-    { title: 'Other quality of life', anchor: 'also-qol', icon: 'fas fa-magic' },
   ]
 
   // Scrolls the deck's own body rather than the window: every slide shares one scroll
@@ -731,8 +737,8 @@
       tone: '',
       shot: '/assets/changelog/beta7/hero-search.png',
       alt: 'The search box open on "copper", with matching factories beneath it',
-      blurb: 'Ctrl/Cmd + K, then a factory or a part, landing on the exact row that names it, ' +
-        'anywhere in the plan.',
+      blurb: 'Ctrl/Cmd + K, then any factory or part, and you land on the exact row that ' +
+        'makes it or imports it.',
     },
     {
       title: 'AWESOME Sinks',
@@ -741,8 +747,8 @@
       tone: 'tone-sink',
       shot: '/assets/changelog/beta7/hero-sink.png',
       alt: 'Two sinks on an item, its surplus reading zero with 40 a minute sunk',
-      blurb: 'Dispose of a surplus so it never backs the belt up, and see at a glance which of ' +
-        'your factories are about to clog.',
+      blurb: 'Dispose of a surplus so it never backs the factory up, and see at a glance ' +
+        'which of your product lines are about to clog.',
     },
     {
       title: 'Dimensional Depot',
@@ -751,7 +757,7 @@
       tone: 'tone-depot',
       shot: '/assets/changelog/beta7/hero-depot.png',
       alt: 'The Dimensional Depot summary, listing items against their upload speed',
-      blurb: 'Plan what you upload, what it costs in Mercer Spheres, and whether your Uploaders ' +
+      blurb: 'Track what you upload, what it costs in Mercer Spheres, and whether your Uploaders ' +
         'can keep up with what you make.',
     },
   ] as const
