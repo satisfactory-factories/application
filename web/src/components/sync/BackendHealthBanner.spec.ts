@@ -40,6 +40,29 @@ describe('BackendHealthBanner', () => {
       .toBe('https://discord.gg/vcFsjcWAFv')
   })
 
+  it('says it is reconnecting, and does not send anyone to Discord yet', async () => {
+    const wrapper = render()
+    health.unhealthy = true
+    health.failures = 2
+    await nextTick()
+
+    const text = banner(wrapper).text()
+    expect(text).toContain('Reconnecting to SF\'s backend servers, attempt 2 of 5')
+    expect(text).toContain('an update is going out')
+    expect(text).not.toContain('Discord')
+    expect(wrapper.find('[data-testid="backend-health-retrying"]').exists()).toBe(true)
+  })
+
+  it('hardens into the outage notice once the quick retries are spent', async () => {
+    const wrapper = render()
+    health.unhealthy = true
+    health.failures = 6
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="backend-health-retrying"]').exists()).toBe(false)
+    expect(banner(wrapper).text()).toContain('Please report this immediately on Discord')
+  })
+
   it('goes away the moment the backend answers again', async () => {
     const wrapper = render()
     health.unhealthy = true

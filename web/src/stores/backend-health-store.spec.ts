@@ -3,7 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError } from '@/api/client'
-import { HEALTH_POLL_MS, useBackendHealthStore } from '@/stores/backend-health-store'
+import {
+  HEALTH_BACKOFF_MAX_MS,
+  HEALTH_POLL_MS,
+  HEALTH_RETRY_ATTEMPTS,
+  HEALTH_RETRY_MS,
+  useBackendHealthStore,
+} from '@/stores/backend-health-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 
 vi.mock('@/api/client', async importOriginal => {
@@ -30,6 +36,9 @@ describe('backend-health-store', () => {
   afterEach(() => {
     store.dispose()
     roomSync.dispose()
+    // The navigator.onLine spy below would otherwise outlive its test and silently convince
+    // every later one that the browser, rather than the server, is the thing that is down.
+    vi.restoreAllMocks()
   })
 
   it('says nothing while the server answers', async () => {
@@ -104,6 +113,113 @@ describe('backend-health-store', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('asks again every five seconds the moment the server stops answering', async () => {
+    vi.useFakeTimers()
+    try {
+      store.start()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(api.getHealth).toHaveBeenCalledTimes(1)
+      expect(store.unhealthy).toBe(false)
+
+      // The next ordinary poll finds it down, which starts the quick retries.
+      vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('no route to host'))
+      await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS)
+      expect(api.getHealth).toHaveBeenCalledTimes(2)
+      expect(store.unhealthy).toBe(true)
+      expect(store.retrying).toBe(true)
+      expect(store.retryAttempt).toBe(1)
+
+      for (let attempt = 2; attempt <= HEALTH_RETRY_ATTEMPTS; attempt++) {
+        await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS)
+        expect(store.retryAttempt).toBe(attempt)
+        expect(store.retrying).toBe(true)
+      }
+
+      // Five retries spent in twenty-five seconds, on top of the check that found it down.
+      expect(api.getHealth).toHaveBeenCalledTimes(2 + HEALTH_RETRY_ATTEMPTS - 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('recovers within five seconds of the server coming back', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('mid-deploy'))
+      store.start()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(store.unhealthy).toBe(true)
+
+      vi.mocked(api.getHealth).mockResolvedValue(healthy)
+      await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS)
+
+      expect(store.unhealthy).toBe(false)
+      expect(store.retrying).toBe(false)
+      expect(store.failures).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('backs off to minutely and then doubles once the quick retries are spent', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('really down'))
+      store.start()
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Burn the five quick retries.
+      await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS * HEALTH_RETRY_ATTEMPTS)
+      const spent = vi.mocked(api.getHealth).mock.calls.length
+      expect(spent).toBe(1 + HEALTH_RETRY_ATTEMPTS)
+      expect(store.retrying).toBe(false)
+
+      // Nothing more for nearly a minute, then one check.
+      await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS)
+      expect(api.getHealth).toHaveBeenCalledTimes(spent)
+      await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS)
+      expect(api.getHealth).toHaveBeenCalledTimes(spent + 1)
+
+      // Then two minutes, not one.
+      await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS)
+      expect(api.getHealth).toHaveBeenCalledTimes(spent + 1)
+      await vi.advanceTimersByTimeAsync(HEALTH_POLL_MS)
+      expect(api.getHealth).toHaveBeenCalledTimes(spent + 2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('never waits longer than the backoff cap', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('down for hours'))
+      store.start()
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Well past the point the doubling would have run away with itself.
+      await vi.advanceTimersByTimeAsync(HEALTH_BACKOFF_MAX_MS * 12)
+      const spent = vi.mocked(api.getHealth).mock.calls.length
+
+      await vi.advanceTimersByTimeAsync(HEALTH_BACKOFF_MAX_MS)
+
+      expect(api.getHealth).toHaveBeenCalledTimes(spent + 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not retry quickly when it is the browser that has no network', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('offline'))
+
+    await store.check()
+
+    expect(store.unhealthy).toBe(false)
+    expect(store.retrying).toBe(false)
+    expect(store.failures).toBe(0)
   })
 
   it('asks straight away when the socket starts reconnecting', async () => {

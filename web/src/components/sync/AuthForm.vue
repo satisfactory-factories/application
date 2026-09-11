@@ -29,17 +29,31 @@
       class="mb-4 text-left"
       data-testid="auth-backend-outage"
       density="compact"
-      type="error"
+      :type="health.retrying ? 'warning' : 'error'"
       variant="tonal"
     >
-      <div class="text-body-2">
-        <b>Our backend servers are not responding.</b> Signing in and registering are unavailable
-        until they are back.
-      </div>
-      <div class="text-caption mt-1">
-        Please report it on <a :href="DISCORD_INVITE" rel="noopener" target="_blank">Discord</a> and
-        try again later. Your plans are safe: everything in your tabs is kept in this browser.
-      </div>
+      <!-- Retrying quickly, so this is most likely an update going out rather than an outage
+           worth reporting. Same inert fields either way; different thing to do about it. -->
+      <template v-if="health.retrying">
+        <div class="text-body-2">
+          <b>Reconnecting to our backend servers.</b> Attempt {{ health.retryAttempt }} of
+          {{ HEALTH_RETRY_ATTEMPTS }}, so signing in and registering are unavailable for a moment.
+        </div>
+        <div class="text-caption mt-1">
+          This usually means an update is going out. Your plans are safe: everything in your tabs is
+          kept in this browser.
+        </div>
+      </template>
+      <template v-else>
+        <div class="text-body-2">
+          <b>Our backend servers are not responding.</b> Signing in and registering are unavailable
+          until they are back.
+        </div>
+        <div class="text-caption mt-1">
+          Please report it on <a :href="DISCORD_INVITE" rel="noopener" target="_blank">Discord</a>
+          and try again later. Your plans are safe: everything in your tabs is kept in this browser.
+        </div>
+      </template>
     </v-alert>
     <p class="text-body-2 text-left mb-4">{{ intro }}</p>
     <v-divider />
@@ -101,7 +115,7 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import { useAuthStore } from '@/stores/auth-store'
-  import { useBackendHealthStore } from '@/stores/backend-health-store'
+  import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
 
   /** The same invite the health banner and the introduction hand out. */
   const DISCORD_INVITE = 'https://discord.gg/vcFsjcWAFv'

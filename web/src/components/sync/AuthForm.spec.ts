@@ -10,11 +10,13 @@ import { useBackendHealthStore } from '@/stores/backend-health-store'
 describe('AuthForm', () => {
   let authStore: ReturnType<typeof useAuthStore>
 
-  const render = (props: Record<string, unknown> = {}, { unhealthy = false } = {}) => {
+  const render = (props: Record<string, unknown> = {}, { unhealthy = false, failures = 0 } = {}) => {
     const pinia = createTestingPinia({ createSpy: vi.fn })
     setActivePinia(pinia)
     authStore = useAuthStore()
-    useBackendHealthStore().unhealthy = unhealthy
+    const health = useBackendHealthStore()
+    health.unhealthy = unhealthy
+    health.failures = failures
 
     return mount(AuthForm, { global: { plugins: [vuetify, pinia] }, props })
   }
@@ -125,6 +127,17 @@ describe('AuthForm', () => {
       await wrapper.find('[data-testid="show-register"]').trigger('click')
 
       expect(disabled()).toBe(true)
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('says it is reconnecting while the quick retries are still running', () => {
+      const wrapper = render({}, { unhealthy: true, failures: 3 })
+
+      const notice = wrapper.find('[data-testid="auth-backend-outage"]')
+      expect(notice.text()).toContain('Reconnecting to our backend servers')
+      expect(notice.text()).toContain('Attempt 3 of 5')
+      // Nobody should be sent to report an outage that is most likely a deploy in progress.
+      expect(notice.find('a').exists()).toBe(false)
       expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
     })
 
